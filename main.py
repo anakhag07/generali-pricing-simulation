@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import numpy as np
 
-from data import Customer, default_rng
+from data.models import Customer, default_rng
 from optimization.common import clip_u
-from optimization.first_order.stein_grad import stein_first_order_grad
+from optimization.gradients.first_order import stein_first_order_grad
 from optimization.objective import objective, objective_with_oracle_grad
-from optimization.zeroth_order.stein_zo import stein_zeroth_order_grad
+from optimization.gradients.zeroth_order import stein_zeroth_order_grad
 
 
 def main() -> None:

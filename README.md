@@ -21,6 +21,9 @@ python main.py
 
 - `main.py`: demo entry point.
 - `data/models.py`: data classes and blackbox generators.
+- `experiments/runner.py`: experiment runner entry.
+- `experiments/logging.py`: logging helpers for experiment outputs.
+- `experiments/visualization.py`: visualization placeholders.
 - `optimization/gradients/`: first-order and zeroth-order Stein estimators.
 - `optimization/objective.py`: objective and oracle gradient API.
 

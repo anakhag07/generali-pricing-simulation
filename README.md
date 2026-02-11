@@ -20,9 +20,11 @@ python main.py
 ## Project Structure
 
 - `main.py`: demo entry point.
-- `data.py`: data classes and blackbox generators.
-- `optimization/first_order/`: first-order Stein estimators.
-- `optimization/zeroth_order/`: zeroth-order Stein estimators.
+- `data/models.py`: data classes and blackbox generators.
+- `experiments/runner.py`: experiment runner entry.
+- `experiments/logging.py`: logging helpers for experiment outputs.
+- `experiments/visualization.py`: visualization placeholders.
+- `optimization/gradients/`: first-order and zeroth-order Stein estimators.
 - `optimization/objective.py`: objective and oracle gradient API.
 
 ## Reproducibility

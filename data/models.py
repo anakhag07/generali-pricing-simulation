@@ -116,18 +116,3 @@ class ExpectedFinancialLoss:
         return cls(value=value)
 
 
-def example_usage(seed: int = 42) -> None:
-    rng = default_rng(seed)
-    customer = Customer.sample(rng)
-    contract = Contract(u=1.1)
-    acceptance = AcceptanceProbability.sample(customer, contract, rng)
-    expected_loss = ExpectedFinancialLoss.sample(customer, rng)
-
-    print("Customer x:", customer.x.as_array())
-    print("Contract u:", contract.u)
-    print("Acceptance p:", acceptance.p, "z:", acceptance.z)
-    print("Expected loss:", expected_loss.value)
-
-
-if __name__ == "__main__":
-    example_usage()

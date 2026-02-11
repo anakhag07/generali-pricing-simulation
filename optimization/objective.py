@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from data import AcceptanceProbability, Contract, Customer, ExpectedFinancialLoss
+from data.models import AcceptanceProbability, Contract, Customer, ExpectedFinancialLoss
 from optimization.common import clip_u
 
 

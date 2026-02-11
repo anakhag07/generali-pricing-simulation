@@ -11,6 +11,8 @@ pip install -e .
 python main.py
 ```
 
+Runtime dependencies live in `requirements.txt` and mirror `pyproject.toml`.
+
 To run tests:
 
 ```bash

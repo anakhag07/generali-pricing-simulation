@@ -14,7 +14,7 @@ from optimization.gradients.zeroth_order import stein_zeroth_order_grad
 from optimization.objective import objective, objective_with_oracle_grad
 from optimization.policy import PolicySpec, apply_policy
 
-from experiments.logging import log_step, log_summary
+from experiments.logging import log_grad, log_step, log_summary
 
 
 @dataclass(frozen=True)
@@ -51,6 +51,7 @@ def run_demo(config: ExperimentConfig = ExperimentConfig()) -> Tuple[float, floa
                 n_samples=config.n_samples,
                 sigma=config.sigma,
             )
+            log_grad("first-order", step, grad)
             u = clip_u(u - config.step_size * grad)
             value = objective_fn(u)
             log_step("first-order", step, u, value)
@@ -66,6 +67,7 @@ def run_demo(config: ExperimentConfig = ExperimentConfig()) -> Tuple[float, floa
                 n_samples=config.n_samples,
                 sigma=config.sigma,
             )
+            log_grad("zeroth-order", step, grad)
             u = clip_u(u - config.step_size * grad)
             value = objective_fn(u)
             log_step("zeroth-order", step, u, value)

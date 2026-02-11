@@ -7,6 +7,10 @@ def log_step(method: str, step: int, u: float, value: float) -> None:
     print(f"[{method}] step={step} u={u:.4f} value={value:.4f}")
 
 
+def log_grad(method: str, step: int, grad: float) -> None:
+    print(f"[{method}] step={step} grad={grad:.4f}")
+
+
 def log_summary(value: float, u_first: float, u_zero: float) -> None:
     print("Objective value:", value)
     print("Final u (first-order):", u_first)

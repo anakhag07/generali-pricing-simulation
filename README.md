@@ -26,6 +26,7 @@ python main.py
 - `experiments/visualization.py`: visualization placeholders.
 - `optimization/gradients/`: first-order and zeroth-order Stein estimators.
 - `optimization/objective.py`: objective and oracle gradient API.
+- `optimization/policy.py`: policy specs (constant policy by default).
 
 ## Reproducibility
 

@@ -25,6 +25,7 @@ pytest
 - Samples synthetic customer state and contract actions.
 - Evaluates a stochastic objective based on acceptance probability and expected loss.
 - Runs first-order and zeroth-order Stein gradient estimators to optimize a pricing action.
+- Optionally runs a deterministic fixed regression objective with a known minimizer.
 
 ## Minimization Model
 
@@ -44,6 +45,31 @@ Goal (demo):        minimize f(u; x) using noisy black-box queries
 ```
 
 The demo samples a single customer `x` and then optimizes over `u`. Objective evaluations are stochastic because the black-box acceptance probability and expected loss sample randomness on each call.
+
+## Fixed Regression Objective (Deterministic)
+
+You can switch to a deterministic objective with a closed-form minimizer. The objective is
+
+```text
+f(u; x) = (w^T phi(x) - c * u)^2
+```
+
+with analytic minimizer
+
+```text
+u* = clip((w^T phi(x)) / c, 0.5, 1.5)
+```
+
+When enabled, the demo prints `u*`, the objective at `u*`, and the final iterates from
+the first-order and zeroth-order methods.
+
+To enable the fixed objective, pass a config override in `main.py` or from a REPL:
+
+```python
+from experiments.runner import ExperimentConfig, run_demo
+
+run_demo(ExperimentConfig(objective_kind="fixed_regression"))
+```
 
 ## Model-to-Code Mapping
 

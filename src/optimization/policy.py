@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from data.models import StateVector
-from optimization.common import clip_u
+# from optimization.common import clip_u
 
 POLICY_CONSTANT = "constant"
 POLICY_LINEAR = "linear"
@@ -66,4 +66,5 @@ def policy_u(theta: np.ndarray, x: StateVector, kind: str = POLICY_CONSTANT) -> 
 
 
 def apply_policy(policy: PolicySpec, x: StateVector) -> float:
-    return clip_u(policy_u(policy.theta, x, kind=policy.kind))
+    # return clip_u(policy_u(policy.theta, x, kind=policy.kind))
+    return policy_u(policy.theta, x, kind=policy.kind)

@@ -7,7 +7,6 @@ from dataclasses import dataclass
 import numpy as np
 
 from data.models import AcceptanceProbability, Contract, Customer, ExpectedFinancialLoss, StateVector
-from optimization.common import clip_u
 from optimization.policy import phi
 
 
@@ -22,7 +21,8 @@ def revenue_h(price: float, u: float) -> float:
 
 
 def objective(customer: Customer, u: float, price: float, rng: np.random.Generator) -> float:
-    u_clipped = clip_u(u)
+    # u_clipped = clip_u(u)
+    u_clipped = u
     contract = Contract(u=u_clipped)
     acceptance = AcceptanceProbability.sample(customer, contract, rng)
     expected_loss = ExpectedFinancialLoss.sample(customer, rng)

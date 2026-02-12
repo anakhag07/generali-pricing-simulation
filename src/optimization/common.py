@@ -9,8 +9,8 @@ import numpy as np
 U_BOUNDS: Tuple[float, float] = (0.5, 1.5)
 
 
-def clip_u(u: float) -> float:
-    return float(np.clip(u, U_BOUNDS[0], U_BOUNDS[1]))
+# def clip_u(u: float) -> float:
+#     return float(np.clip(u, U_BOUNDS[0], U_BOUNDS[1]))
 
 
 def gaussian_noise(rng: np.random.Generator, shape: Iterable[int] = ()) -> np.ndarray:

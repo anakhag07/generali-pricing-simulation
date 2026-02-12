@@ -26,6 +26,7 @@ pytest
 - Evaluates a stochastic objective based on acceptance probability and expected loss.
 - Runs first-order and zeroth-order Stein gradient estimators to optimize a pricing action.
 - Optionally runs a deterministic fixed regression objective with a known minimizer.
+- Saves matplotlib plots to `plots/` (loss curves, gradient norms, and fixed-regression truth plots).
 
 ## Minimization Model
 

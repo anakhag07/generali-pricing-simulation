@@ -6,7 +6,7 @@ from typing import Callable
 
 import numpy as np
 
-from optimization.common import clip_u, gaussian_noise
+from optimization.common import gaussian_noise
 from optimization.objective import ObjectiveResult
 
 
@@ -28,7 +28,8 @@ def stein_first_order_grad(
     grads = []
     for _ in range(n_samples):
         eps = float(gaussian_noise(rng))
-        u_perturbed = clip_u(u + sigma * eps)
+        # u_perturbed = clip_u(u + sigma * eps)
+        u_perturbed = u + sigma * eps
         result = oracle_grad_fn(u_perturbed)
         grads.append(result.grad_u)
 

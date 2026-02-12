@@ -8,7 +8,7 @@ from typing import Tuple
 import numpy as np
 
 from data.models import Customer, default_rng
-from optimization.common import clip_u
+# from optimization.common import clip_u
 from optimization.gradients.first_order import stein_first_order_grad
 from optimization.gradients.zeroth_order import stein_zeroth_order_grad
 from optimization.objective import (
@@ -29,9 +29,9 @@ OBJECTIVE_KINDS = (OBJECTIVE_STOCHASTIC, OBJECTIVE_FIXED_REGRESSION)
 @dataclass(frozen=True)
 class ExperimentConfig:
     seed: int = 7
-    previous_policy_price: float = 1200.0
-    t_steps: int = 10
-    step_size: float = 0.05
+    previous_policy_price: float = 1000.0
+    t_steps: int = 100
+    step_size: float = 0.01
     sigma: float = 0.1
     n_samples: int = 64
     objective_kind: str = OBJECTIVE_FIXED_REGRESSION
@@ -60,7 +60,7 @@ def run_demo(config: ExperimentConfig = ExperimentConfig()) -> Tuple[float, floa
             return fixed_regression_objective_with_grad(
                 customer.x, u, config.fixed_w, config.fixed_c
             )
-    else:
+    else: # OBJECTIVE_STOCHASTIC
         def objective_fn(u: float) -> float:
             return objective(customer, u, config.previous_policy_price, rng)
 
@@ -80,7 +80,8 @@ def run_demo(config: ExperimentConfig = ExperimentConfig()) -> Tuple[float, floa
                 sigma=config.sigma,
             )
             log_grad("first-order", step, grad)
-            u = clip_u(u - config.step_size * grad)
+            # u = clip_u(u - config.step_size * grad)
+            u = u - config.step_size * grad
             value = objective_fn(u)
             log_step("first-order", step, u, value)
         return u
@@ -96,7 +97,8 @@ def run_demo(config: ExperimentConfig = ExperimentConfig()) -> Tuple[float, floa
                 sigma=config.sigma,
             )
             log_grad("zeroth-order", step, grad)
-            u = clip_u(u - config.step_size * grad)
+            # u = clip_u(u - config.step_size * grad)
+            u = u - config.step_size * grad
             value = objective_fn(u)
             log_step("zeroth-order", step, u, value)
         return u
@@ -108,10 +110,12 @@ def run_demo(config: ExperimentConfig = ExperimentConfig()) -> Tuple[float, floa
 
     u_star = None
     value_star = None
+    print(f"Objective type is {config.objective_kind}")
     if config.objective_kind == OBJECTIVE_FIXED_REGRESSION:
         features = phi(customer.x)
         w_dot_phi = float(np.dot(config.fixed_w[: features.size], features))
-        u_star = clip_u(w_dot_phi / config.fixed_c)
+        # u_star = clip_u(w_dot_phi / config.fixed_c)
+        u_star = w_dot_phi / config.fixed_c    
         value_star = objective_fn(u_star)
 
     log_summary(value, u_first, u_zero, u_star=u_star, value_star=value_star)

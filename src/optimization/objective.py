@@ -7,7 +7,6 @@ from dataclasses import dataclass
 import numpy as np
 
 from data.models import AcceptanceProbability, Contract, Customer, ExpectedFinancialLoss, StateVector
-from optimization.policy import phi
 
 
 @dataclass(frozen=True)
@@ -44,22 +43,49 @@ def objective_with_oracle_grad(
     return ObjectiveResult(value=value, grad_u=grad_u)
 
 
-def fixed_regression_objective(x: StateVector, u: float, w: np.ndarray, c: float) -> float:
-    if c == 0.0:
-        raise ValueError("c must be nonzero for fixed regression objective.")
-    features = phi(x)
-    if w.size < features.size:
-        raise ValueError("w must have at least phi(x) elements.")
-    prediction = float(np.dot(w[: features.size], features))
-    residual = prediction - c * u
-    return float(residual**2)
+def _logistic(z: float) -> float:
+    if z >= 0.0:
+        exp_neg = float(np.exp(-z))
+        return float(1.0 / (1.0 + exp_neg))
+    exp_pos = float(np.exp(z))
+    return float(exp_pos / (1.0 + exp_pos))
+
+
+def _beta_dot_x(beta: np.ndarray, x: StateVector) -> float:
+    features = x.as_array().astype(float)
+    if beta.size < features.size:
+        raise ValueError("beta must have at least as many elements as x.")
+    return float(np.dot(beta[: features.size], features))
+
+
+def fixed_regression_objective(
+    x: StateVector,
+    u: float,
+    beta_1: np.ndarray,
+    beta_2: float,
+    beta_3: np.ndarray,
+    beta_4: float,
+) -> float:
+    logit = _beta_dot_x(beta_1, x) + float(beta_2) * u
+    acceptance = _logistic(logit)
+    loss = _beta_dot_x(beta_3, x)
+    revenue = float(beta_4) * u
+    return float(acceptance * (loss - revenue))
 
 
 def fixed_regression_objective_with_grad(
-    x: StateVector, u: float, w: np.ndarray, c: float
+    x: StateVector,
+    u: float,
+    beta_1: np.ndarray,
+    beta_2: float,
+    beta_3: np.ndarray,
+    beta_4: float,
 ) -> ObjectiveResult:
-    value = fixed_regression_objective(x, u, w, c)
-    features = phi(x)
-    prediction = float(np.dot(w[: features.size], features))
-    grad_u = float(-2.0 * c * (prediction - c * u))
+    value = fixed_regression_objective(x, u, beta_1, beta_2, beta_3, beta_4)
+    logit = _beta_dot_x(beta_1, x) + float(beta_2) * u
+    acceptance = _logistic(logit)
+    loss = _beta_dot_x(beta_3, x)
+    revenue = float(beta_4) * u
+    d_acceptance_du = float(acceptance * (1.0 - acceptance) * float(beta_2))
+    grad_u = d_acceptance_du * (loss - revenue) - acceptance * float(beta_4)
     return ObjectiveResult(value=value, grad_u=grad_u)

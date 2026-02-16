@@ -17,7 +17,7 @@ from optimization.objective import (
     objective,
     objective_with_oracle_grad,
 )
-from optimization.policy import PolicySpec, apply_policy, phi
+from optimization.policy import POLICY_SOFTMAX, PolicySpec, apply_policy
 
 from experiments.logging import log_grad, log_step, log_summary
 from experiments.visualization import (
@@ -41,15 +41,44 @@ class ExperimentConfig:
     sigma: float = 0.1
     n_samples: int = 64
     objective_kind: str = OBJECTIVE_FIXED_REGRESSION
-    fixed_w: np.ndarray = field(
-        default_factory=lambda: np.asarray([0.2, -0.05, 0.1, 0.3], dtype=float)
+    beta_1: np.ndarray = field(
+        default_factory=lambda: np.asarray([0.02, 0.2, 0.5], dtype=float)
     )
-    fixed_c: float = 1.1
+    beta_2: float = 0.8
+    beta_3: np.ndarray = field(
+        default_factory=lambda: np.asarray([0.005, 0.1, 0.2], dtype=float)
+    )
+    beta_4: float = 0.4
     policy_spec: PolicySpec = field(
-        default_factory=lambda: PolicySpec(theta=np.asarray([1.0], dtype=float))
+        default_factory=lambda: PolicySpec(
+            theta=np.asarray([0.1, 0.01, 0.01, 0.01], dtype=float),
+            kind=POLICY_SOFTMAX,
+        )
     )
     plot: bool = True
     plot_dir: str = "plots"
+
+    def __post_init__(self) -> None:
+        beta_1 = np.asarray(self.beta_1, dtype=float)
+        beta_3 = np.asarray(self.beta_3, dtype=float)
+        beta_2 = float(self.beta_2)
+        beta_4 = float(self.beta_4)
+        if beta_1.size < 3:
+            raise ValueError("beta_1 must have at least 3 elements.")
+        if beta_3.size < 3:
+            raise ValueError("beta_3 must have at least 3 elements.")
+        if np.any(beta_1 <= 0.0):
+            raise ValueError("beta_1 entries must be positive.")
+        if np.any(beta_3 <= 0.0):
+            raise ValueError("beta_3 entries must be positive.")
+        if beta_2 <= 0.0:
+            raise ValueError("beta_2 must be positive.")
+        if beta_4 <= 0.0:
+            raise ValueError("beta_4 must be positive.")
+        object.__setattr__(self, "beta_1", beta_1)
+        object.__setattr__(self, "beta_2", beta_2)
+        object.__setattr__(self, "beta_3", beta_3)
+        object.__setattr__(self, "beta_4", beta_4)
 
 
 def run_demo(config: ExperimentConfig = ExperimentConfig()) -> Tuple[float, float, float]:
@@ -62,11 +91,23 @@ def run_demo(config: ExperimentConfig = ExperimentConfig()) -> Tuple[float, floa
 
     if config.objective_kind == OBJECTIVE_FIXED_REGRESSION:
         def objective_fn(u: float) -> float:
-            return fixed_regression_objective(customer.x, u, config.fixed_w, config.fixed_c)
+            return fixed_regression_objective(
+                customer.x,
+                u,
+                config.beta_1,
+                config.beta_2,
+                config.beta_3,
+                config.beta_4,
+            )
 
         def oracle_grad_fn(u: float):
             return fixed_regression_objective_with_grad(
-                customer.x, u, config.fixed_w, config.fixed_c
+                customer.x,
+                u,
+                config.beta_1,
+                config.beta_2,
+                config.beta_3,
+                config.beta_4,
             )
     else: # OBJECTIVE_STOCHASTIC
         def objective_fn(u: float) -> float:
@@ -103,7 +144,12 @@ def run_demo(config: ExperimentConfig = ExperimentConfig()) -> Tuple[float, floa
             grad_estimates.append(grad)
             if config.objective_kind == OBJECTIVE_FIXED_REGRESSION:
                 true_grad = fixed_regression_objective_with_grad(
-                    customer.x, u, config.fixed_w, config.fixed_c
+                    customer.x,
+                    u,
+                    config.beta_1,
+                    config.beta_2,
+                    config.beta_3,
+                    config.beta_4,
                 ).grad_u
                 true_grads.append(true_grad)
         trace = OptimizationTrace(
@@ -141,7 +187,12 @@ def run_demo(config: ExperimentConfig = ExperimentConfig()) -> Tuple[float, floa
             grad_estimates.append(grad)
             if config.objective_kind == OBJECTIVE_FIXED_REGRESSION:
                 true_grad = fixed_regression_objective_with_grad(
-                    customer.x, u, config.fixed_w, config.fixed_c
+                    customer.x,
+                    u,
+                    config.beta_1,
+                    config.beta_2,
+                    config.beta_3,
+                    config.beta_4,
                 ).grad_u
                 true_grads.append(true_grad)
         trace = OptimizationTrace(
@@ -159,24 +210,18 @@ def run_demo(config: ExperimentConfig = ExperimentConfig()) -> Tuple[float, floa
     u_zero, trace_zero = run_zeroth_order(u0)
 
     u_star = None
-    value_star = None
     print(f"Objective type is {config.objective_kind}")
-    if config.objective_kind == OBJECTIVE_FIXED_REGRESSION:
-        features = phi(customer.x)
-        w_dot_phi = float(np.dot(config.fixed_w[: features.size], features))
-        # u_star = clip_u(w_dot_phi / config.fixed_c)
-        u_star = w_dot_phi / config.fixed_c    
-        value_star = objective_fn(u_star)
-
-    log_summary(value, u_first, u_zero, u_star=u_star, value_star=value_star)
+    log_summary(value, u_first, u_zero)
     if config.plot:
         plot_loss_curves(trace_first, trace_zero, config.plot_dir, u_star=u_star)
         plot_gradient_norms(trace_first, trace_zero, config.plot_dir)
         if config.objective_kind == OBJECTIVE_FIXED_REGRESSION:
             plot_fixed_regression_truth(
                 customer.x,
-                config.fixed_w,
-                config.fixed_c,
+                config.beta_1,
+                config.beta_2,
+                config.beta_3,
+                config.beta_4,
                 trace_first,
                 trace_zero,
                 config.plot_dir,

@@ -25,7 +25,7 @@ pytest
 - Samples synthetic customer state and contract actions.
 - Evaluates a stochastic objective based on acceptance probability and expected loss.
 - Runs first-order and zeroth-order Stein gradient estimators to optimize a pricing action.
-- Optionally runs a deterministic fixed regression objective with a known minimizer.
+- Optionally runs a deterministic fixed objective with explicit acceptance, loss, and revenue.
 - Saves matplotlib plots to `plots/` (loss curves, gradient norms, and fixed-regression truth plots).
 
 ## Minimization Model
@@ -49,27 +49,27 @@ The demo samples a single customer `x` and then optimizes over `u`. Objective ev
 
 ## Fixed Regression Objective (Deterministic)
 
-You can switch to a deterministic objective with a closed-form minimizer. The objective is
+You can switch to a deterministic objective with an explicit parametric form.
 
 ```text
-f(u; x) = (w^T phi(x) - c * u)^2
+Acceptance: a(x, u) = sigmoid(beta_1^T x + beta_2 * u)
+Loss:       l(x) = beta_3^T x
+Revenue:    r(u) = beta_4 * u
+
+Objective:  f(u; x) = a(x, u) * ( l(x) - r(u) )
 ```
 
-with analytic minimizer
+The beta values are positive and configurable in `ExperimentConfig` (`beta_1` through
+`beta_4`). The demo plots the objective and gradient over the action grid when this
+objective is used.
 
-```text
-u* = clip((w^T phi(x)) / c, 0.5, 1.5)
-```
-
-When enabled, the demo prints `u*`, the objective at `u*`, and the final iterates from
-the first-order and zeroth-order methods.
-
-To enable the fixed objective, pass a config override in `main.py` or from a REPL:
+The fixed objective is the default. To enable the stochastic objective, pass a config
+override in `main.py` or from a REPL:
 
 ```python
 from experiments.runner import ExperimentConfig, run_demo
 
-run_demo(ExperimentConfig(objective_kind="fixed_regression"))
+run_demo(ExperimentConfig(objective_kind="stochastic"))
 ```
 
 ## Model-to-Code Mapping
@@ -108,7 +108,7 @@ The demo uses a fixed RNG seed in `main.py` to make runs repeatable. Objective e
 - `src/experiments/visualization.py`: visualization placeholders.
 - `src/optimization/gradients/`: first-order and zeroth-order Stein estimators.
 - `src/optimization/objective.py`: objective and oracle gradient API.
-- `src/optimization/policy.py`: policy specs (constant policy by default).
+- `src/optimization/policy.py`: policy specs (softmax policy used by default in the demo).
 
 ## Reproducibility
 

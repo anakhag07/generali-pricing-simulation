@@ -110,16 +110,24 @@ def plot_gradient_norms(
 
 def plot_fixed_regression_truth(
     x,
-    w: np.ndarray,
-    c: float,
+    beta_1: np.ndarray,
+    beta_2: float,
+    beta_3: np.ndarray,
+    beta_4: float,
     trace_first: OptimizationTrace,
     trace_zero: OptimizationTrace,
     plot_dir: str,
 ) -> None:
     path = _ensure_plot_dir(plot_dir)
     u_grid = np.linspace(U_BOUNDS[0], U_BOUNDS[1], 200)
-    obj_grid = [fixed_regression_objective(x, u, w, c) for u in u_grid]
-    grad_grid = [fixed_regression_objective_with_grad(x, u, w, c).grad_u for u in u_grid]
+    obj_grid = [
+        fixed_regression_objective(x, u, beta_1, beta_2, beta_3, beta_4)
+        for u in u_grid
+    ]
+    grad_grid = [
+        fixed_regression_objective_with_grad(x, u, beta_1, beta_2, beta_3, beta_4).grad_u
+        for u in u_grid
+    ]
 
     fig, axes = plt.subplots(2, 1, figsize=(8, 8), sharex=True)
     ax_obj, ax_grad = axes

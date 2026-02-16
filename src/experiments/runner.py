@@ -40,7 +40,7 @@ class ExperimentConfig:
     step_size: float = 0.01
     sigma: float = 0.1
     n_samples: int = 64
-    objective_kind: str = OBJECTIVE_STOCHASTIC
+    objective_kind: str = OBJECTIVE_FIXED_REGRESSION
     fixed_w: np.ndarray = field(
         default_factory=lambda: np.asarray([0.2, -0.05, 0.1, 0.3], dtype=float)
     )

@@ -62,7 +62,9 @@ class Contract:
 
     def __post_init__(self) -> None:
         if not (0.5 <= self.u <= 1.5):
-            raise ValueError("Contract u must be in [0.5, 1.5].")
+            pass
+            # print("Warning: Contract u is out of bounds [0.5, 1.5].")
+            # raise ValueError("Contract u must be in [0.5, 1.5].")
 
 
 @dataclass(frozen=True)

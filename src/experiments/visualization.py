@@ -10,7 +10,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
-from optimization.objective import fixed_regression_objective, fixed_regression_objective_with_grad
+from data.models import fixed_regression_objective, fixed_regression_objective_with_grad
 
 matplotlib.use("Agg")
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from experiments.config import ExperimentConfig, OBJECTIVE_FIXED_REGRESSION
+from experiments.config import ExperimentConfig, ObjectiveSpec
 from optimization.policy import POLICY_SOFTMAX, PolicySpec
 
 STATE_DIM = 3
@@ -21,18 +21,18 @@ POLICY_THETA = np.asarray([0.1] + [0.01] * STATE_DIM, dtype=float)
 CONFIG = ExperimentConfig(
     seed=7,
     state_dim=STATE_DIM,
-    objective_kind=OBJECTIVE_FIXED_REGRESSION,
-    beta_1=BETA_1,
-    beta_2=-0.8,
-    beta_3=BETA_3,
-    beta_4=0.4,
+    objective_spec=ObjectiveSpec(
+        beta_1=BETA_1,
+        beta_2=-0.8,
+        beta_3=BETA_3,
+        beta_4=0.4,
+    ),
     policy_spec=PolicySpec(theta=POLICY_THETA, kind=POLICY_SOFTMAX),
     t_steps=300,
     step_size=0.01,
     sigma=0.1,
     n_samples=64,
     lbfgs_maxiter=200,
-    lbfgs_samples=128,
     plot=True,
     plot_dir="plots",
 )

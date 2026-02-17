@@ -1,4 +1,4 @@
-"""Data classes and blackbox generators for pricing simulation."""
+"""Data classes and objective components for pricing simulation."""
 
 from __future__ import annotations
 
@@ -73,59 +73,70 @@ class Contract:
     def __post_init__(self) -> None:
         if not (0.5 <= self.u <= 1.5):
             pass
-            # print("Warning: Contract u is out of bounds [0.5, 1.5].")
-            # raise ValueError("Contract u must be in [0.5, 1.5].")
 
 
 @dataclass(frozen=True)
-class AcceptanceProbability:
-    """Z in {0, 1} with blackbox acceptance probability."""
-
-    p: float
-    z: int
-
-    def __post_init__(self) -> None:
-        if not (0.0 <= self.p <= 1.0):
-            raise ValueError("Acceptance probability p must be in [0, 1].")
-        if self.z not in (0, 1):
-            raise ValueError("Acceptance indicator z must be 0 or 1.")
-
-    @staticmethod
-    def _blackbox_probability(x: np.ndarray, u: float, rng: RNG) -> float:
-        x_arr = np.asarray(x, dtype=float)
-        weights = rng.normal(0.0, 0.5, size=x_arr.size)
-        bias = rng.normal(0.0, 0.2)
-        logit = float(np.dot(weights, x_arr) + bias + (u - 1.0))
-        return 1.0 / (1.0 + np.exp(-logit))
-
-    @classmethod
-    def sample(cls, customer: Customer, contract: Contract, rng: RNG) -> "AcceptanceProbability":
-        p = cls._blackbox_probability(customer.x.as_array(), contract.u, rng)
-        z = int(rng.binomial(1, p))
-        return cls(p=p, z=z)
-
-
-@dataclass(frozen=True)
-class ExpectedFinancialLoss:
-    """Blackbox expected loss E[Y|x] for a customer."""
-
+class ObjectiveResult:
     value: float
+    grad_u: float
 
-    def __post_init__(self) -> None:
-        if self.value < 0.0:
-            raise ValueError("Expected financial loss must be nonnegative.")
 
-    @staticmethod
-    def _blackbox_expected_loss(x: np.ndarray, rng: RNG) -> float:
-        x_arr = np.asarray(x, dtype=float)
-        if x_arr.size == 1:
-            scale = 1000.0 + 50.0 * x_arr[0]
-        else:
-            scale = 1000.0 + 50.0 * x_arr[0] + 200.0 * x_arr[-1]
-        noise = rng.lognormal(mean=0.0, sigma=0.6)
-        return float(max(0.0, scale * noise))
+def _logistic(z: float) -> float:
+    if z >= 0.0:
+        exp_neg = float(np.exp(-z))
+        return float(1.0 / (1.0 + exp_neg))
+    exp_pos = float(np.exp(z))
+    return float(exp_pos / (1.0 + exp_pos))
 
-    @classmethod
-    def sample(cls, customer: Customer, rng: RNG) -> "ExpectedFinancialLoss":
-        value = cls._blackbox_expected_loss(customer.x.as_array(), rng)
-        return cls(value=value)
+
+def _beta_dot_x(beta: np.ndarray, x: StateVector) -> float:
+    features = x.as_array().astype(float)
+    beta_arr = np.asarray(beta, dtype=float)
+    if beta_arr.size < features.size:
+        raise ValueError("beta must have at least as many elements as x.")
+    return float(np.dot(beta_arr[: features.size], features))
+
+
+def acceptance_probability(x: StateVector, u: float, beta_1: np.ndarray, beta_2: float) -> float:
+    logit = _beta_dot_x(beta_1, x) + float(beta_2) * u
+    return _logistic(logit)
+
+
+def expected_loss(x: StateVector, beta_3: np.ndarray) -> float:
+    return _beta_dot_x(beta_3, x)
+
+
+def revenue(u: float, beta_4: float) -> float:
+    return float(beta_4) * u
+
+
+def fixed_regression_objective(
+    x: StateVector,
+    u: float,
+    beta_1: np.ndarray,
+    beta_2: float,
+    beta_3: np.ndarray,
+    beta_4: float,
+) -> float:
+    acceptance = acceptance_probability(x, u, beta_1, beta_2)
+    loss = expected_loss(x, beta_3)
+    revenue_value = revenue(u, beta_4)
+    return float(acceptance * (loss - revenue_value))
+
+
+def fixed_regression_objective_with_grad(
+    x: StateVector,
+    u: float,
+    beta_1: np.ndarray,
+    beta_2: float,
+    beta_3: np.ndarray,
+    beta_4: float,
+) -> ObjectiveResult:
+    value = fixed_regression_objective(x, u, beta_1, beta_2, beta_3, beta_4)
+    logit = _beta_dot_x(beta_1, x) + float(beta_2) * u
+    acceptance = _logistic(logit)
+    loss = _beta_dot_x(beta_3, x)
+    revenue_value = revenue(u, beta_4)
+    d_acceptance_du = float(acceptance * (1.0 - acceptance) * float(beta_2))
+    grad_u = d_acceptance_du * (loss - revenue_value) - acceptance * float(beta_4)
+    return ObjectiveResult(value=value, grad_u=grad_u)

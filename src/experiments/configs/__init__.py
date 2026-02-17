@@ -4,13 +4,11 @@ from __future__ import annotations
 
 from experiments.config import ExperimentConfig
 from experiments.configs.baseline_fixed import CONFIG as baseline_fixed
-from experiments.configs.baseline_stochastic import CONFIG as baseline_stochastic
 from experiments.configs.custom import CONFIG as custom
 from experiments.configs.smoke import CONFIG as smoke
 
 _CONFIGS = {
     "baseline_fixed": baseline_fixed,
-    "baseline_stochastic": baseline_stochastic,
     "custom": custom,
     "smoke": smoke,
 }

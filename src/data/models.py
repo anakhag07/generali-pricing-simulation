@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Optional, Protocol, Tuple
 
 import numpy as np
 
@@ -81,62 +81,33 @@ class ObjectiveResult:
     grad_u: float
 
 
-def _logistic(z: float) -> float:
-    if z >= 0.0:
-        exp_neg = float(np.exp(-z))
-        return float(1.0 / (1.0 + exp_neg))
-    exp_pos = float(np.exp(z))
-    return float(exp_pos / (1.0 + exp_pos))
+class AcceptanceModel(Protocol):
+    def probability(self, x: "StateVector", u: float) -> float:
+        ...
+
+    def grad_u(self, x: "StateVector", u: float) -> float:
+        ...
 
 
-def _beta_dot_x(beta: np.ndarray, x: StateVector) -> float:
-    features = x.as_array().astype(float)
-    beta_arr = np.asarray(beta, dtype=float)
-    if beta_arr.size < features.size:
-        raise ValueError("beta must have at least as many elements as x.")
-    return float(np.dot(beta_arr[: features.size], features))
+class LossModel(Protocol):
+    def expected_loss(self, x: "StateVector") -> float:
+        ...
 
 
-def acceptance_probability(x: StateVector, u: float, beta_1: np.ndarray, beta_2: float) -> float:
-    logit = _beta_dot_x(beta_1, x) + float(beta_2) * u
-    return _logistic(logit)
+class RevenueModel(Protocol):
+    def revenue(self, u: float) -> float:
+        ...
+
+    def grad_u(self, u: float) -> float:
+        ...
 
 
-def expected_loss(x: StateVector, beta_3: np.ndarray) -> float:
-    return _beta_dot_x(beta_3, x)
+class ObjectiveModel(Protocol):
+    def value(self, x: "StateVector", u: float) -> float:
+        ...
 
+    def grad_u(self, x: "StateVector", u: float) -> float:
+        ...
 
-def revenue(u: float, beta_4: float) -> float:
-    return float(beta_4) * u
-
-
-def fixed_regression_objective(
-    x: StateVector,
-    u: float,
-    beta_1: np.ndarray,
-    beta_2: float,
-    beta_3: np.ndarray,
-    beta_4: float,
-) -> float:
-    acceptance = acceptance_probability(x, u, beta_1, beta_2)
-    loss = expected_loss(x, beta_3)
-    revenue_value = revenue(u, beta_4)
-    return float(acceptance * (loss - revenue_value))
-
-
-def fixed_regression_objective_with_grad(
-    x: StateVector,
-    u: float,
-    beta_1: np.ndarray,
-    beta_2: float,
-    beta_3: np.ndarray,
-    beta_4: float,
-) -> ObjectiveResult:
-    value = fixed_regression_objective(x, u, beta_1, beta_2, beta_3, beta_4)
-    logit = _beta_dot_x(beta_1, x) + float(beta_2) * u
-    acceptance = _logistic(logit)
-    loss = _beta_dot_x(beta_3, x)
-    revenue_value = revenue(u, beta_4)
-    d_acceptance_du = float(acceptance * (1.0 - acceptance) * float(beta_2))
-    grad_u = d_acceptance_du * (loss - revenue_value) - acceptance * float(beta_4)
-    return ObjectiveResult(value=value, grad_u=grad_u)
+    def evaluate(self, x: "StateVector", u: float) -> ObjectiveResult:
+        ...

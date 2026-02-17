@@ -26,7 +26,7 @@ Project context: pricing simulation and optimization demo. Primary entry point i
 ## Lessons Learned
 
 - Write down lessons from mistakes made to avoid repeating them.
-- Keep explicit objective form logic in `src/data/models.py` as the single source of truth.
+- Keep explicit objective form logic in `src/data/fixed_objective.py` as the single source of truth.
 
 ## Validation
 

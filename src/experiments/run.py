@@ -7,12 +7,7 @@ from typing import Optional, Tuple
 import numpy as np
 from scipy.optimize import minimize
 
-from data.models import (
-    Customer,
-    default_rng,
-    fixed_regression_objective,
-    fixed_regression_objective_with_grad,
-)
+from data.models import Customer, default_rng
 from experiments.config import ExperimentConfig
 from experiments.logging import log_grad, log_step, log_summary
 from experiments.visualization import (
@@ -30,33 +25,19 @@ def run_experiment(config: Optional[ExperimentConfig] = None) -> Tuple[float, fl
     if config is None:
         config = ExperimentConfig()
 
-    objective_spec = config.objective_spec
+    objective_model = config.objective_model
     policy_spec = config.policy_spec
-    if objective_spec is None or policy_spec is None:
-        raise ValueError("ExperimentConfig must define objective_spec and policy_spec.")
+    if objective_model is None or policy_spec is None:
+        raise ValueError("ExperimentConfig must define objective_model and policy_spec.")
 
     rng = default_rng(config.seed)
     customer = Customer.sample(rng, state_dim=config.state_dim)
 
     def objective_fn(u: float) -> float:
-        return fixed_regression_objective(
-            customer.x,
-            u,
-            objective_spec.beta_1,
-            objective_spec.beta_2,
-            objective_spec.beta_3,
-            objective_spec.beta_4,
-        )
+        return objective_model.value(customer.x, u)
 
     def oracle_grad_fn(u: float):
-        return fixed_regression_objective_with_grad(
-            customer.x,
-            u,
-            objective_spec.beta_1,
-            objective_spec.beta_2,
-            objective_spec.beta_3,
-            objective_spec.beta_4,
-        )
+        return objective_model.evaluate(customer.x, u)
 
     def run_first_order(u_start: float) -> tuple[float, OptimizationTrace]:
         u = u_start
@@ -81,14 +62,7 @@ def run_experiment(config: Optional[ExperimentConfig] = None) -> Tuple[float, fl
             u_values.append(u)
             values.append(value)
             grad_estimates.append(grad)
-            true_grad = fixed_regression_objective_with_grad(
-                customer.x,
-                u,
-                objective_spec.beta_1,
-                objective_spec.beta_2,
-                objective_spec.beta_3,
-                objective_spec.beta_4,
-            ).grad_u
+            true_grad = objective_model.grad_u(customer.x, u)
             true_grads.append(true_grad)
         trace = OptimizationTrace(
             steps=steps,
@@ -122,14 +96,7 @@ def run_experiment(config: Optional[ExperimentConfig] = None) -> Tuple[float, fl
             u_values.append(u)
             values.append(value)
             grad_estimates.append(grad)
-            true_grad = fixed_regression_objective_with_grad(
-                customer.x,
-                u,
-                objective_spec.beta_1,
-                objective_spec.beta_2,
-                objective_spec.beta_3,
-                objective_spec.beta_4,
-            ).grad_u
+            true_grad = objective_model.grad_u(customer.x, u)
             true_grads.append(true_grad)
         trace = OptimizationTrace(
             steps=steps,
@@ -141,38 +108,15 @@ def run_experiment(config: Optional[ExperimentConfig] = None) -> Tuple[float, fl
         return u, trace
 
     def lbfgs_objective(u: float) -> float:
-        return fixed_regression_objective(
-            customer.x,
-            u,
-            objective_spec.beta_1,
-            objective_spec.beta_2,
-            objective_spec.beta_3,
-            objective_spec.beta_4,
-        )
+        return objective_model.value(customer.x, u)
 
     def run_lbfgs(u_start: float) -> tuple[float, float]:
         x0 = np.asarray([u_start], dtype=float)
         def value_fn(x: np.ndarray) -> float:
-            result = fixed_regression_objective_with_grad(
-                customer.x,
-                float(x[0]),
-                objective_spec.beta_1,
-                objective_spec.beta_2,
-                objective_spec.beta_3,
-                objective_spec.beta_4,
-            )
-            return result.value
+            return objective_model.value(customer.x, float(x[0]))
 
         def grad_fn(x: np.ndarray) -> np.ndarray:
-            result = fixed_regression_objective_with_grad(
-                customer.x,
-                float(x[0]),
-                objective_spec.beta_1,
-                objective_spec.beta_2,
-                objective_spec.beta_3,
-                objective_spec.beta_4,
-            )
-            return np.asarray([result.grad_u], dtype=float)
+            return np.asarray([objective_model.grad_u(customer.x, float(x[0]))], dtype=float)
 
         result = minimize(
             value_fn,
@@ -201,20 +145,14 @@ def run_experiment(config: Optional[ExperimentConfig] = None) -> Tuple[float, fl
         value_zero,
         u_lbfgs,
         value_lbfgs,
-        objective_spec.beta_1,
-        objective_spec.beta_2,
-        objective_spec.beta_3,
-        objective_spec.beta_4,
+        objective_model,
     )
     if config.plot:
         plot_loss_curves(trace_first, trace_zero, config.plot_dir, u_star=u_lbfgs)
         plot_gradient_norms(trace_first, trace_zero, config.plot_dir)
         plot_fixed_regression_truth(
             customer.x,
-            objective_spec.beta_1,
-            objective_spec.beta_2,
-            objective_spec.beta_3,
-            objective_spec.beta_4,
+            objective_model,
             trace_first,
             trace_zero,
             config.plot_dir,

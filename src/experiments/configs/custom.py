@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from experiments.config import ExperimentConfig, ObjectiveSpec
+from data.fixed_objective import FixedRegressionObjective
+from experiments.config import ExperimentConfig
 from optimization.policy import POLICY_SOFTMAX, PolicySpec
 
 STATE_DIM = 3
@@ -21,7 +22,7 @@ POLICY_THETA = np.asarray([0.1] + [0.01] * STATE_DIM, dtype=float)
 CONFIG = ExperimentConfig(
     seed=7,
     state_dim=STATE_DIM,
-    objective_spec=ObjectiveSpec(
+    objective_model=FixedRegressionObjective.from_parameters(
         beta_1=BETA_1,
         beta_2=-0.8,
         beta_3=BETA_3,

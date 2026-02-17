@@ -10,7 +10,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
-from data.models import fixed_regression_objective, fixed_regression_objective_with_grad
+from data.models import ObjectiveModel
 
 matplotlib.use("Agg")
 
@@ -109,10 +109,7 @@ def plot_gradient_norms(
 
 def plot_fixed_regression_truth(
     x,
-    beta_1: np.ndarray,
-    beta_2: float,
-    beta_3: np.ndarray,
-    beta_4: float,
+    objective_model: ObjectiveModel,
     trace_first: OptimizationTrace,
     trace_zero: OptimizationTrace,
     plot_dir: str,
@@ -132,14 +129,8 @@ def plot_fixed_regression_truth(
         u_grid = np.linspace(u_min - pad, u_max + pad, 200)
     else:
         u_grid = np.linspace(0.5, 1.5, 200)
-    obj_grid = [
-        fixed_regression_objective(x, u, beta_1, beta_2, beta_3, beta_4)
-        for u in u_grid
-    ]
-    grad_grid = [
-        fixed_regression_objective_with_grad(x, u, beta_1, beta_2, beta_3, beta_4).grad_u
-        for u in u_grid
-    ]
+    obj_grid = [objective_model.value(x, u) for u in u_grid]
+    grad_grid = [objective_model.grad_u(x, u) for u in u_grid]
 
     fig, axes = plt.subplots(2, 1, figsize=(8, 8), sharex=True)
     ax_obj, ax_grad = axes
@@ -148,7 +139,7 @@ def plot_fixed_regression_truth(
     ax_obj.scatter(trace_first.u_values, trace_first.objective_values, color="#1f77b4", label="first-order")
     ax_obj.scatter(trace_zero.u_values, trace_zero.objective_values, color="#ff7f0e", label="zeroth-order")
     if u_lbfgs is not None:
-        value_lbfgs = fixed_regression_objective(x, u_lbfgs, beta_1, beta_2, beta_3, beta_4)
+        value_lbfgs = objective_model.value(x, u_lbfgs)
         ax_obj.scatter([u_lbfgs], [value_lbfgs], color="#2ca02c", marker="x", label="L-BFGS")
     ax_obj.set_ylabel("Objective value")
     ax_obj.legend()
@@ -158,7 +149,7 @@ def plot_fixed_regression_truth(
     ax_grad.scatter(trace_first.u_values, trace_first.grad_estimates, color="#1f77b4", label="first-order est")
     ax_grad.scatter(trace_zero.u_values, trace_zero.grad_estimates, color="#ff7f0e", label="zeroth-order est")
     if u_lbfgs is not None:
-        grad_lbfgs = fixed_regression_objective_with_grad(x, u_lbfgs, beta_1, beta_2, beta_3, beta_4).grad_u
+        grad_lbfgs = objective_model.grad_u(x, u_lbfgs)
         ax_grad.scatter([u_lbfgs], [grad_lbfgs], color="#2ca02c", marker="x", label="L-BFGS")
     ax_grad.set_ylabel("Gradient")
     ax_grad.set_xlabel("u")

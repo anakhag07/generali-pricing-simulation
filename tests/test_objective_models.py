@@ -2,14 +2,13 @@ from __future__ import annotations
 
 import math
 
-from data.models import (
-    StateVector,
-    acceptance_probability,
-    expected_loss,
-    fixed_regression_objective,
-    fixed_regression_objective_with_grad,
-    revenue,
+from data.fixed_objective import (
+    FixedRegressionAcceptance,
+    FixedRegressionLoss,
+    FixedRegressionObjective,
+    FixedRegressionRevenue,
 )
+from data.models import StateVector
 
 
 def test_fixed_regression_objective_matches_components() -> None:
@@ -20,12 +19,16 @@ def test_fixed_regression_objective_matches_components() -> None:
     beta_3 = [0.3, 0.4]
     beta_4 = 0.5
 
-    acceptance = acceptance_probability(x, u, beta_1, beta_2)
-    loss = expected_loss(x, beta_3)
-    revenue_value = revenue(u, beta_4)
-    expected_value = acceptance * (loss - revenue_value)
+    acceptance = FixedRegressionAcceptance(beta_1=beta_1, beta_2=beta_2)
+    loss = FixedRegressionLoss(beta_3=beta_3)
+    revenue = FixedRegressionRevenue(beta_4=beta_4)
+    objective = FixedRegressionObjective(acceptance=acceptance, loss=loss, revenue=revenue)
+    acceptance_value = acceptance.probability(x, u)
+    loss_value = loss.expected_loss(x)
+    revenue_value = revenue.revenue(u)
+    expected_value = acceptance_value * (loss_value - revenue_value)
 
-    value = fixed_regression_objective(x, u, beta_1, beta_2, beta_3, beta_4)
+    value = objective.value(x, u)
     assert math.isclose(value, expected_value, rel_tol=1e-9)
 
 
@@ -37,7 +40,8 @@ def test_fixed_regression_objective_grad() -> None:
     beta_3 = [0.3, 0.4]
     beta_4 = 0.5
 
-    result = fixed_regression_objective_with_grad(x, u, beta_1, beta_2, beta_3, beta_4)
+    objective = FixedRegressionObjective.from_parameters(beta_1, beta_2, beta_3, beta_4)
+    result = objective.evaluate(x, u)
     logit = 0.1 * 1.0 + 0.2 * 2.0 + beta_2 * u
     acceptance = 1.0 / (1.0 + math.exp(-logit))
     loss = 0.3 * 1.0 + 0.4 * 2.0

@@ -78,7 +78,8 @@ Revenue:    r(u) = beta_4 * u
 Objective:  f(u; x) = a(x, u) * ( l(x) - r(u) )
 ```
 
-The beta values are configurable in `ObjectiveSpec`. `beta_1` and `beta_3` must be
+The beta values are configurable via `FixedRegressionObjective` (set in
+`ExperimentConfig.objective_model`). `beta_1` and `beta_3` must be
 positive, `beta_4` must be positive, and `beta_2` must be negative so acceptance
 decreases with higher policy values. The demo plots the objective and gradient over the
 action grid when this objective is used.
@@ -89,7 +90,7 @@ Configs live in `src/experiments/configs/`. Edit `custom.py` for the most recent
 set which presets to execute in `main.py` by updating `RUN_CONFIGS`.
 
 Each `ExperimentConfig` includes the state dimension `state_dim`, policy specification,
-and fixed-regression parameters (beta values) stored in `ObjectiveSpec`. When
+and an `objective_model` (for example, `FixedRegressionObjective`). When
 `state_dim != 3`, the default state sampler draws features uniformly on `[0, 1]`.
 
 ## Model-to-Code Mapping
@@ -99,11 +100,11 @@ x (customer features)            -> StateVector (src/data/models.py)
 customer                          -> Customer (src/data/models.py)
 u bounds / projection             -> U_BOUNDS, clip_u (src/optimization/common.py)
 u as contract action              -> Contract(u=...) (src/data/models.py)
-a(x, u) acceptance probability    -> acceptance_probability (src/data/models.py)
-l(x) expected loss                -> expected_loss (src/data/models.py)
-h(p, u) revenue                   -> revenue (src/data/models.py)
-f(u; x) objective                 -> fixed_regression_objective (src/data/models.py)
-oracle gradient API               -> fixed_regression_objective_with_grad (src/data/models.py)
+a(x, u) acceptance probability    -> FixedRegressionAcceptance (src/data/fixed_objective.py)
+l(x) expected loss                -> FixedRegressionLoss (src/data/fixed_objective.py)
+h(p, u) revenue                   -> FixedRegressionRevenue (src/data/fixed_objective.py)
+f(u; x) objective                 -> FixedRegressionObjective (src/data/fixed_objective.py)
+oracle gradient API               -> FixedRegressionObjective.evaluate (src/data/fixed_objective.py)
 policy u = f(theta, x)            -> PolicySpec, apply_policy (src/optimization/policy.py)
 experiment runner / config        -> ExperimentConfig, run_experiment (src/experiments/run.py)
 ```
@@ -123,7 +124,8 @@ The demo uses a fixed RNG seed in `main.py` to make runs repeatable. The objecti
 ## Project Structure
 
 - `main.py`: demo entry point.
-- `src/data/models.py`: data classes and explicit objective components.
+- `src/data/models.py`: data classes and objective interfaces.
+- `src/data/fixed_objective.py`: fixed regression objective implementation.
 - `src/experiments/config.py`: experiment configuration interface.
 - `src/experiments/run.py`: experiment runner entry.
 - `src/experiments/configs/`: preset configurations (including `custom.py`).

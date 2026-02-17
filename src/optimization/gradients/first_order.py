@@ -7,7 +7,7 @@ from typing import Callable
 import numpy as np
 
 from optimization.common import gaussian_noise
-from optimization.objective import ObjectiveResult
+from data.models import ObjectiveResult
 
 
 OracleGradFn = Callable[[float], ObjectiveResult]

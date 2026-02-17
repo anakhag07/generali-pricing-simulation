@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
-from experiments.runner import run_demo
+from experiments.configs import get_config
+from experiments.run import run_experiment
+
+RUN_CONFIGS = ["custom"]
 
 
 def main() -> None:
-    run_demo()
+    for config_name in RUN_CONFIGS:
+        config = get_config(config_name)
+        print(f"\n=== Running experiment: {config_name} ===")
+        run_experiment(config)
 
 
 if __name__ == "__main__":

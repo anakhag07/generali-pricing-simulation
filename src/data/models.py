@@ -1,9 +1,9 @@
-"""Data classes and blackbox generators for pricing simulation."""
+"""Data classes and objective components for pricing simulation."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Optional, Protocol
 
 import numpy as np
 
@@ -17,29 +17,30 @@ def default_rng(seed: Optional[int] = None) -> RNG:
 
 @dataclass(frozen=True)
 class StateVector:
-    """Customer state vector x in X with named features.
+    """Customer state vector x in X."""
 
-    Features: age, gender, geographic_location.
-    """
+    values: np.ndarray
 
-    age: float
-    gender: float
-    geographic_location: float
+    def __post_init__(self) -> None:
+        values = np.asarray(self.values, dtype=float)
+        if values.ndim != 1:
+            raise ValueError("StateVector values must be a 1D array.")
+        if values.size < 1:
+            raise ValueError("StateVector must have at least one element.")
+        object.__setattr__(self, "values", values)
 
     def as_array(self) -> np.ndarray:
-        return np.asarray([self.age, self.gender, self.geographic_location], dtype=float)
+        return np.asarray(self.values, dtype=float)
 
     @staticmethod
     def sample(
         rng: RNG,
-        age_range: Tuple[float, float] = (18.0, 90.0),
-        gender_categories: int = 2,
-        location_range: Tuple[float, float] = (0.0, 1.0),
+        dim: int,
     ) -> "StateVector":
-        age = rng.uniform(*age_range)
-        gender = float(rng.integers(0, gender_categories))
-        geographic_location = rng.uniform(*location_range)
-        return StateVector(age=age, gender=gender, geographic_location=geographic_location)
+        if dim <= 0:
+            raise ValueError("StateVector dim must be positive.")
+        values = rng.normal(0.0, 1.0, size=dim).astype(float)
+        return StateVector(values=values)
 
 
 @dataclass(frozen=True)
@@ -50,8 +51,8 @@ class Customer:
     customer_id: Optional[str] = None
 
     @staticmethod
-    def sample(rng: RNG) -> "Customer":
-        return Customer(x=StateVector.sample(rng=rng))
+    def sample(rng: RNG, state_dim: int) -> "Customer":
+        return Customer(x=StateVector.sample(rng=rng, dim=state_dim))
 
 
 @dataclass(frozen=True)
@@ -63,58 +64,41 @@ class Contract:
     def __post_init__(self) -> None:
         if not (0.5 <= self.u <= 1.5):
             pass
-            # print("Warning: Contract u is out of bounds [0.5, 1.5].")
-            # raise ValueError("Contract u must be in [0.5, 1.5].")
 
 
 @dataclass(frozen=True)
-class AcceptanceProbability:
-    """Z in {0, 1} with blackbox acceptance probability."""
-
-    p: float
-    z: int
-
-    def __post_init__(self) -> None:
-        if not (0.0 <= self.p <= 1.0):
-            raise ValueError("Acceptance probability p must be in [0, 1].")
-        if self.z not in (0, 1):
-            raise ValueError("Acceptance indicator z must be 0 or 1.")
-
-    @staticmethod
-    def _blackbox_probability(x: np.ndarray, u: float, rng: RNG) -> float:
-        weights = rng.normal(0.0, 0.5, size=3)
-        bias = rng.normal(0.0, 0.2)
-        x_arr = np.asarray(x, dtype=float)
-        logit = float(np.dot(weights, x_arr) + bias + (u - 1.0))
-        return 1.0 / (1.0 + np.exp(-logit))
-
-    @classmethod
-    def sample(cls, customer: Customer, contract: Contract, rng: RNG) -> "AcceptanceProbability":
-        p = cls._blackbox_probability(customer.x.as_array(), contract.u, rng)
-        z = int(rng.binomial(1, p))
-        return cls(p=p, z=z)
-
-
-@dataclass(frozen=True)
-class ExpectedFinancialLoss:
-    """Blackbox expected loss E[Y|x] for a customer."""
-
+class ObjectiveResult:
     value: float
-
-    def __post_init__(self) -> None:
-        if self.value < 0.0:
-            raise ValueError("Expected financial loss must be nonnegative.")
-
-    @staticmethod
-    def _blackbox_expected_loss(x: np.ndarray, rng: RNG) -> float:
-        x_arr = np.asarray(x, dtype=float)
-        scale = 1000.0 + 50.0 * x_arr[0] + 200.0 * x_arr[2]
-        noise = rng.lognormal(mean=0.0, sigma=0.6)
-        return float(max(0.0, scale * noise))
-
-    @classmethod
-    def sample(cls, customer: Customer, rng: RNG) -> "ExpectedFinancialLoss":
-        value = cls._blackbox_expected_loss(customer.x.as_array(), rng)
-        return cls(value=value)
+    grad_u: float
 
 
+class AcceptanceModel(Protocol):
+    def probability(self, x: "StateVector", u: float) -> float:
+        ...
+
+    def grad_u(self, x: "StateVector", u: float) -> float:
+        ...
+
+
+class LossModel(Protocol):
+    def expected_loss(self, x: "StateVector") -> float:
+        ...
+
+
+class RevenueModel(Protocol):
+    def revenue(self, u: float) -> float:
+        ...
+
+    def grad_u(self, u: float) -> float:
+        ...
+
+
+class ObjectiveModel(Protocol):
+    def value(self, x: "StateVector", u: float) -> float:
+        ...
+
+    def grad_u(self, x: "StateVector", u: float) -> float:
+        ...
+
+    def evaluate(self, x: "StateVector", u: float) -> ObjectiveResult:
+        ...

@@ -5,6 +5,15 @@ Pricing simulation and optimization demo using Stein gradient estimators.
 ## Quickstart
 
 ```bash
+conda create -n simulation_env python=3.11
+conda activate simulation_env
+pip install -e .
+python main.py
+```
+
+Or, using a virtual environment:
+
+```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -e .
@@ -16,9 +25,18 @@ Runtime dependencies live in `requirements.txt` and mirror `pyproject.toml`.
 To run tests:
 
 ```bash
+conda activate simulation_env
+pytest -q
+```
+
+Or, from a virtual environment:
+
+```bash
 pip install -e ".[dev]"
 pytest
 ```
+
+If you use a different environment name or tool, update `AGENTS.md` to match your local setup.
 
 ## What This Does
 
@@ -69,10 +87,20 @@ The fixed objective is the default. To enable the stochastic objective, pass a c
 override in `main.py` or from a REPL:
 
 ```python
-from experiments.runner import ExperimentConfig, run_demo
+from experiments.config import ExperimentConfig, OBJECTIVE_STOCHASTIC
+from experiments.run import run_experiment
 
-run_demo(ExperimentConfig(objective_kind="stochastic"))
+run_experiment(ExperimentConfig(objective_kind=OBJECTIVE_STOCHASTIC))
 ```
+
+## Experiment Configuration
+
+Configs live in `src/experiments/configs/`. Edit `custom.py` for the most recent run and
+set which presets to execute in `main.py` by updating `RUN_CONFIGS`.
+
+Each `ExperimentConfig` includes the state dimension `state_dim`, policy specification,
+and fixed-regression parameters (beta values). When `state_dim != 3`, the default state
+sampler draws features uniformly on `[0, 1]`.
 
 ## Model-to-Code Mapping
 
@@ -87,7 +115,7 @@ h(p, u) revenue                   -> revenue_h (src/optimization/objective.py)
 f(u; x) objective                 -> objective (src/optimization/objective.py)
 oracle gradient API (placeholder) -> objective_with_oracle_grad (src/optimization/objective.py)
 policy u = f(theta, x)            -> PolicySpec, apply_policy (src/optimization/policy.py)
-experiment runner / config        -> ExperimentConfig, run_demo (src/experiments/runner.py)
+experiment runner / config        -> ExperimentConfig, run_experiment (src/experiments/run.py)
 ```
 
 ## Optimization Methods Used
@@ -108,7 +136,9 @@ When using the stochastic objective, the L-BFGS-B baseline evaluates a sample-av
 
 - `main.py`: demo entry point.
 - `src/data/models.py`: data classes and blackbox generators.
-- `src/experiments/runner.py`: experiment runner entry.
+- `src/experiments/config.py`: experiment configuration interface.
+- `src/experiments/run.py`: experiment runner entry.
+- `src/experiments/configs/`: preset configurations (including `custom.py`).
 - `src/experiments/logging.py`: logging helpers for experiment outputs.
 - `src/experiments/visualization.py`: visualization placeholders.
 - `src/optimization/gradients/`: first-order and zeroth-order Stein estimators.

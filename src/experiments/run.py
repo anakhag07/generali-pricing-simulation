@@ -9,7 +9,7 @@ from experiments.config import ExperimentConfig
 from experiments.helpers import build_objective_fns, run_first_order, run_lbfgs, run_zeroth_order
 from experiments.logging import log_summary
 from experiments.visualization import plot_fixed_regression_truth, plot_gradient_norms, plot_loss_curves
-from optimization.policy import apply_policy
+from optimization.policy import apply_policy, policy_u
 
 
 def run_experiment(config: ExperimentConfig) -> Tuple[float, float, float, float]:
@@ -21,10 +21,13 @@ def run_experiment(config: ExperimentConfig) -> Tuple[float, float, float, float
 
     objective_fn, oracle_grad_fn, grad_fn = build_objective_fns(objective_model, customer.x)
 
+    theta_initial = policy_spec.theta
     u0 = apply_policy(policy_spec, customer.x)
     initial_value = objective_fn(u0)
-    u_first, trace_first = run_first_order(
-        u0,
+    theta_first, trace_first = run_first_order(
+        theta_initial,
+        policy_spec.kind,
+        customer.x,
         objective_fn,
         oracle_grad_fn,
         grad_fn,
@@ -34,8 +37,10 @@ def run_experiment(config: ExperimentConfig) -> Tuple[float, float, float, float
         config.n_samples,
         config.sigma,
     )
-    u_zero, trace_zero = run_zeroth_order(
-        u0,
+    theta_zero, trace_zero = run_zeroth_order(
+        theta_initial,
+        policy_spec.kind,
+        customer.x,
         objective_fn,
         grad_fn,
         rng,
@@ -44,6 +49,8 @@ def run_experiment(config: ExperimentConfig) -> Tuple[float, float, float, float
         config.n_samples,
         config.sigma,
     )
+    u_first = policy_u(theta_first, customer.x, kind=policy_spec.kind)
+    u_zero = policy_u(theta_zero, customer.x, kind=policy_spec.kind)
     u_lbfgs, value_lbfgs = run_lbfgs(u0, objective_fn, grad_fn, config.lbfgs_maxiter)
     value_first = objective_fn(u_first)
     value_zero = objective_fn(u_zero)
@@ -58,6 +65,8 @@ def run_experiment(config: ExperimentConfig) -> Tuple[float, float, float, float
         value_lbfgs,
         objective_model,
         policy_spec,
+        theta_first,
+        theta_zero,
     )
     if config.plot:
         plot_loss_curves(trace_first, trace_zero, config.plot_dir, u_star=u_lbfgs)

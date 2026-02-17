@@ -12,6 +12,7 @@ from experiments.logging import log_grad, log_step
 from experiments.visualization import OptimizationTrace
 from optimization.gradients.first_order import stein_first_order_grad
 from optimization.gradients.zeroth_order import stein_zeroth_order_grad
+from optimization.policy import policy_grad_theta, policy_u
 
 
 ObjectiveFn = Callable[[float], float]
@@ -36,7 +37,9 @@ def build_objective_fns(
 
 
 def run_first_order(
-    u_start: float,
+    theta_start: np.ndarray,
+    policy_kind: str,
+    x: StateVector,
     objective_fn: ObjectiveFn,
     oracle_grad_fn: OracleGradFn,
     true_grad_fn: Optional[GradFn],
@@ -45,14 +48,15 @@ def run_first_order(
     step_size: float,
     n_samples: int,
     sigma: float,
-) -> tuple[float, OptimizationTrace]:
-    u = u_start
+) -> tuple[np.ndarray, OptimizationTrace]:
+    theta = np.asarray(theta_start, dtype=float)
     steps: list[int] = []
     u_values: list[float] = []
     values: list[float] = []
     grad_estimates: list[float] = []
     true_grads: list[float] = []
     for step in range(1, t_steps + 1):
+        u = policy_u(theta, x, kind=policy_kind)
         grad = stein_first_order_grad(
             u,
             oracle_grad_fn,
@@ -61,15 +65,17 @@ def run_first_order(
             sigma=sigma,
         )
         log_grad("first-order", step, grad)
-        u = u - step_size * grad
-        value = objective_fn(u)
-        log_step("first-order", step, u, value)
+        grad_theta = grad * policy_grad_theta(theta, x, kind=policy_kind)
+        theta = theta - step_size * grad_theta
+        u_next = policy_u(theta, x, kind=policy_kind)
+        value = objective_fn(u_next)
+        log_step("first-order", step, u_next, value)
         steps.append(step)
-        u_values.append(u)
+        u_values.append(u_next)
         values.append(value)
         grad_estimates.append(grad)
         if true_grad_fn is not None:
-            true_grads.append(true_grad_fn(u))
+            true_grads.append(true_grad_fn(u_next))
     trace = OptimizationTrace(
         steps=steps,
         u_values=u_values,
@@ -77,11 +83,13 @@ def run_first_order(
         grad_estimates=grad_estimates,
         true_gradients=true_grads if true_grads else None,
     )
-    return u, trace
+    return theta, trace
 
 
 def run_zeroth_order(
-    u_start: float,
+    theta_start: np.ndarray,
+    policy_kind: str,
+    x: StateVector,
     objective_fn: ObjectiveFn,
     true_grad_fn: Optional[GradFn],
     rng: np.random.Generator,
@@ -89,14 +97,15 @@ def run_zeroth_order(
     step_size: float,
     n_samples: int,
     sigma: float,
-) -> tuple[float, OptimizationTrace]:
-    u = u_start
+) -> tuple[np.ndarray, OptimizationTrace]:
+    theta = np.asarray(theta_start, dtype=float)
     steps: list[int] = []
     u_values: list[float] = []
     values: list[float] = []
     grad_estimates: list[float] = []
     true_grads: list[float] = []
     for step in range(1, t_steps + 1):
+        u = policy_u(theta, x, kind=policy_kind)
         grad = stein_zeroth_order_grad(
             u,
             objective_fn,
@@ -105,15 +114,17 @@ def run_zeroth_order(
             sigma=sigma,
         )
         log_grad("zeroth-order", step, grad)
-        u = u - step_size * grad
-        value = objective_fn(u)
-        log_step("zeroth-order", step, u, value)
+        grad_theta = grad * policy_grad_theta(theta, x, kind=policy_kind)
+        theta = theta - step_size * grad_theta
+        u_next = policy_u(theta, x, kind=policy_kind)
+        value = objective_fn(u_next)
+        log_step("zeroth-order", step, u_next, value)
         steps.append(step)
-        u_values.append(u)
+        u_values.append(u_next)
         values.append(value)
         grad_estimates.append(grad)
         if true_grad_fn is not None:
-            true_grads.append(true_grad_fn(u))
+            true_grads.append(true_grad_fn(u_next))
     trace = OptimizationTrace(
         steps=steps,
         u_values=u_values,
@@ -121,7 +132,7 @@ def run_zeroth_order(
         grad_estimates=grad_estimates,
         true_gradients=true_grads if true_grads else None,
     )
-    return u, trace
+    return theta, trace
 
 
 def run_lbfgs(

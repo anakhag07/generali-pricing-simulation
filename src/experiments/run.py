@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional, Tuple
+from typing import Tuple
 
 from data.models import Customer, default_rng
 from experiments.config import ExperimentConfig
@@ -12,14 +12,9 @@ from experiments.visualization import plot_fixed_regression_truth, plot_gradient
 from optimization.policy import apply_policy
 
 
-def run_experiment(config: Optional[ExperimentConfig] = None) -> Tuple[float, float, float, float]:
-    if config is None:
-        config = ExperimentConfig()
-
+def run_experiment(config: ExperimentConfig) -> Tuple[float, float, float, float]:
     objective_model = config.objective_model
     policy_spec = config.policy_spec
-    if objective_model is None or policy_spec is None:
-        raise ValueError("ExperimentConfig must define objective_model and policy_spec.")
 
     rng = default_rng(config.seed)
     customer = Customer.sample(rng, state_dim=config.state_dim)

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Protocol, Tuple
+from typing import Optional, Protocol
 
 import numpy as np
 
@@ -35,20 +35,11 @@ class StateVector:
     @staticmethod
     def sample(
         rng: RNG,
-        dim: int = 3,
-        age_range: Tuple[float, float] = (18.0, 90.0),
-        gender_categories: int = 2,
-        location_range: Tuple[float, float] = (0.0, 1.0),
+        dim: int,
     ) -> "StateVector":
         if dim <= 0:
             raise ValueError("StateVector dim must be positive.")
-        if dim == 3:
-            age = rng.uniform(*age_range)
-            gender = float(rng.integers(0, gender_categories))
-            geographic_location = rng.uniform(*location_range)
-            values = np.asarray([age, gender, geographic_location], dtype=float)
-        else:
-            values = rng.uniform(0.0, 1.0, size=dim).astype(float)
+        values = rng.normal(0.0, 1.0, size=dim).astype(float)
         return StateVector(values=values)
 
 
@@ -60,7 +51,7 @@ class Customer:
     customer_id: Optional[str] = None
 
     @staticmethod
-    def sample(rng: RNG, state_dim: int = 3) -> "Customer":
+    def sample(rng: RNG, state_dim: int) -> "Customer":
         return Customer(x=StateVector.sample(rng=rng, dim=state_dim))
 
 

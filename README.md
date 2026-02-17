@@ -89,9 +89,9 @@ action grid when this objective is used.
 Configs live in `src/experiments/configs/`. Edit `custom.py` for the most recent run and
 set which presets to execute in `main.py` by updating `RUN_CONFIGS`.
 
-Each `ExperimentConfig` includes the state dimension `state_dim`, policy specification,
-and an `objective_model` (for example, `FixedRegressionObjective`). When
-`state_dim != 3`, the default state sampler draws features uniformly on `[0, 1]`.
+Each `ExperimentConfig` includes the required state dimension `state_dim`, policy
+specification, and an `objective_model` (for example, `FixedRegressionObjective`). State
+sampling draws each feature from a standard normal distribution.
 
 ## Model-to-Code Mapping
 
@@ -127,6 +127,8 @@ The demo uses a fixed RNG seed in `main.py` to make runs repeatable. The objecti
 - `src/data/models.py`: data classes and objective interfaces.
 - `src/data/fixed_objective.py`: fixed regression objective implementation.
 - `src/experiments/config.py`: experiment configuration interface.
+- `src/experiments/defaults.py`: default helpers for experiment presets.
+- `src/experiments/helpers.py`: optimization helper routines.
 - `src/experiments/run.py`: experiment runner entry.
 - `src/experiments/configs/`: preset configurations (including `custom.py`).
 - `src/experiments/logging.py`: logging helpers for experiment outputs.

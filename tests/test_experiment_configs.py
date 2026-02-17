@@ -19,4 +19,4 @@ def test_get_config_unknown_name() -> None:
 def test_list_configs_includes_defaults() -> None:
     configs = list_configs()
     assert "custom" in configs
-    assert "smoke" in configs
+    assert "baseline_test" in configs

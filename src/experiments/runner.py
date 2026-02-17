@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Tuple
+from typing import Optional, Tuple
 
 import numpy as np
+from scipy.optimize import minimize
 
 from data.models import Customer, default_rng
 # from optimization.common import clip_u
@@ -36,15 +37,18 @@ OBJECTIVE_KINDS = (OBJECTIVE_STOCHASTIC, OBJECTIVE_FIXED_REGRESSION)
 class ExperimentConfig:
     seed: int = 7
     previous_policy_price: float = 1000.0
-    t_steps: int = 100
+    t_steps: int = 300
     step_size: float = 0.01
     sigma: float = 0.1
     n_samples: int = 64
+    lbfgs_maxiter: int = 200
+    lbfgs_samples: int = 128
+    lbfgs_seed: Optional[int] = None
     objective_kind: str = OBJECTIVE_FIXED_REGRESSION
     beta_1: np.ndarray = field(
         default_factory=lambda: np.asarray([0.02, 0.2, 0.5], dtype=float)
     )
-    beta_2: float = 0.8
+    beta_2: float = -0.8
     beta_3: np.ndarray = field(
         default_factory=lambda: np.asarray([0.005, 0.1, 0.2], dtype=float)
     )
@@ -71,17 +75,25 @@ class ExperimentConfig:
             raise ValueError("beta_1 entries must be positive.")
         if np.any(beta_3 <= 0.0):
             raise ValueError("beta_3 entries must be positive.")
-        if beta_2 <= 0.0:
-            raise ValueError("beta_2 must be positive.")
+        if beta_2 >= 0.0:
+            raise ValueError(
+                "beta_2 must be negative; acceptance probability should decrease as policy value increases."
+            )
         if beta_4 <= 0.0:
             raise ValueError("beta_4 must be positive.")
+        if self.lbfgs_maxiter <= 0:
+            raise ValueError("lbfgs_maxiter must be positive.")
+        if self.lbfgs_samples <= 0:
+            raise ValueError("lbfgs_samples must be positive.")
         object.__setattr__(self, "beta_1", beta_1)
         object.__setattr__(self, "beta_2", beta_2)
         object.__setattr__(self, "beta_3", beta_3)
         object.__setattr__(self, "beta_4", beta_4)
+        if self.lbfgs_seed is None:
+            object.__setattr__(self, "lbfgs_seed", int(self.seed + 997))
 
 
-def run_demo(config: ExperimentConfig = ExperimentConfig()) -> Tuple[float, float, float]:
+def run_demo(config: ExperimentConfig = ExperimentConfig()) -> Tuple[float, float, float, float]:
     rng = default_rng(config.seed)
 
     customer = Customer.sample(rng)
@@ -204,16 +216,93 @@ def run_demo(config: ExperimentConfig = ExperimentConfig()) -> Tuple[float, floa
         )
         return u, trace
 
+    def lbfgs_objective(u: float) -> float:
+        if config.objective_kind == OBJECTIVE_FIXED_REGRESSION:
+            return fixed_regression_objective(
+                customer.x,
+                u,
+                config.beta_1,
+                config.beta_2,
+                config.beta_3,
+                config.beta_4,
+            )
+        lbfgs_rng = default_rng(config.lbfgs_seed)
+        values = [
+            objective(customer, u, config.previous_policy_price, lbfgs_rng)
+            for _ in range(config.lbfgs_samples)
+        ]
+        return float(np.mean(values))
+
+    def run_lbfgs(u_start: float) -> tuple[float, float]:
+        x0 = np.asarray([u_start], dtype=float)
+        if config.objective_kind == OBJECTIVE_FIXED_REGRESSION:
+            def value_fn(x: np.ndarray) -> float:
+                result = fixed_regression_objective_with_grad(
+                    customer.x,
+                    float(x[0]),
+                    config.beta_1,
+                    config.beta_2,
+                    config.beta_3,
+                    config.beta_4,
+                )
+                return result.value
+
+            def grad_fn(x: np.ndarray) -> np.ndarray:
+                result = fixed_regression_objective_with_grad(
+                    customer.x,
+                    float(x[0]),
+                    config.beta_1,
+                    config.beta_2,
+                    config.beta_3,
+                    config.beta_4,
+                )
+                return np.asarray([result.grad_u], dtype=float)
+
+            result = minimize(
+                value_fn,
+                x0=x0,
+                jac=grad_fn,
+                method="L-BFGS-B",
+                options={"maxiter": config.lbfgs_maxiter},
+            )
+        else:
+            def value_fn(x: np.ndarray) -> float:
+                return lbfgs_objective(float(x[0]))
+
+            result = minimize(
+                value_fn,
+                x0=x0,
+                method="L-BFGS-B",
+                options={"maxiter": config.lbfgs_maxiter},
+            )
+        u_lbfgs = float(result.x[0])
+        value_lbfgs = lbfgs_objective(u_lbfgs)
+        return u_lbfgs, value_lbfgs
+
     u0 = apply_policy(config.policy_spec, customer.x)
-    value = objective_fn(u0)
+    initial_value = objective_fn(u0)
     u_first, trace_first = run_first_order(u0)
     u_zero, trace_zero = run_zeroth_order(u0)
+    u_lbfgs, value_lbfgs = run_lbfgs(u0)
+    value_first = objective_fn(u_first)
+    value_zero = objective_fn(u_zero)
 
-    u_star = None
     print(f"Objective type is {config.objective_kind}")
-    log_summary(value, u_first, u_zero)
+    log_summary(
+        initial_value,
+        u_first,
+        value_first,
+        u_zero,
+        value_zero,
+        u_lbfgs,
+        value_lbfgs,
+        config.beta_1,
+        config.beta_2,
+        config.beta_3,
+        config.beta_4,
+    )
     if config.plot:
-        plot_loss_curves(trace_first, trace_zero, config.plot_dir, u_star=u_star)
+        plot_loss_curves(trace_first, trace_zero, config.plot_dir, u_star=u_lbfgs)
         plot_gradient_norms(trace_first, trace_zero, config.plot_dir)
         if config.objective_kind == OBJECTIVE_FIXED_REGRESSION:
             plot_fixed_regression_truth(
@@ -225,5 +314,6 @@ def run_demo(config: ExperimentConfig = ExperimentConfig()) -> Tuple[float, floa
                 trace_first,
                 trace_zero,
                 config.plot_dir,
+                u_lbfgs=u_lbfgs,
             )
-    return value, u_first, u_zero
+    return initial_value, u_first, u_zero, u_lbfgs

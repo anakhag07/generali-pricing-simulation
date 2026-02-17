@@ -60,9 +60,10 @@ Revenue:    r(u) = beta_4 * u
 Objective:  f(u; x) = a(x, u) * ( l(x) - r(u) )
 ```
 
-The beta values are positive and configurable in `ExperimentConfig` (`beta_1` through
-`beta_4`). The demo plots the objective and gradient over the action grid when this
-objective is used.
+The beta values are configurable in `ExperimentConfig`. `beta_1` and `beta_3` must be
+positive, `beta_4` must be positive, and `beta_2` must be negative so acceptance
+decreases with higher policy values. The demo plots the objective and gradient over the
+action grid when this objective is used.
 
 The fixed objective is the default. To enable the stochastic objective, pass a config
 override in `main.py` or from a REPL:

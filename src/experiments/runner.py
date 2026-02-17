@@ -37,7 +37,7 @@ OBJECTIVE_KINDS = (OBJECTIVE_STOCHASTIC, OBJECTIVE_FIXED_REGRESSION)
 class ExperimentConfig:
     seed: int = 7
     previous_policy_price: float = 1000.0
-    t_steps: int = 100
+    t_steps: int = 300
     step_size: float = 0.01
     sigma: float = 0.1
     n_samples: int = 64
@@ -48,7 +48,7 @@ class ExperimentConfig:
     beta_1: np.ndarray = field(
         default_factory=lambda: np.asarray([0.02, 0.2, 0.5], dtype=float)
     )
-    beta_2: float = 0.8
+    beta_2: float = -0.8
     beta_3: np.ndarray = field(
         default_factory=lambda: np.asarray([0.005, 0.1, 0.2], dtype=float)
     )
@@ -75,8 +75,10 @@ class ExperimentConfig:
             raise ValueError("beta_1 entries must be positive.")
         if np.any(beta_3 <= 0.0):
             raise ValueError("beta_3 entries must be positive.")
-        if beta_2 <= 0.0:
-            raise ValueError("beta_2 must be positive.")
+        if beta_2 >= 0.0:
+            raise ValueError(
+                "beta_2 must be negative; acceptance probability should decrease as policy value increases."
+            )
         if beta_4 <= 0.0:
             raise ValueError("beta_4 must be positive.")
         if self.lbfgs_maxiter <= 0:

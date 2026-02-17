@@ -28,6 +28,7 @@ Project context: pricing simulation and optimization demo. Primary entry point i
 Run the demo after changes:
 
 ```bash
+conda activate simulation_env
 python main.py
 ```
 

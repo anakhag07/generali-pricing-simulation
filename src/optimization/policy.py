@@ -65,6 +65,33 @@ def policy_u(theta: np.ndarray, x: StateVector, kind: str = POLICY_CONSTANT) -> 
     raise ValueError(f"Policy kind must be one of {POLICY_KINDS}.")
 
 
+def policy_grad_theta(theta: np.ndarray, x: StateVector, kind: str = POLICY_CONSTANT) -> np.ndarray:
+    theta_arr = np.asarray(theta, dtype=float)
+    grad = np.zeros_like(theta_arr)
+    if kind == POLICY_CONSTANT:
+        if theta_arr.size < 1:
+            raise ValueError("Policy theta must have at least one element.")
+        grad[0] = 1.0
+        return grad
+
+    features = phi(x)
+    if theta_arr.size < features.size:
+        raise ValueError("Policy theta must match feature size for linear/softmax policies.")
+
+    if kind == POLICY_LINEAR:
+        grad[: features.size] = features
+        return grad
+
+    if kind == POLICY_SOFTMAX:
+        z = float(np.dot(theta_arr[: features.size], features))
+        sigma = 1.0 / (1.0 + np.exp(-z))
+        du_dz = sigma * (1.0 - sigma)
+        grad[: features.size] = du_dz * features
+        return grad
+
+    raise ValueError(f"Policy kind must be one of {POLICY_KINDS}.")
+
+
 def apply_policy(policy: PolicySpec, x: StateVector) -> float:
     # return clip_u(policy_u(policy.theta, x, kind=policy.kind))
     return policy_u(policy.theta, x, kind=policy.kind)

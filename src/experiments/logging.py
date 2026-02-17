@@ -24,6 +24,8 @@ def log_summary(
     value_lbfgs: float,
     objective_model: object,
     policy_spec: PolicySpec,
+    theta_first: object,
+    theta_zero: object,
 ) -> None:
     print("Initial objective value:", initial_value)
     print("Final u (first-order):", u_first)
@@ -41,4 +43,5 @@ def log_summary(
         print("objective_model:", type(objective_model).__name__)
     if policy_spec.kind == POLICY_SOFTMAX:
         print("Initial policy theta:", policy_spec.theta)
-        print("Final policy theta:", policy_spec.theta)
+        print("Final policy theta (first-order):", theta_first)
+        print("Final policy theta (zeroth-order):", theta_zero)

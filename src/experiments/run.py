@@ -57,6 +57,7 @@ def run_experiment(config: ExperimentConfig) -> Tuple[float, float, float, float
         u_lbfgs,
         value_lbfgs,
         objective_model,
+        policy_spec,
     )
     if config.plot:
         plot_loss_curves(trace_first, trace_zero, config.plot_dir, u_star=u_lbfgs)

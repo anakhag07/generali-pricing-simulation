@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from data.fixed_objective import FixedRegressionObjective
+from optimization.policy import POLICY_SOFTMAX, PolicySpec
 
 
 def log_step(method: str, step: int, u: float, value: float) -> None:
@@ -22,6 +23,7 @@ def log_summary(
     u_lbfgs: float,
     value_lbfgs: float,
     objective_model: object,
+    policy_spec: PolicySpec,
 ) -> None:
     print("Initial objective value:", initial_value)
     print("Final u (first-order):", u_first)
@@ -37,3 +39,6 @@ def log_summary(
         print("beta_4:", objective_model.revenue.beta_4)
     else:
         print("objective_model:", type(objective_model).__name__)
+    if policy_spec.kind == POLICY_SOFTMAX:
+        print("Initial policy theta:", policy_spec.theta)
+        print("Final policy theta:", policy_spec.theta)

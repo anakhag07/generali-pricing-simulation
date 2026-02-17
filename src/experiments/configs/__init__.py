@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from experiments.config import ExperimentConfig
-from experiments.configs.baseline_fixed import CONFIG as baseline_fixed
+from experiments.configs.baseline_fixed_objective import CONFIG as baseline_fixed
 from experiments.configs.baseline_test import CONFIG as baseline_test
 from experiments.configs.custom import CONFIG as custom
 

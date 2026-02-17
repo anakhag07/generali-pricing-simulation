@@ -23,6 +23,11 @@ Project context: pricing simulation and optimization demo. Primary entry point i
 - Update `README.md` and `requirements.txt` if necessary after any changes.
 - Re-export public APIs in package `__init__.py` files when modules are added or moved.
 
+## Lessons Learned
+
+- Write down lessons from mistakes made to avoid repeating them.
+- Keep explicit objective form logic in `src/data/models.py` as the single source of truth.
+
 ## Validation
 
 Run the demo after changes:

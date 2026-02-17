@@ -25,6 +25,7 @@ pytest
 - Samples synthetic customer state and contract actions.
 - Evaluates a stochastic objective based on acceptance probability and expected loss.
 - Runs first-order and zeroth-order Stein gradient estimators to optimize a pricing action.
+- Runs an L-BFGS-B baseline using SciPy for comparison.
 - Optionally runs a deterministic fixed objective with explicit acceptance, loss, and revenue.
 - Saves matplotlib plots to `plots/` (loss curves, gradient norms, and fixed-regression truth plots).
 
@@ -92,12 +93,15 @@ experiment runner / config        -> ExperimentConfig, run_demo (src/experiments
 
 - First-order Stein estimator: uses the oracle gradient API (currently a placeholder) to estimate gradients of a smoothed objective.
 - Zeroth-order Stein estimator: uses only objective evaluations at perturbed actions.
+- L-BFGS-B baseline: uses SciPy's bound-constrained optimizer for a deterministic reference.
 
 Because `u` is clipped to `[0.5, 1.5]`, sufficiently large gradient steps can push iterates to the bounds.
 
 ## Stochasticity and Reproducibility
 
 The demo uses a fixed RNG seed in `main.py` to make runs repeatable. Objective evaluations are still noisy (even for fixed inputs) because the black-box generators sample randomness using the shared RNG.
+
+When using the stochastic objective, the L-BFGS-B baseline evaluates a sample-average objective with a dedicated seed to keep the baseline deterministic and independent of the Stein estimators.
 
 ## Project Structure
 

@@ -10,7 +10,6 @@ from scipy.optimize import minimize
 
 from data.models import Customer, default_rng
 # from optimization.common import clip_u
-from optimization.common import U_BOUNDS
 from optimization.gradients.first_order import stein_first_order_grad
 from optimization.gradients.zeroth_order import stein_zeroth_order_grad
 from optimization.objective import (
@@ -233,7 +232,6 @@ def run_demo(config: ExperimentConfig = ExperimentConfig()) -> Tuple[float, floa
         return float(np.mean(values))
 
     def run_lbfgs(u_start: float) -> tuple[float, float]:
-        bounds = [U_BOUNDS]
         x0 = np.asarray([u_start], dtype=float)
         if config.objective_kind == OBJECTIVE_FIXED_REGRESSION:
             def value_fn(x: np.ndarray) -> float:
@@ -262,7 +260,6 @@ def run_demo(config: ExperimentConfig = ExperimentConfig()) -> Tuple[float, floa
                 value_fn,
                 x0=x0,
                 jac=grad_fn,
-                bounds=bounds,
                 method="L-BFGS-B",
                 options={"maxiter": config.lbfgs_maxiter},
             )
@@ -273,7 +270,6 @@ def run_demo(config: ExperimentConfig = ExperimentConfig()) -> Tuple[float, floa
             result = minimize(
                 value_fn,
                 x0=x0,
-                bounds=bounds,
                 method="L-BFGS-B",
                 options={"maxiter": config.lbfgs_maxiter},
             )

@@ -10,7 +10,6 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
-from optimization.common import U_BOUNDS
 from optimization.objective import fixed_regression_objective, fixed_regression_objective_with_grad
 
 matplotlib.use("Agg")
@@ -120,7 +119,19 @@ def plot_fixed_regression_truth(
     u_lbfgs: Optional[float] = None,
 ) -> None:
     path = _ensure_plot_dir(plot_dir)
-    u_grid = np.linspace(U_BOUNDS[0], U_BOUNDS[1], 200)
+    u_values = list(trace_first.u_values) + list(trace_zero.u_values)
+    if u_lbfgs is not None:
+        u_values.append(u_lbfgs)
+    if u_values:
+        u_min = float(min(u_values))
+        u_max = float(max(u_values))
+        if np.isclose(u_min, u_max):
+            pad = 0.1 if u_min == 0.0 else abs(u_min) * 0.1
+        else:
+            pad = 0.1 * (u_max - u_min)
+        u_grid = np.linspace(u_min - pad, u_max + pad, 200)
+    else:
+        u_grid = np.linspace(0.5, 1.5, 200)
     obj_grid = [
         fixed_regression_objective(x, u, beta_1, beta_2, beta_3, beta_4)
         for u in u_grid

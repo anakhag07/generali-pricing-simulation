@@ -34,5 +34,6 @@ python main.py
 Run tests after changes:
 
 ```bash
+conda activate simulation_env
 pytest -q
 ```

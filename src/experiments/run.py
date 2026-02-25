@@ -36,6 +36,7 @@ def run_experiment(config: ExperimentConfig) -> Tuple[float, float, float, float
         config.step_size,
         config.n_samples,
         config.sigma,
+        log_steps=config.log_steps,
     )
     theta_zero, trace_zero = run_zeroth_order(
         theta_initial,
@@ -48,6 +49,7 @@ def run_experiment(config: ExperimentConfig) -> Tuple[float, float, float, float
         config.step_size,
         config.n_samples,
         config.sigma,
+        log_steps=config.log_steps,
     )
     u_first = policy_u(theta_first, customer.x, kind=policy_spec.kind)
     u_zero = policy_u(theta_zero, customer.x, kind=policy_spec.kind)

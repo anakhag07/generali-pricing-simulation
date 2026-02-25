@@ -22,6 +22,7 @@ class ExperimentConfig:
     n_samples: int = 64
     lbfgs_maxiter: int = 200
     lbfgs_seed: Optional[int] = None
+    log_steps: bool = True
     plot: bool = True
     plot_dir: str = "plots"
 

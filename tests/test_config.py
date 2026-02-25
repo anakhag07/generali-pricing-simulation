@@ -48,3 +48,26 @@ def test_state_dim_requires_matching_objective() -> None:
         policy_spec=default_policy_spec(state_dim),
     )
     assert config.state_dim == state_dim
+
+
+def test_log_steps_default_and_override() -> None:
+    objective_model = FixedRegressionObjective.from_parameters(
+        beta_1=[0.1],
+        beta_2=-0.5,
+        beta_3=[0.2],
+        beta_4=0.4,
+    )
+    config_default = ExperimentConfig(
+        state_dim=1,
+        objective_model=objective_model,
+        policy_spec=default_policy_spec(1),
+    )
+    assert config_default.log_steps is True
+
+    config_quiet = ExperimentConfig(
+        state_dim=1,
+        objective_model=objective_model,
+        policy_spec=default_policy_spec(1),
+        log_steps=False,
+    )
+    assert config_quiet.log_steps is False

@@ -48,6 +48,7 @@ def run_first_order(
     step_size: float,
     n_samples: int,
     sigma: float,
+    log_steps: bool = True,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     theta = np.asarray(theta_start, dtype=float)
     steps: list[int] = []
@@ -64,12 +65,14 @@ def run_first_order(
             n_samples=n_samples,
             sigma=sigma,
         )
-        log_grad("first-order", step, grad)
+        if log_steps:
+            log_grad("first-order", step, grad)
         grad_theta = grad * policy_grad_theta(theta, x, kind=policy_kind)
         theta = theta - step_size * grad_theta
         u_next = policy_u(theta, x, kind=policy_kind)
         value = objective_fn(u_next)
-        log_step("first-order", step, u_next, value)
+        if log_steps:
+            log_step("first-order", step, u_next, value)
         steps.append(step)
         u_values.append(u_next)
         values.append(value)
@@ -97,6 +100,7 @@ def run_zeroth_order(
     step_size: float,
     n_samples: int,
     sigma: float,
+    log_steps: bool = True,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     theta = np.asarray(theta_start, dtype=float)
     steps: list[int] = []
@@ -113,12 +117,14 @@ def run_zeroth_order(
             n_samples=n_samples,
             sigma=sigma,
         )
-        log_grad("zeroth-order", step, grad)
+        if log_steps:
+            log_grad("zeroth-order", step, grad)
         grad_theta = grad * policy_grad_theta(theta, x, kind=policy_kind)
         theta = theta - step_size * grad_theta
         u_next = policy_u(theta, x, kind=policy_kind)
         value = objective_fn(u_next)
-        log_step("zeroth-order", step, u_next, value)
+        if log_steps:
+            log_step("zeroth-order", step, u_next, value)
         steps.append(step)
         u_values.append(u_next)
         values.append(value)

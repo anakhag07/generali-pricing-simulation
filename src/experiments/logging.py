@@ -22,6 +22,9 @@ def log_summary(
     value_zero: float,
     u_lbfgs: float,
     value_lbfgs: float,
+    time_first: float,
+    time_zero: float,
+    time_lbfgs: float,
     objective_model: object,
     policy_spec: PolicySpec,
     theta_first: object,
@@ -34,6 +37,9 @@ def log_summary(
     print("Final objective (zeroth-order):", value_zero)
     print("Final u (L-BFGS):", u_lbfgs)
     print("Final objective (L-BFGS):", value_lbfgs)
+    print(f"Runtime (first-order): {time_first:.4f}s")
+    print(f"Runtime (zeroth-order): {time_zero:.4f}s")
+    print(f"Runtime (L-BFGS): {time_lbfgs:.4f}s")
     if isinstance(objective_model, FixedRegressionObjective):
         print("beta_1:", objective_model.acceptance.beta_1)
         print("beta_2:", objective_model.acceptance.beta_2)

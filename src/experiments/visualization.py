@@ -58,13 +58,13 @@ def plot_loss_curves(
         trace_first.steps,
         trace_first.objective_values,
         label="first-order",
-        alpha=0.5,
+        alpha=1,
     )
     ax_loss.plot(
         trace_zero.steps,
         trace_zero.objective_values,
         label="zeroth-order",
-        alpha=0.5,
+        alpha=1,
     )
     ax_loss.set_ylabel("Objective value")
     ax_loss.legend()
@@ -73,8 +73,8 @@ def plot_loss_curves(
     if ax_dist is not None and u_star is not None:
         dist_first = [abs(u - u_star) for u in trace_first.u_values]
         dist_zero = [abs(u - u_star) for u in trace_zero.u_values]
-        ax_dist.plot(trace_first.steps, dist_first, label="first-order", alpha=0.5)
-        ax_dist.plot(trace_zero.steps, dist_zero, label="zeroth-order", alpha=0.5)
+        ax_dist.plot(trace_first.steps, dist_first, label="first-order", alpha=1)
+        ax_dist.plot(trace_zero.steps, dist_zero, label="zeroth-order", alpha=1)
         ax_dist.set_ylabel("|u - u*|")
         ax_dist.set_xlabel("Step")
         ax_dist.legend()
@@ -104,8 +104,8 @@ def plot_gradient_norms(
 
     norm_first = [abs(g) for g in trace_first.grad_estimates]
     norm_zero = [abs(g) for g in trace_zero.grad_estimates]
-    ax_norm.plot(trace_first.steps, norm_first, label="first-order", alpha=0.5)
-    ax_norm.plot(trace_zero.steps, norm_zero, label="zeroth-order", alpha=0.5)
+    ax_norm.plot(trace_first.steps, norm_first, label="first-order", alpha=1)
+    ax_norm.plot(trace_zero.steps, norm_zero, label="zeroth-order", alpha=1)
     ax_norm.set_ylabel("|estimated grad|")
     ax_norm.legend()
     ax_norm.grid(True, alpha=0.3)
@@ -113,8 +113,8 @@ def plot_gradient_norms(
     if ax_err is not None and trace_first.true_gradients is not None and trace_zero.true_gradients is not None:
         err_first = [abs(g - t) for g, t in zip(trace_first.grad_estimates, trace_first.true_gradients)]
         err_zero = [abs(g - t) for g, t in zip(trace_zero.grad_estimates, trace_zero.true_gradients)]
-        ax_err.plot(trace_first.steps, err_first, label="first-order", alpha=0.5)
-        ax_err.plot(trace_zero.steps, err_zero, label="zeroth-order", alpha=0.5)
+        ax_err.plot(trace_first.steps, err_first, label="first-order", alpha=1)
+        ax_err.plot(trace_zero.steps, err_zero, label="zeroth-order", alpha=1)
         ax_err.set_ylabel("|grad error|")
         ax_err.set_xlabel("Step")
         ax_err.legend()
@@ -156,15 +156,16 @@ def plot_fixed_regression_truth(
     fig, axes = plt.subplots(2, 1, figsize=(8, 8), sharex=True)
     ax_obj, ax_grad = axes
 
-    ax_obj.plot(u_grid, obj_grid, color="black", label="objective", alpha=0.5)
+    ax_obj.plot(u_grid, obj_grid, color="black", label="objective", alpha=0.6)
     ax_obj.scatter(
         trace_first.u_values,
         trace_first.objective_values,
         color="#1f77b4",
         label="first-order",
         marker="o",
-        edgecolors="white",
+        edgecolors="#1f77b4",
         linewidths=0.4,
+        alpha=0.6,
         zorder=3,
     )
     ax_obj.scatter(
@@ -173,8 +174,9 @@ def plot_fixed_regression_truth(
         color="#ff7f0e",
         label="zeroth-order",
         marker="o",
-        edgecolors="white",
+        edgecolors="#ff7f0e",
         linewidths=0.4,
+        alpha=0.6,
         zorder=4,
     )
     if u_lbfgs is not None:
@@ -184,15 +186,16 @@ def plot_fixed_regression_truth(
     ax_obj.legend()
     ax_obj.grid(True, alpha=0.3)
 
-    ax_grad.plot(u_grid, grad_grid, color="black", label="true grad", alpha=0.5)
+    ax_grad.plot(u_grid, grad_grid, color="black", label="true grad", alpha=0.6)
     ax_grad.scatter(
         trace_first.u_values,
         trace_first.grad_estimates,
         color="#1f77b4",
         label="first-order est",
         marker="o",
-        edgecolors="white",
+        edgecolors="#1f77b4",
         linewidths=0.4,
+        alpha=0.6,
         zorder=3,
     )
     ax_grad.scatter(
@@ -201,8 +204,9 @@ def plot_fixed_regression_truth(
         color="#ff7f0e",
         label="zeroth-order est",
         marker="o",
-        edgecolors="white",
+        edgecolors="#ff7f0e",
         linewidths=0.4,
+        alpha=0.6,
         zorder=4,
     )
     if u_lbfgs is not None:
@@ -326,8 +330,9 @@ def plot_theta_objective_contours(
                 label=label,
                 color=color,
                 marker=marker,
-                edgecolors="white",
+                edgecolors=color,
                 linewidths=0.5,
+                alpha=0.6,
                 zorder=5,
             )
         ax.legend()

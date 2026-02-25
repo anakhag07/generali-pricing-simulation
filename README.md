@@ -43,7 +43,7 @@ If you use a different environment name or tool, update `AGENTS.md` to match you
 - Samples synthetic customer states and contract actions.
 - Evaluates a deterministic objective based on acceptance probability and expected loss.
 - Runs first-order and zeroth-order Stein gradient estimators to optimize a pricing action.
-- Runs an L-BFGS-B baseline using SciPy for comparison.
+- Runs an L-BFGS-B baseline over policy theta using SciPy for comparison.
 - Runs a fixed objective with explicit acceptance, loss, and revenue.
 - Saves matplotlib plots to `plots/` (loss curves, gradient norms, fixed-regression truth plot, and theta-slice contour plot).
 
@@ -114,7 +114,7 @@ experiment runner / config        -> ExperimentConfig, run_experiment (src/exper
 
 - First-order Stein estimator: uses the explicit gradient to estimate gradients of a smoothed objective.
 - Zeroth-order Stein estimator: uses only objective evaluations at perturbed actions.
-- L-BFGS-B baseline: uses SciPy's bound-constrained optimizer for a deterministic reference.
+- L-BFGS-B baseline: uses SciPy's optimizer to minimize the theta-level objective.
 
 Because `u` is clipped to `[0.5, 1.5]`, sufficiently large gradient steps can push iterates to the bounds.
 

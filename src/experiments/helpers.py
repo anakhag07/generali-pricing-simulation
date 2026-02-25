@@ -189,27 +189,42 @@ def run_zeroth_order(
     return theta, trace
 
 
-def run_lbfgs(
-    u_start: float,
-    objective_fn: ObjectiveFn,
-    grad_fn: GradFn,
+def run_lbfgs_theta(
+    theta_start: np.ndarray,
+    policy_kind: str,
+    x_samples: Sequence[StateVector],
+    objective_model: ObjectiveModel,
     maxiter: int,
-) -> tuple[float, float]:
-    x0 = np.asarray([u_start], dtype=float)
+) -> tuple[np.ndarray, float]:
+    x_list = list(x_samples)
+    if not x_list:
+        raise ValueError("x_samples must contain at least one StateVector.")
+    theta0 = np.asarray(theta_start, dtype=float)
 
-    def value_fn(x: np.ndarray) -> float:
-        return objective_fn(float(x[0]))
+    def value_fn(theta_vec: np.ndarray) -> float:
+        theta_arr = np.asarray(theta_vec, dtype=float)
+        values = [
+            objective_model.value(x, policy_u(theta_arr, x, kind=policy_kind)) for x in x_list
+        ]
+        return float(np.mean(values))
 
-    def grad_fn_vec(x: np.ndarray) -> np.ndarray:
-        return np.asarray([grad_fn(float(x[0]))], dtype=float)
+    def grad_fn(theta_vec: np.ndarray) -> np.ndarray:
+        theta_arr = np.asarray(theta_vec, dtype=float)
+        grad = np.zeros_like(theta_arr)
+        for x in x_list:
+            u = policy_u(theta_arr, x, kind=policy_kind)
+            grad_u = objective_model.grad_u(x, u)
+            grad = grad + grad_u * policy_grad_theta(theta_arr, x, kind=policy_kind)
+        grad = grad / float(len(x_list))
+        return grad
 
     result = minimize(
         value_fn,
-        x0=x0,
-        jac=grad_fn_vec,
+        x0=theta0,
+        jac=grad_fn,
         method="L-BFGS-B",
         options={"maxiter": maxiter},
     )
-    u_lbfgs = float(result.x[0])
-    value_lbfgs = objective_fn(u_lbfgs)
-    return u_lbfgs, value_lbfgs
+    theta_lbfgs = np.asarray(result.x, dtype=float)
+    value_lbfgs = value_fn(theta_lbfgs)
+    return theta_lbfgs, value_lbfgs

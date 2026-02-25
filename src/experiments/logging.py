@@ -29,6 +29,7 @@ def log_summary(
     policy_spec: PolicySpec,
     theta_first: object,
     theta_zero: object,
+    theta_lbfgs: object,
 ) -> None:
     print("Initial objective value:", initial_value)
     print("Final u (first-order):", u_first)
@@ -51,3 +52,4 @@ def log_summary(
         print("Initial policy theta:", policy_spec.theta)
         print("Final policy theta (first-order):", theta_first)
         print("Final policy theta (zeroth-order):", theta_zero)
+        print("Final policy theta (L-BFGS):", theta_lbfgs)

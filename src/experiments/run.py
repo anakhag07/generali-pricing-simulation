@@ -7,7 +7,7 @@ from typing import Tuple
 
 from data.models import Customer, default_rng
 from experiments.config import ExperimentConfig
-from experiments.helpers import build_batch_objective_fns, run_first_order, run_lbfgs, run_zeroth_order
+from experiments.helpers import run_first_order, run_lbfgs_theta, run_zeroth_order
 from experiments.logging import log_summary
 from experiments.visualization import (
     plot_fixed_regression_truth,
@@ -26,11 +26,8 @@ def run_experiment(config: ExperimentConfig) -> Tuple[float, float, float, float
     customers = [Customer.sample(rng, state_dim=config.state_dim) for _ in range(config.n_samples)]
     x_samples = [customer.x for customer in customers]
 
-    objective_fn, _, grad_fn = build_batch_objective_fns(objective_model, x_samples)
-
     theta_initial = policy_spec.theta
     u_initials = [policy_u(theta_initial, x, kind=policy_spec.kind) for x in x_samples]
-    u0 = float(sum(u_initials) / len(u_initials))
     initial_value = float(
         sum(objective_model.value(x, u) for x, u in zip(x_samples, u_initials)) / len(x_samples)
     )
@@ -67,8 +64,16 @@ def run_experiment(config: ExperimentConfig) -> Tuple[float, float, float, float
     u_first = float(sum(u_first_values) / len(u_first_values))
     u_zero = float(sum(u_zero_values) / len(u_zero_values))
     start_lbfgs = time.perf_counter()
-    u_lbfgs, value_lbfgs = run_lbfgs(u0, objective_fn, grad_fn, config.lbfgs_maxiter)
+    theta_lbfgs, value_lbfgs = run_lbfgs_theta(
+        theta_initial,
+        policy_spec.kind,
+        x_samples,
+        objective_model,
+        config.lbfgs_maxiter,
+    )
     time_lbfgs = time.perf_counter() - start_lbfgs
+    u_lbfgs_values = [policy_u(theta_lbfgs, x, kind=policy_spec.kind) for x in x_samples]
+    u_lbfgs = float(sum(u_lbfgs_values) / len(u_lbfgs_values))
     value_first = float(
         sum(objective_model.value(x, u) for x, u in zip(x_samples, u_first_values)) / len(x_samples)
     )
@@ -91,6 +96,7 @@ def run_experiment(config: ExperimentConfig) -> Tuple[float, float, float, float
         policy_spec,
         theta_first,
         theta_zero,
+        theta_lbfgs,
     )
     if config.plot:
         plot_loss_curves(trace_first, trace_zero, config.plot_dir, u_star=u_lbfgs)
@@ -111,11 +117,12 @@ def run_experiment(config: ExperimentConfig) -> Tuple[float, float, float, float
                 theta_initial,
                 config.plot_dir,
                 axis_indices=(0, 1),
-                theta_refs=[theta_initial, theta_first, theta_zero],
+                theta_refs=[theta_initial, theta_first, theta_zero, theta_lbfgs],
                 theta_points=[
                     (theta_initial, "initial", "#636363", "o"),
                     (theta_first, "first-order", "#1f77b4", "o"),
                     (theta_zero, "zeroth-order", "#ff7f0e", "o"),
+                    (theta_lbfgs, "L-BFGS", "#2ca02c", "x"),
                 ],
             )
     return initial_value, u_first, u_zero, u_lbfgs

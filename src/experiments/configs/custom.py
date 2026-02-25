@@ -10,12 +10,8 @@ from optimization.policy import POLICY_SOFTMAX, PolicySpec
 
 STATE_DIM = 3
 
-if STATE_DIM == 3:
-    BETA_1 = np.asarray([0.02, 0.2, 0.5], dtype=float)
-    BETA_3 = np.asarray([0.005, 0.1, 0.2], dtype=float)
-else:
-    BETA_1 = np.linspace(0.02, 0.5, num=STATE_DIM, dtype=float)
-    BETA_3 = np.linspace(0.005, 0.2, num=STATE_DIM, dtype=float)
+BETA_1 = np.linspace(0.02, 0.5, num=STATE_DIM, dtype=float)
+BETA_3 = np.linspace(0.005, 0.2, num=STATE_DIM, dtype=float)
 
 POLICY_THETA = np.asarray([0.1] + [0.01] * STATE_DIM, dtype=float)
 

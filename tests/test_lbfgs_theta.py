@@ -28,7 +28,7 @@ def test_run_lbfgs_theta_reduces_objective() -> None:
     ]
     value_start = float(np.mean(start_values))
 
-    theta_lbfgs, value_lbfgs = run_lbfgs_theta(
+    theta_lbfgs, value_lbfgs, trace_lbfgs = run_lbfgs_theta(
         theta_start,
         POLICY_LINEAR,
         x_samples,
@@ -38,3 +38,4 @@ def test_run_lbfgs_theta_reduces_objective() -> None:
 
     assert theta_lbfgs.shape == theta_start.shape
     assert value_lbfgs <= value_start + 1e-10
+    assert trace_lbfgs.steps[0] == 0

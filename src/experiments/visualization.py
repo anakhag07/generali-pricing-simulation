@@ -23,6 +23,9 @@ class OptimizationTrace:
     objective_values: Sequence[float]
     grad_estimates: Sequence[float]
     true_gradients: Optional[Sequence[float]] = None
+    theta_grad_norms: Optional[Sequence[float]] = None
+    true_theta_grad_norms: Optional[Sequence[float]] = None
+    theta_values: Optional[Sequence[np.ndarray]] = None
 
 
 def _ensure_plot_dir(plot_dir: str) -> Path:
@@ -43,6 +46,7 @@ def _as_state_list(x_samples: Sequence[StateVector]) -> list[StateVector]:
 def plot_loss_curves(
     trace_first: OptimizationTrace,
     trace_zero: OptimizationTrace,
+    trace_lbfgs: Optional[OptimizationTrace],
     plot_dir: str,
     u_star: Optional[float] = None,
 ) -> None:
@@ -58,14 +62,22 @@ def plot_loss_curves(
         trace_first.steps,
         trace_first.objective_values,
         label="first-order",
-        alpha=1,
+        alpha=0.6,
     )
     ax_loss.plot(
         trace_zero.steps,
         trace_zero.objective_values,
         label="zeroth-order",
-        alpha=1,
+        alpha=0.6,
     )
+    if trace_lbfgs is not None:
+        ax_loss.plot(
+            trace_lbfgs.steps,
+            trace_lbfgs.objective_values,
+            label="L-BFGS",
+            color="#2ca02c",
+            alpha=0.6,
+        )
     ax_loss.set_ylabel("Objective value")
     ax_loss.legend()
     ax_loss.grid(True, alpha=0.3)
@@ -73,8 +85,17 @@ def plot_loss_curves(
     if ax_dist is not None and u_star is not None:
         dist_first = [abs(u - u_star) for u in trace_first.u_values]
         dist_zero = [abs(u - u_star) for u in trace_zero.u_values]
-        ax_dist.plot(trace_first.steps, dist_first, label="first-order", alpha=1)
-        ax_dist.plot(trace_zero.steps, dist_zero, label="zeroth-order", alpha=1)
+        ax_dist.plot(trace_first.steps, dist_first, label="first-order", alpha=0.6)
+        ax_dist.plot(trace_zero.steps, dist_zero, label="zeroth-order", alpha=0.6)
+        if trace_lbfgs is not None:
+            dist_lbfgs = [abs(u - u_star) for u in trace_lbfgs.u_values]
+            ax_dist.plot(
+                trace_lbfgs.steps,
+                dist_lbfgs,
+                label="L-BFGS",
+                color="#2ca02c",
+                alpha=0.6,
+            )
         ax_dist.set_ylabel("|u - u*|")
         ax_dist.set_xlabel("Step")
         ax_dist.legend()
@@ -90,10 +111,14 @@ def plot_loss_curves(
 def plot_gradient_norms(
     trace_first: OptimizationTrace,
     trace_zero: OptimizationTrace,
+    trace_lbfgs: Optional[OptimizationTrace],
     plot_dir: str,
 ) -> None:
     path = _ensure_plot_dir(plot_dir)
-    has_true = trace_first.true_gradients is not None and trace_zero.true_gradients is not None
+    has_true = (
+        trace_first.true_theta_grad_norms is not None
+        and trace_zero.true_theta_grad_norms is not None
+    )
 
     if has_true:
         fig, axes = plt.subplots(2, 1, figsize=(8, 7), sharex=True)
@@ -102,19 +127,37 @@ def plot_gradient_norms(
         fig, ax_norm = plt.subplots(1, 1, figsize=(8, 4.5))
         ax_err = None
 
-    norm_first = [abs(g) for g in trace_first.grad_estimates]
-    norm_zero = [abs(g) for g in trace_zero.grad_estimates]
-    ax_norm.plot(trace_first.steps, norm_first, label="first-order", alpha=1)
-    ax_norm.plot(trace_zero.steps, norm_zero, label="zeroth-order", alpha=1)
-    ax_norm.set_ylabel("|estimated grad|")
+    if trace_first.theta_grad_norms is None or trace_zero.theta_grad_norms is None:
+        raise ValueError("theta_grad_norms must be provided for gradient norm plots.")
+    norm_first = list(trace_first.theta_grad_norms)
+    norm_zero = list(trace_zero.theta_grad_norms)
+    ax_norm.plot(trace_first.steps, norm_first, label="first-order", alpha=0.6)
+    ax_norm.plot(trace_zero.steps, norm_zero, label="zeroth-order", alpha=0.6)
+    if trace_lbfgs is not None:
+        if trace_lbfgs.theta_grad_norms is None:
+            raise ValueError("theta_grad_norms must be provided for L-BFGS traces.")
+        ax_norm.plot(
+            trace_lbfgs.steps,
+            trace_lbfgs.theta_grad_norms,
+            label="L-BFGS",
+            color="#2ca02c",
+            alpha=0.6,
+        )
+    ax_norm.set_ylabel("|theta grad norm|")
     ax_norm.legend()
     ax_norm.grid(True, alpha=0.3)
 
-    if ax_err is not None and trace_first.true_gradients is not None and trace_zero.true_gradients is not None:
-        err_first = [abs(g - t) for g, t in zip(trace_first.grad_estimates, trace_first.true_gradients)]
-        err_zero = [abs(g - t) for g, t in zip(trace_zero.grad_estimates, trace_zero.true_gradients)]
-        ax_err.plot(trace_first.steps, err_first, label="first-order", alpha=1)
-        ax_err.plot(trace_zero.steps, err_zero, label="zeroth-order", alpha=1)
+    if ax_err is not None and trace_first.true_theta_grad_norms is not None and trace_zero.true_theta_grad_norms is not None:
+        err_first = [
+            abs(g - t)
+            for g, t in zip(trace_first.theta_grad_norms, trace_first.true_theta_grad_norms)
+        ]
+        err_zero = [
+            abs(g - t)
+            for g, t in zip(trace_zero.theta_grad_norms, trace_zero.true_theta_grad_norms)
+        ]
+        ax_err.plot(trace_first.steps, err_first, label="first-order", alpha=0.6)
+        ax_err.plot(trace_zero.steps, err_zero, label="zeroth-order", alpha=0.6)
         ax_err.set_ylabel("|grad error|")
         ax_err.set_xlabel("Step")
         ax_err.legend()
@@ -127,17 +170,20 @@ def plot_gradient_norms(
     plt.close(fig)
 
 
-def plot_fixed_regression_truth(
+def plot_objective_u_slice(
     x_samples: Sequence[StateVector],
     objective_model: ObjectiveModel,
     trace_first: OptimizationTrace,
     trace_zero: OptimizationTrace,
+    trace_lbfgs: Optional[OptimizationTrace],
     plot_dir: str,
     u_lbfgs: Optional[float] = None,
 ) -> None:
     path = _ensure_plot_dir(plot_dir)
     x_list = _as_state_list(x_samples)
     u_values = list(trace_first.u_values) + list(trace_zero.u_values)
+    if trace_lbfgs is not None:
+        u_values += list(trace_lbfgs.u_values)
     if u_lbfgs is not None:
         u_values.append(u_lbfgs)
     if u_values:
@@ -179,9 +225,23 @@ def plot_fixed_regression_truth(
         alpha=0.6,
         zorder=4,
     )
+    if trace_lbfgs is not None:
+        ax_obj.plot(
+            trace_lbfgs.u_values,
+            trace_lbfgs.objective_values,
+            color="#2ca02c",
+            label="L-BFGS path",
+            alpha=0.6,
+        )
     if u_lbfgs is not None:
         value_lbfgs = float(np.mean([objective_model.value(x, u_lbfgs) for x in x_list]))
-        ax_obj.scatter([u_lbfgs], [value_lbfgs], color="#2ca02c", marker="x", label="L-BFGS")
+        ax_obj.scatter(
+            [u_lbfgs],
+            [value_lbfgs],
+            color="#2ca02c",
+            marker="x",
+            label="L-BFGS final",
+        )
     ax_obj.set_ylabel("Objective value")
     ax_obj.legend()
     ax_obj.grid(True, alpha=0.3)
@@ -209,16 +269,30 @@ def plot_fixed_regression_truth(
         alpha=0.6,
         zorder=4,
     )
+    if trace_lbfgs is not None:
+        ax_grad.plot(
+            trace_lbfgs.u_values,
+            trace_lbfgs.grad_estimates,
+            color="#2ca02c",
+            label="L-BFGS path",
+            alpha=0.6,
+        )
     if u_lbfgs is not None:
         grad_lbfgs = float(np.mean([objective_model.grad_u(x, u_lbfgs) for x in x_list]))
-        ax_grad.scatter([u_lbfgs], [grad_lbfgs], color="#2ca02c", marker="x", label="L-BFGS")
+        ax_grad.scatter(
+            [u_lbfgs],
+            [grad_lbfgs],
+            color="#2ca02c",
+            marker="x",
+            label="L-BFGS final",
+        )
     ax_grad.set_ylabel("Gradient")
     ax_grad.set_xlabel("u")
     ax_grad.legend()
     ax_grad.grid(True, alpha=0.3)
 
     fig.tight_layout()
-    fig.savefig(path / "fixed_regression_truth.png", dpi=200)
+    fig.savefig(path / "objective_u_slice.png", dpi=200)
     plt.close(fig)
 
 
@@ -296,6 +370,7 @@ def plot_theta_objective_contours(
     axis_indices: tuple[int, int] = (0, 1),
     theta_refs: Optional[Sequence[np.ndarray]] = None,
     theta_points: Optional[Sequence[tuple[np.ndarray, str, str, str]]] = None,
+    trace_lbfgs: Optional[OptimizationTrace] = None,
     grid_size: int = 60,
     levels: int = 15,
     filename: str = "theta_objective_contours.png",
@@ -321,6 +396,17 @@ def plot_theta_objective_contours(
     ax.set_ylabel(f"theta[{axis_indices[1]}]")
     ax.set_title("Objective contour over theta slice")
 
+    if trace_lbfgs is not None and trace_lbfgs.theta_values is not None:
+        theta_path = np.asarray(trace_lbfgs.theta_values, dtype=float)
+        ax.plot(
+            theta_path[:, axis_indices[0]],
+            theta_path[:, axis_indices[1]],
+            color="#2ca02c",
+            alpha=0.6,
+            linewidth=1.4,
+            label="L-BFGS path",
+        )
+
     if theta_points is not None:
         for theta, label, color, marker in theta_points:
             theta_arr = np.asarray(theta, dtype=float)
@@ -332,7 +418,7 @@ def plot_theta_objective_contours(
                 marker=marker,
                 edgecolors=color,
                 linewidths=0.5,
-                alpha=1,
+                alpha=0.6,
                 zorder=5,
             )
         ax.legend()

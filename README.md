@@ -45,7 +45,7 @@ If you use a different environment name or tool, update `AGENTS.md` to match you
 - Runs first-order and zeroth-order Stein gradient estimators to optimize a pricing action.
 - Runs an L-BFGS-B baseline over policy theta using SciPy for comparison.
 - Runs a fixed objective with explicit acceptance, loss, and revenue.
-- Saves matplotlib plots to `plots/` (loss curves, gradient norms, fixed-regression truth plot, and theta-slice contour plot).
+- Saves matplotlib plots to `plots/` (loss curves, gradient norms, objective u-slice plot, and theta-slice contour plot).
 
 ## Minimization Model
 

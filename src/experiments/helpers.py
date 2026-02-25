@@ -82,10 +82,13 @@ def run_first_order(
     values: list[float] = []
     grad_estimates: list[float] = []
     true_grads: list[float] = []
+    theta_grad_norms: list[float] = []
+    true_theta_grad_norms: list[float] = []
     for step in range(1, t_steps + 1):
         grad_values: list[float] = []
         true_grad_values: list[float] = []
         grad_theta = np.zeros_like(theta)
+        grad_theta_true = np.zeros_like(theta)
         for x in x_list:
             u = policy_u(theta, x, kind=policy_kind)
             grad = stein_first_order_grad(
@@ -96,9 +99,14 @@ def run_first_order(
                 sigma=sigma,
             )
             grad_values.append(grad)
-            true_grad_values.append(objective_model.grad_u(x, u))
+            true_grad = objective_model.grad_u(x, u)
+            true_grad_values.append(true_grad)
             grad_theta = grad_theta + grad * policy_grad_theta(theta, x, kind=policy_kind)
+            grad_theta_true = grad_theta_true + true_grad * policy_grad_theta(
+                theta, x, kind=policy_kind
+            )
         grad_theta = grad_theta / float(len(x_list))
+        grad_theta_true = grad_theta_true / float(len(x_list))
         theta = theta - step_size * grad_theta
         u_next_values = [policy_u(theta, x, kind=policy_kind) for x in x_list]
         value = float(
@@ -107,20 +115,26 @@ def run_first_order(
         mean_u = float(np.mean(u_next_values))
         mean_grad = float(np.mean(grad_values))
         mean_true_grad = float(np.mean(true_grad_values))
+        theta_grad_norm = float(np.linalg.norm(grad_theta))
+        true_theta_grad_norm = float(np.linalg.norm(grad_theta_true))
         if log_steps:
-            log_grad("first-order", step, mean_grad)
+            log_grad("first-order", step, theta_grad_norm)
             log_step("first-order", step, mean_u, value)
         steps.append(step)
         u_values.append(mean_u)
         values.append(value)
         grad_estimates.append(mean_grad)
         true_grads.append(mean_true_grad)
+        theta_grad_norms.append(theta_grad_norm)
+        true_theta_grad_norms.append(true_theta_grad_norm)
     trace = OptimizationTrace(
         steps=steps,
         u_values=u_values,
         objective_values=values,
         grad_estimates=grad_estimates,
         true_gradients=true_grads if true_grads else None,
+        theta_grad_norms=theta_grad_norms,
+        true_theta_grad_norms=true_theta_grad_norms,
     )
     return theta, trace
 
@@ -146,10 +160,13 @@ def run_zeroth_order(
     values: list[float] = []
     grad_estimates: list[float] = []
     true_grads: list[float] = []
+    theta_grad_norms: list[float] = []
+    true_theta_grad_norms: list[float] = []
     for step in range(1, t_steps + 1):
         grad_values: list[float] = []
         true_grad_values: list[float] = []
         grad_theta = np.zeros_like(theta)
+        grad_theta_true = np.zeros_like(theta)
         for x in x_list:
             u = policy_u(theta, x, kind=policy_kind)
             grad = stein_zeroth_order_grad(
@@ -160,9 +177,14 @@ def run_zeroth_order(
                 sigma=sigma,
             )
             grad_values.append(grad)
-            true_grad_values.append(objective_model.grad_u(x, u))
+            true_grad = objective_model.grad_u(x, u)
+            true_grad_values.append(true_grad)
             grad_theta = grad_theta + grad * policy_grad_theta(theta, x, kind=policy_kind)
+            grad_theta_true = grad_theta_true + true_grad * policy_grad_theta(
+                theta, x, kind=policy_kind
+            )
         grad_theta = grad_theta / float(len(x_list))
+        grad_theta_true = grad_theta_true / float(len(x_list))
         theta = theta - step_size * grad_theta
         u_next_values = [policy_u(theta, x, kind=policy_kind) for x in x_list]
         value = float(
@@ -171,20 +193,26 @@ def run_zeroth_order(
         mean_u = float(np.mean(u_next_values))
         mean_grad = float(np.mean(grad_values))
         mean_true_grad = float(np.mean(true_grad_values))
+        theta_grad_norm = float(np.linalg.norm(grad_theta))
+        true_theta_grad_norm = float(np.linalg.norm(grad_theta_true))
         if log_steps:
-            log_grad("zeroth-order", step, mean_grad)
+            log_grad("zeroth-order", step, theta_grad_norm)
             log_step("zeroth-order", step, mean_u, value)
         steps.append(step)
         u_values.append(mean_u)
         values.append(value)
         grad_estimates.append(mean_grad)
         true_grads.append(mean_true_grad)
+        theta_grad_norms.append(theta_grad_norm)
+        true_theta_grad_norms.append(true_theta_grad_norm)
     trace = OptimizationTrace(
         steps=steps,
         u_values=u_values,
         objective_values=values,
         grad_estimates=grad_estimates,
         true_gradients=true_grads if true_grads else None,
+        theta_grad_norms=theta_grad_norms,
+        true_theta_grad_norms=true_theta_grad_norms,
     )
     return theta, trace
 
@@ -195,7 +223,7 @@ def run_lbfgs_theta(
     x_samples: Sequence[StateVector],
     objective_model: ObjectiveModel,
     maxiter: int,
-) -> tuple[np.ndarray, float]:
+) -> tuple[np.ndarray, float, OptimizationTrace]:
     x_list = list(x_samples)
     if not x_list:
         raise ValueError("x_samples must contain at least one StateVector.")
@@ -218,13 +246,61 @@ def run_lbfgs_theta(
         grad = grad / float(len(x_list))
         return grad
 
+    steps: list[int] = []
+    u_values: list[float] = []
+    values: list[float] = []
+    grad_estimates: list[float] = []
+    true_grads: list[float] = []
+    theta_grad_norms: list[float] = []
+    true_theta_grad_norms: list[float] = []
+    theta_values: list[np.ndarray] = []
+
+    def record(theta_vec: np.ndarray) -> None:
+        theta_arr = np.asarray(theta_vec, dtype=float)
+        u_vals = [policy_u(theta_arr, x, kind=policy_kind) for x in x_list]
+        mean_u = float(np.mean(u_vals))
+        mean_value = float(
+            np.mean([objective_model.value(x, u) for x, u in zip(x_list, u_vals)])
+        )
+        grad_u_vals = [objective_model.grad_u(x, u) for x, u in zip(x_list, u_vals)]
+        mean_grad_u = float(np.mean(grad_u_vals))
+        grad_theta = grad_fn(theta_arr)
+        theta_grad_norm = float(np.linalg.norm(grad_theta))
+        steps.append(len(steps))
+        u_values.append(mean_u)
+        values.append(mean_value)
+        grad_estimates.append(mean_grad_u)
+        true_grads.append(mean_grad_u)
+        theta_grad_norms.append(theta_grad_norm)
+        true_theta_grad_norms.append(theta_grad_norm)
+        theta_values.append(theta_arr.copy())
+
+    record(theta0)
+
+    def callback(theta_vec: np.ndarray) -> None:
+        record(theta_vec)
+
     result = minimize(
         value_fn,
         x0=theta0,
         jac=grad_fn,
         method="L-BFGS-B",
         options={"maxiter": maxiter},
+        callback=callback,
     )
     theta_lbfgs = np.asarray(result.x, dtype=float)
     value_lbfgs = value_fn(theta_lbfgs)
-    return theta_lbfgs, value_lbfgs
+    if not np.allclose(theta_lbfgs, theta_values[-1]):
+        record(theta_lbfgs)
+
+    trace = OptimizationTrace(
+        steps=steps,
+        u_values=u_values,
+        objective_values=values,
+        grad_estimates=grad_estimates,
+        true_gradients=true_grads,
+        theta_grad_norms=theta_grad_norms,
+        true_theta_grad_norms=true_theta_grad_norms,
+        theta_values=theta_values,
+    )
+    return theta_lbfgs, value_lbfgs, trace

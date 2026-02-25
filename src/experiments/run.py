@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from typing import Tuple
 
 from data.models import Customer, default_rng
@@ -24,6 +25,7 @@ def run_experiment(config: ExperimentConfig) -> Tuple[float, float, float, float
     theta_initial = policy_spec.theta
     u0 = apply_policy(policy_spec, customer.x)
     initial_value = objective_fn(u0)
+    start_first = time.perf_counter()
     theta_first, trace_first = run_first_order(
         theta_initial,
         policy_spec.kind,
@@ -38,6 +40,8 @@ def run_experiment(config: ExperimentConfig) -> Tuple[float, float, float, float
         config.sigma,
         log_steps=config.log_steps,
     )
+    time_first = time.perf_counter() - start_first
+    start_zero = time.perf_counter()
     theta_zero, trace_zero = run_zeroth_order(
         theta_initial,
         policy_spec.kind,
@@ -51,9 +55,12 @@ def run_experiment(config: ExperimentConfig) -> Tuple[float, float, float, float
         config.sigma,
         log_steps=config.log_steps,
     )
+    time_zero = time.perf_counter() - start_zero
     u_first = policy_u(theta_first, customer.x, kind=policy_spec.kind)
     u_zero = policy_u(theta_zero, customer.x, kind=policy_spec.kind)
+    start_lbfgs = time.perf_counter()
     u_lbfgs, value_lbfgs = run_lbfgs(u0, objective_fn, grad_fn, config.lbfgs_maxiter)
+    time_lbfgs = time.perf_counter() - start_lbfgs
     value_first = objective_fn(u_first)
     value_zero = objective_fn(u_zero)
 
@@ -65,6 +72,9 @@ def run_experiment(config: ExperimentConfig) -> Tuple[float, float, float, float
         value_zero,
         u_lbfgs,
         value_lbfgs,
+        time_first,
+        time_zero,
+        time_lbfgs,
         objective_model,
         policy_spec,
         theta_first,

@@ -233,7 +233,15 @@ def plot_objective_u_slice(
             label="L-BFGS path",
             alpha=0.6,
         )
-    if u_lbfgs is not None:
+    if trace_lbfgs is not None and trace_lbfgs.u_values and trace_lbfgs.objective_values:
+        ax_obj.scatter(
+            [trace_lbfgs.u_values[-1]],
+            [trace_lbfgs.objective_values[-1]],
+            color="#2ca02c",
+            marker="x",
+            label="L-BFGS final",
+        )
+    elif u_lbfgs is not None:
         value_lbfgs = float(np.mean([objective_model.value(x, u_lbfgs) for x in x_list]))
         ax_obj.scatter(
             [u_lbfgs],
@@ -277,7 +285,15 @@ def plot_objective_u_slice(
             label="L-BFGS path",
             alpha=0.6,
         )
-    if u_lbfgs is not None:
+    if trace_lbfgs is not None and trace_lbfgs.u_values and trace_lbfgs.grad_estimates:
+        ax_grad.scatter(
+            [trace_lbfgs.u_values[-1]],
+            [trace_lbfgs.grad_estimates[-1]],
+            color="#2ca02c",
+            marker="x",
+            label="L-BFGS final",
+        )
+    elif u_lbfgs is not None:
         grad_lbfgs = float(np.mean([objective_model.grad_u(x, u_lbfgs) for x in x_list]))
         ax_grad.scatter(
             [u_lbfgs],

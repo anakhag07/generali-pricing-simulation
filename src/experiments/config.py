@@ -16,7 +16,7 @@ class ExperimentConfig:
     objective_model: ObjectiveModel
     policy_spec: PolicySpec
     seed: int = 7
-    t_steps: int = 300
+    t_steps: int = 100
     step_size: float = 0.01
     sigma: float = 0.1
     n_samples: int = 64

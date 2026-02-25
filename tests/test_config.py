@@ -46,6 +46,7 @@ def test_state_dim_requires_matching_objective() -> None:
         state_dim=state_dim,
         objective_model=objective_model,
         policy_spec=default_policy_spec(state_dim),
+        n_samples=5,
     )
     assert config.state_dim == state_dim
 
@@ -61,6 +62,7 @@ def test_log_steps_default_and_override() -> None:
         state_dim=1,
         objective_model=objective_model,
         policy_spec=default_policy_spec(1),
+        n_samples=5,
     )
     assert config_default.log_steps is True
 
@@ -68,6 +70,7 @@ def test_log_steps_default_and_override() -> None:
         state_dim=1,
         objective_model=objective_model,
         policy_spec=default_policy_spec(1),
+        n_samples=5,
         log_steps=False,
     )
     assert config_quiet.log_steps is False

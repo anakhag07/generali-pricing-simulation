@@ -15,11 +15,12 @@ class ExperimentConfig:
     state_dim: int
     objective_model: ObjectiveModel
     policy_spec: PolicySpec
+    n_samples: int
     seed: int = 7
     t_steps: int = 100
     step_size: float = 0.01
     sigma: float = 0.1
-    n_samples: int = 64
+    n_grad_samples: int = 64
     lbfgs_maxiter: int = 200
     lbfgs_seed: Optional[int] = None
     log_steps: bool = True
@@ -29,6 +30,12 @@ class ExperimentConfig:
     def __post_init__(self) -> None:
         if self.state_dim <= 0:
             raise ValueError("state_dim must be positive.")
+
+        if self.n_samples <= 0:
+            raise ValueError("n_samples must be positive.")
+
+        if self.n_grad_samples <= 0:
+            raise ValueError("n_grad_samples must be positive.")
 
         if self.lbfgs_maxiter <= 0:
             raise ValueError("lbfgs_maxiter must be positive.")

@@ -40,12 +40,12 @@ If you use a different environment name or tool, update `AGENTS.md` to match you
 
 ## What This Does
 
-- Samples synthetic customer state and contract actions.
+- Samples synthetic customer states and contract actions.
 - Evaluates a deterministic objective based on acceptance probability and expected loss.
 - Runs first-order and zeroth-order Stein gradient estimators to optimize a pricing action.
 - Runs an L-BFGS-B baseline using SciPy for comparison.
 - Runs a fixed objective with explicit acceptance, loss, and revenue.
-- Saves matplotlib plots to `plots/` (loss curves, gradient norms, and fixed-regression truth plots).
+- Saves matplotlib plots to `plots/` (loss curves, gradient norms, fixed-regression truth plot, and theta-slice contour plot).
 
 ## Minimization Model
 
@@ -64,7 +64,7 @@ Objective:          f(u; x) = a(x, u) * ( l(x) - h(p, u) )
 Goal (demo):        minimize f(u; x) using deterministic queries
 ```
 
-The demo samples a single customer `x` and then optimizes over `u` using the explicit objective.
+The demo samples a batch of customer states and optimizes the average objective over that batch.
 
 ## Fixed Regression Objective
 
@@ -89,9 +89,10 @@ action grid when this objective is used.
 Configs live in `src/experiments/configs/`. Edit `custom.py` for the most recent run and
 set which presets to execute in `main.py` by updating `RUN_CONFIGS`.
 
-Each `ExperimentConfig` includes the required state dimension `state_dim`, policy
-specification, and an `objective_model` (for example, `FixedRegressionObjective`). State
-sampling draws each feature from a standard normal distribution.
+Each `ExperimentConfig` includes the required state dimension `state_dim`, a required
+`n_samples` batch size for customer states, a policy specification, and an
+`objective_model` (for example, `FixedRegressionObjective`). State sampling draws each
+feature from a standard normal distribution.
 
 ## Model-to-Code Mapping
 
@@ -119,7 +120,7 @@ Because `u` is clipped to `[0.5, 1.5]`, sufficiently large gradient steps can pu
 
 ## Reproducibility
 
-The demo uses a fixed RNG seed in `main.py` to make runs repeatable. The objective is deterministic given a fixed configuration and state sample.
+The demo uses a fixed RNG seed in `main.py` to make runs repeatable. The objective is deterministic given a fixed configuration and state sample batch.
 
 ## Project Structure
 

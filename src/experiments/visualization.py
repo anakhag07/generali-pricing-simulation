@@ -10,7 +10,8 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
-from data.models import ObjectiveModel
+from data.models import ObjectiveModel, StateVector
+from optimization.policy import PolicySpec, policy_u
 
 matplotlib.use("Agg")
 
@@ -28,6 +29,15 @@ def _ensure_plot_dir(plot_dir: str) -> Path:
     path = Path(plot_dir)
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def _as_state_list(x_samples: Sequence[StateVector]) -> list[StateVector]:
+    if isinstance(x_samples, StateVector):
+        return [x_samples]
+    x_list = list(x_samples)
+    if not x_list:
+        raise ValueError("x_samples must contain at least one StateVector.")
+    return x_list
 
 
 def plot_loss_curves(
@@ -118,7 +128,7 @@ def plot_gradient_norms(
 
 
 def plot_fixed_regression_truth(
-    x,
+    x_samples: Sequence[StateVector],
     objective_model: ObjectiveModel,
     trace_first: OptimizationTrace,
     trace_zero: OptimizationTrace,
@@ -126,6 +136,7 @@ def plot_fixed_regression_truth(
     u_lbfgs: Optional[float] = None,
 ) -> None:
     path = _ensure_plot_dir(plot_dir)
+    x_list = _as_state_list(x_samples)
     u_values = list(trace_first.u_values) + list(trace_zero.u_values)
     if u_lbfgs is not None:
         u_values.append(u_lbfgs)
@@ -139,8 +150,8 @@ def plot_fixed_regression_truth(
         u_grid = np.linspace(u_min - pad, u_max + pad, 200)
     else:
         u_grid = np.linspace(0.5, 1.5, 200)
-    obj_grid = [objective_model.value(x, u) for u in u_grid]
-    grad_grid = [objective_model.grad_u(x, u) for u in u_grid]
+    obj_grid = [float(np.mean([objective_model.value(x, u) for x in x_list])) for u in u_grid]
+    grad_grid = [float(np.mean([objective_model.grad_u(x, u) for x in x_list])) for u in u_grid]
 
     fig, axes = plt.subplots(2, 1, figsize=(8, 8), sharex=True)
     ax_obj, ax_grad = axes
@@ -167,7 +178,7 @@ def plot_fixed_regression_truth(
         zorder=4,
     )
     if u_lbfgs is not None:
-        value_lbfgs = objective_model.value(x, u_lbfgs)
+        value_lbfgs = float(np.mean([objective_model.value(x, u_lbfgs) for x in x_list]))
         ax_obj.scatter([u_lbfgs], [value_lbfgs], color="#2ca02c", marker="x", label="L-BFGS")
     ax_obj.set_ylabel("Objective value")
     ax_obj.legend()
@@ -195,7 +206,7 @@ def plot_fixed_regression_truth(
         zorder=4,
     )
     if u_lbfgs is not None:
-        grad_lbfgs = objective_model.grad_u(x, u_lbfgs)
+        grad_lbfgs = float(np.mean([objective_model.grad_u(x, u_lbfgs) for x in x_list]))
         ax_grad.scatter([u_lbfgs], [grad_lbfgs], color="#2ca02c", marker="x", label="L-BFGS")
     ax_grad.set_ylabel("Gradient")
     ax_grad.set_xlabel("u")
@@ -204,4 +215,123 @@ def plot_fixed_regression_truth(
 
     fig.tight_layout()
     fig.savefig(path / "fixed_regression_truth.png", dpi=200)
+    plt.close(fig)
+
+
+def _theta_axis_grid(
+    theta_base: np.ndarray,
+    axis_index: int,
+    theta_refs: Optional[Sequence[np.ndarray]],
+    grid_size: int,
+    pad_ratio: float,
+    min_pad: float,
+) -> np.ndarray:
+    values = [float(np.asarray(theta_base, dtype=float)[axis_index])]
+    if theta_refs is not None:
+        for theta in theta_refs:
+            theta_arr = np.asarray(theta, dtype=float)
+            if axis_index >= theta_arr.size:
+                raise ValueError("theta_refs must include values for each axis index.")
+            values.append(float(theta_arr[axis_index]))
+    min_val = min(values)
+    max_val = max(values)
+    if np.isclose(min_val, max_val):
+        center = float(values[0])
+        pad = max(min_pad, abs(center) * pad_ratio)
+    else:
+        pad = max(min_pad, (max_val - min_val) * pad_ratio)
+    return np.linspace(min_val - pad, max_val + pad, grid_size)
+
+
+def theta_objective_contour_grid(
+    x_samples: Sequence[StateVector],
+    objective_model: ObjectiveModel,
+    policy_spec: PolicySpec,
+    theta_base: np.ndarray,
+    axis_indices: tuple[int, int] = (0, 1),
+    theta_refs: Optional[Sequence[np.ndarray]] = None,
+    grid_size: int = 60,
+    pad_ratio: float = 0.2,
+    min_pad: float = 0.05,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    x_list = _as_state_list(x_samples)
+    theta_arr = np.asarray(theta_base, dtype=float)
+    if len(axis_indices) != 2:
+        raise ValueError("axis_indices must contain exactly two indices.")
+    if axis_indices[0] == axis_indices[1]:
+        raise ValueError("axis_indices must refer to two distinct components.")
+    if any(index < 0 or index >= theta_arr.size for index in axis_indices):
+        raise ValueError("axis_indices must be valid indices for theta.")
+    if grid_size <= 1:
+        raise ValueError("grid_size must be greater than 1.")
+
+    theta_x = _theta_axis_grid(theta_arr, axis_indices[0], theta_refs, grid_size, pad_ratio, min_pad)
+    theta_y = _theta_axis_grid(theta_arr, axis_indices[1], theta_refs, grid_size, pad_ratio, min_pad)
+    grid_x, grid_y = np.meshgrid(theta_x, theta_y)
+    objective_grid = np.zeros_like(grid_x, dtype=float)
+
+    for i in range(grid_size):
+        for j in range(grid_size):
+            theta = theta_arr.copy()
+            theta[axis_indices[0]] = grid_x[i, j]
+            theta[axis_indices[1]] = grid_y[i, j]
+            objective_values = [
+                objective_model.value(x, policy_u(theta, x, kind=policy_spec.kind)) for x in x_list
+            ]
+            objective_grid[i, j] = float(np.mean(objective_values))
+
+    return grid_x, grid_y, objective_grid
+
+
+def plot_theta_objective_contours(
+    x_samples: Sequence[StateVector],
+    objective_model: ObjectiveModel,
+    policy_spec: PolicySpec,
+    theta_base: np.ndarray,
+    plot_dir: str,
+    axis_indices: tuple[int, int] = (0, 1),
+    theta_refs: Optional[Sequence[np.ndarray]] = None,
+    theta_points: Optional[Sequence[tuple[np.ndarray, str, str, str]]] = None,
+    grid_size: int = 60,
+    levels: int = 15,
+    filename: str = "theta_objective_contours.png",
+) -> None:
+    path = _ensure_plot_dir(plot_dir)
+    grid_x, grid_y, objective_grid = theta_objective_contour_grid(
+        x_samples,
+        objective_model,
+        policy_spec,
+        theta_base,
+        axis_indices=axis_indices,
+        theta_refs=theta_refs,
+        grid_size=grid_size,
+    )
+
+    fig, ax = plt.subplots(1, 1, figsize=(7.5, 6))
+    contour = ax.contourf(grid_x, grid_y, objective_grid, levels=levels, cmap="viridis")
+    ax.contour(grid_x, grid_y, objective_grid, levels=levels, colors="black", linewidths=0.4, alpha=0.35)
+    colorbar = fig.colorbar(contour, ax=ax)
+    colorbar.set_label("Objective value")
+
+    ax.set_xlabel(f"theta[{axis_indices[0]}]")
+    ax.set_ylabel(f"theta[{axis_indices[1]}]")
+    ax.set_title("Objective contour over theta slice")
+
+    if theta_points is not None:
+        for theta, label, color, marker in theta_points:
+            theta_arr = np.asarray(theta, dtype=float)
+            ax.scatter(
+                [theta_arr[axis_indices[0]]],
+                [theta_arr[axis_indices[1]]],
+                label=label,
+                color=color,
+                marker=marker,
+                edgecolors="white",
+                linewidths=0.5,
+                zorder=5,
+            )
+        ax.legend()
+
+    fig.tight_layout()
+    fig.savefig(path / filename, dpi=200)
     plt.close(fig)

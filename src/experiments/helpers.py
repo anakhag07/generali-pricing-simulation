@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Callable, Optional, Tuple
+from typing import Callable, Sequence, Tuple
 
 import numpy as np
 from scipy.optimize import minimize
@@ -36,20 +36,46 @@ def build_objective_fns(
     return objective_fn, oracle_grad_fn, grad_fn
 
 
+def build_batch_objective_fns(
+    objective_model: ObjectiveModel,
+    x_samples: Sequence[StateVector],
+) -> Tuple[ObjectiveFn, OracleGradFn, GradFn]:
+    x_list = list(x_samples)
+    if not x_list:
+        raise ValueError("x_samples must contain at least one StateVector.")
+
+    def objective_fn(u: float) -> float:
+        values = [objective_model.value(x, u) for x in x_list]
+        return float(np.mean(values))
+
+    def oracle_grad_fn(u: float) -> ObjectiveResult:
+        evaluations = [objective_model.evaluate(x, u) for x in x_list]
+        value = float(np.mean([result.value for result in evaluations]))
+        grad = float(np.mean([result.grad_u for result in evaluations]))
+        return ObjectiveResult(value=value, grad_u=grad)
+
+    def grad_fn(u: float) -> float:
+        grads = [objective_model.grad_u(x, u) for x in x_list]
+        return float(np.mean(grads))
+
+    return objective_fn, oracle_grad_fn, grad_fn
+
+
 def run_first_order(
     theta_start: np.ndarray,
     policy_kind: str,
-    x: StateVector,
-    objective_fn: ObjectiveFn,
-    oracle_grad_fn: OracleGradFn,
-    true_grad_fn: Optional[GradFn],
+    x_samples: Sequence[StateVector],
+    objective_model: ObjectiveModel,
     rng: np.random.Generator,
     t_steps: int,
     step_size: float,
-    n_samples: int,
+    n_grad_samples: int,
     sigma: float,
     log_steps: bool = True,
 ) -> tuple[np.ndarray, OptimizationTrace]:
+    x_list = list(x_samples)
+    if not x_list:
+        raise ValueError("x_samples must contain at least one StateVector.")
     theta = np.asarray(theta_start, dtype=float)
     steps: list[int] = []
     u_values: list[float] = []
@@ -57,28 +83,38 @@ def run_first_order(
     grad_estimates: list[float] = []
     true_grads: list[float] = []
     for step in range(1, t_steps + 1):
-        u = policy_u(theta, x, kind=policy_kind)
-        grad = stein_first_order_grad(
-            u,
-            oracle_grad_fn,
-            rng,
-            n_samples=n_samples,
-            sigma=sigma,
-        )
-        if log_steps:
-            log_grad("first-order", step, grad)
-        grad_theta = grad * policy_grad_theta(theta, x, kind=policy_kind)
+        grad_values: list[float] = []
+        true_grad_values: list[float] = []
+        grad_theta = np.zeros_like(theta)
+        for x in x_list:
+            u = policy_u(theta, x, kind=policy_kind)
+            grad = stein_first_order_grad(
+                u,
+                lambda u_val, x_val=x: objective_model.evaluate(x_val, u_val),
+                rng,
+                n_samples=n_grad_samples,
+                sigma=sigma,
+            )
+            grad_values.append(grad)
+            true_grad_values.append(objective_model.grad_u(x, u))
+            grad_theta = grad_theta + grad * policy_grad_theta(theta, x, kind=policy_kind)
+        grad_theta = grad_theta / float(len(x_list))
         theta = theta - step_size * grad_theta
-        u_next = policy_u(theta, x, kind=policy_kind)
-        value = objective_fn(u_next)
+        u_next_values = [policy_u(theta, x, kind=policy_kind) for x in x_list]
+        value = float(
+            np.mean([objective_model.value(x, u_next) for x, u_next in zip(x_list, u_next_values)])
+        )
+        mean_u = float(np.mean(u_next_values))
+        mean_grad = float(np.mean(grad_values))
+        mean_true_grad = float(np.mean(true_grad_values))
         if log_steps:
-            log_step("first-order", step, u_next, value)
+            log_grad("first-order", step, mean_grad)
+            log_step("first-order", step, mean_u, value)
         steps.append(step)
-        u_values.append(u_next)
+        u_values.append(mean_u)
         values.append(value)
-        grad_estimates.append(grad)
-        if true_grad_fn is not None:
-            true_grads.append(true_grad_fn(u_next))
+        grad_estimates.append(mean_grad)
+        true_grads.append(mean_true_grad)
     trace = OptimizationTrace(
         steps=steps,
         u_values=u_values,
@@ -92,16 +128,18 @@ def run_first_order(
 def run_zeroth_order(
     theta_start: np.ndarray,
     policy_kind: str,
-    x: StateVector,
-    objective_fn: ObjectiveFn,
-    true_grad_fn: Optional[GradFn],
+    x_samples: Sequence[StateVector],
+    objective_model: ObjectiveModel,
     rng: np.random.Generator,
     t_steps: int,
     step_size: float,
-    n_samples: int,
+    n_grad_samples: int,
     sigma: float,
     log_steps: bool = True,
 ) -> tuple[np.ndarray, OptimizationTrace]:
+    x_list = list(x_samples)
+    if not x_list:
+        raise ValueError("x_samples must contain at least one StateVector.")
     theta = np.asarray(theta_start, dtype=float)
     steps: list[int] = []
     u_values: list[float] = []
@@ -109,28 +147,38 @@ def run_zeroth_order(
     grad_estimates: list[float] = []
     true_grads: list[float] = []
     for step in range(1, t_steps + 1):
-        u = policy_u(theta, x, kind=policy_kind)
-        grad = stein_zeroth_order_grad(
-            u,
-            objective_fn,
-            rng,
-            n_samples=n_samples,
-            sigma=sigma,
-        )
-        if log_steps:
-            log_grad("zeroth-order", step, grad)
-        grad_theta = grad * policy_grad_theta(theta, x, kind=policy_kind)
+        grad_values: list[float] = []
+        true_grad_values: list[float] = []
+        grad_theta = np.zeros_like(theta)
+        for x in x_list:
+            u = policy_u(theta, x, kind=policy_kind)
+            grad = stein_zeroth_order_grad(
+                u,
+                lambda u_val, x_val=x: objective_model.value(x_val, u_val),
+                rng,
+                n_samples=n_grad_samples,
+                sigma=sigma,
+            )
+            grad_values.append(grad)
+            true_grad_values.append(objective_model.grad_u(x, u))
+            grad_theta = grad_theta + grad * policy_grad_theta(theta, x, kind=policy_kind)
+        grad_theta = grad_theta / float(len(x_list))
         theta = theta - step_size * grad_theta
-        u_next = policy_u(theta, x, kind=policy_kind)
-        value = objective_fn(u_next)
+        u_next_values = [policy_u(theta, x, kind=policy_kind) for x in x_list]
+        value = float(
+            np.mean([objective_model.value(x, u_next) for x, u_next in zip(x_list, u_next_values)])
+        )
+        mean_u = float(np.mean(u_next_values))
+        mean_grad = float(np.mean(grad_values))
+        mean_true_grad = float(np.mean(true_grad_values))
         if log_steps:
-            log_step("zeroth-order", step, u_next, value)
+            log_grad("zeroth-order", step, mean_grad)
+            log_step("zeroth-order", step, mean_u, value)
         steps.append(step)
-        u_values.append(u_next)
+        u_values.append(mean_u)
         values.append(value)
-        grad_estimates.append(grad)
-        if true_grad_fn is not None:
-            true_grads.append(true_grad_fn(u_next))
+        grad_estimates.append(mean_grad)
+        true_grads.append(mean_true_grad)
     trace = OptimizationTrace(
         steps=steps,
         u_values=u_values,

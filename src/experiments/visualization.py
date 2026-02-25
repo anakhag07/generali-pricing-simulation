@@ -146,8 +146,26 @@ def plot_fixed_regression_truth(
     ax_obj, ax_grad = axes
 
     ax_obj.plot(u_grid, obj_grid, color="black", label="objective", alpha=0.5)
-    ax_obj.scatter(trace_first.u_values, trace_first.objective_values, color="#1f77b4", label="first-order")
-    ax_obj.scatter(trace_zero.u_values, trace_zero.objective_values, color="#ff7f0e", label="zeroth-order")
+    ax_obj.scatter(
+        trace_first.u_values,
+        trace_first.objective_values,
+        color="#1f77b4",
+        label="first-order",
+        marker="o",
+        edgecolors="white",
+        linewidths=0.4,
+        zorder=3,
+    )
+    ax_obj.scatter(
+        trace_zero.u_values,
+        trace_zero.objective_values,
+        color="#ff7f0e",
+        label="zeroth-order",
+        marker="s",
+        edgecolors="white",
+        linewidths=0.4,
+        zorder=4,
+    )
     if u_lbfgs is not None:
         value_lbfgs = objective_model.value(x, u_lbfgs)
         ax_obj.scatter([u_lbfgs], [value_lbfgs], color="#2ca02c", marker="x", label="L-BFGS")
@@ -156,8 +174,26 @@ def plot_fixed_regression_truth(
     ax_obj.grid(True, alpha=0.3)
 
     ax_grad.plot(u_grid, grad_grid, color="black", label="true grad", alpha=0.5)
-    ax_grad.scatter(trace_first.u_values, trace_first.grad_estimates, color="#1f77b4", label="first-order est")
-    ax_grad.scatter(trace_zero.u_values, trace_zero.grad_estimates, color="#ff7f0e", label="zeroth-order est")
+    ax_grad.scatter(
+        trace_first.u_values,
+        trace_first.grad_estimates,
+        color="#1f77b4",
+        label="first-order est",
+        marker="o",
+        edgecolors="white",
+        linewidths=0.4,
+        zorder=3,
+    )
+    ax_grad.scatter(
+        trace_zero.u_values,
+        trace_zero.grad_estimates,
+        color="#ff7f0e",
+        label="zeroth-order est",
+        marker="s",
+        edgecolors="white",
+        linewidths=0.4,
+        zorder=4,
+    )
     if u_lbfgs is not None:
         grad_lbfgs = objective_model.grad_u(x, u_lbfgs)
         ax_grad.scatter([u_lbfgs], [grad_lbfgs], color="#2ca02c", marker="x", label="L-BFGS")

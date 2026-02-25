@@ -332,7 +332,7 @@ def plot_theta_objective_contours(
                 marker=marker,
                 edgecolors=color,
                 linewidths=0.5,
-                alpha=0.6,
+                alpha=1,
                 zorder=5,
             )
         ax.legend()

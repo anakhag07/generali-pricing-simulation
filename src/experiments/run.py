@@ -97,6 +97,9 @@ def run_experiment(config: ExperimentConfig) -> Tuple[float, float, float, float
         theta_first,
         theta_zero,
         theta_lbfgs,
+        config.t_steps,
+        config.n_samples,
+        config.step_size,
     )
     if config.plot:
         plot_loss_curves(trace_first, trace_zero, config.plot_dir, u_star=u_lbfgs)

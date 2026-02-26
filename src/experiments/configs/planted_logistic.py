@@ -29,6 +29,6 @@ CONFIG = ExperimentConfig(
     lbfgs_maxiter=20000,
     plot=True,
 
-    enabled_estimators=("first_order", "lbfgs"),
+    enabled_estimators=("zeroth_order","first_order", "lbfgs"),
     log_steps=False,
 )

@@ -84,6 +84,20 @@ positive, `beta_4` must be positive, and `beta_2` must be negative so acceptance
 decreases with higher policy values. The demo plots the objective and gradient over the
 action grid when this objective is used.
 
+## Planted Logistic Objective
+
+For estimator comparisons with a known optimum, use the planted logistic objective:
+
+```text
+z(u, x) = alpha * u + beta^T x + bias
+p*(x) = sigmoid(alpha * u* + beta^T x + bias)
+L(u; x) = log(1 + exp(z)) - p*(x) * z
+```
+
+This function is convex in `u` and has a known minimum at `u*` for every `x`.
+The preset config `src/experiments/configs/planted_logistic.py` wires this in and
+exposes `u*` to the logs and plots.
+
 ## Experiment Configuration
 
 Configs live in `src/experiments/configs/`. Edit `custom.py` for the most recent run and

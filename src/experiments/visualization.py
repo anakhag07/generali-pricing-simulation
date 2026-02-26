@@ -174,6 +174,7 @@ def plot_objective_u_slice(
     objective_model: ObjectiveModel,
     traces: Mapping[str, OptimizationTrace],
     plot_dir: str,
+    u_star: Optional[float] = None,
 ) -> None:
     trace_items = _ordered_traces(traces)
     if not trace_items:
@@ -183,6 +184,8 @@ def plot_objective_u_slice(
     u_values: list[float] = []
     for _, trace in trace_items:
         u_values.extend(list(trace.u_values))
+    if u_star is not None:
+        u_values.append(float(u_star))
     if u_values:
         u_min = float(min(u_values))
         u_max = float(max(u_values))
@@ -232,6 +235,15 @@ def plot_objective_u_slice(
                 zorder=zorder,
             )
     ax_obj.set_ylabel("Objective value")
+    if u_star is not None:
+        ax_obj.axvline(
+            u_star,
+            color="#444444",
+            linestyle="--",
+            linewidth=1.2,
+            alpha=0.8,
+            label="u*",
+        )
     ax_obj.legend()
     ax_obj.grid(True, alpha=0.3)
 
@@ -269,6 +281,15 @@ def plot_objective_u_slice(
             )
     ax_grad.set_ylabel("Gradient")
     ax_grad.set_xlabel("u")
+    if u_star is not None:
+        ax_grad.axvline(
+            u_star,
+            color="#444444",
+            linestyle="--",
+            linewidth=1.2,
+            alpha=0.8,
+            label="u*",
+        )
     ax_grad.legend()
     ax_grad.grid(True, alpha=0.3)
 

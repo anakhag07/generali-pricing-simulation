@@ -30,7 +30,7 @@ CONFIG = ExperimentConfig(
     step_size=0.01,
     sigma=0.1,
     n_grad_samples=64,
-    lbfgs_maxiter=50000,
+    lbfgs_maxiter=500,
     plot=True,
     plot_dir="plots",
 

@@ -4,6 +4,7 @@ from data.fixed_objective import (
     FixedRegressionObjective,
     FixedRegressionRevenue,
 )
+from data.planted_logistic import PlantedLogisticObjective
 from data.models import (
     AcceptanceModel,
     Contract,
@@ -27,6 +28,7 @@ __all__ = [
     "LossModel",
     "ObjectiveModel",
     "ObjectiveResult",
+    "PlantedLogisticObjective",
     "RevenueModel",
     "StateVector",
     "default_rng",

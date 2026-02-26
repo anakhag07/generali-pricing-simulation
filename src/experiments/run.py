@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import time
-from typing import Optional, Tuple
+from dataclasses import dataclass
+from typing import Any, Optional, Tuple, cast
+
+import numpy as np
 
 from data.fixed_objective import FixedRegressionObjective
 from data.models import Customer, default_rng
@@ -21,7 +24,34 @@ from experiments.visualization import (
 from optimization.policy import policy_u
 
 
-def _u_star_for_plot(objective_model: object, u_lbfgs: float) -> float | None:
+@dataclass(frozen=True)
+class EstimatorResult:
+    theta: np.ndarray
+    u: float
+    value: float
+    time: float
+
+
+def _objective_u_star(objective_model: object) -> float | None:
+    objective = cast(Any, objective_model)
+    optimal_u = getattr(objective, "optimal_u", None)
+    if callable(optimal_u):
+        return float(cast(Any, optimal_u)())
+    u_star = getattr(objective, "u_star", None)
+    if u_star is not None:
+        return float(cast(Any, u_star))
+    return None
+
+
+def _u_star_for_plot(
+    objective_model: object,
+    u_star: float | None,
+    u_lbfgs: float | None,
+) -> float | None:
+    if u_star is not None:
+        return u_star
+    if u_lbfgs is None:
+        return None
     if isinstance(objective_model, FixedRegressionObjective):
         return None
     return u_lbfgs
@@ -43,7 +73,13 @@ def run_experiment(
     initial_value = float(
         sum(objective_model.value(x, u) for x, u in zip(x_samples, u_initials)) / len(x_samples)
     )
-    results: dict[str, dict[str, object]] = {}
+    u_star = _objective_u_star(objective_model)
+    value_at_u_star = None
+    if u_star is not None:
+        value_at_u_star = float(
+            sum(objective_model.value(x, u_star) for x in x_samples) / len(x_samples)
+        )
+    results: dict[str, EstimatorResult] = {}
     traces = {}
 
     if "first_order" in enabled_estimators:
@@ -67,12 +103,12 @@ def run_experiment(
             sum(objective_model.value(x, u) for x, u in zip(x_samples, u_first_values))
             / len(x_samples)
         )
-        results["first_order"] = {
-            "theta": theta_first,
-            "u": u_first,
-            "value": value_first,
-            "time": time_first,
-        }
+        results["first_order"] = EstimatorResult(
+            theta=theta_first,
+            u=u_first,
+            value=value_first,
+            time=time_first,
+        )
         traces["first_order"] = trace_first
 
     if "zeroth_order" in enabled_estimators:
@@ -96,12 +132,12 @@ def run_experiment(
             sum(objective_model.value(x, u) for x, u in zip(x_samples, u_zero_values))
             / len(x_samples)
         )
-        results["zeroth_order"] = {
-            "theta": theta_zero,
-            "u": u_zero,
-            "value": value_zero,
-            "time": time_zero,
-        }
+        results["zeroth_order"] = EstimatorResult(
+            theta=theta_zero,
+            u=u_zero,
+            value=value_zero,
+            time=time_zero,
+        )
         traces["zeroth_order"] = trace_zero
 
     if "lbfgs" in enabled_estimators:
@@ -116,12 +152,12 @@ def run_experiment(
         time_lbfgs = time.perf_counter() - start_lbfgs
         u_lbfgs_values = [policy_u(theta_lbfgs, x, kind=policy_spec.kind) for x in x_samples]
         u_lbfgs = float(sum(u_lbfgs_values) / len(u_lbfgs_values))
-        results["lbfgs"] = {
-            "theta": theta_lbfgs,
-            "u": u_lbfgs,
-            "value": float(value_lbfgs),
-            "time": time_lbfgs,
-        }
+        results["lbfgs"] = EstimatorResult(
+            theta=theta_lbfgs,
+            u=u_lbfgs,
+            value=float(value_lbfgs),
+            time=time_lbfgs,
+        )
         traces["lbfgs"] = trace_lbfgs
 
     log_summary(
@@ -129,18 +165,19 @@ def run_experiment(
         results,
         objective_model,
         policy_spec,
+        u_star,
+        value_at_u_star,
         config.t_steps,
         config.n_samples,
         config.step_size,
     )
     if config.plot and traces:
-        u_star = None
-        if "lbfgs" in results:
-            u_star = _u_star_for_plot(objective_model, float(results["lbfgs"]["u"]))
+        u_lbfgs = float(results["lbfgs"].u) if "lbfgs" in results else None
+        u_star_plot = _u_star_for_plot(objective_model, u_star, u_lbfgs)
         plot_loss_curves(
             traces,
             config.plot_dir,
-            u_star=u_star,
+            u_star=u_star_plot,
         )
         plot_gradient_norms(traces, config.plot_dir)
         plot_objective_u_slice(
@@ -148,6 +185,7 @@ def run_experiment(
             objective_model,
             traces,
             config.plot_dir,
+            u_star=u_star_plot,
         )
         if policy_spec.theta.size >= 2:
             axis_indices = (0, 1)
@@ -168,11 +206,11 @@ def run_experiment(
             theta_refs = [theta_initial]
             theta_points = [(theta_initial, "initial", "#636363", "o")]
             for name, result in ordered_results:
-                theta_refs.append(result["theta"])
+                theta_refs.append(result.theta)
                 style = ESTIMATOR_STYLES[name]
                 theta_points.append(
                     (
-                        result["theta"],
+                        result.theta,
                         style["label"],
                         style["color"],
                         style["marker"],
@@ -190,7 +228,7 @@ def run_experiment(
                 theta_points=theta_points,
                 traces=traces,
             )
-    u_first = float(results["first_order"]["u"]) if "first_order" in results else None
-    u_zero = float(results["zeroth_order"]["u"]) if "zeroth_order" in results else None
-    u_lbfgs = float(results["lbfgs"]["u"]) if "lbfgs" in results else None
+    u_first = float(results["first_order"].u) if "first_order" in results else None
+    u_zero = float(results["zeroth_order"].u) if "zeroth_order" in results else None
+    u_lbfgs = float(results["lbfgs"].u) if "lbfgs" in results else None
     return initial_value, u_first, u_zero, u_lbfgs

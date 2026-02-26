@@ -26,6 +26,7 @@ CONFIG = ExperimentConfig(
     ),
     policy_spec=PolicySpec(theta=POLICY_THETA, kind=POLICY_SOFTMAX),
     n_samples=100,
+    step_rule="constant",
     t_steps=500,
     step_size=0.01,
     sigma=0.1,

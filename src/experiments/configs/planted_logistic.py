@@ -22,6 +22,7 @@ CONFIG = ExperimentConfig(
     ),
     policy_spec=default_policy_spec(STATE_DIM),
     n_samples=20,
+    step_rule="constant",
     t_steps=20000,
     step_size=0.05,
     sigma=0.1,

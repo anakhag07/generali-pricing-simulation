@@ -13,6 +13,12 @@ from experiments.visualization import OptimizationTrace
 from optimization.gradients.first_order import stein_first_order_grad
 from optimization.gradients.zeroth_order import stein_zeroth_order_grad
 from optimization.policy import policy_grad_theta, policy_u
+from optimization.steps import (
+    STEP_RULE_ARMIJO,
+    STEP_RULE_CONSTANT,
+    armijo_backtracking_step_size,
+    constant_step_size,
+)
 
 
 ObjectiveFn = Callable[[float], float]
@@ -68,6 +74,7 @@ def run_first_order(
     objective_model: ObjectiveModel,
     rng: np.random.Generator,
     t_steps: int,
+    step_rule: str,
     step_size: float,
     n_grad_samples: int,
     sigma: float,
@@ -84,7 +91,16 @@ def run_first_order(
     true_grads: list[float] = []
     theta_grad_norms: list[float] = []
     true_theta_grad_norms: list[float] = []
+    step_sizes: list[float] = []
     theta_values: list[np.ndarray] = [theta.copy()]
+
+    def theta_objective(theta_vec: np.ndarray) -> float:
+        theta_arr = np.asarray(theta_vec, dtype=float)
+        u_vals = [policy_u(theta_arr, x, kind=policy_kind) for x in x_list]
+        return float(
+            np.mean([objective_model.value(x, u) for x, u in zip(x_list, u_vals)])
+        )
+
     for step in range(1, t_steps + 1):
         grad_values: list[float] = []
         true_grad_values: list[float] = []
@@ -108,7 +124,18 @@ def run_first_order(
             )
         grad_theta = grad_theta / float(len(x_list))
         grad_theta_true = grad_theta_true / float(len(x_list))
-        theta = theta - step_size * grad_theta
+        if step_rule == STEP_RULE_CONSTANT:
+            step_now = constant_step_size(step_size)
+        elif step_rule == STEP_RULE_ARMIJO:
+            step_now = armijo_backtracking_step_size(
+                theta,
+                grad_theta,
+                theta_objective,
+                initial_step=step_size,
+            )
+        else:
+            raise ValueError(f"Unknown step_rule: {step_rule}.")
+        theta = theta - step_now * grad_theta
         theta_values.append(theta.copy())
         u_next_values = [policy_u(theta, x, kind=policy_kind) for x in x_list]
         value = float(
@@ -129,6 +156,7 @@ def run_first_order(
         true_grads.append(mean_true_grad)
         theta_grad_norms.append(theta_grad_norm)
         true_theta_grad_norms.append(true_theta_grad_norm)
+        step_sizes.append(step_now)
     trace = OptimizationTrace(
         steps=steps,
         u_values=u_values,
@@ -137,6 +165,7 @@ def run_first_order(
         true_gradients=true_grads if true_grads else None,
         theta_grad_norms=theta_grad_norms,
         true_theta_grad_norms=true_theta_grad_norms,
+        step_sizes=step_sizes,
         theta_values=theta_values,
     )
     return theta, trace
@@ -149,6 +178,7 @@ def run_zeroth_order(
     objective_model: ObjectiveModel,
     rng: np.random.Generator,
     t_steps: int,
+    step_rule: str,
     step_size: float,
     n_grad_samples: int,
     sigma: float,
@@ -165,7 +195,16 @@ def run_zeroth_order(
     true_grads: list[float] = []
     theta_grad_norms: list[float] = []
     true_theta_grad_norms: list[float] = []
+    step_sizes: list[float] = []
     theta_values: list[np.ndarray] = [theta.copy()]
+
+    def theta_objective(theta_vec: np.ndarray) -> float:
+        theta_arr = np.asarray(theta_vec, dtype=float)
+        u_vals = [policy_u(theta_arr, x, kind=policy_kind) for x in x_list]
+        return float(
+            np.mean([objective_model.value(x, u) for x, u in zip(x_list, u_vals)])
+        )
+
     for step in range(1, t_steps + 1):
         grad_values: list[float] = []
         true_grad_values: list[float] = []
@@ -189,7 +228,18 @@ def run_zeroth_order(
             )
         grad_theta = grad_theta / float(len(x_list))
         grad_theta_true = grad_theta_true / float(len(x_list))
-        theta = theta - step_size * grad_theta
+        if step_rule == STEP_RULE_CONSTANT:
+            step_now = constant_step_size(step_size)
+        elif step_rule == STEP_RULE_ARMIJO:
+            step_now = armijo_backtracking_step_size(
+                theta,
+                grad_theta,
+                theta_objective,
+                initial_step=step_size,
+            )
+        else:
+            raise ValueError(f"Unknown step_rule: {step_rule}.")
+        theta = theta - step_now * grad_theta
         theta_values.append(theta.copy())
         u_next_values = [policy_u(theta, x, kind=policy_kind) for x in x_list]
         value = float(
@@ -210,6 +260,7 @@ def run_zeroth_order(
         true_grads.append(mean_true_grad)
         theta_grad_norms.append(theta_grad_norm)
         true_theta_grad_norms.append(true_theta_grad_norm)
+        step_sizes.append(step_now)
     trace = OptimizationTrace(
         steps=steps,
         u_values=u_values,
@@ -218,6 +269,7 @@ def run_zeroth_order(
         true_gradients=true_grads if true_grads else None,
         theta_grad_norms=theta_grad_norms,
         true_theta_grad_norms=true_theta_grad_norms,
+        step_sizes=step_sizes,
         theta_values=theta_values,
     )
     return theta, trace

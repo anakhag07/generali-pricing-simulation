@@ -36,6 +36,7 @@ def log_summary(
     t_steps: int,
     n_samples: int,
     step_size: float,
+    step_rule: str,
 ) -> None:
     def format_array(values: object, precision: int = 3) -> str:
         arr = np.asarray(values, dtype=float)
@@ -67,7 +68,11 @@ def log_summary(
     else:
         print(f"Objective: {type(objective_model).__name__}")
 
-    print(f"Run: steps={t_steps}, n_samples={n_samples}, step_size={step_size:.4f}")
+    print(
+        "Run: "
+        f"steps={t_steps}, n_samples={n_samples}, step_size={step_size:.4f}, "
+        f"step_rule={step_rule}"
+    )
     print(f"Initial objective value: {initial_value:.4f}")
     u_star_value = float(u_star) if u_star is not None else None
     value_at_u_star_value = (

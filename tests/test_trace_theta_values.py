@@ -27,6 +27,7 @@ def test_run_first_order_records_theta_values() -> None:
         SimpleObjective(),
         rng,
         t_steps=3,
+        step_rule="constant",
         step_size=0.01,
         n_grad_samples=2,
         sigma=0.1,
@@ -35,6 +36,9 @@ def test_run_first_order_records_theta_values() -> None:
     assert trace.theta_values is not None
     assert len(trace.theta_values) == 4
     assert np.allclose(trace.theta_values[0], theta_start)
+    assert trace.step_sizes is not None
+    assert len(trace.step_sizes) == 3
+    assert np.allclose(trace.step_sizes, [0.01, 0.01, 0.01])
 
 
 def test_run_zeroth_order_records_theta_values() -> None:
@@ -48,6 +52,7 @@ def test_run_zeroth_order_records_theta_values() -> None:
         SimpleObjective(),
         rng,
         t_steps=3,
+        step_rule="constant",
         step_size=0.01,
         n_grad_samples=2,
         sigma=0.1,
@@ -56,3 +61,6 @@ def test_run_zeroth_order_records_theta_values() -> None:
     assert trace.theta_values is not None
     assert len(trace.theta_values) == 4
     assert np.allclose(trace.theta_values[0], theta_start)
+    assert trace.step_sizes is not None
+    assert len(trace.step_sizes) == 3
+    assert np.allclose(trace.step_sizes, [0.01, 0.01, 0.01])

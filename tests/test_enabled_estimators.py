@@ -19,6 +19,7 @@ def test_run_experiment_single_estimator() -> None:
         objective_model=objective_model,
         policy_spec=default_policy_spec(1),
         n_samples=1,
+        step_rule="constant",
         t_steps=1,
         step_size=0.01,
         n_grad_samples=1,

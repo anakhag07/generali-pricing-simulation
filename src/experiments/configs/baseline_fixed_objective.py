@@ -22,4 +22,5 @@ CONFIG = ExperimentConfig(
     ),
     policy_spec=default_policy_spec(STATE_DIM),
     n_samples=10,
+    step_rule="constant",
 )

@@ -47,6 +47,7 @@ def test_state_dim_requires_matching_objective() -> None:
         objective_model=objective_model,
         policy_spec=default_policy_spec(state_dim),
         n_samples=5,
+        step_rule="constant",
     )
     assert config.state_dim == state_dim
 
@@ -63,6 +64,7 @@ def test_log_steps_default_and_override() -> None:
         objective_model=objective_model,
         policy_spec=default_policy_spec(1),
         n_samples=5,
+        step_rule="constant",
     )
     assert config_default.log_steps is True
 
@@ -71,6 +73,7 @@ def test_log_steps_default_and_override() -> None:
         objective_model=objective_model,
         policy_spec=default_policy_spec(1),
         n_samples=5,
+        step_rule="constant",
         log_steps=False,
     )
     assert config_quiet.log_steps is False
@@ -89,6 +92,7 @@ def test_enabled_estimators_validation() -> None:
             objective_model=objective_model,
             policy_spec=default_policy_spec(1),
             n_samples=5,
+            step_rule="constant",
             enabled_estimators=("not-a-method",),
         )
 
@@ -98,5 +102,34 @@ def test_enabled_estimators_validation() -> None:
             objective_model=objective_model,
             policy_spec=default_policy_spec(1),
             n_samples=5,
+            step_rule="constant",
             enabled_estimators=(),
+        )
+
+
+def test_step_rule_validation() -> None:
+    objective_model = FixedRegressionObjective.from_parameters(
+        beta_1=[0.1],
+        beta_2=-0.5,
+        beta_3=[0.2],
+        beta_4=0.4,
+    )
+
+    with pytest.raises(ValueError, match="step_rule must be one of"):
+        ExperimentConfig(
+            state_dim=1,
+            objective_model=objective_model,
+            policy_spec=default_policy_spec(1),
+            n_samples=5,
+            step_rule="unknown",
+        )
+
+    with pytest.raises(ValueError, match="step_size must be positive"):
+        ExperimentConfig(
+            state_dim=1,
+            objective_model=objective_model,
+            policy_spec=default_policy_spec(1),
+            n_samples=5,
+            step_rule="constant",
+            step_size=0.0,
         )

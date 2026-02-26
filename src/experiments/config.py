@@ -8,6 +8,7 @@ from typing import Optional
 from data.fixed_objective import FixedRegressionObjective
 from data.models import ObjectiveModel
 from optimization.policy import POLICY_LINEAR, POLICY_SOFTMAX, PolicySpec
+from optimization.steps import STEP_RULES
 
 
 @dataclass(frozen=True)
@@ -16,6 +17,7 @@ class ExperimentConfig:
     objective_model: ObjectiveModel
     policy_spec: PolicySpec
     n_samples: int
+    step_rule: str
     seed: int = 7
     t_steps: int = 100
     step_size: float = 0.01
@@ -47,6 +49,13 @@ class ExperimentConfig:
 
         if self.n_samples <= 0:
             raise ValueError("n_samples must be positive.")
+
+        if self.step_rule not in STEP_RULES:
+            allowed = ", ".join(sorted(STEP_RULES))
+            raise ValueError(f"step_rule must be one of {allowed}.")
+
+        if self.step_size <= 0.0:
+            raise ValueError("step_size must be positive.")
 
         if self.n_grad_samples <= 0:
             raise ValueError("n_grad_samples must be positive.")

@@ -108,6 +108,11 @@ Each `ExperimentConfig` includes the required state dimension `state_dim`, a req
 `objective_model` (for example, `FixedRegressionObjective`). State sampling draws each
 feature from a standard normal distribution.
 
+Step-size behavior is controlled by `step_rule`, which must be explicitly set to
+`"constant"` or `"armijo"`. The `step_size` field is the constant step size for
+`"constant"` and the initial step size for Armijo backtracking. When `step_rule` is not
+`"constant"`, the demo also saves a `step_sizes.png` plot of the per-iteration step sizes.
+
 Use `enabled_estimators` in the config to control which optimization methods run (and
 which curves/paths appear in plots and logs). For example:
 

@@ -18,10 +18,12 @@ from experiments.visualization import (
     plot_gradient_norms,
     plot_loss_curves,
     plot_objective_u_slice,
+    plot_step_sizes,
     plot_theta_objective_contours,
     select_theta_axes_max_variance,
 )
 from optimization.policy import policy_u
+from optimization.steps import STEP_RULE_CONSTANT
 
 
 @dataclass(frozen=True)
@@ -91,6 +93,7 @@ def run_experiment(
             objective_model,
             rng,
             config.t_steps,
+            config.step_rule,
             config.step_size,
             config.n_grad_samples,
             config.sigma,
@@ -120,6 +123,7 @@ def run_experiment(
             objective_model,
             rng,
             config.t_steps,
+            config.step_rule,
             config.step_size,
             config.n_grad_samples,
             config.sigma,
@@ -170,6 +174,7 @@ def run_experiment(
         config.t_steps,
         config.n_samples,
         config.step_size,
+        config.step_rule,
     )
     if config.plot and traces:
         u_lbfgs = float(results["lbfgs"].u) if "lbfgs" in results else None
@@ -187,6 +192,8 @@ def run_experiment(
             config.plot_dir,
             u_star=u_star_plot,
         )
+        if config.step_rule != STEP_RULE_CONSTANT:
+            plot_step_sizes(traces, config.plot_dir)
         if policy_spec.theta.size >= 2:
             axis_indices = (0, 1)
             axis_labels = None

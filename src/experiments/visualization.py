@@ -25,6 +25,7 @@ class OptimizationTrace:
     true_gradients: Optional[Sequence[float]] = None
     theta_grad_norms: Optional[Sequence[float]] = None
     true_theta_grad_norms: Optional[Sequence[float]] = None
+    step_sizes: Optional[Sequence[float]] = None
     theta_values: Optional[Sequence[np.ndarray]] = None
 
 
@@ -166,6 +167,45 @@ def plot_gradient_norms(
 
     fig.tight_layout()
     fig.savefig(path / "gradient_norms.png", dpi=200)
+    plt.close(fig)
+
+
+def plot_step_sizes(
+    traces: Mapping[str, OptimizationTrace],
+    plot_dir: str,
+) -> None:
+    trace_items = _ordered_traces(traces)
+    if not trace_items:
+        return
+    path = _ensure_plot_dir(plot_dir)
+    fig, ax = plt.subplots(1, 1, figsize=(8, 4.5))
+    has_series = False
+
+    for name, trace in trace_items:
+        if trace.step_sizes is None:
+            continue
+        if len(trace.step_sizes) != len(trace.steps):
+            raise ValueError("step_sizes must match steps length for plotting.")
+        style = ESTIMATOR_STYLES[name]
+        ax.plot(
+            trace.steps,
+            trace.step_sizes,
+            label=style["label"],
+            color=style["color"],
+            alpha=0.6,
+        )
+        has_series = True
+
+    if not has_series:
+        plt.close(fig)
+        return
+
+    ax.set_ylabel("Step size")
+    ax.set_xlabel("Step")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(path / "step_sizes.png", dpi=200)
     plt.close(fig)
 
 

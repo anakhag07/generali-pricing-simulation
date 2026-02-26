@@ -22,11 +22,13 @@ CONFIG = ExperimentConfig(
     ),
     policy_spec=default_policy_spec(STATE_DIM),
     n_samples=20,
-    t_steps=200,
+    t_steps=20000,
     step_size=0.05,
     sigma=0.1,
     n_grad_samples=64,
-    lbfgs_maxiter=200,
+    lbfgs_maxiter=20000,
     plot=True,
-    enabled_estimators=("zeroth_order", "first_order", "lbfgs"),
+
+    enabled_estimators=("first_order", "lbfgs"),
+    log_steps=False,
 )

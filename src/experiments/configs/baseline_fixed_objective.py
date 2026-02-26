@@ -21,4 +21,5 @@ CONFIG = ExperimentConfig(
         beta_4=0.4,
     ),
     policy_spec=default_policy_spec(STATE_DIM),
+    n_samples=10,
 )

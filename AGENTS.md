@@ -7,6 +7,10 @@ Project context: pricing simulation and optimization demo. Primary entry point i
 - Prefer small, focused changes with clear doc updates.
 - Keep the simulation logic deterministic when a seed is set.
 
+## Organization
+
+Before adding code, understand the organization of the codebase and see if the area where you are planning to add code makes the most sense. Create a new file or folder if this makes organizational sense. Ask clarifying questions if you are unsure where to add code. 
+
 ## Testing Strategy
 
 - Add small, focused unit tests for each change.
@@ -25,10 +29,12 @@ Project context: pricing simulation and optimization demo. Primary entry point i
 
 ## Lessons Learned
 
-- Write down lessons from mistakes made to avoid repeating them.
+- Write down lessons from mistakes made to avoid repeating them. Update them here in AGENTS.md
 - Keep explicit objective form logic in `src/data/fixed_objective.py` as the single source of truth.
 
 ## Validation
+
+Always activate the environment before running tests or the demo.
 
 Run the demo after changes:
 

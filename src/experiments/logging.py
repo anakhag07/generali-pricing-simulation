@@ -7,6 +7,7 @@ from typing import Mapping, Optional, Protocol
 import numpy as np
 
 from data.fixed_objective import FixedRegressionObjective
+from data.planted_logistic import PlantedLogisticObjective
 from optimization.policy import PolicySpec
 
 
@@ -52,6 +53,16 @@ def log_summary(
         print(
             "Betas: "
             f"beta_1={beta_1}, beta_2={beta_2:.3f}, beta_3={beta_3}, beta_4={beta_4:.3f}"
+        )
+    elif isinstance(objective_model, PlantedLogisticObjective):
+        beta = format_array(objective_model.beta)
+        print("Objective: L(u; x) = log(1 + exp(z)) - p*(x) * z")
+        print("z = alpha * u + beta·x + bias")
+        print("p*(x) = sigmoid(alpha * u* + beta·x + bias)")
+        print(
+            "Params: "
+            f"alpha={objective_model.alpha:.3f}, bias={objective_model.bias:.3f}, "
+            f"u*={objective_model.u_star:.3f}, beta={beta}"
         )
     else:
         print(f"Objective: {type(objective_model).__name__}")

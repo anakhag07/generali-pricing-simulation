@@ -2,10 +2,20 @@
 
 from __future__ import annotations
 
+from typing import Mapping, Optional, Protocol
+
 import numpy as np
 
 from data.fixed_objective import FixedRegressionObjective
+from data.planted_logistic import PlantedLogisticObjective
 from optimization.policy import PolicySpec
+
+
+class _EstimatorResult(Protocol):
+    theta: object
+    u: float
+    value: float
+    time: float
 
 
 def log_step(method: str, step: int, u: float, value: float) -> None:
@@ -18,20 +28,11 @@ def log_grad(method: str, step: int, grad: float) -> None:
 
 def log_summary(
     initial_value: float,
-    u_first: float,
-    value_first: float,
-    u_zero: float,
-    value_zero: float,
-    u_lbfgs: float,
-    value_lbfgs: float,
-    time_first: float,
-    time_zero: float,
-    time_lbfgs: float,
+    results: Mapping[str, _EstimatorResult],
     objective_model: object,
     policy_spec: PolicySpec,
-    theta_first: object,
-    theta_zero: object,
-    theta_lbfgs: object,
+    u_star: Optional[float],
+    value_at_u_star: Optional[float],
     t_steps: int,
     n_samples: int,
     step_size: float,
@@ -53,25 +54,63 @@ def log_summary(
             "Betas: "
             f"beta_1={beta_1}, beta_2={beta_2:.3f}, beta_3={beta_3}, beta_4={beta_4:.3f}"
         )
+    elif isinstance(objective_model, PlantedLogisticObjective):
+        beta = format_array(objective_model.beta)
+        print("Objective: L(u; x) = log(1 + exp(z)) - p*(x) * z")
+        print("z = alpha * u + beta·x + bias")
+        print("p*(x) = sigmoid(alpha * u* + beta·x + bias)")
+        print(
+            "Params: "
+            f"alpha={objective_model.alpha:.3f}, bias={objective_model.bias:.3f}, "
+            f"u*={objective_model.u_star:.3f}, beta={beta}"
+        )
     else:
         print(f"Objective: {type(objective_model).__name__}")
 
     print(f"Run: steps={t_steps}, n_samples={n_samples}, step_size={step_size:.4f}")
     print(f"Initial objective value: {initial_value:.4f}")
+    u_star_value = float(u_star) if u_star is not None else None
+    value_at_u_star_value = (
+        float(value_at_u_star) if value_at_u_star is not None else None
+    )
+    if u_star_value is not None:
+        print(f"Known optimum u*: {u_star_value:.4f}")
+        if value_at_u_star_value is not None:
+            print(f"Objective at u*: {value_at_u_star_value:.4f}")
     print("=== Results ===")
-    print(
-        "Final u: "
-        f"first-order={u_first:.4f}, zeroth-order={u_zero:.4f}, L-BFGS={u_lbfgs:.4f}"
-    )
-    print(
-        "Final objective: "
-        f"first-order={value_first:.4f}, zeroth-order={value_zero:.4f}, L-BFGS={value_lbfgs:.4f}"
-    )
-    print(f"Initial theta: {format_array(policy_spec.theta)}")
-    print(f"Final theta (first-order): {format_array(theta_first)}")
-    print(f"Final theta (zeroth-order): {format_array(theta_zero)}")
-    print(f"Final theta (L-BFGS): {format_array(theta_lbfgs)}")
-    print("=== Runtime (s) ===")
-    print(f"First-order: {time_first:.4f}")
-    print(f"Zeroth-order: {time_zero:.4f}")
-    print(f"L-BFGS: {time_lbfgs:.4f}")
+
+    order = ("first_order", "zeroth_order", "lbfgs")
+    labels = {
+        "first_order": "first-order",
+        "zeroth_order": "zeroth-order",
+        "lbfgs": "L-BFGS",
+    }
+    ordered = [name for name in order if name in results]
+    if ordered:
+        final_u = ", ".join(
+            f"{labels[name]}={float(results[name].u):.4f}" for name in ordered
+        )
+        final_value = ", ".join(
+            f"{labels[name]}={float(results[name].value):.4f}" for name in ordered
+        )
+        print(f"Final u: {final_u}")
+        print(f"Final objective: {final_value}")
+        if u_star_value is not None:
+            u_gap = ", ".join(
+                f"{labels[name]}={abs(results[name].u - u_star_value):.4f}" for name in ordered
+            )
+            print(f"|u - u*|: {u_gap}")
+            if value_at_u_star_value is not None:
+                value_gap = ", ".join(
+                    f"{labels[name]}={results[name].value - value_at_u_star_value:.4f}"
+                    for name in ordered
+                )
+                print(f"Objective gap: {value_gap}")
+        print(f"Initial theta: {format_array(policy_spec.theta)}")
+        for name in ordered:
+            theta = results[name].theta
+            print(f"Final theta ({labels[name]}): {format_array(theta)}")
+        print("=== Runtime (s) ===")
+        for name in ordered:
+            runtime = float(results[name].time)
+            print(f"{labels[name]}: {runtime:.4f}")

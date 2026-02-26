@@ -74,3 +74,29 @@ def test_log_steps_default_and_override() -> None:
         log_steps=False,
     )
     assert config_quiet.log_steps is False
+
+
+def test_enabled_estimators_validation() -> None:
+    objective_model = FixedRegressionObjective.from_parameters(
+        beta_1=[0.1],
+        beta_2=-0.5,
+        beta_3=[0.2],
+        beta_4=0.4,
+    )
+    with pytest.raises(ValueError, match="Unknown estimators"):
+        ExperimentConfig(
+            state_dim=1,
+            objective_model=objective_model,
+            policy_spec=default_policy_spec(1),
+            n_samples=5,
+            enabled_estimators=("not-a-method",),
+        )
+
+    with pytest.raises(ValueError, match="enabled_estimators must include at least one"):
+        ExperimentConfig(
+            state_dim=1,
+            objective_model=objective_model,
+            policy_spec=default_policy_spec(1),
+            n_samples=5,
+            enabled_estimators=(),
+        )

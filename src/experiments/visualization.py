@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Mapping, Optional, Sequence
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -28,6 +28,20 @@ class OptimizationTrace:
     theta_values: Optional[Sequence[np.ndarray]] = None
 
 
+ESTIMATOR_STYLES = {
+    "first_order": {"label": "first-order", "color": "#1f77b4", "marker": "o"},
+    "zeroth_order": {"label": "zeroth-order", "color": "#ff7f0e", "marker": "o"},
+    "lbfgs": {"label": "L-BFGS", "color": "#2ca02c", "marker": "x"},
+}
+_TRACE_ORDER = ("first_order", "zeroth_order", "lbfgs")
+
+
+def _ordered_traces(
+    traces: Mapping[str, OptimizationTrace],
+) -> list[tuple[str, OptimizationTrace]]:
+    return [(name, traces[name]) for name in _TRACE_ORDER if name in traces]
+
+
 def _ensure_plot_dir(plot_dir: str) -> Path:
     path = Path(plot_dir)
     path.mkdir(parents=True, exist_ok=True)
@@ -44,12 +58,13 @@ def _as_state_list(x_samples: Sequence[StateVector]) -> list[StateVector]:
 
 
 def plot_loss_curves(
-    trace_first: OptimizationTrace,
-    trace_zero: OptimizationTrace,
-    trace_lbfgs: Optional[OptimizationTrace],
+    traces: Mapping[str, OptimizationTrace],
     plot_dir: str,
     u_star: Optional[float] = None,
 ) -> None:
+    trace_items = _ordered_traces(traces)
+    if not trace_items:
+        return
     path = _ensure_plot_dir(plot_dir)
     if u_star is not None:
         fig, axes = plt.subplots(2, 1, figsize=(8, 7), sharex=True)
@@ -58,24 +73,13 @@ def plot_loss_curves(
         fig, ax_loss = plt.subplots(1, 1, figsize=(8, 4.5))
         ax_dist = None
 
-    ax_loss.plot(
-        trace_first.steps,
-        trace_first.objective_values,
-        label="first-order",
-        alpha=0.6,
-    )
-    ax_loss.plot(
-        trace_zero.steps,
-        trace_zero.objective_values,
-        label="zeroth-order",
-        alpha=0.6,
-    )
-    if trace_lbfgs is not None:
+    for name, trace in trace_items:
+        style = ESTIMATOR_STYLES[name]
         ax_loss.plot(
-            trace_lbfgs.steps,
-            trace_lbfgs.objective_values,
-            label="L-BFGS",
-            color="#2ca02c",
+            trace.steps,
+            trace.objective_values,
+            label=style["label"],
+            color=style["color"],
             alpha=0.6,
         )
     ax_loss.set_ylabel("Objective value")
@@ -83,17 +87,14 @@ def plot_loss_curves(
     ax_loss.grid(True, alpha=0.3)
 
     if ax_dist is not None and u_star is not None:
-        dist_first = [abs(u - u_star) for u in trace_first.u_values]
-        dist_zero = [abs(u - u_star) for u in trace_zero.u_values]
-        ax_dist.plot(trace_first.steps, dist_first, label="first-order", alpha=0.6)
-        ax_dist.plot(trace_zero.steps, dist_zero, label="zeroth-order", alpha=0.6)
-        if trace_lbfgs is not None:
-            dist_lbfgs = [abs(u - u_star) for u in trace_lbfgs.u_values]
+        for name, trace in trace_items:
+            style = ESTIMATOR_STYLES[name]
+            dist_values = [abs(u - u_star) for u in trace.u_values]
             ax_dist.plot(
-                trace_lbfgs.steps,
-                dist_lbfgs,
-                label="L-BFGS",
-                color="#2ca02c",
+                trace.steps,
+                dist_values,
+                label=style["label"],
+                color=style["color"],
                 alpha=0.6,
             )
         ax_dist.set_ylabel("|u - u*|")
@@ -109,16 +110,14 @@ def plot_loss_curves(
 
 
 def plot_gradient_norms(
-    trace_first: OptimizationTrace,
-    trace_zero: OptimizationTrace,
-    trace_lbfgs: Optional[OptimizationTrace],
+    traces: Mapping[str, OptimizationTrace],
     plot_dir: str,
 ) -> None:
+    trace_items = _ordered_traces(traces)
+    if not trace_items:
+        return
     path = _ensure_plot_dir(plot_dir)
-    has_true = (
-        trace_first.true_theta_grad_norms is not None
-        and trace_zero.true_theta_grad_norms is not None
-    )
+    has_true = any(trace.true_theta_grad_norms is not None for _, trace in trace_items)
 
     if has_true:
         fig, axes = plt.subplots(2, 1, figsize=(8, 7), sharex=True)
@@ -127,37 +126,37 @@ def plot_gradient_norms(
         fig, ax_norm = plt.subplots(1, 1, figsize=(8, 4.5))
         ax_err = None
 
-    if trace_first.theta_grad_norms is None or trace_zero.theta_grad_norms is None:
-        raise ValueError("theta_grad_norms must be provided for gradient norm plots.")
-    norm_first = list(trace_first.theta_grad_norms)
-    norm_zero = list(trace_zero.theta_grad_norms)
-    ax_norm.plot(trace_first.steps, norm_first, label="first-order", alpha=0.6)
-    ax_norm.plot(trace_zero.steps, norm_zero, label="zeroth-order", alpha=0.6)
-    if trace_lbfgs is not None:
-        if trace_lbfgs.theta_grad_norms is None:
-            raise ValueError("theta_grad_norms must be provided for L-BFGS traces.")
+    for name, trace in trace_items:
+        if trace.theta_grad_norms is None:
+            raise ValueError("theta_grad_norms must be provided for gradient norm plots.")
+        style = ESTIMATOR_STYLES[name]
         ax_norm.plot(
-            trace_lbfgs.steps,
-            trace_lbfgs.theta_grad_norms,
-            label="L-BFGS",
-            color="#2ca02c",
+            trace.steps,
+            trace.theta_grad_norms,
+            label=style["label"],
+            color=style["color"],
             alpha=0.6,
         )
     ax_norm.set_ylabel("|theta grad norm|")
     ax_norm.legend()
     ax_norm.grid(True, alpha=0.3)
 
-    if ax_err is not None and trace_first.true_theta_grad_norms is not None and trace_zero.true_theta_grad_norms is not None:
-        err_first = [
-            abs(g - t)
-            for g, t in zip(trace_first.theta_grad_norms, trace_first.true_theta_grad_norms)
-        ]
-        err_zero = [
-            abs(g - t)
-            for g, t in zip(trace_zero.theta_grad_norms, trace_zero.true_theta_grad_norms)
-        ]
-        ax_err.plot(trace_first.steps, err_first, label="first-order", alpha=0.6)
-        ax_err.plot(trace_zero.steps, err_zero, label="zeroth-order", alpha=0.6)
+    if ax_err is not None:
+        for name, trace in trace_items:
+            if trace.true_theta_grad_norms is None or trace.theta_grad_norms is None:
+                continue
+            style = ESTIMATOR_STYLES[name]
+            err_values = [
+                abs(g - t)
+                for g, t in zip(trace.theta_grad_norms, trace.true_theta_grad_norms)
+            ]
+            ax_err.plot(
+                trace.steps,
+                err_values,
+                label=f"{style['label']} error",
+                color=style["color"],
+                alpha=0.6,
+            )
         ax_err.set_ylabel("|grad error|")
         ax_err.set_xlabel("Step")
         ax_err.legend()
@@ -173,19 +172,20 @@ def plot_gradient_norms(
 def plot_objective_u_slice(
     x_samples: Sequence[StateVector],
     objective_model: ObjectiveModel,
-    trace_first: OptimizationTrace,
-    trace_zero: OptimizationTrace,
-    trace_lbfgs: Optional[OptimizationTrace],
+    traces: Mapping[str, OptimizationTrace],
     plot_dir: str,
-    u_lbfgs: Optional[float] = None,
+    u_star: Optional[float] = None,
 ) -> None:
+    trace_items = _ordered_traces(traces)
+    if not trace_items:
+        return
     path = _ensure_plot_dir(plot_dir)
     x_list = _as_state_list(x_samples)
-    u_values = list(trace_first.u_values) + list(trace_zero.u_values)
-    if trace_lbfgs is not None:
-        u_values += list(trace_lbfgs.u_values)
-    if u_lbfgs is not None:
-        u_values.append(u_lbfgs)
+    u_values: list[float] = []
+    for _, trace in trace_items:
+        u_values.extend(list(trace.u_values))
+    if u_star is not None:
+        u_values.append(float(u_star))
     if u_values:
         u_min = float(min(u_values))
         u_max = float(max(u_values))
@@ -203,107 +203,93 @@ def plot_objective_u_slice(
     ax_obj, ax_grad = axes
 
     ax_obj.plot(u_grid, obj_grid, color="black", label="objective", alpha=0.6)
-    ax_obj.scatter(
-        trace_first.u_values,
-        trace_first.objective_values,
-        color="#1f77b4",
-        label="first-order",
-        marker="o",
-        edgecolors="#1f77b4",
-        linewidths=0.4,
-        alpha=0.6,
-        zorder=3,
-    )
-    ax_obj.scatter(
-        trace_zero.u_values,
-        trace_zero.objective_values,
-        color="#ff7f0e",
-        label="zeroth-order",
-        marker="o",
-        edgecolors="#ff7f0e",
-        linewidths=0.4,
-        alpha=0.6,
-        zorder=4,
-    )
-    if trace_lbfgs is not None:
-        ax_obj.plot(
-            trace_lbfgs.u_values,
-            trace_lbfgs.objective_values,
-            color="#2ca02c",
-            label="L-BFGS path",
-            alpha=0.6,
-        )
-    if trace_lbfgs is not None and trace_lbfgs.u_values and trace_lbfgs.objective_values:
-        ax_obj.scatter(
-            [trace_lbfgs.u_values[-1]],
-            [trace_lbfgs.objective_values[-1]],
-            color="#2ca02c",
-            marker="x",
-            label="L-BFGS final",
-        )
-    elif u_lbfgs is not None:
-        value_lbfgs = float(np.mean([objective_model.value(x, u_lbfgs) for x in x_list]))
-        ax_obj.scatter(
-            [u_lbfgs],
-            [value_lbfgs],
-            color="#2ca02c",
-            marker="x",
-            label="L-BFGS final",
-        )
+    for name, trace in trace_items:
+        style = ESTIMATOR_STYLES[name]
+        if name == "lbfgs":
+            ax_obj.plot(
+                trace.u_values,
+                trace.objective_values,
+                color=style["color"],
+                label=f"{style['label']} path",
+                alpha=0.6,
+            )
+            if trace.u_values and trace.objective_values:
+                ax_obj.scatter(
+                    [trace.u_values[-1]],
+                    [trace.objective_values[-1]],
+                    color=style["color"],
+                    marker=style["marker"],
+                    label=f"{style['label']} final",
+                )
+        else:
+            zorder = 4 if name == "zeroth_order" else 3
+            ax_obj.scatter(
+                trace.u_values,
+                trace.objective_values,
+                color=style["color"],
+                label=style["label"],
+                marker=style["marker"],
+                edgecolors=style["color"],
+                linewidths=0.4,
+                alpha=0.6,
+                zorder=zorder,
+            )
     ax_obj.set_ylabel("Objective value")
+    if u_star is not None:
+        ax_obj.axvline(
+            u_star,
+            color="#444444",
+            linestyle="--",
+            linewidth=1.2,
+            alpha=0.8,
+            label="u*",
+        )
     ax_obj.legend()
     ax_obj.grid(True, alpha=0.3)
 
     ax_grad.plot(u_grid, grad_grid, color="black", label="true grad", alpha=0.6)
-    ax_grad.scatter(
-        trace_first.u_values,
-        trace_first.grad_estimates,
-        color="#1f77b4",
-        label="first-order est",
-        marker="o",
-        edgecolors="#1f77b4",
-        linewidths=0.4,
-        alpha=0.6,
-        zorder=3,
-    )
-    ax_grad.scatter(
-        trace_zero.u_values,
-        trace_zero.grad_estimates,
-        color="#ff7f0e",
-        label="zeroth-order est",
-        marker="o",
-        edgecolors="#ff7f0e",
-        linewidths=0.4,
-        alpha=0.6,
-        zorder=4,
-    )
-    if trace_lbfgs is not None:
-        ax_grad.plot(
-            trace_lbfgs.u_values,
-            trace_lbfgs.grad_estimates,
-            color="#2ca02c",
-            label="L-BFGS path",
-            alpha=0.6,
-        )
-    if trace_lbfgs is not None and trace_lbfgs.u_values and trace_lbfgs.grad_estimates:
-        ax_grad.scatter(
-            [trace_lbfgs.u_values[-1]],
-            [trace_lbfgs.grad_estimates[-1]],
-            color="#2ca02c",
-            marker="x",
-            label="L-BFGS final",
-        )
-    elif u_lbfgs is not None:
-        grad_lbfgs = float(np.mean([objective_model.grad_u(x, u_lbfgs) for x in x_list]))
-        ax_grad.scatter(
-            [u_lbfgs],
-            [grad_lbfgs],
-            color="#2ca02c",
-            marker="x",
-            label="L-BFGS final",
-        )
+    for name, trace in trace_items:
+        style = ESTIMATOR_STYLES[name]
+        if name == "lbfgs":
+            ax_grad.plot(
+                trace.u_values,
+                trace.grad_estimates,
+                color=style["color"],
+                label=f"{style['label']} path",
+                alpha=0.6,
+            )
+            if trace.u_values and trace.grad_estimates:
+                ax_grad.scatter(
+                    [trace.u_values[-1]],
+                    [trace.grad_estimates[-1]],
+                    color=style["color"],
+                    marker=style["marker"],
+                    label=f"{style['label']} final",
+                )
+        else:
+            zorder = 4 if name == "zeroth_order" else 3
+            ax_grad.scatter(
+                trace.u_values,
+                trace.grad_estimates,
+                color=style["color"],
+                label=f"{style['label']} est",
+                marker=style["marker"],
+                edgecolors=style["color"],
+                linewidths=0.4,
+                alpha=0.6,
+                zorder=zorder,
+            )
     ax_grad.set_ylabel("Gradient")
     ax_grad.set_xlabel("u")
+    if u_star is not None:
+        ax_grad.axvline(
+            u_star,
+            color="#444444",
+            linestyle="--",
+            linewidth=1.2,
+            alpha=0.8,
+            label="u*",
+        )
     ax_grad.legend()
     ax_grad.grid(True, alpha=0.3)
 
@@ -401,9 +387,7 @@ def plot_theta_objective_contours(
     axis_labels: Optional[tuple[str, str]] = None,
     theta_refs: Optional[Sequence[np.ndarray]] = None,
     theta_points: Optional[Sequence[tuple[np.ndarray, str, str, str]]] = None,
-    trace_first: Optional[OptimizationTrace] = None,
-    trace_zero: Optional[OptimizationTrace] = None,
-    trace_lbfgs: Optional[OptimizationTrace] = None,
+    traces: Optional[Mapping[str, OptimizationTrace]] = None,
     grid_size: int = 60,
     levels: int = 15,
     filename: str = "theta_objective_contours.png",
@@ -434,41 +418,21 @@ def plot_theta_objective_contours(
     ax.set_title("Objective contour over theta slice")
 
     show_legend = False
-    if trace_first is not None and trace_first.theta_values is not None:
-        theta_path = np.asarray(trace_first.theta_values, dtype=float)
-        ax.plot(
-            theta_path[:, axis_indices[0]],
-            theta_path[:, axis_indices[1]],
-            color="#1f77b4",
-            alpha=0.6,
-            linewidth=1.4,
-            label="first-order path",
-        )
-        show_legend = True
-
-    if trace_zero is not None and trace_zero.theta_values is not None:
-        theta_path = np.asarray(trace_zero.theta_values, dtype=float)
-        ax.plot(
-            theta_path[:, axis_indices[0]],
-            theta_path[:, axis_indices[1]],
-            color="#ff7f0e",
-            alpha=0.6,
-            linewidth=1.4,
-            label="zeroth-order path",
-        )
-        show_legend = True
-
-    if trace_lbfgs is not None and trace_lbfgs.theta_values is not None:
-        theta_path = np.asarray(trace_lbfgs.theta_values, dtype=float)
-        ax.plot(
-            theta_path[:, axis_indices[0]],
-            theta_path[:, axis_indices[1]],
-            color="#2ca02c",
-            alpha=0.6,
-            linewidth=1.4,
-            label="L-BFGS path",
-        )
-        show_legend = True
+    if traces is not None:
+        for name, trace in _ordered_traces(traces):
+            if trace.theta_values is None:
+                continue
+            style = ESTIMATOR_STYLES[name]
+            theta_path = np.asarray(trace.theta_values, dtype=float)
+            ax.plot(
+                theta_path[:, axis_indices[0]],
+                theta_path[:, axis_indices[1]],
+                color=style["color"],
+                alpha=0.6,
+                linewidth=1.4,
+                label=f"{style['label']} path",
+            )
+            show_legend = True
 
     if theta_points is not None:
         for theta, label, color, marker in theta_points:

@@ -26,8 +26,22 @@ class ExperimentConfig:
     log_steps: bool = True
     plot: bool = True
     plot_dir: str = "plots"
+    enabled_estimators: tuple[str, ...] = ("first_order", "zeroth_order", "lbfgs")
 
     def __post_init__(self) -> None:
+        enabled_estimators = tuple(self.enabled_estimators)
+        object.__setattr__(self, "enabled_estimators", enabled_estimators)
+        if not enabled_estimators:
+            raise ValueError("enabled_estimators must include at least one estimator.")
+        if len(set(enabled_estimators)) != len(enabled_estimators):
+            raise ValueError("enabled_estimators must not contain duplicates.")
+        allowed_estimators = {"first_order", "zeroth_order", "lbfgs"}
+        unknown = [name for name in enabled_estimators if name not in allowed_estimators]
+        if unknown:
+            allowed = ", ".join(sorted(allowed_estimators))
+            unknown_list = ", ".join(unknown)
+            raise ValueError(f"Unknown estimators: {unknown_list}. Allowed: {allowed}.")
+
         if self.state_dim <= 0:
             raise ValueError("state_dim must be positive.")
 

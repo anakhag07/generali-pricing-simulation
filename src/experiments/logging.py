@@ -18,20 +18,9 @@ def log_grad(method: str, step: int, grad: float) -> None:
 
 def log_summary(
     initial_value: float,
-    u_first: float,
-    value_first: float,
-    u_zero: float,
-    value_zero: float,
-    u_lbfgs: float,
-    value_lbfgs: float,
-    time_first: float,
-    time_zero: float,
-    time_lbfgs: float,
+    results: dict[str, dict[str, object]],
     objective_model: object,
     policy_spec: PolicySpec,
-    theta_first: object,
-    theta_zero: object,
-    theta_lbfgs: object,
     t_steps: int,
     n_samples: int,
     step_size: float,
@@ -59,19 +48,28 @@ def log_summary(
     print(f"Run: steps={t_steps}, n_samples={n_samples}, step_size={step_size:.4f}")
     print(f"Initial objective value: {initial_value:.4f}")
     print("=== Results ===")
-    print(
-        "Final u: "
-        f"first-order={u_first:.4f}, zeroth-order={u_zero:.4f}, L-BFGS={u_lbfgs:.4f}"
-    )
-    print(
-        "Final objective: "
-        f"first-order={value_first:.4f}, zeroth-order={value_zero:.4f}, L-BFGS={value_lbfgs:.4f}"
-    )
-    print(f"Initial theta: {format_array(policy_spec.theta)}")
-    print(f"Final theta (first-order): {format_array(theta_first)}")
-    print(f"Final theta (zeroth-order): {format_array(theta_zero)}")
-    print(f"Final theta (L-BFGS): {format_array(theta_lbfgs)}")
-    print("=== Runtime (s) ===")
-    print(f"First-order: {time_first:.4f}")
-    print(f"Zeroth-order: {time_zero:.4f}")
-    print(f"L-BFGS: {time_lbfgs:.4f}")
+
+    order = ("first_order", "zeroth_order", "lbfgs")
+    labels = {
+        "first_order": "first-order",
+        "zeroth_order": "zeroth-order",
+        "lbfgs": "L-BFGS",
+    }
+    ordered = [name for name in order if name in results]
+    if ordered:
+        final_u = ", ".join(
+            f"{labels[name]}={float(results[name]['u']):.4f}" for name in ordered
+        )
+        final_value = ", ".join(
+            f"{labels[name]}={float(results[name]['value']):.4f}" for name in ordered
+        )
+        print(f"Final u: {final_u}")
+        print(f"Final objective: {final_value}")
+        print(f"Initial theta: {format_array(policy_spec.theta)}")
+        for name in ordered:
+            theta = results[name]["theta"]
+            print(f"Final theta ({labels[name]}): {format_array(theta)}")
+        print("=== Runtime (s) ===")
+        for name in ordered:
+            runtime = float(results[name]["time"])
+            print(f"{labels[name]}: {runtime:.4f}")

@@ -26,13 +26,16 @@ CONFIG = ExperimentConfig(
     ),
     policy_spec=PolicySpec(theta=POLICY_THETA, kind=POLICY_SOFTMAX),
     n_samples=100,
-    t_steps=2000,
+    t_steps=500,
     step_size=0.01,
     sigma=0.1,
     n_grad_samples=64,
-    lbfgs_maxiter=2000,
+    lbfgs_maxiter=50000,
     plot=True,
     plot_dir="plots",
+
+    # enabled_estimators=("zeroth_order", "first_order", "lbfgs"),
+    enabled_estimators=("first_order", "lbfgs"),
 
     log_steps=False,
 )

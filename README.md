@@ -94,6 +94,13 @@ Each `ExperimentConfig` includes the required state dimension `state_dim`, a req
 `objective_model` (for example, `FixedRegressionObjective`). State sampling draws each
 feature from a standard normal distribution.
 
+Use `enabled_estimators` in the config to control which optimization methods run (and
+which curves/paths appear in plots and logs). For example:
+
+```python
+enabled_estimators=("zeroth_order", "first_order", "lbfgs")
+```
+
 ## Model-to-Code Mapping
 
 ```text

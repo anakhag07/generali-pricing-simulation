@@ -34,6 +34,8 @@ Before adding code, understand the organization of the codebase and see if the a
 
 ## Validation
 
+Always activate the environment before running tests or the demo.
+
 Run the demo after changes:
 
 ```bash

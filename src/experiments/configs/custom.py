@@ -26,11 +26,11 @@ CONFIG = ExperimentConfig(
     ),
     policy_spec=PolicySpec(theta=POLICY_THETA, kind=POLICY_SOFTMAX),
     n_samples=100,
-    t_steps=500,
+    t_steps=2000,
     step_size=0.01,
     sigma=0.1,
     n_grad_samples=64,
-    lbfgs_maxiter=500,
+    lbfgs_maxiter=2000,
     plot=True,
     plot_dir="plots",
 

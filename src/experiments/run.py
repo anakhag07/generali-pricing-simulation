@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 from typing import Tuple
 
+from data.fixed_objective import FixedRegressionObjective
 from data.models import Customer, default_rng
 from experiments.config import ExperimentConfig
 from experiments.helpers import run_first_order, run_lbfgs_theta, run_zeroth_order
@@ -16,6 +17,12 @@ from experiments.visualization import (
     plot_theta_objective_contours,
 )
 from optimization.policy import policy_u
+
+
+def _u_star_for_plot(objective_model: object, u_lbfgs: float) -> float | None:
+    if isinstance(objective_model, FixedRegressionObjective):
+        return None
+    return u_lbfgs
 
 
 def run_experiment(config: ExperimentConfig) -> Tuple[float, float, float, float]:
@@ -102,7 +109,13 @@ def run_experiment(config: ExperimentConfig) -> Tuple[float, float, float, float
         config.step_size,
     )
     if config.plot:
-        plot_loss_curves(trace_first, trace_zero, trace_lbfgs, config.plot_dir, u_star=u_lbfgs)
+        plot_loss_curves(
+            trace_first,
+            trace_zero,
+            trace_lbfgs,
+            config.plot_dir,
+            u_star=_u_star_for_plot(objective_model, u_lbfgs),
+        )
         plot_gradient_norms(trace_first, trace_zero, trace_lbfgs, config.plot_dir)
         plot_objective_u_slice(
             x_samples,

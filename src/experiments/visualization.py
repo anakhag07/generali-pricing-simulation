@@ -337,6 +337,20 @@ def _theta_axis_grid(
     return np.linspace(min_val - pad, max_val + pad, grid_size)
 
 
+def select_theta_axes_max_variance(theta_points: Sequence[np.ndarray]) -> tuple[int, int]:
+    if not theta_points:
+        raise ValueError("theta_points must contain at least one theta array.")
+    theta_stack = np.asarray([np.asarray(theta, dtype=float) for theta in theta_points])
+    if theta_stack.ndim != 2:
+        raise ValueError("theta_points must be a sequence of 1D arrays with matching sizes.")
+    if theta_stack.shape[1] < 2:
+        raise ValueError("theta_points must have at least two dimensions.")
+    variances = np.var(theta_stack, axis=0)
+    top_two = np.argsort(variances)[-2:]
+    ordered = top_two[np.argsort(variances[top_two])[::-1]]
+    return int(ordered[0]), int(ordered[1])
+
+
 def theta_objective_contour_grid(
     x_samples: Sequence[StateVector],
     objective_model: ObjectiveModel,
@@ -384,8 +398,11 @@ def plot_theta_objective_contours(
     theta_base: np.ndarray,
     plot_dir: str,
     axis_indices: tuple[int, int] = (0, 1),
+    axis_labels: Optional[tuple[str, str]] = None,
     theta_refs: Optional[Sequence[np.ndarray]] = None,
     theta_points: Optional[Sequence[tuple[np.ndarray, str, str, str]]] = None,
+    trace_first: Optional[OptimizationTrace] = None,
+    trace_zero: Optional[OptimizationTrace] = None,
     trace_lbfgs: Optional[OptimizationTrace] = None,
     grid_size: int = 60,
     levels: int = 15,
@@ -408,9 +425,38 @@ def plot_theta_objective_contours(
     colorbar = fig.colorbar(contour, ax=ax)
     colorbar.set_label("Objective value")
 
-    ax.set_xlabel(f"theta[{axis_indices[0]}]")
-    ax.set_ylabel(f"theta[{axis_indices[1]}]")
+    if axis_labels is None:
+        ax.set_xlabel(f"theta[{axis_indices[0]}]")
+        ax.set_ylabel(f"theta[{axis_indices[1]}]")
+    else:
+        ax.set_xlabel(axis_labels[0])
+        ax.set_ylabel(axis_labels[1])
     ax.set_title("Objective contour over theta slice")
+
+    show_legend = False
+    if trace_first is not None and trace_first.theta_values is not None:
+        theta_path = np.asarray(trace_first.theta_values, dtype=float)
+        ax.plot(
+            theta_path[:, axis_indices[0]],
+            theta_path[:, axis_indices[1]],
+            color="#1f77b4",
+            alpha=0.6,
+            linewidth=1.4,
+            label="first-order path",
+        )
+        show_legend = True
+
+    if trace_zero is not None and trace_zero.theta_values is not None:
+        theta_path = np.asarray(trace_zero.theta_values, dtype=float)
+        ax.plot(
+            theta_path[:, axis_indices[0]],
+            theta_path[:, axis_indices[1]],
+            color="#ff7f0e",
+            alpha=0.6,
+            linewidth=1.4,
+            label="zeroth-order path",
+        )
+        show_legend = True
 
     if trace_lbfgs is not None and trace_lbfgs.theta_values is not None:
         theta_path = np.asarray(trace_lbfgs.theta_values, dtype=float)
@@ -422,6 +468,7 @@ def plot_theta_objective_contours(
             linewidth=1.4,
             label="L-BFGS path",
         )
+        show_legend = True
 
     if theta_points is not None:
         for theta, label, color, marker in theta_points:
@@ -437,6 +484,9 @@ def plot_theta_objective_contours(
                 alpha=0.6,
                 zorder=5,
             )
+        show_legend = True
+
+    if show_legend:
         ax.legend()
 
     fig.tight_layout()

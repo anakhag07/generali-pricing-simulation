@@ -15,6 +15,7 @@ from experiments.visualization import (
     plot_loss_curves,
     plot_objective_u_slice,
     plot_theta_objective_contours,
+    select_theta_axes_max_variance,
 )
 from optimization.policy import policy_u
 
@@ -127,13 +128,29 @@ def run_experiment(config: ExperimentConfig) -> Tuple[float, float, float, float
             u_lbfgs=u_lbfgs,
         )
         if policy_spec.theta.size >= 2:
+            axis_indices = (0, 1)
+            axis_labels = None
+            if policy_spec.theta.size > 2:
+                theta_points = [theta_initial]
+                if trace_first.theta_values:
+                    theta_points.extend(trace_first.theta_values)
+                if trace_zero.theta_values:
+                    theta_points.extend(trace_zero.theta_values)
+                if trace_lbfgs is not None and trace_lbfgs.theta_values:
+                    theta_points.extend(trace_lbfgs.theta_values)
+                axis_indices = select_theta_axes_max_variance(theta_points)
+                axis_labels = (
+                    f"theta[{axis_indices[0]}] (max-var axis)",
+                    f"theta[{axis_indices[1]}] (max-var axis)",
+                )
             plot_theta_objective_contours(
                 x_samples,
                 objective_model,
                 policy_spec,
                 theta_initial,
                 config.plot_dir,
-                axis_indices=(0, 1),
+                axis_indices=axis_indices,
+                axis_labels=axis_labels,
                 theta_refs=[theta_initial, theta_first, theta_zero, theta_lbfgs],
                 theta_points=[
                     (theta_initial, "initial", "#636363", "o"),
@@ -141,6 +158,8 @@ def run_experiment(config: ExperimentConfig) -> Tuple[float, float, float, float
                     (theta_zero, "zeroth-order", "#ff7f0e", "o"),
                     (theta_lbfgs, "L-BFGS", "#2ca02c", "x"),
                 ],
+                trace_first=trace_first,
+                trace_zero=trace_zero,
                 trace_lbfgs=trace_lbfgs,
             )
     return initial_value, u_first, u_zero, u_lbfgs

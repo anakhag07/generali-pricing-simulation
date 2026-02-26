@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from data.models import ObjectiveResult, StateVector
-from experiments.visualization import theta_objective_contour_grid
+from experiments.visualization import select_theta_axes_max_variance, theta_objective_contour_grid
 from optimization.policy import POLICY_LINEAR, PolicySpec
 
 
@@ -61,3 +61,14 @@ def test_theta_objective_contour_grid_rejects_invalid_axes() -> None:
             theta_base,
             axis_indices=(0, 5),
         )
+
+
+def test_select_theta_axes_max_variance_orders_by_variance() -> None:
+    theta_points = [
+        np.array([0.0, 0.0, 0.0], dtype=float),
+        np.array([1.0, 2.0, 0.5], dtype=float),
+        np.array([2.0, 4.0, 1.0], dtype=float),
+        np.array([3.0, 6.0, 1.5], dtype=float),
+    ]
+    axis_indices = select_theta_axes_max_variance(theta_points)
+    assert axis_indices == (1, 0)

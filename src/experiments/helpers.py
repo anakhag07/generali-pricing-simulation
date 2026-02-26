@@ -84,6 +84,7 @@ def run_first_order(
     true_grads: list[float] = []
     theta_grad_norms: list[float] = []
     true_theta_grad_norms: list[float] = []
+    theta_values: list[np.ndarray] = [theta.copy()]
     for step in range(1, t_steps + 1):
         grad_values: list[float] = []
         true_grad_values: list[float] = []
@@ -108,6 +109,7 @@ def run_first_order(
         grad_theta = grad_theta / float(len(x_list))
         grad_theta_true = grad_theta_true / float(len(x_list))
         theta = theta - step_size * grad_theta
+        theta_values.append(theta.copy())
         u_next_values = [policy_u(theta, x, kind=policy_kind) for x in x_list]
         value = float(
             np.mean([objective_model.value(x, u_next) for x, u_next in zip(x_list, u_next_values)])
@@ -135,6 +137,7 @@ def run_first_order(
         true_gradients=true_grads if true_grads else None,
         theta_grad_norms=theta_grad_norms,
         true_theta_grad_norms=true_theta_grad_norms,
+        theta_values=theta_values,
     )
     return theta, trace
 
@@ -162,6 +165,7 @@ def run_zeroth_order(
     true_grads: list[float] = []
     theta_grad_norms: list[float] = []
     true_theta_grad_norms: list[float] = []
+    theta_values: list[np.ndarray] = [theta.copy()]
     for step in range(1, t_steps + 1):
         grad_values: list[float] = []
         true_grad_values: list[float] = []
@@ -186,6 +190,7 @@ def run_zeroth_order(
         grad_theta = grad_theta / float(len(x_list))
         grad_theta_true = grad_theta_true / float(len(x_list))
         theta = theta - step_size * grad_theta
+        theta_values.append(theta.copy())
         u_next_values = [policy_u(theta, x, kind=policy_kind) for x in x_list]
         value = float(
             np.mean([objective_model.value(x, u_next) for x, u_next in zip(x_list, u_next_values)])
@@ -213,6 +218,7 @@ def run_zeroth_order(
         true_gradients=true_grads if true_grads else None,
         theta_grad_norms=theta_grad_norms,
         true_theta_grad_norms=true_theta_grad_norms,
+        theta_values=theta_values,
     )
     return theta, trace
 

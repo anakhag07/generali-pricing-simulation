@@ -5,7 +5,7 @@ from __future__ import annotations
 from experiments.configs import get_config
 from experiments.run import run_experiment
 
-RUN_CONFIGS = ["planted_logistic"]
+RUN_CONFIGS = ["planted_logistic", "custom"]
 
 
 def main() -> None:

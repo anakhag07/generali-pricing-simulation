@@ -201,6 +201,7 @@ def plot_step_sizes(
         return
 
     ax.set_ylabel("Step size")
+    ax.set_yscale("log")
     ax.set_xlabel("Step")
     ax.legend()
     ax.grid(True, alpha=0.3)

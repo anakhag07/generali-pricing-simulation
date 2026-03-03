@@ -8,7 +8,7 @@ from data.fixed_objective import FixedRegressionObjective
 from experiments.config import ExperimentConfig
 from optimization.policy import POLICY_SOFTMAX, PolicySpec
 
-STATE_DIM = 3
+STATE_DIM = 2
 
 BETA_1 = np.linspace(0.02, 0.5, num=STATE_DIM, dtype=float)
 BETA_3 = np.linspace(0.005, 0.2, num=STATE_DIM, dtype=float)
@@ -25,18 +25,18 @@ CONFIG = ExperimentConfig(
         beta_4=0.4,
     ),
     policy_spec=PolicySpec(theta=POLICY_THETA, kind=POLICY_SOFTMAX),
-    n_samples=100,
-    step_rule="constant",
-    t_steps=500,
+    n_samples=10,
+    step_rule="armijo",
+    t_steps=1000000,
     step_size=0.01,
     sigma=0.1,
-    n_grad_samples=64,
-    lbfgs_maxiter=500,
+    n_grad_samples=10,
+    lbfgs_maxiter=100000,
     plot=True,
     plot_dir="plots",
 
-    # enabled_estimators=("zeroth_order", "first_order", "lbfgs"),
-    enabled_estimators=("first_order", "lbfgs"),
+    enabled_estimators=("zeroth_order", "first_order", "lbfgs"),
+    # enabled_estimators=("first_order", "lbfgs"),
 
     log_steps=False,
 )

@@ -45,7 +45,7 @@ If you use a different environment name or tool, update `AGENTS.md` to match you
 - Runs first-order and zeroth-order Stein gradient estimators to optimize a pricing action.
 - Runs an L-BFGS-B baseline over policy theta using SciPy for comparison.
 - Runs a fixed objective with explicit acceptance, loss, and revenue.
-- Saves matplotlib plots to `plots/` (loss curves, gradient norms, objective u-slice plot, and theta-slice contour plot).
+- Saves run artifacts under `runs/<experiment_name>/<timestamp>/`, including `summary.json` and matplotlib plots in `plots/`.
 
 ## Minimization Model
 
@@ -156,9 +156,11 @@ The demo uses a fixed RNG seed in `main.py` to make runs repeatable. The objecti
 - `src/experiments/config.py`: experiment configuration interface.
 - `src/experiments/defaults.py`: default helpers for experiment presets.
 - `src/experiments/helpers.py`: optimization helper routines.
-- `src/experiments/run.py`: experiment runner entry.
+- `src/experiments/run.py`: experiment runner entry (returns results, no I/O).
+- `src/experiments/results.py`: experiment result data structures.
+- `src/experiments/reporters.py`: console/plot/json reporters and run directories.
 - `src/experiments/configs/`: preset configurations (including `custom.py`).
-- `src/experiments/logging.py`: logging helpers for experiment outputs.
-- `src/experiments/visualization.py`: visualization placeholders.
+- `src/experiments/logging.py`: console logging helpers.
+- `src/experiments/visualization.py`: matplotlib plotting utilities.
 - `src/optimization/gradients/`: first-order and zeroth-order Stein estimators.
 - `src/optimization/policy.py`: policy specs (softmax policy used by default in the demo).

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping, Optional, Sequence
 
@@ -11,22 +10,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from data.models import ObjectiveModel, StateVector
+from experiments.results import OptimizationTrace
 from optimization.policy import PolicySpec, policy_u
 
 matplotlib.use("Agg")
-
-
-@dataclass(frozen=True)
-class OptimizationTrace:
-    steps: Sequence[int]
-    u_values: Sequence[float]
-    objective_values: Sequence[float]
-    grad_estimates: Sequence[float]
-    true_gradients: Optional[Sequence[float]] = None
-    theta_grad_norms: Optional[Sequence[float]] = None
-    true_theta_grad_norms: Optional[Sequence[float]] = None
-    step_sizes: Optional[Sequence[float]] = None
-    theta_values: Optional[Sequence[np.ndarray]] = None
 
 
 ESTIMATOR_STYLES = {

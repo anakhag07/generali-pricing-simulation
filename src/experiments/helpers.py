@@ -8,8 +8,8 @@ import numpy as np
 from scipy.optimize import minimize
 
 from data.models import ObjectiveModel, ObjectiveResult, StateVector
-from experiments.logging import log_grad, log_step
-from experiments.visualization import OptimizationTrace
+from experiments.reporters import StepReporter
+from experiments.results import OptimizationTrace
 from optimization.gradients.first_order import stein_first_order_grad
 from optimization.gradients.zeroth_order import stein_zeroth_order_grad
 from optimization.policy import policy_grad_theta, policy_u
@@ -79,6 +79,7 @@ def run_first_order(
     n_grad_samples: int,
     sigma: float,
     log_steps: bool = True,
+    step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     x_list = list(x_samples)
     if not x_list:
@@ -146,9 +147,9 @@ def run_first_order(
         mean_true_grad = float(np.mean(true_grad_values))
         theta_grad_norm = float(np.linalg.norm(grad_theta))
         true_theta_grad_norm = float(np.linalg.norm(grad_theta_true))
-        if log_steps:
-            log_grad("first-order", step, theta_grad_norm)
-            log_step("first-order", step, mean_u, value)
+        if log_steps and step_reporter is not None:
+            step_reporter.log_grad("first-order", step, theta_grad_norm)
+            step_reporter.log_step("first-order", step, mean_u, value)
         steps.append(step)
         u_values.append(mean_u)
         values.append(value)
@@ -183,6 +184,7 @@ def run_zeroth_order(
     n_grad_samples: int,
     sigma: float,
     log_steps: bool = True,
+    step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     x_list = list(x_samples)
     if not x_list:
@@ -250,9 +252,9 @@ def run_zeroth_order(
         mean_true_grad = float(np.mean(true_grad_values))
         theta_grad_norm = float(np.linalg.norm(grad_theta))
         true_theta_grad_norm = float(np.linalg.norm(grad_theta_true))
-        if log_steps:
-            log_grad("zeroth-order", step, theta_grad_norm)
-            log_step("zeroth-order", step, mean_u, value)
+        if log_steps and step_reporter is not None:
+            step_reporter.log_grad("zeroth-order", step, theta_grad_norm)
+            step_reporter.log_step("zeroth-order", step, mean_u, value)
         steps.append(step)
         u_values.append(mean_u)
         values.append(value)

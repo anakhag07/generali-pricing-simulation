@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from experiments.visualization import OptimizationTrace, plot_step_sizes
+from experiments.results import OptimizationTrace
+from experiments.visualization import plot_step_sizes
 
 
 class DummyAxis:

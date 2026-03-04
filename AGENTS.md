@@ -6,6 +6,7 @@ Project context: pricing simulation and optimization demo. Primary entry point i
 
 - Prefer small, focused changes with clear doc updates.
 - Keep the simulation logic deterministic when a seed is set.
+- Include short comments or specs for different functions. 
 
 ## Organization
 

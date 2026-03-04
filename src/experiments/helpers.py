@@ -10,7 +10,6 @@ from scipy.optimize import minimize
 from data.models import ObjectiveModel, ObjectiveResult, StateVector
 from experiments.reporters import StepReporter
 from experiments.results import OptimizationTrace
-from optimization.gradients.first_order import stein_first_order_grad
 from optimization.gradients.zeroth_order import stein_zeroth_order_grad
 from optimization.policy import policy_grad_theta, policy_u
 from optimization.steps import (
@@ -68,7 +67,7 @@ def build_batch_objective_fns(
     return objective_fn, oracle_grad_fn, grad_fn
 
 
-def _run_stein_optimizer(
+def _run_estimated_grad_optimizer(
     theta_start: np.ndarray,
     policy_kind: str,
     x_samples: Sequence[StateVector],
@@ -182,15 +181,9 @@ def run_first_order(
     step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     def grad_estimator(u: float, x: StateVector, rng: np.random.Generator) -> float:
-        return stein_first_order_grad(
-            u,
-            lambda u_val, x_val=x: objective_model.evaluate(x_val, u_val),
-            rng,
-            n_samples=n_grad_samples,
-            sigma=sigma,
-        )
+        return objective_model.grad_u(x, u)
 
-    return _run_stein_optimizer(
+    return _run_estimated_grad_optimizer(
         theta_start=theta_start,
         policy_kind=policy_kind,
         x_samples=x_samples,
@@ -229,7 +222,7 @@ def run_zeroth_order(
             sigma=sigma,
         )
 
-    return _run_stein_optimizer(
+    return _run_estimated_grad_optimizer(
         theta_start=theta_start,
         policy_kind=policy_kind,
         x_samples=x_samples,

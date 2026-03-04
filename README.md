@@ -1,6 +1,6 @@
 # Generali Pricing Simulation
 
-Pricing simulation and optimization demo using Stein gradient estimators.
+Pricing simulation and optimization demo using exact and zeroth-order Stein gradients.
 
 ## Quickstart
 
@@ -42,7 +42,7 @@ If you use a different environment name or tool, update `AGENTS.md` to match you
 
 - Samples synthetic customer states and contract actions.
 - Evaluates a deterministic objective based on acceptance probability and expected loss.
-- Runs first-order and zeroth-order Stein gradient estimators to optimize a pricing action.
+- Runs first-order (exact gradient) and zeroth-order Stein estimators to optimize a pricing action.
 - Runs an L-BFGS-B baseline over policy theta using SciPy for comparison.
 - Runs a fixed objective with explicit acceptance, loss, and revenue.
 - Saves run artifacts under `runs/<experiment_name>/<timestamp>/`, including `summary.json` and matplotlib plots in `plots/`.
@@ -138,7 +138,7 @@ experiment runner / config        -> ExperimentConfig, run_experiment (src/exper
 
 ## Optimization Methods Used
 
-- First-order Stein estimator: uses the explicit gradient to estimate gradients of a smoothed objective.
+- First-order exact gradient: uses the explicit gradient at the current action.
 - Zeroth-order Stein estimator: uses only objective evaluations at perturbed actions.
 - L-BFGS-B baseline: uses SciPy's optimizer to minimize the theta-level objective.
 
@@ -162,5 +162,5 @@ The demo uses a fixed RNG seed in `main.py` to make runs repeatable. The objecti
 - `src/experiments/configs/`: preset configurations (including `custom.py`).
 - `src/experiments/logging.py`: console logging helpers.
 - `src/experiments/visualization.py`: matplotlib plotting utilities.
-- `src/optimization/gradients/`: first-order and zeroth-order Stein estimators.
+- `src/optimization/gradients/`: zeroth-order Stein estimator.
 - `src/optimization/policy.py`: policy specs (softmax policy used by default in the demo).

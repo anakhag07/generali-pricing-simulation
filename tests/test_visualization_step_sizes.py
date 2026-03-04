@@ -59,7 +59,7 @@ def test_plot_step_sizes_uses_log_scale(monkeypatch, tmp_path) -> None:
         steps=[0, 1, 2],
         u_values=[0.0, 0.0, 0.0],
         objective_values=[0.0, 0.0, 0.0],
-        grad_estimates=[0.0, 0.0, 0.0],
+        u_grad_estimates=[0.0, 0.0, 0.0],
         step_sizes=[1e-2, 1e-3, 1e-4],
     )
 

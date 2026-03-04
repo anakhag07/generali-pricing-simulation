@@ -88,8 +88,8 @@ def _run_estimated_grad_optimizer(
     steps: list[int] = []
     u_values: list[float] = []
     values: list[float] = []
-    grad_estimates: list[float] = []
-    true_grads: list[float] = []
+    u_grad_estimates: list[float] = []
+    u_true_grads: list[float] = []
     theta_grad_norms: list[float] = []
     true_theta_grad_norms: list[float] = []
     step_sizes: list[float] = []
@@ -147,8 +147,8 @@ def _run_estimated_grad_optimizer(
         steps.append(step)
         u_values.append(mean_u)
         values.append(value)
-        grad_estimates.append(mean_grad)
-        true_grads.append(mean_true_grad)
+        u_grad_estimates.append(mean_grad)
+        u_true_grads.append(mean_true_grad)
         theta_grad_norms.append(theta_grad_norm)
         true_theta_grad_norms.append(true_theta_grad_norm)
         step_sizes.append(step_now)
@@ -156,8 +156,8 @@ def _run_estimated_grad_optimizer(
         steps=steps,
         u_values=u_values,
         objective_values=values,
-        grad_estimates=grad_estimates,
-        true_gradients=true_grads if true_grads else None,
+        u_grad_estimates=u_grad_estimates,
+        u_true_gradients=u_true_grads if u_true_grads else None,
         theta_grad_norms=theta_grad_norms,
         true_theta_grad_norms=true_theta_grad_norms,
         step_sizes=step_sizes,
@@ -270,8 +270,8 @@ def run_lbfgs_theta(
     steps: list[int] = []
     u_values: list[float] = []
     values: list[float] = []
-    grad_estimates: list[float] = []
-    true_grads: list[float] = []
+    u_grad_estimates: list[float] = []
+    u_true_grads: list[float] = []
     theta_grad_norms: list[float] = []
     true_theta_grad_norms: list[float] = []
     theta_values: list[np.ndarray] = []
@@ -290,8 +290,8 @@ def run_lbfgs_theta(
         steps.append(len(steps))
         u_values.append(mean_u)
         values.append(mean_value)
-        grad_estimates.append(mean_grad_u)
-        true_grads.append(mean_grad_u)
+        u_grad_estimates.append(mean_grad_u)
+        u_true_grads.append(mean_grad_u)
         theta_grad_norms.append(theta_grad_norm)
         true_theta_grad_norms.append(theta_grad_norm)
         theta_values.append(theta_arr.copy())
@@ -318,8 +318,8 @@ def run_lbfgs_theta(
         steps=steps,
         u_values=u_values,
         objective_values=values,
-        grad_estimates=grad_estimates,
-        true_gradients=true_grads,
+        u_grad_estimates=u_grad_estimates,
+        u_true_gradients=u_true_grads,
         theta_grad_norms=theta_grad_norms,
         true_theta_grad_norms=true_theta_grad_norms,
         theta_values=theta_values,

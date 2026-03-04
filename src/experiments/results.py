@@ -16,8 +16,8 @@ class OptimizationTrace:
     steps: Sequence[int]
     u_values: Sequence[float]
     objective_values: Sequence[float]
-    grad_estimates: Sequence[float]
-    true_gradients: Optional[Sequence[float]] = None
+    u_grad_estimates: Sequence[float]
+    u_true_gradients: Optional[Sequence[float]] = None
     theta_grad_norms: Optional[Sequence[float]] = None
     true_theta_grad_norms: Optional[Sequence[float]] = None
     step_sizes: Optional[Sequence[float]] = None

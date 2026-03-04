@@ -9,7 +9,12 @@ import numpy as np
 
 from data.models import Customer, default_rng
 from experiments.config import ExperimentConfig
-from experiments.helpers import run_first_order, run_lbfgs_theta, run_zeroth_order
+from experiments.helpers import (
+    resolve_true_grad_u_fn,
+    run_first_order,
+    run_lbfgs_theta,
+    run_zeroth_order,
+)
 from experiments.reporters import StepReporter
 from experiments.results import EstimatorResult, ExperimentResult
 from optimization.policy import policy_u
@@ -37,6 +42,7 @@ def run_experiment(
     rng = default_rng(config.seed)
     customers = [Customer.sample(rng, state_dim=config.state_dim) for _ in range(config.n_samples)]
     x_samples = [customer.x for customer in customers]
+    true_grad_u_fn = resolve_true_grad_u_fn(objective_model, config.correctness)
 
     theta_initial = policy_spec.theta
     u_initials = [policy_u(theta_initial, x, kind=policy_spec.kind) for x in x_samples]
@@ -65,6 +71,8 @@ def run_experiment(
             config.step_size,
             config.n_grad_samples,
             config.sigma,
+            true_grad_u_fn=true_grad_u_fn,
+            grad_norm_tol=config.grad_norm_tol,
             log_steps=config.log_steps,
             step_reporter=step_reporter,
         )
@@ -96,6 +104,8 @@ def run_experiment(
             config.step_size,
             config.n_grad_samples,
             config.sigma,
+            true_grad_u_fn=true_grad_u_fn,
+            grad_norm_tol=config.grad_norm_tol,
             log_steps=config.log_steps,
             step_reporter=step_reporter,
         )
@@ -122,6 +132,8 @@ def run_experiment(
             x_samples,
             objective_model,
             config.lbfgs_maxiter,
+            true_grad_u_fn=true_grad_u_fn,
+            grad_norm_tol=config.grad_norm_tol,
         )
         time_lbfgs = time.perf_counter() - start_lbfgs
         u_lbfgs_values = [policy_u(theta_lbfgs, x, kind=policy_spec.kind) for x in x_samples]

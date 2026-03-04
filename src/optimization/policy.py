@@ -33,6 +33,25 @@ def phi(x: StateVector) -> np.ndarray:
     return np.concatenate(([1.0], x.as_array().astype(float)))
 
 
+def phi_batch(x_array: np.ndarray) -> np.ndarray:
+    x_arr = np.asarray(x_array, dtype=float)
+    if x_arr.ndim != 2:
+        raise ValueError("x_array must be a 2D array.")
+    ones = np.ones((x_arr.shape[0], 1), dtype=float)
+    return np.concatenate([ones, x_arr], axis=1)
+
+
+def _sigmoid_batch(z: np.ndarray) -> np.ndarray:
+    z_arr = np.asarray(z, dtype=float)
+    out = np.empty_like(z_arr, dtype=float)
+    positive = z_arr >= 0.0
+    exp_neg = np.exp(-z_arr[positive])
+    out[positive] = 1.0 / (1.0 + exp_neg)
+    exp_pos = np.exp(z_arr[~positive])
+    out[~positive] = exp_pos / (1.0 + exp_pos)
+    return out
+
+
 def policy_u_constant(theta: np.ndarray, x: StateVector) -> float:
     """Return the pricing action for a constant policy."""
     if theta.size < 1:
@@ -62,6 +81,33 @@ def policy_u(theta: np.ndarray, x: StateVector, kind: str = POLICY_CONSTANT) -> 
         return policy_u_linear(theta, x)
     if kind == POLICY_SOFTMAX:
         return policy_u_softmax(theta, x)
+    raise ValueError(f"Policy kind must be one of {POLICY_KINDS}.")
+
+
+def policy_u_batch(
+    theta: np.ndarray,
+    x_array: np.ndarray,
+    kind: str = POLICY_CONSTANT,
+    phi_array: np.ndarray | None = None,
+) -> np.ndarray:
+    theta_arr = np.asarray(theta, dtype=float)
+    x_arr = np.asarray(x_array, dtype=float)
+    if x_arr.ndim != 2:
+        raise ValueError("x_array must be a 2D array.")
+    if kind == POLICY_CONSTANT:
+        if theta_arr.size < 1:
+            raise ValueError("Policy theta must have at least one element.")
+        return np.full(x_arr.shape[0], float(theta_arr[0]), dtype=float)
+
+    features = phi_array if phi_array is not None else phi_batch(x_arr)
+    if theta_arr.size < features.shape[1]:
+        raise ValueError("Policy theta must match feature size for linear/softmax policies.")
+    z = features @ theta_arr[: features.shape[1]]
+    if kind == POLICY_LINEAR:
+        return z.astype(float)
+    if kind == POLICY_SOFTMAX:
+        sigma = _sigmoid_batch(z)
+        return (0.5 + sigma).astype(float)
     raise ValueError(f"Policy kind must be one of {POLICY_KINDS}.")
 
 

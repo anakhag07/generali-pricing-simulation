@@ -113,11 +113,28 @@ Step-size behavior is controlled by `step_rule`, which must be explicitly set to
 `"constant"` and the initial step size for Armijo backtracking. When `step_rule` is not
 `"constant"`, the demo also saves a `step_sizes.png` plot of the per-iteration step sizes.
 
+Set `grad_norm_tol` to enable early stopping based on the theta gradient norm. When
+provided, first- and zeroth-order optimizers stop when the gradient norm falls below the
+threshold; the L-BFGS-B baseline passes this value through as the `gtol` option.
+
 Use `enabled_estimators` in the config to control which optimization methods run (and
 which curves/paths appear in plots and logs). For example:
 
 ```python
 enabled_estimators=("zeroth_order", "first_order", "lbfgs")
+```
+
+Correctness settings live on `ExperimentConfig.correctness` and control how the
+"true" u-gradient and theta-gradient norms are computed for plots/logs. For example:
+
+```python
+from experiments.config import CorrectnessSpec
+
+correctness=CorrectnessSpec(
+    gradient_source="numdiff",
+    numdiff_method="central",
+    numdiff_step=1e-4,
+)
 ```
 
 ## Model-to-Code Mapping

@@ -17,6 +17,17 @@ def _logistic(z: float) -> float:
     return float(exp_pos / (1.0 + exp_pos))
 
 
+def _logistic_batch(z: np.ndarray) -> np.ndarray:
+    z_arr = np.asarray(z, dtype=float)
+    out = np.empty_like(z_arr, dtype=float)
+    positive = z_arr >= 0.0
+    exp_neg = np.exp(-z_arr[positive])
+    out[positive] = 1.0 / (1.0 + exp_neg)
+    exp_pos = np.exp(z_arr[~positive])
+    out[~positive] = exp_pos / (1.0 + exp_pos)
+    return out
+
+
 def _beta_dot_x(beta: np.ndarray, x: StateVector) -> float:
     features = x.as_array().astype(float)
     beta_arr = np.asarray(beta, dtype=float)
@@ -120,3 +131,49 @@ class FixedRegressionObjective:
         value = self.value(x, u)
         grad_u = self.grad_u(x, u)
         return ObjectiveResult(value=value, grad_u=grad_u)
+
+    def prepare_batch(self, x_array: np.ndarray) -> "FixedRegressionBatch":
+        x_arr = np.asarray(x_array, dtype=float)
+        if x_arr.ndim != 2:
+            raise ValueError("x_array must be a 2D array.")
+        beta_1 = self.acceptance.beta_1
+        beta_3 = self.loss.beta_3
+        beta_1_x = x_arr @ beta_1[: x_arr.shape[1]]
+        beta_3_x = x_arr @ beta_3[: x_arr.shape[1]]
+        return FixedRegressionBatch(
+            beta_1_x=beta_1_x,
+            beta_3_x=beta_3_x,
+            beta_2=self.acceptance.beta_2,
+            beta_4=self.revenue.beta_4,
+        )
+
+    def value_batch(self, x_array: np.ndarray, u_array: np.ndarray) -> np.ndarray:
+        batch = self.prepare_batch(x_array)
+        return batch.value(u_array)
+
+    def grad_u_batch(self, x_array: np.ndarray, u_array: np.ndarray) -> np.ndarray:
+        batch = self.prepare_batch(x_array)
+        return batch.grad_u(u_array)
+
+
+@dataclass(frozen=True)
+class FixedRegressionBatch:
+    beta_1_x: np.ndarray
+    beta_3_x: np.ndarray
+    beta_2: float
+    beta_4: float
+
+    def value(self, u_array: np.ndarray) -> np.ndarray:
+        u_arr = np.asarray(u_array, dtype=float)
+        logits = self.beta_1_x + self.beta_2 * u_arr
+        acceptance = _logistic_batch(logits)
+        revenue = self.beta_4 * u_arr
+        return acceptance * (self.beta_3_x - revenue)
+
+    def grad_u(self, u_array: np.ndarray) -> np.ndarray:
+        u_arr = np.asarray(u_array, dtype=float)
+        logits = self.beta_1_x + self.beta_2 * u_arr
+        acceptance = _logistic_batch(logits)
+        d_acceptance_du = acceptance * (1.0 - acceptance) * self.beta_2
+        revenue = self.beta_4 * u_arr
+        return d_acceptance_du * (self.beta_3_x - revenue) - acceptance * self.beta_4

@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from data.fixed_objective import FixedRegressionObjective
-from experiments.config import ExperimentConfig
+from experiments.config import CorrectnessSpec, ExperimentConfig
 from optimization.policy import POLICY_SOFTMAX, PolicySpec
 
 STATE_DIM = 2
@@ -27,13 +27,18 @@ CONFIG = ExperimentConfig(
     policy_spec=PolicySpec(theta=POLICY_THETA, kind=POLICY_SOFTMAX),
     n_samples=10,
     step_rule="armijo",
-    t_steps=1000,
+    t_steps=5000,
     step_size=0.01,
     sigma=0.1,
-    n_grad_samples=10,
+    n_grad_samples=100,
     lbfgs_maxiter=100000,
     plot=True,
     plot_dir="plots",
+    correctness=CorrectnessSpec(
+        gradient_source="numdiff",
+        numdiff_method="central",
+        numdiff_step=1e-4,
+    ),
 
     enabled_estimators=("zeroth_order", "first_order", "lbfgs"),
 

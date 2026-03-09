@@ -52,7 +52,7 @@ def test_state_dim_requires_matching_objective() -> None:
     assert config.state_dim == state_dim
 
 
-def test_log_steps_default_and_override() -> None:
+def test_verbose_default_and_override() -> None:
     objective_model = FixedRegressionObjective.from_parameters(
         beta_1=[0.1],
         beta_2=-0.5,
@@ -66,17 +66,17 @@ def test_log_steps_default_and_override() -> None:
         n_samples=5,
         step_rule="constant",
     )
-    assert config_default.log_steps is True
+    assert config_default.verbose is False
 
-    config_quiet = ExperimentConfig(
+    config_verbose = ExperimentConfig(
         state_dim=1,
         objective_model=objective_model,
         policy_spec=default_policy_spec(1),
         n_samples=5,
         step_rule="constant",
-        log_steps=False,
+        verbose=True,
     )
-    assert config_quiet.log_steps is False
+    assert config_verbose.verbose is True
 
 
 def test_enabled_estimators_validation() -> None:

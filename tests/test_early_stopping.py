@@ -34,7 +34,6 @@ def test_first_order_early_stops_on_grad_norm() -> None:
         n_grad_samples=2,
         sigma=0.1,
         grad_norm_tol=1e6,
-        log_steps=False,
     )
     assert len(trace.steps) == 0
     assert trace.theta_values is not None
@@ -58,7 +57,6 @@ def test_zeroth_order_early_stops_on_grad_norm() -> None:
         n_grad_samples=2,
         sigma=0.1,
         grad_norm_tol=1e6,
-        log_steps=False,
     )
     assert len(trace.steps) == 0
     assert trace.theta_values is not None

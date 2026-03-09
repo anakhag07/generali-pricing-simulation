@@ -33,7 +33,6 @@ def test_run_first_order_records_theta_values() -> None:
         n_grad_samples=2,
         sigma=0.1,
         true_grad_u_fn=objective.grad_u,
-        log_steps=False,
     )
     assert trace.theta_values is not None
     assert len(trace.theta_values) == 4
@@ -60,7 +59,6 @@ def test_run_zeroth_order_records_theta_values() -> None:
         n_grad_samples=2,
         sigma=0.1,
         true_grad_u_fn=objective.grad_u,
-        log_steps=False,
     )
     assert trace.theta_values is not None
     assert len(trace.theta_values) == 4

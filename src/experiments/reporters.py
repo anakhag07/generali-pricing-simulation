@@ -7,13 +7,13 @@ from datetime import datetime
 import json
 from pathlib import Path
 import re
-from typing import Protocol, runtime_checkable, Sequence
+from typing import IO, Protocol, runtime_checkable, Sequence
 
 import numpy as np
 
 from data.fixed_objective import FixedRegressionObjective
 from experiments.config import ExperimentConfig
-from experiments.logging import log_grad, log_step, log_summary
+from experiments.logging import log_step, log_summary
 from experiments.results import ExperimentResult
 from experiments.visualization import (
     ESTIMATOR_STYLES,
@@ -64,10 +64,17 @@ def create_run_context(
 
 @runtime_checkable
 class StepReporter(Protocol):
-    def log_step(self, method: str, step: int, u: float, value: float) -> None:
-        ...
+    """Protocol for per-step metric logging during optimization."""
 
-    def log_grad(self, method: str, step: int, grad: float) -> None:
+    def log_step(
+        self,
+        method: str,
+        step: int,
+        u: float,
+        value: float,
+        grad_norm: float | None = None,
+        step_size: float | None = None,
+    ) -> None:
         ...
 
 
@@ -92,29 +99,43 @@ class ReporterStack:
         for reporter in self._reporters:
             reporter.on_end(run_context, result)
 
-    def log_step(self, method: str, step: int, u: float, value: float) -> None:
+    def log_step(
+        self,
+        method: str,
+        step: int,
+        u: float,
+        value: float,
+        grad_norm: float | None = None,
+        step_size: float | None = None,
+    ) -> None:
         for reporter in self._reporters:
             if isinstance(reporter, StepReporter):
-                reporter.log_step(method, step, u, value)
-
-    def log_grad(self, method: str, step: int, grad: float) -> None:
-        for reporter in self._reporters:
-            if isinstance(reporter, StepReporter):
-                reporter.log_grad(method, step, grad)
+                reporter.log_step(method, step, u, value, grad_norm, step_size)
 
 
 class ConsoleReporter:
+    """Reporter that prints to terminal. Verbose mode controls per-step output."""
+
+    def __init__(self, verbose: bool = False) -> None:
+        self._verbose = verbose
+
     def on_start(self, run_context: RunContext, config: ExperimentConfig) -> None:
         print(f"\n=== Running experiment: {run_context.experiment_name} ===")
 
     def on_end(self, run_context: RunContext, result: ExperimentResult) -> None:
         log_summary(result)
 
-    def log_step(self, method: str, step: int, u: float, value: float) -> None:
-        log_step(method, step, u, value)
-
-    def log_grad(self, method: str, step: int, grad: float) -> None:
-        log_grad(method, step, grad)
+    def log_step(
+        self,
+        method: str,
+        step: int,
+        u: float,
+        value: float,
+        grad_norm: float | None = None,
+        step_size: float | None = None,
+    ) -> None:
+        if self._verbose:
+            log_step(method, step, u, value, grad_norm, step_size)
 
 
 class JsonReporter:
@@ -203,6 +224,39 @@ class PlotReporter:
             )
 
 
+class FileStepLogger:
+    """Writes per-step metrics to a CSV file in the run directory."""
+
+    def __init__(self) -> None:
+        self._file: IO[str] | None = None
+        self._path: Path | None = None
+
+    def on_start(self, run_context: RunContext, config: ExperimentConfig) -> None:
+        self._path = run_context.run_dir / "steps.csv"
+        self._file = self._path.open("w", encoding="utf-8")
+        self._file.write("method,step,u,value,grad_norm,step_size\n")  # type: ignore[union-attr]
+
+    def on_end(self, run_context: RunContext, result: ExperimentResult) -> None:
+        if self._file is not None:
+            self._file.close()
+            self._file = None
+
+    def log_step(
+        self,
+        method: str,
+        step: int,
+        u: float,
+        value: float,
+        grad_norm: float | None = None,
+        step_size: float | None = None,
+    ) -> None:
+        if self._file is None:
+            return
+        grad_str = f"{grad_norm:.6f}" if grad_norm is not None else ""
+        step_str = f"{step_size:.6f}" if step_size is not None else ""
+        self._file.write(f"{method},{step},{u:.6f},{value:.6f},{grad_str},{step_str}\n")
+
+
 def _u_star_for_plot(
     objective_model: object,
     u_star: float | None,
@@ -261,6 +315,7 @@ def _as_list(values: object) -> list[float]:
 
 __all__ = [
     "ConsoleReporter",
+    "FileStepLogger",
     "JsonReporter",
     "PlotReporter",
     "Reporter",

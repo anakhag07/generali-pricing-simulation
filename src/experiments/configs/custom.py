@@ -29,7 +29,7 @@ CONFIG = ExperimentConfig(
     policy_spec=PolicySpec(theta=POLICY_THETA, kind=POLICY_SOFTMAX),
     n_samples=100,
     step_rule="armijo",
-    t_steps=100000,
+    t_steps=1000,
     step_size=0.01,
     sigma=0.1,
     n_grad_samples=10,
@@ -44,5 +44,5 @@ CONFIG = ExperimentConfig(
 
     enabled_estimators=("zeroth_order", "first_order", "lbfgs"),
 
-    log_steps=False,
+    verbose=False,
 )

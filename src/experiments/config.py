@@ -57,7 +57,7 @@ class ExperimentConfig:
     n_grad_samples: int = 64
     lbfgs_maxiter: int = 200
     lbfgs_seed: Optional[int] = None
-    log_steps: bool = True
+    verbose: bool = False
     plot: bool = True
     plot_dir: str = "plots"
     enabled_estimators: tuple[str, ...] = ("first_order", "zeroth_order", "lbfgs")
@@ -147,7 +147,7 @@ class ExperimentConfig:
             "n_grad_samples": int(self.n_grad_samples),
             "lbfgs_maxiter": int(self.lbfgs_maxiter),
             "lbfgs_seed": int(self.lbfgs_seed) if self.lbfgs_seed is not None else None,
-            "log_steps": bool(self.log_steps),
+            "verbose": bool(self.verbose),
             "plot": bool(self.plot),
             "plot_dir": self.plot_dir,
             "enabled_estimators": list(self.enabled_estimators),

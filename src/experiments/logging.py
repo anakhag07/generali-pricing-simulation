@@ -11,12 +11,21 @@ from data.planted_logistic import PlantedLogisticObjective
 from experiments.results import ExperimentResult
 
 
-def log_step(method: str, step: int, u: float, value: float) -> None:
-    print(f"[{method}] step={step} u={u:.4f} value={value:.4f}")
-
-
-def log_grad(method: str, step: int, grad: float) -> None:
-    print(f"[{method}] step={step} grad={grad:.4f}")
+def log_step(
+    method: str,
+    step: int,
+    u: float,
+    value: float,
+    grad_norm: float | None = None,
+    step_size: float | None = None,
+) -> None:
+    """Print a single optimization step to console."""
+    parts = [f"[{method}] step={step}", f"u={u:.4f}", f"value={value:.4f}"]
+    if grad_norm is not None:
+        parts.append(f"grad_norm={grad_norm:.4f}")
+    if step_size is not None:
+        parts.append(f"step_size={step_size:.6f}")
+    print(" ".join(parts))
 
 
 def log_summary(result: ExperimentResult) -> None:

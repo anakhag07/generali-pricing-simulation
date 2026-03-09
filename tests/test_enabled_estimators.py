@@ -24,7 +24,6 @@ def test_run_experiment_single_estimator() -> None:
         step_size=0.01,
         n_grad_samples=1,
         plot=False,
-        log_steps=False,
         enabled_estimators=("first_order",),
     )
     result = run_experiment(config)

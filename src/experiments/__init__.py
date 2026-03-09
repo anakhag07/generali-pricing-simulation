@@ -5,6 +5,7 @@ from experiments.configs import get_config, list_configs
 from experiments.defaults import default_policy_spec
 from experiments.reporters import (
     ConsoleReporter,
+    FileStepLogger,
     JsonReporter,
     PlotReporter,
     ReporterStack,
@@ -24,6 +25,7 @@ __all__ = [
     "ExperimentResult",
     "OptimizationTrace",
     "ConsoleReporter",
+    "FileStepLogger",
     "JsonReporter",
     "PlotReporter",
     "ReporterStack",

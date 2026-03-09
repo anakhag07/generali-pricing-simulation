@@ -190,7 +190,6 @@ def _run_estimated_grad_optimizer(
     method_label: str,
     grad_kind: Literal["first_order", "zeroth_order"],
     grad_norm_tol: float | None = None,
-    log_steps: bool = True,
     step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     """Run theta updates using estimated u-gradients and optional true gradients."""
@@ -298,9 +297,10 @@ def _run_estimated_grad_optimizer(
         mean_true_grad = (
             float(np.mean(true_grad_values)) if true_grad_values is not None else None
         )
-        if log_steps and step_reporter is not None:
-            step_reporter.log_grad(method_label, step, theta_grad_norm)
-            step_reporter.log_step(method_label, step, mean_u, value)
+        if step_reporter is not None:
+            step_reporter.log_step(
+                method_label, step, mean_u, value, theta_grad_norm, step_now
+            )
         steps.append(step)
         u_values.append(mean_u)
         values.append(value)
@@ -338,7 +338,6 @@ def run_first_order(
     sigma: float,
     true_grad_u_fn: TrueGradFn | None = None,
     grad_norm_tol: float | None = None,
-    log_steps: bool = True,
     step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     """Optimize theta using exact u-gradients at the current action."""
@@ -357,7 +356,6 @@ def run_first_order(
         method_label="first-order",
         grad_kind="first_order",
         grad_norm_tol=grad_norm_tol,
-        log_steps=log_steps,
         step_reporter=step_reporter,
     )
 
@@ -375,7 +373,6 @@ def run_zeroth_order(
     sigma: float,
     true_grad_u_fn: TrueGradFn | None = None,
     grad_norm_tol: float | None = None,
-    log_steps: bool = True,
     step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     """Optimize theta using zeroth-order Stein u-gradient estimates."""
@@ -394,7 +391,6 @@ def run_zeroth_order(
         method_label="zeroth-order",
         grad_kind="zeroth_order",
         grad_norm_tol=grad_norm_tol,
-        log_steps=log_steps,
         step_reporter=step_reporter,
     )
 
@@ -407,6 +403,7 @@ def run_lbfgs_theta(
     maxiter: int,
     true_grad_u_fn: TrueGradFn | None = None,
     grad_norm_tol: float | None = None,
+    step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, float, OptimizationTrace]:
     """Run L-BFGS-B on theta and record trace diagnostics."""
     x_list = list(x_samples)
@@ -503,7 +500,8 @@ def run_lbfgs_theta(
             true_theta_grad_norm = float(np.linalg.norm(grad_theta_true))
         else:
             true_theta_grad_norm = None
-        steps.append(len(steps))
+        current_step = len(steps)
+        steps.append(current_step)
         u_values.append(mean_u)
         values.append(mean_value)
         u_grad_estimates.append(mean_grad_u)
@@ -513,6 +511,9 @@ def run_lbfgs_theta(
         if true_theta_grad_norm is not None:
             true_theta_grad_norms.append(true_theta_grad_norm)
         theta_values.append(theta_arr.copy())
+        # Log step metrics (L-BFGS doesn't have user-controlled step_size)
+        if step_reporter is not None:
+            step_reporter.log_step("lbfgs", current_step, mean_u, mean_value, theta_grad_norm)
 
     record(theta0)
 

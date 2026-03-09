@@ -73,7 +73,6 @@ def run_experiment(
             config.sigma,
             true_grad_u_fn=true_grad_u_fn,
             grad_norm_tol=config.grad_norm_tol,
-            log_steps=config.log_steps,
             step_reporter=step_reporter,
         )
         time_first = time.perf_counter() - start_first
@@ -106,7 +105,6 @@ def run_experiment(
             config.sigma,
             true_grad_u_fn=true_grad_u_fn,
             grad_norm_tol=config.grad_norm_tol,
-            log_steps=config.log_steps,
             step_reporter=step_reporter,
         )
         time_zero = time.perf_counter() - start_zero
@@ -134,6 +132,7 @@ def run_experiment(
             config.lbfgs_maxiter,
             true_grad_u_fn=true_grad_u_fn,
             grad_norm_tol=config.grad_norm_tol,
+            step_reporter=step_reporter,
         )
         time_lbfgs = time.perf_counter() - start_lbfgs
         u_lbfgs_values = [policy_u(theta_lbfgs, x, kind=policy_spec.kind) for x in x_samples]

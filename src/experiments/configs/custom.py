@@ -44,5 +44,5 @@ CONFIG = ExperimentConfig(
 
     enabled_estimators=("zeroth_order", "first_order", "lbfgs"),
 
-    log_steps=False,
+    verbose=False,
 )

@@ -11,7 +11,17 @@ Project context: pricing simulation and optimization demo. Primary entry point i
 
 ## Organization
 
-Before adding code, understand the organization of the codebase and see if the area where you are planning to add code makes the most sense. Create a new file or folder if this makes organizational sense. Ask clarifying questions if you are unsure where to add code. Take notes on new file organization when edits are made in AGENTS.md. 
+Before adding code, understand the organization of the codebase and see if the area where you are planning to add code makes the most sense. Create a new file or folder if this makes organizational sense. Ask clarifying questions if you are unsure where to add code. Take notes on new file organization when edits are made in AGENTS.md.
+
+### Key Components
+
+- **`src/experiments/reporters.py`**: Contains reporting infrastructure including:
+  - `StepReporter` protocol for per-step metric logging
+  - `FileStepLogger`: Writes per-step metrics to `steps.csv` in the run directory (always active)
+  - `ConsoleReporter`: Prints to terminal; per-step output controlled by `verbose` config flag
+  - `JsonReporter`, `PlotReporter`: End-of-run summary and visualization
+
+- **`src/experiments/config.py`**: `ExperimentConfig` dataclass with `verbose: bool` field (default `False`) to control terminal output of per-step metrics. 
 
 ## Testing Strategy
 

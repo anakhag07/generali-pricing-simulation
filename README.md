@@ -1,6 +1,6 @@
 # Generali Pricing Simulation
 
-Pricing simulation and optimization demo using Stein gradient estimators.
+Pricing simulation and optimization demo using exact and zeroth-order Stein gradients.
 
 ## Quickstart
 
@@ -42,10 +42,10 @@ If you use a different environment name or tool, update `AGENTS.md` to match you
 
 - Samples synthetic customer states and contract actions.
 - Evaluates a deterministic objective based on acceptance probability and expected loss.
-- Runs first-order and zeroth-order Stein gradient estimators to optimize a pricing action.
+- Runs first-order (exact gradient) and zeroth-order Stein estimators to optimize a pricing action.
 - Runs an L-BFGS-B baseline over policy theta using SciPy for comparison.
 - Runs a fixed objective with explicit acceptance, loss, and revenue.
-- Saves matplotlib plots to `plots/` (loss curves, gradient norms, objective u-slice plot, and theta-slice contour plot).
+- Saves run artifacts under `runs/<experiment_name>/<timestamp>/`, including `summary.json` and matplotlib plots in `plots/`.
 
 ## Minimization Model
 
@@ -113,11 +113,28 @@ Step-size behavior is controlled by `step_rule`, which must be explicitly set to
 `"constant"` and the initial step size for Armijo backtracking. When `step_rule` is not
 `"constant"`, the demo also saves a `step_sizes.png` plot of the per-iteration step sizes.
 
+Set `grad_norm_tol` to enable early stopping based on the theta gradient norm. When
+provided, first- and zeroth-order optimizers stop when the gradient norm falls below the
+threshold; the L-BFGS-B baseline passes this value through as the `gtol` option.
+
 Use `enabled_estimators` in the config to control which optimization methods run (and
 which curves/paths appear in plots and logs). For example:
 
 ```python
 enabled_estimators=("zeroth_order", "first_order", "lbfgs")
+```
+
+Correctness settings live on `ExperimentConfig.correctness` and control how the
+"true" u-gradient and theta-gradient norms are computed for plots/logs. For example:
+
+```python
+from experiments.config import CorrectnessSpec
+
+correctness=CorrectnessSpec(
+    gradient_source="numdiff",
+    numdiff_method="central",
+    numdiff_step=1e-4,
+)
 ```
 
 ## Model-to-Code Mapping
@@ -138,7 +155,7 @@ experiment runner / config        -> ExperimentConfig, run_experiment (src/exper
 
 ## Optimization Methods Used
 
-- First-order Stein estimator: uses the explicit gradient to estimate gradients of a smoothed objective.
+- First-order exact gradient: uses the explicit gradient at the current action.
 - Zeroth-order Stein estimator: uses only objective evaluations at perturbed actions.
 - L-BFGS-B baseline: uses SciPy's optimizer to minimize the theta-level objective.
 
@@ -156,9 +173,11 @@ The demo uses a fixed RNG seed in `main.py` to make runs repeatable. The objecti
 - `src/experiments/config.py`: experiment configuration interface.
 - `src/experiments/defaults.py`: default helpers for experiment presets.
 - `src/experiments/helpers.py`: optimization helper routines.
-- `src/experiments/run.py`: experiment runner entry.
+- `src/experiments/run.py`: experiment runner entry (returns results, no I/O).
+- `src/experiments/results.py`: experiment result data structures.
+- `src/experiments/reporters.py`: console/plot/json reporters and run directories.
 - `src/experiments/configs/`: preset configurations (including `custom.py`).
-- `src/experiments/logging.py`: logging helpers for experiment outputs.
-- `src/experiments/visualization.py`: visualization placeholders.
-- `src/optimization/gradients/`: first-order and zeroth-order Stein estimators.
+- `src/experiments/logging.py`: console logging helpers.
+- `src/experiments/visualization.py`: matplotlib plotting utilities.
+- `src/optimization/gradients/`: zeroth-order Stein estimator.
 - `src/optimization/policy.py`: policy specs (softmax policy used by default in the demo).

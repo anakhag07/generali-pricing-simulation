@@ -6,10 +6,12 @@ Project context: pricing simulation and optimization demo. Primary entry point i
 
 - Prefer small, focused changes with clear doc updates.
 - Keep the simulation logic deterministic when a seed is set.
+- Include short comments or specs for different functions. 
+- Prefer vectorized or cached computations when they preserve existing logic.
 
 ## Organization
 
-Before adding code, understand the organization of the codebase and see if the area where you are planning to add code makes the most sense. Create a new file or folder if this makes organizational sense. Ask clarifying questions if you are unsure where to add code. 
+Before adding code, understand the organization of the codebase and see if the area where you are planning to add code makes the most sense. Create a new file or folder if this makes organizational sense. Ask clarifying questions if you are unsure where to add code. Take notes on new file organization when edits are made in AGENTS.md. 
 
 ## Testing Strategy
 

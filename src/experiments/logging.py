@@ -2,20 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Mapping, Optional, Protocol
+from typing import Optional
 
 import numpy as np
 
 from data.fixed_objective import FixedRegressionObjective
 from data.planted_logistic import PlantedLogisticObjective
-from optimization.policy import PolicySpec
-
-
-class _EstimatorResult(Protocol):
-    theta: object
-    u: float
-    value: float
-    time: float
+from experiments.results import ExperimentResult
 
 
 def log_step(method: str, step: int, u: float, value: float) -> None:
@@ -26,22 +19,17 @@ def log_grad(method: str, step: int, grad: float) -> None:
     print(f"[{method}] step={step} grad={grad:.4f}")
 
 
-def log_summary(
-    initial_value: float,
-    results: Mapping[str, _EstimatorResult],
-    objective_model: object,
-    policy_spec: PolicySpec,
-    u_star: Optional[float],
-    value_at_u_star: Optional[float],
-    t_steps: int,
-    n_samples: int,
-    step_size: float,
-    step_rule: str,
-) -> None:
+def log_summary(result: ExperimentResult) -> None:
     def format_array(values: object, precision: int = 3) -> str:
         arr = np.asarray(values, dtype=float)
         formatted = ", ".join(f"{val:.{precision}f}" for val in arr)
         return f"[{formatted}]"
+
+    config = result.config
+    objective_model = config.objective_model
+    policy_spec = config.policy_spec
+    u_star: Optional[float] = result.u_star
+    value_at_u_star: Optional[float] = result.value_at_u_star
 
     if isinstance(objective_model, FixedRegressionObjective):
         beta_1 = format_array(objective_model.acceptance.beta_1)
@@ -70,10 +58,10 @@ def log_summary(
 
     print(
         "Run: "
-        f"steps={t_steps}, n_samples={n_samples}, step_size={step_size:.4f}, "
-        f"step_rule={step_rule}"
+        f"steps={config.t_steps}, n_samples={config.n_samples}, step_size={config.step_size:.4f}, "
+        f"step_rule={config.step_rule}"
     )
-    print(f"Initial objective value: {initial_value:.4f}")
+    print(f"Initial objective value: {result.initial_value:.4f}")
     u_star_value = float(u_star) if u_star is not None else None
     value_at_u_star_value = (
         float(value_at_u_star) if value_at_u_star is not None else None
@@ -90,32 +78,33 @@ def log_summary(
         "zeroth_order": "zeroth-order",
         "lbfgs": "L-BFGS",
     }
-    ordered = [name for name in order if name in results]
+    ordered = [name for name in order if name in result.results]
     if ordered:
         final_u = ", ".join(
-            f"{labels[name]}={float(results[name].u):.4f}" for name in ordered
+            f"{labels[name]}={float(result.results[name].u):.4f}" for name in ordered
         )
         final_value = ", ".join(
-            f"{labels[name]}={float(results[name].value):.4f}" for name in ordered
+            f"{labels[name]}={float(result.results[name].value):.4f}" for name in ordered
         )
         print(f"Final u: {final_u}")
         print(f"Final objective: {final_value}")
         if u_star_value is not None:
             u_gap = ", ".join(
-                f"{labels[name]}={abs(results[name].u - u_star_value):.4f}" for name in ordered
+                f"{labels[name]}={abs(result.results[name].u - u_star_value):.4f}"
+                for name in ordered
             )
             print(f"|u - u*|: {u_gap}")
             if value_at_u_star_value is not None:
                 value_gap = ", ".join(
-                    f"{labels[name]}={results[name].value - value_at_u_star_value:.4f}"
+                    f"{labels[name]}={result.results[name].value - value_at_u_star_value:.4f}"
                     for name in ordered
                 )
                 print(f"Objective gap: {value_gap}")
         print(f"Initial theta: {format_array(policy_spec.theta)}")
         for name in ordered:
-            theta = results[name].theta
+            theta = result.results[name].theta
             print(f"Final theta ({labels[name]}): {format_array(theta)}")
         print("=== Runtime (s) ===")
         for name in ordered:
-            runtime = float(results[name].time)
+            runtime = float(result.results[name].time)
             print(f"{labels[name]}: {runtime:.4f}")

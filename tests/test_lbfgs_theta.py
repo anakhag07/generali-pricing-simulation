@@ -34,6 +34,7 @@ def test_run_lbfgs_theta_reduces_objective() -> None:
         x_samples,
         objective_model,
         maxiter=50,
+        true_grad_u_fn=objective_model.grad_u,
     )
 
     assert theta_lbfgs.shape == theta_start.shape

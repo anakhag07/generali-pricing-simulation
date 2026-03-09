@@ -6,8 +6,11 @@ from experiments.run import run_experiment
 
 def test_run_experiment_baseline_test() -> None:
     config = get_config("baseline_test")
-    value, u_first, u_zero, u_lbfgs = run_experiment(config)
-    assert isinstance(value, float)
-    assert isinstance(u_first, float)
-    assert isinstance(u_zero, float)
-    assert isinstance(u_lbfgs, float)
+    result = run_experiment(config)
+    assert isinstance(result.initial_value, float)
+    assert "first_order" in result.results
+    assert "zeroth_order" in result.results
+    assert "lbfgs" in result.results
+    assert isinstance(result.results["first_order"].u, float)
+    assert isinstance(result.results["zeroth_order"].u, float)
+    assert isinstance(result.results["lbfgs"].u, float)

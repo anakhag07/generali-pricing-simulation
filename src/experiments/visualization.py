@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping, Optional, Sequence
 
@@ -11,22 +10,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from data.models import ObjectiveModel, StateVector
+from experiments.results import OptimizationTrace
 from optimization.policy import PolicySpec, policy_u
 
 matplotlib.use("Agg")
-
-
-@dataclass(frozen=True)
-class OptimizationTrace:
-    steps: Sequence[int]
-    u_values: Sequence[float]
-    objective_values: Sequence[float]
-    grad_estimates: Sequence[float]
-    true_gradients: Optional[Sequence[float]] = None
-    theta_grad_norms: Optional[Sequence[float]] = None
-    true_theta_grad_norms: Optional[Sequence[float]] = None
-    step_sizes: Optional[Sequence[float]] = None
-    theta_values: Optional[Sequence[np.ndarray]] = None
 
 
 ESTIMATOR_STYLES = {
@@ -119,8 +106,9 @@ def plot_gradient_norms(
         return
     path = _ensure_plot_dir(plot_dir)
     has_true = any(trace.true_theta_grad_norms is not None for _, trace in trace_items)
+    has_est = any(trace.theta_grad_norms is not None for _, trace in trace_items)
 
-    if has_true:
+    if has_true and has_est:
         fig, axes = plt.subplots(2, 1, figsize=(8, 7), sharex=True)
         ax_norm, ax_err = axes
     else:
@@ -128,17 +116,23 @@ def plot_gradient_norms(
         ax_err = None
 
     for name, trace in trace_items:
-        if trace.theta_grad_norms is None:
-            raise ValueError("theta_grad_norms must be provided for gradient norm plots.")
+        series = trace.true_theta_grad_norms
+        if series is None:
+            series = trace.theta_grad_norms
+        if series is None:
+            raise ValueError("theta_grad_norms or true_theta_grad_norms must be provided.")
         style = ESTIMATOR_STYLES[name]
         ax_norm.plot(
             trace.steps,
-            trace.theta_grad_norms,
+            series,
             label=style["label"],
             color=style["color"],
             alpha=0.6,
         )
-    ax_norm.set_ylabel("|theta grad norm|")
+    if has_true:
+        ax_norm.set_ylabel("|theta grad norm| (true)")
+    else:
+        ax_norm.set_ylabel("|theta grad norm|")
     ax_norm.legend()
     ax_norm.grid(True, alpha=0.3)
 
@@ -158,7 +152,7 @@ def plot_gradient_norms(
                 color=style["color"],
                 alpha=0.6,
             )
-        ax_err.set_ylabel("|grad error|")
+        ax_err.set_ylabel("|norm error|")
         ax_err.set_xlabel("Step")
         ax_err.legend()
         ax_err.grid(True, alpha=0.3)
@@ -288,21 +282,21 @@ def plot_objective_u_slice(
     ax_obj.legend()
     ax_obj.grid(True, alpha=0.3)
 
-    ax_grad.plot(u_grid, grad_grid, color="black", label="true grad", alpha=0.6)
+    ax_grad.plot(u_grid, grad_grid, color="black", label="true u-grad", alpha=0.6)
     for name, trace in trace_items:
         style = ESTIMATOR_STYLES[name]
         if name == "lbfgs":
             ax_grad.plot(
                 trace.u_values,
-                trace.grad_estimates,
+                trace.u_grad_estimates,
                 color=style["color"],
                 label=f"{style['label']} path",
                 alpha=0.6,
             )
-            if trace.u_values and trace.grad_estimates:
+            if trace.u_values and trace.u_grad_estimates:
                 ax_grad.scatter(
                     [trace.u_values[-1]],
-                    [trace.grad_estimates[-1]],
+                    [trace.u_grad_estimates[-1]],
                     color=style["color"],
                     marker=style["marker"],
                     label=f"{style['label']} final",
@@ -311,16 +305,16 @@ def plot_objective_u_slice(
             zorder = 4 if name == "zeroth_order" else 3
             ax_grad.scatter(
                 trace.u_values,
-                trace.grad_estimates,
+                trace.u_grad_estimates,
                 color=style["color"],
-                label=f"{style['label']} est",
+                label=f"{style['label']} u-grad",
                 marker=style["marker"],
                 edgecolors=style["color"],
                 linewidths=0.4,
                 alpha=0.6,
                 zorder=zorder,
             )
-    ax_grad.set_ylabel("Gradient")
+    ax_grad.set_ylabel("u-gradient")
     ax_grad.set_xlabel("u")
     if u_star is not None:
         ax_grad.axvline(

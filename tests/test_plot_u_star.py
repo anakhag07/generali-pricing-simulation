@@ -1,7 +1,7 @@
 import numpy as np
 
 from data.fixed_objective import FixedRegressionObjective
-from experiments.run import _u_star_for_plot
+from experiments.reporters import _u_star_for_plot
 
 
 class DummyObjective:
@@ -11,7 +11,7 @@ class DummyObjective:
 def test_u_star_for_plot_fixed_regression_returns_none() -> None:
     objective = FixedRegressionObjective.from_parameters(
         beta_1=np.array([1.0]),
-        beta_2=0.1,
+        beta_2=-0.1,
         beta_3=np.array([0.2]),
         beta_4=0.3,
     )

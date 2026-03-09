@@ -27,8 +27,9 @@ def test_run_experiment_single_estimator() -> None:
         log_steps=False,
         enabled_estimators=("first_order",),
     )
-    initial_value, u_first, u_zero, u_lbfgs = run_experiment(config)
-    assert isinstance(initial_value, float)
-    assert isinstance(u_first, float)
-    assert u_zero is None
-    assert u_lbfgs is None
+    result = run_experiment(config)
+    assert isinstance(result.initial_value, float)
+    assert "first_order" in result.results
+    assert isinstance(result.results["first_order"].u, float)
+    assert "zeroth_order" not in result.results
+    assert "lbfgs" not in result.results

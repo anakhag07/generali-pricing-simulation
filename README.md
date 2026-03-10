@@ -6,13 +6,7 @@ Pricing simulation and optimization demo using exact and zeroth-order Stein grad
 
 | Conda | Virtual Environment |
 |---|---|
-| <pre><code class="language-bash">conda create -n simulation_env python=3.11
-conda activate simulation_env
-pip install -e .
-python main.py</code></pre> | <pre><code class="language-bash">python -m venv .venv
-source .venv/bin/activate
-pip install -e .
-python main.py</code></pre> |
+| `conda create -n simulation_env python=3.11`<br/>`conda activate simulation_env`<br/>`pip install -e .`<br/>`python main.py` | `python -m venv .venv`<br/>`source .venv/bin/activate`<br/>`pip install -e .`<br/>`python main.py` |
 
 Runtime dependencies live in `requirements.txt` and mirror `pyproject.toml`
 (numpy >= 1.24, matplotlib >= 3.7, scipy >= 1.10).

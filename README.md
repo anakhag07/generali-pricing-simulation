@@ -248,7 +248,7 @@ no true gradient is recorded.
 |---|---|---|
 | `ConsoleReporter` | Terminal | Per-step output gated by `verbose` |
 | `FileStepLogger` | `steps.csv` | CSV: method, step, u, value, grad_norm, step_size |
-| `JsonReporter` | `summary.json` | Full experiment result including config |
+| `JsonReporter` | `summary.json` | Full experiment result including config and final theta L2 metrics |
 | `PlotReporter` | `plots/*.png` | loss_curves, gradient_norms, objective_u_slice, step_sizes (Armijo only), theta_objective_contours (if theta dim >= 2) |
 
 All outputs are saved under `outputs/<experiment_name>/<timestamp>/`.

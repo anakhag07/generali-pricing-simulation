@@ -112,7 +112,13 @@ def log_summary(result: ExperimentResult) -> None:
         print(f"Initial theta: {format_array(policy_spec.theta)}")
         for name in ordered:
             theta = result.results[name].theta
+            theta_l2 = float(np.linalg.norm(theta))
+            theta_delta_l2 = float(np.linalg.norm(theta - policy_spec.theta))
             print(f"Final theta ({labels[name]}): {format_array(theta)}")
+            print(
+                f"Final theta norms ({labels[name]}): "
+                f"||theta||_2={theta_l2:.4f}, ||theta-theta0||_2={theta_delta_l2:.4f}"
+            )
         print("=== Runtime (s) ===")
         for name in ordered:
             runtime = float(result.results[name].time)

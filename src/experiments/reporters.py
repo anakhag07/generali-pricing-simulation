@@ -274,11 +274,17 @@ def _u_star_for_plot(
 def _build_summary_payload(run_context: RunContext, result: ExperimentResult) -> dict:
     estimators: dict[str, dict] = {}
     for name, estimator_result in result.results.items():
+        theta_l2_norm = float(np.linalg.norm(estimator_result.theta))
+        theta_delta_l2_norm = float(
+            np.linalg.norm(estimator_result.theta - result.config.policy_spec.theta)
+        )
         estimators[name] = {
             "final_u": float(estimator_result.u),
             "final_value": float(estimator_result.value),
             "runtime_sec": float(estimator_result.time),
             "theta": _as_list(estimator_result.theta),
+            "theta_l2_norm": theta_l2_norm,
+            "theta_delta_l2_norm": theta_delta_l2_norm,
         }
 
     trace_summary: dict[str, dict] = {}

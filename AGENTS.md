@@ -149,12 +149,11 @@ Guidelines:
   - `default_policy_spec(state_dim)`: returns softmax policy with `state_dim + 1` theta params
 
 - **`src/experiments/helpers.py`** (largest file; orchestration + wrappers)
-  - `build_batch_objective_fns(objective_model, x_samples)`: builds value/grad functions averaged over batch
   - `resolve_true_grad_u_fn(objective_model, correctness)`: resolves the "true" gradient function from correctness spec
   - `run_first_order(...)`: wrapper delegating to `optimization.solvers.run_first_order_minimize`
   - `run_zeroth_order(...)`: wrapper delegating to `optimization.solvers.run_zeroth_order_minimize`
   - `run_lbfgs_theta(...)`: L-BFGS-B theta optimizer via SciPy
-  - Internal: `_run_estimated_grad_optimizer(...)` shared loop for first/zeroth-order, `_numdiff_grad(...)` for finite-difference gradients
+  - Internal: `_numdiff_grad(...)` for finite-difference gradients
 
 - **`src/experiments/run.py`**
   - `run_experiment(config, step_reporter)`: main runner; samples customers, runs enabled estimators, returns `ExperimentResult` (pure computation, no I/O)
@@ -225,16 +224,9 @@ when appropriate.
 - **`stein_zeroth_order_grad` (scalar version) is unused:** Only the batch
   version `stein_zeroth_order_grad_batch` is called in the pipeline.
 
-- **`build_objective_fns` is unused:** Only `build_batch_objective_fns` and
-  `_build_objective_batch_fns` are used in the pipeline.
-
 - **`policy_grad_theta` is unused in the pipeline:** The gradient through
   the policy is computed inline in `src/optimization/solvers.py` and
   `run_lbfgs_theta` rather than calling this function.
-
-- **`_run_estimated_grad_optimizer` is currently unused:** First-order and
-  zeroth-order now dispatch to SciPy-based solvers in
-  `src/optimization/solvers.py`.
 
 - **`lbfgs_seed` is set but never consumed:** It defaults to `seed + 997`
   and is serialized in `to_dict()`, but `run_lbfgs_theta` does not use any

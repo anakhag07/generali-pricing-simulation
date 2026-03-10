@@ -1,8 +1,8 @@
 import numpy as np
 
-from data.models import ObjectiveResult, StateVector
+from objective.base import ObjectiveResult, StateVector
 from experiments.helpers import run_first_order, run_zeroth_order
-from optimization.policy import POLICY_LINEAR
+from model.policy import POLICY_LINEAR
 
 
 class SimpleObjective:

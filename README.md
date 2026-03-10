@@ -254,15 +254,15 @@ All outputs are saved under `outputs/<experiment_name>/<timestamp>/`.
 ## Model-to-Code Mapping
 
 ```text
-x (customer features)            -> StateVector (src/data/models.py)
-customer                          -> Customer (src/data/models.py)
-a(x, u) acceptance probability    -> FixedRegressionAcceptance (src/data/fixed_objective.py)
-l(x) expected loss                -> FixedRegressionLoss (src/data/fixed_objective.py)
-r(u) revenue                      -> FixedRegressionRevenue (src/data/fixed_objective.py)
-f(u; x) fixed objective           -> FixedRegressionObjective (src/data/fixed_objective.py)
-L(u; x) planted objective         -> PlantedLogisticObjective (src/data/planted_logistic.py)
-oracle gradient API               -> FixedRegressionObjective.evaluate (src/data/fixed_objective.py)
-policy u = f(theta, x)            -> PolicySpec, apply_policy (src/optimization/policy.py)
+x (customer features)            -> StateVector (src/objective/base.py)
+customer                          -> Customer (src/objective/base.py)
+a(x, u) acceptance probability    -> FixedRegressionAcceptance (src/objective/fixed_objective.py)
+l(x) expected loss                -> FixedRegressionLoss (src/objective/fixed_objective.py)
+r(u) revenue                      -> FixedRegressionRevenue (src/objective/fixed_objective.py)
+f(u; x) fixed objective           -> FixedRegressionObjective (src/objective/fixed_objective.py)
+L(u; x) planted objective         -> PlantedLogisticObjective (src/objective/planted_logistic.py)
+oracle gradient API               -> FixedRegressionObjective.evaluate (src/objective/fixed_objective.py)
+policy u = f(theta, x)            -> PolicySpec, apply_policy (src/model/policy.py)
 zeroth-order Stein estimator      -> stein_zeroth_order_grad_batch (src/optimization/gradients/zeroth_order.py)
 step-size rules (constant/Armijo) -> constant_step_size, armijo_backtracking_step_size (src/optimization/steps.py)
 experiment runner / config        -> ExperimentConfig, run_experiment (src/experiments/run.py)
@@ -293,10 +293,13 @@ All three methods update `theta` (the policy parameter), not `u` directly.
 main.py                                 Demo entry point; RUN_CONFIGS list
 src/
   data/
-    models.py                           Core data classes (StateVector, Customer, Contract)
-                                        and objective protocols (ObjectiveModel, etc.)
+    __init__.py                         Reserved for dataset adapters and data-source integrations
+  objective/
+    base.py                             Core dataclasses/protocols (StateVector, Customer, ObjectiveModel, etc.)
     fixed_objective.py                  Fixed regression objective implementation
     planted_logistic.py                 Planted convex logistic objective with known optimum
+  model/
+    policy.py                           PolicySpec, policy kinds, apply_policy
   experiments/
     config.py                           ExperimentConfig and CorrectnessSpec dataclasses
     configs/                            Preset configurations
@@ -317,7 +320,6 @@ src/
     visualization.py                    Matplotlib plotting utilities
   optimization/
     common.py                           Shared helpers (gaussian_noise)
-    policy.py                           PolicySpec, policy kinds, apply_policy
     steps.py                            Step-size rules (constant, Armijo backtracking)
     gradients/
       zeroth_order.py                   Stein zeroth-order gradient estimator

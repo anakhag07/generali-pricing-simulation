@@ -7,7 +7,7 @@ from typing import Any, cast
 
 import numpy as np
 
-from data.models import Customer, default_rng
+from objective.base import Customer, default_rng
 from experiments.config import ExperimentConfig
 from experiments.helpers import (
     resolve_true_grad_u_fn,
@@ -17,7 +17,7 @@ from experiments.helpers import (
 )
 from experiments.reporters import StepReporter
 from experiments.results import EstimatorResult, ExperimentResult
-from optimization.policy import policy_u
+from model.policy import policy_u
 
 
 def _objective_u_star(objective_model: object) -> float | None:

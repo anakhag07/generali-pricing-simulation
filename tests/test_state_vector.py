@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from data.models import StateVector, default_rng
+from objective.base import StateVector, default_rng
 
 
 def test_state_vector_sample_dim() -> None:

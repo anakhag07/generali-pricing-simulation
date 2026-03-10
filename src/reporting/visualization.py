@@ -9,9 +9,9 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
-from data.models import ObjectiveModel, StateVector
+from objective.base import ObjectiveModel, StateVector
 from experiments.results import OptimizationTrace
-from optimization.policy import PolicySpec, policy_u
+from model.policy import PolicySpec, policy_u
 
 matplotlib.use("Agg")
 

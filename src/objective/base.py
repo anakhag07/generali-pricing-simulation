@@ -1,4 +1,4 @@
-"""Data classes and objective components for pricing simulation."""
+"""Core objective-related dataclasses and protocols for pricing simulation."""
 
 from __future__ import annotations
 

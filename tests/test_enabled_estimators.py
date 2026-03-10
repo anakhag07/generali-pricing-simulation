@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from data.fixed_objective import FixedRegressionObjective
+from objective.fixed_objective import FixedRegressionObjective
 from experiments.config import ExperimentConfig
 from experiments.defaults import default_policy_spec
 from experiments.run import run_experiment

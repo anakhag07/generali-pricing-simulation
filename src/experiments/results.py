@@ -7,7 +7,7 @@ from typing import Mapping, Optional, Sequence
 
 import numpy as np
 
-from data.models import StateVector
+from objective.base import StateVector
 from experiments.config import ExperimentConfig
 
 

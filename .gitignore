@@ -9,3 +9,4 @@ plots/
 runs/
 .DS_Store
 worktrees/
+outputs/

@@ -54,7 +54,7 @@ Before finishing a build session:
 
 When behavior and documentation disagree, use this priority:
 
-1. `src/data/fixed_objective.py`
+1. `src/objective/fixed_objective.py`
 2. Current implementation in the relevant source module
 3. Tests
 4. `README.md`
@@ -75,9 +75,9 @@ Guidelines:
 
 ### Key Components
 
-#### Data Layer (`src/data/`)
+#### Objective Layer (`src/objective/`)
 
-- **`src/data/models.py`**
+- **`src/objective/base.py`**
   - `StateVector`: frozen dataclass wrapping a 1D numpy array; has `sample(rng, dim)` static method
   - `Customer`: frozen dataclass with `x: StateVector`; has `sample(rng, state_dim)` static method
   - `Contract`: frozen dataclass with `u: float` (bounds check is a no-op; see Known Issues)
@@ -85,27 +85,33 @@ Guidelines:
   - Protocols: `AcceptanceModel`, `LossModel`, `RevenueModel`, `ObjectiveModel`
   - `default_rng(seed)`: wrapper around `np.random.default_rng`
 
-- **`src/data/fixed_objective.py`** (source of truth for objective math)
+- **`src/objective/fixed_objective.py`** (source of truth for objective math)
   - `FixedRegressionAcceptance`: sigmoid acceptance with `beta_1` (positive) and `beta_2` (negative)
   - `FixedRegressionLoss`: linear loss with `beta_3` (positive)
   - `FixedRegressionRevenue`: linear revenue with `beta_4` (positive)
   - `FixedRegressionObjective`: composite objective; `from_parameters` classmethod, scalar + batch evaluation
   - `FixedRegressionBatch`: pre-computed batch for vectorized evaluation
 
-- **`src/data/planted_logistic.py`**
+- **`src/objective/planted_logistic.py`**
   - `PlantedLogisticObjective`: convex logistic objective with known optimum `u_star`
   - `PlantedLogisticBatch`: pre-computed batch for vectorized evaluation
   - `optimal_u()` method exposes the planted optimum
 
-#### Optimization Layer (`src/optimization/`)
+#### Data Layer (`src/data/`)
 
-- **`src/optimization/policy.py`**
+- Reserved for dataset adapters and external data-source integrations.
+
+#### Model Layer (`src/model/`)
+
+- **`src/model/policy.py`**
   - `PolicySpec`: frozen dataclass pairing `theta` (numpy array) with `kind` string
   - Policy kinds: `POLICY_CONSTANT`, `POLICY_LINEAR`, `POLICY_SOFTMAX`
   - `phi(x)` / `phi_batch(x_array)`: prepend bias term to features
   - `policy_u(theta, x, kind)` / `policy_u_batch(...)`: compute action from policy
   - `policy_grad_theta(theta, x, kind)`: compute `du/dtheta` (defined but unused in pipeline; see Known Issues)
   - `apply_policy(policy, x)`: convenience wrapper (does not clip `u`)
+
+#### Optimization Layer (`src/optimization/`)
 
 - **`src/optimization/steps.py`**
   - `STEP_RULE_CONSTANT`, `STEP_RULE_ARMIJO`, `STEP_RULES`
@@ -191,11 +197,11 @@ These are documented here so agents can account for them and clean them up
 when appropriate.
 
 - **Duplicated private helpers:** `_logistic`, `_logistic_batch`, and
-  `_beta_dot_x` are duplicated verbatim in `src/data/fixed_objective.py` and
-  `src/data/planted_logistic.py`. These could be factored into a shared
+  `_beta_dot_x` are duplicated verbatim in `src/objective/fixed_objective.py` and
+  `src/objective/planted_logistic.py`. These could be factored into a shared
   utility module.
 
-- **`clip_u` is removed / commented out:** `src/optimization/policy.py` has
+- **`clip_u` is removed / commented out:** `src/model/policy.py` has
   a commented-out import of `clip_u` from `common.py`. `apply_policy` does
   not clip actions. The softmax policy naturally maps to `(0.5, 1.5)` but
   linear and constant policies are unbounded.
@@ -208,7 +214,7 @@ when appropriate.
   in `steps.py`.
 
 - **`Contract.__post_init__` is a no-op:** The bounds check is `pass`.
-  `Contract` is defined in `models.py` but is never constructed in the
+  `Contract` is defined in `objective/base.py` but is never constructed in the
   experiment pipeline (actions are raw floats).
 
 - **`stein_zeroth_order_grad` (scalar version) is unused:** Only the batch
@@ -250,7 +256,9 @@ when appropriate.
 | `test_experiment_configs.py` | Config registry (get_config, list_configs) |
 | `test_file_step_logger.py` | FileStepLogger CSV output |
 | `test_lbfgs_theta.py` | L-BFGS-B reduces objective, trace structure |
+| `test_model_package_exports.py` | model package API exports remain importable |
 | `test_objective_batch.py` | Batch vs scalar consistency for both objectives |
+| `test_objective_package_exports.py` | objective package API exports remain importable |
 | `test_objective_models.py` | FixedRegressionObjective value and gradient correctness |
 | `test_planted_logistic_objective.py` | Planted logistic gradient at u_star and minimum |
 | `test_plot_u_star.py` | u_star selection for plotting |

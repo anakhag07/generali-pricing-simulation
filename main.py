@@ -19,7 +19,7 @@ RUN_CONFIGS = ["custom"]
 def main() -> None:
     for config_name in RUN_CONFIGS:
         config = get_config(config_name)
-        run_context = create_run_context(config_name, runs_root="runs")
+        run_context = create_run_context(config_name, runs_root="outputs")
         reporters = ReporterStack([
             ConsoleReporter(verbose=config.verbose),
             FileStepLogger(),

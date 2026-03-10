@@ -111,7 +111,7 @@ z(u, x) = \alpha u + \beta^\top x + b
 $$
 
 $$
-L(u; x) = \log\!\left(1 + e^{z(u, x)}\right) - p^*(x)\,z(u, x)
+L(u; x) = \log\left(1 + e^{z(u, x)}\right) - p^*(x)\,z(u, x)
 $$
 
 This function is convex in `u` and has a known minimum at `u*` for every `x`.

@@ -198,16 +198,18 @@ Each `ExperimentConfig` includes:
 
 Set `step_rule` to `"constant"` or `"armijo"`:
 
-- **Constant:** uses `step_size` as a fixed step each iteration.
-- **Armijo:** backtracking line search starting from `step_size`, with
-  parameters `c=1e-4`, `shrink=0.5`, `max_backtracks=20`, `min_step=1e-6`.
-  When Armijo is active, a `step_sizes.png` plot is saved.
+- **First-order / zeroth-order:** these methods now run through SciPy
+  `minimize` (`L-BFGS-B`) and rely on the solver's internal line search.
+  `t_steps` is passed as `maxiter` and `grad_norm_tol` as `gtol`.
+- **L-BFGS baseline:** also uses SciPy `minimize` with `L-BFGS-B`.
+- `step_rule` and `step_size` are still part of config validation and
+  serialization for compatibility, but they do not directly control solver
+  step updates in SciPy-driven methods.
 
 ### Early Stopping
 
 Set `grad_norm_tol` to stop when the theta gradient norm falls below the
-threshold. First-order and zeroth-order optimizers check this each step;
-L-BFGS-B passes the value as `gtol`.
+threshold. SciPy-driven optimizers pass this as `gtol`.
 
 ### Enabled Estimators
 
@@ -264,9 +266,10 @@ L(u; x) planted objective         -> PlantedLogisticObjective (src/objective/pla
 oracle gradient API               -> FixedRegressionObjective.evaluate (src/objective/fixed_objective.py)
 policy u = f(theta, x)            -> PolicySpec, apply_policy (src/model/policy.py)
 zeroth-order Stein estimator      -> stein_zeroth_order_grad_batch (src/optimization/gradients/zeroth_order.py)
-step-size rules (constant/Armijo) -> constant_step_size, armijo_backtracking_step_size (src/optimization/steps.py)
+SciPy-based first/zeroth solvers  -> run_first_order_minimize, run_zeroth_order_minimize (src/optimization/solvers.py)
+step-size rules (legacy support)  -> constant_step_size, armijo_backtracking_step_size (src/optimization/steps.py)
 experiment runner / config        -> ExperimentConfig, run_experiment (src/experiments/run.py)
-optimization helper routines      -> run_first_order, run_zeroth_order, run_lbfgs_theta (src/experiments/helpers.py)
+optimization helper wrappers      -> run_first_order, run_zeroth_order, run_lbfgs_theta (src/experiments/helpers.py)
 result data structures            -> EstimatorResult, ExperimentResult, OptimizationTrace (src/experiments/results.py)
 reporting / I/O                   -> ReporterStack, ConsoleReporter, etc. (src/experiments/reporters.py)
 console logging helpers           -> log_step, log_summary (src/reporting/logging.py)
@@ -277,11 +280,12 @@ config presets                    -> src/experiments/configs/ (get_config, list_
 ## Optimization Methods
 
 - **First-order exact gradient:** uses the analytic gradient of the objective
-  with respect to `u`, then chains through the policy gradient `du/dtheta` to
-  update `theta`.
+  with respect to `u`, chains through the policy gradient `du/dtheta`, and
+  optimizes `theta` via SciPy `minimize` (`L-BFGS-B`).
 - **Zeroth-order Stein estimator:** uses only objective value evaluations at
-  perturbed actions. Estimates the gradient via
+  perturbed actions, estimates gradient via
   $\mathbb{E}[f(u + \sigma\varepsilon)\,\varepsilon] / \sigma$.
+  The resulting theta gradient is passed to SciPy `minimize` (`L-BFGS-B`).
 - **L-BFGS-B baseline:** uses SciPy's `minimize` to optimize `theta` directly
   with analytic gradients.
 
@@ -320,6 +324,7 @@ src/
     visualization.py                    Matplotlib plotting utilities
   optimization/
     common.py                           Shared helpers (gaussian_noise)
+    solvers.py                          SciPy-based first/zeroth-order theta solvers
     steps.py                            Step-size rules (constant, Armijo backtracking)
     gradients/
       zeroth_order.py                   Stein zeroth-order gradient estimator

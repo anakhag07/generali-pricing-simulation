@@ -35,11 +35,10 @@ def test_run_first_order_records_theta_values() -> None:
         true_grad_u_fn=objective.grad_u,
     )
     assert trace.theta_values is not None
-    assert len(trace.theta_values) == 4
+    assert len(trace.theta_values) >= 1
     assert np.allclose(trace.theta_values[0], theta_start)
-    assert trace.step_sizes is not None
-    assert len(trace.step_sizes) == 3
-    assert np.allclose(trace.step_sizes, [0.01, 0.01, 0.01])
+    assert len(trace.steps) == len(trace.theta_values)
+    assert trace.step_sizes is None
 
 
 def test_run_zeroth_order_records_theta_values() -> None:
@@ -61,8 +60,7 @@ def test_run_zeroth_order_records_theta_values() -> None:
         true_grad_u_fn=objective.grad_u,
     )
     assert trace.theta_values is not None
-    assert len(trace.theta_values) == 4
+    assert len(trace.theta_values) >= 1
     assert np.allclose(trace.theta_values[0], theta_start)
-    assert trace.step_sizes is not None
-    assert len(trace.step_sizes) == 3
-    assert np.allclose(trace.step_sizes, [0.01, 0.01, 0.01])
+    assert len(trace.steps) == len(trace.theta_values)
+    assert trace.step_sizes is None

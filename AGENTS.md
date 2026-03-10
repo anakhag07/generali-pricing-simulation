@@ -113,10 +113,15 @@ Guidelines:
 
 #### Optimization Layer (`src/optimization/`)
 
+- **`src/optimization/solvers.py`**
+  - `run_first_order_minimize(...)`: SciPy `minimize` (`L-BFGS-B`) solver using analytic u-gradients chained to theta gradients
+  - `run_zeroth_order_minimize(...)`: SciPy `minimize` (`L-BFGS-B`) solver using Stein-estimated u-gradients chained to theta gradients
+  - Internal helpers build batched objective/gradient callables and optimization traces
+
 - **`src/optimization/steps.py`**
   - `STEP_RULE_CONSTANT`, `STEP_RULE_ARMIJO`, `STEP_RULES`
   - `constant_step_size(step_size)`: returns the step size unchanged
-  - `armijo_backtracking_step_size(...)`: Armijo line search with configurable `c`, `shrink`, `max_backtracks`, `min_step`
+  - `armijo_backtracking_step_size(...)`: Armijo line search utility (not used by SciPy first/zeroth solvers)
 
 - **`src/optimization/common.py`**
   - `gaussian_noise(rng, shape)`: standard normal samples (used by zeroth-order estimator)
@@ -143,11 +148,11 @@ Guidelines:
 - **`src/experiments/defaults.py`**
   - `default_policy_spec(state_dim)`: returns softmax policy with `state_dim + 1` theta params
 
-- **`src/experiments/helpers.py`** (largest file; core optimization logic)
+- **`src/experiments/helpers.py`** (largest file; orchestration + wrappers)
   - `build_batch_objective_fns(objective_model, x_samples)`: builds value/grad functions averaged over batch
   - `resolve_true_grad_u_fn(objective_model, correctness)`: resolves the "true" gradient function from correctness spec
-  - `run_first_order(...)`: first-order theta optimizer
-  - `run_zeroth_order(...)`: zeroth-order theta optimizer
+  - `run_first_order(...)`: wrapper delegating to `optimization.solvers.run_first_order_minimize`
+  - `run_zeroth_order(...)`: wrapper delegating to `optimization.solvers.run_zeroth_order_minimize`
   - `run_lbfgs_theta(...)`: L-BFGS-B theta optimizer via SciPy
   - Internal: `_run_estimated_grad_optimizer(...)` shared loop for first/zeroth-order, `_numdiff_grad(...)` for finite-difference gradients
 
@@ -224,8 +229,12 @@ when appropriate.
   `_build_objective_batch_fns` are used in the pipeline.
 
 - **`policy_grad_theta` is unused in the pipeline:** The gradient through
-  the policy is computed inline in `_run_estimated_grad_optimizer` and
+  the policy is computed inline in `src/optimization/solvers.py` and
   `run_lbfgs_theta` rather than calling this function.
+
+- **`_run_estimated_grad_optimizer` is currently unused:** First-order and
+  zeroth-order now dispatch to SciPy-based solvers in
+  `src/optimization/solvers.py`.
 
 - **`lbfgs_seed` is set but never consumed:** It defaults to `seed + 997`
   and is serialized in `to_dict()`, but `run_lbfgs_theta` does not use any
@@ -256,6 +265,7 @@ when appropriate.
 | `test_experiment_configs.py` | Config registry (get_config, list_configs) |
 | `test_file_step_logger.py` | FileStepLogger CSV output |
 | `test_lbfgs_theta.py` | L-BFGS-B reduces objective, trace structure |
+| `test_minimize_orders.py` | SciPy first/zeroth-order wrappers (decrease + seed determinism) |
 | `test_model_package_exports.py` | model package API exports remain importable |
 | `test_objective_batch.py` | Batch vs scalar consistency for both objectives |
 | `test_objective_package_exports.py` | objective package API exports remain importable |
@@ -267,7 +277,7 @@ when appropriate.
 | `test_state_vector.py` | StateVector.sample shape |
 | `test_step_rules.py` | Armijo backtracking on quadratic |
 | `test_theta_contours.py` | Contour grid shapes, axis selection |
-| `test_trace_theta_values.py` | theta_values and step_sizes recorded in traces |
+| `test_trace_theta_values.py` | theta_values recorded in first/zeroth-order traces |
 | `test_verbose_config.py` | verbose flag defaults and serialization |
 | `test_visualization_step_sizes.py` | step_sizes plot uses log y-scale |
 

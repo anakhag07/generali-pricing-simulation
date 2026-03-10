@@ -12,6 +12,7 @@ from experiments.config import CorrectnessSpec
 from experiments.reporters import StepReporter
 from experiments.results import OptimizationTrace
 from optimization.gradients.zeroth_order import stein_zeroth_order_grad_batch
+from optimization.solvers import run_first_order_minimize, run_zeroth_order_minimize
 from model.policy import POLICY_CONSTANT, POLICY_LINEAR, POLICY_SOFTMAX, phi_batch, policy_u_batch
 from optimization.steps import (
     STEP_RULE_ARMIJO,
@@ -340,21 +341,16 @@ def run_first_order(
     grad_norm_tol: float | None = None,
     step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
-    """Optimize theta using exact u-gradients at the current action."""
-    return _run_estimated_grad_optimizer(
+    """Optimize theta using SciPy minimize with exact u-gradients."""
+    return run_first_order_minimize(
         theta_start=theta_start,
         policy_kind=policy_kind,
         x_samples=x_samples,
         objective_model=objective_model,
-        rng=rng,
         t_steps=t_steps,
-        step_rule=step_rule,
-        step_size=step_size,
         n_grad_samples=n_grad_samples,
         sigma=sigma,
         true_grad_u_fn=true_grad_u_fn,
-        method_label="first-order",
-        grad_kind="first_order",
         grad_norm_tol=grad_norm_tol,
         step_reporter=step_reporter,
     )
@@ -375,21 +371,17 @@ def run_zeroth_order(
     grad_norm_tol: float | None = None,
     step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
-    """Optimize theta using zeroth-order Stein u-gradient estimates."""
-    return _run_estimated_grad_optimizer(
+    """Optimize theta using SciPy minimize with Stein u-gradient estimates."""
+    return run_zeroth_order_minimize(
         theta_start=theta_start,
         policy_kind=policy_kind,
         x_samples=x_samples,
         objective_model=objective_model,
         rng=rng,
         t_steps=t_steps,
-        step_rule=step_rule,
-        step_size=step_size,
         n_grad_samples=n_grad_samples,
         sigma=sigma,
         true_grad_u_fn=true_grad_u_fn,
-        method_label="zeroth-order",
-        grad_kind="zeroth_order",
         grad_norm_tol=grad_norm_tol,
         step_reporter=step_reporter,
     )

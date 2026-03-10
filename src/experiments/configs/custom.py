@@ -42,7 +42,7 @@ CONFIG = ExperimentConfig(
     #     numdiff_step=1e-4,
     # ),
 
-    enabled_estimators=("zeroth_order", "first_order", "lbfgs"),
+    enabled_estimators=("zeroth_order", "first_order", "lbfgs", "spsa"),
 
     verbose=False,
 )

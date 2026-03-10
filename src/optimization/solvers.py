@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Callable, Literal, Sequence
+from typing import Any, Callable, Literal, Sequence, cast
 
 import numpy as np
 from scipy.optimize import minimize
@@ -23,8 +23,10 @@ def _build_objective_batch_fns(
 ) -> tuple[Callable[[np.ndarray], np.ndarray], Callable[[np.ndarray], np.ndarray]]:
     batch_builder = getattr(objective_model, "prepare_batch", None)
     if callable(batch_builder):
-        batch = batch_builder(x_array)
-        return batch.value, batch.grad_u
+        batch = cast(Any, batch_builder)(x_array)
+        value_fn = cast(Callable[[np.ndarray], np.ndarray], batch.value)
+        grad_fn = cast(Callable[[np.ndarray], np.ndarray], batch.grad_u)
+        return value_fn, grad_fn
 
     value_batch = getattr(objective_model, "value_batch", None)
     grad_batch = getattr(objective_model, "grad_u_batch", None)
@@ -94,7 +96,7 @@ def _run_minimize_solver(
     t_steps: int,
     n_grad_samples: int,
     sigma: float,
-    grad_kind: Literal["first_order", "zeroth_order"],
+    grad_kind: Literal["first_order", "zeroth_order", "spsa"],
     true_grad_u_fn: TrueGradFn | None = None,
     grad_norm_tol: float | None = None,
     step_reporter: StepReporter | None = None,
@@ -113,6 +115,7 @@ def _run_minimize_solver(
     value_batch_fn, grad_batch_fn = _build_objective_batch_fns(objective_model, x_list, x_array)
 
     eps_base = None
+    delta_base = None
     if grad_kind == "zeroth_order":
         if n_grad_samples <= 0:
             raise ValueError("n_grad_samples must be positive.")
@@ -120,6 +123,16 @@ def _run_minimize_solver(
             raise ValueError("sigma must be positive.")
         source_rng = rng if rng is not None else np.random.default_rng(0)
         eps_base = source_rng.normal(0.0, 1.0, size=(n_grad_samples, x_array.shape[0])).astype(float)
+    if grad_kind == "spsa":
+        if n_grad_samples <= 0:
+            raise ValueError("n_grad_samples must be positive.")
+        if sigma <= 0.0:
+            raise ValueError("sigma must be positive.")
+        source_rng = rng if rng is not None else np.random.default_rng(0)
+        delta_base = source_rng.choice(
+            np.asarray([-1.0, 1.0], dtype=float),
+            size=(n_grad_samples, theta0.size),
+        )
 
     def u_grad_values(u_vals: np.ndarray) -> np.ndarray:
         if grad_kind == "first_order":
@@ -139,6 +152,15 @@ def _run_minimize_solver(
 
     def grad_fn(theta_vec: np.ndarray) -> np.ndarray:
         theta_arr = np.asarray(theta_vec, dtype=float)
+        if grad_kind == "spsa":
+            if delta_base is None:
+                raise ValueError("delta_base is required for SPSA gradients.")
+            grad_theta = np.zeros_like(theta_arr, dtype=float)
+            for delta in delta_base:
+                value_plus = value_fn(theta_arr + sigma * delta)
+                value_minus = value_fn(theta_arr - sigma * delta)
+                grad_theta += ((value_plus - value_minus) / (2.0 * sigma)) * delta
+            return grad_theta / float(delta_base.shape[0])
         u_vals = policy_u_batch(theta_arr, x_array, kind=policy_kind, phi_array=phi_array)
         grad_u_vals = u_grad_values(u_vals)
         return _theta_grad_from_u_grad(theta_arr, policy_kind, phi_array, u_vals, grad_u_vals)
@@ -156,8 +178,12 @@ def _run_minimize_solver(
         theta_arr = np.asarray(theta_vec, dtype=float)
         u_vals = policy_u_batch(theta_arr, x_array, kind=policy_kind, phi_array=phi_array)
         value = float(np.mean(value_batch_fn(u_vals)))
-        grad_u_vals = u_grad_values(u_vals)
-        grad_theta = _theta_grad_from_u_grad(theta_arr, policy_kind, phi_array, u_vals, grad_u_vals)
+        if grad_kind == "spsa":
+            grad_u_vals = None
+            grad_theta = grad_fn(theta_arr)
+        else:
+            grad_u_vals = u_grad_values(u_vals)
+            grad_theta = _theta_grad_from_u_grad(theta_arr, policy_kind, phi_array, u_vals, grad_u_vals)
         theta_grad_norm = float(np.linalg.norm(grad_theta))
 
         true_theta_grad_norm = None
@@ -179,7 +205,7 @@ def _run_minimize_solver(
 
         step = len(steps)
         mean_u = float(np.mean(u_vals))
-        mean_grad = float(np.mean(grad_u_vals))
+        mean_grad = float(np.mean(grad_u_vals)) if grad_u_vals is not None else float("nan")
 
         steps.append(step)
         u_values.append(mean_u)
@@ -284,4 +310,34 @@ def run_zeroth_order_minimize(
     )
 
 
-__all__ = ["run_first_order_minimize", "run_zeroth_order_minimize"]
+def run_spsa_minimize(
+    theta_start: np.ndarray,
+    policy_kind: str,
+    x_samples: Sequence[StateVector],
+    objective_model: ObjectiveModel,
+    rng: np.random.Generator,
+    t_steps: int,
+    n_grad_samples: int,
+    sigma: float,
+    true_grad_u_fn: TrueGradFn | None = None,
+    grad_norm_tol: float | None = None,
+    step_reporter: StepReporter | None = None,
+) -> tuple[np.ndarray, OptimizationTrace]:
+    return _run_minimize_solver(
+        theta_start=theta_start,
+        policy_kind=policy_kind,
+        x_samples=x_samples,
+        objective_model=objective_model,
+        t_steps=t_steps,
+        n_grad_samples=n_grad_samples,
+        sigma=sigma,
+        grad_kind="spsa",
+        true_grad_u_fn=true_grad_u_fn,
+        grad_norm_tol=grad_norm_tol,
+        step_reporter=step_reporter,
+        method_label="spsa",
+        rng=rng,
+    )
+
+
+__all__ = ["run_first_order_minimize", "run_zeroth_order_minimize", "run_spsa_minimize"]

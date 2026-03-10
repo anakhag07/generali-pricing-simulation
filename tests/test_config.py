@@ -107,6 +107,24 @@ def test_enabled_estimators_validation() -> None:
         )
 
 
+def test_enabled_estimators_accepts_spsa() -> None:
+    objective_model = FixedRegressionObjective.from_parameters(
+        beta_1=[0.1],
+        beta_2=-0.5,
+        beta_3=[0.2],
+        beta_4=0.4,
+    )
+    config = ExperimentConfig(
+        state_dim=1,
+        objective_model=objective_model,
+        policy_spec=default_policy_spec(1),
+        n_samples=5,
+        step_rule="constant",
+        enabled_estimators=("spsa",),
+    )
+    assert config.enabled_estimators == ("spsa",)
+
+
 def test_step_rule_validation() -> None:
     objective_model = FixedRegressionObjective.from_parameters(
         beta_1=[0.1],

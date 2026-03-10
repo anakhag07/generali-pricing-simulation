@@ -11,7 +11,11 @@ from objective.base import ObjectiveModel, StateVector
 from experiments.config import CorrectnessSpec
 from experiments.reporters import StepReporter
 from experiments.results import OptimizationTrace
-from optimization.solvers import run_first_order_minimize, run_zeroth_order_minimize
+from optimization.solvers import (
+    run_first_order_minimize,
+    run_spsa_minimize,
+    run_zeroth_order_minimize,
+)
 from model.policy import POLICY_CONSTANT, POLICY_LINEAR, POLICY_SOFTMAX, phi_batch, policy_u_batch
 
 
@@ -173,6 +177,37 @@ def run_zeroth_order(
 ) -> tuple[np.ndarray, OptimizationTrace]:
     """Optimize theta using SciPy minimize with Stein u-gradient estimates."""
     return run_zeroth_order_minimize(
+        theta_start=theta_start,
+        policy_kind=policy_kind,
+        x_samples=x_samples,
+        objective_model=objective_model,
+        rng=rng,
+        t_steps=t_steps,
+        n_grad_samples=n_grad_samples,
+        sigma=sigma,
+        true_grad_u_fn=true_grad_u_fn,
+        grad_norm_tol=grad_norm_tol,
+        step_reporter=step_reporter,
+    )
+
+
+def run_spsa(
+    theta_start: np.ndarray,
+    policy_kind: str,
+    x_samples: Sequence[StateVector],
+    objective_model: ObjectiveModel,
+    rng: np.random.Generator,
+    t_steps: int,
+    step_rule: str,
+    step_size: float,
+    n_grad_samples: int,
+    sigma: float,
+    true_grad_u_fn: TrueGradFn | None = None,
+    grad_norm_tol: float | None = None,
+    step_reporter: StepReporter | None = None,
+) -> tuple[np.ndarray, OptimizationTrace]:
+    """Optimize theta using SciPy minimize with SPSA theta-gradient estimates."""
+    return run_spsa_minimize(
         theta_start=theta_start,
         policy_kind=policy_kind,
         x_samples=x_samples,

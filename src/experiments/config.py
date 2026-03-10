@@ -70,7 +70,7 @@ class ExperimentConfig:
             raise ValueError("enabled_estimators must include at least one estimator.")
         if len(set(enabled_estimators)) != len(enabled_estimators):
             raise ValueError("enabled_estimators must not contain duplicates.")
-        allowed_estimators = {"first_order", "zeroth_order", "lbfgs"}
+        allowed_estimators = {"first_order", "zeroth_order", "spsa", "lbfgs"}
         unknown = [name for name in enabled_estimators if name not in allowed_estimators]
         if unknown:
             allowed = ", ".join(sorted(allowed_estimators))

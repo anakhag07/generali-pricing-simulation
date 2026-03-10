@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import math
 
-from data.fixed_objective import (
+from objective.fixed_objective import (
     FixedRegressionAcceptance,
     FixedRegressionLoss,
     FixedRegressionObjective,
     FixedRegressionRevenue,
 )
-from data.models import StateVector
+from objective.base import StateVector
 
 
 def test_fixed_regression_objective_matches_components() -> None:

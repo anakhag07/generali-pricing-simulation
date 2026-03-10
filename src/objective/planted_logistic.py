@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from data.models import ObjectiveResult, StateVector
+from objective.base import ObjectiveResult, StateVector
 
 
 def _logistic(z: float) -> float:

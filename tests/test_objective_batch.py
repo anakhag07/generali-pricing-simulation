@@ -1,8 +1,8 @@
 import numpy as np
 
-from data.fixed_objective import FixedRegressionObjective
-from data.models import StateVector
-from data.planted_logistic import PlantedLogisticObjective
+from objective.base import StateVector
+from objective.fixed_objective import FixedRegressionObjective
+from objective.planted_logistic import PlantedLogisticObjective
 
 
 def test_fixed_objective_batch_matches_scalar() -> None:

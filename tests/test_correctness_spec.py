@@ -4,8 +4,8 @@ import math
 
 import pytest
 
-from data.fixed_objective import FixedRegressionObjective
-from data.models import ObjectiveResult, StateVector
+from objective.base import ObjectiveResult, StateVector
+from objective.fixed_objective import FixedRegressionObjective
 from experiments.config import CorrectnessSpec, ExperimentConfig
 from experiments.defaults import default_policy_spec
 from experiments.helpers import resolve_true_grad_u_fn

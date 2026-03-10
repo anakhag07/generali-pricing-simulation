@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from data.planted_logistic import PlantedLogisticObjective
-from data.models import StateVector
+from objective.base import StateVector
+from objective.planted_logistic import PlantedLogisticObjective
 
 
 def test_planted_logistic_minimum_at_u_star() -> None:

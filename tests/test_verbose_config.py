@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from data.fixed_objective import FixedRegressionObjective
+from objective.fixed_objective import FixedRegressionObjective
 from experiments.config import ExperimentConfig
 from optimization.policy import POLICY_LINEAR, PolicySpec
 

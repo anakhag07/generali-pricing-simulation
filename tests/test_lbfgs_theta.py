@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from data.models import ObjectiveResult, StateVector
+from objective.base import ObjectiveResult, StateVector
 from experiments.helpers import run_lbfgs_theta
 from optimization.policy import POLICY_LINEAR, policy_u
 

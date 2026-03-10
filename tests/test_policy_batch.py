@@ -1,6 +1,6 @@
 import numpy as np
 
-from data.models import StateVector
+from objective.base import StateVector
 from optimization.policy import POLICY_CONSTANT, POLICY_LINEAR, POLICY_SOFTMAX, policy_u, policy_u_batch
 
 

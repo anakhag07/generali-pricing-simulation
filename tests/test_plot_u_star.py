@@ -1,6 +1,6 @@
 import numpy as np
 
-from data.fixed_objective import FixedRegressionObjective
+from objective.fixed_objective import FixedRegressionObjective
 from experiments.reporters import _u_star_for_plot
 
 

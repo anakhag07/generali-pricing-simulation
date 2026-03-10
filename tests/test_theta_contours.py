@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from data.models import ObjectiveResult, StateVector
+from objective.base import ObjectiveResult, StateVector
 from optimization.policy import POLICY_LINEAR, PolicySpec
 from reporting.visualization import select_theta_axes_max_variance, theta_objective_contour_grid
 

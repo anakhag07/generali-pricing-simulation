@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import numpy as np
 
-from data.planted_logistic import PlantedLogisticObjective
 from experiments.config import ExperimentConfig
 from experiments.defaults import default_policy_spec
+from objective.planted_logistic import PlantedLogisticObjective
 
 STATE_DIM = 3
 BETA = np.asarray([0.5, -0.2, 0.3], dtype=float)

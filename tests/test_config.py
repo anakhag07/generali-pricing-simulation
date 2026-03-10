@@ -3,9 +3,9 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from data.fixed_objective import FixedRegressionObjective
 from experiments.config import ExperimentConfig
 from experiments.defaults import default_policy_spec
+from objective.fixed_objective import FixedRegressionObjective
 
 
 def test_beta_2_must_be_negative() -> None:

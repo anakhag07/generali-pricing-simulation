@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import numpy as np
 
-from data.fixed_objective import FixedRegressionObjective
 from experiments.config import ExperimentConfig
 from experiments.defaults import default_policy_spec
+from objective.fixed_objective import FixedRegressionObjective
 
 STATE_DIM = 3
 BETA_1 = np.asarray([0.02, 0.2, 0.5], dtype=float)

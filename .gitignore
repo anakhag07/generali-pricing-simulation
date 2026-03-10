@@ -1,0 +1,12 @@
+__pycache__/
+**/__pycache__/
+**/*__pycache__*/
+*.pyc
+*.egg-info/
+build/
+dist/
+plots/
+runs/
+.DS_Store
+worktrees/
+outputs/

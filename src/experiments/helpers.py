@@ -7,7 +7,7 @@ from typing import Callable, Literal, Sequence, Tuple
 import numpy as np
 from scipy.optimize import minimize
 
-from data.models import ObjectiveModel, ObjectiveResult, StateVector
+from objective.base import ObjectiveModel, ObjectiveResult, StateVector
 from experiments.config import CorrectnessSpec
 from experiments.reporters import StepReporter
 from experiments.results import OptimizationTrace

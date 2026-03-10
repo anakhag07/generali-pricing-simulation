@@ -6,8 +6,8 @@ from typing import Optional
 
 import numpy as np
 
-from data.fixed_objective import FixedRegressionObjective
-from data.planted_logistic import PlantedLogisticObjective
+from objective.fixed_objective import FixedRegressionObjective
+from objective.planted_logistic import PlantedLogisticObjective
 from experiments.results import ExperimentResult
 
 

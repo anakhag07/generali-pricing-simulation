@@ -7,7 +7,7 @@ from typing import Any, cast
 
 import numpy as np
 
-from data.models import Customer, default_rng
+from objective.base import Customer, default_rng
 from experiments.config import ExperimentConfig
 from experiments.helpers import (
     resolve_true_grad_u_fn,

@@ -7,9 +7,9 @@ from typing import Any, Literal, Optional
 
 import numpy as np
 
-from data.fixed_objective import FixedRegressionObjective
-from data.planted_logistic import PlantedLogisticObjective
-from data.models import ObjectiveModel
+from objective.base import ObjectiveModel
+from objective.fixed_objective import FixedRegressionObjective
+from objective.planted_logistic import PlantedLogisticObjective
 from optimization.policy import POLICY_LINEAR, POLICY_SOFTMAX, PolicySpec
 from optimization.steps import STEP_RULES
 

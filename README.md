@@ -111,10 +111,6 @@ z(u, x) = \alpha u + \beta^\top x + b
 $$
 
 $$
-p^*(x) = \sigma\!\left(\alpha u^* + \beta^\top x + b\right)
-$$
-
-$$
 L(u; x) = \log\!\left(1 + e^{z(u, x)}\right) - p^*(x)\,z(u, x)
 $$
 

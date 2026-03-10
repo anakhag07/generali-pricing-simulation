@@ -41,16 +41,6 @@ your local setup.
 Runtime dependencies live in `requirements.txt` and mirror `pyproject.toml`
 (numpy >= 1.24, matplotlib >= 3.7, scipy >= 1.10).
 
-To run tests:
-
-```bash
-conda activate simulation_env
-pip install -e ".[dev]"
-pytest -q
-```
-
-If you use a different environment name or tool, update `AGENTS.md` to match
-your local setup.
 
 ## What This Does
 

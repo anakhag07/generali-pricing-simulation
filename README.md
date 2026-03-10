@@ -111,7 +111,7 @@ z(u, x) = \alpha u + \beta^\top x + b
 $$
 
 $$
-p^*(x) = \sigma\left( \alpha u^{*} \right)
+p^*(x) = \sigma\left( \beta^{\top} x + b \right)
 $$
 
 $$

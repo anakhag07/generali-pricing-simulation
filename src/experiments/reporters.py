@@ -13,9 +13,9 @@ import numpy as np
 
 from data.fixed_objective import FixedRegressionObjective
 from experiments.config import ExperimentConfig
-from experiments.logging import log_step, log_summary
+from reporting.logging import log_step, log_summary
 from experiments.results import ExperimentResult
-from experiments.visualization import (
+from reporting.visualization import (
     ESTIMATOR_STYLES,
     plot_gradient_norms,
     plot_loss_curves,
@@ -44,7 +44,7 @@ def _sanitize_name(name: str) -> str:
 
 def create_run_context(
     experiment_name: str,
-    runs_root: str = "runs",
+    runs_root: str = "outputs",
     started_at: datetime | None = None,
 ) -> RunContext:
     timestamp = started_at or datetime.now()

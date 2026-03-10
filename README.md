@@ -52,7 +52,7 @@ Runtime dependencies live in `requirements.txt` and mirror `pyproject.toml`
    - First-order (exact gradient) descent
    - Zeroth-order Stein gradient estimator
    - L-BFGS-B baseline (SciPy)
-4. Saves run artifacts under `runs/<experiment_name>/<timestamp>/`:
+4. Saves run artifacts under `outputs/<experiment_name>/<timestamp>/`:
    - `summary.json` -- full result payload
    - `steps.csv` -- per-step metrics for every estimator
    - `plots/` -- loss curves, gradient norms, objective slices, step sizes,
@@ -249,7 +249,7 @@ no true gradient is recorded.
 | `JsonReporter` | `summary.json` | Full experiment result including config |
 | `PlotReporter` | `plots/*.png` | loss_curves, gradient_norms, objective_u_slice, step_sizes (Armijo only), theta_objective_contours (if theta dim >= 2) |
 
-All outputs are saved under `runs/<experiment_name>/<timestamp>/`.
+All outputs are saved under `outputs/<experiment_name>/<timestamp>/`.
 
 ## Model-to-Code Mapping
 
@@ -269,7 +269,8 @@ experiment runner / config        -> ExperimentConfig, run_experiment (src/exper
 optimization helper routines      -> run_first_order, run_zeroth_order, run_lbfgs_theta (src/experiments/helpers.py)
 result data structures            -> EstimatorResult, ExperimentResult, OptimizationTrace (src/experiments/results.py)
 reporting / I/O                   -> ReporterStack, ConsoleReporter, etc. (src/experiments/reporters.py)
-plots                             -> plot_loss_curves, plot_gradient_norms, etc. (src/experiments/visualization.py)
+console logging helpers           -> log_step, log_summary (src/reporting/logging.py)
+plots                             -> plot_loss_curves, plot_gradient_norms, etc. (src/reporting/visualization.py)
 config presets                    -> src/experiments/configs/ (get_config, list_configs)
 ```
 
@@ -311,6 +312,7 @@ src/
     reporters.py                        Reporter protocol, ReporterStack, RunContext,
                                         ConsoleReporter, FileStepLogger, JsonReporter,
                                         PlotReporter
+  reporting/
     logging.py                          Console logging helpers (log_step, log_summary)
     visualization.py                    Matplotlib plotting utilities
   optimization/

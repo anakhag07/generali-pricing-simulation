@@ -155,6 +155,7 @@ Guidelines:
 
 - **`src/experiments/reporters.py`**
   - `RunContext`: frozen dataclass with experiment name, run directory paths, timestamp
+  - `create_run_context(...)`: creates run directories under `outputs/` by default
   - `StepReporter`: protocol for per-step metric logging
   - `Reporter`: protocol with `on_start` and `on_end` hooks
   - `ReporterStack`: composite that delegates to a list of reporters; also implements `StepReporter`
@@ -163,11 +164,13 @@ Guidelines:
   - `JsonReporter`: writes `summary.json` on end
   - `PlotReporter`: generates all matplotlib plots on end
 
-- **`src/experiments/logging.py`**
+#### Reporting Layer (`src/reporting/`)
+
+- **`src/reporting/logging.py`**
   - `log_step(method, step, u, value, ...)`: prints one step to console
   - `log_summary(result)`: prints full experiment summary to console
 
-- **`src/experiments/visualization.py`**
+- **`src/reporting/visualization.py`**
   - `ESTIMATOR_STYLES`: color/label config per estimator
   - `plot_loss_curves(...)`: objective vs step; optional |u - u*| subplot
   - `plot_gradient_norms(...)`: true theta gradient norms; optional error subplot
@@ -252,6 +255,7 @@ when appropriate.
 | `test_planted_logistic_objective.py` | Planted logistic gradient at u_star and minimum |
 | `test_plot_u_star.py` | u_star selection for plotting |
 | `test_policy_batch.py` | policy_u_batch matches scalar for all kinds |
+| `test_run_context.py` | default output directory and run context paths |
 | `test_state_vector.py` | StateVector.sample shape |
 | `test_step_rules.py` | Armijo backtracking on quadratic |
 | `test_theta_contours.py` | Contour grid shapes, axis selection |

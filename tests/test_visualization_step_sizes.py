@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from experiments.results import OptimizationTrace
-from experiments.visualization import plot_step_sizes
+from reporting.visualization import plot_step_sizes
 
 
 class DummyAxis:
@@ -43,15 +43,15 @@ def test_plot_step_sizes_uses_log_scale(monkeypatch, tmp_path) -> None:
     dummy_fig = DummyFigure()
 
     monkeypatch.setattr(
-        "experiments.visualization.plt.subplots",
+        "reporting.visualization.plt.subplots",
         lambda *_args, **_kwargs: (dummy_fig, dummy_ax),
     )
     monkeypatch.setattr(
-        "experiments.visualization._ensure_plot_dir",
+        "reporting.visualization._ensure_plot_dir",
         lambda _plot_dir: tmp_path,
     )
     monkeypatch.setattr(
-        "experiments.visualization.plt.close",
+        "reporting.visualization.plt.close",
         lambda *_args, **_kwargs: None,
     )
 

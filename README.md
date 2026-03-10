@@ -4,21 +4,15 @@ Pricing simulation and optimization demo using exact and zeroth-order Stein grad
 
 ## Quickstart
 
-```bash
-conda create -n simulation_env python=3.11
+| Conda | Virtual Environment |
+|---|---|
+| <pre><code class="language-bash">conda create -n simulation_env python=3.11
 conda activate simulation_env
 pip install -e .
-python main.py
-```
-
-Or, using a virtual environment:
-
-```bash
-python -m venv .venv
+python main.py</code></pre> | <pre><code class="language-bash">python -m venv .venv
 source .venv/bin/activate
 pip install -e .
-python main.py
-```
+python main.py</code></pre> |
 
 Runtime dependencies live in `requirements.txt` and mirror `pyproject.toml`
 (numpy >= 1.24, matplotlib >= 3.7, scipy >= 1.10).
@@ -54,30 +48,40 @@ your local setup.
 
 ### Decision Variables and Components
 
-```text
-Customer features:  x ~ N(0, I)
-Policy parameter:   theta
-Action:             u = policy(theta, x)   (see Policy System below)
+$$
+x \sim \mathcal{N}(0, I),\quad \theta \in \mathbb{R}^p,\quad u = \pi_\theta(x)
+$$
 
-Acceptance:         a(x, u) in (0, 1)
-Expected loss:      l(x) >= 0
-Revenue:            r(u)
+$$
+a(x, u) \in (0, 1),\quad \ell(x) \ge 0,\quad r(u)
+$$
 
-Objective:          f(u; x) = a(x, u) * ( l(x) - r(u) )
-Goal:               minimize E_x[ f(u; x) ] over theta
-```
+$$
+f(u; x) = a(x, u)\,\big(\ell(x) - r(u)\big),
+\qquad
+\min_{\theta}\; \mathbb{E}_x\big[f(\pi_\theta(x); x)\big]
+$$
 
 ### Fixed Regression Objective
 
 The default objective uses an explicit parametric form:
 
-```text
-a(x, u) = sigmoid(beta_1^T x + beta_2 * u)     beta_1 > 0, beta_2 < 0
-l(x)    = beta_3^T x                            beta_3 > 0
-r(u)    = beta_4 * u                             beta_4 > 0
+$$
+a(x, u) = \sigma\!\left(\beta_1^\top x + \beta_2 u\right),
+\qquad \beta_1 > 0,\; \beta_2 < 0
+$$
 
-f(u; x) = a(x, u) * ( l(x) - r(u) )
-```
+$$
+\ell(x) = \beta_3^\top x, \qquad \beta_3 > 0
+$$
+
+$$
+r(u) = \beta_4 u, \qquad \beta_4 > 0
+$$
+
+$$
+f(u; x) = a(x, u)\,\big(\ell(x) - r(u)\big)
+$$
 
 The beta values are configurable via `FixedRegressionObjective`. `beta_2` must
 be negative so acceptance decreases with higher prices. When this objective is
@@ -88,11 +92,17 @@ used, the demo plots the objective and gradient over a grid of `u` values.
 For estimator comparisons with a known optimum, use the planted logistic
 objective:
 
-```text
-z(u, x) = alpha * u + beta^T x + bias
-p*(x)   = sigmoid(alpha * u* + beta^T x + bias)
-L(u; x) = log(1 + exp(z)) - p*(x) * z
-```
+$$
+z(u, x) = \alpha u + \beta^\top x + b
+$$
+
+$$
+p^*(x) = \sigma\!\left(\alpha u^* + \beta^\top x + b\right)
+$$
+
+$$
+L(u; x) = \log\!\left(1 + e^{z(u, x)}\right) - p^*(x)\,z(u, x)
+$$
 
 This function is convex in `u` and has a known minimum at `u*` for every `x`.
 When this objective is active, the true optimum is exposed in logs and plots.
@@ -105,11 +115,11 @@ maps `(theta, x)` to an action `u`.
 
 | Kind | Formula | `u` range | `theta` size |
 |---|---|---|---|
-| `constant` | `theta[0]` | unbounded | 1 |
-| `linear` | `theta . phi(x)` | unbounded | `state_dim + 1` |
-| `softmax` | `0.5 + sigmoid(theta . phi(x))` | `(0.5, 1.5)` | `state_dim + 1` |
+| `constant` | $u = \theta_0$ | unbounded | 1 |
+| `linear` | $u = \theta^\top \phi(x)$ | unbounded | `state_dim + 1` |
+| `softmax` | $u = 0.5 + \sigma\!\left(\theta^\top \phi(x)\right)$ | $(0.5, 1.5)$ | `state_dim + 1` |
 
-`phi(x)` prepends a bias term of 1.0 to the feature vector: `[1, x_1, ..., x_d]`.
+$\phi(x)$ prepends a bias term of $1.0$ to the feature vector: $[1, x_1, \ldots, x_d]$.
 
 The softmax policy is the default (via `default_policy_spec`). It naturally
 constrains actions to `(0.5, 1.5)`. Linear and constant policies have no
@@ -256,7 +266,7 @@ config presets                    -> src/experiments/configs/ (get_config, list_
   update `theta`.
 - **Zeroth-order Stein estimator:** uses only objective value evaluations at
   perturbed actions. Estimates the gradient via
-  `E[f(u + sigma*eps) * eps] / sigma`.
+  $\mathbb{E}[f(u + \sigma\varepsilon)\,\varepsilon] / \sigma$.
 - **L-BFGS-B baseline:** uses SciPy's `minimize` to optimize `theta` directly
   with analytic gradients.
 

@@ -271,6 +271,7 @@ Update `README.md` whenever a change affects:
 - outputs, logging, or reporting behavior
 - public APIs
 - expected experiment workflow
+- mathematical expressions or objective definitions (use LaTeX math blocks/inline math for formulas instead of plain-text code blocks)
 
 If no README changes are needed, explicitly verify that the existing README is still accurate.
 

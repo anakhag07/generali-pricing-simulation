@@ -17,7 +17,7 @@ from experiments.helpers import (
 )
 from experiments.reporters import StepReporter
 from experiments.results import EstimatorResult, ExperimentResult
-from optimization.policy import policy_u
+from model.policy import policy_u
 
 
 def _objective_u_star(objective_model: object) -> float | None:

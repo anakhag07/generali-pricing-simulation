@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from objective.base import StateVector
+
 # from optimization.common import clip_u
 
 POLICY_CONSTANT = "constant"

@@ -262,7 +262,7 @@ r(u) revenue                      -> FixedRegressionRevenue (src/objective/fixed
 f(u; x) fixed objective           -> FixedRegressionObjective (src/objective/fixed_objective.py)
 L(u; x) planted objective         -> PlantedLogisticObjective (src/objective/planted_logistic.py)
 oracle gradient API               -> FixedRegressionObjective.evaluate (src/objective/fixed_objective.py)
-policy u = f(theta, x)            -> PolicySpec, apply_policy (src/optimization/policy.py)
+policy u = f(theta, x)            -> PolicySpec, apply_policy (src/model/policy.py)
 zeroth-order Stein estimator      -> stein_zeroth_order_grad_batch (src/optimization/gradients/zeroth_order.py)
 step-size rules (constant/Armijo) -> constant_step_size, armijo_backtracking_step_size (src/optimization/steps.py)
 experiment runner / config        -> ExperimentConfig, run_experiment (src/experiments/run.py)
@@ -298,6 +298,8 @@ src/
     base.py                             Core dataclasses/protocols (StateVector, Customer, ObjectiveModel, etc.)
     fixed_objective.py                  Fixed regression objective implementation
     planted_logistic.py                 Planted convex logistic objective with known optimum
+  model/
+    policy.py                           PolicySpec, policy kinds, apply_policy
   experiments/
     config.py                           ExperimentConfig and CorrectnessSpec dataclasses
     configs/                            Preset configurations
@@ -318,7 +320,6 @@ src/
     visualization.py                    Matplotlib plotting utilities
   optimization/
     common.py                           Shared helpers (gaussian_noise)
-    policy.py                           PolicySpec, policy kinds, apply_policy
     steps.py                            Step-size rules (constant, Armijo backtracking)
     gradients/
       zeroth_order.py                   Stein zeroth-order gradient estimator

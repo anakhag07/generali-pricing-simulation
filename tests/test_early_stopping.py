@@ -3,7 +3,7 @@ import numpy as np
 from objective.base import ObjectiveResult, StateVector
 import experiments.helpers as helpers
 from experiments.helpers import run_first_order, run_lbfgs_theta, run_zeroth_order
-from optimization.policy import POLICY_LINEAR
+from model.policy import POLICY_LINEAR
 
 
 class SimpleObjective:

@@ -12,7 +12,7 @@ from experiments.config import CorrectnessSpec
 from experiments.reporters import StepReporter
 from experiments.results import OptimizationTrace
 from optimization.gradients.zeroth_order import stein_zeroth_order_grad_batch
-from optimization.policy import POLICY_CONSTANT, POLICY_LINEAR, POLICY_SOFTMAX, phi_batch, policy_u_batch
+from model.policy import POLICY_CONSTANT, POLICY_LINEAR, POLICY_SOFTMAX, phi_batch, policy_u_batch
 from optimization.steps import (
     STEP_RULE_ARMIJO,
     STEP_RULE_CONSTANT,

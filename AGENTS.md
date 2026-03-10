@@ -101,15 +101,17 @@ Guidelines:
 
 - Reserved for dataset adapters and external data-source integrations.
 
-#### Optimization Layer (`src/optimization/`)
+#### Model Layer (`src/model/`)
 
-- **`src/optimization/policy.py`**
+- **`src/model/policy.py`**
   - `PolicySpec`: frozen dataclass pairing `theta` (numpy array) with `kind` string
   - Policy kinds: `POLICY_CONSTANT`, `POLICY_LINEAR`, `POLICY_SOFTMAX`
   - `phi(x)` / `phi_batch(x_array)`: prepend bias term to features
   - `policy_u(theta, x, kind)` / `policy_u_batch(...)`: compute action from policy
   - `policy_grad_theta(theta, x, kind)`: compute `du/dtheta` (defined but unused in pipeline; see Known Issues)
   - `apply_policy(policy, x)`: convenience wrapper (does not clip `u`)
+
+#### Optimization Layer (`src/optimization/`)
 
 - **`src/optimization/steps.py`**
   - `STEP_RULE_CONSTANT`, `STEP_RULE_ARMIJO`, `STEP_RULES`
@@ -199,7 +201,7 @@ when appropriate.
   `src/objective/planted_logistic.py`. These could be factored into a shared
   utility module.
 
-- **`clip_u` is removed / commented out:** `src/optimization/policy.py` has
+- **`clip_u` is removed / commented out:** `src/model/policy.py` has
   a commented-out import of `clip_u` from `common.py`. `apply_policy` does
   not clip actions. The softmax policy naturally maps to `(0.5, 1.5)` but
   linear and constant policies are unbounded.
@@ -254,7 +256,9 @@ when appropriate.
 | `test_experiment_configs.py` | Config registry (get_config, list_configs) |
 | `test_file_step_logger.py` | FileStepLogger CSV output |
 | `test_lbfgs_theta.py` | L-BFGS-B reduces objective, trace structure |
+| `test_model_package_exports.py` | model package API exports remain importable |
 | `test_objective_batch.py` | Batch vs scalar consistency for both objectives |
+| `test_objective_package_exports.py` | objective package API exports remain importable |
 | `test_objective_models.py` | FixedRegressionObjective value and gradient correctness |
 | `test_planted_logistic_objective.py` | Planted logistic gradient at u_star and minimum |
 | `test_plot_u_star.py` | u_star selection for plotting |

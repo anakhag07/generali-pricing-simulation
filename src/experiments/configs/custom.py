@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import numpy as np
 
+from model.policy import POLICY_SOFTMAX, PolicySpec
 from experiments.config import CorrectnessSpec, ExperimentConfig
 from objective.fixed_objective import FixedRegressionObjective
-from optimization.policy import POLICY_SOFTMAX, PolicySpec
 
 STATE_DIM = 2
 

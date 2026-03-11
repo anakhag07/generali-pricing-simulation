@@ -1,4 +1,4 @@
-"""Custom experiment configuration (edit this file for recent runs)."""
+"""Base fixed-regression experiment configuration."""
 
 from __future__ import annotations
 
@@ -31,8 +31,8 @@ CONFIG = ExperimentConfig(
     step_rule="armijo",
     t_steps=50000,
     step_size=0.01,
-    sigma=0.1,
-    n_grad_samples=10,
+    sigma=0.05,
+    n_grad_samples=100,
     lbfgs_maxiter=100000,
     plot=True,
     plot_dir="plots",

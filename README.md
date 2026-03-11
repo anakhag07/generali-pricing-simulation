@@ -120,7 +120,7 @@ $$
 
 This function is convex in `u` and has a known minimum at `u*` for every `x`.
 When this objective is active, the true optimum is exposed in logs and plots.
-The preset config `planted_logistic` wires this in.
+The preset config `planted_logistic_base` wires this in.
 
 ## Policy System
 
@@ -149,26 +149,24 @@ functions:
 ```python
 from experiments.configs import get_config, list_configs
 
-list_configs()              # -> ("baseline_fixed", "baseline_test", "custom", "planted_logistic")
-config = get_config("custom")  # -> ExperimentConfig
+list_configs()              # -> ("fixed_regression_base", "planted_logistic_base")
+config = get_config("fixed_regression_base")  # -> ExperimentConfig
 ```
 
 Control which configs run by editing the `RUN_CONFIGS` list in `main.py`:
 
 ```python
-RUN_CONFIGS = ["custom"]  # add or remove preset names here
+RUN_CONFIGS = ["fixed_regression_base"]  # add or remove preset names here
 ```
 
 ### Available Presets
 
 | Name | Objective | Key Settings |
 |---|---|---|
-| `baseline_fixed` | FixedRegression (3D) | 10 samples, constant step, 100 steps |
-| `baseline_test` | FixedRegression (3D) | 2 samples, 1 step, plot=False (smoke test) |
-| `custom` | FixedRegression (2D) | 100 samples, Armijo step, 1000 steps |
-| `planted_logistic` | PlantedLogistic (3D) | 20 samples, Armijo step, 5000 steps, u*=1.1 |
+| `fixed_regression_base` | FixedRegression (2D) | 100 samples, Armijo step, 50000 steps, W&B enabled |
+| `planted_logistic_base` | PlantedLogistic (3D) | 20 samples, Armijo step, 5000 steps, u*=1.1 |
 
-Edit `custom.py` for ad-hoc experiments.
+Edit `fixed_regression_base.py` for ad-hoc fixed-regression experiments.
 
 ### ExperimentConfig Fields
 
@@ -372,10 +370,8 @@ src/
   experiments/
     config.py                           ExperimentConfig and CorrectnessSpec dataclasses
     configs/                            Preset configurations
-      baseline_fixed_objective.py       3D fixed regression baseline
-      baseline_test.py                  Minimal smoke-test config
-      custom.py                         Ad-hoc experiment config
-      planted_logistic.py              Planted logistic preset
+      fixed_regression_base.py          Base fixed-regression preset
+      planted_logistic_base.py          Base planted-logistic preset
     defaults.py                         Default helpers (default_policy_spec)
     helpers.py                          Core optimization routines (run_first_order,
                                         run_zeroth_order, run_lbfgs_theta)
@@ -410,7 +406,7 @@ Key test areas:
   `test_planted_logistic_objective.py`)
 - Policy batch consistency (`test_policy_batch.py`)
 - Step-size rules (`test_step_rules.py`)
-- End-to-end smoke test (`test_baseline_test.py`)
+- End-to-end smoke test (`test_baseline_test.py`, using fixed_regression_base overrides)
 - Enabled estimators filtering (`test_enabled_estimators.py`)
 - Early stopping (`test_early_stopping.py`)
 - Visualization outputs (`test_visualization_step_sizes.py`,

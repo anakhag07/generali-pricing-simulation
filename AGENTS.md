@@ -142,10 +142,8 @@ Guidelines:
 
 - **`src/experiments/configs/`** (preset registry)
   - `__init__.py`: `get_config(name)` and `list_configs()` registry
-  - `baseline_fixed_objective.py`: 3D fixed regression, constant step, 100 steps
-  - `baseline_test.py`: minimal smoke-test config (2 samples, 1 step, plot=False)
-  - `custom.py`: ad-hoc experiment (2D fixed regression, Armijo, 1000 steps)
-  - `planted_logistic.py`: planted logistic, Armijo, 5000 steps, u*=1.1
+  - `fixed_regression_base.py`: base fixed-regression config (2D, Armijo, W&B enabled)
+  - `planted_logistic_base.py`: planted logistic base config (3D, Armijo, 5000 steps, u*=1.1)
 
 - **`src/experiments/defaults.py`**
   - `default_policy_spec(state_dim)`: returns softmax policy with `state_dim + 1` theta params
@@ -194,7 +192,7 @@ Guidelines:
 
 ### Entry Point (`main.py`)
 
-- Reads `RUN_CONFIGS` list (currently `["custom"]`)
+- Reads `RUN_CONFIGS` list (currently `["fixed_regression_base"]`)
 - For each config name: loads via `get_config()`, creates `RunContext`, assembles `ReporterStack`, calls `run_experiment()`, finalizes with `reporters.on_end()`
 - All I/O is handled by reporters, not by the runner
 
@@ -252,7 +250,7 @@ when appropriate.
 
 | Test File | Area |
 |---|---|
-| `test_baseline_test.py` | End-to-end smoke test with baseline_test config |
+| `test_baseline_test.py` | End-to-end smoke test with fixed_regression_base overrides |
 | `test_config.py` | ExperimentConfig validation rules |
 | `test_correctness_spec.py` | CorrectnessSpec gradient source modes |
 | `test_early_stopping.py` | grad_norm_tol early stopping |

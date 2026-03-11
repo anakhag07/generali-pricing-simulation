@@ -10,3 +10,4 @@ runs/
 .DS_Store
 worktrees/
 outputs/
+wandb/

@@ -49,6 +49,7 @@ class ExperimentConfig:
     policy_spec: PolicySpec
     n_samples: int
     step_rule: str
+    batch_size: int | None = None
     seed: int = 7
     t_steps: int = 100
     step_size: float = 0.01
@@ -82,6 +83,12 @@ class ExperimentConfig:
 
         if self.n_samples <= 0:
             raise ValueError("n_samples must be positive.")
+
+        if self.batch_size is not None:
+            if self.batch_size <= 0:
+                raise ValueError("batch_size must be positive when provided.")
+            if self.batch_size > self.n_samples:
+                raise ValueError("batch_size must be <= n_samples when provided.")
 
         if self.step_rule not in STEP_RULES:
             allowed = ", ".join(sorted(STEP_RULES))
@@ -136,6 +143,7 @@ class ExperimentConfig:
         return {
             "state_dim": int(self.state_dim),
             "n_samples": int(self.n_samples),
+            "batch_size": int(self.batch_size) if self.batch_size is not None else None,
             "step_rule": self.step_rule,
             "seed": int(self.seed),
             "t_steps": int(self.t_steps),

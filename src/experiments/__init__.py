@@ -15,6 +15,13 @@ from experiments.reporters import (
 )
 from experiments.results import EstimatorResult, ExperimentResult, OptimizationTrace
 from experiments.run import run_experiment
+from experiments.sweep_utils import (
+    apply_config_overrides,
+    expand_override_grid,
+    generate_sweep_runs,
+    make_sweep_name,
+    run_preset_sweep,
+)
 
 __all__ = [
     "ExperimentConfig",
@@ -33,4 +40,9 @@ __all__ = [
     "StepReporter",
     "create_run_context",
     "run_experiment",
+    "expand_override_grid",
+    "apply_config_overrides",
+    "make_sweep_name",
+    "generate_sweep_runs",
+    "run_preset_sweep",
 ]

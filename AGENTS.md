@@ -139,6 +139,8 @@ Guidelines:
   - `batch_size: int | None = None` enables stochastic mini-batch optimization when set
   - `CorrectnessSpec`: controls how "true" gradients are computed (`"exact"`, `"numdiff"`, `"none"`)
   - `verbose: bool = False` controls terminal output of per-step metrics
+  - Preset-composition helpers: `make_*_objective`, `make_softmax_policy_spec`,
+    `canonical_training_block`, `canonical_runtime_block`, and `build_experiment_config`
 
 - **`src/experiments/configs/`** (preset registry)
   - `__init__.py`: `get_config(name)` and `list_configs()` registry
@@ -158,6 +160,12 @@ Guidelines:
 
 - **`src/experiments/run.py`**
   - `run_experiment(config, step_reporter)`: main runner; samples customers, runs enabled estimators, returns `ExperimentResult` (pure computation, no I/O)
+
+- **`src/experiments/sweep_utils.py`**
+  - `expand_override_grid(...)`: cartesian product of override values
+  - `apply_config_overrides(...)`: validates and applies top-level `ExperimentConfig` overrides
+  - `generate_sweep_runs(...)`: expands a base preset into named sweep variants
+  - `run_preset_sweep(...)`: executes sweep variants through the standard reporter pipeline
 
 - **`src/experiments/results.py`**
   - `OptimizationTrace`: per-step trace with u values, objective values, gradient estimates, optional theta values and step sizes
@@ -195,6 +203,7 @@ Guidelines:
 - Reads `RUN_CONFIGS` list (currently `["fixed_regression_base"]`)
 - For each config name: loads via `get_config()`, creates `RunContext`, assembles `ReporterStack`, calls `run_experiment()`, finalizes with `reporters.on_end()`
 - All I/O is handled by reporters, not by the runner
+- `scripts/run_sweep.py` provides optional preset-based sweep execution using top-level overrides
 
 ## Known Issues and Dead Code
 
@@ -274,6 +283,7 @@ when appropriate.
 | `test_trace_theta_values.py` | theta_values recorded in first/zeroth-order traces |
 | `test_verbose_config.py` | verbose flag defaults and serialization |
 | `test_visualization_step_sizes.py` | step_sizes plot uses log y-scale |
+| `test_sweep_utils.py` | Override-grid expansion and preset sweep config generation |
 
 ## Documentation and Maintenance
 

@@ -153,11 +153,22 @@ list_configs()              # -> ("fixed_regression_base", "planted_logistic_bas
 config = get_config("fixed_regression_base")  # -> ExperimentConfig
 ```
 
+Preset files compose `ExperimentConfig` using canonical helper blocks defined in
+`src/experiments/config.py` (objective, policy, training, and runtime).
+
 Control which configs run by editing the `RUN_CONFIGS` list in `main.py`:
 
 ```python
 RUN_CONFIGS = ["fixed_regression_base"]  # add or remove preset names here
 ```
+
+For parameter sweeps based on one preset with top-level overrides, use:
+
+```bash
+python scripts/run_sweep.py
+```
+
+Edit `BASE_PRESET` and `OVERRIDE_GRID` in `scripts/run_sweep.py`.
 
 ### Available Presets
 
@@ -323,6 +334,7 @@ SciPy-based first/zeroth solvers  -> run_first_order_minimize, run_zeroth_order_
 SciPy-based SPSA solver            -> run_spsa_minimize (src/optimization/solvers.py)
 step-size rules (legacy support)  -> constant_step_size, armijo_backtracking_step_size (src/optimization/steps.py)
 experiment runner / config        -> ExperimentConfig, run_experiment (src/experiments/run.py)
+config sweep utilities            -> override grid + sweep runner helpers (src/experiments/sweep_utils.py)
 optimization helper wrappers      -> run_first_order, run_zeroth_order, run_spsa, run_lbfgs_theta (src/experiments/helpers.py)
 result data structures            -> EstimatorResult, ExperimentResult, OptimizationTrace (src/experiments/results.py)
 reporting / I/O                   -> ReporterStack, ConsoleReporter, etc. (src/experiments/reporters.py)
@@ -358,6 +370,8 @@ All methods update `theta` (the policy parameter), not `u` directly.
 
 ```
 main.py                                 Demo entry point; RUN_CONFIGS list
+scripts/
+  run_sweep.py                          Preset sweep runner with override grid
 src/
   data/
     __init__.py                         Reserved for dataset adapters and data-source integrations
@@ -376,6 +390,7 @@ src/
     helpers.py                          Core optimization routines (run_first_order,
                                         run_zeroth_order, run_lbfgs_theta)
     run.py                              Experiment runner (returns results, no I/O)
+    sweep_utils.py                      Override-grid helpers and preset sweep execution
     results.py                          Result data structures (OptimizationTrace, etc.)
     reporters.py                        Reporter protocol, ReporterStack, RunContext,
                                         ConsoleReporter, FileStepLogger, JsonReporter,
@@ -412,6 +427,7 @@ Key test areas:
 - Visualization outputs (`test_visualization_step_sizes.py`,
   `test_theta_contours.py`, `test_plot_u_star.py`)
 - Reporter I/O (`test_file_step_logger.py`)
+- Sweep utilities (`test_sweep_utils.py`)
 
 Tests use explicit seeds for determinism and avoid filesystem I/O or plotting
 where possible.

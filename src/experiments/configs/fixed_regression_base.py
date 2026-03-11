@@ -4,9 +4,13 @@ from __future__ import annotations
 
 import numpy as np
 
-from model.policy import POLICY_SOFTMAX, PolicySpec
-from experiments.config import CorrectnessSpec, ExperimentConfig
-from objective.fixed_objective import FixedRegressionObjective
+from experiments.config import (
+    build_experiment_config,
+    canonical_runtime_block,
+    canonical_training_block,
+    make_fixed_regression_objective,
+    make_softmax_policy_spec,
+)
 
 STATE_DIM = 2
 
@@ -17,16 +21,7 @@ BETA_4 = 0.4
 
 POLICY_THETA = np.asarray([0.1] + [0.01] * STATE_DIM, dtype=float)
 
-CONFIG = ExperimentConfig(
-    seed=7,
-    state_dim=STATE_DIM,
-    objective_model=FixedRegressionObjective.from_parameters(
-        beta_1=BETA_1,
-        beta_2=BETA_2,
-        beta_3=BETA_3,
-        beta_4=BETA_4,
-    ),
-    policy_spec=PolicySpec(theta=POLICY_THETA, kind=POLICY_SOFTMAX),
+TRAINING = canonical_training_block(
     n_samples=100,
     step_rule="armijo",
     t_steps=50000,
@@ -34,18 +29,25 @@ CONFIG = ExperimentConfig(
     sigma=0.05,
     n_grad_samples=100,
     lbfgs_maxiter=100000,
-    plot=True,
-    plot_dir="plots",
-    # correctness=CorrectnessSpec(
-    #     gradient_source="numdiff",
-    #     numdiff_method="central",
-    #     numdiff_step=1e-4,
-    # ),
-
     enabled_estimators=("zeroth_order", "first_order", "lbfgs", "spsa"),
+)
 
+RUNTIME = canonical_runtime_block(
+    plot=True,
     verbose=False,
-
     wandb_enabled=True,
-    
+)
+
+CONFIG = build_experiment_config(
+    seed=7,
+    state_dim=STATE_DIM,
+    objective_model=make_fixed_regression_objective(
+        beta_1=BETA_1,
+        beta_2=BETA_2,
+        beta_3=BETA_3,
+        beta_4=BETA_4,
+    ),
+    policy_spec=make_softmax_policy_spec(theta=POLICY_THETA),
+    training=TRAINING,
+    runtime=RUNTIME,
 )

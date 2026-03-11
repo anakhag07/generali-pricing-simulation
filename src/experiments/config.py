@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Literal, Optional
+from typing import Any, Literal, Mapping, Optional
 
 import numpy as np
 
@@ -244,3 +244,121 @@ def _correctness_to_dict(correctness: CorrectnessSpec) -> dict[str, Any]:
 def _as_list(values: object) -> list[float]:
     arr = np.asarray(values, dtype=float)
     return [float(val) for val in arr.tolist()]
+
+
+def make_fixed_regression_objective(
+    *,
+    beta_1: np.ndarray,
+    beta_2: float,
+    beta_3: np.ndarray,
+    beta_4: float,
+) -> FixedRegressionObjective:
+    return FixedRegressionObjective.from_parameters(
+        beta_1=np.asarray(beta_1, dtype=float),
+        beta_2=float(beta_2),
+        beta_3=np.asarray(beta_3, dtype=float),
+        beta_4=float(beta_4),
+    )
+
+
+def make_planted_logistic_objective(
+    *,
+    alpha: float,
+    beta: np.ndarray,
+    bias: float,
+    u_star: float,
+) -> PlantedLogisticObjective:
+    return PlantedLogisticObjective(
+        alpha=float(alpha),
+        beta=np.asarray(beta, dtype=float),
+        bias=float(bias),
+        u_star=float(u_star),
+    )
+
+
+def make_softmax_policy_spec(*, theta: np.ndarray) -> PolicySpec:
+    return PolicySpec(theta=np.asarray(theta, dtype=float), kind=POLICY_SOFTMAX)
+
+
+def canonical_training_block(
+    *,
+    n_samples: int,
+    step_rule: str,
+    t_steps: int,
+    step_size: float,
+    sigma: float,
+    n_grad_samples: int,
+    lbfgs_maxiter: int,
+    enabled_estimators: tuple[str, ...],
+    batch_size: int | None = None,
+    grad_norm_tol: float | None = None,
+) -> dict[str, Any]:
+    return {
+        "n_samples": int(n_samples),
+        "step_rule": step_rule,
+        "t_steps": int(t_steps),
+        "step_size": float(step_size),
+        "sigma": float(sigma),
+        "n_grad_samples": int(n_grad_samples),
+        "lbfgs_maxiter": int(lbfgs_maxiter),
+        "enabled_estimators": tuple(enabled_estimators),
+        "batch_size": int(batch_size) if batch_size is not None else None,
+        "grad_norm_tol": float(grad_norm_tol) if grad_norm_tol is not None else None,
+    }
+
+
+def canonical_runtime_block(
+    *,
+    plot: bool,
+    verbose: bool,
+    wandb_enabled: bool,
+    plot_dir: str = "plots",
+    wandb_project: str | None = None,
+    wandb_entity: str | None = None,
+    wandb_group: str | None = None,
+    wandb_job_type: str = "experiment",
+    wandb_tags: tuple[str, ...] = (),
+    wandb_mode: Literal["online", "offline", "disabled"] = "online",
+    wandb_log_plots: bool = True,
+    wandb_estimator_allowlist: tuple[str, ...] | None = None,
+) -> dict[str, Any]:
+    return {
+        "plot": bool(plot),
+        "plot_dir": plot_dir,
+        "verbose": bool(verbose),
+        "wandb_enabled": bool(wandb_enabled),
+        "wandb_project": wandb_project,
+        "wandb_entity": wandb_entity,
+        "wandb_group": wandb_group,
+        "wandb_job_type": wandb_job_type,
+        "wandb_tags": tuple(wandb_tags),
+        "wandb_mode": wandb_mode,
+        "wandb_log_plots": bool(wandb_log_plots),
+        "wandb_estimator_allowlist": tuple(wandb_estimator_allowlist)
+        if wandb_estimator_allowlist is not None
+        else None,
+    }
+
+
+def build_experiment_config(
+    *,
+    seed: int,
+    state_dim: int,
+    objective_model: ObjectiveModel,
+    policy_spec: PolicySpec,
+    training: Mapping[str, Any],
+    runtime: Mapping[str, Any] | None = None,
+    correctness: CorrectnessSpec | None = None,
+) -> ExperimentConfig:
+    payload: dict[str, Any] = {
+        "seed": int(seed),
+        "state_dim": int(state_dim),
+        "objective_model": objective_model,
+        "policy_spec": policy_spec,
+    }
+    payload.update(dict(training))
+    if runtime is not None:
+        payload.update(dict(runtime))
+    if correctness is not None:
+        payload["correctness"] = correctness
+    return ExperimentConfig(**payload)

@@ -117,7 +117,7 @@ Guidelines:
   - `run_first_order_minimize(...)`: SciPy `minimize` (`L-BFGS-B`) solver using analytic u-gradients chained to theta gradients
   - `run_zeroth_order_minimize(...)`: SciPy `minimize` (`L-BFGS-B`) solver using Stein-estimated u-gradients chained to theta gradients
   - `run_spsa_minimize(...)`: SciPy `minimize` (`L-BFGS-B`) solver using SPSA theta-gradient estimates
-  - Internal helpers build batched objective/gradient callables and optimization traces
+  - Internal helpers build batched objective/gradient callables, optional mini-batch sampling, and optimization traces
 
 - **`src/optimization/steps.py`**
   - `STEP_RULE_CONSTANT`, `STEP_RULE_ARMIJO`, `STEP_RULES`
@@ -136,6 +136,7 @@ Guidelines:
 
 - **`src/experiments/config.py`**
   - `ExperimentConfig`: frozen dataclass with extensive `__post_init__` validation
+  - `batch_size: int | None = None` enables stochastic mini-batch optimization when set
   - `CorrectnessSpec`: controls how "true" gradients are computed (`"exact"`, `"numdiff"`, `"none"`)
   - `verbose: bool = False` controls terminal output of per-step metrics
 
@@ -259,6 +260,7 @@ when appropriate.
 | `test_experiment_configs.py` | Config registry (get_config, list_configs) |
 | `test_file_step_logger.py` | FileStepLogger CSV output |
 | `test_lbfgs_theta.py` | L-BFGS-B reduces objective, trace structure |
+| `test_minibatch_stochasticity.py` | Mini-batch determinism and full-batch equivalence |
 | `test_minimize_orders.py` | SciPy first/zeroth/SPSA wrappers (decrease + seed determinism) |
 | `test_model_package_exports.py` | model package API exports remain importable |
 | `test_objective_batch.py` | Batch vs scalar consistency for both objectives |

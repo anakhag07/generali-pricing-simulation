@@ -180,6 +180,7 @@ Each `ExperimentConfig` includes:
 | `objective_model` | *required* | `FixedRegressionObjective` or `PlantedLogisticObjective` |
 | `policy_spec` | *required* | `PolicySpec` with theta and kind |
 | `n_samples` | *required* | Batch size for customer states |
+| `batch_size` | None | Mini-batch size for stochastic optimization (`None` uses full batch) |
 | `step_rule` | *required* | `"constant"` or `"armijo"` |
 | `seed` | 7 | RNG seed for reproducibility |
 | `t_steps` | 100 | Number of optimization steps |
@@ -210,6 +211,15 @@ Set `step_rule` to `"constant"` or `"armijo"`:
 
 Set `grad_norm_tol` to stop when the theta gradient norm falls below the
 threshold. SciPy-driven optimizers pass this as `gtol`.
+
+### Mini-Batch Stochasticity
+
+- Set `batch_size` to an integer in `[1, n_samples]` to run first-order,
+  zeroth-order, and SPSA on random customer mini-batches at each objective/
+  gradient call.
+- Keep `batch_size=None` (default) to preserve deterministic full-batch
+  behavior.
+- Runs remain reproducible with fixed `seed`.
 
 ### Enabled Estimators
 
@@ -270,7 +280,7 @@ SciPy-based first/zeroth solvers  -> run_first_order_minimize, run_zeroth_order_
 SciPy-based SPSA solver            -> run_spsa_minimize (src/optimization/solvers.py)
 step-size rules (legacy support)  -> constant_step_size, armijo_backtracking_step_size (src/optimization/steps.py)
 experiment runner / config        -> ExperimentConfig, run_experiment (src/experiments/run.py)
-optimization helper wrappers      -> run_first_order, run_zeroth_order, run_lbfgs_theta (src/experiments/helpers.py)
+optimization helper wrappers      -> run_first_order, run_zeroth_order, run_spsa, run_lbfgs_theta (src/experiments/helpers.py)
 result data structures            -> EstimatorResult, ExperimentResult, OptimizationTrace (src/experiments/results.py)
 reporting / I/O                   -> ReporterStack, ConsoleReporter, etc. (src/experiments/reporters.py)
 console logging helpers           -> log_step, log_summary (src/reporting/logging.py)
@@ -295,7 +305,11 @@ config presets                    -> src/experiments/configs/ (get_config, list_
 - **L-BFGS-B baseline:** uses SciPy's `minimize` to optimize `theta` directly
   with analytic gradients.
 
-All three methods update `theta` (the policy parameter), not `u` directly.
+When `batch_size` is set, these estimators optimize mini-batch objectives
+$J_t(\theta)$ sampled from the customer pool; with `batch_size=None`, they use
+full-batch objectives.
+
+All methods update `theta` (the policy parameter), not `u` directly.
 
 ## Project Structure
 

@@ -116,6 +116,7 @@ Guidelines:
 - **`src/optimization/solvers.py`**
   - `run_first_order_minimize(...)`: SciPy `minimize` (`L-BFGS-B`) solver using analytic u-gradients chained to theta gradients
   - `run_zeroth_order_minimize(...)`: SciPy `minimize` (`L-BFGS-B`) solver using Stein-estimated u-gradients chained to theta gradients
+  - `run_spsa_minimize(...)`: SciPy `minimize` (`L-BFGS-B`) solver using SPSA theta-gradient estimates
   - Internal helpers build batched objective/gradient callables and optimization traces
 
 - **`src/optimization/steps.py`**
@@ -152,6 +153,7 @@ Guidelines:
   - `resolve_true_grad_u_fn(objective_model, correctness)`: resolves the "true" gradient function from correctness spec
   - `run_first_order(...)`: wrapper delegating to `optimization.solvers.run_first_order_minimize`
   - `run_zeroth_order(...)`: wrapper delegating to `optimization.solvers.run_zeroth_order_minimize`
+  - `run_spsa(...)`: wrapper delegating to `optimization.solvers.run_spsa_minimize`
   - `run_lbfgs_theta(...)`: L-BFGS-B theta optimizer via SciPy
   - Internal: `_numdiff_grad(...)` for finite-difference gradients
 
@@ -257,7 +259,7 @@ when appropriate.
 | `test_experiment_configs.py` | Config registry (get_config, list_configs) |
 | `test_file_step_logger.py` | FileStepLogger CSV output |
 | `test_lbfgs_theta.py` | L-BFGS-B reduces objective, trace structure |
-| `test_minimize_orders.py` | SciPy first/zeroth-order wrappers (decrease + seed determinism) |
+| `test_minimize_orders.py` | SciPy first/zeroth/SPSA wrappers (decrease + seed determinism) |
 | `test_model_package_exports.py` | model package API exports remain importable |
 | `test_objective_batch.py` | Batch vs scalar consistency for both objectives |
 | `test_objective_package_exports.py` | objective package API exports remain importable |

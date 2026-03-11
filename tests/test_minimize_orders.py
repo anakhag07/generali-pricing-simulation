@@ -1,7 +1,7 @@
 import numpy as np
 
 from objective.base import ObjectiveResult, StateVector
-from experiments.helpers import run_first_order, run_zeroth_order
+from experiments.helpers import run_first_order, run_spsa, run_zeroth_order
 from model.policy import POLICY_LINEAR
 
 
@@ -62,6 +62,40 @@ def test_zeroth_order_minimize_is_seed_deterministic() -> None:
         x_samples,
         objective,
         np.random.default_rng(11),
+        t_steps=20,
+        step_rule="constant",
+        step_size=0.01,
+        n_grad_samples=8,
+        sigma=0.1,
+    )
+
+    assert np.allclose(theta_a, theta_b)
+    assert np.allclose(trace_a.objective_values, trace_b.objective_values)
+
+
+def test_spsa_minimize_is_seed_deterministic() -> None:
+    theta_start = np.asarray([0.2, 0.3], dtype=float)
+    x_samples = [StateVector(values=[1.0]), StateVector(values=[-0.5])]
+    objective = SimpleObjective()
+
+    theta_a, trace_a = run_spsa(
+        theta_start,
+        POLICY_LINEAR,
+        x_samples,
+        objective,
+        np.random.default_rng(17),
+        t_steps=20,
+        step_rule="constant",
+        step_size=0.01,
+        n_grad_samples=8,
+        sigma=0.1,
+    )
+    theta_b, trace_b = run_spsa(
+        theta_start,
+        POLICY_LINEAR,
+        x_samples,
+        objective,
+        np.random.default_rng(17),
         t_steps=20,
         step_rule="constant",
         step_size=0.01,

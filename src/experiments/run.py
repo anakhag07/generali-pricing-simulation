@@ -13,6 +13,7 @@ from experiments.helpers import (
     resolve_true_grad_u_fn,
     run_first_order,
     run_lbfgs_theta,
+    run_spsa,
     run_zeroth_order,
 )
 from experiments.reporters import StepReporter
@@ -121,6 +122,38 @@ def run_experiment(
             time=time_zero,
         )
         traces["zeroth_order"] = trace_zero
+
+    if "spsa" in enabled_estimators:
+        start_spsa = time.perf_counter()
+        theta_spsa, trace_spsa = run_spsa(
+            theta_initial,
+            policy_spec.kind,
+            x_samples,
+            objective_model,
+            rng,
+            config.t_steps,
+            config.step_rule,
+            config.step_size,
+            config.n_grad_samples,
+            config.sigma,
+            true_grad_u_fn=true_grad_u_fn,
+            grad_norm_tol=config.grad_norm_tol,
+            step_reporter=step_reporter,
+        )
+        time_spsa = time.perf_counter() - start_spsa
+        u_spsa_values = [policy_u(theta_spsa, x, kind=policy_spec.kind) for x in x_samples]
+        u_spsa = float(sum(u_spsa_values) / len(u_spsa_values))
+        value_spsa = float(
+            sum(objective_model.value(x, u) for x, u in zip(x_samples, u_spsa_values))
+            / len(x_samples)
+        )
+        results["spsa"] = EstimatorResult(
+            theta=theta_spsa,
+            u=u_spsa,
+            value=value_spsa,
+            time=time_spsa,
+        )
+        traces["spsa"] = trace_spsa
 
     if "lbfgs" in enabled_estimators:
         start_lbfgs = time.perf_counter()

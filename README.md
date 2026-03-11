@@ -191,7 +191,7 @@ Each `ExperimentConfig` includes:
 | `verbose` | False | Print per-step metrics to terminal |
 | `plot` | True | Generate plots at end of run |
 | `plot_dir` | `"plots"` | Subdirectory name for plots |
-| `enabled_estimators` | `("first_order", "zeroth_order", "lbfgs")` | Which methods to run |
+| `enabled_estimators` | `("first_order", "zeroth_order", "lbfgs")` | Which methods to run (`"spsa"` also supported) |
 | `correctness` | `CorrectnessSpec()` | Controls "true" gradient computation |
 
 ### Step-Size Rules
@@ -216,7 +216,7 @@ threshold. SciPy-driven optimizers pass this as `gtol`.
 Control which methods run (and appear in plots/logs):
 
 ```python
-enabled_estimators=("zeroth_order", "first_order", "lbfgs")
+enabled_estimators=("zeroth_order", "first_order", "spsa", "lbfgs")
 ```
 
 ### Correctness Settings
@@ -267,6 +267,7 @@ oracle gradient API               -> FixedRegressionObjective.evaluate (src/obje
 policy u = f(theta, x)            -> PolicySpec, apply_policy (src/model/policy.py)
 zeroth-order Stein estimator      -> stein_zeroth_order_grad_batch (src/optimization/gradients/zeroth_order.py)
 SciPy-based first/zeroth solvers  -> run_first_order_minimize, run_zeroth_order_minimize (src/optimization/solvers.py)
+SciPy-based SPSA solver            -> run_spsa_minimize (src/optimization/solvers.py)
 step-size rules (legacy support)  -> constant_step_size, armijo_backtracking_step_size (src/optimization/steps.py)
 experiment runner / config        -> ExperimentConfig, run_experiment (src/experiments/run.py)
 optimization helper wrappers      -> run_first_order, run_zeroth_order, run_lbfgs_theta (src/experiments/helpers.py)
@@ -286,6 +287,11 @@ config presets                    -> src/experiments/configs/ (get_config, list_
   perturbed actions, estimates gradient via
   $\mathbb{E}[f(u + \sigma\varepsilon)\,\varepsilon] / \sigma$.
   The resulting theta gradient is passed to SciPy `minimize` (`L-BFGS-B`).
+- **SPSA estimator:** estimates the theta gradient with two-sided random
+  perturbations. For Rademacher directions $\Delta\in\{-1,+1\}^p$,
+  $$\hat g(\theta;\Delta)=\frac{J(\theta+\sigma\Delta)-J(\theta-\sigma\Delta)}{2\sigma}\,\Delta,$$
+  and averages across `n_grad_samples` directions before passing the gradient
+  to SciPy `minimize` (`L-BFGS-B`).
 - **L-BFGS-B baseline:** uses SciPy's `minimize` to optimize `theta` directly
   with analytic gradients.
 
@@ -324,7 +330,7 @@ src/
     visualization.py                    Matplotlib plotting utilities
   optimization/
     common.py                           Shared helpers (gaussian_noise)
-    solvers.py                          SciPy-based first/zeroth-order theta solvers
+    solvers.py                          SciPy-based first/zeroth/SPSA theta solvers
     steps.py                            Step-size rules (constant, Armijo backtracking)
     gradients/
       zeroth_order.py                   Stein zeroth-order gradient estimator

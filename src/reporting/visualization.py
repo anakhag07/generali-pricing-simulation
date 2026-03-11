@@ -19,9 +19,10 @@ matplotlib.use("Agg")
 ESTIMATOR_STYLES = {
     "first_order": {"label": "first-order", "color": "#1f77b4", "marker": "o"},
     "zeroth_order": {"label": "zeroth-order", "color": "#ff7f0e", "marker": "o"},
+    "spsa": {"label": "SPSA", "color": "#d62728", "marker": "o"},
     "lbfgs": {"label": "L-BFGS", "color": "#2ca02c", "marker": "x"},
 }
-_TRACE_ORDER = ("first_order", "zeroth_order", "lbfgs")
+_TRACE_ORDER = ("first_order", "zeroth_order", "spsa", "lbfgs")
 
 
 def _ordered_traces(

@@ -62,6 +62,15 @@ class ExperimentConfig:
     plot: bool = True
     plot_dir: str = "plots"
     enabled_estimators: tuple[str, ...] = ("first_order", "zeroth_order", "lbfgs")
+    wandb_enabled: bool = False
+    wandb_project: str | None = None
+    wandb_entity: str | None = None
+    wandb_group: str | None = None
+    wandb_job_type: str = "experiment"
+    wandb_tags: tuple[str, ...] = ()
+    wandb_mode: Literal["online", "offline", "disabled"] = "online"
+    wandb_log_plots: bool = True
+    wandb_estimator_allowlist: tuple[str, ...] | None = None
     correctness: CorrectnessSpec = field(default_factory=CorrectnessSpec)
 
     def __post_init__(self) -> None:
@@ -77,6 +86,25 @@ class ExperimentConfig:
             allowed = ", ".join(sorted(allowed_estimators))
             unknown_list = ", ".join(unknown)
             raise ValueError(f"Unknown estimators: {unknown_list}. Allowed: {allowed}.")
+
+        wandb_tags = tuple(self.wandb_tags)
+        object.__setattr__(self, "wandb_tags", wandb_tags)
+        if self.wandb_mode not in {"online", "offline", "disabled"}:
+            raise ValueError("wandb_mode must be 'online', 'offline', or 'disabled'.")
+        if self.wandb_enabled and self.wandb_mode == "disabled":
+            raise ValueError("wandb_mode='disabled' is incompatible with wandb_enabled=True.")
+        if self.wandb_estimator_allowlist is not None:
+            wandb_allowlist = tuple(self.wandb_estimator_allowlist)
+            object.__setattr__(self, "wandb_estimator_allowlist", wandb_allowlist)
+            if len(set(wandb_allowlist)) != len(wandb_allowlist):
+                raise ValueError("wandb_estimator_allowlist must not contain duplicates.")
+            unknown_wandb = [name for name in wandb_allowlist if name not in allowed_estimators]
+            if unknown_wandb:
+                allowed = ", ".join(sorted(allowed_estimators))
+                unknown_list = ", ".join(unknown_wandb)
+                raise ValueError(
+                    f"Unknown wandb estimators: {unknown_list}. Allowed: {allowed}."
+                )
 
         if self.state_dim <= 0:
             raise ValueError("state_dim must be positive.")
@@ -159,6 +187,19 @@ class ExperimentConfig:
             "plot": bool(self.plot),
             "plot_dir": self.plot_dir,
             "enabled_estimators": list(self.enabled_estimators),
+            "wandb": {
+                "enabled": bool(self.wandb_enabled),
+                "project": self.wandb_project,
+                "entity": self.wandb_entity,
+                "group": self.wandb_group,
+                "job_type": self.wandb_job_type,
+                "tags": list(self.wandb_tags),
+                "mode": self.wandb_mode,
+                "log_plots": bool(self.wandb_log_plots),
+                "estimator_allowlist": list(self.wandb_estimator_allowlist)
+                if self.wandb_estimator_allowlist is not None
+                else None,
+            },
             "correctness": _correctness_to_dict(self.correctness),
             "policy_spec": {
                 "kind": self.policy_spec.kind,

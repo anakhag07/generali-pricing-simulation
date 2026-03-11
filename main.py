@@ -14,7 +14,6 @@ from experiments.reporters import (
 )
 from experiments.run import run_experiment
 
-# RUN_CONFIGS = ["planted_logistic_base", "fixed_regression_base"]
 RUN_CONFIGS = ["fixed_regression_base"]
 
 def main() -> None:

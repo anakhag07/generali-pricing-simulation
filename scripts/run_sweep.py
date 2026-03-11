@@ -7,10 +7,9 @@ from experiments.sweep_utils import run_preset_sweep
 BASE_PRESET = "fixed_regression_base"
 
 OVERRIDE_GRID = {
-    "seed": [7, 11],
     "sigma": [0.03, 0.05],
-    "n_grad_samples": [64],
-    "t_steps": [250],
+    "n_grad_samples": [2, 4, 64],
+    "t_steps": [250, 1000],
     "plot": [False],
     "wandb_enabled": [False],
 }

@@ -34,7 +34,7 @@ TRAINING = canonical_training_block(
 RUNTIME = canonical_runtime_block(
     plot=True,
     verbose=False,
-    wandb_enabled=True,
+    wandb_enabled=False,
 )
 
 CONFIG = build_experiment_config(

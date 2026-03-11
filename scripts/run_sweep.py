@@ -11,7 +11,6 @@ OVERRIDE_GRID = {
     "sigma": [0.03, 0.05],
     "n_grad_samples": [64],
     "t_steps": [250],
-    "lbfgs_maxiter": [250],
     "plot": [False],
     "wandb_enabled": [False],
 }

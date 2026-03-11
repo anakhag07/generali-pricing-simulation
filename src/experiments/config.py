@@ -56,12 +56,10 @@ class ExperimentConfig:
     grad_norm_tol: Optional[float] = None
     sigma: float = 0.1
     n_grad_samples: int = 64
-    lbfgs_maxiter: int = 200
-    lbfgs_seed: Optional[int] = None
     verbose: bool = False
     plot: bool = True
     plot_dir: str = "plots"
-    enabled_estimators: tuple[str, ...] = ("first_order", "zeroth_order", "lbfgs")
+    enabled_estimators: tuple[str, ...] = ("first_order", "zeroth_order")
     wandb_enabled: bool = False
     wandb_project: str | None = None
     wandb_entity: str | None = None
@@ -80,7 +78,7 @@ class ExperimentConfig:
             raise ValueError("enabled_estimators must include at least one estimator.")
         if len(set(enabled_estimators)) != len(enabled_estimators):
             raise ValueError("enabled_estimators must not contain duplicates.")
-        allowed_estimators = {"first_order", "zeroth_order", "spsa", "lbfgs"}
+        allowed_estimators = {"first_order", "zeroth_order", "spsa"}
         unknown = [name for name in enabled_estimators if name not in allowed_estimators]
         if unknown:
             allowed = ", ".join(sorted(allowed_estimators))
@@ -131,9 +129,6 @@ class ExperimentConfig:
         if self.n_grad_samples <= 0:
             raise ValueError("n_grad_samples must be positive.")
 
-        if self.lbfgs_maxiter <= 0:
-            raise ValueError("lbfgs_maxiter must be positive.")
-
         if isinstance(self.objective_model, FixedRegressionObjective):
             if self.objective_model.acceptance.beta_1.size < self.state_dim:
                 raise ValueError("beta_1 must have at least state_dim elements.")
@@ -146,9 +141,6 @@ class ExperimentConfig:
                 raise ValueError(
                     "Policy theta must have at least state_dim + 1 elements for linear/softmax policies."
                 )
-        if self.lbfgs_seed is None:
-            object.__setattr__(self, "lbfgs_seed", int(self.seed + 997))
-
         if self.correctness is None:
             object.__setattr__(
                 self,
@@ -181,8 +173,6 @@ class ExperimentConfig:
             else None,
             "sigma": float(self.sigma),
             "n_grad_samples": int(self.n_grad_samples),
-            "lbfgs_maxiter": int(self.lbfgs_maxiter),
-            "lbfgs_seed": int(self.lbfgs_seed) if self.lbfgs_seed is not None else None,
             "verbose": bool(self.verbose),
             "plot": bool(self.plot),
             "plot_dir": self.plot_dir,
@@ -288,7 +278,6 @@ def canonical_training_block(
     step_size: float,
     sigma: float,
     n_grad_samples: int,
-    lbfgs_maxiter: int,
     enabled_estimators: tuple[str, ...],
     batch_size: int | None = None,
     grad_norm_tol: float | None = None,
@@ -300,7 +289,6 @@ def canonical_training_block(
         "step_size": float(step_size),
         "sigma": float(sigma),
         "n_grad_samples": int(n_grad_samples),
-        "lbfgs_maxiter": int(lbfgs_maxiter),
         "enabled_estimators": tuple(enabled_estimators),
         "batch_size": int(batch_size) if batch_size is not None else None,
         "grad_norm_tol": float(grad_norm_tol) if grad_norm_tol is not None else None,

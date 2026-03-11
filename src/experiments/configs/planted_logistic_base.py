@@ -18,13 +18,12 @@ POLICY_THETA = np.asarray([0.1] + [0.01] * STATE_DIM, dtype=float)
 
 TRAINING = canonical_training_block(
     n_samples=20,
-    step_rule="armijo",
+    step_rule="l-bfgs-b",
     t_steps=5000,
     step_size=0.05,
     sigma=0.1,
     n_grad_samples=64,
-    lbfgs_maxiter=5000,
-    enabled_estimators=("zeroth_order", "first_order", "lbfgs"),
+    enabled_estimators=("zeroth_order", "first_order"),
 )
 
 RUNTIME = canonical_runtime_block(

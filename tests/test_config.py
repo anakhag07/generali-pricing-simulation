@@ -96,6 +96,16 @@ def test_enabled_estimators_validation() -> None:
             enabled_estimators=("not-a-method",),
         )
 
+    with pytest.raises(ValueError, match="Unknown estimators"):
+        ExperimentConfig(
+            state_dim=1,
+            objective_model=objective_model,
+            policy_spec=default_policy_spec(1),
+            n_samples=5,
+            step_rule="constant",
+            enabled_estimators=("lbfgs",),
+        )
+
     with pytest.raises(ValueError, match="enabled_estimators must include at least one"):
         ExperimentConfig(
             state_dim=1,
@@ -141,6 +151,15 @@ def test_step_rule_validation() -> None:
             n_samples=5,
             step_rule="unknown",
         )
+
+    config = ExperimentConfig(
+        state_dim=1,
+        objective_model=objective_model,
+        policy_spec=default_policy_spec(1),
+        n_samples=5,
+        step_rule="l-bfgs-b",
+    )
+    assert config.step_rule == "l-bfgs-b"
 
     with pytest.raises(ValueError, match="step_size must be positive"):
         ExperimentConfig(

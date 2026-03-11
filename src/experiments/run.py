@@ -12,7 +12,6 @@ from experiments.config import ExperimentConfig
 from experiments.helpers import (
     resolve_true_grad_u_fn,
     run_first_order,
-    run_lbfgs_theta,
     run_spsa,
     run_zeroth_order,
 )
@@ -157,29 +156,6 @@ def run_experiment(
             time=time_spsa,
         )
         traces["spsa"] = trace_spsa
-
-    if "lbfgs" in enabled_estimators:
-        start_lbfgs = time.perf_counter()
-        theta_lbfgs, value_lbfgs, trace_lbfgs = run_lbfgs_theta(
-            theta_initial,
-            policy_spec.kind,
-            x_samples,
-            objective_model,
-            config.lbfgs_maxiter,
-            true_grad_u_fn=true_grad_u_fn,
-            grad_norm_tol=config.grad_norm_tol,
-            step_reporter=step_reporter,
-        )
-        time_lbfgs = time.perf_counter() - start_lbfgs
-        u_lbfgs_values = [policy_u(theta_lbfgs, x, kind=policy_spec.kind) for x in x_samples]
-        u_lbfgs = float(sum(u_lbfgs_values) / len(u_lbfgs_values))
-        results["lbfgs"] = EstimatorResult(
-            theta=theta_lbfgs,
-            u=u_lbfgs,
-            value=float(value_lbfgs),
-            time=time_lbfgs,
-        )
-        traces["lbfgs"] = trace_lbfgs
 
     return ExperimentResult(
         config=config,

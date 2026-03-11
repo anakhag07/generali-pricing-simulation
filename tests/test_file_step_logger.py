@@ -43,7 +43,7 @@ def test_file_logger_writes_rows(run_context: RunContext) -> None:
 
     logger.log_step("first-order", 1, 0.5, 0.3, 0.01, 0.001)
     logger.log_step("first-order", 2, 0.6, 0.25, 0.008, 0.001)
-    logger.log_step("lbfgs", 0, 0.5, 0.3, 0.02, None)
+    logger.log_step("spsa", 0, 0.5, 0.3, 0.02, None)
 
     logger.on_end(run_context, result=None)  # type: ignore[arg-type]
 
@@ -54,8 +54,7 @@ def test_file_logger_writes_rows(run_context: RunContext) -> None:
     assert lines[0] == "method,step,u,value,grad_norm,step_size"
     assert lines[1] == "first-order,1,0.500000,0.300000,0.010000,0.001000"
     assert lines[2] == "first-order,2,0.600000,0.250000,0.008000,0.001000"
-    # L-BFGS has no step_size
-    assert lines[3] == "lbfgs,0,0.500000,0.300000,0.020000,"
+    assert lines[3] == "spsa,0,0.500000,0.300000,0.020000,"
 
 
 def test_file_logger_handles_none_grad_norm(run_context: RunContext) -> None:

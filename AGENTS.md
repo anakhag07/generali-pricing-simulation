@@ -120,9 +120,9 @@ Guidelines:
   - Internal helpers build batched objective/gradient callables, optional mini-batch sampling, and optimization traces
 
 - **`src/optimization/steps.py`**
-  - `STEP_RULE_CONSTANT`, `STEP_RULE_ARMIJO`, `STEP_RULES`
+  - `STEP_RULE_LBFGSB`, `STEP_RULE_CONSTANT`, `STEP_RULE_ARMIJO`, `STEP_RULES`
   - `constant_step_size(step_size)`: returns the step size unchanged
-  - `armijo_backtracking_step_size(...)`: Armijo line search utility (not used by SciPy first/zeroth solvers)
+  - `armijo_backtracking_step_size(...)`: Armijo line search utility (not used by SciPy first/zeroth/SPSA solvers)
 
 - **`src/optimization/common.py`**
   - `gaussian_noise(rng, shape)`: standard normal samples (used by zeroth-order estimator)
@@ -144,8 +144,8 @@ Guidelines:
 
 - **`src/experiments/configs/`** (preset registry)
   - `__init__.py`: `get_config(name)` and `list_configs()` registry
-  - `fixed_regression_base.py`: base fixed-regression config (2D, Armijo, W&B enabled)
-  - `planted_logistic_base.py`: planted logistic base config (3D, Armijo, 5000 steps, u*=1.1)
+  - `fixed_regression_base.py`: base fixed-regression config (4D, L-BFGS-B step rule, W&B enabled)
+  - `planted_logistic_base.py`: planted logistic base config (3D, L-BFGS-B step rule, 5000 steps, u*=1.1)
 
 - **`src/experiments/defaults.py`**
   - `default_policy_spec(state_dim)`: returns softmax policy with `state_dim + 1` theta params
@@ -155,7 +155,6 @@ Guidelines:
   - `run_first_order(...)`: wrapper delegating to `optimization.solvers.run_first_order_minimize`
   - `run_zeroth_order(...)`: wrapper delegating to `optimization.solvers.run_zeroth_order_minimize`
   - `run_spsa(...)`: wrapper delegating to `optimization.solvers.run_spsa_minimize`
-  - `run_lbfgs_theta(...)`: L-BFGS-B theta optimizer via SciPy
   - Internal: `_numdiff_grad(...)` for finite-difference gradients
 
 - **`src/experiments/run.py`**
@@ -235,12 +234,8 @@ when appropriate.
   version `stein_zeroth_order_grad_batch` is called in the pipeline.
 
 - **`policy_grad_theta` is unused in the pipeline:** The gradient through
-  the policy is computed inline in `src/optimization/solvers.py` and
-  `run_lbfgs_theta` rather than calling this function.
-
-- **`lbfgs_seed` is set but never consumed:** It defaults to `seed + 997`
-  and is serialized in `to_dict()`, but `run_lbfgs_theta` does not use any
-  RNG. Reserved for future stochastic extensions.
+  the policy is computed inline in `src/optimization/solvers.py` rather than
+  calling this function.
 
 - **`plot_dir` on `ExperimentConfig` is ignored by `PlotReporter`:**
   `PlotReporter` always uses `run_context.plots_dir` (which is
@@ -266,7 +261,6 @@ when appropriate.
 | `test_enabled_estimators.py` | Selective estimator execution |
 | `test_experiment_configs.py` | Config registry (get_config, list_configs) |
 | `test_file_step_logger.py` | FileStepLogger CSV output |
-| `test_lbfgs_theta.py` | L-BFGS-B reduces objective, trace structure |
 | `test_minibatch_stochasticity.py` | Mini-batch determinism and full-batch equivalence |
 | `test_minimize_orders.py` | SciPy first/zeroth/SPSA wrappers (decrease + seed determinism) |
 | `test_model_package_exports.py` | model package API exports remain importable |

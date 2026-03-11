@@ -12,7 +12,7 @@ from experiments.config import (
     make_softmax_policy_spec,
 )
 
-STATE_DIM = 2
+STATE_DIM = 4
 
 BETA_1 = np.linspace(0.02, 0.5, num=STATE_DIM, dtype=float)
 BETA_2 = -1.2
@@ -23,13 +23,12 @@ POLICY_THETA = np.asarray([0.1] + [0.01] * STATE_DIM, dtype=float)
 
 TRAINING = canonical_training_block(
     n_samples=100,
-    step_rule="armijo",
+    step_rule="l-bfgs-b",
     t_steps=50000,
     step_size=0.01,
     sigma=0.05,
     n_grad_samples=100,
-    lbfgs_maxiter=100000,
-    enabled_estimators=("zeroth_order", "first_order", "lbfgs", "spsa"),
+    enabled_estimators=("zeroth_order", "first_order", "spsa"),
 )
 
 RUNTIME = canonical_runtime_block(

@@ -8,7 +8,8 @@ import numpy as np
 
 STEP_RULE_CONSTANT = "constant"
 STEP_RULE_ARMIJO = "armijo"
-STEP_RULES = (STEP_RULE_CONSTANT, STEP_RULE_ARMIJO)
+STEP_RULE_LBFGSB = "l-bfgs-b"
+STEP_RULES = (STEP_RULE_CONSTANT, STEP_RULE_ARMIJO, STEP_RULE_LBFGSB)
 
 ObjectiveThetaFn = Callable[[np.ndarray], float]
 

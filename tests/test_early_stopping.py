@@ -1,8 +1,7 @@
 import numpy as np
 
 from objective.base import ObjectiveResult, StateVector
-import experiments.helpers as helpers
-from experiments.helpers import run_first_order, run_lbfgs_theta, run_zeroth_order
+from experiments.helpers import run_first_order, run_zeroth_order
 from model.policy import POLICY_LINEAR
 
 
@@ -61,30 +60,3 @@ def test_zeroth_order_early_stops_on_grad_norm() -> None:
     assert len(trace.steps) <= 2
     assert trace.theta_values is not None
     assert len(trace.theta_values) == len(trace.steps)
-
-
-def test_run_lbfgs_theta_passes_grad_norm_tol(monkeypatch) -> None:
-    captured = {}
-
-    def fake_minimize(fun, x0, jac, method, options, callback):
-        captured["options"] = options
-
-        class Result:
-            x = np.asarray(x0, dtype=float)
-
-        return Result()
-
-    monkeypatch.setattr(helpers, "minimize", fake_minimize)
-
-    objective = SimpleObjective()
-    theta_start = np.array([1.0, 0.2], dtype=float)
-    x_samples = [StateVector(values=[1.0])]
-    run_lbfgs_theta(
-        theta_start,
-        POLICY_LINEAR,
-        x_samples,
-        objective,
-        maxiter=5,
-        grad_norm_tol=1e-3,
-    )
-    assert captured["options"]["gtol"] == 1e-3

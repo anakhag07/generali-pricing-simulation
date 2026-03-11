@@ -20,9 +20,8 @@ ESTIMATOR_STYLES = {
     "first_order": {"label": "first-order", "color": "#1f77b4", "marker": "o"},
     "zeroth_order": {"label": "zeroth-order", "color": "#ff7f0e", "marker": "o"},
     "spsa": {"label": "SPSA", "color": "#d62728", "marker": "o"},
-    "lbfgs": {"label": "L-BFGS", "color": "#2ca02c", "marker": "x"},
 }
-_TRACE_ORDER = ("first_order", "zeroth_order", "spsa", "lbfgs")
+_TRACE_ORDER = ("first_order", "zeroth_order", "spsa")
 
 
 def _ordered_traces(
@@ -241,35 +240,18 @@ def plot_objective_u_slice(
     ax_obj.plot(u_grid, obj_grid, color="black", label="objective", alpha=0.6)
     for name, trace in trace_items:
         style = ESTIMATOR_STYLES[name]
-        if name == "lbfgs":
-            ax_obj.plot(
-                trace.u_values,
-                trace.objective_values,
-                color=style["color"],
-                label=f"{style['label']} path",
-                alpha=0.6,
-            )
-            if trace.u_values and trace.objective_values:
-                ax_obj.scatter(
-                    [trace.u_values[-1]],
-                    [trace.objective_values[-1]],
-                    color=style["color"],
-                    marker=style["marker"],
-                    label=f"{style['label']} final",
-                )
-        else:
-            zorder = 4 if name == "zeroth_order" else 3
-            ax_obj.scatter(
-                trace.u_values,
-                trace.objective_values,
-                color=style["color"],
-                label=style["label"],
-                marker=style["marker"],
-                edgecolors=style["color"],
-                linewidths=0.4,
-                alpha=0.6,
-                zorder=zorder,
-            )
+        zorder = 4 if name == "zeroth_order" else 3
+        ax_obj.scatter(
+            trace.u_values,
+            trace.objective_values,
+            color=style["color"],
+            label=style["label"],
+            marker=style["marker"],
+            edgecolors=style["color"],
+            linewidths=0.4,
+            alpha=0.6,
+            zorder=zorder,
+        )
     ax_obj.set_ylabel("Objective value")
     if u_star is not None:
         ax_obj.axvline(
@@ -286,35 +268,18 @@ def plot_objective_u_slice(
     ax_grad.plot(u_grid, grad_grid, color="black", label="true u-grad", alpha=0.6)
     for name, trace in trace_items:
         style = ESTIMATOR_STYLES[name]
-        if name == "lbfgs":
-            ax_grad.plot(
-                trace.u_values,
-                trace.u_grad_estimates,
-                color=style["color"],
-                label=f"{style['label']} path",
-                alpha=0.6,
-            )
-            if trace.u_values and trace.u_grad_estimates:
-                ax_grad.scatter(
-                    [trace.u_values[-1]],
-                    [trace.u_grad_estimates[-1]],
-                    color=style["color"],
-                    marker=style["marker"],
-                    label=f"{style['label']} final",
-                )
-        else:
-            zorder = 4 if name == "zeroth_order" else 3
-            ax_grad.scatter(
-                trace.u_values,
-                trace.u_grad_estimates,
-                color=style["color"],
-                label=f"{style['label']} u-grad",
-                marker=style["marker"],
-                edgecolors=style["color"],
-                linewidths=0.4,
-                alpha=0.6,
-                zorder=zorder,
-            )
+        zorder = 4 if name == "zeroth_order" else 3
+        ax_grad.scatter(
+            trace.u_values,
+            trace.u_grad_estimates,
+            color=style["color"],
+            label=f"{style['label']} u-grad",
+            marker=style["marker"],
+            edgecolors=style["color"],
+            linewidths=0.4,
+            alpha=0.6,
+            zorder=zorder,
+        )
     ax_grad.set_ylabel("u-gradient")
     ax_grad.set_xlabel("u")
     if u_star is not None:

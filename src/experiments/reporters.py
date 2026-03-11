@@ -149,6 +149,104 @@ class JsonReporter:
             json.dump(payload, handle, indent=2, sort_keys=True, ensure_ascii=True)
 
 
+class WandbReporter:
+    def __init__(self) -> None:
+        self._enabled = False
+        self._allowlist: set[str] | None = None
+        self._wandb: object | None = None
+        self._run: object | None = None
+        self._global_step = 0
+        self._plots_enabled = True
+        self._plots_dir: Path | None = None
+
+    def on_start(self, run_context: RunContext, config: ExperimentConfig) -> None:
+        self._global_step = 0
+        self._enabled = bool(config.wandb_enabled)
+        self._plots_enabled = bool(config.wandb_log_plots)
+        self._plots_dir = run_context.plots_dir
+        if config.wandb_estimator_allowlist is None:
+            self._allowlist = None
+        else:
+            self._allowlist = set(config.wandb_estimator_allowlist)
+        if not self._enabled:
+            self._wandb = None
+            self._run = None
+            return
+        try:
+            import wandb  # type: ignore
+        except ImportError as exc:
+            raise RuntimeError(
+                "wandb_enabled=True but wandb is not installed. Install wandb or disable W&B."
+            ) from exc
+
+        config_payload = config.to_dict()
+        self._wandb = wandb
+        self._run = wandb.init(
+            project=config.wandb_project,
+            entity=config.wandb_entity,
+            group=config.wandb_group,
+            job_type=config.wandb_job_type,
+            tags=list(config.wandb_tags),
+            mode=config.wandb_mode,
+            name=f"{run_context.experiment_name}-{run_context.run_id}",
+            config={
+                "experiment_name": run_context.experiment_name,
+                "run_id": run_context.run_id,
+                **config_payload,
+            },
+        )
+
+    def on_end(self, run_context: RunContext, result: ExperimentResult) -> None:
+        if not self._enabled or self._wandb is None:
+            return
+        wandb_api = self._wandb
+        final_payload = {}
+        for name, estimator_result in result.results.items():
+            if self._allowlist is not None and name not in self._allowlist:
+                continue
+            theta_l2_norm = float(np.linalg.norm(estimator_result.theta))
+            final_payload[f"final/{name}/u"] = float(estimator_result.u)
+            final_payload[f"final/{name}/value"] = float(estimator_result.value)
+            final_payload[f"final/{name}/runtime_sec"] = float(estimator_result.time)
+            final_payload[f"final/{name}/theta_l2_norm"] = theta_l2_norm
+        if final_payload:
+            wandb_api.log(final_payload, step=self._global_step)
+
+        if self._plots_enabled and self._plots_dir is not None and self._plots_dir.exists():
+            plot_payload = {}
+            for plot_path in sorted(self._plots_dir.glob("*.png")):
+                plot_payload[f"plots/{plot_path.stem}"] = wandb_api.Image(str(plot_path))
+            if plot_payload:
+                wandb_api.log(plot_payload, step=self._global_step)
+        wandb_api.finish()
+        self._run = None
+
+    def log_step(
+        self,
+        method: str,
+        step: int,
+        u: float,
+        value: float,
+        grad_norm: float | None = None,
+        step_size: float | None = None,
+    ) -> None:
+        if not self._enabled or self._wandb is None:
+            return
+        if self._allowlist is not None and method not in self._allowlist:
+            return
+        payload = {
+            f"curve/{method}/step": int(step),
+            f"curve/{method}/u": float(u),
+            f"curve/{method}/objective": float(value),
+        }
+        if grad_norm is not None:
+            payload[f"curve/{method}/theta_grad_norm"] = float(grad_norm)
+        if step_size is not None:
+            payload[f"curve/{method}/step_size"] = float(step_size)
+        self._global_step += 1
+        self._wandb.log(payload, step=self._global_step)
+
+
 class PlotReporter:
     def on_start(self, run_context: RunContext, config: ExperimentConfig) -> None:
         return None
@@ -328,5 +426,6 @@ __all__ = [
     "ReporterStack",
     "RunContext",
     "StepReporter",
+    "WandbReporter",
     "create_run_context",
 ]

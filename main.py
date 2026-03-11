@@ -9,6 +9,7 @@ from experiments.reporters import (
     JsonReporter,
     PlotReporter,
     ReporterStack,
+    WandbReporter,
     create_run_context,
 )
 from experiments.run import run_experiment
@@ -20,12 +21,15 @@ def main() -> None:
     for config_name in RUN_CONFIGS:
         config = get_config(config_name)
         run_context = create_run_context(config_name, runs_root="outputs")
-        reporters = ReporterStack([
+        reporter_list = [
             ConsoleReporter(verbose=config.verbose),
             FileStepLogger(),
             JsonReporter(),
             PlotReporter(),
-        ])
+        ]
+        if config.wandb_enabled:
+            reporter_list.append(WandbReporter())
+        reporters = ReporterStack(reporter_list)
         reporters.on_start(run_context, config)
         result = run_experiment(config, step_reporter=reporters)
         reporters.on_end(run_context, result)

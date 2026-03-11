@@ -45,4 +45,7 @@ CONFIG = ExperimentConfig(
     enabled_estimators=("zeroth_order", "first_order", "lbfgs", "spsa"),
 
     verbose=False,
+
+    wandb_enabled=True,
+    
 )

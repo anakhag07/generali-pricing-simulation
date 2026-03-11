@@ -218,3 +218,46 @@ def test_batch_size_serialization() -> None:
     )
     payload = config.to_dict()
     assert payload["batch_size"] == 2
+
+
+def test_wandb_allowlist_validation() -> None:
+    objective_model = FixedRegressionObjective.from_parameters(
+        beta_1=[0.1],
+        beta_2=-0.5,
+        beta_3=[0.2],
+        beta_4=0.4,
+    )
+    with pytest.raises(ValueError, match="Unknown wandb estimators"):
+        ExperimentConfig(
+            state_dim=1,
+            objective_model=objective_model,
+            policy_spec=default_policy_spec(1),
+            n_samples=5,
+            step_rule="constant",
+            wandb_estimator_allowlist=("bogus",),
+        )
+
+
+def test_wandb_config_serialization() -> None:
+    objective_model = FixedRegressionObjective.from_parameters(
+        beta_1=[0.1],
+        beta_2=-0.5,
+        beta_3=[0.2],
+        beta_4=0.4,
+    )
+    config = ExperimentConfig(
+        state_dim=1,
+        objective_model=objective_model,
+        policy_spec=default_policy_spec(1),
+        n_samples=5,
+        step_rule="constant",
+        wandb_enabled=True,
+        wandb_project="pricing-sim",
+        wandb_tags=("smoke", "wandb"),
+        wandb_estimator_allowlist=("spsa",),
+    )
+    payload = config.to_dict()
+    assert payload["wandb"]["enabled"] is True
+    assert payload["wandb"]["project"] == "pricing-sim"
+    assert payload["wandb"]["tags"] == ["smoke", "wandb"]
+    assert payload["wandb"]["estimator_allowlist"] == ["spsa"]

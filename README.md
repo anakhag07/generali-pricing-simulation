@@ -24,7 +24,7 @@ python main.py
 ```
 
 Runtime dependencies live in `requirements.txt` and mirror `pyproject.toml`
-(numpy >= 1.24, matplotlib >= 3.7, scipy >= 1.10).
+(numpy >= 1.24, matplotlib >= 3.7, scipy >= 1.10, wandb >= 0.19).
 
 To run tests:
 
@@ -39,7 +39,7 @@ your local setup.
 
 
 Runtime dependencies live in `requirements.txt` and mirror `pyproject.toml`
-(numpy >= 1.24, matplotlib >= 3.7, scipy >= 1.10).
+(numpy >= 1.24, matplotlib >= 3.7, scipy >= 1.10, wandb >= 0.19).
 
 
 ## What This Does
@@ -193,6 +193,15 @@ Each `ExperimentConfig` includes:
 | `plot` | True | Generate plots at end of run |
 | `plot_dir` | `"plots"` | Subdirectory name for plots |
 | `enabled_estimators` | `("first_order", "zeroth_order", "lbfgs")` | Which methods to run (`"spsa"` also supported) |
+| `wandb_enabled` | `False` | Enable Weights & Biases logging |
+| `wandb_project` | `None` | W&B project name |
+| `wandb_entity` | `None` | W&B entity/user/team |
+| `wandb_group` | `None` | W&B group label for run grouping |
+| `wandb_job_type` | `"experiment"` | W&B job type |
+| `wandb_tags` | `()` | W&B tags |
+| `wandb_mode` | `"online"` | W&B mode (`"online"`, `"offline"`, `"disabled"`) |
+| `wandb_log_plots` | `True` | Upload generated PNG plots to W&B at run end |
+| `wandb_estimator_allowlist` | `None` | Optional estimator filter for W&B logging only |
 | `correctness` | `CorrectnessSpec()` | Controls "true" gradient computation |
 
 ### Step-Size Rules
@@ -228,6 +237,42 @@ Control which methods run (and appear in plots/logs):
 ```python
 enabled_estimators=("zeroth_order", "first_order", "spsa", "lbfgs")
 ```
+
+### Weights & Biases Streaming
+
+Enable W&B by setting `wandb_enabled=True` in your preset config and logging in:
+
+```bash
+wandb login
+```
+
+Example config fields:
+
+```python
+CONFIG = ExperimentConfig(
+    # ... existing fields ...
+    enabled_estimators=("zeroth_order", "first_order", "spsa", "lbfgs"),
+    wandb_enabled=True,
+    wandb_project="pricing-sim",
+    wandb_entity=None,
+    wandb_group="ablation-n-grad-samples",
+    wandb_tags=("custom", "steins", "spsa"),
+    wandb_mode="online",  # or "offline"
+    wandb_estimator_allowlist=("zeroth_order", "spsa"),  # optional
+)
+```
+
+What gets streamed:
+
+- Per-step curves under namespaced keys such as
+  `curve/zeroth_order/objective`, `curve/spsa/objective`,
+  `curve/first_order/theta_grad_norm`, etc.
+- Final summaries under `final/<estimator>/*`.
+- Plot PNGs under `plots/*` when `wandb_log_plots=True`.
+
+This setup lets you filter/sort runs by config fields (for example
+`n_grad_samples`, `n_samples`, `sigma`) and toggle estimator lines in W&B
+charts without rerunning experiments.
 
 ### Correctness Settings
 

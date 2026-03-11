@@ -3,16 +3,12 @@
 from __future__ import annotations
 
 from experiments.config import ExperimentConfig
-from experiments.configs.baseline_fixed_objective import CONFIG as baseline_fixed
-from experiments.configs.baseline_test import CONFIG as baseline_test
-from experiments.configs.custom import CONFIG as custom
-from experiments.configs.planted_logistic import CONFIG as planted_logistic
+from experiments.configs.fixed_regression_base import CONFIG as fixed_regression_base
+from experiments.configs.planted_logistic_base import CONFIG as planted_logistic_base
 
 _CONFIGS = {
-    "baseline_fixed": baseline_fixed,
-    "baseline_test": baseline_test,
-    "custom": custom,
-    "planted_logistic": planted_logistic,
+    "fixed_regression_base": fixed_regression_base,
+    "planted_logistic_base": planted_logistic_base,
 }
 
 

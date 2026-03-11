@@ -120,9 +120,9 @@ Guidelines:
   - Internal helpers build batched objective/gradient callables, optional mini-batch sampling, and optimization traces
 
 - **`src/optimization/steps.py`**
-  - `STEP_RULE_CONSTANT`, `STEP_RULE_ARMIJO`, `STEP_RULES`
+  - `STEP_RULE_LBFGSB`, `STEP_RULE_CONSTANT`, `STEP_RULE_ARMIJO`, `STEP_RULES`
   - `constant_step_size(step_size)`: returns the step size unchanged
-  - `armijo_backtracking_step_size(...)`: Armijo line search utility (not used by SciPy first/zeroth solvers)
+  - `armijo_backtracking_step_size(...)`: Armijo line search utility (not used by SciPy first/zeroth/SPSA solvers)
 
 - **`src/optimization/common.py`**
   - `gaussian_noise(rng, shape)`: standard normal samples (used by zeroth-order estimator)
@@ -139,13 +139,13 @@ Guidelines:
   - `batch_size: int | None = None` enables stochastic mini-batch optimization when set
   - `CorrectnessSpec`: controls how "true" gradients are computed (`"exact"`, `"numdiff"`, `"none"`)
   - `verbose: bool = False` controls terminal output of per-step metrics
+  - Preset-composition helpers: `make_*_objective`, `make_softmax_policy_spec`,
+    `canonical_training_block`, `canonical_runtime_block`, and `build_experiment_config`
 
 - **`src/experiments/configs/`** (preset registry)
   - `__init__.py`: `get_config(name)` and `list_configs()` registry
-  - `baseline_fixed_objective.py`: 3D fixed regression, constant step, 100 steps
-  - `baseline_test.py`: minimal smoke-test config (2 samples, 1 step, plot=False)
-  - `custom.py`: ad-hoc experiment (2D fixed regression, Armijo, 1000 steps)
-  - `planted_logistic.py`: planted logistic, Armijo, 5000 steps, u*=1.1
+  - `fixed_regression_base.py`: base fixed-regression config (4D, L-BFGS-B step rule, W&B enabled)
+  - `planted_logistic_base.py`: planted logistic base config (3D, L-BFGS-B step rule, 5000 steps, u*=1.1)
 
 - **`src/experiments/defaults.py`**
   - `default_policy_spec(state_dim)`: returns softmax policy with `state_dim + 1` theta params
@@ -155,11 +155,16 @@ Guidelines:
   - `run_first_order(...)`: wrapper delegating to `optimization.solvers.run_first_order_minimize`
   - `run_zeroth_order(...)`: wrapper delegating to `optimization.solvers.run_zeroth_order_minimize`
   - `run_spsa(...)`: wrapper delegating to `optimization.solvers.run_spsa_minimize`
-  - `run_lbfgs_theta(...)`: L-BFGS-B theta optimizer via SciPy
   - Internal: `_numdiff_grad(...)` for finite-difference gradients
 
 - **`src/experiments/run.py`**
   - `run_experiment(config, step_reporter)`: main runner; samples customers, runs enabled estimators, returns `ExperimentResult` (pure computation, no I/O)
+
+- **`src/experiments/sweep_utils.py`**
+  - `expand_override_grid(...)`: cartesian product of override values
+  - `apply_config_overrides(...)`: validates and applies top-level `ExperimentConfig` overrides
+  - `generate_sweep_runs(...)`: expands a base preset into named sweep variants
+  - `run_preset_sweep(...)`: executes sweep variants through the standard reporter pipeline
 
 - **`src/experiments/results.py`**
   - `OptimizationTrace`: per-step trace with u values, objective values, gradient estimates, optional theta values and step sizes
@@ -194,9 +199,10 @@ Guidelines:
 
 ### Entry Point (`main.py`)
 
-- Reads `RUN_CONFIGS` list (currently `["custom"]`)
+- Reads `RUN_CONFIGS` list (currently `["fixed_regression_base"]`)
 - For each config name: loads via `get_config()`, creates `RunContext`, assembles `ReporterStack`, calls `run_experiment()`, finalizes with `reporters.on_end()`
 - All I/O is handled by reporters, not by the runner
+- `scripts/run_sweep.py` provides optional preset-based sweep execution using top-level overrides
 
 ## Known Issues and Dead Code
 
@@ -228,12 +234,8 @@ when appropriate.
   version `stein_zeroth_order_grad_batch` is called in the pipeline.
 
 - **`policy_grad_theta` is unused in the pipeline:** The gradient through
-  the policy is computed inline in `src/optimization/solvers.py` and
-  `run_lbfgs_theta` rather than calling this function.
-
-- **`lbfgs_seed` is set but never consumed:** It defaults to `seed + 997`
-  and is serialized in `to_dict()`, but `run_lbfgs_theta` does not use any
-  RNG. Reserved for future stochastic extensions.
+  the policy is computed inline in `src/optimization/solvers.py` rather than
+  calling this function.
 
 - **`plot_dir` on `ExperimentConfig` is ignored by `PlotReporter`:**
   `PlotReporter` always uses `run_context.plots_dir` (which is
@@ -252,14 +254,13 @@ when appropriate.
 
 | Test File | Area |
 |---|---|
-| `test_baseline_test.py` | End-to-end smoke test with baseline_test config |
+| `test_baseline_test.py` | End-to-end smoke test with fixed_regression_base overrides |
 | `test_config.py` | ExperimentConfig validation rules |
 | `test_correctness_spec.py` | CorrectnessSpec gradient source modes |
 | `test_early_stopping.py` | grad_norm_tol early stopping |
 | `test_enabled_estimators.py` | Selective estimator execution |
 | `test_experiment_configs.py` | Config registry (get_config, list_configs) |
 | `test_file_step_logger.py` | FileStepLogger CSV output |
-| `test_lbfgs_theta.py` | L-BFGS-B reduces objective, trace structure |
 | `test_minibatch_stochasticity.py` | Mini-batch determinism and full-batch equivalence |
 | `test_minimize_orders.py` | SciPy first/zeroth/SPSA wrappers (decrease + seed determinism) |
 | `test_model_package_exports.py` | model package API exports remain importable |
@@ -276,6 +277,7 @@ when appropriate.
 | `test_trace_theta_values.py` | theta_values recorded in first/zeroth-order traces |
 | `test_verbose_config.py` | verbose flag defaults and serialization |
 | `test_visualization_step_sizes.py` | step_sizes plot uses log y-scale |
+| `test_sweep_utils.py` | Override-grid expansion and preset sweep config generation |
 
 ## Documentation and Maintenance
 

@@ -24,7 +24,7 @@ from reporting.visualization import (
     plot_theta_objective_contours,
     select_theta_axes_max_variance,
 )
-from optimization.steps import STEP_RULE_CONSTANT
+from optimization.steps import STEP_RULE_ARMIJO
 
 
 @dataclass(frozen=True)
@@ -260,8 +260,7 @@ class PlotReporter:
         objective_model = config.objective_model
         policy_spec = config.policy_spec
         traces = result.traces
-        u_lbfgs = float(result.results["lbfgs"].u) if "lbfgs" in result.results else None
-        u_star_plot = _u_star_for_plot(objective_model, result.u_star, u_lbfgs)
+        u_star_plot = _u_star_for_plot(objective_model, result.u_star)
         plot_loss_curves(
             traces,
             plot_dir,
@@ -275,7 +274,7 @@ class PlotReporter:
             plot_dir,
             u_star=u_star_plot,
         )
-        if config.step_rule != STEP_RULE_CONSTANT:
+        if config.step_rule == STEP_RULE_ARMIJO:
             plot_step_sizes(traces, plot_dir)
         if policy_spec.theta.size >= 2:
             axis_indices = (0, 1)
@@ -358,15 +357,12 @@ class FileStepLogger:
 def _u_star_for_plot(
     objective_model: object,
     u_star: float | None,
-    u_lbfgs: float | None = None,
 ) -> float | None:
     if isinstance(objective_model, FixedRegressionObjective):
         return None
     if u_star is not None:
         return u_star
-    if u_lbfgs is None:
-        return None
-    return u_lbfgs
+    return None
 
 
 def _build_summary_payload(run_context: RunContext, result: ExperimentResult) -> dict:

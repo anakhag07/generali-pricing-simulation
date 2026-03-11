@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Literal, Optional
+from typing import Any, Literal, Mapping, Optional
 
 import numpy as np
 
@@ -56,12 +56,10 @@ class ExperimentConfig:
     grad_norm_tol: Optional[float] = None
     sigma: float = 0.1
     n_grad_samples: int = 64
-    lbfgs_maxiter: int = 200
-    lbfgs_seed: Optional[int] = None
     verbose: bool = False
     plot: bool = True
     plot_dir: str = "plots"
-    enabled_estimators: tuple[str, ...] = ("first_order", "zeroth_order", "lbfgs")
+    enabled_estimators: tuple[str, ...] = ("first_order", "zeroth_order")
     wandb_enabled: bool = False
     wandb_project: str | None = None
     wandb_entity: str | None = None
@@ -80,7 +78,7 @@ class ExperimentConfig:
             raise ValueError("enabled_estimators must include at least one estimator.")
         if len(set(enabled_estimators)) != len(enabled_estimators):
             raise ValueError("enabled_estimators must not contain duplicates.")
-        allowed_estimators = {"first_order", "zeroth_order", "spsa", "lbfgs"}
+        allowed_estimators = {"first_order", "zeroth_order", "spsa"}
         unknown = [name for name in enabled_estimators if name not in allowed_estimators]
         if unknown:
             allowed = ", ".join(sorted(allowed_estimators))
@@ -131,9 +129,6 @@ class ExperimentConfig:
         if self.n_grad_samples <= 0:
             raise ValueError("n_grad_samples must be positive.")
 
-        if self.lbfgs_maxiter <= 0:
-            raise ValueError("lbfgs_maxiter must be positive.")
-
         if isinstance(self.objective_model, FixedRegressionObjective):
             if self.objective_model.acceptance.beta_1.size < self.state_dim:
                 raise ValueError("beta_1 must have at least state_dim elements.")
@@ -146,9 +141,6 @@ class ExperimentConfig:
                 raise ValueError(
                     "Policy theta must have at least state_dim + 1 elements for linear/softmax policies."
                 )
-        if self.lbfgs_seed is None:
-            object.__setattr__(self, "lbfgs_seed", int(self.seed + 997))
-
         if self.correctness is None:
             object.__setattr__(
                 self,
@@ -181,8 +173,6 @@ class ExperimentConfig:
             else None,
             "sigma": float(self.sigma),
             "n_grad_samples": int(self.n_grad_samples),
-            "lbfgs_maxiter": int(self.lbfgs_maxiter),
-            "lbfgs_seed": int(self.lbfgs_seed) if self.lbfgs_seed is not None else None,
             "verbose": bool(self.verbose),
             "plot": bool(self.plot),
             "plot_dir": self.plot_dir,
@@ -244,3 +234,119 @@ def _correctness_to_dict(correctness: CorrectnessSpec) -> dict[str, Any]:
 def _as_list(values: object) -> list[float]:
     arr = np.asarray(values, dtype=float)
     return [float(val) for val in arr.tolist()]
+
+
+def make_fixed_regression_objective(
+    *,
+    beta_1: np.ndarray,
+    beta_2: float,
+    beta_3: np.ndarray,
+    beta_4: float,
+) -> FixedRegressionObjective:
+    return FixedRegressionObjective.from_parameters(
+        beta_1=np.asarray(beta_1, dtype=float),
+        beta_2=float(beta_2),
+        beta_3=np.asarray(beta_3, dtype=float),
+        beta_4=float(beta_4),
+    )
+
+
+def make_planted_logistic_objective(
+    *,
+    alpha: float,
+    beta: np.ndarray,
+    bias: float,
+    u_star: float,
+) -> PlantedLogisticObjective:
+    return PlantedLogisticObjective(
+        alpha=float(alpha),
+        beta=np.asarray(beta, dtype=float),
+        bias=float(bias),
+        u_star=float(u_star),
+    )
+
+
+def make_softmax_policy_spec(*, theta: np.ndarray) -> PolicySpec:
+    return PolicySpec(theta=np.asarray(theta, dtype=float), kind=POLICY_SOFTMAX)
+
+
+def canonical_training_block(
+    *,
+    n_samples: int,
+    step_rule: str,
+    t_steps: int,
+    step_size: float,
+    sigma: float,
+    n_grad_samples: int,
+    enabled_estimators: tuple[str, ...],
+    batch_size: int | None = None,
+    grad_norm_tol: float | None = None,
+) -> dict[str, Any]:
+    return {
+        "n_samples": int(n_samples),
+        "step_rule": step_rule,
+        "t_steps": int(t_steps),
+        "step_size": float(step_size),
+        "sigma": float(sigma),
+        "n_grad_samples": int(n_grad_samples),
+        "enabled_estimators": tuple(enabled_estimators),
+        "batch_size": int(batch_size) if batch_size is not None else None,
+        "grad_norm_tol": float(grad_norm_tol) if grad_norm_tol is not None else None,
+    }
+
+
+def canonical_runtime_block(
+    *,
+    plot: bool,
+    verbose: bool,
+    wandb_enabled: bool,
+    plot_dir: str = "plots",
+    wandb_project: str | None = None,
+    wandb_entity: str | None = None,
+    wandb_group: str | None = None,
+    wandb_job_type: str = "experiment",
+    wandb_tags: tuple[str, ...] = (),
+    wandb_mode: Literal["online", "offline", "disabled"] = "online",
+    wandb_log_plots: bool = True,
+    wandb_estimator_allowlist: tuple[str, ...] | None = None,
+) -> dict[str, Any]:
+    return {
+        "plot": bool(plot),
+        "plot_dir": plot_dir,
+        "verbose": bool(verbose),
+        "wandb_enabled": bool(wandb_enabled),
+        "wandb_project": wandb_project,
+        "wandb_entity": wandb_entity,
+        "wandb_group": wandb_group,
+        "wandb_job_type": wandb_job_type,
+        "wandb_tags": tuple(wandb_tags),
+        "wandb_mode": wandb_mode,
+        "wandb_log_plots": bool(wandb_log_plots),
+        "wandb_estimator_allowlist": tuple(wandb_estimator_allowlist)
+        if wandb_estimator_allowlist is not None
+        else None,
+    }
+
+
+def build_experiment_config(
+    *,
+    seed: int,
+    state_dim: int,
+    objective_model: ObjectiveModel,
+    policy_spec: PolicySpec,
+    training: Mapping[str, Any],
+    runtime: Mapping[str, Any] | None = None,
+    correctness: CorrectnessSpec | None = None,
+) -> ExperimentConfig:
+    payload: dict[str, Any] = {
+        "seed": int(seed),
+        "state_dim": int(state_dim),
+        "objective_model": objective_model,
+        "policy_spec": policy_spec,
+    }
+    payload.update(dict(training))
+    if runtime is not None:
+        payload.update(dict(runtime))
+    if correctness is not None:
+        payload["correctness"] = correctness
+    return ExperimentConfig(**payload)

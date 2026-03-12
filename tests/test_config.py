@@ -191,6 +191,36 @@ def test_grad_norm_tol_validation() -> None:
         )
 
 
+def test_ftol_validation_and_serialization() -> None:
+    objective_model = FixedRegressionObjective.from_parameters(
+        beta_1=[0.1],
+        beta_2=-0.5,
+        beta_3=[0.2],
+        beta_4=0.4,
+    )
+
+    with pytest.raises(ValueError, match="ftol must be positive"):
+        ExperimentConfig(
+            state_dim=1,
+            objective_model=objective_model,
+            policy_spec=default_policy_spec(1),
+            n_samples=5,
+            step_rule="constant",
+            ftol=0.0,
+        )
+
+    config = ExperimentConfig(
+        state_dim=1,
+        objective_model=objective_model,
+        policy_spec=default_policy_spec(1),
+        n_samples=5,
+        step_rule="constant",
+        ftol=1e-9,
+    )
+    payload = config.to_dict()
+    assert payload["ftol"] == 1e-9
+
+
 def test_batch_size_validation() -> None:
     objective_model = FixedRegressionObjective.from_parameters(
         beta_1=[0.1],

@@ -368,11 +368,12 @@ def _u_star_for_plot(
 def _build_summary_payload(run_context: RunContext, result: ExperimentResult) -> dict:
     estimators: dict[str, dict] = {}
     for name, estimator_result in result.results.items():
+        trace = result.traces.get(name)
         theta_l2_norm = float(np.linalg.norm(estimator_result.theta))
         theta_delta_l2_norm = float(
             np.linalg.norm(estimator_result.theta - result.config.policy_spec.theta)
         )
-        estimators[name] = {
+        estimator_payload = {
             "final_u": float(estimator_result.u),
             "final_value": float(estimator_result.value),
             "runtime_sec": float(estimator_result.time),
@@ -380,6 +381,10 @@ def _build_summary_payload(run_context: RunContext, result: ExperimentResult) ->
             "theta_l2_norm": theta_l2_norm,
             "theta_delta_l2_norm": theta_delta_l2_norm,
         }
+        if trace is not None:
+            estimator_payload["optimizer_status"] = trace.optimizer_status
+            estimator_payload["optimizer_message"] = trace.optimizer_message
+        estimators[name] = estimator_payload
 
     trace_summary: dict[str, dict] = {}
     for name, trace in result.traces.items():

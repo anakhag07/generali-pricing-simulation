@@ -74,6 +74,7 @@ def run_experiment(
             config.batch_size,
             true_grad_u_fn=true_grad_u_fn,
             grad_norm_tol=config.grad_norm_tol,
+            ftol=config.ftol,
             step_reporter=step_reporter,
         )
         time_first = time.perf_counter() - start_first
@@ -107,6 +108,7 @@ def run_experiment(
             config.batch_size,
             true_grad_u_fn=true_grad_u_fn,
             grad_norm_tol=config.grad_norm_tol,
+            ftol=config.ftol,
             step_reporter=step_reporter,
         )
         time_zero = time.perf_counter() - start_zero
@@ -140,6 +142,7 @@ def run_experiment(
             config.batch_size,
             true_grad_u_fn=true_grad_u_fn,
             grad_norm_tol=config.grad_norm_tol,
+            ftol=config.ftol,
             step_reporter=step_reporter,
         )
         time_spsa = time.perf_counter() - start_spsa

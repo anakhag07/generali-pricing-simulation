@@ -38,6 +38,8 @@ def _build_result() -> ExperimentResult:
         objective_values=[1.0, 0.8],
         u_grad_estimates=[0.4, 0.2],
         theta_values=[policy.theta.copy(), np.asarray([0.3, -0.2], dtype=float)],
+        optimizer_status=0,
+        optimizer_message="CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
     )
     result = ExperimentResult(
         config=config,
@@ -79,5 +81,7 @@ def test_summary_payload_contains_theta_norms(tmp_path: Path) -> None:
     estimator_payload = payload["estimators"]["first_order"]
     assert "theta_l2_norm" in estimator_payload
     assert "theta_delta_l2_norm" in estimator_payload
+    assert estimator_payload["optimizer_status"] == 0
+    assert "CONVERGENCE" in estimator_payload["optimizer_message"]
     assert float(estimator_payload["theta_l2_norm"]) > 0.0
     assert float(estimator_payload["theta_delta_l2_norm"]) > 0.0

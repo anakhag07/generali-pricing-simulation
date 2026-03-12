@@ -29,6 +29,7 @@ TRAINING = canonical_training_block(
     sigma=0.05,
     n_grad_samples=100,
     enabled_estimators=("gauss_stein", "first_order", "spsa"),
+    grad_norm_tol=1e-10
 )
 
 RUNTIME = canonical_runtime_block(

@@ -12,8 +12,8 @@ from experiments.config import ExperimentConfig
 from experiments.helpers import (
     resolve_true_grad_u_fn,
     run_first_order,
+    run_gauss_stein,
     run_spsa,
-    run_zeroth_order,
 )
 from experiments.reporters import StepReporter
 from experiments.results import EstimatorResult, ExperimentResult
@@ -91,9 +91,9 @@ def run_experiment(
         )
         traces["first_order"] = trace_first
 
-    if "zeroth_order" in enabled_estimators:
+    if "gauss_stein" in enabled_estimators:
         start_zero = time.perf_counter()
-        theta_zero, trace_zero = run_zeroth_order(
+        theta_zero, trace_zero = run_gauss_stein(
             theta_initial,
             policy_spec.kind,
             x_samples,
@@ -116,13 +116,13 @@ def run_experiment(
             sum(objective_model.value(x, u) for x, u in zip(x_samples, u_zero_values))
             / len(x_samples)
         )
-        results["zeroth_order"] = EstimatorResult(
+        results["gauss_stein"] = EstimatorResult(
             theta=theta_zero,
             u=u_zero,
             value=value_zero,
             time=time_zero,
         )
-        traces["zeroth_order"] = trace_zero
+        traces["gauss_stein"] = trace_zero
 
     if "spsa" in enabled_estimators:
         start_spsa = time.perf_counter()

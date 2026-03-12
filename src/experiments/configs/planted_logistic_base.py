@@ -23,7 +23,7 @@ TRAINING = canonical_training_block(
     step_size=0.05,
     sigma=0.1,
     n_grad_samples=64,
-    enabled_estimators=("zeroth_order", "first_order"),
+    enabled_estimators=("gauss_stein", "first_order"),
 )
 
 RUNTIME = canonical_runtime_block(

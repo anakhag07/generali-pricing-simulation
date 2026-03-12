@@ -30,7 +30,7 @@ def test_run_experiment_single_estimator() -> None:
     assert isinstance(result.initial_value, float)
     assert "first_order" in result.results
     assert isinstance(result.results["first_order"].u, float)
-    assert "zeroth_order" not in result.results
+    assert "gauss_stein" not in result.results
     assert "lbfgs" not in result.results
 
 
@@ -58,5 +58,5 @@ def test_run_experiment_spsa_only() -> None:
     assert "spsa" in result.results
     assert isinstance(result.results["spsa"].u, float)
     assert "first_order" not in result.results
-    assert "zeroth_order" not in result.results
+    assert "gauss_stein" not in result.results
     assert "lbfgs" not in result.results

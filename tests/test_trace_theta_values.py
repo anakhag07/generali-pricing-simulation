@@ -1,7 +1,7 @@
 import numpy as np
 
 from objective.base import ObjectiveResult, StateVector
-from experiments.helpers import run_first_order, run_zeroth_order
+from experiments.helpers import run_first_order, run_gauss_stein
 from model.policy import POLICY_LINEAR
 
 
@@ -41,12 +41,12 @@ def test_run_first_order_records_theta_values() -> None:
     assert trace.step_sizes is None
 
 
-def test_run_zeroth_order_records_theta_values() -> None:
+def test_run_gauss_stein_records_theta_values() -> None:
     theta_start = np.array([0.1, 0.2], dtype=float)
     x_samples = [StateVector(values=[1.0])]
     objective = SimpleObjective()
     rng = np.random.default_rng(0)
-    _, trace = run_zeroth_order(
+    _, trace = run_gauss_stein(
         theta_start,
         POLICY_LINEAR,
         x_samples,

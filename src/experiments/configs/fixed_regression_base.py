@@ -12,7 +12,7 @@ from experiments.config import (
     make_softmax_policy_spec,
 )
 
-STATE_DIM = 4
+STATE_DIM = 5
 
 BETA_1 = np.linspace(0.02, 0.5, num=STATE_DIM, dtype=float)
 BETA_2 = -1.2
@@ -28,7 +28,7 @@ TRAINING = canonical_training_block(
     step_size=0.01,
     sigma=0.05,
     n_grad_samples=100,
-    enabled_estimators=("zeroth_order", "first_order", "spsa"),
+    enabled_estimators=("gauss_stein", "first_order", "spsa"),
 )
 
 RUNTIME = canonical_runtime_block(

@@ -12,8 +12,8 @@ from experiments.reporters import StepReporter
 from experiments.results import OptimizationTrace
 from optimization.solvers import (
     run_first_order_minimize,
+    run_gauss_stein_minimize,
     run_spsa_minimize,
-    run_zeroth_order_minimize,
 )
 
 
@@ -123,7 +123,7 @@ def run_first_order(
     )
 
 
-def run_zeroth_order(
+def run_gauss_stein(
     theta_start: np.ndarray,
     policy_kind: str,
     x_samples: Sequence[StateVector],
@@ -139,8 +139,8 @@ def run_zeroth_order(
     grad_norm_tol: float | None = None,
     step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
-    """Optimize theta using SciPy minimize with Stein u-gradient estimates."""
-    return run_zeroth_order_minimize(
+    """Optimize theta using SciPy minimize with Gaussian Stein u-gradient estimates."""
+    return run_gauss_stein_minimize(
         theta_start=theta_start,
         policy_kind=policy_kind,
         x_samples=x_samples,

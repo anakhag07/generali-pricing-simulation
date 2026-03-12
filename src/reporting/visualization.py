@@ -18,10 +18,10 @@ matplotlib.use("Agg")
 
 ESTIMATOR_STYLES = {
     "first_order": {"label": "first-order", "color": "#1f77b4", "marker": "o"},
-    "zeroth_order": {"label": "zeroth-order", "color": "#ff7f0e", "marker": "o"},
+    "gauss_stein": {"label": "gauss-stein", "color": "#ff7f0e", "marker": "o"},
     "spsa": {"label": "SPSA", "color": "#d62728", "marker": "o"},
 }
-_TRACE_ORDER = ("first_order", "zeroth_order", "spsa")
+_TRACE_ORDER = ("first_order", "gauss_stein", "spsa")
 
 
 def _ordered_traces(
@@ -240,7 +240,7 @@ def plot_objective_u_slice(
     ax_obj.plot(u_grid, obj_grid, color="black", label="objective", alpha=0.6)
     for name, trace in trace_items:
         style = ESTIMATOR_STYLES[name]
-        zorder = 4 if name == "zeroth_order" else 3
+        zorder = 4 if name == "gauss_stein" else 3
         ax_obj.scatter(
             trace.u_values,
             trace.objective_values,
@@ -268,7 +268,7 @@ def plot_objective_u_slice(
     ax_grad.plot(u_grid, grad_grid, color="black", label="true u-grad", alpha=0.6)
     for name, trace in trace_items:
         style = ESTIMATOR_STYLES[name]
-        zorder = 4 if name == "zeroth_order" else 3
+        zorder = 4 if name == "gauss_stein" else 3
         ax_grad.scatter(
             trace.u_values,
             trace.u_grad_estimates,

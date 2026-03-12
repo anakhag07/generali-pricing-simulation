@@ -1,6 +1,6 @@
 # Generali Pricing Simulation
 
-Pricing simulation and optimization demo using exact and zeroth-order Stein gradients.
+Pricing simulation and optimization demo using exact and Gaussian-Stein gradients.
 
 ## Quickstart
 
@@ -195,12 +195,12 @@ Each `ExperimentConfig` includes:
 | `t_steps` | 100 | Number of optimization steps |
 | `step_size` | 0.01 | Legacy compatibility field (not used by SciPy L-BFGS-B updates) |
 | `grad_norm_tol` | None | Early stopping threshold on theta gradient norm |
-| `sigma` | 0.1 | Perturbation scale for zeroth-order estimator |
-| `n_grad_samples` | 64 | Number of perturbations for zeroth-order estimator |
+| `sigma` | 0.1 | Perturbation scale for Gauss-Stein estimator |
+| `n_grad_samples` | 64 | Number of perturbations for Gauss-Stein estimator |
 | `verbose` | False | Print per-step metrics to terminal |
 | `plot` | True | Generate plots at end of run |
 | `plot_dir` | `"plots"` | Subdirectory name for plots |
-| `enabled_estimators` | `("first_order", "zeroth_order")` | Which methods to run (`"spsa"` also supported) |
+| `enabled_estimators` | `("first_order", "gauss_stein")` | Which methods to run (`"spsa"` also supported) |
 | `wandb_enabled` | `False` | Enable Weights & Biases logging |
 | `wandb_project` | `None` | W&B project name |
 | `wandb_entity` | `None` | W&B entity/user/team |
@@ -216,7 +216,7 @@ Each `ExperimentConfig` includes:
 
 Set `step_rule` to `"l-bfgs-b"`:
 
-- **First-order / zeroth-order / SPSA:** all estimators run through SciPy
+- **First-order / Gauss-Stein / SPSA:** all estimators run through SciPy
   `minimize` (`L-BFGS-B`) and rely on the solver's internal line search.
   `t_steps` is passed as `maxiter` and `grad_norm_tol` as `gtol`.
 - `"constant"` and `"armijo"` remain accepted `step_rule` values for backward
@@ -230,7 +230,7 @@ threshold. SciPy-driven optimizers pass this as `gtol`.
 ### Mini-Batch Stochasticity
 
 - Set `batch_size` to an integer in `[1, n_samples]` to run first-order,
-  zeroth-order, and SPSA on random customer mini-batches at each objective/
+  Gauss-Stein, and SPSA on random customer mini-batches at each objective/
   gradient call.
 - Keep `batch_size=None` (default) to preserve deterministic full-batch
   behavior.
@@ -241,7 +241,7 @@ threshold. SciPy-driven optimizers pass this as `gtol`.
 Control which methods run (and appear in plots/logs):
 
 ```python
-enabled_estimators=("zeroth_order", "first_order", "spsa")
+enabled_estimators=("gauss_stein", "first_order", "spsa")
 ```
 
 ### Weights & Biases Streaming
@@ -257,21 +257,21 @@ Example config fields:
 ```python
 CONFIG = ExperimentConfig(
     # ... existing fields ...
-    enabled_estimators=("zeroth_order", "first_order", "spsa"),
+    enabled_estimators=("gauss_stein", "first_order", "spsa"),
     wandb_enabled=True,
     wandb_project="pricing-sim",
     wandb_entity=None,
     wandb_group="ablation-n-grad-samples",
     wandb_tags=("custom", "steins", "spsa"),
     wandb_mode="online",  # or "offline"
-    wandb_estimator_allowlist=("zeroth_order", "spsa"),  # optional
+    wandb_estimator_allowlist=("gauss_stein", "spsa"),  # optional
 )
 ```
 
 What gets streamed:
 
 - Per-step curves under namespaced keys such as
-  `curve/zeroth_order/objective`, `curve/spsa/objective`,
+  `curve/gauss-stein/objective`, `curve/spsa/objective`,
   `curve/first_order/theta_grad_norm`, etc.
 - Final summaries under `final/<estimator>/*`.
 - Plot PNGs under `plots/*` when `wandb_log_plots=True`.
@@ -326,13 +326,13 @@ f(u; x) fixed objective           -> FixedRegressionObjective (src/objective/fix
 L(u; x) planted objective         -> PlantedLogisticObjective (src/objective/planted_logistic.py)
 oracle gradient API               -> FixedRegressionObjective.evaluate (src/objective/fixed_objective.py)
 policy u = f(theta, x)            -> PolicySpec, apply_policy (src/model/policy.py)
-zeroth-order Stein estimator      -> stein_zeroth_order_grad_batch (src/optimization/gradients/zeroth_order.py)
-SciPy-based first/zeroth solvers  -> run_first_order_minimize, run_zeroth_order_minimize (src/optimization/solvers.py)
+Gauss-Stein gradient estimator     -> stein_zeroth_order_grad_batch (src/optimization/gradients/zeroth_order.py)
+SciPy-based first/Gauss-Stein solvers -> run_first_order_minimize, run_gauss_stein_minimize (src/optimization/solvers.py)
 SciPy-based SPSA solver            -> run_spsa_minimize (src/optimization/solvers.py)
 step-size rules (legacy support)  -> constant_step_size, armijo_backtracking_step_size (src/optimization/steps.py)
 experiment runner / config        -> ExperimentConfig, run_experiment (src/experiments/run.py)
 config sweep utilities            -> override grid + sweep runner helpers (src/experiments/sweep_utils.py)
-optimization helper wrappers      -> run_first_order, run_zeroth_order, run_spsa (src/experiments/helpers.py)
+optimization helper wrappers      -> run_first_order, run_gauss_stein, run_spsa (src/experiments/helpers.py)
 result data structures            -> EstimatorResult, ExperimentResult, OptimizationTrace (src/experiments/results.py)
 reporting / I/O                   -> ReporterStack, ConsoleReporter, etc. (src/experiments/reporters.py)
 console logging helpers           -> log_step, log_summary (src/reporting/logging.py)
@@ -345,7 +345,7 @@ config presets                    -> src/experiments/configs/ (get_config, list_
 - **First-order exact gradient:** uses the analytic gradient of the objective
   with respect to `u`, chains through the policy gradient `du/dtheta`, and
   optimizes `theta` via SciPy `minimize` (`L-BFGS-B`).
-- **Zeroth-order Stein estimator:** uses only objective value evaluations at
+- **Gauss-Stein estimator:** uses only objective value evaluations at
   perturbed actions, estimates gradient via
   $\mathbb{E}[f(u + \sigma\varepsilon)\,\varepsilon] / \sigma$.
   The resulting theta gradient is passed to SciPy `minimize` (`L-BFGS-B`).
@@ -382,7 +382,7 @@ src/
       planted_logistic_base.py          Base planted-logistic preset
     defaults.py                         Default helpers (default_policy_spec)
     helpers.py                          Core optimization routines (run_first_order,
-                                        run_zeroth_order, run_spsa)
+                                        run_gauss_stein, run_spsa)
     run.py                              Experiment runner (returns results, no I/O)
     sweep_utils.py                      Override-grid helpers and preset sweep execution
     results.py                          Result data structures (OptimizationTrace, etc.)
@@ -394,10 +394,10 @@ src/
     visualization.py                    Matplotlib plotting utilities
   optimization/
     common.py                           Shared helpers (gaussian_noise)
-    solvers.py                          SciPy-based first/zeroth/SPSA theta solvers
+    solvers.py                          SciPy-based first/Gauss-Stein/SPSA theta solvers
     steps.py                            Step-rule constants (l-bfgs-b + legacy constant/armijo)
     gradients/
-      zeroth_order.py                   Stein zeroth-order gradient estimator
+      zeroth_order.py                   Gaussian-Stein gradient estimator
 tests/                                  Flat test layout (pytest)
 ```
 

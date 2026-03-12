@@ -1,7 +1,7 @@
 import numpy as np
 
 from objective.base import ObjectiveResult, StateVector
-from experiments.helpers import run_first_order, run_spsa, run_zeroth_order
+from experiments.helpers import run_first_order, run_gauss_stein, run_spsa
 from model.policy import POLICY_LINEAR
 
 
@@ -39,12 +39,12 @@ def test_first_order_minimize_reduces_objective() -> None:
     assert theta_final.shape == theta_start.shape
 
 
-def test_zeroth_order_minimize_is_seed_deterministic() -> None:
+def test_gauss_stein_minimize_is_seed_deterministic() -> None:
     theta_start = np.asarray([0.2, 0.3], dtype=float)
     x_samples = [StateVector(values=[1.0]), StateVector(values=[-0.5])]
     objective = SimpleObjective()
 
-    theta_a, trace_a = run_zeroth_order(
+    theta_a, trace_a = run_gauss_stein(
         theta_start,
         POLICY_LINEAR,
         x_samples,
@@ -56,7 +56,7 @@ def test_zeroth_order_minimize_is_seed_deterministic() -> None:
         n_grad_samples=8,
         sigma=0.1,
     )
-    theta_b, trace_b = run_zeroth_order(
+    theta_b, trace_b = run_gauss_stein(
         theta_start,
         POLICY_LINEAR,
         x_samples,

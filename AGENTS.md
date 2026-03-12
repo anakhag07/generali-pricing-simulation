@@ -115,17 +115,17 @@ Guidelines:
 
 - **`src/optimization/solvers.py`**
   - `run_first_order_minimize(...)`: SciPy `minimize` (`L-BFGS-B`) solver using analytic u-gradients chained to theta gradients
-  - `run_zeroth_order_minimize(...)`: SciPy `minimize` (`L-BFGS-B`) solver using Stein-estimated u-gradients chained to theta gradients
+  - `run_gauss_stein_minimize(...)`: SciPy `minimize` (`L-BFGS-B`) solver using Gaussian-Stein u-gradients chained to theta gradients
   - `run_spsa_minimize(...)`: SciPy `minimize` (`L-BFGS-B`) solver using SPSA theta-gradient estimates
   - Internal helpers build batched objective/gradient callables, optional mini-batch sampling, and optimization traces
 
 - **`src/optimization/steps.py`**
   - `STEP_RULE_LBFGSB`, `STEP_RULE_CONSTANT`, `STEP_RULE_ARMIJO`, `STEP_RULES`
   - `constant_step_size(step_size)`: returns the step size unchanged
-  - `armijo_backtracking_step_size(...)`: Armijo line search utility (not used by SciPy first/zeroth/SPSA solvers)
+  - `armijo_backtracking_step_size(...)`: Armijo line search utility (not used by SciPy first/Gauss-Stein/SPSA solvers)
 
 - **`src/optimization/common.py`**
-  - `gaussian_noise(rng, shape)`: standard normal samples (used by zeroth-order estimator)
+  - `gaussian_noise(rng, shape)`: standard normal samples (used by Gauss-Stein estimator)
   - `U_BOUNDS`: defined but unused (see Known Issues)
 
 - **`src/optimization/gradients/zeroth_order.py`**
@@ -153,7 +153,7 @@ Guidelines:
 - **`src/experiments/helpers.py`** (largest file; orchestration + wrappers)
   - `resolve_true_grad_u_fn(objective_model, correctness)`: resolves the "true" gradient function from correctness spec
   - `run_first_order(...)`: wrapper delegating to `optimization.solvers.run_first_order_minimize`
-  - `run_zeroth_order(...)`: wrapper delegating to `optimization.solvers.run_zeroth_order_minimize`
+  - `run_gauss_stein(...)`: wrapper delegating to `optimization.solvers.run_gauss_stein_minimize`
   - `run_spsa(...)`: wrapper delegating to `optimization.solvers.run_spsa_minimize`
   - Internal: `_numdiff_grad(...)` for finite-difference gradients
 
@@ -262,7 +262,7 @@ when appropriate.
 | `test_experiment_configs.py` | Config registry (get_config, list_configs) |
 | `test_file_step_logger.py` | FileStepLogger CSV output |
 | `test_minibatch_stochasticity.py` | Mini-batch determinism and full-batch equivalence |
-| `test_minimize_orders.py` | SciPy first/zeroth/SPSA wrappers (decrease + seed determinism) |
+| `test_minimize_orders.py` | SciPy first/Gauss-Stein/SPSA wrappers (decrease + seed determinism) |
 | `test_model_package_exports.py` | model package API exports remain importable |
 | `test_objective_batch.py` | Batch vs scalar consistency for both objectives |
 | `test_objective_package_exports.py` | objective package API exports remain importable |
@@ -274,7 +274,7 @@ when appropriate.
 | `test_state_vector.py` | StateVector.sample shape |
 | `test_step_rules.py` | Armijo backtracking on quadratic |
 | `test_theta_contours.py` | Contour grid shapes, axis selection |
-| `test_trace_theta_values.py` | theta_values recorded in first/zeroth-order traces |
+| `test_trace_theta_values.py` | theta_values recorded in first/Gauss-Stein traces |
 | `test_verbose_config.py` | verbose flag defaults and serialization |
 | `test_visualization_step_sizes.py` | step_sizes plot uses log y-scale |
 | `test_sweep_utils.py` | Override-grid expansion and preset sweep config generation |

@@ -7,11 +7,13 @@ from experiments.sweep_utils import run_preset_sweep
 BASE_PRESET = "fixed_regression_base"
 
 OVERRIDE_GRID = {
-    "sigma": [0.03, 0.05],
-    "n_grad_samples": [2, 4, 64],
-    "t_steps": [250, 1000],
-    "plot": [False],
-    "wandb_enabled": [False],
+    "sigma": [0.01, 0.03, 0.05],
+    "n_grad_samples": [2, 4, 64, 128, 256, 1024],
+    "n_samples": [100, 500, 1000],
+    "t_steps": [10000],
+    "plot": [True],
+    "wandb_enabled": [True],
+    "wandb_project": ["generali_pricing_simulation_hyperparameter_sweep"],
 }
 
 

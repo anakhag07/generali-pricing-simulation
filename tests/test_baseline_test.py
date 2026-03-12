@@ -17,8 +17,8 @@ def test_run_experiment_fixed_regression_base_smoke() -> None:
     result = run_experiment(config)
     assert isinstance(result.initial_value, float)
     assert "first_order" in result.results
-    assert "zeroth_order" in result.results
+    assert "gauss_stein" in result.results
     assert "spsa" in result.results
     assert isinstance(result.results["first_order"].u, float)
-    assert isinstance(result.results["zeroth_order"].u, float)
+    assert isinstance(result.results["gauss_stein"].u, float)
     assert isinstance(result.results["spsa"].u, float)

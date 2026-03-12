@@ -59,7 +59,7 @@ class ExperimentConfig:
     verbose: bool = False
     plot: bool = True
     plot_dir: str = "plots"
-    enabled_estimators: tuple[str, ...] = ("first_order", "zeroth_order")
+    enabled_estimators: tuple[str, ...] = ("first_order", "gauss_stein")
     wandb_enabled: bool = False
     wandb_project: str | None = None
     wandb_entity: str | None = None
@@ -78,7 +78,7 @@ class ExperimentConfig:
             raise ValueError("enabled_estimators must include at least one estimator.")
         if len(set(enabled_estimators)) != len(enabled_estimators):
             raise ValueError("enabled_estimators must not contain duplicates.")
-        allowed_estimators = {"first_order", "zeroth_order", "spsa"}
+        allowed_estimators = {"first_order", "gauss_stein", "spsa"}
         unknown = [name for name in enabled_estimators if name not in allowed_estimators]
         if unknown:
             allowed = ", ".join(sorted(allowed_estimators))

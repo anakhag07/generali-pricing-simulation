@@ -95,7 +95,7 @@ def _run_minimize_solver(
     n_grad_samples: int,
     sigma: float,
     batch_size: int | None,
-    grad_kind: Literal["first_order", "zeroth_order", "spsa"],
+    grad_kind: Literal["first_order", "gauss_stein", "spsa"],
     true_grad_u_fn: TrueGradFn | None = None,
     grad_norm_tol: float | None = None,
     step_reporter: StepReporter | None = None,
@@ -152,7 +152,7 @@ def _run_minimize_solver(
 
     eps_base = None
     delta_base = None
-    if grad_kind == "zeroth_order":
+    if grad_kind == "gauss_stein":
         if n_grad_samples <= 0:
             raise ValueError("n_grad_samples must be positive.")
         if sigma <= 0.0:
@@ -177,7 +177,7 @@ def _run_minimize_solver(
         if grad_kind == "first_order":
             return grad_batch_fn(u_vals)
         if eps_base is None:
-            raise ValueError("eps_base is required for zeroth-order gradients.")
+            raise ValueError("eps_base is required for gauss-stein gradients.")
         eps_values = eps_base[:, indices]
         accum = np.zeros_like(u_vals, dtype=float)
         for eps in eps_values:
@@ -348,7 +348,7 @@ def run_first_order_minimize(
     )
 
 
-def run_zeroth_order_minimize(
+def run_gauss_stein_minimize(
     theta_start: np.ndarray,
     policy_kind: str,
     x_samples: Sequence[StateVector],
@@ -371,11 +371,11 @@ def run_zeroth_order_minimize(
         n_grad_samples=n_grad_samples,
         sigma=sigma,
         batch_size=batch_size,
-        grad_kind="zeroth_order",
+        grad_kind="gauss_stein",
         true_grad_u_fn=true_grad_u_fn,
         grad_norm_tol=grad_norm_tol,
         step_reporter=step_reporter,
-        method_label="zeroth-order",
+        method_label="gauss-stein",
         rng=rng,
     )
 
@@ -412,4 +412,4 @@ def run_spsa_minimize(
     )
 
 
-__all__ = ["run_first_order_minimize", "run_zeroth_order_minimize", "run_spsa_minimize"]
+__all__ = ["run_first_order_minimize", "run_gauss_stein_minimize", "run_spsa_minimize"]

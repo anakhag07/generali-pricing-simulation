@@ -158,6 +158,7 @@ class WandbReporter:
         self._global_step = 0
         self._plots_enabled = True
         self._plots_dir: Path | None = None
+        self._tracked_estimators: tuple[str, ...] = ()
 
     def on_start(self, run_context: RunContext, config: ExperimentConfig) -> None:
         self._global_step = 0
@@ -166,8 +167,10 @@ class WandbReporter:
         self._plots_dir = run_context.plots_dir
         if config.wandb_estimator_allowlist is None:
             self._allowlist = None
+            self._tracked_estimators = tuple(config.enabled_estimators)
         else:
             self._allowlist = set(config.wandb_estimator_allowlist)
+            self._tracked_estimators = tuple(config.wandb_estimator_allowlist)
         if not self._enabled:
             self._wandb = None
             self._run = None
@@ -195,6 +198,7 @@ class WandbReporter:
                 **config_payload,
             },
         )
+        self._define_curve_metrics()
 
     def on_end(self, run_context: RunContext, result: ExperimentResult) -> None:
         if not self._enabled or self._wandb is None:
@@ -220,6 +224,20 @@ class WandbReporter:
                 wandb_api.log(plot_payload, step=self._global_step)
         wandb_api.finish()
         self._run = None
+
+    def _define_curve_metrics(self) -> None:
+        if self._wandb is None:
+            return
+        for method in self._tracked_estimators:
+            step_metric = f"curve/{method}/step"
+            self._wandb.define_metric(step_metric)
+            self._wandb.define_metric(f"curve/{method}/u", step_metric=step_metric)
+            self._wandb.define_metric(f"curve/{method}/objective", step_metric=step_metric)
+            self._wandb.define_metric(
+                f"curve/{method}/theta_grad_norm",
+                step_metric=step_metric,
+            )
+            self._wandb.define_metric(f"curve/{method}/step_size", step_metric=step_metric)
 
     def log_step(
         self,

@@ -277,6 +277,8 @@ What gets streamed:
 - Per-step curves under namespaced keys such as
   `curve/gauss-stein/objective`, `curve/spsa/objective`,
   `curve/first_order/theta_grad_norm`, etc.
+- Curve metrics are registered with per-estimator step axes
+  (`curve/<estimator>/step`), so each estimator panel starts at step `0`.
 - Final summaries under `final/<estimator>/*`.
 - Plot PNGs under `plots/*` when `wandb_log_plots=True`.
 

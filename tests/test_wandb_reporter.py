@@ -26,6 +26,7 @@ class _FakeWandb:
     def __init__(self) -> None:
         self.init_calls: list[dict] = []
         self.log_calls: list[tuple[dict, int | None]] = []
+        self.define_metric_calls: list[tuple[str, dict]] = []
         self.finish_calls = 0
 
     def init(self, **kwargs: object) -> object:
@@ -37,6 +38,9 @@ class _FakeWandb:
 
     def finish(self) -> None:
         self.finish_calls += 1
+
+    def define_metric(self, name: str, **kwargs: object) -> None:
+        self.define_metric_calls.append((name, dict(kwargs)))
 
     def Image(self, path: str) -> _FakeImage:  # noqa: N802
         return _FakeImage(path=path)
@@ -119,6 +123,11 @@ def test_wandb_reporter_streams_and_summarizes(tmp_path: Path, monkeypatch) -> N
     assert init_payload["project"] == "unit-tests"
     assert init_payload["config"]["n_grad_samples"] == 64
 
+    defined = {name: kwargs for name, kwargs in fake_wandb.define_metric_calls}
+    assert "curve/first_order/step" in defined
+    assert defined["curve/first_order/objective"]["step_metric"] == "curve/first_order/step"
+    assert defined["curve/first_order/u"]["step_metric"] == "curve/first_order/step"
+
     curve_payloads = [payload for payload, _ in fake_wandb.log_calls if "curve/first_order/objective" in payload]
     assert len(curve_payloads) == 2
     assert "curve/first_order/theta_grad_norm" in curve_payloads[0]
@@ -149,6 +158,9 @@ def test_wandb_reporter_allowlist_filters_metrics(tmp_path: Path, monkeypatch) -
         for payload, _ in fake_wandb.log_calls
         for key in payload.keys()
     }
+    defined_metrics = {name for name, _ in fake_wandb.define_metric_calls}
+    assert "curve/first_order/step" not in defined_metrics
+    assert "curve/spsa/step" in defined_metrics
     assert "curve/first_order/objective" not in flattened_keys
     assert "curve/spsa/objective" in flattened_keys
     assert "final/first_order/value" not in flattened_keys

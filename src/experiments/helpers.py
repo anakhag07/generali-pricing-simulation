@@ -105,6 +105,7 @@ def run_first_order(
     batch_size: int | None = None,
     true_grad_u_fn: TrueGradFn | None = None,
     grad_norm_tol: float | None = None,
+    ftol: float | None = None,
     step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     """Optimize theta using SciPy minimize with exact u-gradients."""
@@ -119,6 +120,7 @@ def run_first_order(
         batch_size=batch_size,
         true_grad_u_fn=true_grad_u_fn,
         grad_norm_tol=grad_norm_tol,
+        ftol=ftol,
         step_reporter=step_reporter,
     )
 
@@ -137,6 +139,7 @@ def run_gauss_stein(
     batch_size: int | None = None,
     true_grad_u_fn: TrueGradFn | None = None,
     grad_norm_tol: float | None = None,
+    ftol: float | None = None,
     step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     """Optimize theta using SciPy minimize with Gaussian Stein u-gradient estimates."""
@@ -152,6 +155,7 @@ def run_gauss_stein(
         batch_size=batch_size,
         true_grad_u_fn=true_grad_u_fn,
         grad_norm_tol=grad_norm_tol,
+        ftol=ftol,
         step_reporter=step_reporter,
     )
 
@@ -170,6 +174,7 @@ def run_spsa(
     batch_size: int | None = None,
     true_grad_u_fn: TrueGradFn | None = None,
     grad_norm_tol: float | None = None,
+    ftol: float | None = None,
     step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     """Optimize theta using SciPy minimize with SPSA theta-gradient estimates."""
@@ -185,5 +190,6 @@ def run_spsa(
         batch_size=batch_size,
         true_grad_u_fn=true_grad_u_fn,
         grad_norm_tol=grad_norm_tol,
+        ftol=ftol,
         step_reporter=step_reporter,
     )

@@ -98,6 +98,7 @@ def _run_minimize_solver(
     grad_kind: Literal["first_order", "gauss_stein", "spsa"],
     true_grad_u_fn: TrueGradFn | None = None,
     grad_norm_tol: float | None = None,
+    ftol: float | None = None,
     step_reporter: StepReporter | None = None,
     method_label: str = "first-order",
     rng: np.random.Generator | None = None,
@@ -107,6 +108,8 @@ def _run_minimize_solver(
         raise ValueError("x_samples must contain at least one StateVector.")
     if grad_norm_tol is not None and grad_norm_tol <= 0.0:
         raise ValueError("grad_norm_tol must be positive when provided.")
+    if ftol is not None and ftol <= 0.0:
+        raise ValueError("ftol must be positive when provided.")
 
     theta0 = np.asarray(theta_start, dtype=float)
     x_array = np.stack([x.as_array() for x in x_list], axis=0).astype(float)
@@ -291,6 +294,8 @@ def _run_minimize_solver(
     options: dict[str, float | int] = {"maxiter": int(t_steps)}
     if grad_norm_tol is not None:
         options["gtol"] = float(grad_norm_tol)
+    if ftol is not None:
+        options["ftol"] = float(ftol)
 
     result = minimize(
         value_fn,
@@ -314,6 +319,8 @@ def _run_minimize_solver(
         theta_grad_norms=theta_grad_norms,
         true_theta_grad_norms=true_theta_grad_norms if true_theta_grad_norms else None,
         theta_values=theta_values,
+        optimizer_status=int(result.status),
+        optimizer_message=str(result.message),
     )
     return theta_final, trace
 
@@ -329,6 +336,7 @@ def run_first_order_minimize(
     batch_size: int | None = None,
     true_grad_u_fn: TrueGradFn | None = None,
     grad_norm_tol: float | None = None,
+    ftol: float | None = None,
     step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     return _run_minimize_solver(
@@ -343,6 +351,7 @@ def run_first_order_minimize(
         grad_kind="first_order",
         true_grad_u_fn=true_grad_u_fn,
         grad_norm_tol=grad_norm_tol,
+        ftol=ftol,
         step_reporter=step_reporter,
         method_label="first-order",
     )
@@ -360,6 +369,7 @@ def run_gauss_stein_minimize(
     batch_size: int | None = None,
     true_grad_u_fn: TrueGradFn | None = None,
     grad_norm_tol: float | None = None,
+    ftol: float | None = None,
     step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     return _run_minimize_solver(
@@ -374,6 +384,7 @@ def run_gauss_stein_minimize(
         grad_kind="gauss_stein",
         true_grad_u_fn=true_grad_u_fn,
         grad_norm_tol=grad_norm_tol,
+        ftol=ftol,
         step_reporter=step_reporter,
         method_label="gauss-stein",
         rng=rng,
@@ -392,6 +403,7 @@ def run_spsa_minimize(
     batch_size: int | None = None,
     true_grad_u_fn: TrueGradFn | None = None,
     grad_norm_tol: float | None = None,
+    ftol: float | None = None,
     step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     return _run_minimize_solver(
@@ -406,6 +418,7 @@ def run_spsa_minimize(
         grad_kind="spsa",
         true_grad_u_fn=true_grad_u_fn,
         grad_norm_tol=grad_norm_tol,
+        ftol=ftol,
         step_reporter=step_reporter,
         method_label="spsa",
         rng=rng,

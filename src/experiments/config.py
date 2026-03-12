@@ -54,6 +54,7 @@ class ExperimentConfig:
     t_steps: int = 100
     step_size: float = 0.01
     grad_norm_tol: Optional[float] = None
+    ftol: Optional[float] = None
     sigma: float = 0.1
     n_grad_samples: int = 64
     verbose: bool = False
@@ -126,6 +127,9 @@ class ExperimentConfig:
         if self.grad_norm_tol is not None and self.grad_norm_tol <= 0.0:
             raise ValueError("grad_norm_tol must be positive when provided.")
 
+        if self.ftol is not None and self.ftol <= 0.0:
+            raise ValueError("ftol must be positive when provided.")
+
         if self.n_grad_samples <= 0:
             raise ValueError("n_grad_samples must be positive.")
 
@@ -171,6 +175,7 @@ class ExperimentConfig:
             "grad_norm_tol": float(self.grad_norm_tol)
             if self.grad_norm_tol is not None
             else None,
+            "ftol": float(self.ftol) if self.ftol is not None else None,
             "sigma": float(self.sigma),
             "n_grad_samples": int(self.n_grad_samples),
             "verbose": bool(self.verbose),
@@ -281,6 +286,7 @@ def canonical_training_block(
     enabled_estimators: tuple[str, ...],
     batch_size: int | None = None,
     grad_norm_tol: float | None = None,
+    ftol: float | None = None,
 ) -> dict[str, Any]:
     return {
         "n_samples": int(n_samples),
@@ -292,6 +298,7 @@ def canonical_training_block(
         "enabled_estimators": tuple(enabled_estimators),
         "batch_size": int(batch_size) if batch_size is not None else None,
         "grad_norm_tol": float(grad_norm_tol) if grad_norm_tol is not None else None,
+        "ftol": float(ftol) if ftol is not None else None,
     }
 
 

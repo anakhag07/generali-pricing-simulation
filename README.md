@@ -195,6 +195,7 @@ Each `ExperimentConfig` includes:
 | `t_steps` | 100 | Number of optimization steps |
 | `step_size` | 0.01 | Legacy compatibility field (not used by SciPy L-BFGS-B updates) |
 | `grad_norm_tol` | None | Early stopping threshold on theta gradient norm |
+| `ftol` | None | SciPy L-BFGS-B relative function-improvement tolerance |
 | `sigma` | 0.1 | Perturbation scale for Gauss-Stein estimator |
 | `n_grad_samples` | 64 | Number of perturbations for Gauss-Stein estimator |
 | `verbose` | False | Print per-step metrics to terminal |
@@ -218,7 +219,8 @@ Set `step_rule` to `"l-bfgs-b"`:
 
 - **First-order / Gauss-Stein / SPSA:** all estimators run through SciPy
   `minimize` (`L-BFGS-B`) and rely on the solver's internal line search.
-  `t_steps` is passed as `maxiter` and `grad_norm_tol` as `gtol`.
+  `t_steps` is passed as `maxiter`, `grad_norm_tol` as `gtol`, and `ftol` (if
+  provided) as `ftol`.
 - `"constant"` and `"armijo"` remain accepted `step_rule` values for backward
   compatibility, but they do not control updates in SciPy-driven methods.
 
@@ -226,6 +228,8 @@ Set `step_rule` to `"l-bfgs-b"`:
 
 Set `grad_norm_tol` to stop when the theta gradient norm falls below the
 threshold. SciPy-driven optimizers pass this as `gtol`.
+
+Set `ftol` to tune relative objective-improvement stopping in SciPy L-BFGS-B.
 
 ### Mini-Batch Stochasticity
 

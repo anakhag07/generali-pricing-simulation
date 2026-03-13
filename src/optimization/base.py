@@ -10,6 +10,13 @@ from scipy.optimize import minimize
 from objective.base import ActionObjective, StateVector, ThetaObjective
 from objective.composed import PolicyObjective
 from objective.policy import policy_from_kind
+from optimization.helpers import (
+    mean_action_on_indices,
+    objective_value_on_indices,
+    sample_indices,
+    scipy_method,
+    x_batch,
+)
 from optimization.steps import STEP_RULE_LBFGSB
 
 if TYPE_CHECKING:
@@ -66,7 +73,7 @@ class Optimization:
         self.grad_norm_tol = grad_norm_tol
         self.ftol = ftol
         self.step_reporter = step_reporter
-        self.method_label = method_label if method_label is not None else getattr(gradient, "name", "opt")
+        self.method_label = method_label if method_label is not None else getattr(self.gradient, "name", "opt")
         self.rng = rng if rng is not None else np.random.default_rng(0)
         self._minimize_fn = minimize_fn
 
@@ -86,33 +93,6 @@ class Optimization:
             raise ValueError("t_steps must be positive.")
         self._full_indices = np.arange(self.n_total, dtype=int)
 
-    def _scipy_method(self) -> str:
-        if self.algorithm.lower() == STEP_RULE_LBFGSB:
-            return "L-BFGS-B"
-        raise ValueError(f"Unsupported algorithm '{self.algorithm}'.")
-
-    def sample_indices(self) -> np.ndarray:
-        if self.batch_size_eff >= self.n_total:
-            return self._full_indices
-        return self.rng.choice(self.n_total, size=self.batch_size_eff, replace=False)
-
-    def x_batch(self, indices: np.ndarray) -> np.ndarray:
-        if indices.size == self.n_total:
-            return self.x_array
-        return self.x_array[indices]
-
-    def objective_on_indices(self, theta_arr: np.ndarray, indices: np.ndarray) -> float:
-        return float(self.objective.value(theta_arr, self.x_batch(indices)))
-
-    def objective_grad_on_indices(self, theta_arr: np.ndarray, indices: np.ndarray) -> np.ndarray:
-        return np.asarray(self.objective.grad(theta_arr, self.x_batch(indices)), dtype=float)
-
-    def mean_action_on_indices(self, theta_arr: np.ndarray, indices: np.ndarray) -> float:
-        mean_action = getattr(self.objective, "mean_action", None)
-        if callable(mean_action):
-            return float(mean_action(theta_arr, self.x_batch(indices)))
-        return float("nan")
-
     def solve(self, theta_start: np.ndarray) -> tuple[np.ndarray, "OptimizationTrace"]:
         theta0 = np.asarray(theta_start, dtype=float)
         self.gradient.setup(self, theta0)
@@ -127,26 +107,31 @@ class Optimization:
 
         def value_fn(theta_vec: np.ndarray) -> float:
             theta_arr = np.asarray(theta_vec, dtype=float)
-            return self.objective_on_indices(theta_arr, self.sample_indices())
+            indices = sample_indices(self.rng, self.batch_size_eff, self.n_total, self._full_indices)
+            return objective_value_on_indices(self.objective, self.x_array, self.n_total, theta_arr, indices)
 
         def grad_fn(theta_vec: np.ndarray) -> np.ndarray:
             theta_arr = np.asarray(theta_vec, dtype=float)
-            return np.asarray(self.gradient.theta_grad(self, theta_arr, self.sample_indices()), dtype=float)
+            indices = sample_indices(self.rng, self.batch_size_eff, self.n_total, self._full_indices)
+            return np.asarray(self.gradient.theta_grad(self, theta_arr, indices), dtype=float)
 
         def record(theta_vec: np.ndarray) -> None:
             theta_arr = np.asarray(theta_vec, dtype=float)
-            indices = self.sample_indices()
-            value = self.objective_on_indices(theta_arr, indices)
+            indices = sample_indices(self.rng, self.batch_size_eff, self.n_total, self._full_indices)
+            value = objective_value_on_indices(self.objective, self.x_array, self.n_total, theta_arr, indices)
             grad_theta = np.asarray(self.gradient.theta_grad(self, theta_arr, indices), dtype=float)
             theta_grad_norm = float(np.linalg.norm(grad_theta))
 
             true_theta_grad_norm = None
             if self.true_grad_theta_fn is not None:
-                grad_true = np.asarray(self.true_grad_theta_fn(theta_arr, self.x_batch(indices)), dtype=float)
+                grad_true = np.asarray(
+                    self.true_grad_theta_fn(theta_arr, x_batch(self.x_array, indices, self.n_total)),
+                    dtype=float,
+                )
                 true_theta_grad_norm = float(np.linalg.norm(grad_true))
 
             step = len(steps)
-            mean_u = self.mean_action_on_indices(theta_arr, indices)
+            mean_u = mean_action_on_indices(self.objective, self.x_array, self.n_total, theta_arr, indices)
 
             steps.append(step)
             u_values.append(mean_u)
@@ -171,7 +156,7 @@ class Optimization:
             value_fn,
             x0=theta0,
             jac=grad_fn,
-            method=self._scipy_method(),
+            method=scipy_method(self.algorithm),
             options=options,
             callback=record,
         )

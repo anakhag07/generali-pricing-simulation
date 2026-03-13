@@ -411,6 +411,7 @@ src/
     visualization.py                    Matplotlib plotting utilities
   optimization/
     base.py                             Optimization class with solve() and SciPy minimize integration
+    helpers.py                          Shared batching/objective helpers for optimization and gradient methods
     solvers.py                          Compatibility wrappers constructing Optimization + gradient objects
     steps.py                            Step-rule constants (l-bfgs-b + legacy constant/armijo)
     gradients/

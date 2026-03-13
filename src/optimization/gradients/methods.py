@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from optimization.helpers import objective_grad_on_indices, objective_value_on_indices
+
 if TYPE_CHECKING:
     from optimization.base import Optimization
 
@@ -38,7 +40,13 @@ class FirstOrderGradient(GradientMethod):
         theta: np.ndarray,
         indices: np.ndarray,
     ) -> np.ndarray:
-        return optimizer.objective_grad_on_indices(theta, indices)
+        return objective_grad_on_indices(
+            optimizer.objective,
+            optimizer.x_array,
+            optimizer.n_total,
+            theta,
+            indices,
+        )
 
 
 class GaussSteinGradient(GradientMethod):
@@ -70,7 +78,13 @@ class GaussSteinGradient(GradientMethod):
             raise ValueError("GaussSteinGradient.setup must be called before solve.")
         accum = np.zeros_like(theta, dtype=float)
         for eps in self._eps_base:
-            value = optimizer.objective_on_indices(theta + optimizer.sigma * eps, indices)
+            value = objective_value_on_indices(
+                optimizer.objective,
+                optimizer.x_array,
+                optimizer.n_total,
+                theta + optimizer.sigma * eps,
+                indices,
+            )
             accum += value * eps
         return accum / float(self._eps_base.shape[0]) / max(optimizer.sigma, 1e-8)
 
@@ -103,8 +117,20 @@ class SPSAGradient(GradientMethod):
             raise ValueError("SPSAGradient.setup must be called before solve.")
         grad_theta = np.zeros_like(theta, dtype=float)
         for delta in self._delta_base:
-            value_plus = optimizer.objective_on_indices(theta + optimizer.sigma * delta, indices)
-            value_minus = optimizer.objective_on_indices(theta - optimizer.sigma * delta, indices)
+            value_plus = objective_value_on_indices(
+                optimizer.objective,
+                optimizer.x_array,
+                optimizer.n_total,
+                theta + optimizer.sigma * delta,
+                indices,
+            )
+            value_minus = objective_value_on_indices(
+                optimizer.objective,
+                optimizer.x_array,
+                optimizer.n_total,
+                theta - optimizer.sigma * delta,
+                indices,
+            )
             grad_theta += ((value_plus - value_minus) / (2.0 * optimizer.sigma)) * delta
         return grad_theta / float(self._delta_base.shape[0])
 

@@ -114,7 +114,13 @@ Guidelines:
 - **`src/optimization/base.py`**
   - `Optimization`: class-based optimization entry point
   - `Optimization.solve(theta_start)`: runs SciPy `minimize` (`L-BFGS-B`) with configured gradient method, mini-batching, and trace recording
+  - Contains only constructor + solve orchestration; batching/objective helpers live in `src/optimization/helpers.py`
   - Solvers consume theta-level objectives only (`value(theta, x_batch)`, `grad(theta, x_batch)`)
+
+- **`src/optimization/helpers.py`**
+  - `scipy_method(...)`: maps configured algorithm string to SciPy method name
+  - `sample_indices(...)`, `x_batch(...)`: mini-batch index/data helpers
+  - `objective_value_on_indices(...)`, `objective_grad_on_indices(...)`, `mean_action_on_indices(...)`: shared objective evaluation helpers used by optimizer + gradient methods
 
 - **`src/optimization/gradients/methods.py`**
   - `GradientMethod`: base interface for pluggable gradient estimators

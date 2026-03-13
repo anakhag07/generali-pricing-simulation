@@ -8,8 +8,6 @@ import numpy as np
 
 from objective.base import StateVector
 
-# from optimization.common import clip_u
-
 POLICY_CONSTANT = "constant"
 POLICY_LINEAR = "linear"
 POLICY_SOFTMAX = "softmax"

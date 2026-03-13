@@ -131,14 +131,6 @@ Guidelines:
   - `constant_step_size(step_size)`: returns the step size unchanged
   - `armijo_backtracking_step_size(...)`: Armijo line search utility (not used by SciPy first/Gauss-Stein/SPSA solvers)
 
-- **`src/optimization/common.py`**
-  - `gaussian_noise(rng, shape)`: standard normal samples (used by Gauss-Stein estimator)
-  - `U_BOUNDS`: defined but unused (see Known Issues)
-
-- **`src/optimization/gradients/zeroth_order.py`**
-  - `stein_zeroth_order_grad_batch(u_values, objective_fn, rng, n_samples, sigma)`: vectorized Stein gradient estimator (primary entry point)
-  - `stein_zeroth_order_grad(...)`: scalar version (defined but unused in pipeline)
-
 #### Experiment Layer (`src/experiments/`)
 
 - **`src/experiments/config.py`**
@@ -221,24 +213,13 @@ when appropriate.
   `src/objective/planted_logistic.py`. These could be factored into a shared
   utility module.
 
-- **`clip_u` is removed / commented out:** `src/model/policy.py` has
-  a commented-out import of `clip_u` from `common.py`. `apply_policy` does
-  not clip actions. The softmax policy naturally maps to `(0.5, 1.5)` but
+- **`clip_u` is removed / commented out:** `apply_policy` does not clip
+  actions. The softmax policy naturally maps to `(0.5, 1.5)` but
   linear and constant policies are unbounded.
-
-- **`U_BOUNDS` in `common.py` is unused:** The constant `(0.5, 1.5)` is
-  defined but never referenced anywhere in the pipeline.
-
-- **`constant_step` in `common.py` is dead:** A `constant_step` function
-  exists in `common.py` but the real implementation is `constant_step_size`
-  in `steps.py`.
 
 - **`Contract.__post_init__` is a no-op:** The bounds check is `pass`.
   `Contract` is defined in `objective/base.py` but is never constructed in the
   experiment pipeline (actions are raw floats).
-
-- **`stein_zeroth_order_grad` (scalar version) is unused:** Only the batch
-  version `stein_zeroth_order_grad_batch` is called in the pipeline.
 
 - **`policy_grad_theta` is unused in the pipeline:** The optimization pipeline
   computes chain-rule gradients inside `src/optimization/base.py` rather than

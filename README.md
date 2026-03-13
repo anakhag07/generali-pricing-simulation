@@ -405,12 +405,10 @@ src/
     visualization.py                    Matplotlib plotting utilities
   optimization/
     base.py                             Optimization class with solve() and SciPy minimize integration
-    common.py                           Shared helpers (gaussian_noise)
     solvers.py                          Compatibility wrappers constructing Optimization + gradient objects
     steps.py                            Step-rule constants (l-bfgs-b + legacy constant/armijo)
     gradients/
       methods.py                        Gradient method classes (first-order, Gauss-Stein, SPSA)
-      zeroth_order.py                   Gaussian-Stein gradient estimator
 tests/                                  Flat test layout (pytest)
 ```
 

@@ -45,9 +45,6 @@ class ActionObjective:
     def grad_u(self, x: StateVector, u: float) -> float:
         raise NotImplementedError
 
-    def value_batch(self, x_array: np.ndarray, u_array: np.ndarray) -> np.ndarray:
-        raise NotImplementedError
-
 
 class ThetaObjective:
     def value(self, theta: np.ndarray, x_batch: np.ndarray) -> float:

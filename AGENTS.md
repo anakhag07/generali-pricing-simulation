@@ -79,7 +79,7 @@ Guidelines:
 
 - **`src/objective/base.py`**
   - `StateVector`: lightweight class wrapping a 1D numpy array; has `sample(rng, dim)` static method
-  - `ActionObjective`: action-space interface class (`value`, `grad_u`, `value_batch`)
+  - `ActionObjective`: action-space interface class (`value`, `grad_u`)
   - `ThetaObjective`: theta-space interface class (`value`, `grad`)
   - `default_rng(seed)`: wrapper around `np.random.default_rng`
 

@@ -35,6 +35,30 @@ def _as_array(x_batch: np.ndarray | Sequence[StateVector]) -> np.ndarray:
     return np.stack([np.asarray(x, dtype=float) for x in x_list], axis=0).astype(float)
 
 
+def _action_values(
+    action_objective: ActionObjective,
+    x_arr: np.ndarray,
+    x_list: Sequence[StateVector],
+    u_batch: np.ndarray,
+) -> np.ndarray:
+    value_batch = getattr(action_objective, "value_batch", None)
+    if callable(value_batch):
+        return np.asarray(value_batch(x_arr, u_batch), dtype=float)
+    return np.asarray([action_objective.value(x, u) for x, u in zip(x_list, u_batch)], dtype=float)
+
+
+def _action_grad_u_values(
+    action_objective: ActionObjective,
+    x_arr: np.ndarray,
+    x_list: Sequence[StateVector],
+    u_batch: np.ndarray,
+) -> np.ndarray:
+    grad_u_batch = getattr(action_objective, "grad_u_batch", None)
+    if callable(grad_u_batch):
+        return np.asarray(grad_u_batch(x_arr, u_batch), dtype=float)
+    return np.asarray([action_objective.grad_u(x, u) for x, u in zip(x_list, u_batch)], dtype=float)
+
+
 @dataclass(frozen=True)
 class PolicyObjective:
     action_objective: ActionObjective
@@ -42,30 +66,16 @@ class PolicyObjective:
 
     def value(self, theta: np.ndarray, x_batch: np.ndarray | Sequence[StateVector]) -> float:
         x_arr = _as_array(x_batch)
-        u_batch = self.policy.action_batch(theta, x_arr)
-        value_batch = getattr(self.action_objective, "value_batch", None)
-        if callable(value_batch):
-            values = np.asarray(value_batch(x_arr, u_batch), dtype=float)
-            return float(np.mean(values))
         x_list = _as_state_list(x_arr)
-        return float(
-            np.mean(
-                [self.action_objective.value(x, u) for x, u in zip(x_list, u_batch)],
-            )
-        )
+        u_batch = self.policy.action_batch(theta, x_arr)
+        values = _action_values(self.action_objective, x_arr, x_list, u_batch)
+        return float(np.mean(values))
 
     def grad(self, theta: np.ndarray, x_batch: np.ndarray | Sequence[StateVector]) -> np.ndarray:
         x_arr = _as_array(x_batch)
         x_list = _as_state_list(x_arr)
         u_batch = self.policy.action_batch(theta, x_arr)
-        grad_u_batch = getattr(self.action_objective, "grad_u_batch", None)
-        if callable(grad_u_batch):
-            grad_u_vals = np.asarray(grad_u_batch(x_arr, u_batch), dtype=float)
-        else:
-            grad_u_vals = np.asarray(
-                [self.action_objective.grad_u(x, u) for x, u in zip(x_list, u_batch)],
-                dtype=float,
-            )
+        grad_u_vals = _action_grad_u_values(self.action_objective, x_arr, x_list, u_batch)
 
         theta_arr = np.asarray(theta, dtype=float)
         grad = np.zeros_like(theta_arr)

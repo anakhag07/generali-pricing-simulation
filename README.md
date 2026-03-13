@@ -332,9 +332,9 @@ f(u; x) fixed objective           -> FixedRegressionObjective (src/objective/fix
 L(u; x) planted objective         -> PlantedLogisticObjective (src/objective/planted_logistic.py)
 oracle gradient API               -> FixedRegressionObjective.evaluate (src/objective/fixed_objective.py)
 policy u = f(theta, x)            -> PolicySpec, apply_policy (src/model/policy.py)
-Gauss-Stein gradient estimator     -> stein_zeroth_order_grad_batch (src/optimization/gradients/zeroth_order.py)
-SciPy-based first/Gauss-Stein solvers -> run_first_order_minimize, run_gauss_stein_minimize (src/optimization/solvers.py)
-SciPy-based SPSA solver            -> run_spsa_minimize (src/optimization/solvers.py)
+Optimization entry point            -> Optimization.solve (src/optimization/base.py)
+Gradient method objects             -> FirstOrderGradient, GaussSteinGradient, SPSAGradient (src/optimization/gradients/methods.py)
+SciPy wrapper helpers               -> run_first_order_minimize, run_gauss_stein_minimize, run_spsa_minimize (src/optimization/solvers.py)
 step-size rules (legacy support)  -> constant_step_size, armijo_backtracking_step_size (src/optimization/steps.py)
 experiment runner / config        -> ExperimentConfig, run_experiment (src/experiments/run.py)
 config sweep utilities            -> override grid + sweep runner helpers (src/experiments/sweep_utils.py)
@@ -347,6 +347,11 @@ config presets                    -> src/experiments/configs/ (get_config, list_
 ```
 
 ## Optimization Methods
+
+The optimization entry point is the `Optimization` class. Instantiate it with
+an objective, policy kind, optimization algorithm (currently `"l-bfgs-b"`),
+and a gradient object (`FirstOrderGradient`, `GaussSteinGradient`, or
+`SPSAGradient`), then call `solve(theta_start)`.
 
 - **First-order exact gradient:** uses the analytic gradient of the objective
   with respect to `u`, chains through the policy gradient `du/dtheta`, and
@@ -399,10 +404,12 @@ src/
     logging.py                          Console logging helpers (log_step, log_summary)
     visualization.py                    Matplotlib plotting utilities
   optimization/
+    base.py                             Optimization class with solve() and SciPy minimize integration
     common.py                           Shared helpers (gaussian_noise)
-    solvers.py                          SciPy-based first/Gauss-Stein/SPSA theta solvers
+    solvers.py                          Compatibility wrappers constructing Optimization + gradient objects
     steps.py                            Step-rule constants (l-bfgs-b + legacy constant/armijo)
     gradients/
+      methods.py                        Gradient method classes (first-order, Gauss-Stein, SPSA)
       zeroth_order.py                   Gaussian-Stein gradient estimator
 tests/                                  Flat test layout (pytest)
 ```

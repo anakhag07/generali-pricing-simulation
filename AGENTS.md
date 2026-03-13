@@ -113,11 +113,18 @@ Guidelines:
 
 #### Optimization Layer (`src/optimization/`)
 
+- **`src/optimization/base.py`**
+  - `Optimization`: class-based optimization entry point
+  - `Optimization.solve(theta_start)`: runs SciPy `minimize` (`L-BFGS-B`) with configured gradient method, mini-batching, and trace recording
+
+- **`src/optimization/gradients/methods.py`**
+  - `GradientMethod`: base interface for pluggable gradient estimators
+  - `FirstOrderGradient`: analytic u-gradient chained to theta gradients
+  - `GaussSteinGradient`: value-only Gaussian-Stein u-gradient estimator chained to theta gradients
+  - `SPSAGradient`: two-sided SPSA theta-gradient estimator
+
 - **`src/optimization/solvers.py`**
-  - `run_first_order_minimize(...)`: SciPy `minimize` (`L-BFGS-B`) solver using analytic u-gradients chained to theta gradients
-  - `run_gauss_stein_minimize(...)`: SciPy `minimize` (`L-BFGS-B`) solver using Gaussian-Stein u-gradients chained to theta gradients
-  - `run_spsa_minimize(...)`: SciPy `minimize` (`L-BFGS-B`) solver using SPSA theta-gradient estimates
-  - Internal helpers build batched objective/gradient callables, optional mini-batch sampling, and optimization traces
+  - `run_first_order_minimize(...)`, `run_gauss_stein_minimize(...)`, `run_spsa_minimize(...)`: compatibility wrappers that instantiate `Optimization` with the corresponding gradient object and call `solve(...)`
 
 - **`src/optimization/steps.py`**
   - `STEP_RULE_LBFGSB`, `STEP_RULE_CONSTANT`, `STEP_RULE_ARMIJO`, `STEP_RULES`
@@ -233,8 +240,8 @@ when appropriate.
 - **`stein_zeroth_order_grad` (scalar version) is unused:** Only the batch
   version `stein_zeroth_order_grad_batch` is called in the pipeline.
 
-- **`policy_grad_theta` is unused in the pipeline:** The gradient through
-  the policy is computed inline in `src/optimization/solvers.py` rather than
+- **`policy_grad_theta` is unused in the pipeline:** The optimization pipeline
+  computes chain-rule gradients inside `src/optimization/base.py` rather than
   calling this function.
 
 - **`plot_dir` on `ExperimentConfig` is ignored by `PlotReporter`:**
@@ -263,6 +270,7 @@ when appropriate.
 | `test_file_step_logger.py` | FileStepLogger CSV output |
 | `test_minibatch_stochasticity.py` | Mini-batch determinism and full-batch equivalence |
 | `test_minimize_orders.py` | SciPy first/Gauss-Stein/SPSA wrappers (decrease + seed determinism) |
+| `test_optimization_class.py` | Class-based optimizer entry point and gradient-object behavior |
 | `test_model_package_exports.py` | model package API exports remain importable |
 | `test_objective_batch.py` | Batch vs scalar consistency for both objectives |
 | `test_objective_package_exports.py` | objective package API exports remain importable |

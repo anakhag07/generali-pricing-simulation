@@ -387,7 +387,7 @@ src/
   data/
     __init__.py                         Reserved for dataset adapters and data-source integrations
   objective/
-    base.py                             Core state and objective interfaces (StateVector, ActionObjective, ThetaObjective)
+    base.py                             Core state/objective interfaces and policy interface (StateVector, Objective, Policy)
     composed.py                         PolicyObjective theta-level composition
     fixed_objective.py                  Fixed regression objective implementation
     policy.py                           Policy classes and compatibility helpers

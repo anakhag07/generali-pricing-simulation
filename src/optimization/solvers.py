@@ -9,7 +9,7 @@ from scipy.optimize import minimize
 
 from experiments.reporters import StepReporter
 from experiments.results import OptimizationTrace
-from objective.base import StateVector, ThetaObjective
+from objective.base import Objective, StateVector
 from optimization.base import Optimization, TrueThetaGradFn
 from optimization.gradients import FirstOrderGradient, GaussSteinGradient, SPSAGradient
 from optimization.steps import STEP_RULE_LBFGSB
@@ -18,7 +18,7 @@ from optimization.steps import STEP_RULE_LBFGSB
 def run_first_order_minimize(
     theta_start: np.ndarray,
     x_samples: Sequence[StateVector],
-    objective: ThetaObjective,
+    objective: Objective,
     t_steps: int,
     n_grad_samples: int,
     sigma: float,
@@ -50,7 +50,7 @@ def run_first_order_minimize(
 def run_gauss_stein_minimize(
     theta_start: np.ndarray,
     x_samples: Sequence[StateVector],
-    objective: ThetaObjective,
+    objective: Objective,
     rng: np.random.Generator,
     t_steps: int,
     n_grad_samples: int,
@@ -84,7 +84,7 @@ def run_gauss_stein_minimize(
 def run_spsa_minimize(
     theta_start: np.ndarray,
     x_samples: Sequence[StateVector],
-    objective: ThetaObjective,
+    objective: Objective,
     rng: np.random.Generator,
     t_steps: int,
     n_grad_samples: int,

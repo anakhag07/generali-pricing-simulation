@@ -79,8 +79,8 @@ Guidelines:
 
 - **`src/objective/base.py`**
   - `StateVector`: lightweight class wrapping a 1D numpy array; has `sample(rng, dim)` static method
-  - `ActionObjective`: action-space interface class (`value`, `grad_u`)
-  - `ThetaObjective`: theta-space interface class (`value`, `grad`)
+  - `Policy`: policy interface class (`value`, `grad`) where `grad` is with respect to `theta`
+  - `Objective`: theta-space interface class (`value`, `grad`)
   - `default_rng(seed)`: wrapper around `np.random.default_rng`
 
 - **`src/objective/fixed_objective.py`** (source of truth for objective math)
@@ -96,7 +96,7 @@ Guidelines:
   - `optimal_u()` method exposes the planted optimum
 
 - **`src/objective/policy.py`**
-  - `Policy` protocol: `action(theta, x)`, `grad_theta(theta, x)`, `action_batch(theta, x_batch)`
+  - Implements `Policy` with `value(theta, x)` and `grad(theta, x)` methods
   - Concrete policies: `ConstantPolicy`, `LinearPolicy`, `SoftmaxPolicy`
   - Compatibility helpers: `PolicySpec`, `policy_u`, `policy_u_batch`, `policy_grad_theta`
 

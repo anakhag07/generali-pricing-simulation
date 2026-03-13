@@ -7,11 +7,11 @@ from typing import Any, Literal, Mapping, Optional
 
 import numpy as np
 
-from objective.base import ActionObjective, ThetaObjective
+from objective.base import Objective, Policy, StateVector
 from objective.composed import PolicyObjective
 from objective.fixed_objective import FixedRegressionObjective
 from objective.planted_logistic import PlantedLogisticObjective
-from objective.policy import ConstantPolicy, LinearPolicy, Policy, PolicySpec, SoftmaxPolicy
+from objective.policy import ConstantPolicy, LinearPolicy, PolicySpec, SoftmaxPolicy
 from optimization.steps import STEP_RULES
 
 
@@ -48,9 +48,9 @@ class ExperimentConfig:
     state_dim: int
     n_samples: int
     step_rule: str
-    objective: ThetaObjective | None = None
+    objective: Objective | None = None
     theta0: np.ndarray | None = None
-    objective_model: ActionObjective | None = None
+    objective_model: object | None = None
     policy_spec: PolicySpec | Policy | None = None
     batch_size: int | None = None
     seed: int = 7
@@ -130,10 +130,10 @@ class ExperimentConfig:
             objective = PolicyObjective(action_objective=self.objective_model, policy=policy)
             object.__setattr__(self, "objective", objective)
 
-        theta0 = np.asarray(theta0_raw, dtype=float)
-        if theta0.ndim != 1 or theta0.size < 1:
+        theta0_arr = np.asarray(theta0_raw, dtype=float)
+        if theta0_arr.ndim != 1 or theta0_arr.size < 1:
             raise ValueError("theta0 must be a 1D array with at least one element.")
-        object.__setattr__(self, "theta0", theta0)
+        object.__setattr__(self, "theta0", theta0_arr)
 
         if self.batch_size is not None:
             if self.batch_size <= 0:
@@ -161,12 +161,18 @@ class ExperimentConfig:
             raise ValueError("objective must implement grad(theta, x_batch).")
 
         policy = getattr(objective, "policy", None)
-        if policy is not None and hasattr(policy, "required_theta_dim"):
-            required = int(policy.required_theta_dim(self.state_dim))
-            if self.theta0.size < required:
-                raise ValueError(
-                    f"theta0 must have at least {required} elements for policy {type(policy).__name__}."
-                )
+        if policy is not None:
+            policy_value = getattr(policy, "value", None)
+            policy_grad = getattr(policy, "grad", None)
+            if not callable(policy_value) or not callable(policy_grad):
+                raise ValueError("policy must implement value(theta, x) and grad(theta, x).")
+            x_probe = StateVector(values=np.zeros(self.state_dim, dtype=float))
+            u_probe = float(np.asarray(policy_value(theta0_arr, x_probe), dtype=float))
+            if not np.isfinite(u_probe):
+                raise ValueError("policy.value(theta0, x) must be finite.")
+            grad_probe = np.asarray(policy_grad(theta0_arr, x_probe), dtype=float)
+            if grad_probe.shape != theta0_arr.shape:
+                raise ValueError("policy.grad(theta0, x) must match theta0 shape.")
 
     def to_dict(self) -> dict[str, Any]:
         objective = self.objective
@@ -242,7 +248,7 @@ def _policy_to_dict(policy: object) -> dict[str, Any]:
     return {"type": type(policy).__name__}
 
 
-def _theta_objective_to_dict(objective: ThetaObjective) -> dict[str, Any]:
+def _theta_objective_to_dict(objective: Objective) -> dict[str, Any]:
     if isinstance(objective, PolicyObjective):
         return {
             "type": "PolicyObjective",
@@ -303,7 +309,7 @@ def make_softmax_policy() -> SoftmaxPolicy:
     return SoftmaxPolicy()
 
 
-def make_policy_objective(*, action_objective: ActionObjective, policy: Policy) -> PolicyObjective:
+def make_policy_objective(*, action_objective: object, policy: Policy) -> PolicyObjective:
     return PolicyObjective(action_objective=action_objective, policy=policy)
 
 
@@ -371,7 +377,7 @@ def build_experiment_config(
     *,
     seed: int,
     state_dim: int,
-    objective: ThetaObjective,
+    objective: Objective,
     theta0: np.ndarray,
     training: Mapping[str, Any],
     runtime: Mapping[str, Any] | None = None,

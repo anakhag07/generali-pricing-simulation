@@ -9,7 +9,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
-from objective.base import StateVector, ThetaObjective
+from objective.base import Objective, StateVector
 from objective.composed import PolicyObjective
 from objective.policy import PolicySpec
 from experiments.results import OptimizationTrace
@@ -345,7 +345,7 @@ def select_theta_axes_max_variance(theta_points: Sequence[np.ndarray]) -> tuple[
 
 def theta_objective_contour_grid(
     x_samples: Sequence[StateVector],
-    objective: ThetaObjective | object,
+    objective: Objective | object,
     theta_base: np.ndarray | PolicySpec,
     theta_base_legacy: np.ndarray | None = None,
     axis_indices: tuple[int, int] = (0, 1),
@@ -357,7 +357,7 @@ def theta_objective_contour_grid(
     if theta_base_legacy is not None:
         if not isinstance(theta_base, PolicySpec):
             raise ValueError("Legacy contour signature expects a PolicySpec as third argument.")
-        theta_objective: ThetaObjective = PolicyObjective(
+        theta_objective: Objective = PolicyObjective(
             action_objective=objective,
             policy=theta_base.as_policy(),
         )
@@ -395,7 +395,7 @@ def theta_objective_contour_grid(
 
 def plot_theta_objective_contours(
     x_samples: Sequence[StateVector],
-    objective: ThetaObjective,
+    objective: Objective,
     theta_base: np.ndarray,
     plot_dir: str,
     axis_indices: tuple[int, int] = (0, 1),

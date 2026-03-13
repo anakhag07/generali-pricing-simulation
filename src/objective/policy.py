@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Protocol
 
 import numpy as np
 
-from objective.base import StateVector
+from objective.base import Policy, StateVector
 
 POLICY_CONSTANT = "constant"
 POLICY_LINEAR = "linear"
@@ -38,32 +37,18 @@ def _sigmoid(z: np.ndarray) -> np.ndarray:
     return out
 
 
-class Policy(Protocol):
-    def action(self, theta: np.ndarray, x: StateVector) -> float:
-        ...
-
-    def grad_theta(self, theta: np.ndarray, x: StateVector) -> np.ndarray:
-        ...
-
-    def action_batch(self, theta: np.ndarray, x_batch: np.ndarray) -> np.ndarray:
-        ...
-
-    def required_theta_dim(self, state_dim: int) -> int:
-        ...
-
-
 @dataclass(frozen=True)
-class ConstantPolicy:
+class ConstantPolicy(Policy):
     kind: str = POLICY_CONSTANT
 
-    def action(self, theta: np.ndarray, x: StateVector) -> float:
+    def value(self, theta: np.ndarray, x: StateVector) -> float:
         del x
         theta_arr = np.asarray(theta, dtype=float)
         if theta_arr.size < 1:
             raise ValueError("theta must have at least one element for constant policy.")
         return float(theta_arr[0])
 
-    def grad_theta(self, theta: np.ndarray, x: StateVector) -> np.ndarray:
+    def grad(self, theta: np.ndarray, x: StateVector) -> np.ndarray:
         del x
         theta_arr = np.asarray(theta, dtype=float)
         if theta_arr.size < 1:
@@ -72,32 +57,19 @@ class ConstantPolicy:
         grad[0] = 1.0
         return grad
 
-    def action_batch(self, theta: np.ndarray, x_batch: np.ndarray) -> np.ndarray:
-        x_arr = np.asarray(x_batch, dtype=float)
-        if x_arr.ndim != 2:
-            raise ValueError("x_batch must be a 2D array.")
-        theta_arr = np.asarray(theta, dtype=float)
-        if theta_arr.size < 1:
-            raise ValueError("theta must have at least one element for constant policy.")
-        return np.full(x_arr.shape[0], float(theta_arr[0]), dtype=float)
-
-    def required_theta_dim(self, state_dim: int) -> int:
-        del state_dim
-        return 1
-
 
 @dataclass(frozen=True)
-class LinearPolicy:
+class LinearPolicy(Policy):
     kind: str = POLICY_LINEAR
 
-    def action(self, theta: np.ndarray, x: StateVector) -> float:
+    def value(self, theta: np.ndarray, x: StateVector) -> float:
         features = phi(x)
         theta_arr = np.asarray(theta, dtype=float)
         if theta_arr.size < features.size:
             raise ValueError("theta must have at least state_dim + 1 elements for linear policy.")
         return float(np.dot(theta_arr[: features.size], features))
 
-    def grad_theta(self, theta: np.ndarray, x: StateVector) -> np.ndarray:
+    def grad(self, theta: np.ndarray, x: StateVector) -> np.ndarray:
         features = phi(x)
         theta_arr = np.asarray(theta, dtype=float)
         if theta_arr.size < features.size:
@@ -106,23 +78,12 @@ class LinearPolicy:
         grad[: features.size] = features
         return grad
 
-    def action_batch(self, theta: np.ndarray, x_batch: np.ndarray) -> np.ndarray:
-        x_arr = np.asarray(x_batch, dtype=float)
-        features = phi_batch(x_arr)
-        theta_arr = np.asarray(theta, dtype=float)
-        if theta_arr.size < features.shape[1]:
-            raise ValueError("theta must have at least state_dim + 1 elements for linear policy.")
-        return (features @ theta_arr[: features.shape[1]]).astype(float)
-
-    def required_theta_dim(self, state_dim: int) -> int:
-        return int(state_dim) + 1
-
 
 @dataclass(frozen=True)
-class SoftmaxPolicy:
+class SoftmaxPolicy(Policy):
     kind: str = POLICY_SOFTMAX
 
-    def action(self, theta: np.ndarray, x: StateVector) -> float:
+    def value(self, theta: np.ndarray, x: StateVector) -> float:
         features = phi(x)
         theta_arr = np.asarray(theta, dtype=float)
         if theta_arr.size < features.size:
@@ -131,7 +92,7 @@ class SoftmaxPolicy:
         sigma = float(_sigmoid(np.asarray([z]))[0])
         return float(0.5 + sigma)
 
-    def grad_theta(self, theta: np.ndarray, x: StateVector) -> np.ndarray:
+    def grad(self, theta: np.ndarray, x: StateVector) -> np.ndarray:
         features = phi(x)
         theta_arr = np.asarray(theta, dtype=float)
         if theta_arr.size < features.size:
@@ -142,19 +103,6 @@ class SoftmaxPolicy:
         grad = np.zeros_like(theta_arr)
         grad[: features.size] = du_dz * features
         return grad
-
-    def action_batch(self, theta: np.ndarray, x_batch: np.ndarray) -> np.ndarray:
-        x_arr = np.asarray(x_batch, dtype=float)
-        features = phi_batch(x_arr)
-        theta_arr = np.asarray(theta, dtype=float)
-        if theta_arr.size < features.shape[1]:
-            raise ValueError("theta must have at least state_dim + 1 elements for softmax policy.")
-        z = features @ theta_arr[: features.shape[1]]
-        sigma = _sigmoid(z)
-        return (0.5 + sigma).astype(float)
-
-    def required_theta_dim(self, state_dim: int) -> int:
-        return int(state_dim) + 1
 
 
 @dataclass(frozen=True)
@@ -187,7 +135,7 @@ def policy_from_kind(kind: str) -> ConstantPolicy | LinearPolicy | SoftmaxPolicy
 
 
 def policy_u(theta: np.ndarray, x: StateVector, kind: str = POLICY_CONSTANT) -> float:
-    return policy_from_kind(kind).action(theta, x)
+    return policy_from_kind(kind).value(theta, x)
 
 
 def policy_u_batch(
@@ -196,16 +144,32 @@ def policy_u_batch(
     kind: str = POLICY_CONSTANT,
     phi_array: np.ndarray | None = None,
 ) -> np.ndarray:
-    del phi_array
-    return policy_from_kind(kind).action_batch(theta, x_array)
+    x_arr = np.asarray(x_array, dtype=float)
+    if x_arr.ndim != 2:
+        raise ValueError("x_array must be a 2D array.")
+    theta_arr = np.asarray(theta, dtype=float)
+    if kind == POLICY_CONSTANT:
+        if theta_arr.size < 1:
+            raise ValueError("theta must have at least one element for constant policy.")
+        return np.full(x_arr.shape[0], float(theta_arr[0]), dtype=float)
+
+    features = phi_array if phi_array is not None else phi_batch(x_arr)
+    if theta_arr.size < features.shape[1]:
+        raise ValueError("theta must have at least state_dim + 1 elements for linear/softmax policies.")
+    z = features @ theta_arr[: features.shape[1]]
+    if kind == POLICY_LINEAR:
+        return z.astype(float)
+    if kind == POLICY_SOFTMAX:
+        return (0.5 + _sigmoid(z)).astype(float)
+    raise ValueError(f"Policy kind must be one of {POLICY_KINDS}.")
 
 
 def policy_grad_theta(theta: np.ndarray, x: StateVector, kind: str = POLICY_CONSTANT) -> np.ndarray:
-    return policy_from_kind(kind).grad_theta(theta, x)
+    return policy_from_kind(kind).grad(theta, x)
 
 
 def apply_policy(policy: PolicySpec, x: StateVector) -> float:
-    return policy.as_policy().action(policy.theta, x)
+    return policy.as_policy().value(policy.theta, x)
 
 
 __all__ = [

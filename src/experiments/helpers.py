@@ -6,7 +6,7 @@ from typing import Callable, Sequence
 
 import numpy as np
 
-from objective.base import ActionObjective, StateVector, ThetaObjective
+from objective.base import Objective, StateVector
 from objective.composed import PolicyObjective
 from objective.policy import policy_from_kind
 from experiments.config import CorrectnessSpec
@@ -31,7 +31,7 @@ def _clamp_theta(theta: np.ndarray, bounds: tuple[float, float] | None) -> np.nd
 
 
 def _numdiff_theta_grad(
-    objective: ThetaObjective,
+    objective: Objective,
     theta: np.ndarray,
     x_batch: np.ndarray,
     method: str,
@@ -73,7 +73,7 @@ def _numdiff_theta_grad(
 
 
 def resolve_true_grad_theta_fn(
-    objective: ThetaObjective,
+    objective: Objective,
     correctness: CorrectnessSpec,
 ) -> TrueThetaGradFn | None:
     """Return a theta-gradient proxy based on correctness settings."""
@@ -98,7 +98,7 @@ def _resolve_optimization_inputs(
     kwargs: dict,
 ) -> tuple[
     Sequence[StateVector],
-    ThetaObjective,
+    Objective,
     np.random.Generator,
     int,
     str,

@@ -8,11 +8,15 @@ import numpy as np
 
 
 def default_rng(seed: Optional[int] = None) -> np.random.Generator:
+    """Return a NumPy random generator, optionally seeded."""
     return np.random.default_rng(seed)
 
 
 class StateVector:
+    """One-dimensional feature vector ``x`` used by objectives and policies."""
+
     def __init__(self, values: np.ndarray) -> None:
+        """Create a validated 1D float feature vector."""
         values_arr = np.asarray(values, dtype=float)
         if values_arr.ndim != 1:
             raise ValueError("StateVector values must be a 1D array.")
@@ -21,6 +25,7 @@ class StateVector:
         self.values = values_arr
 
     def __array__(self, dtype: np.dtype | None = None) -> np.ndarray:
+        """Expose ``values`` for ``np.asarray`` interoperability."""
         if dtype is None:
             return self.values
         return self.values.astype(dtype, copy=False)
@@ -33,22 +38,31 @@ class StateVector:
 
     @staticmethod
     def sample(rng: np.random.Generator, dim: int) -> "StateVector":
+        """Sample a standard-normal state vector of dimension ``dim``."""
         if dim <= 0:
             raise ValueError("StateVector dim must be positive.")
         return StateVector(values=rng.normal(0.0, 1.0, size=dim).astype(float))
 
 
-class ActionObjective:
-    def value(self, x: StateVector, u: float) -> float:
+class Policy:
+    """Policy interface mapping ``(theta, x)`` to action ``u``."""
+
+    def value(self, theta: np.ndarray, x: StateVector) -> float:
+        """Return action value ``u`` for ``(theta, x)``."""
         raise NotImplementedError
 
-    def grad_u(self, x: StateVector, u: float) -> float:
+    def grad(self, theta: np.ndarray, x: StateVector) -> np.ndarray:
+        """Return policy gradient with respect to ``theta``."""
         raise NotImplementedError
 
 
-class ThetaObjective:
+class Objective:
+    """Theta-space objective interface consumed by optimization."""
+
     def value(self, theta: np.ndarray, x_batch: np.ndarray) -> float:
+        """Return mean objective value for ``theta`` on ``x_batch``."""
         raise NotImplementedError
 
     def grad(self, theta: np.ndarray, x_batch: np.ndarray) -> np.ndarray:
+        """Return theta-gradient for ``theta`` on ``x_batch``."""
         raise NotImplementedError

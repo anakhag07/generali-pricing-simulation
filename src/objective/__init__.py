@@ -1,7 +1,7 @@
 from objective.base import (
-    ActionObjective,
+    Objective,
+    Policy,
     StateVector,
-    ThetaObjective,
     default_rng,
 )
 from objective.composed import PolicyObjective
@@ -18,7 +18,6 @@ from objective.policy import (
     POLICY_SOFTMAX,
     ConstantPolicy,
     LinearPolicy,
-    Policy,
     PolicySpec,
     SoftmaxPolicy,
     apply_policy,
@@ -32,7 +31,6 @@ from objective.policy import (
 from objective.planted_logistic import PlantedLogisticObjective
 
 __all__ = [
-    "ActionObjective",
     "ConstantPolicy",
     "FixedRegressionAcceptance",
     "FixedRegressionLoss",
@@ -44,13 +42,13 @@ __all__ = [
     "POLICY_LINEAR",
     "POLICY_SOFTMAX",
     "apply_policy",
+    "Objective",
     "Policy",
     "PolicySpec",
     "PolicyObjective",
     "PlantedLogisticObjective",
     "SoftmaxPolicy",
     "StateVector",
-    "ThetaObjective",
     "default_rng",
     "phi",
     "phi_batch",

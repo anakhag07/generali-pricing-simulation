@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Sequence
+from typing import Any, Sequence
 
 import numpy as np
 
-from objective.base import ActionObjective, StateVector
-from objective.policy import Policy
+from objective.base import Policy, StateVector
+from objective.policy import policy_u_batch
 
 
 def _as_state_list(x_batch: np.ndarray | Sequence[StateVector]) -> list[StateVector]:
@@ -36,64 +36,93 @@ def _as_array(x_batch: np.ndarray | Sequence[StateVector]) -> np.ndarray:
 
 
 def _action_values(
-    action_objective: ActionObjective,
+    action_objective: object,
     x_arr: np.ndarray,
     x_list: Sequence[StateVector],
     u_batch: np.ndarray,
 ) -> np.ndarray:
-    value_batch = getattr(action_objective, "value_batch", None)
+    objective = action_objective
+    value_batch = getattr(objective, "value_batch", None)
     if callable(value_batch):
         return np.asarray(value_batch(x_arr, u_batch), dtype=float)
-    return np.asarray([action_objective.value(x, u) for x, u in zip(x_list, u_batch)], dtype=float)
+    value_fn = getattr(objective, "value", None)
+    if not callable(value_fn):
+        raise ValueError("action_objective must implement value(x, u).")
+    return np.asarray([value_fn(x, u) for x, u in zip(x_list, u_batch)], dtype=float)
 
 
 def _action_grad_u_values(
-    action_objective: ActionObjective,
+    action_objective: object,
     x_arr: np.ndarray,
     x_list: Sequence[StateVector],
     u_batch: np.ndarray,
 ) -> np.ndarray:
-    grad_u_batch = getattr(action_objective, "grad_u_batch", None)
+    objective = action_objective
+    grad_u_batch = getattr(objective, "grad_u_batch", None)
     if callable(grad_u_batch):
         return np.asarray(grad_u_batch(x_arr, u_batch), dtype=float)
-    return np.asarray([action_objective.grad_u(x, u) for x, u in zip(x_list, u_batch)], dtype=float)
+    grad_u_fn = getattr(objective, "grad_u", None)
+    if not callable(grad_u_fn):
+        raise ValueError("action_objective must implement grad_u(x, u).")
+    return np.asarray([grad_u_fn(x, u) for x, u in zip(x_list, u_batch)], dtype=float)
+
+
+def _policy_values(
+    policy: Policy,
+    theta: np.ndarray,
+    x_arr: np.ndarray,
+    x_list: Sequence[StateVector],
+) -> np.ndarray:
+    policy_kind = getattr(policy, "kind", None)
+    if isinstance(policy_kind, str):
+        return policy_u_batch(theta, x_arr, kind=policy_kind)
+    return np.asarray([policy.value(theta, x) for x in x_list], dtype=float)
 
 
 @dataclass(frozen=True)
 class PolicyObjective:
-    action_objective: ActionObjective
+    action_objective: Any
     policy: Policy
 
     def value(self, theta: np.ndarray, x_batch: np.ndarray | Sequence[StateVector]) -> float:
         x_arr = _as_array(x_batch)
         x_list = _as_state_list(x_arr)
-        u_batch = self.policy.action_batch(theta, x_arr)
+        theta_arr = np.asarray(theta, dtype=float)
+        u_batch = _policy_values(self.policy, theta_arr, x_arr, x_list)
         values = _action_values(self.action_objective, x_arr, x_list, u_batch)
         return float(np.mean(values))
 
     def grad(self, theta: np.ndarray, x_batch: np.ndarray | Sequence[StateVector]) -> np.ndarray:
         x_arr = _as_array(x_batch)
         x_list = _as_state_list(x_arr)
-        u_batch = self.policy.action_batch(theta, x_arr)
+        theta_arr = np.asarray(theta, dtype=float)
+        u_batch = _policy_values(self.policy, theta_arr, x_arr, x_list)
         grad_u_vals = _action_grad_u_values(self.action_objective, x_arr, x_list, u_batch)
 
-        theta_arr = np.asarray(theta, dtype=float)
         grad = np.zeros_like(theta_arr)
         for x, grad_u in zip(x_list, grad_u_vals):
-            grad = grad + float(grad_u) * self.policy.grad_theta(theta_arr, x)
+            grad = grad + float(grad_u) * self.policy.grad(theta_arr, x)
         return grad / float(len(x_list))
 
     def action_batch(self, theta: np.ndarray, x_batch: np.ndarray | Sequence[StateVector]) -> np.ndarray:
-        return self.policy.action_batch(theta, _as_array(x_batch))
+        x_arr = _as_array(x_batch)
+        x_list = _as_state_list(x_arr)
+        return _policy_values(self.policy, np.asarray(theta, dtype=float), x_arr, x_list)
 
     def mean_action(self, theta: np.ndarray, x_batch: np.ndarray | Sequence[StateVector]) -> float:
         return float(np.mean(self.action_batch(theta, x_batch)))
 
     def action_value(self, x: StateVector, u: float) -> float:
-        return float(self.action_objective.value(x, u))
+        value_fn = getattr(self.action_objective, "value", None)
+        if not callable(value_fn):
+            raise ValueError("action_objective must implement value(x, u).")
+        return float(value_fn(x, u))
 
     def action_grad_u(self, x: StateVector, u: float) -> float:
-        return float(self.action_objective.grad_u(x, u))
+        grad_u_fn = getattr(self.action_objective, "grad_u", None)
+        if not callable(grad_u_fn):
+            raise ValueError("action_objective must implement grad_u(x, u).")
+        return float(grad_u_fn(x, u))
 
     def optimal_u(self) -> float | None:
         objective = self.action_objective

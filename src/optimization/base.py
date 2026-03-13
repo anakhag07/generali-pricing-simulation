@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Callable, Sequence
 import numpy as np
 from scipy.optimize import minimize
 
-from objective.base import ActionObjective, StateVector, ThetaObjective
+from objective.base import Objective, StateVector
 from objective.composed import PolicyObjective
 from objective.policy import policy_from_kind
 from optimization.helpers import (
@@ -32,7 +32,7 @@ class Optimization:
 
     def __init__(
         self,
-        objective: ThetaObjective | ActionObjective,
+        objective: Objective | object,
         x_samples_or_policy: Sequence[StateVector] | str,
         gradient_or_x_samples: Any,
         gradient: Any | None = None,
@@ -50,6 +50,11 @@ class Optimization:
         rng: np.random.Generator | None = None,
         minimize_fn: MinimizeFn = minimize,
     ) -> None:
+        """Configure SciPy-based optimization over theta.
+
+        Accepts either a theta-level objective directly, or a legacy
+        ``(action objective, policy kind)`` pair that is composed internally.
+        """
         if isinstance(x_samples_or_policy, str):
             if gradient is None:
                 raise ValueError("gradient must be provided when using legacy policy_kind signature.")
@@ -94,6 +99,7 @@ class Optimization:
         self._full_indices = np.arange(self.n_total, dtype=int)
 
     def solve(self, theta_start: np.ndarray) -> tuple[np.ndarray, "OptimizationTrace"]:
+        """Run SciPy ``minimize`` and return final theta with trace."""
         theta0 = np.asarray(theta_start, dtype=float)
         self.gradient.setup(self, theta0)
 

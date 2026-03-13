@@ -98,12 +98,14 @@ Guidelines:
   - `optimal_u()` method exposes the planted optimum
 
 - **`src/objective/policy.py`**
-  - `PolicySpec`: frozen dataclass pairing `theta` (numpy array) with `kind` string
-  - Policy kinds: `POLICY_CONSTANT`, `POLICY_LINEAR`, `POLICY_SOFTMAX`
-  - `phi(x)` / `phi_batch(x_array)`: prepend bias term to features
-  - `policy_u(theta, x, kind)` / `policy_u_batch(...)`: compute action from policy
-  - `policy_grad_theta(theta, x, kind)`: compute `du/dtheta` (defined but unused in pipeline; see Known Issues)
-  - `apply_policy(policy, x)`: convenience wrapper (does not clip `u`)
+  - `Policy` protocol: `action(theta, x)`, `grad_theta(theta, x)`, `action_batch(theta, x_batch)`
+  - Concrete policies: `ConstantPolicy`, `LinearPolicy`, `SoftmaxPolicy`
+  - Compatibility helpers: `PolicySpec`, `policy_u`, `policy_u_batch`, `policy_grad_theta`
+
+- **`src/objective/composed.py`**
+  - `PolicyObjective`: theta-level objective composition of an action objective and a policy
+  - `value(theta, x_batch)`: computes mean objective value in theta-space
+  - `grad(theta, x_batch)`: applies chain rule `grad_u * du/dtheta` across the batch
 
 #### Data Layer (`src/data/`)
 
@@ -119,11 +121,12 @@ Guidelines:
 - **`src/optimization/base.py`**
   - `Optimization`: class-based optimization entry point
   - `Optimization.solve(theta_start)`: runs SciPy `minimize` (`L-BFGS-B`) with configured gradient method, mini-batching, and trace recording
+  - Solvers consume theta-level objectives only (`value(theta, x_batch)`, `grad(theta, x_batch)`)
 
 - **`src/optimization/gradients/methods.py`**
   - `GradientMethod`: base interface for pluggable gradient estimators
-  - `FirstOrderGradient`: analytic u-gradient chained to theta gradients
-  - `GaussSteinGradient`: value-only Gaussian-Stein u-gradient estimator chained to theta gradients
+  - `FirstOrderGradient`: exact theta-gradient from `objective.grad(...)`
+  - `GaussSteinGradient`: value-only theta-space Gaussian-Stein estimator
   - `SPSAGradient`: two-sided SPSA theta-gradient estimator
 
 - **`src/optimization/solvers.py`**
@@ -138,10 +141,12 @@ Guidelines:
 
 - **`src/experiments/config.py`**
   - `ExperimentConfig`: frozen dataclass with extensive `__post_init__` validation
+  - Primary fields: `objective` (theta objective) and `theta0` (initial theta)
+  - Legacy compatibility fields `objective_model` and `policy_spec` are auto-composed into `PolicyObjective`
   - `batch_size: int | None = None` enables stochastic mini-batch optimization when set
   - `CorrectnessSpec`: controls how "true" gradients are computed (`"exact"`, `"numdiff"`, `"none"`)
   - `verbose: bool = False` controls terminal output of per-step metrics
-  - Preset-composition helpers: `make_*_objective`, `make_softmax_policy_spec`,
+  - Preset-composition helpers: `make_*_objective`, `make_softmax_policy`, `make_policy_objective`,
     `canonical_training_block`, `canonical_runtime_block`, and `build_experiment_config`
 
 - **`src/experiments/configs/`** (preset registry)
@@ -150,14 +155,15 @@ Guidelines:
   - `planted_logistic_base.py`: planted logistic base config (3D, L-BFGS-B step rule, 5000 steps, u*=1.1)
 
 - **`src/experiments/defaults.py`**
-  - `default_policy_spec(state_dim)`: returns softmax policy with `state_dim + 1` theta params
+  - `default_theta0(state_dim)`: returns default initial theta with `state_dim + 1` params
+  - `default_policy_spec(state_dim)`: compatibility helper returning softmax `PolicySpec`
 
 - **`src/experiments/helpers.py`** (largest file; orchestration + wrappers)
-  - `resolve_true_grad_u_fn(objective_model, correctness)`: resolves the "true" gradient function from correctness spec
+  - `resolve_true_grad_theta_fn(objective, correctness)`: resolves the "true" theta-gradient function from correctness spec
   - `run_first_order(...)`: wrapper delegating to `optimization.solvers.run_first_order_minimize`
   - `run_gauss_stein(...)`: wrapper delegating to `optimization.solvers.run_gauss_stein_minimize`
   - `run_spsa(...)`: wrapper delegating to `optimization.solvers.run_spsa_minimize`
-  - Internal: `_numdiff_grad(...)` for finite-difference gradients
+  - Internal: `_numdiff_theta_grad(...)` for finite-difference theta gradients
 
 - **`src/experiments/run.py`**
   - `run_experiment(config, step_reporter)`: main runner; samples customers, runs enabled estimators, returns `ExperimentResult` (pure computation, no I/O)
@@ -225,7 +231,7 @@ when appropriate.
   experiment pipeline (actions are raw floats).
 
 - **`policy_grad_theta` is unused in the pipeline:** The optimization pipeline
-  computes chain-rule gradients inside `src/optimization/base.py` rather than
+  computes chain-rule gradients inside `src/objective/composed.py` rather than
   calling this function.
 
 - **`plot_dir` on `ExperimentConfig` is ignored by `PlotReporter`:**

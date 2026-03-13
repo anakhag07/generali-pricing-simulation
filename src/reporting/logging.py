@@ -35,16 +35,16 @@ def log_summary(result: ExperimentResult) -> None:
         return f"[{formatted}]"
 
     config = result.config
-    objective_model = config.objective_model
-    policy_spec = config.policy_spec
+    objective = config.objective
+    action_objective = getattr(objective, "action_objective", objective)
     u_star: Optional[float] = result.u_star
     value_at_u_star: Optional[float] = result.value_at_u_star
 
-    if isinstance(objective_model, FixedRegressionObjective):
-        beta_1 = format_array(objective_model.acceptance.beta_1)
-        beta_2 = objective_model.acceptance.beta_2
-        beta_3 = format_array(objective_model.loss.beta_3)
-        beta_4 = objective_model.revenue.beta_4
+    if isinstance(action_objective, FixedRegressionObjective):
+        beta_1 = format_array(action_objective.acceptance.beta_1)
+        beta_2 = action_objective.acceptance.beta_2
+        beta_3 = format_array(action_objective.loss.beta_3)
+        beta_4 = action_objective.revenue.beta_4
         print(
             "Objective: f(u; x) = sigmoid(beta_1·x + beta_2*u) * (beta_3·x - beta_4*u)"
         )
@@ -52,18 +52,18 @@ def log_summary(result: ExperimentResult) -> None:
             "Betas: "
             f"beta_1={beta_1}, beta_2={beta_2:.3f}, beta_3={beta_3}, beta_4={beta_4:.3f}"
         )
-    elif isinstance(objective_model, PlantedLogisticObjective):
-        beta = format_array(objective_model.beta)
+    elif isinstance(action_objective, PlantedLogisticObjective):
+        beta = format_array(action_objective.beta)
         print("Objective: L(u; x) = log(1 + exp(z)) - p*(x) * z")
         print("z = alpha * u + beta·x + bias")
         print("p*(x) = sigmoid(alpha * u* + beta·x + bias)")
         print(
             "Params: "
-            f"alpha={objective_model.alpha:.3f}, bias={objective_model.bias:.3f}, "
-            f"u*={objective_model.u_star:.3f}, beta={beta}"
+            f"alpha={action_objective.alpha:.3f}, bias={action_objective.bias:.3f}, "
+            f"u*={action_objective.u_star:.3f}, beta={beta}"
         )
     else:
-        print(f"Objective: {type(objective_model).__name__}")
+        print(f"Objective: {type(action_objective).__name__}")
 
     print(
         "Run: "
@@ -109,11 +109,11 @@ def log_summary(result: ExperimentResult) -> None:
                     for name in ordered
                 )
                 print(f"Objective gap: {value_gap}")
-        print(f"Initial theta: {format_array(policy_spec.theta)}")
+        print(f"Initial theta: {format_array(config.theta0)}")
         for name in ordered:
             theta = result.results[name].theta
             theta_l2 = float(np.linalg.norm(theta))
-            theta_delta_l2 = float(np.linalg.norm(theta - policy_spec.theta))
+            theta_delta_l2 = float(np.linalg.norm(theta - config.theta0))
             print(f"Final theta ({labels[name]}): {format_array(theta)}")
             print(
                 f"Final theta norms ({labels[name]}): "

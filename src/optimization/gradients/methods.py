@@ -18,35 +18,31 @@ class GradientMethod:
     def setup(self, optimizer: "Optimization", theta0: np.ndarray) -> None:
         del optimizer, theta0
 
-    def theta_and_u_grad(
+    def theta_grad(
         self,
         optimizer: "Optimization",
         theta: np.ndarray,
         indices: np.ndarray,
-    ) -> tuple[np.ndarray, np.ndarray | None]:
+    ) -> np.ndarray:
         raise NotImplementedError
 
 
 class FirstOrderGradient(GradientMethod):
-    """Exact objective u-gradient chained through the policy."""
+    """Exact theta-gradient from objective.grad."""
 
     name = "first-order"
 
-    def theta_and_u_grad(
+    def theta_grad(
         self,
         optimizer: "Optimization",
         theta: np.ndarray,
         indices: np.ndarray,
-    ) -> tuple[np.ndarray, np.ndarray | None]:
-        _, x_batch, phi_batch_values, _, grad_batch_fn = optimizer.batch_context(indices)
-        u_vals = optimizer.policy_u_batch(theta, x_batch, phi_batch_values)
-        grad_u_vals = grad_batch_fn(u_vals)
-        grad_theta = optimizer.theta_grad_from_u_grad(theta, phi_batch_values, u_vals, grad_u_vals)
-        return grad_theta, grad_u_vals
+    ) -> np.ndarray:
+        return optimizer.objective_grad_on_indices(theta, indices)
 
 
 class GaussSteinGradient(GradientMethod):
-    """Value-only Stein estimator for u-gradients chained to theta."""
+    """Theta-space Gaussian-Stein estimator using value-only queries."""
 
     name = "gauss-stein"
 
@@ -54,7 +50,6 @@ class GaussSteinGradient(GradientMethod):
         self._eps_base: np.ndarray | None = None
 
     def setup(self, optimizer: "Optimization", theta0: np.ndarray) -> None:
-        del theta0
         if optimizer.n_grad_samples <= 0:
             raise ValueError("n_grad_samples must be positive.")
         if optimizer.sigma <= 0.0:
@@ -62,27 +57,22 @@ class GaussSteinGradient(GradientMethod):
         self._eps_base = optimizer.rng.normal(
             0.0,
             1.0,
-            size=(optimizer.n_grad_samples, optimizer.n_total),
+            size=(optimizer.n_grad_samples, theta0.size),
         ).astype(float)
 
-    def theta_and_u_grad(
+    def theta_grad(
         self,
         optimizer: "Optimization",
         theta: np.ndarray,
         indices: np.ndarray,
-    ) -> tuple[np.ndarray, np.ndarray | None]:
+    ) -> np.ndarray:
         if self._eps_base is None:
             raise ValueError("GaussSteinGradient.setup must be called before solve.")
-        _, x_batch, phi_batch_values, value_batch_fn, _ = optimizer.batch_context(indices)
-        u_vals = optimizer.policy_u_batch(theta, x_batch, phi_batch_values)
-        eps_values = self._eps_base[:, indices]
-        accum = np.zeros_like(u_vals, dtype=float)
-        for eps in eps_values:
-            values = value_batch_fn(u_vals + optimizer.sigma * eps)
-            accum += values * eps
-        grad_u_vals = accum / float(eps_values.shape[0]) / max(optimizer.sigma, 1e-8)
-        grad_theta = optimizer.theta_grad_from_u_grad(theta, phi_batch_values, u_vals, grad_u_vals)
-        return grad_theta, grad_u_vals
+        accum = np.zeros_like(theta, dtype=float)
+        for eps in self._eps_base:
+            value = optimizer.objective_on_indices(theta + optimizer.sigma * eps, indices)
+            accum += value * eps
+        return accum / float(self._eps_base.shape[0]) / max(optimizer.sigma, 1e-8)
 
 
 class SPSAGradient(GradientMethod):
@@ -103,12 +93,12 @@ class SPSAGradient(GradientMethod):
             size=(optimizer.n_grad_samples, theta0.size),
         )
 
-    def theta_and_u_grad(
+    def theta_grad(
         self,
         optimizer: "Optimization",
         theta: np.ndarray,
         indices: np.ndarray,
-    ) -> tuple[np.ndarray, np.ndarray | None]:
+    ) -> np.ndarray:
         if self._delta_base is None:
             raise ValueError("SPSAGradient.setup must be called before solve.")
         grad_theta = np.zeros_like(theta, dtype=float)
@@ -116,7 +106,7 @@ class SPSAGradient(GradientMethod):
             value_plus = optimizer.objective_on_indices(theta + optimizer.sigma * delta, indices)
             value_minus = optimizer.objective_on_indices(theta - optimizer.sigma * delta, indices)
             grad_theta += ((value_plus - value_minus) / (2.0 * optimizer.sigma)) * delta
-        return grad_theta / float(self._delta_base.shape[0]), None
+        return grad_theta / float(self._delta_base.shape[0])
 
 
 __all__ = [

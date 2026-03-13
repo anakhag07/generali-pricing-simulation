@@ -9,29 +9,27 @@ from scipy.optimize import minimize
 
 from experiments.reporters import StepReporter
 from experiments.results import OptimizationTrace
-from objective.base import ObjectiveModel, StateVector
-from optimization.base import Optimization, TrueGradFn
+from objective.base import StateVector, ThetaObjective
+from optimization.base import Optimization, TrueThetaGradFn
 from optimization.gradients import FirstOrderGradient, GaussSteinGradient, SPSAGradient
 from optimization.steps import STEP_RULE_LBFGSB
 
 
 def run_first_order_minimize(
     theta_start: np.ndarray,
-    policy_kind: str,
     x_samples: Sequence[StateVector],
-    objective_model: ObjectiveModel,
+    objective: ThetaObjective,
     t_steps: int,
     n_grad_samples: int,
     sigma: float,
     batch_size: int | None = None,
-    true_grad_u_fn: TrueGradFn | None = None,
+    true_grad_theta_fn: TrueThetaGradFn | None = None,
     grad_norm_tol: float | None = None,
     ftol: float | None = None,
     step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     optimizer = Optimization(
-        objective_model,
-        policy_kind,
+        objective,
         x_samples,
         FirstOrderGradient(),
         algorithm=STEP_RULE_LBFGSB,
@@ -39,7 +37,7 @@ def run_first_order_minimize(
         n_grad_samples=n_grad_samples,
         sigma=sigma,
         batch_size=batch_size,
-        true_grad_u_fn=true_grad_u_fn,
+        true_grad_theta_fn=true_grad_theta_fn,
         grad_norm_tol=grad_norm_tol,
         ftol=ftol,
         step_reporter=step_reporter,
@@ -51,22 +49,20 @@ def run_first_order_minimize(
 
 def run_gauss_stein_minimize(
     theta_start: np.ndarray,
-    policy_kind: str,
     x_samples: Sequence[StateVector],
-    objective_model: ObjectiveModel,
+    objective: ThetaObjective,
     rng: np.random.Generator,
     t_steps: int,
     n_grad_samples: int,
     sigma: float,
     batch_size: int | None = None,
-    true_grad_u_fn: TrueGradFn | None = None,
+    true_grad_theta_fn: TrueThetaGradFn | None = None,
     grad_norm_tol: float | None = None,
     ftol: float | None = None,
     step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     optimizer = Optimization(
-        objective_model,
-        policy_kind,
+        objective,
         x_samples,
         GaussSteinGradient(),
         algorithm=STEP_RULE_LBFGSB,
@@ -74,7 +70,7 @@ def run_gauss_stein_minimize(
         n_grad_samples=n_grad_samples,
         sigma=sigma,
         batch_size=batch_size,
-        true_grad_u_fn=true_grad_u_fn,
+        true_grad_theta_fn=true_grad_theta_fn,
         grad_norm_tol=grad_norm_tol,
         ftol=ftol,
         step_reporter=step_reporter,
@@ -87,22 +83,20 @@ def run_gauss_stein_minimize(
 
 def run_spsa_minimize(
     theta_start: np.ndarray,
-    policy_kind: str,
     x_samples: Sequence[StateVector],
-    objective_model: ObjectiveModel,
+    objective: ThetaObjective,
     rng: np.random.Generator,
     t_steps: int,
     n_grad_samples: int,
     sigma: float,
     batch_size: int | None = None,
-    true_grad_u_fn: TrueGradFn | None = None,
+    true_grad_theta_fn: TrueThetaGradFn | None = None,
     grad_norm_tol: float | None = None,
     ftol: float | None = None,
     step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     optimizer = Optimization(
-        objective_model,
-        policy_kind,
+        objective,
         x_samples,
         SPSAGradient(),
         algorithm=STEP_RULE_LBFGSB,
@@ -110,7 +104,7 @@ def run_spsa_minimize(
         n_grad_samples=n_grad_samples,
         sigma=sigma,
         batch_size=batch_size,
-        true_grad_u_fn=true_grad_u_fn,
+        true_grad_theta_fn=true_grad_theta_fn,
         grad_norm_tol=grad_norm_tol,
         ftol=ftol,
         step_reporter=step_reporter,

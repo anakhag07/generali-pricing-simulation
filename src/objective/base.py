@@ -102,3 +102,22 @@ class ObjectiveModel(Protocol):
 
     def evaluate(self, x: "StateVector", u: float) -> ObjectiveResult:
         ...
+
+
+class ActionObjective(Protocol):
+    def value(self, x: "StateVector", u: float) -> float:
+        ...
+
+    def grad_u(self, x: "StateVector", u: float) -> float:
+        ...
+
+    def value_batch(self, x_array: np.ndarray, u_array: np.ndarray) -> np.ndarray:
+        ...
+
+
+class ThetaObjective(Protocol):
+    def value(self, theta: np.ndarray, x_batch: np.ndarray) -> float:
+        ...
+
+    def grad(self, theta: np.ndarray, x_batch: np.ndarray) -> np.ndarray:
+        ...

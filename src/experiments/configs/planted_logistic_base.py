@@ -8,8 +8,9 @@ from experiments.config import (
     build_experiment_config,
     canonical_runtime_block,
     canonical_training_block,
+    make_policy_objective,
     make_planted_logistic_objective,
-    make_softmax_policy_spec,
+    make_softmax_policy,
 )
 
 STATE_DIM = 3
@@ -35,13 +36,16 @@ RUNTIME = canonical_runtime_block(
 CONFIG = build_experiment_config(
     seed=7,
     state_dim=STATE_DIM,
-    objective_model=make_planted_logistic_objective(
-        alpha=1.0,
-        beta=BETA,
-        bias=-0.2,
-        u_star=1.1,
+    objective=make_policy_objective(
+        action_objective=make_planted_logistic_objective(
+            alpha=1.0,
+            beta=BETA,
+            bias=-0.2,
+            u_star=1.1,
+        ),
+        policy=make_softmax_policy(),
     ),
-    policy_spec=make_softmax_policy_spec(theta=POLICY_THETA),
+    theta0=POLICY_THETA,
     training=TRAINING,
     runtime=RUNTIME,
 )

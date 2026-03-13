@@ -7,10 +7,11 @@ from typing import Any, Literal, Mapping, Optional
 
 import numpy as np
 
-from objective.base import ObjectiveModel
+from objective.base import ActionObjective, ThetaObjective
+from objective.composed import PolicyObjective
 from objective.fixed_objective import FixedRegressionObjective
-from objective.policy import POLICY_LINEAR, POLICY_SOFTMAX, PolicySpec
 from objective.planted_logistic import PlantedLogisticObjective
+from objective.policy import ConstantPolicy, LinearPolicy, Policy, PolicySpec, SoftmaxPolicy
 from optimization.steps import STEP_RULES
 
 
@@ -21,7 +22,7 @@ class CorrectnessSpec:
     gradient_source: Literal["exact", "numdiff", "none"] = "exact"
     numdiff_method: Literal["central", "forward", "backward"] = "central"
     numdiff_step: float = 1e-4
-    numdiff_aggregate: Literal["per-sample", "batch"] = "per-sample"
+    numdiff_aggregate: Literal["per-sample", "batch"] = "batch"
     numdiff_bounds: Optional[tuple[float, float]] = None
 
     def __post_init__(self) -> None:
@@ -45,10 +46,12 @@ class CorrectnessSpec:
 @dataclass(frozen=True)
 class ExperimentConfig:
     state_dim: int
-    objective_model: ObjectiveModel
-    policy_spec: PolicySpec
     n_samples: int
     step_rule: str
+    objective: ThetaObjective | None = None
+    theta0: np.ndarray | None = None
+    objective_model: ActionObjective | None = None
+    policy_spec: PolicySpec | Policy | None = None
     batch_size: int | None = None
     seed: int = 7
     t_steps: int = 100
@@ -107,9 +110,30 @@ class ExperimentConfig:
 
         if self.state_dim <= 0:
             raise ValueError("state_dim must be positive.")
-
         if self.n_samples <= 0:
             raise ValueError("n_samples must be positive.")
+
+        objective = self.objective
+        theta0_raw = self.theta0
+        if objective is None or theta0_raw is None:
+            if self.objective_model is None or self.policy_spec is None:
+                raise ValueError(
+                    "Provide objective and theta0, or objective_model and policy_spec."
+                )
+            if isinstance(self.policy_spec, PolicySpec):
+                policy = self.policy_spec.as_policy()
+                theta0_raw = self.policy_spec.theta
+            else:
+                policy = self.policy_spec
+                if theta0_raw is None:
+                    raise ValueError("theta0 must be provided when policy_spec is a Policy instance.")
+            objective = PolicyObjective(action_objective=self.objective_model, policy=policy)
+            object.__setattr__(self, "objective", objective)
+
+        theta0 = np.asarray(theta0_raw, dtype=float)
+        if theta0.ndim != 1 or theta0.size < 1:
+            raise ValueError("theta0 must be a 1D array with at least one element.")
+        object.__setattr__(self, "theta0", theta0)
 
         if self.batch_size is not None:
             if self.batch_size <= 0:
@@ -120,50 +144,37 @@ class ExperimentConfig:
         if self.step_rule not in STEP_RULES:
             allowed = ", ".join(sorted(STEP_RULES))
             raise ValueError(f"step_rule must be one of {allowed}.")
-
         if self.step_size <= 0.0:
             raise ValueError("step_size must be positive.")
-
         if self.grad_norm_tol is not None and self.grad_norm_tol <= 0.0:
             raise ValueError("grad_norm_tol must be positive when provided.")
-
         if self.ftol is not None and self.ftol <= 0.0:
             raise ValueError("ftol must be positive when provided.")
-
         if self.n_grad_samples <= 0:
             raise ValueError("n_grad_samples must be positive.")
 
-        if isinstance(self.objective_model, FixedRegressionObjective):
-            if self.objective_model.acceptance.beta_1.size < self.state_dim:
-                raise ValueError("beta_1 must have at least state_dim elements.")
-            if self.objective_model.loss.beta_3.size < self.state_dim:
-                raise ValueError("beta_3 must have at least state_dim elements.")
+        value_fn = getattr(objective, "value", None)
+        grad_fn = getattr(objective, "grad", None)
+        if value_fn is None or not callable(value_fn):
+            raise ValueError("objective must implement value(theta, x_batch).")
+        if grad_fn is None or not callable(grad_fn):
+            raise ValueError("objective must implement grad(theta, x_batch).")
 
-        if self.policy_spec.kind in (POLICY_LINEAR, POLICY_SOFTMAX):
-            required = self.state_dim + 1
-            if self.policy_spec.theta.size < required:
+        policy = getattr(objective, "policy", None)
+        if policy is not None and hasattr(policy, "required_theta_dim"):
+            required = int(policy.required_theta_dim(self.state_dim))
+            if self.theta0.size < required:
                 raise ValueError(
-                    "Policy theta must have at least state_dim + 1 elements for linear/softmax policies."
-                )
-        if self.correctness is None:
-            object.__setattr__(
-                self,
-                "correctness",
-                CorrectnessSpec(gradient_source="none"),
-            )
-        if self.correctness.gradient_source == "exact":
-            grad_u = getattr(self.objective_model, "grad_u", None)
-            if grad_u is None or not callable(grad_u):
-                raise ValueError(
-                    "objective_model must implement grad_u for gradient_source='exact'."
-                )
-        if self.correctness.gradient_source == "numdiff":
-            if self.correctness.numdiff_aggregate != "per-sample":
-                raise ValueError(
-                    "numdiff_aggregate='batch' is not supported for theta-gradient correctness."
+                    f"theta0 must have at least {required} elements for policy {type(policy).__name__}."
                 )
 
     def to_dict(self) -> dict[str, Any]:
+        objective = self.objective
+        if objective is None:
+            raise ValueError("objective must be initialized before serialization.")
+        theta0 = self.theta0
+        if theta0 is None:
+            raise ValueError("theta0 must be initialized before serialization.")
         return {
             "state_dim": int(self.state_dim),
             "n_samples": int(self.n_samples),
@@ -182,6 +193,8 @@ class ExperimentConfig:
             "plot": bool(self.plot),
             "plot_dir": self.plot_dir,
             "enabled_estimators": list(self.enabled_estimators),
+            "theta0": _as_list(theta0),
+            "objective": _theta_objective_to_dict(objective),
             "wandb": {
                 "enabled": bool(self.wandb_enabled),
                 "project": self.wandb_project,
@@ -196,32 +209,47 @@ class ExperimentConfig:
                 else None,
             },
             "correctness": _correctness_to_dict(self.correctness),
-            "policy_spec": {
-                "kind": self.policy_spec.kind,
-                "theta": _as_list(self.policy_spec.theta),
-            },
-            "objective_model": _objective_to_dict(self.objective_model),
         }
 
 
-def _objective_to_dict(objective_model: ObjectiveModel) -> dict[str, Any]:
-    if isinstance(objective_model, FixedRegressionObjective):
+def _action_objective_to_dict(action_objective: object) -> dict[str, Any]:
+    if isinstance(action_objective, FixedRegressionObjective):
         return {
             "type": "FixedRegressionObjective",
-            "beta_1": _as_list(objective_model.acceptance.beta_1),
-            "beta_2": float(objective_model.acceptance.beta_2),
-            "beta_3": _as_list(objective_model.loss.beta_3),
-            "beta_4": float(objective_model.revenue.beta_4),
+            "beta_1": _as_list(action_objective.acceptance.beta_1),
+            "beta_2": float(action_objective.acceptance.beta_2),
+            "beta_3": _as_list(action_objective.loss.beta_3),
+            "beta_4": float(action_objective.revenue.beta_4),
         }
-    if isinstance(objective_model, PlantedLogisticObjective):
+    if isinstance(action_objective, PlantedLogisticObjective):
         return {
             "type": "PlantedLogisticObjective",
-            "alpha": float(objective_model.alpha),
-            "beta": _as_list(objective_model.beta),
-            "bias": float(objective_model.bias),
-            "u_star": float(objective_model.u_star),
+            "alpha": float(action_objective.alpha),
+            "beta": _as_list(action_objective.beta),
+            "bias": float(action_objective.bias),
+            "u_star": float(action_objective.u_star),
         }
-    return {"type": type(objective_model).__name__}
+    return {"type": type(action_objective).__name__}
+
+
+def _policy_to_dict(policy: object) -> dict[str, Any]:
+    if isinstance(policy, ConstantPolicy):
+        return {"type": "ConstantPolicy"}
+    if isinstance(policy, LinearPolicy):
+        return {"type": "LinearPolicy"}
+    if isinstance(policy, SoftmaxPolicy):
+        return {"type": "SoftmaxPolicy"}
+    return {"type": type(policy).__name__}
+
+
+def _theta_objective_to_dict(objective: ThetaObjective) -> dict[str, Any]:
+    if isinstance(objective, PolicyObjective):
+        return {
+            "type": "PolicyObjective",
+            "action_objective": _action_objective_to_dict(objective.action_objective),
+            "policy": _policy_to_dict(objective.policy),
+        }
+    return {"type": type(objective).__name__}
 
 
 def _correctness_to_dict(correctness: CorrectnessSpec) -> dict[str, Any]:
@@ -271,8 +299,12 @@ def make_planted_logistic_objective(
     )
 
 
-def make_softmax_policy_spec(*, theta: np.ndarray) -> PolicySpec:
-    return PolicySpec(theta=np.asarray(theta, dtype=float), kind=POLICY_SOFTMAX)
+def make_softmax_policy() -> SoftmaxPolicy:
+    return SoftmaxPolicy()
+
+
+def make_policy_objective(*, action_objective: ActionObjective, policy: Policy) -> PolicyObjective:
+    return PolicyObjective(action_objective=action_objective, policy=policy)
 
 
 def canonical_training_block(
@@ -339,8 +371,8 @@ def build_experiment_config(
     *,
     seed: int,
     state_dim: int,
-    objective_model: ObjectiveModel,
-    policy_spec: PolicySpec,
+    objective: ThetaObjective,
+    theta0: np.ndarray,
     training: Mapping[str, Any],
     runtime: Mapping[str, Any] | None = None,
     correctness: CorrectnessSpec | None = None,
@@ -348,8 +380,8 @@ def build_experiment_config(
     payload: dict[str, Any] = {
         "seed": int(seed),
         "state_dim": int(state_dim),
-        "objective_model": objective_model,
-        "policy_spec": policy_spec,
+        "objective": objective,
+        "theta0": np.asarray(theta0, dtype=float),
     }
     payload.update(dict(training))
     if runtime is not None:

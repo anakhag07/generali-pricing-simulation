@@ -11,7 +11,7 @@ import numpy as np
 
 from objective.base import ObjectiveModel, StateVector
 from experiments.results import OptimizationTrace
-from model.policy import PolicySpec, policy_u
+from objective.policy import PolicySpec, policy_u
 
 matplotlib.use("Agg")
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from model.policy import POLICY_SOFTMAX, PolicySpec
+from objective.policy import POLICY_SOFTMAX, PolicySpec
 
 
 def default_policy_spec(state_dim: int) -> PolicySpec:

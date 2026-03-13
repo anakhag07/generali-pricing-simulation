@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING, Any, Callable, Sequence, cast
 import numpy as np
 from scipy.optimize import minimize
 
-from model.policy import POLICY_CONSTANT, POLICY_LINEAR, POLICY_SOFTMAX, phi_batch, policy_u_batch
 from objective.base import ObjectiveModel, StateVector
+from objective.policy import POLICY_CONSTANT, POLICY_LINEAR, POLICY_SOFTMAX, phi_batch, policy_u_batch
 from optimization.steps import STEP_RULE_LBFGSB
 
 if TYPE_CHECKING:

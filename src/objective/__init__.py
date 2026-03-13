@@ -15,6 +15,19 @@ from objective.fixed_objective import (
     FixedRegressionObjective,
     FixedRegressionRevenue,
 )
+from objective.policy import (
+    POLICY_CONSTANT,
+    POLICY_KINDS,
+    POLICY_LINEAR,
+    POLICY_SOFTMAX,
+    PolicySpec,
+    apply_policy,
+    phi,
+    phi_batch,
+    policy_grad_theta,
+    policy_u,
+    policy_u_batch,
+)
 from objective.planted_logistic import PlantedLogisticObjective
 
 __all__ = [
@@ -25,6 +38,12 @@ __all__ = [
     "FixedRegressionLoss",
     "FixedRegressionObjective",
     "FixedRegressionRevenue",
+    "POLICY_CONSTANT",
+    "POLICY_KINDS",
+    "POLICY_LINEAR",
+    "POLICY_SOFTMAX",
+    "PolicySpec",
+    "apply_policy",
     "LossModel",
     "ObjectiveModel",
     "ObjectiveResult",
@@ -32,4 +51,9 @@ __all__ = [
     "RevenueModel",
     "StateVector",
     "default_rng",
+    "phi",
+    "phi_batch",
+    "policy_grad_theta",
+    "policy_u",
+    "policy_u_batch",
 ]

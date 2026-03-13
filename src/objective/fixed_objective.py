@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from objective.base import ObjectiveResult, StateVector
+from objective.base import StateVector
 
 
 def _logistic(z: float) -> float:
@@ -126,11 +126,6 @@ class FixedRegressionObjective:
         loss = self.loss.expected_loss(x)
         revenue_value = self.revenue.revenue(u)
         return float(d_acceptance_du * (loss - revenue_value) - acceptance * self.revenue.grad_u(u))
-
-    def evaluate(self, x: StateVector, u: float) -> ObjectiveResult:
-        value = self.value(x, u)
-        grad_u = self.grad_u(x, u)
-        return ObjectiveResult(value=value, grad_u=grad_u)
 
     def prepare_batch(self, x_array: np.ndarray) -> "FixedRegressionBatch":
         x_arr = np.asarray(x_array, dtype=float)

@@ -3,8 +3,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from objective.base import ObjectiveResult, StateVector
-from model.policy import POLICY_LINEAR, PolicySpec
+from objective.base import StateVector
+from objective.policy import POLICY_LINEAR, PolicySpec
 from reporting.visualization import select_theta_axes_max_variance, theta_objective_contour_grid
 
 
@@ -14,9 +14,6 @@ class QuadraticObjective:
 
     def grad_u(self, x: StateVector, u: float) -> float:
         return 2.0 * u
-
-    def evaluate(self, x: StateVector, u: float) -> ObjectiveResult:
-        return ObjectiveResult(value=self.value(x, u), grad_u=self.grad_u(x, u))
 
 
 def test_theta_objective_contour_grid_shapes() -> None:

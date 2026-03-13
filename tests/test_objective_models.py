@@ -41,7 +41,7 @@ def test_fixed_regression_objective_grad() -> None:
     beta_4 = 0.5
 
     objective = FixedRegressionObjective.from_parameters(beta_1, beta_2, beta_3, beta_4)
-    result = objective.evaluate(x, u)
+    grad_u = objective.grad_u(x, u)
     logit = 0.1 * 1.0 + 0.2 * 2.0 + beta_2 * u
     acceptance = 1.0 / (1.0 + math.exp(-logit))
     loss = 0.3 * 1.0 + 0.4 * 2.0
@@ -49,4 +49,4 @@ def test_fixed_regression_objective_grad() -> None:
     d_acceptance_du = acceptance * (1.0 - acceptance) * beta_2
     expected_grad = d_acceptance_du * (loss - revenue_value) - acceptance * beta_4
 
-    assert math.isclose(result.grad_u, expected_grad, rel_tol=1e-9)
+    assert math.isclose(grad_u, expected_grad, rel_tol=1e-9)

@@ -1,4 +1,4 @@
-"""Core objective-related dataclasses and protocols for pricing simulation."""
+"""Core objective interfaces and state-vector container."""
 
 from __future__ import annotations
 
@@ -8,17 +8,12 @@ from typing import Optional, Protocol
 import numpy as np
 
 
-RNG = np.random.Generator
-
-
-def default_rng(seed: Optional[int] = None) -> RNG:
+def default_rng(seed: Optional[int] = None) -> np.random.Generator:
     return np.random.default_rng(seed)
 
 
 @dataclass(frozen=True)
 class StateVector:
-    """Customer state vector x in X."""
-
     values: np.ndarray
 
     def __post_init__(self) -> None:
@@ -33,82 +28,17 @@ class StateVector:
         return np.asarray(self.values, dtype=float)
 
     @staticmethod
-    def sample(
-        rng: RNG,
-        dim: int,
-    ) -> "StateVector":
+    def sample(rng: np.random.Generator, dim: int) -> "StateVector":
         if dim <= 0:
             raise ValueError("StateVector dim must be positive.")
-        values = rng.normal(0.0, 1.0, size=dim).astype(float)
-        return StateVector(values=values)
-
-
-@dataclass(frozen=True)
-class Customer:
-    """Customer with state vector x in X."""
-
-    x: StateVector
-    customer_id: Optional[str] = None
-
-    @staticmethod
-    def sample(rng: RNG, state_dim: int) -> "Customer":
-        return Customer(x=StateVector.sample(rng=rng, dim=state_dim))
-
-
-@dataclass(frozen=True)
-class Contract:
-    """Contract with action u in U = [0.5, 1.5]."""
-
-    u: float
-
-    def __post_init__(self) -> None:
-        if not (0.5 <= self.u <= 1.5):
-            pass
-
-
-@dataclass(frozen=True)
-class ObjectiveResult:
-    value: float
-    grad_u: float
-
-
-class AcceptanceModel(Protocol):
-    def probability(self, x: "StateVector", u: float) -> float:
-        ...
-
-    def grad_u(self, x: "StateVector", u: float) -> float:
-        ...
-
-
-class LossModel(Protocol):
-    def expected_loss(self, x: "StateVector") -> float:
-        ...
-
-
-class RevenueModel(Protocol):
-    def revenue(self, u: float) -> float:
-        ...
-
-    def grad_u(self, u: float) -> float:
-        ...
-
-
-class ObjectiveModel(Protocol):
-    def value(self, x: "StateVector", u: float) -> float:
-        ...
-
-    def grad_u(self, x: "StateVector", u: float) -> float:
-        ...
-
-    def evaluate(self, x: "StateVector", u: float) -> ObjectiveResult:
-        ...
+        return StateVector(values=rng.normal(0.0, 1.0, size=dim).astype(float))
 
 
 class ActionObjective(Protocol):
-    def value(self, x: "StateVector", u: float) -> float:
+    def value(self, x: StateVector, u: float) -> float:
         ...
 
-    def grad_u(self, x: "StateVector", u: float) -> float:
+    def grad_u(self, x: StateVector, u: float) -> float:
         ...
 
     def value_batch(self, x_array: np.ndarray, u_array: np.ndarray) -> np.ndarray:

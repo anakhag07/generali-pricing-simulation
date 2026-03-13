@@ -7,7 +7,7 @@ from typing import Any, cast
 
 import numpy as np
 
-from objective.base import Customer, default_rng
+from objective.base import StateVector, default_rng
 from experiments.config import ExperimentConfig
 from experiments.helpers import (
     resolve_true_grad_theta_fn,
@@ -30,8 +30,7 @@ def run_experiment(
     enabled_estimators = tuple(config.enabled_estimators)
 
     rng = default_rng(config.seed)
-    customers = [Customer.sample(rng, state_dim=config.state_dim) for _ in range(config.n_samples)]
-    x_samples = [customer.x for customer in customers]
+    x_samples = [StateVector.sample(rng, dim=config.state_dim) for _ in range(config.n_samples)]
     x_array = np.stack([x.as_array() for x in x_samples], axis=0).astype(float)
     true_grad_theta_fn = resolve_true_grad_theta_fn(objective, config.correctness)
 

@@ -79,10 +79,8 @@ Guidelines:
 
 - **`src/objective/base.py`**
   - `StateVector`: frozen dataclass wrapping a 1D numpy array; has `sample(rng, dim)` static method
-  - `Customer`: frozen dataclass with `x: StateVector`; has `sample(rng, state_dim)` static method
-  - `Contract`: frozen dataclass with `u: float` (bounds check is a no-op; see Known Issues)
-  - `ObjectiveResult`: frozen dataclass with `value` and `grad_u`
-  - Protocols: `AcceptanceModel`, `LossModel`, `RevenueModel`, `ObjectiveModel`
+  - `ActionObjective` protocol: action-space objective API (`value`, `grad_u`, `value_batch`)
+  - `ThetaObjective` protocol: theta-space optimization API (`value`, `grad`)
   - `default_rng(seed)`: wrapper around `np.random.default_rng`
 
 - **`src/objective/fixed_objective.py`** (source of truth for objective math)
@@ -110,11 +108,6 @@ Guidelines:
 #### Data Layer (`src/data/`)
 
 - Reserved for dataset adapters and external data-source integrations.
-
-#### Model Layer (`src/model/`)
-
-- **`src/model/policy.py`**
-  - Compatibility shim that re-exports policy symbols from `src/objective/policy.py`
 
 #### Optimization Layer (`src/optimization/`)
 
@@ -166,7 +159,7 @@ Guidelines:
   - Internal: `_numdiff_theta_grad(...)` for finite-difference theta gradients
 
 - **`src/experiments/run.py`**
-  - `run_experiment(config, step_reporter)`: main runner; samples customers, runs enabled estimators, returns `ExperimentResult` (pure computation, no I/O)
+  - `run_experiment(config, step_reporter)`: main runner; samples state vectors, runs enabled estimators, returns `ExperimentResult` (pure computation, no I/O)
 
 - **`src/experiments/sweep_utils.py`**
   - `expand_override_grid(...)`: cartesian product of override values
@@ -226,10 +219,6 @@ when appropriate.
   actions. The softmax policy naturally maps to `(0.5, 1.5)` but
   linear and constant policies are unbounded.
 
-- **`Contract.__post_init__` is a no-op:** The bounds check is `pass`.
-  `Contract` is defined in `objective/base.py` but is never constructed in the
-  experiment pipeline (actions are raw floats).
-
 - **`policy_grad_theta` is unused in the pipeline:** The optimization pipeline
   computes chain-rule gradients inside `src/objective/composed.py` rather than
   calling this function.
@@ -261,8 +250,6 @@ when appropriate.
 | `test_minibatch_stochasticity.py` | Mini-batch determinism and full-batch equivalence |
 | `test_minimize_orders.py` | SciPy first/Gauss-Stein/SPSA wrappers (decrease + seed determinism) |
 | `test_optimization_class.py` | Class-based optimizer entry point and gradient-object behavior |
-| `test_model_package_exports.py` | model package API exports remain importable |
-| `test_policy_compatibility.py` | model.policy shim re-exports objective.policy symbols |
 | `test_objective_batch.py` | Batch vs scalar consistency for both objectives |
 | `test_objective_package_exports.py` | objective package API exports remain importable |
 | `test_objective_models.py` | FixedRegressionObjective value and gradient correctness |

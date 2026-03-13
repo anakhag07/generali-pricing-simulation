@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from objective.base import ObjectiveResult, StateVector
-from model.policy import POLICY_LINEAR
+from objective.base import StateVector
+from objective.policy import POLICY_LINEAR
 from optimization import FirstOrderGradient, GaussSteinGradient, Optimization
 
 
@@ -13,9 +13,6 @@ class SimpleObjective:
 
     def grad_u(self, x: StateVector, u: float) -> float:
         return 2.0 * u
-
-    def evaluate(self, x: StateVector, u: float) -> ObjectiveResult:
-        return ObjectiveResult(value=self.value(x, u), grad_u=self.grad_u(x, u))
 
 
 def test_optimization_first_order_reduces_objective() -> None:

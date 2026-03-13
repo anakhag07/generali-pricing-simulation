@@ -78,11 +78,9 @@ Guidelines:
 #### Objective Layer (`src/objective/`)
 
 - **`src/objective/base.py`**
-  - `StateVector`: frozen dataclass wrapping a 1D numpy array; has `sample(rng, dim)` static method
-  - `Customer`: frozen dataclass with `x: StateVector`; has `sample(rng, state_dim)` static method
-  - `Contract`: frozen dataclass with `u: float` (bounds check is a no-op; see Known Issues)
-  - `ObjectiveResult`: frozen dataclass with `value` and `grad_u`
-  - Protocols: `AcceptanceModel`, `LossModel`, `RevenueModel`, `ObjectiveModel`
+  - `StateVector`: lightweight class wrapping a 1D numpy array; has `sample(rng, dim)` static method
+  - `ActionObjective`: action-space interface class (`value`, `grad_u`)
+  - `ThetaObjective`: theta-space interface class (`value`, `grad`)
   - `default_rng(seed)`: wrapper around `np.random.default_rng`
 
 - **`src/objective/fixed_objective.py`** (source of truth for objective math)
@@ -97,49 +95,57 @@ Guidelines:
   - `PlantedLogisticBatch`: pre-computed batch for vectorized evaluation
   - `optimal_u()` method exposes the planted optimum
 
+- **`src/objective/policy.py`**
+  - `Policy` protocol: `action(theta, x)`, `grad_theta(theta, x)`, `action_batch(theta, x_batch)`
+  - Concrete policies: `ConstantPolicy`, `LinearPolicy`, `SoftmaxPolicy`
+  - Compatibility helpers: `PolicySpec`, `policy_u`, `policy_u_batch`, `policy_grad_theta`
+
+- **`src/objective/composed.py`**
+  - `PolicyObjective`: theta-level objective composition of an action objective and a policy
+  - `value(theta, x_batch)`: computes mean objective value in theta-space
+  - `grad(theta, x_batch)`: applies chain rule `grad_u * du/dtheta` across the batch
+
 #### Data Layer (`src/data/`)
 
 - Reserved for dataset adapters and external data-source integrations.
 
-#### Model Layer (`src/model/`)
-
-- **`src/model/policy.py`**
-  - `PolicySpec`: frozen dataclass pairing `theta` (numpy array) with `kind` string
-  - Policy kinds: `POLICY_CONSTANT`, `POLICY_LINEAR`, `POLICY_SOFTMAX`
-  - `phi(x)` / `phi_batch(x_array)`: prepend bias term to features
-  - `policy_u(theta, x, kind)` / `policy_u_batch(...)`: compute action from policy
-  - `policy_grad_theta(theta, x, kind)`: compute `du/dtheta` (defined but unused in pipeline; see Known Issues)
-  - `apply_policy(policy, x)`: convenience wrapper (does not clip `u`)
-
 #### Optimization Layer (`src/optimization/`)
 
+- **`src/optimization/base.py`**
+  - `Optimization`: class-based optimization entry point
+  - `Optimization.solve(theta_start)`: runs SciPy `minimize` (`L-BFGS-B`) with configured gradient method, mini-batching, and trace recording
+  - Contains only constructor + solve orchestration; batching/objective helpers live in `src/optimization/helpers.py`
+  - Solvers consume theta-level objectives only (`value(theta, x_batch)`, `grad(theta, x_batch)`)
+
+- **`src/optimization/helpers.py`**
+  - `scipy_method(...)`: maps configured algorithm string to SciPy method name
+  - `sample_indices(...)`, `x_batch(...)`: mini-batch index/data helpers
+  - `objective_value_on_indices(...)`, `objective_grad_on_indices(...)`, `mean_action_on_indices(...)`: shared objective evaluation helpers used by optimizer + gradient methods
+
+- **`src/optimization/gradients/methods.py`**
+  - `GradientMethod`: base interface for pluggable gradient estimators
+  - `FirstOrderGradient`: exact theta-gradient from `objective.grad(...)`
+  - `GaussSteinGradient`: value-only theta-space Gaussian-Stein estimator
+  - `SPSAGradient`: two-sided SPSA theta-gradient estimator
+
 - **`src/optimization/solvers.py`**
-  - `run_first_order_minimize(...)`: SciPy `minimize` (`L-BFGS-B`) solver using analytic u-gradients chained to theta gradients
-  - `run_gauss_stein_minimize(...)`: SciPy `minimize` (`L-BFGS-B`) solver using Gaussian-Stein u-gradients chained to theta gradients
-  - `run_spsa_minimize(...)`: SciPy `minimize` (`L-BFGS-B`) solver using SPSA theta-gradient estimates
-  - Internal helpers build batched objective/gradient callables, optional mini-batch sampling, and optimization traces
+  - `run_first_order_minimize(...)`, `run_gauss_stein_minimize(...)`, `run_spsa_minimize(...)`: compatibility wrappers that instantiate `Optimization` with the corresponding gradient object and call `solve(...)`
 
 - **`src/optimization/steps.py`**
   - `STEP_RULE_LBFGSB`, `STEP_RULE_CONSTANT`, `STEP_RULE_ARMIJO`, `STEP_RULES`
   - `constant_step_size(step_size)`: returns the step size unchanged
   - `armijo_backtracking_step_size(...)`: Armijo line search utility (not used by SciPy first/Gauss-Stein/SPSA solvers)
 
-- **`src/optimization/common.py`**
-  - `gaussian_noise(rng, shape)`: standard normal samples (used by Gauss-Stein estimator)
-  - `U_BOUNDS`: defined but unused (see Known Issues)
-
-- **`src/optimization/gradients/zeroth_order.py`**
-  - `stein_zeroth_order_grad_batch(u_values, objective_fn, rng, n_samples, sigma)`: vectorized Stein gradient estimator (primary entry point)
-  - `stein_zeroth_order_grad(...)`: scalar version (defined but unused in pipeline)
-
 #### Experiment Layer (`src/experiments/`)
 
 - **`src/experiments/config.py`**
   - `ExperimentConfig`: frozen dataclass with extensive `__post_init__` validation
+  - Primary fields: `objective` (theta objective) and `theta0` (initial theta)
+  - Legacy compatibility fields `objective_model` and `policy_spec` are auto-composed into `PolicyObjective`
   - `batch_size: int | None = None` enables stochastic mini-batch optimization when set
   - `CorrectnessSpec`: controls how "true" gradients are computed (`"exact"`, `"numdiff"`, `"none"`)
   - `verbose: bool = False` controls terminal output of per-step metrics
-  - Preset-composition helpers: `make_*_objective`, `make_softmax_policy_spec`,
+  - Preset-composition helpers: `make_*_objective`, `make_softmax_policy`, `make_policy_objective`,
     `canonical_training_block`, `canonical_runtime_block`, and `build_experiment_config`
 
 - **`src/experiments/configs/`** (preset registry)
@@ -148,17 +154,18 @@ Guidelines:
   - `planted_logistic_base.py`: planted logistic base config (3D, L-BFGS-B step rule, 5000 steps, u*=1.1)
 
 - **`src/experiments/defaults.py`**
-  - `default_policy_spec(state_dim)`: returns softmax policy with `state_dim + 1` theta params
+  - `default_theta0(state_dim)`: returns default initial theta with `state_dim + 1` params
+  - `default_policy_spec(state_dim)`: compatibility helper returning softmax `PolicySpec`
 
 - **`src/experiments/helpers.py`** (largest file; orchestration + wrappers)
-  - `resolve_true_grad_u_fn(objective_model, correctness)`: resolves the "true" gradient function from correctness spec
+  - `resolve_true_grad_theta_fn(objective, correctness)`: resolves the "true" theta-gradient function from correctness spec
   - `run_first_order(...)`: wrapper delegating to `optimization.solvers.run_first_order_minimize`
   - `run_gauss_stein(...)`: wrapper delegating to `optimization.solvers.run_gauss_stein_minimize`
   - `run_spsa(...)`: wrapper delegating to `optimization.solvers.run_spsa_minimize`
-  - Internal: `_numdiff_grad(...)` for finite-difference gradients
+  - Internal: `_numdiff_theta_grad(...)` for finite-difference theta gradients
 
 - **`src/experiments/run.py`**
-  - `run_experiment(config, step_reporter)`: main runner; samples customers, runs enabled estimators, returns `ExperimentResult` (pure computation, no I/O)
+  - `run_experiment(config, step_reporter)`: main runner; samples state vectors, runs enabled estimators, returns `ExperimentResult` (pure computation, no I/O)
 
 - **`src/experiments/sweep_utils.py`**
   - `expand_override_grid(...)`: cartesian product of override values
@@ -214,27 +221,12 @@ when appropriate.
   `src/objective/planted_logistic.py`. These could be factored into a shared
   utility module.
 
-- **`clip_u` is removed / commented out:** `src/model/policy.py` has
-  a commented-out import of `clip_u` from `common.py`. `apply_policy` does
-  not clip actions. The softmax policy naturally maps to `(0.5, 1.5)` but
+- **`clip_u` is removed / commented out:** `apply_policy` does not clip
+  actions. The softmax policy naturally maps to `(0.5, 1.5)` but
   linear and constant policies are unbounded.
 
-- **`U_BOUNDS` in `common.py` is unused:** The constant `(0.5, 1.5)` is
-  defined but never referenced anywhere in the pipeline.
-
-- **`constant_step` in `common.py` is dead:** A `constant_step` function
-  exists in `common.py` but the real implementation is `constant_step_size`
-  in `steps.py`.
-
-- **`Contract.__post_init__` is a no-op:** The bounds check is `pass`.
-  `Contract` is defined in `objective/base.py` but is never constructed in the
-  experiment pipeline (actions are raw floats).
-
-- **`stein_zeroth_order_grad` (scalar version) is unused:** Only the batch
-  version `stein_zeroth_order_grad_batch` is called in the pipeline.
-
-- **`policy_grad_theta` is unused in the pipeline:** The gradient through
-  the policy is computed inline in `src/optimization/solvers.py` rather than
+- **`policy_grad_theta` is unused in the pipeline:** The optimization pipeline
+  computes chain-rule gradients inside `src/objective/composed.py` rather than
   calling this function.
 
 - **`plot_dir` on `ExperimentConfig` is ignored by `PlotReporter`:**
@@ -263,7 +255,7 @@ when appropriate.
 | `test_file_step_logger.py` | FileStepLogger CSV output |
 | `test_minibatch_stochasticity.py` | Mini-batch determinism and full-batch equivalence |
 | `test_minimize_orders.py` | SciPy first/Gauss-Stein/SPSA wrappers (decrease + seed determinism) |
-| `test_model_package_exports.py` | model package API exports remain importable |
+| `test_optimization_class.py` | Class-based optimizer entry point and gradient-object behavior |
 | `test_objective_batch.py` | Batch vs scalar consistency for both objectives |
 | `test_objective_package_exports.py` | objective package API exports remain importable |
 | `test_objective_models.py` | FixedRegressionObjective value and gradient correctness |

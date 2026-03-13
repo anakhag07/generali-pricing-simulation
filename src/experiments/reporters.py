@@ -275,33 +275,34 @@ class PlotReporter:
             return
         run_context.plots_dir.mkdir(parents=True, exist_ok=True)
         plot_dir = str(run_context.plots_dir)
-        objective_model = config.objective_model
-        policy_spec = config.policy_spec
+        objective = config.objective
+        action_objective = getattr(objective, "action_objective", None)
         traces = result.traces
-        u_star_plot = _u_star_for_plot(objective_model, result.u_star)
+        u_star_plot = _u_star_for_plot(action_objective, result.u_star)
         plot_loss_curves(
             traces,
             plot_dir,
             u_star=u_star_plot,
         )
         plot_gradient_norms(traces, plot_dir)
-        plot_objective_u_slice(
-            result.x_samples,
-            objective_model,
-            traces,
-            plot_dir,
-            u_star=u_star_plot,
-        )
+        if action_objective is not None:
+            plot_objective_u_slice(
+                result.x_samples,
+                action_objective,
+                traces,
+                plot_dir,
+                u_star=u_star_plot,
+            )
         if config.step_rule == STEP_RULE_ARMIJO:
             plot_step_sizes(traces, plot_dir)
-        if policy_spec.theta.size >= 2:
+        if config.theta0.size >= 2:
             axis_indices = (0, 1)
             axis_labels = None
-            theta_path_points = [policy_spec.theta]
+            theta_path_points = [config.theta0]
             for trace in traces.values():
                 if trace.theta_values:
                     theta_path_points.extend(trace.theta_values)
-            if policy_spec.theta.size > 2 and theta_path_points:
+            if config.theta0.size > 2 and theta_path_points:
                 axis_indices = select_theta_axes_max_variance(theta_path_points)
                 axis_labels = (
                     f"theta[{axis_indices[0]}] (max-var axis)",
@@ -312,8 +313,8 @@ class PlotReporter:
                 for name in config.enabled_estimators
                 if name in result.results
             ]
-            theta_refs = [policy_spec.theta]
-            theta_points = [(policy_spec.theta, "initial", "#636363", "o")]
+            theta_refs = [config.theta0]
+            theta_points = [(config.theta0, "initial", "#636363", "o")]
             for name, estimator_result in ordered_results:
                 theta_refs.append(estimator_result.theta)
                 style = ESTIMATOR_STYLES[name]
@@ -327,9 +328,8 @@ class PlotReporter:
                 )
             plot_theta_objective_contours(
                 result.x_samples,
-                objective_model,
-                policy_spec,
-                policy_spec.theta,
+                objective,
+                config.theta0,
                 plot_dir,
                 axis_indices=axis_indices,
                 axis_labels=axis_labels,
@@ -373,10 +373,10 @@ class FileStepLogger:
 
 
 def _u_star_for_plot(
-    objective_model: object,
+    action_objective: object,
     u_star: float | None,
 ) -> float | None:
-    if isinstance(objective_model, FixedRegressionObjective):
+    if isinstance(action_objective, FixedRegressionObjective):
         return None
     if u_star is not None:
         return u_star
@@ -389,7 +389,7 @@ def _build_summary_payload(run_context: RunContext, result: ExperimentResult) ->
         trace = result.traces.get(name)
         theta_l2_norm = float(np.linalg.norm(estimator_result.theta))
         theta_delta_l2_norm = float(
-            np.linalg.norm(estimator_result.theta - result.config.policy_spec.theta)
+            np.linalg.norm(estimator_result.theta - result.config.theta0)
         )
         estimator_payload = {
             "final_u": float(estimator_result.u),

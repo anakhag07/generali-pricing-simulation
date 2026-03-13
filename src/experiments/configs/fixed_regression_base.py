@@ -9,7 +9,8 @@ from experiments.config import (
     canonical_runtime_block,
     canonical_training_block,
     make_fixed_regression_objective,
-    make_softmax_policy_spec,
+    make_policy_objective,
+    make_softmax_policy,
 )
 
 STATE_DIM = 5
@@ -42,13 +43,16 @@ RUNTIME = canonical_runtime_block(
 CONFIG = build_experiment_config(
     seed=7,
     state_dim=STATE_DIM,
-    objective_model=make_fixed_regression_objective(
-        beta_1=BETA_1,
-        beta_2=BETA_2,
-        beta_3=BETA_3,
-        beta_4=BETA_4,
+    objective=make_policy_objective(
+        action_objective=make_fixed_regression_objective(
+            beta_1=BETA_1,
+            beta_2=BETA_2,
+            beta_3=BETA_3,
+            beta_4=BETA_4,
+        ),
+        policy=make_softmax_policy(),
     ),
-    policy_spec=make_softmax_policy_spec(theta=POLICY_THETA),
+    theta0=POLICY_THETA,
     training=TRAINING,
     runtime=RUNTIME,
 )

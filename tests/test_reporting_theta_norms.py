@@ -8,9 +8,9 @@ import numpy as np
 from experiments.config import ExperimentConfig
 from experiments.reporters import RunContext, _build_summary_payload
 from experiments.results import EstimatorResult, ExperimentResult, OptimizationTrace
-from model.policy import POLICY_LINEAR, PolicySpec
 from objective.base import StateVector
 from objective.fixed_objective import FixedRegressionObjective
+from objective.policy import POLICY_LINEAR, PolicySpec
 from reporting.logging import log_summary
 
 

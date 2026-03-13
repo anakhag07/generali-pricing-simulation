@@ -124,8 +124,15 @@ The preset config `planted_logistic_base` wires this in.
 
 ## Policy System
 
-A `PolicySpec` pairs a parameter vector `theta` with a policy kind. The policy
-maps `(theta, x)` to an action `u`.
+Policies are concrete classes that map `(theta, x)` to an action `u` and expose
+`du/dtheta`:
+
+- `ConstantPolicy`
+- `LinearPolicy`
+- `SoftmaxPolicy`
+
+For compatibility, `PolicySpec` is still available as a lightweight container
+for `(theta, kind)` and can be converted to a concrete policy.
 
 | Kind | Formula | `u` range | `theta` size |
 |---|---|---|---|
@@ -135,7 +142,7 @@ maps `(theta, x)` to an action `u`.
 
 $\phi(x)$ prepends a bias term of $1.0$ to the feature vector: $[1, x_1, \ldots, x_d]$.
 
-The softmax policy is the default (via `default_policy_spec`). It naturally
+The softmax policy is the default in preset configs. It naturally
 constrains actions to `(0.5, 1.5)`. Linear and constant policies have no
 built-in bounds.
 
@@ -154,7 +161,8 @@ config = get_config("fixed_regression_base")  # -> ExperimentConfig
 ```
 
 Preset files compose `ExperimentConfig` using canonical helper blocks defined in
-`src/experiments/config.py` (objective, policy, training, and runtime).
+`src/experiments/config.py` (theta-level objective, initial theta, training,
+and runtime).
 
 Control which configs run by editing the `RUN_CONFIGS` list in `main.py`:
 
@@ -186,8 +194,8 @@ Each `ExperimentConfig` includes:
 | Field | Default | Description |
 |---|---|---|
 | `state_dim` | *required* | Dimension of customer feature vector |
-| `objective_model` | *required* | `FixedRegressionObjective` or `PlantedLogisticObjective` |
-| `policy_spec` | *required* | `PolicySpec` with theta and kind |
+| `objective` | *required* | Theta-level objective (typically `PolicyObjective`) |
+| `theta0` | *required* | Initial policy parameter vector |
 | `n_samples` | *required* | Batch size for customer states |
 | `batch_size` | None | Mini-batch size for stochastic optimization (`None` uses full batch) |
 | `step_rule` | *required* | `"l-bfgs-b"` (recommended); `"constant"`/`"armijo"` accepted for legacy compatibility |
@@ -303,9 +311,9 @@ correctness=CorrectnessSpec(
 )
 ```
 
-When `gradient_source="exact"`, the objective's analytic `grad_u` is used.
-When `"numdiff"`, finite differences are computed per sample. When `"none"`,
-no true gradient is recorded.
+When `gradient_source="exact"`, the theta-level objective gradient is used.
+When `"numdiff"`, finite differences are computed in theta-space. When
+`"none"`, no true gradient is recorded.
 
 ## Reporter System and Outputs
 
@@ -324,17 +332,17 @@ All outputs are saved under `outputs/<experiment_name>/<timestamp>/`.
 
 ```text
 x (customer features)            -> StateVector (src/objective/base.py)
-customer                          -> Customer (src/objective/base.py)
 a(x, u) acceptance probability    -> FixedRegressionAcceptance (src/objective/fixed_objective.py)
 l(x) expected loss                -> FixedRegressionLoss (src/objective/fixed_objective.py)
 r(u) revenue                      -> FixedRegressionRevenue (src/objective/fixed_objective.py)
 f(u; x) fixed objective           -> FixedRegressionObjective (src/objective/fixed_objective.py)
 L(u; x) planted objective         -> PlantedLogisticObjective (src/objective/planted_logistic.py)
-oracle gradient API               -> FixedRegressionObjective.evaluate (src/objective/fixed_objective.py)
-policy u = f(theta, x)            -> PolicySpec, apply_policy (src/model/policy.py)
-Gauss-Stein gradient estimator     -> stein_zeroth_order_grad_batch (src/optimization/gradients/zeroth_order.py)
-SciPy-based first/Gauss-Stein solvers -> run_first_order_minimize, run_gauss_stein_minimize (src/optimization/solvers.py)
-SciPy-based SPSA solver            -> run_spsa_minimize (src/optimization/solvers.py)
+oracle gradient API               -> FixedRegressionObjective.grad_u (src/objective/fixed_objective.py)
+policy u = f(theta, x)            -> ConstantPolicy/LinearPolicy/SoftmaxPolicy (src/objective/policy.py)
+theta-level composition            -> PolicyObjective (src/objective/composed.py)
+Optimization entry point            -> Optimization.solve (src/optimization/base.py)
+Gradient method objects             -> FirstOrderGradient, GaussSteinGradient, SPSAGradient (src/optimization/gradients/methods.py)
+SciPy wrapper helpers               -> run_first_order_minimize, run_gauss_stein_minimize, run_spsa_minimize (src/optimization/solvers.py)
 step-size rules (legacy support)  -> constant_step_size, armijo_backtracking_step_size (src/optimization/steps.py)
 experiment runner / config        -> ExperimentConfig, run_experiment (src/experiments/run.py)
 config sweep utilities            -> override grid + sweep runner helpers (src/experiments/sweep_utils.py)
@@ -348,13 +356,16 @@ config presets                    -> src/experiments/configs/ (get_config, list_
 
 ## Optimization Methods
 
-- **First-order exact gradient:** uses the analytic gradient of the objective
-  with respect to `u`, chains through the policy gradient `du/dtheta`, and
-  optimizes `theta` via SciPy `minimize` (`L-BFGS-B`).
-- **Gauss-Stein estimator:** uses only objective value evaluations at
-  perturbed actions, estimates gradient via
-  $\mathbb{E}[f(u + \sigma\varepsilon)\,\varepsilon] / \sigma$.
-  The resulting theta gradient is passed to SciPy `minimize` (`L-BFGS-B`).
+The optimization entry point is the `Optimization` class. Instantiate it with
+a theta-level objective, customer batch, optimization algorithm (currently
+`"l-bfgs-b"`), and a gradient object (`FirstOrderGradient`,
+`GaussSteinGradient`, or `SPSAGradient`), then call `solve(theta_start)`.
+
+- **First-order exact gradient:** calls the theta-level objective gradient
+  directly and optimizes `theta` via SciPy `minimize` (`L-BFGS-B`).
+- **Gauss-Stein estimator:** uses objective value evaluations at theta
+  perturbations and estimates
+  $\mathbb{E}[J(\theta + \sigma\varepsilon)\,\varepsilon] / \sigma$.
 - **SPSA estimator:** estimates the theta gradient with two-sided random
   perturbations. For Rademacher directions $\Delta\in\{-1,+1\}^p$,
   $$\hat g(\theta;\Delta)=\frac{J(\theta+\sigma\Delta)-J(\theta-\sigma\Delta)}{2\sigma}\,\Delta,$$
@@ -376,17 +387,17 @@ src/
   data/
     __init__.py                         Reserved for dataset adapters and data-source integrations
   objective/
-    base.py                             Core dataclasses/protocols (StateVector, Customer, ObjectiveModel, etc.)
+    base.py                             Core state and objective interfaces (StateVector, ActionObjective, ThetaObjective)
+    composed.py                         PolicyObjective theta-level composition
     fixed_objective.py                  Fixed regression objective implementation
+    policy.py                           Policy classes and compatibility helpers
     planted_logistic.py                 Planted convex logistic objective with known optimum
-  model/
-    policy.py                           PolicySpec, policy kinds, apply_policy
   experiments/
     config.py                           ExperimentConfig and CorrectnessSpec dataclasses
     configs/                            Preset configurations
       fixed_regression_base.py          Base fixed-regression preset
       planted_logistic_base.py          Base planted-logistic preset
-    defaults.py                         Default helpers (default_policy_spec)
+    defaults.py                         Default theta helpers (default_theta0)
     helpers.py                          Core optimization routines (run_first_order,
                                         run_gauss_stein, run_spsa)
     run.py                              Experiment runner (returns results, no I/O)
@@ -399,11 +410,12 @@ src/
     logging.py                          Console logging helpers (log_step, log_summary)
     visualization.py                    Matplotlib plotting utilities
   optimization/
-    common.py                           Shared helpers (gaussian_noise)
-    solvers.py                          SciPy-based first/Gauss-Stein/SPSA theta solvers
+    base.py                             Optimization class with solve() and SciPy minimize integration
+    helpers.py                          Shared batching/objective helpers for optimization and gradient methods
+    solvers.py                          Compatibility wrappers constructing Optimization + gradient objects
     steps.py                            Step-rule constants (l-bfgs-b + legacy constant/armijo)
     gradients/
-      zeroth_order.py                   Gaussian-Stein gradient estimator
+      methods.py                        Gradient method classes (first-order, Gauss-Stein, SPSA)
 tests/                                  Flat test layout (pytest)
 ```
 

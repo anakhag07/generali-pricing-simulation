@@ -6,7 +6,9 @@ from typing import Callable, Sequence
 
 import numpy as np
 
-from objective.base import ObjectiveModel, StateVector
+from objective.base import ActionObjective, StateVector, ThetaObjective
+from objective.composed import PolicyObjective
+from objective.policy import policy_from_kind
 from experiments.config import CorrectnessSpec
 from experiments.reporters import StepReporter
 from experiments.results import OptimizationTrace
@@ -17,178 +19,251 @@ from optimization.solvers import (
 )
 
 
-ObjectiveFn = Callable[[float], float]
-TrueGradFn = Callable[[StateVector, float], float]
+TrueThetaGradFn = Callable[[np.ndarray, np.ndarray], np.ndarray]
 
 
-def _clamp_u(value: float, bounds: tuple[float, float] | None) -> float:
-    """Clamp u to bounds when provided."""
+def _clamp_theta(theta: np.ndarray, bounds: tuple[float, float] | None) -> np.ndarray:
+    theta_arr = np.asarray(theta, dtype=float)
     if bounds is None:
-        return float(value)
+        return theta_arr
     lower, upper = bounds
-    return float(min(max(value, lower), upper))
+    return np.clip(theta_arr, lower, upper)
 
 
-def _numdiff_grad(
-    value_fn: ObjectiveFn,
-    u: float,
+def _numdiff_theta_grad(
+    objective: ThetaObjective,
+    theta: np.ndarray,
+    x_batch: np.ndarray,
     method: str,
     step: float,
     bounds: tuple[float, float] | None,
-) -> float:
-    """Approximate d/du using finite differences around u."""
-    u_base = float(u)
-    if method == "central":
-        u_plus = _clamp_u(u_base + step, bounds)
-        u_minus = _clamp_u(u_base - step, bounds)
-        denom = u_plus - u_minus
+) -> np.ndarray:
+    theta_arr = np.asarray(theta, dtype=float)
+    grad = np.zeros_like(theta_arr)
+    if method not in {"central", "forward", "backward"}:
+        raise ValueError(f"Unknown numdiff method '{method}'.")
+
+    for idx in range(theta_arr.size):
+        basis = np.zeros_like(theta_arr)
+        basis[idx] = 1.0
+        if method == "central":
+            theta_plus = _clamp_theta(theta_arr + step * basis, bounds)
+            theta_minus = _clamp_theta(theta_arr - step * basis, bounds)
+            denom = theta_plus[idx] - theta_minus[idx]
+            if denom == 0.0:
+                grad[idx] = 0.0
+            else:
+                grad[idx] = (objective.value(theta_plus, x_batch) - objective.value(theta_minus, x_batch)) / denom
+            continue
+        if method == "forward":
+            theta_plus = _clamp_theta(theta_arr + step * basis, bounds)
+            denom = theta_plus[idx] - theta_arr[idx]
+            if denom == 0.0:
+                grad[idx] = 0.0
+            else:
+                grad[idx] = (objective.value(theta_plus, x_batch) - objective.value(theta_arr, x_batch)) / denom
+            continue
+        theta_minus = _clamp_theta(theta_arr - step * basis, bounds)
+        denom = theta_arr[idx] - theta_minus[idx]
         if denom == 0.0:
-            return 0.0
-        return float((value_fn(u_plus) - value_fn(u_minus)) / denom)
-    if method == "forward":
-        u_plus = _clamp_u(u_base + step, bounds)
-        denom = u_plus - u_base
-        if denom == 0.0:
-            return 0.0
-        return float((value_fn(u_plus) - value_fn(u_base)) / denom)
-    if method == "backward":
-        u_minus = _clamp_u(u_base - step, bounds)
-        denom = u_base - u_minus
-        if denom == 0.0:
-            return 0.0
-        return float((value_fn(u_base) - value_fn(u_minus)) / denom)
-    raise ValueError(f"Unknown numdiff method '{method}'.")
+            grad[idx] = 0.0
+        else:
+            grad[idx] = (objective.value(theta_arr, x_batch) - objective.value(theta_minus, x_batch)) / denom
+    return grad
 
 
-def resolve_true_grad_u_fn(
-    objective_model: ObjectiveModel,
+def resolve_true_grad_theta_fn(
+    objective: ThetaObjective,
     correctness: CorrectnessSpec,
-) -> TrueGradFn | None:
-    """Return a per-sample u-gradient proxy based on correctness settings."""
+) -> TrueThetaGradFn | None:
+    """Return a theta-gradient proxy based on correctness settings."""
     if correctness.gradient_source == "none":
         return None
     if correctness.gradient_source == "exact":
-        return lambda x, u: objective_model.grad_u(x, u)
+        return lambda theta, x_batch: objective.grad(theta, x_batch)
     if correctness.gradient_source == "numdiff":
-        if correctness.numdiff_aggregate != "per-sample":
-            raise ValueError(
-                "numdiff_aggregate='batch' is not supported for theta-gradient correctness."
-            )
-
-        def numdiff_grad(x: StateVector, u: float) -> float:
-            def value_fn(u_val: float) -> float:
-                return objective_model.value(x, u_val)
-
-            return _numdiff_grad(
-                value_fn,
-                u,
-                correctness.numdiff_method,
-                correctness.numdiff_step,
-                correctness.numdiff_bounds,
-            )
-
-        return numdiff_grad
+        return lambda theta, x_batch: _numdiff_theta_grad(
+            objective,
+            theta,
+            x_batch,
+            correctness.numdiff_method,
+            correctness.numdiff_step,
+            correctness.numdiff_bounds,
+        )
     raise ValueError(f"Unknown gradient_source '{correctness.gradient_source}'.")
 
 
-def run_first_order(
-    theta_start: np.ndarray,
-    policy_kind: str,
-    x_samples: Sequence[StateVector],
-    objective_model: ObjectiveModel,
-    rng: np.random.Generator,
-    t_steps: int,
-    step_rule: str,
-    step_size: float,
-    n_grad_samples: int,
-    sigma: float,
-    batch_size: int | None = None,
-    true_grad_u_fn: TrueGradFn | None = None,
-    grad_norm_tol: float | None = None,
-    ftol: float | None = None,
-    step_reporter: StepReporter | None = None,
-) -> tuple[np.ndarray, OptimizationTrace]:
-    """Optimize theta using SciPy minimize with exact u-gradients."""
+def _resolve_optimization_inputs(
+    args: tuple,
+    kwargs: dict,
+) -> tuple[
+    Sequence[StateVector],
+    ThetaObjective,
+    np.random.Generator,
+    int,
+    str,
+    float,
+    int,
+    float,
+    int | None,
+    TrueThetaGradFn | None,
+    float | None,
+    float | None,
+    StepReporter | None,
+]:
+    if not args:
+        raise ValueError("Missing optimization arguments.")
+
+    if isinstance(args[0], str):
+        if len(args) < 4:
+            raise ValueError("Legacy signature requires policy_kind, x_samples, objective_model, and rng.")
+        policy_kind = args[0]
+        x_samples = args[1]
+        action_objective = args[2]
+        objective = PolicyObjective(action_objective=action_objective, policy=policy_from_kind(policy_kind))
+        rng = args[3]
+        remaining = args[4:]
+    else:
+        if len(args) < 3:
+            raise ValueError("Signature requires x_samples, objective, and rng.")
+        x_samples = args[0]
+        objective = args[1]
+        rng = args[2]
+        remaining = args[3:]
+
+    names = ["t_steps", "step_rule", "step_size", "n_grad_samples", "sigma", "batch_size"]
+    values: dict[str, object] = {}
+    for name, value in zip(names, remaining):
+        values[name] = value
+
+    for name in names:
+        if name in kwargs:
+            values[name] = kwargs.pop(name)
+
+    true_grad_theta_fn = kwargs.pop("true_grad_theta_fn", None)
+    kwargs.pop("true_grad_u_fn", None)
+    grad_norm_tol = kwargs.pop("grad_norm_tol", None)
+    ftol = kwargs.pop("ftol", None)
+    step_reporter = kwargs.pop("step_reporter", None)
+
+    if kwargs:
+        unexpected = ", ".join(sorted(kwargs.keys()))
+        raise ValueError(f"Unexpected optimization kwargs: {unexpected}")
+
+    required = ["t_steps", "step_rule", "step_size", "n_grad_samples", "sigma"]
+    missing = [name for name in required if name not in values]
+    if missing:
+        raise ValueError(f"Missing required optimization args: {', '.join(missing)}")
+
+    return (
+        x_samples,
+        objective,
+        rng,
+        int(values["t_steps"]),
+        str(values["step_rule"]),
+        float(values["step_size"]),
+        int(values["n_grad_samples"]),
+        float(values["sigma"]),
+        int(values["batch_size"]) if values.get("batch_size") is not None else None,
+        true_grad_theta_fn,
+        float(grad_norm_tol) if grad_norm_tol is not None else None,
+        float(ftol) if ftol is not None else None,
+        step_reporter,
+    )
+
+
+def run_first_order(theta_start: np.ndarray, *args: object, **kwargs: object) -> tuple[np.ndarray, OptimizationTrace]:
+    (
+        x_samples,
+        objective,
+        rng,
+        t_steps,
+        step_rule,
+        step_size,
+        n_grad_samples,
+        sigma,
+        batch_size,
+        true_grad_theta_fn,
+        grad_norm_tol,
+        ftol,
+        step_reporter,
+    ) = _resolve_optimization_inputs(tuple(args), dict(kwargs))
+    del rng, step_rule, step_size
     return run_first_order_minimize(
         theta_start=theta_start,
-        policy_kind=policy_kind,
         x_samples=x_samples,
-        objective_model=objective_model,
+        objective=objective,
         t_steps=t_steps,
         n_grad_samples=n_grad_samples,
         sigma=sigma,
         batch_size=batch_size,
-        true_grad_u_fn=true_grad_u_fn,
+        true_grad_theta_fn=true_grad_theta_fn,
         grad_norm_tol=grad_norm_tol,
         ftol=ftol,
         step_reporter=step_reporter,
     )
 
 
-def run_gauss_stein(
-    theta_start: np.ndarray,
-    policy_kind: str,
-    x_samples: Sequence[StateVector],
-    objective_model: ObjectiveModel,
-    rng: np.random.Generator,
-    t_steps: int,
-    step_rule: str,
-    step_size: float,
-    n_grad_samples: int,
-    sigma: float,
-    batch_size: int | None = None,
-    true_grad_u_fn: TrueGradFn | None = None,
-    grad_norm_tol: float | None = None,
-    ftol: float | None = None,
-    step_reporter: StepReporter | None = None,
-) -> tuple[np.ndarray, OptimizationTrace]:
-    """Optimize theta using SciPy minimize with Gaussian Stein u-gradient estimates."""
+def run_gauss_stein(theta_start: np.ndarray, *args: object, **kwargs: object) -> tuple[np.ndarray, OptimizationTrace]:
+    (
+        x_samples,
+        objective,
+        rng,
+        t_steps,
+        step_rule,
+        step_size,
+        n_grad_samples,
+        sigma,
+        batch_size,
+        true_grad_theta_fn,
+        grad_norm_tol,
+        ftol,
+        step_reporter,
+    ) = _resolve_optimization_inputs(tuple(args), dict(kwargs))
+    del step_rule, step_size
     return run_gauss_stein_minimize(
         theta_start=theta_start,
-        policy_kind=policy_kind,
         x_samples=x_samples,
-        objective_model=objective_model,
+        objective=objective,
         rng=rng,
         t_steps=t_steps,
         n_grad_samples=n_grad_samples,
         sigma=sigma,
         batch_size=batch_size,
-        true_grad_u_fn=true_grad_u_fn,
+        true_grad_theta_fn=true_grad_theta_fn,
         grad_norm_tol=grad_norm_tol,
         ftol=ftol,
         step_reporter=step_reporter,
     )
 
 
-def run_spsa(
-    theta_start: np.ndarray,
-    policy_kind: str,
-    x_samples: Sequence[StateVector],
-    objective_model: ObjectiveModel,
-    rng: np.random.Generator,
-    t_steps: int,
-    step_rule: str,
-    step_size: float,
-    n_grad_samples: int,
-    sigma: float,
-    batch_size: int | None = None,
-    true_grad_u_fn: TrueGradFn | None = None,
-    grad_norm_tol: float | None = None,
-    ftol: float | None = None,
-    step_reporter: StepReporter | None = None,
-) -> tuple[np.ndarray, OptimizationTrace]:
-    """Optimize theta using SciPy minimize with SPSA theta-gradient estimates."""
+def run_spsa(theta_start: np.ndarray, *args: object, **kwargs: object) -> tuple[np.ndarray, OptimizationTrace]:
+    (
+        x_samples,
+        objective,
+        rng,
+        t_steps,
+        step_rule,
+        step_size,
+        n_grad_samples,
+        sigma,
+        batch_size,
+        true_grad_theta_fn,
+        grad_norm_tol,
+        ftol,
+        step_reporter,
+    ) = _resolve_optimization_inputs(tuple(args), dict(kwargs))
+    del step_rule, step_size
     return run_spsa_minimize(
         theta_start=theta_start,
-        policy_kind=policy_kind,
         x_samples=x_samples,
-        objective_model=objective_model,
+        objective=objective,
         rng=rng,
         t_steps=t_steps,
         n_grad_samples=n_grad_samples,
         sigma=sigma,
         batch_size=batch_size,
-        true_grad_u_fn=true_grad_u_fn,
+        true_grad_theta_fn=true_grad_theta_fn,
         grad_norm_tol=grad_norm_tol,
         ftol=ftol,
         step_reporter=step_reporter,

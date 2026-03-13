@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from objective.base import ObjectiveResult, StateVector
+from objective.base import StateVector
 
 
 def _logistic(z: float) -> float:
@@ -29,7 +29,7 @@ def _logistic_batch(z: np.ndarray) -> np.ndarray:
 
 
 def _beta_dot_x(beta: np.ndarray, x: StateVector) -> float:
-    features = x.as_array().astype(float)
+    features = np.asarray(x, dtype=float)
     beta_arr = np.asarray(beta, dtype=float)
     if beta_arr.size < features.size:
         raise ValueError("beta must have at least as many elements as x.")
@@ -76,11 +76,6 @@ class PlantedLogisticObjective:
         p = _logistic(z)
         p_star = self._p_star(x)
         return float(self.alpha * (p - p_star))
-
-    def evaluate(self, x: StateVector, u: float) -> ObjectiveResult:
-        value = self.value(x, u)
-        grad_u = self.grad_u(x, u)
-        return ObjectiveResult(value=value, grad_u=grad_u)
 
     def prepare_batch(self, x_array: np.ndarray) -> "PlantedLogisticBatch":
         x_arr = np.asarray(x_array, dtype=float)

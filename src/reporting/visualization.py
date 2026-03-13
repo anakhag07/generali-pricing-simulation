@@ -9,9 +9,10 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
-from objective.base import ObjectiveModel, StateVector
+from objective.base import StateVector, ThetaObjective
+from objective.composed import PolicyObjective
+from objective.policy import PolicySpec
 from experiments.results import OptimizationTrace
-from model.policy import PolicySpec, policy_u
 
 matplotlib.use("Agg")
 
@@ -206,7 +207,7 @@ def plot_step_sizes(
 
 def plot_objective_u_slice(
     x_samples: Sequence[StateVector],
-    objective_model: ObjectiveModel,
+    action_objective: object,
     traces: Mapping[str, OptimizationTrace],
     plot_dir: str,
     u_star: Optional[float] = None,
@@ -231,8 +232,12 @@ def plot_objective_u_slice(
         u_grid = np.linspace(u_min - pad, u_max + pad, 200)
     else:
         u_grid = np.linspace(0.5, 1.5, 200)
-    obj_grid = [float(np.mean([objective_model.value(x, u) for x in x_list])) for u in u_grid]
-    grad_grid = [float(np.mean([objective_model.grad_u(x, u) for x in x_list])) for u in u_grid]
+    value_fn = getattr(action_objective, "value", None)
+    grad_u_fn = getattr(action_objective, "grad_u", None)
+    if not callable(value_fn) or not callable(grad_u_fn):
+        return
+    obj_grid = [float(np.mean([value_fn(x, u) for x in x_list])) for u in u_grid]
+    grad_grid = [float(np.mean([grad_u_fn(x, u) for x in x_list])) for u in u_grid]
 
     fig, axes = plt.subplots(2, 1, figsize=(8, 8), sharex=True)
     ax_obj, ax_grad = axes
@@ -340,17 +345,30 @@ def select_theta_axes_max_variance(theta_points: Sequence[np.ndarray]) -> tuple[
 
 def theta_objective_contour_grid(
     x_samples: Sequence[StateVector],
-    objective_model: ObjectiveModel,
-    policy_spec: PolicySpec,
-    theta_base: np.ndarray,
+    objective: ThetaObjective | object,
+    theta_base: np.ndarray | PolicySpec,
+    theta_base_legacy: np.ndarray | None = None,
     axis_indices: tuple[int, int] = (0, 1),
     theta_refs: Optional[Sequence[np.ndarray]] = None,
     grid_size: int = 60,
     pad_ratio: float = 0.2,
     min_pad: float = 0.05,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    if theta_base_legacy is not None:
+        if not isinstance(theta_base, PolicySpec):
+            raise ValueError("Legacy contour signature expects a PolicySpec as third argument.")
+        theta_objective: ThetaObjective = PolicyObjective(
+            action_objective=objective,
+            policy=theta_base.as_policy(),
+        )
+        theta_base_arr = np.asarray(theta_base_legacy, dtype=float)
+    else:
+        theta_objective = objective  # type: ignore[assignment]
+        theta_base_arr = np.asarray(theta_base, dtype=float)
+
     x_list = _as_state_list(x_samples)
-    theta_arr = np.asarray(theta_base, dtype=float)
+    x_arr = np.stack([np.asarray(x, dtype=float) for x in x_list], axis=0).astype(float)
+    theta_arr = theta_base_arr
     if len(axis_indices) != 2:
         raise ValueError("axis_indices must contain exactly two indices.")
     if axis_indices[0] == axis_indices[1]:
@@ -370,18 +388,14 @@ def theta_objective_contour_grid(
             theta = theta_arr.copy()
             theta[axis_indices[0]] = grid_x[i, j]
             theta[axis_indices[1]] = grid_y[i, j]
-            objective_values = [
-                objective_model.value(x, policy_u(theta, x, kind=policy_spec.kind)) for x in x_list
-            ]
-            objective_grid[i, j] = float(np.mean(objective_values))
+            objective_grid[i, j] = float(theta_objective.value(theta, x_arr))
 
     return grid_x, grid_y, objective_grid
 
 
 def plot_theta_objective_contours(
     x_samples: Sequence[StateVector],
-    objective_model: ObjectiveModel,
-    policy_spec: PolicySpec,
+    objective: ThetaObjective,
     theta_base: np.ndarray,
     plot_dir: str,
     axis_indices: tuple[int, int] = (0, 1),
@@ -396,8 +410,7 @@ def plot_theta_objective_contours(
     path = _ensure_plot_dir(plot_dir)
     grid_x, grid_y, objective_grid = theta_objective_contour_grid(
         x_samples,
-        objective_model,
-        policy_spec,
+        objective,
         theta_base,
         axis_indices=axis_indices,
         theta_refs=theta_refs,

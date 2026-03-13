@@ -1,9 +1,9 @@
 import numpy as np
 from types import SimpleNamespace
 
-from objective.base import ObjectiveResult, StateVector
+from objective.base import StateVector
 from experiments.helpers import run_first_order, run_gauss_stein, run_spsa
-from model.policy import POLICY_LINEAR
+from objective.policy import POLICY_LINEAR
 import optimization.solvers as solvers
 
 
@@ -13,9 +13,6 @@ class SimpleObjective:
 
     def grad_u(self, x: StateVector, u: float) -> float:
         return 2.0 * u
-
-    def evaluate(self, x: StateVector, u: float) -> ObjectiveResult:
-        return ObjectiveResult(value=self.value(x, u), grad_u=self.grad_u(x, u))
 
 
 def test_first_order_minimize_reduces_objective() -> None:

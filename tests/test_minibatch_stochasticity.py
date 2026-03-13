@@ -3,9 +3,9 @@ from __future__ import annotations
 import numpy as np
 
 from experiments.helpers import run_first_order
-from model.policy import POLICY_LINEAR
 from objective.base import StateVector
 from objective.fixed_objective import FixedRegressionObjective
+from objective.policy import POLICY_LINEAR
 
 
 def _build_inputs() -> tuple[np.ndarray, list[StateVector], FixedRegressionObjective]:

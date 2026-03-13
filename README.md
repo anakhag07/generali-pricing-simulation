@@ -332,13 +332,12 @@ All outputs are saved under `outputs/<experiment_name>/<timestamp>/`.
 
 ```text
 x (customer features)            -> StateVector (src/objective/base.py)
-customer                          -> Customer (src/objective/base.py)
 a(x, u) acceptance probability    -> FixedRegressionAcceptance (src/objective/fixed_objective.py)
 l(x) expected loss                -> FixedRegressionLoss (src/objective/fixed_objective.py)
 r(u) revenue                      -> FixedRegressionRevenue (src/objective/fixed_objective.py)
 f(u; x) fixed objective           -> FixedRegressionObjective (src/objective/fixed_objective.py)
 L(u; x) planted objective         -> PlantedLogisticObjective (src/objective/planted_logistic.py)
-oracle gradient API               -> FixedRegressionObjective.evaluate (src/objective/fixed_objective.py)
+oracle gradient API               -> FixedRegressionObjective.grad_u (src/objective/fixed_objective.py)
 policy u = f(theta, x)            -> ConstantPolicy/LinearPolicy/SoftmaxPolicy (src/objective/policy.py)
 theta-level composition            -> PolicyObjective (src/objective/composed.py)
 Optimization entry point            -> Optimization.solve (src/optimization/base.py)
@@ -388,13 +387,11 @@ src/
   data/
     __init__.py                         Reserved for dataset adapters and data-source integrations
   objective/
-    base.py                             Core dataclasses/protocols (StateVector, Customer, ObjectiveModel, etc.)
+    base.py                             Core state and objective protocols (StateVector, ActionObjective, ThetaObjective)
     composed.py                         PolicyObjective theta-level composition
     fixed_objective.py                  Fixed regression objective implementation
     policy.py                           Policy classes and compatibility helpers
     planted_logistic.py                 Planted convex logistic objective with known optimum
-  model/
-    policy.py                           Compatibility re-export shim to objective.policy
   experiments/
     config.py                           ExperimentConfig and CorrectnessSpec dataclasses
     configs/                            Preset configurations

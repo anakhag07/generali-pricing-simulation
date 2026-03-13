@@ -16,7 +16,7 @@ POLICY_KINDS = (POLICY_CONSTANT, POLICY_LINEAR, POLICY_SOFTMAX)
 
 
 def phi(x: StateVector) -> np.ndarray:
-    return np.concatenate(([1.0], x.as_array().astype(float)))
+    return np.concatenate(([1.0], np.asarray(x, dtype=float)))
 
 
 def phi_batch(x_array: np.ndarray) -> np.ndarray:

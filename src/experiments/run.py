@@ -31,7 +31,7 @@ def run_experiment(
 
     rng = default_rng(config.seed)
     x_samples = [StateVector.sample(rng, dim=config.state_dim) for _ in range(config.n_samples)]
-    x_array = np.stack([x.as_array() for x in x_samples], axis=0).astype(float)
+    x_array = np.stack([np.asarray(x, dtype=float) for x in x_samples], axis=0).astype(float)
     true_grad_theta_fn = resolve_true_grad_theta_fn(objective, config.correctness)
 
     theta_initial = np.asarray(config.theta0, dtype=float)

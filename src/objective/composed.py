@@ -32,7 +32,7 @@ def _as_array(x_batch: np.ndarray | Sequence[StateVector]) -> np.ndarray:
     x_list = list(x_batch)
     if not x_list:
         raise ValueError("x_batch must contain at least one sample.")
-    return np.stack([x.as_array() for x in x_list], axis=0).astype(float)
+    return np.stack([np.asarray(x, dtype=float) for x in x_list], axis=0).astype(float)
 
 
 @dataclass(frozen=True)

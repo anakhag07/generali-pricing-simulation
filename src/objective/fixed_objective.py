@@ -29,7 +29,7 @@ def _logistic_batch(z: np.ndarray) -> np.ndarray:
 
 
 def _beta_dot_x(beta: np.ndarray, x: StateVector) -> float:
-    features = x.as_array().astype(float)
+    features = np.asarray(x, dtype=float)
     beta_arr = np.asarray(beta, dtype=float)
     if beta_arr.size < features.size:
         raise ValueError("beta must have at least as many elements as x.")

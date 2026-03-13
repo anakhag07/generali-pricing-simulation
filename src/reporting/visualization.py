@@ -367,7 +367,7 @@ def theta_objective_contour_grid(
         theta_base_arr = np.asarray(theta_base, dtype=float)
 
     x_list = _as_state_list(x_samples)
-    x_arr = np.stack([x.as_array() for x in x_list], axis=0).astype(float)
+    x_arr = np.stack([np.asarray(x, dtype=float) for x in x_list], axis=0).astype(float)
     theta_arr = theta_base_arr
     if len(axis_indices) != 2:
         raise ValueError("axis_indices must contain exactly two indices.")

@@ -78,9 +78,9 @@ Guidelines:
 #### Objective Layer (`src/objective/`)
 
 - **`src/objective/base.py`**
-  - `StateVector`: frozen dataclass wrapping a 1D numpy array; has `sample(rng, dim)` static method
-  - `ActionObjective` protocol: action-space objective API (`value`, `grad_u`, `value_batch`)
-  - `ThetaObjective` protocol: theta-space optimization API (`value`, `grad`)
+  - `StateVector`: lightweight class wrapping a 1D numpy array; has `sample(rng, dim)` static method
+  - `ActionObjective`: action-space interface class (`value`, `grad_u`, `value_batch`)
+  - `ThetaObjective`: theta-space interface class (`value`, `grad`)
   - `default_rng(seed)`: wrapper around `np.random.default_rng`
 
 - **`src/objective/fixed_objective.py`** (source of truth for objective math)

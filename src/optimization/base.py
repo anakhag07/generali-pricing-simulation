@@ -73,7 +73,7 @@ class Optimization:
         x_list = list(x_samples)
         if not x_list:
             raise ValueError("x_samples must contain at least one StateVector.")
-        self.x_array = np.stack([x.as_array() for x in x_list], axis=0).astype(float)
+        self.x_array = np.stack([np.asarray(x, dtype=float) for x in x_list], axis=0).astype(float)
         self.n_total = self.x_array.shape[0]
         self.batch_size_eff = self.n_total if batch_size is None else int(batch_size)
         if self.batch_size_eff <= 0 or self.batch_size_eff > self.n_total:

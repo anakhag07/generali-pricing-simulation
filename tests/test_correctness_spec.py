@@ -6,9 +6,7 @@ import pytest
 from experiments.config import CorrectnessSpec, ExperimentConfig
 from experiments.defaults import default_theta0
 from experiments.helpers import resolve_true_grad_theta_fn
-from objective.composed import PolicyObjective
-from objective.fixed_objective import FixedRegressionObjective
-from objective.policy import SoftmaxPolicy
+from objective import FixedRegressionObjective, SoftmaxPolicy
 
 
 class DummyThetaObjectiveNoGrad:
@@ -17,14 +15,14 @@ class DummyThetaObjectiveNoGrad:
         return float(np.sum(theta**2))
 
 
-def _build_theta_objective() -> PolicyObjective:
-    action = FixedRegressionObjective.from_parameters(
+def _build_theta_objective() -> FixedRegressionObjective:
+    return FixedRegressionObjective.from_parameters(
+        policy=SoftmaxPolicy(),
         beta_1=[0.2],
         beta_2=-0.4,
         beta_3=[0.3],
         beta_4=0.5,
     )
-    return PolicyObjective(action_objective=action, policy=SoftmaxPolicy())
 
 
 def test_correctness_exact_requires_theta_grad() -> None:

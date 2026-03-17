@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from objective.fixed_objective import FixedRegressionObjective
+from objective import FixedRegressionObjective, SoftmaxPolicy
 from experiments.config import ExperimentConfig
-from experiments.defaults import default_policy_spec
+from experiments.defaults import default_theta0, default_policy
 from experiments.run import run_experiment
 
 
 def test_run_experiment_single_estimator() -> None:
-    objective_model = FixedRegressionObjective.from_parameters(
+    objective = FixedRegressionObjective.from_parameters(
+        policy=default_policy(1),
         beta_1=[0.1],
         beta_2=-0.5,
         beta_3=[0.2],
@@ -16,8 +17,8 @@ def test_run_experiment_single_estimator() -> None:
     config = ExperimentConfig(
         seed=3,
         state_dim=1,
-        objective_model=objective_model,
-        policy_spec=default_policy_spec(1),
+        objective=objective,
+        theta0=default_theta0(1),
         n_samples=1,
         step_rule="constant",
         t_steps=1,
@@ -35,7 +36,8 @@ def test_run_experiment_single_estimator() -> None:
 
 
 def test_run_experiment_spsa_only() -> None:
-    objective_model = FixedRegressionObjective.from_parameters(
+    objective = FixedRegressionObjective.from_parameters(
+        policy=default_policy(1),
         beta_1=[0.1],
         beta_2=-0.5,
         beta_3=[0.2],
@@ -44,8 +46,8 @@ def test_run_experiment_spsa_only() -> None:
     config = ExperimentConfig(
         seed=3,
         state_dim=1,
-        objective_model=objective_model,
-        policy_spec=default_policy_spec(1),
+        objective=objective,
+        theta0=default_theta0(1),
         n_samples=1,
         step_rule="constant",
         t_steps=2,

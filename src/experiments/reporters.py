@@ -11,7 +11,7 @@ from typing import IO, Protocol, runtime_checkable, Sequence
 
 import numpy as np
 
-from objective.fixed_objective import FixedRegressionObjective
+from objective.objectives import FixedRegressionObjective
 from experiments.config import ExperimentConfig
 from reporting.logging import log_step, log_summary
 from experiments.results import ExperimentResult

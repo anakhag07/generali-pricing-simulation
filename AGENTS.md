@@ -54,7 +54,7 @@ Before finishing a build session:
 
 When behavior and documentation disagree, use this priority:
 
-1. `src/objective/fixed_objective.py`
+1. `src/objective/objectives/fixed_regression.py`
 2. Current implementation in the relevant source module
 3. Tests
 4. `README.md`
@@ -79,31 +79,21 @@ Guidelines:
 
 - **`src/objective/base.py`**
   - `StateVector`: lightweight class wrapping a 1D numpy array; has `sample(rng, dim)` static method
-  - `ActionObjective`: action-space interface class (`value`, `grad_u`)
-  - `ThetaObjective`: theta-space interface class (`value`, `grad`)
+  - `Policy`: policy interface class (`value`, `grad`) where `grad` is with respect to `theta`
+  - `Objective`: theta-space interface class (`value`, `grad`)
   - `default_rng(seed)`: wrapper around `np.random.default_rng`
 
-- **`src/objective/fixed_objective.py`** (source of truth for objective math)
-  - `FixedRegressionAcceptance`: sigmoid acceptance with `beta_1` (positive) and `beta_2` (negative)
-  - `FixedRegressionLoss`: linear loss with `beta_3` (positive)
-  - `FixedRegressionRevenue`: linear revenue with `beta_4` (positive)
-  - `FixedRegressionObjective`: composite objective; `from_parameters` classmethod, scalar + batch evaluation
-  - `FixedRegressionBatch`: pre-computed batch for vectorized evaluation
+- **`src/objective/objectives/fixed_regression.py`** (source of truth for objective math)
+  - `FixedRegressionObjective`: pricing objective $$f(u;x) = a(x,u)(\ell(x) - r(u))$$; `from_parameters` classmethod, scalar + batch evaluation
 
-- **`src/objective/planted_logistic.py`**
+- **`src/objective/objectives/planted_logistic.py`**
   - `PlantedLogisticObjective`: convex logistic objective with known optimum `u_star`
-  - `PlantedLogisticBatch`: pre-computed batch for vectorized evaluation
   - `optimal_u()` method exposes the planted optimum
 
 - **`src/objective/policy.py`**
-  - `Policy` protocol: `action(theta, x)`, `grad_theta(theta, x)`, `action_batch(theta, x_batch)`
+  - Implements `Policy` with `value(theta, x)` and `grad(theta, x)` methods
   - Concrete policies: `ConstantPolicy`, `LinearPolicy`, `SoftmaxPolicy`
   - Compatibility helpers: `PolicySpec`, `policy_u`, `policy_u_batch`, `policy_grad_theta`
-
-- **`src/objective/composed.py`**
-  - `PolicyObjective`: theta-level objective composition of an action objective and a policy
-  - `value(theta, x_batch)`: computes mean objective value in theta-space
-  - `grad(theta, x_batch)`: applies chain rule `grad_u * du/dtheta` across the batch
 
 #### Data Layer (`src/data/`)
 
@@ -274,18 +264,29 @@ when appropriate.
 ## Documentation and Maintenance
 
 ### README.md
-Documentation maintenance is part of implementation, not a separate follow-up task.
+Keep README concise—a quick-start and overview only. Update when:
+- setup or execution steps change
+- new user-facing features are added
+- basic workflow changes
 
-Update `README.md` whenever a change affects:
-- project structure
-- setup or execution steps
-- configuration options
-- outputs, logging, or reporting behavior
-- public APIs
-- expected experiment workflow
-- mathematical expressions or objective definitions (use LaTeX math blocks/inline math for formulas instead of plain-text code blocks)
+Point users to `docs/` for detailed API reference.
 
-If no README changes are needed, explicitly verify that the existing README is still accurate.
+### docs/ (pdoc-generated)
+Regenerate docs when public API changes significantly.
+
+Major classes and methods MUST have docstrings that render via pdoc:
+- Objective classes (`FixedRegressionObjective`, `PlantedLogisticObjective`)
+- Policy classes (`ConstantPolicy`, `LinearPolicy`, `SoftmaxPolicy`)
+- Core interfaces (`StateVector`, `Policy`, `Objective`)
+- Optimization classes (`Optimization`, `GradientMethod` subclasses)
+- Experiment config and results (`ExperimentConfig`, `ExperimentResult`, etc.)
+- Runner functions (`run_experiment`)
+
+Docstrings should be 1-2 lines with LaTeX where it aids clarity.
+Use double delimiters `$$...$$` for math rendering in pdoc (do not use single `$...$`).
+Private helpers and internal utilities do not require docstrings.
+
+Update math formulas in docstrings when objective definitions change.
 
 ### AGENTS.md
 Update `AGENTS.md` when:

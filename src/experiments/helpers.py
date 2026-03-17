@@ -6,9 +6,7 @@ from typing import Callable, Sequence
 
 import numpy as np
 
-from objective.base import ActionObjective, StateVector, ThetaObjective
-from objective.composed import PolicyObjective
-from objective.policy import policy_from_kind
+from objective.base import Objective, StateVector
 from experiments.config import CorrectnessSpec
 from experiments.reporters import StepReporter
 from experiments.results import OptimizationTrace
@@ -23,6 +21,7 @@ TrueThetaGradFn = Callable[[np.ndarray, np.ndarray], np.ndarray]
 
 
 def _clamp_theta(theta: np.ndarray, bounds: tuple[float, float] | None) -> np.ndarray:
+    """Clamp theta to bounds if provided."""
     theta_arr = np.asarray(theta, dtype=float)
     if bounds is None:
         return theta_arr
@@ -31,13 +30,14 @@ def _clamp_theta(theta: np.ndarray, bounds: tuple[float, float] | None) -> np.nd
 
 
 def _numdiff_theta_grad(
-    objective: ThetaObjective,
+    objective: Objective,
     theta: np.ndarray,
     x_batch: np.ndarray,
     method: str,
     step: float,
     bounds: tuple[float, float] | None,
 ) -> np.ndarray:
+    """Compute theta gradient via numerical differentiation."""
     theta_arr = np.asarray(theta, dtype=float)
     grad = np.zeros_like(theta_arr)
     if method not in {"central", "forward", "backward"}:
@@ -73,7 +73,7 @@ def _numdiff_theta_grad(
 
 
 def resolve_true_grad_theta_fn(
-    objective: ThetaObjective,
+    objective: Objective,
     correctness: CorrectnessSpec,
 ) -> TrueThetaGradFn | None:
     """Return a theta-gradient proxy based on correctness settings."""
@@ -93,102 +93,24 @@ def resolve_true_grad_theta_fn(
     raise ValueError(f"Unknown gradient_source '{correctness.gradient_source}'.")
 
 
-def _resolve_optimization_inputs(
-    args: tuple,
-    kwargs: dict,
-) -> tuple[
-    Sequence[StateVector],
-    ThetaObjective,
-    np.random.Generator,
-    int,
-    str,
-    float,
-    int,
-    float,
-    int | None,
-    TrueThetaGradFn | None,
-    float | None,
-    float | None,
-    StepReporter | None,
-]:
-    if not args:
-        raise ValueError("Missing optimization arguments.")
-
-    if isinstance(args[0], str):
-        if len(args) < 4:
-            raise ValueError("Legacy signature requires policy_kind, x_samples, objective_model, and rng.")
-        policy_kind = args[0]
-        x_samples = args[1]
-        action_objective = args[2]
-        objective = PolicyObjective(action_objective=action_objective, policy=policy_from_kind(policy_kind))
-        rng = args[3]
-        remaining = args[4:]
-    else:
-        if len(args) < 3:
-            raise ValueError("Signature requires x_samples, objective, and rng.")
-        x_samples = args[0]
-        objective = args[1]
-        rng = args[2]
-        remaining = args[3:]
-
-    names = ["t_steps", "step_rule", "step_size", "n_grad_samples", "sigma", "batch_size"]
-    values: dict[str, object] = {}
-    for name, value in zip(names, remaining):
-        values[name] = value
-
-    for name in names:
-        if name in kwargs:
-            values[name] = kwargs.pop(name)
-
-    true_grad_theta_fn = kwargs.pop("true_grad_theta_fn", None)
-    kwargs.pop("true_grad_u_fn", None)
-    grad_norm_tol = kwargs.pop("grad_norm_tol", None)
-    ftol = kwargs.pop("ftol", None)
-    step_reporter = kwargs.pop("step_reporter", None)
-
-    if kwargs:
-        unexpected = ", ".join(sorted(kwargs.keys()))
-        raise ValueError(f"Unexpected optimization kwargs: {unexpected}")
-
-    required = ["t_steps", "step_rule", "step_size", "n_grad_samples", "sigma"]
-    missing = [name for name in required if name not in values]
-    if missing:
-        raise ValueError(f"Missing required optimization args: {', '.join(missing)}")
-
-    return (
-        x_samples,
-        objective,
-        rng,
-        int(values["t_steps"]),
-        str(values["step_rule"]),
-        float(values["step_size"]),
-        int(values["n_grad_samples"]),
-        float(values["sigma"]),
-        int(values["batch_size"]) if values.get("batch_size") is not None else None,
-        true_grad_theta_fn,
-        float(grad_norm_tol) if grad_norm_tol is not None else None,
-        float(ftol) if ftol is not None else None,
-        step_reporter,
-    )
-
-
-def run_first_order(theta_start: np.ndarray, *args: object, **kwargs: object) -> tuple[np.ndarray, OptimizationTrace]:
-    (
-        x_samples,
-        objective,
-        rng,
-        t_steps,
-        step_rule,
-        step_size,
-        n_grad_samples,
-        sigma,
-        batch_size,
-        true_grad_theta_fn,
-        grad_norm_tol,
-        ftol,
-        step_reporter,
-    ) = _resolve_optimization_inputs(tuple(args), dict(kwargs))
-    del rng, step_rule, step_size
+def run_first_order(
+    theta_start: np.ndarray,
+    x_samples: Sequence[StateVector],
+    objective: Objective,
+    rng: np.random.Generator,
+    t_steps: int,
+    step_rule: str,
+    step_size: float,
+    n_grad_samples: int,
+    sigma: float,
+    batch_size: int | None,
+    true_grad_theta_fn: TrueThetaGradFn | None = None,
+    grad_norm_tol: float | None = None,
+    ftol: float | None = None,
+    step_reporter: StepReporter | None = None,
+) -> tuple[np.ndarray, OptimizationTrace]:
+    """Run first-order optimization."""
+    del rng, step_rule, step_size  # Not used by first-order minimize
     return run_first_order_minimize(
         theta_start=theta_start,
         x_samples=x_samples,
@@ -204,23 +126,24 @@ def run_first_order(theta_start: np.ndarray, *args: object, **kwargs: object) ->
     )
 
 
-def run_gauss_stein(theta_start: np.ndarray, *args: object, **kwargs: object) -> tuple[np.ndarray, OptimizationTrace]:
-    (
-        x_samples,
-        objective,
-        rng,
-        t_steps,
-        step_rule,
-        step_size,
-        n_grad_samples,
-        sigma,
-        batch_size,
-        true_grad_theta_fn,
-        grad_norm_tol,
-        ftol,
-        step_reporter,
-    ) = _resolve_optimization_inputs(tuple(args), dict(kwargs))
-    del step_rule, step_size
+def run_gauss_stein(
+    theta_start: np.ndarray,
+    x_samples: Sequence[StateVector],
+    objective: Objective,
+    rng: np.random.Generator,
+    t_steps: int,
+    step_rule: str,
+    step_size: float,
+    n_grad_samples: int,
+    sigma: float,
+    batch_size: int | None,
+    true_grad_theta_fn: TrueThetaGradFn | None = None,
+    grad_norm_tol: float | None = None,
+    ftol: float | None = None,
+    step_reporter: StepReporter | None = None,
+) -> tuple[np.ndarray, OptimizationTrace]:
+    """Run Gauss-Stein zeroth-order optimization."""
+    del step_rule, step_size  # Not used by Gauss-Stein minimize
     return run_gauss_stein_minimize(
         theta_start=theta_start,
         x_samples=x_samples,
@@ -237,23 +160,24 @@ def run_gauss_stein(theta_start: np.ndarray, *args: object, **kwargs: object) ->
     )
 
 
-def run_spsa(theta_start: np.ndarray, *args: object, **kwargs: object) -> tuple[np.ndarray, OptimizationTrace]:
-    (
-        x_samples,
-        objective,
-        rng,
-        t_steps,
-        step_rule,
-        step_size,
-        n_grad_samples,
-        sigma,
-        batch_size,
-        true_grad_theta_fn,
-        grad_norm_tol,
-        ftol,
-        step_reporter,
-    ) = _resolve_optimization_inputs(tuple(args), dict(kwargs))
-    del step_rule, step_size
+def run_spsa(
+    theta_start: np.ndarray,
+    x_samples: Sequence[StateVector],
+    objective: Objective,
+    rng: np.random.Generator,
+    t_steps: int,
+    step_rule: str,
+    step_size: float,
+    n_grad_samples: int,
+    sigma: float,
+    batch_size: int | None,
+    true_grad_theta_fn: TrueThetaGradFn | None = None,
+    grad_norm_tol: float | None = None,
+    ftol: float | None = None,
+    step_reporter: StepReporter | None = None,
+) -> tuple[np.ndarray, OptimizationTrace]:
+    """Run SPSA zeroth-order optimization."""
+    del step_rule, step_size  # Not used by SPSA minimize
     return run_spsa_minimize(
         theta_start=theta_start,
         x_samples=x_samples,

@@ -4,16 +4,18 @@ import numpy as np
 import pytest
 
 from experiments.config import ExperimentConfig
-from experiments.defaults import default_policy_spec
-from objective.fixed_objective import FixedRegressionObjective
+from experiments.defaults import default_theta0, default_policy
+from objective import FixedRegressionObjective, SoftmaxPolicy
 
 
 def test_beta_2_must_be_negative() -> None:
+    policy = SoftmaxPolicy()
     with pytest.raises(
         ValueError,
         match="beta_2 must be negative; acceptance probability should decrease as policy value increases.",
     ):
         FixedRegressionObjective.from_parameters(
+            policy=policy,
             beta_1=[1.0],
             beta_2=0.0,
             beta_3=[1.0],
@@ -25,6 +27,7 @@ def test_beta_2_must_be_negative() -> None:
         match="beta_2 must be negative; acceptance probability should decrease as policy value increases.",
     ):
         FixedRegressionObjective.from_parameters(
+            policy=policy,
             beta_1=[1.0],
             beta_2=0.5,
             beta_3=[1.0],
@@ -36,7 +39,8 @@ def test_state_dim_requires_matching_objective() -> None:
     state_dim = 5
     beta_1 = np.linspace(0.1, 0.5, num=state_dim, dtype=float)
     beta_3 = np.linspace(0.1, 0.5, num=state_dim, dtype=float)
-    objective_model = FixedRegressionObjective.from_parameters(
+    objective = FixedRegressionObjective.from_parameters(
+        policy=default_policy(state_dim),
         beta_1=beta_1,
         beta_2=-0.5,
         beta_3=beta_3,
@@ -44,8 +48,8 @@ def test_state_dim_requires_matching_objective() -> None:
     )
     config = ExperimentConfig(
         state_dim=state_dim,
-        objective_model=objective_model,
-        policy_spec=default_policy_spec(state_dim),
+        objective=objective,
+        theta0=default_theta0(state_dim),
         n_samples=5,
         step_rule="constant",
     )
@@ -53,7 +57,9 @@ def test_state_dim_requires_matching_objective() -> None:
 
 
 def test_verbose_default_and_override() -> None:
-    objective_model = FixedRegressionObjective.from_parameters(
+    policy = SoftmaxPolicy()
+    objective = FixedRegressionObjective.from_parameters(
+        policy=policy,
         beta_1=[0.1],
         beta_2=-0.5,
         beta_3=[0.2],
@@ -61,8 +67,8 @@ def test_verbose_default_and_override() -> None:
     )
     config_default = ExperimentConfig(
         state_dim=1,
-        objective_model=objective_model,
-        policy_spec=default_policy_spec(1),
+        objective=objective,
+        theta0=default_theta0(1),
         n_samples=5,
         step_rule="constant",
     )
@@ -70,8 +76,8 @@ def test_verbose_default_and_override() -> None:
 
     config_verbose = ExperimentConfig(
         state_dim=1,
-        objective_model=objective_model,
-        policy_spec=default_policy_spec(1),
+        objective=objective,
+        theta0=default_theta0(1),
         n_samples=5,
         step_rule="constant",
         verbose=True,
@@ -80,17 +86,20 @@ def test_verbose_default_and_override() -> None:
 
 
 def test_enabled_estimators_validation() -> None:
-    objective_model = FixedRegressionObjective.from_parameters(
+    policy = SoftmaxPolicy()
+    objective = FixedRegressionObjective.from_parameters(
+        policy=policy,
         beta_1=[0.1],
         beta_2=-0.5,
         beta_3=[0.2],
         beta_4=0.4,
     )
+    theta0 = default_theta0(1)
     with pytest.raises(ValueError, match="Unknown estimators"):
         ExperimentConfig(
             state_dim=1,
-            objective_model=objective_model,
-            policy_spec=default_policy_spec(1),
+            objective=objective,
+            theta0=theta0,
             n_samples=5,
             step_rule="constant",
             enabled_estimators=("not-a-method",),
@@ -99,8 +108,8 @@ def test_enabled_estimators_validation() -> None:
     with pytest.raises(ValueError, match="Unknown estimators"):
         ExperimentConfig(
             state_dim=1,
-            objective_model=objective_model,
-            policy_spec=default_policy_spec(1),
+            objective=objective,
+            theta0=theta0,
             n_samples=5,
             step_rule="constant",
             enabled_estimators=("lbfgs",),
@@ -109,8 +118,8 @@ def test_enabled_estimators_validation() -> None:
     with pytest.raises(ValueError, match="enabled_estimators must include at least one"):
         ExperimentConfig(
             state_dim=1,
-            objective_model=objective_model,
-            policy_spec=default_policy_spec(1),
+            objective=objective,
+            theta0=theta0,
             n_samples=5,
             step_rule="constant",
             enabled_estimators=(),
@@ -118,7 +127,9 @@ def test_enabled_estimators_validation() -> None:
 
 
 def test_enabled_estimators_accepts_spsa() -> None:
-    objective_model = FixedRegressionObjective.from_parameters(
+    policy = SoftmaxPolicy()
+    objective = FixedRegressionObjective.from_parameters(
+        policy=policy,
         beta_1=[0.1],
         beta_2=-0.5,
         beta_3=[0.2],
@@ -126,8 +137,8 @@ def test_enabled_estimators_accepts_spsa() -> None:
     )
     config = ExperimentConfig(
         state_dim=1,
-        objective_model=objective_model,
-        policy_spec=default_policy_spec(1),
+        objective=objective,
+        theta0=default_theta0(1),
         n_samples=5,
         step_rule="constant",
         enabled_estimators=("spsa",),
@@ -136,26 +147,29 @@ def test_enabled_estimators_accepts_spsa() -> None:
 
 
 def test_step_rule_validation() -> None:
-    objective_model = FixedRegressionObjective.from_parameters(
+    policy = SoftmaxPolicy()
+    objective = FixedRegressionObjective.from_parameters(
+        policy=policy,
         beta_1=[0.1],
         beta_2=-0.5,
         beta_3=[0.2],
         beta_4=0.4,
     )
+    theta0 = default_theta0(1)
 
     with pytest.raises(ValueError, match="step_rule must be one of"):
         ExperimentConfig(
             state_dim=1,
-            objective_model=objective_model,
-            policy_spec=default_policy_spec(1),
+            objective=objective,
+            theta0=theta0,
             n_samples=5,
             step_rule="unknown",
         )
 
     config = ExperimentConfig(
         state_dim=1,
-        objective_model=objective_model,
-        policy_spec=default_policy_spec(1),
+        objective=objective,
+        theta0=theta0,
         n_samples=5,
         step_rule="l-bfgs-b",
     )
@@ -164,8 +178,8 @@ def test_step_rule_validation() -> None:
     with pytest.raises(ValueError, match="step_size must be positive"):
         ExperimentConfig(
             state_dim=1,
-            objective_model=objective_model,
-            policy_spec=default_policy_spec(1),
+            objective=objective,
+            theta0=theta0,
             n_samples=5,
             step_rule="constant",
             step_size=0.0,
@@ -173,7 +187,9 @@ def test_step_rule_validation() -> None:
 
 
 def test_grad_norm_tol_validation() -> None:
-    objective_model = FixedRegressionObjective.from_parameters(
+    policy = SoftmaxPolicy()
+    objective = FixedRegressionObjective.from_parameters(
+        policy=policy,
         beta_1=[0.1],
         beta_2=-0.5,
         beta_3=[0.2],
@@ -183,8 +199,8 @@ def test_grad_norm_tol_validation() -> None:
     with pytest.raises(ValueError, match="grad_norm_tol must be positive"):
         ExperimentConfig(
             state_dim=1,
-            objective_model=objective_model,
-            policy_spec=default_policy_spec(1),
+            objective=objective,
+            theta0=default_theta0(1),
             n_samples=5,
             step_rule="constant",
             grad_norm_tol=0.0,
@@ -192,18 +208,21 @@ def test_grad_norm_tol_validation() -> None:
 
 
 def test_ftol_validation_and_serialization() -> None:
-    objective_model = FixedRegressionObjective.from_parameters(
+    policy = SoftmaxPolicy()
+    objective = FixedRegressionObjective.from_parameters(
+        policy=policy,
         beta_1=[0.1],
         beta_2=-0.5,
         beta_3=[0.2],
         beta_4=0.4,
     )
+    theta0 = default_theta0(1)
 
     with pytest.raises(ValueError, match="ftol must be positive"):
         ExperimentConfig(
             state_dim=1,
-            objective_model=objective_model,
-            policy_spec=default_policy_spec(1),
+            objective=objective,
+            theta0=theta0,
             n_samples=5,
             step_rule="constant",
             ftol=0.0,
@@ -211,8 +230,8 @@ def test_ftol_validation_and_serialization() -> None:
 
     config = ExperimentConfig(
         state_dim=1,
-        objective_model=objective_model,
-        policy_spec=default_policy_spec(1),
+        objective=objective,
+        theta0=theta0,
         n_samples=5,
         step_rule="constant",
         ftol=1e-9,
@@ -222,18 +241,21 @@ def test_ftol_validation_and_serialization() -> None:
 
 
 def test_batch_size_validation() -> None:
-    objective_model = FixedRegressionObjective.from_parameters(
+    policy = SoftmaxPolicy()
+    objective = FixedRegressionObjective.from_parameters(
+        policy=policy,
         beta_1=[0.1],
         beta_2=-0.5,
         beta_3=[0.2],
         beta_4=0.4,
     )
+    theta0 = default_theta0(1)
 
     with pytest.raises(ValueError, match="batch_size must be positive"):
         ExperimentConfig(
             state_dim=1,
-            objective_model=objective_model,
-            policy_spec=default_policy_spec(1),
+            objective=objective,
+            theta0=theta0,
             n_samples=5,
             batch_size=0,
             step_rule="constant",
@@ -242,8 +264,8 @@ def test_batch_size_validation() -> None:
     with pytest.raises(ValueError, match="batch_size must be <= n_samples"):
         ExperimentConfig(
             state_dim=1,
-            objective_model=objective_model,
-            policy_spec=default_policy_spec(1),
+            objective=objective,
+            theta0=theta0,
             n_samples=5,
             batch_size=6,
             step_rule="constant",
@@ -251,7 +273,9 @@ def test_batch_size_validation() -> None:
 
 
 def test_batch_size_serialization() -> None:
-    objective_model = FixedRegressionObjective.from_parameters(
+    policy = SoftmaxPolicy()
+    objective = FixedRegressionObjective.from_parameters(
+        policy=policy,
         beta_1=[0.1],
         beta_2=-0.5,
         beta_3=[0.2],
@@ -259,8 +283,8 @@ def test_batch_size_serialization() -> None:
     )
     config = ExperimentConfig(
         state_dim=1,
-        objective_model=objective_model,
-        policy_spec=default_policy_spec(1),
+        objective=objective,
+        theta0=default_theta0(1),
         n_samples=5,
         batch_size=2,
         step_rule="constant",
@@ -270,7 +294,9 @@ def test_batch_size_serialization() -> None:
 
 
 def test_wandb_allowlist_validation() -> None:
-    objective_model = FixedRegressionObjective.from_parameters(
+    policy = SoftmaxPolicy()
+    objective = FixedRegressionObjective.from_parameters(
+        policy=policy,
         beta_1=[0.1],
         beta_2=-0.5,
         beta_3=[0.2],
@@ -279,8 +305,8 @@ def test_wandb_allowlist_validation() -> None:
     with pytest.raises(ValueError, match="Unknown wandb estimators"):
         ExperimentConfig(
             state_dim=1,
-            objective_model=objective_model,
-            policy_spec=default_policy_spec(1),
+            objective=objective,
+            theta0=default_theta0(1),
             n_samples=5,
             step_rule="constant",
             wandb_estimator_allowlist=("bogus",),
@@ -288,7 +314,9 @@ def test_wandb_allowlist_validation() -> None:
 
 
 def test_wandb_config_serialization() -> None:
-    objective_model = FixedRegressionObjective.from_parameters(
+    policy = SoftmaxPolicy()
+    objective = FixedRegressionObjective.from_parameters(
+        policy=policy,
         beta_1=[0.1],
         beta_2=-0.5,
         beta_3=[0.2],
@@ -296,8 +324,8 @@ def test_wandb_config_serialization() -> None:
     )
     config = ExperimentConfig(
         state_dim=1,
-        objective_model=objective_model,
-        policy_spec=default_policy_spec(1),
+        objective=objective,
+        theta0=default_theta0(1),
         n_samples=5,
         step_rule="constant",
         wandb_enabled=True,

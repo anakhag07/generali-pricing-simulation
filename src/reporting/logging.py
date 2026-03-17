@@ -6,8 +6,7 @@ from typing import Optional
 
 import numpy as np
 
-from objective.fixed_objective import FixedRegressionObjective
-from objective.planted_logistic import PlantedLogisticObjective
+from objective.objectives import FixedRegressionObjective, PlantedLogisticObjective
 from experiments.results import ExperimentResult
 
 
@@ -36,15 +35,14 @@ def log_summary(result: ExperimentResult) -> None:
 
     config = result.config
     objective = config.objective
-    action_objective = getattr(objective, "action_objective", objective)
     u_star: Optional[float] = result.u_star
     value_at_u_star: Optional[float] = result.value_at_u_star
 
-    if isinstance(action_objective, FixedRegressionObjective):
-        beta_1 = format_array(action_objective.acceptance.beta_1)
-        beta_2 = action_objective.acceptance.beta_2
-        beta_3 = format_array(action_objective.loss.beta_3)
-        beta_4 = action_objective.revenue.beta_4
+    if isinstance(objective, FixedRegressionObjective):
+        beta_1 = format_array(objective.beta_1)
+        beta_2 = objective.beta_2
+        beta_3 = format_array(objective.beta_3)
+        beta_4 = objective.beta_4
         print(
             "Objective: f(u; x) = sigmoid(beta_1·x + beta_2*u) * (beta_3·x - beta_4*u)"
         )
@@ -52,18 +50,18 @@ def log_summary(result: ExperimentResult) -> None:
             "Betas: "
             f"beta_1={beta_1}, beta_2={beta_2:.3f}, beta_3={beta_3}, beta_4={beta_4:.3f}"
         )
-    elif isinstance(action_objective, PlantedLogisticObjective):
-        beta = format_array(action_objective.beta)
+    elif isinstance(objective, PlantedLogisticObjective):
+        beta = format_array(objective.beta)
         print("Objective: L(u; x) = log(1 + exp(z)) - p*(x) * z")
         print("z = alpha * u + beta·x + bias")
         print("p*(x) = sigmoid(alpha * u* + beta·x + bias)")
         print(
             "Params: "
-            f"alpha={action_objective.alpha:.3f}, bias={action_objective.bias:.3f}, "
-            f"u*={action_objective.u_star:.3f}, beta={beta}"
+            f"alpha={objective.alpha:.3f}, bias={objective.bias:.3f}, "
+            f"u*={objective.u_star:.3f}, beta={beta}"
         )
     else:
-        print(f"Objective: {type(action_objective).__name__}")
+        print(f"Objective: {type(objective).__name__}")
 
     print(
         "Run: "

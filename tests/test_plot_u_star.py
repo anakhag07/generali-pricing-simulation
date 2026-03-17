@@ -1,6 +1,6 @@
 import numpy as np
 
-from objective.fixed_objective import FixedRegressionObjective
+from objective import FixedRegressionObjective, SoftmaxPolicy
 from experiments.reporters import _u_star_for_plot
 
 
@@ -10,6 +10,7 @@ class DummyObjective:
 
 def test_u_star_for_plot_fixed_regression_returns_none() -> None:
     objective = FixedRegressionObjective.from_parameters(
+        policy=SoftmaxPolicy(),
         beta_1=np.array([1.0]),
         beta_2=-0.1,
         beta_3=np.array([0.2]),

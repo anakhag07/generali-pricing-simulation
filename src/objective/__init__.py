@@ -1,61 +1,59 @@
+"""Objective module public API.
+
+This module provides:
+- Base interfaces: Objective, Policy, StateVector
+- Concrete policies: ConstantPolicy, LinearPolicy, SoftmaxPolicy
+- Concrete objectives: FixedRegressionObjective, PlantedLogisticObjective
+- Utility functions: mean_action, optimal_u, theta_grad_from_u_grad
+"""
+
 from objective.base import (
-    ActionObjective,
+    Objective,
+    Policy,
     StateVector,
-    ThetaObjective,
     default_rng,
 )
-from objective.composed import PolicyObjective
-from objective.fixed_objective import (
-    FixedRegressionAcceptance,
-    FixedRegressionLoss,
+from objective.objectives import (
     FixedRegressionObjective,
-    FixedRegressionRevenue,
+    PlantedLogisticObjective,
 )
 from objective.policy import (
-    POLICY_CONSTANT,
-    POLICY_KINDS,
-    POLICY_LINEAR,
-    POLICY_SOFTMAX,
     ConstantPolicy,
     LinearPolicy,
-    Policy,
-    PolicySpec,
     SoftmaxPolicy,
-    apply_policy,
-    phi,
-    phi_batch,
+    policy_constant,
     policy_from_kind,
-    policy_grad_theta,
-    policy_u,
-    policy_u_batch,
+    policy_linear,
+    policy_softmax,
 )
-from objective.planted_logistic import PlantedLogisticObjective
+from objective.utils import (
+    action_value_at_u,
+    mean_action,
+    optimal_u,
+    theta_grad_from_u_grad,
+)
 
 __all__ = [
-    "ActionObjective",
-    "ConstantPolicy",
-    "FixedRegressionAcceptance",
-    "FixedRegressionLoss",
-    "FixedRegressionObjective",
-    "FixedRegressionRevenue",
-    "LinearPolicy",
-    "POLICY_CONSTANT",
-    "POLICY_KINDS",
-    "POLICY_LINEAR",
-    "POLICY_SOFTMAX",
-    "apply_policy",
+    # Base interfaces
+    "Objective",
     "Policy",
-    "PolicySpec",
-    "PolicyObjective",
-    "PlantedLogisticObjective",
-    "SoftmaxPolicy",
     "StateVector",
-    "ThetaObjective",
     "default_rng",
-    "phi",
-    "phi_batch",
+    # Policy constants
+    "policy_constant",
+    "policy_linear",
+    "policy_softmax",
+    # Concrete policies
+    "ConstantPolicy",
+    "LinearPolicy",
+    "SoftmaxPolicy",
     "policy_from_kind",
-    "policy_grad_theta",
-    "policy_u",
-    "policy_u_batch",
+    # Concrete objectives
+    "FixedRegressionObjective",
+    "PlantedLogisticObjective",
+    # Utility functions
+    "mean_action",
+    "optimal_u",
+    "action_value_at_u",
+    "theta_grad_from_u_grad",
 ]

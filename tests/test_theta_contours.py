@@ -4,27 +4,28 @@ import numpy as np
 import pytest
 
 from objective.base import StateVector
-from objective.policy import POLICY_LINEAR, PolicySpec
+from objective import FixedRegressionObjective, LinearPolicy
 from reporting.visualization import select_theta_axes_max_variance, theta_objective_contour_grid
 
 
-class QuadraticObjective:
-    def value(self, x: StateVector, u: float) -> float:
-        return u**2
-
-    def grad_u(self, x: StateVector, u: float) -> float:
-        return 2.0 * u
+def _build_theta_objective() -> FixedRegressionObjective:
+    return FixedRegressionObjective.from_parameters(
+        policy=LinearPolicy(),
+        beta_1=[0.1, 0.2],
+        beta_2=-0.5,
+        beta_3=[0.3, 0.4],
+        beta_4=0.5,
+    )
 
 
 def test_theta_objective_contour_grid_shapes() -> None:
-    x = StateVector(values=[1.0, -1.0])
+    x = StateVector(values=np.asarray([1.0, -1.0], dtype=float))
     theta_base = np.asarray([0.1, 0.2, 0.3], dtype=float)
-    policy_spec = PolicySpec(theta=theta_base, kind=POLICY_LINEAR)
+    objective = _build_theta_objective()
 
     grid_x, grid_y, objective_grid = theta_objective_contour_grid(
         [x],
-        QuadraticObjective(),
-        policy_spec,
+        objective,
         theta_base,
         axis_indices=(0, 1),
         theta_refs=[theta_base, theta_base + 0.05],
@@ -37,15 +38,14 @@ def test_theta_objective_contour_grid_shapes() -> None:
 
 
 def test_theta_objective_contour_grid_rejects_invalid_axes() -> None:
-    x = StateVector(values=[1.0, 0.5])
+    x = StateVector(values=np.asarray([1.0, 0.5], dtype=float))
     theta_base = np.asarray([0.1, 0.2, 0.3], dtype=float)
-    policy_spec = PolicySpec(theta=theta_base, kind=POLICY_LINEAR)
+    objective = _build_theta_objective()
 
     with pytest.raises(ValueError, match="distinct"):
         theta_objective_contour_grid(
             [x],
-            QuadraticObjective(),
-            policy_spec,
+            objective,
             theta_base,
             axis_indices=(1, 1),
         )
@@ -53,8 +53,7 @@ def test_theta_objective_contour_grid_rejects_invalid_axes() -> None:
     with pytest.raises(ValueError, match="valid indices"):
         theta_objective_contour_grid(
             [x],
-            QuadraticObjective(),
-            policy_spec,
+            objective,
             theta_base,
             axis_indices=(0, 5),
         )

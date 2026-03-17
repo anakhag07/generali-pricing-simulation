@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 
 class GradientMethod:
-    """Base interface for theta-gradient estimators."""
+    """Base interface for theta-gradient estimators used by the optimizer."""
 
     name = "gradient"
 
@@ -30,7 +30,7 @@ class GradientMethod:
 
 
 class FirstOrderGradient(GradientMethod):
-    """Exact theta-gradient from objective.grad."""
+    """Exact theta-gradient: $$\\nabla_\\theta J$$ from ``objective.grad``."""
 
     name = "first-order"
 
@@ -50,7 +50,7 @@ class FirstOrderGradient(GradientMethod):
 
 
 class GaussSteinGradient(GradientMethod):
-    """Theta-space Gaussian-Stein estimator using value-only queries."""
+    """Stein estimator: $$\\hat{g} = \\mathbb{E}[J(\\theta + \\sigma\\varepsilon)\\varepsilon]/\\sigma$$."""
 
     name = "gauss-stein"
 
@@ -90,7 +90,7 @@ class GaussSteinGradient(GradientMethod):
 
 
 class SPSAGradient(GradientMethod):
-    """Two-sided SPSA estimator directly in theta-space."""
+    """SPSA estimator: $$\\hat{g} = (J(\\theta+\\sigma\\Delta) - J(\\theta-\\sigma\\Delta))\\Delta / 2\\sigma$$."""
 
     name = "spsa"
 

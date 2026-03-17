@@ -84,7 +84,7 @@ Guidelines:
   - `default_rng(seed)`: wrapper around `np.random.default_rng`
 
 - **`src/objective/objectives/fixed_regression.py`** (source of truth for objective math)
-  - `FixedRegressionObjective`: pricing objective $f(u;x) = a(x,u)(\ell(x) - r(u))$; `from_parameters` classmethod, scalar + batch evaluation
+  - `FixedRegressionObjective`: pricing objective $$f(u;x) = a(x,u)(\ell(x) - r(u))$$; `from_parameters` classmethod, scalar + batch evaluation
 
 - **`src/objective/objectives/planted_logistic.py`**
   - `PlantedLogisticObjective`: convex logistic objective with known optimum `u_star`
@@ -283,6 +283,7 @@ Major classes and methods MUST have docstrings that render via pdoc:
 - Runner functions (`run_experiment`)
 
 Docstrings should be 1-2 lines with LaTeX where it aids clarity.
+Use double delimiters `$$...$$` for math rendering in pdoc (do not use single `$...$`).
 Private helpers and internal utilities do not require docstrings.
 
 Update math formulas in docstrings when objective definitions change.

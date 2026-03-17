@@ -30,7 +30,7 @@ class GradientMethod:
 
 
 class FirstOrderGradient(GradientMethod):
-    """Exact theta-gradient: $\\nabla_\\theta J$ from ``objective.grad``."""
+    """Exact theta-gradient: $$\\nabla_\\theta J$$ from ``objective.grad``."""
 
     name = "first-order"
 
@@ -50,7 +50,7 @@ class FirstOrderGradient(GradientMethod):
 
 
 class GaussSteinGradient(GradientMethod):
-    """Stein estimator: $\\hat{g} = \\mathbb{E}[J(\\theta + \\sigma\\varepsilon)\\varepsilon]/\\sigma$."""
+    """Stein estimator: $$\\hat{g} = \\mathbb{E}[J(\\theta + \\sigma\\varepsilon)\\varepsilon]/\\sigma$$."""
 
     name = "gauss-stein"
 
@@ -90,7 +90,7 @@ class GaussSteinGradient(GradientMethod):
 
 
 class SPSAGradient(GradientMethod):
-    """SPSA estimator: $\\hat{g} = (J(\\theta+\\sigma\\Delta) - J(\\theta-\\sigma\\Delta))\\Delta / 2\\sigma$."""
+    """SPSA estimator: $$\\hat{g} = (J(\\theta+\\sigma\\Delta) - J(\\theta-\\sigma\\Delta))\\Delta / 2\\sigma$$."""
 
     name = "spsa"
 

@@ -44,7 +44,7 @@ def _sigmoid(z: np.ndarray) -> np.ndarray:
 
 @dataclass(frozen=True)
 class ConstantPolicy(Policy):
-    """Constant policy: $u = \\theta_0$, ignores state $x$."""
+    """Constant policy: $$u = \\theta_0$$, ignores state $$x$$."""
 
     kind: str = policy_constant
 
@@ -88,7 +88,7 @@ class ConstantPolicy(Policy):
 
 @dataclass(frozen=True)
 class LinearPolicy(Policy):
-    """Linear policy: $u = \\theta^\\top \\phi(x)$ where $\\phi(x) = [1, x]$."""
+    """Linear policy: $$u = \\theta^\\top \\phi(x)$$ where $$\\phi(x) = [1, x]$$."""
 
     kind: str = policy_linear
 
@@ -134,7 +134,7 @@ class LinearPolicy(Policy):
 
 @dataclass(frozen=True)
 class SoftmaxPolicy(Policy):
-    """Softmax policy: $u = 0.5 + \\sigma(\\theta^\\top \\phi(x)) \\in (0.5, 1.5)$."""
+    """Softmax policy: $$u = 0.5 + \\sigma(\\theta^\\top \\phi(x)) \\in (0.5, 1.5)$$."""
 
     kind: str = policy_softmax
 

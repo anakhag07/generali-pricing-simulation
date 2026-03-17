@@ -34,9 +34,9 @@ def _logistic_batch(z: np.ndarray) -> np.ndarray:
 
 @dataclass(frozen=True)
 class PlantedLogisticObjective(Objective):
-    """Convex logistic objective with known optimum $u^*$ for algorithm validation.
+    """Convex logistic objective with known optimum $$u^*$$ for algorithm validation.
 
-    $L(u; x) = \\log(1 + e^z) - p^*(x) z$ where $z = \\alpha u + \\beta^\\top x + b$.
+    $$L(u; x) = \\log(1 + e^z) - p^*(x) z$$ where $$z = \\alpha u + \\beta^\\top x + b$$.
     """
 
     policy: Policy

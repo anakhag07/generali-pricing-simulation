@@ -34,9 +34,9 @@ def _logistic_batch(z: np.ndarray) -> np.ndarray:
 
 @dataclass(frozen=True)
 class FixedRegressionObjective(Objective):
-    """Pricing objective: $f(u; x) = a(x,u)(\\ell(x) - r(u))$.
+    """Pricing objective: $$f(u; x) = a(x,u)(\\ell(x) - r(u))$$.
 
-    Components: $a = \\sigma(\\beta_1^\\top x + \\beta_2 u)$, $\\ell = \\beta_3^\\top x$, $r = \\beta_4 u$.
+    Components: $$a = \\sigma(\\beta_1^\\top x + \\beta_2 u)$$, $$\\ell = \\beta_3^\\top x$$, $$r = \\beta_4 u$$.
     Computes theta-gradients via chain rule through the attached policy.
     """
 

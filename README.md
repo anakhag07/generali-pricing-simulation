@@ -13,16 +13,6 @@ pip install -e .
 python main.py
 ```
 
-Or with venv:
-
-```bash
-# Virtual Environment
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-pip install -e .
-python main.py
-```
-
 Runtime dependencies live in `requirements.txt` and mirror `pyproject.toml`
 (numpy >= 1.24, matplotlib >= 3.7, scipy >= 1.10, wandb >= 0.19).
 

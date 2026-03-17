@@ -34,23 +34,9 @@ def _logistic_batch(z: np.ndarray) -> np.ndarray:
 
 @dataclass(frozen=True)
 class PlantedLogisticObjective(Objective):
-    """Convex logistic objective with a planted minimum at u_star.
+    """Convex logistic objective with known optimum $u^*$ for algorithm validation.
 
-    The objective is designed to have a known optimal action value u*,
-    making it useful for validating optimization algorithms.
-
-    L(u; x) = log(1 + exp(z)) - p*(x) * z
-    where z = alpha * u + beta^T x + bias
-    and p*(x) = sigmoid(alpha * u* + beta^T x + bias)
-
-    This objective takes a policy at construction and directly computes
-    theta-level gradients via chain rule.
-
-    To specify optimal_u in new objectives:
-        1. Implement an `optimal_u() -> float` method that returns the
-           known optimal action value.
-        2. The `optimal_u` utility function in `objective.utils` will
-           automatically detect and call this method.
+    $L(u; x) = \\log(1 + e^z) - p^*(x) z$ where $z = \\alpha u + \\beta^\\top x + b$.
     """
 
     policy: Policy

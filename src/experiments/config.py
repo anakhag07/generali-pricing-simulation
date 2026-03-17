@@ -15,7 +15,7 @@ from optimization.steps import STEP_RULES
 
 @dataclass(frozen=True)
 class CorrectnessSpec:
-    """Configuration for correctness proxies and true-gradient references."""
+    """Controls how "true" gradients are computed: exact, numdiff, or none."""
 
     gradient_source: Literal["exact", "numdiff", "none"] = "exact"
     numdiff_method: Literal["central", "forward", "backward"] = "central"
@@ -43,7 +43,7 @@ class CorrectnessSpec:
 
 @dataclass(frozen=True)
 class ExperimentConfig:
-    """Configuration for a single experiment run."""
+    """Frozen configuration for a single experiment run with validation."""
 
     state_dim: int
     n_samples: int

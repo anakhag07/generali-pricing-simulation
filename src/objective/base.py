@@ -13,7 +13,7 @@ def default_rng(seed: Optional[int] = None) -> np.random.Generator:
 
 
 class StateVector:
-    """One-dimensional feature vector ``x`` used by objectives and policies."""
+    """Customer feature vector $x \\in \\mathbb{R}^d$ sampled from $\\mathcal{N}(0, I)$."""
 
     def __init__(self, values: np.ndarray) -> None:
         """Create a validated 1D float feature vector."""
@@ -45,7 +45,7 @@ class StateVector:
 
 
 class Policy:
-    """Policy interface mapping ``(theta, x)`` to action ``u``."""
+    """Policy interface: $u = \\pi_\\theta(x)$ with gradient $\\partial u / \\partial \\theta$."""
 
     def value(self, theta: np.ndarray, x: StateVector) -> float:
         """Return action value ``u`` for ``(theta, x)``."""
@@ -57,7 +57,7 @@ class Policy:
 
 
 class Objective:
-    """Theta-space objective interface consumed by optimization."""
+    """Theta-space objective: $J(\\theta) = \\mathbb{E}_x[f(\\pi_\\theta(x); x)]$."""
 
     def value(self, theta: np.ndarray, x_batch: np.ndarray) -> float:
         """Return mean objective value for ``theta`` on ``x_batch``."""

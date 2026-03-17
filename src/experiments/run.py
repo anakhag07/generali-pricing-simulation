@@ -23,15 +23,7 @@ def run_experiment(
     config: ExperimentConfig,
     step_reporter: StepReporter | None = None,
 ) -> ExperimentResult:
-    """Run a complete experiment with enabled estimators.
-
-    Args:
-        config: Experiment configuration.
-        step_reporter: Optional reporter for per-step metrics.
-
-    Returns:
-        ExperimentResult with traces and final values for all enabled estimators.
-    """
+    """Run optimization with all enabled estimators; returns traces and final values."""
     objective = config.objective
     enabled_estimators = tuple(config.enabled_estimators)
 

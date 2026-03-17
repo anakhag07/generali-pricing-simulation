@@ -34,17 +34,10 @@ def _logistic_batch(z: np.ndarray) -> np.ndarray:
 
 @dataclass(frozen=True)
 class FixedRegressionObjective(Objective):
-    """Fixed regression objective implementing theta-level Objective interface.
+    """Pricing objective: $f(u; x) = a(x,u)(\\ell(x) - r(u))$.
 
-    The objective is: f(u; x) = a(x, u) * (loss(x) - revenue(u))
-
-    where:
-        a(x, u) = sigmoid(beta_1^T x + beta_2 * u)  (acceptance probability)
-        loss(x) = beta_3^T x                        (expected loss)
-        revenue(u) = beta_4 * u                     (revenue from price)
-
-    This objective takes a policy at construction and directly computes
-    theta-level gradients via chain rule.
+    Components: $a = \\sigma(\\beta_1^\\top x + \\beta_2 u)$, $\\ell = \\beta_3^\\top x$, $r = \\beta_4 u$.
+    Computes theta-gradients via chain rule through the attached policy.
     """
 
     policy: Policy

@@ -26,7 +26,7 @@ MinimizeFn = Callable[..., Any]
 
 
 class Optimization:
-    """Optimize theta for a theta-level objective with pluggable gradients."""
+    """SciPy L-BFGS-B optimizer for theta-level objectives with pluggable gradient methods."""
 
     def __init__(
         self,

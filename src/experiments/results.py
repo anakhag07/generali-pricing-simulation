@@ -13,6 +13,8 @@ from experiments.config import ExperimentConfig
 
 @dataclass(frozen=True)
 class OptimizationTrace:
+    """Per-step trace: u values, objective values, gradient norms, and theta history."""
+
     steps: Sequence[int]
     u_values: Sequence[float]
     objective_values: Sequence[float]
@@ -28,6 +30,8 @@ class OptimizationTrace:
 
 @dataclass(frozen=True)
 class EstimatorResult:
+    """Final result for one estimator: theta, mean action, objective value, and wall time."""
+
     theta: np.ndarray
     u: float
     value: float
@@ -36,6 +40,8 @@ class EstimatorResult:
 
 @dataclass(frozen=True)
 class ExperimentResult:
+    """Full experiment result: config, samples, traces, and final values per estimator."""
+
     config: ExperimentConfig
     x_samples: Sequence[StateVector]
     initial_value: float

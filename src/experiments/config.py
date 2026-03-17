@@ -3,15 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Literal, Mapping, Optional
+from typing import Any, Literal, Mapping, Optional, Sequence
 
 import numpy as np
 
 from objective.base import Objective, Policy, StateVector
-from objective.composed import PolicyObjective
-from objective.fixed_objective import FixedRegressionObjective
-from objective.planted_logistic import PlantedLogisticObjective
-from objective.policy import ConstantPolicy, LinearPolicy, PolicySpec, SoftmaxPolicy
+from objective.objectives import FixedRegressionObjective, PlantedLogisticObjective
+from objective.policy import ConstantPolicy, LinearPolicy, SoftmaxPolicy
 from optimization.steps import STEP_RULES
 
 
@@ -45,13 +43,13 @@ class CorrectnessSpec:
 
 @dataclass(frozen=True)
 class ExperimentConfig:
+    """Configuration for a single experiment run."""
+
     state_dim: int
     n_samples: int
     step_rule: str
-    objective: Objective | None = None
-    theta0: np.ndarray | None = None
-    objective_model: object | None = None
-    policy_spec: PolicySpec | Policy | None = None
+    objective: Objective
+    theta0: np.ndarray
     batch_size: int | None = None
     seed: int = 7
     t_steps: int = 100
@@ -113,24 +111,7 @@ class ExperimentConfig:
         if self.n_samples <= 0:
             raise ValueError("n_samples must be positive.")
 
-        objective = self.objective
-        theta0_raw = self.theta0
-        if objective is None or theta0_raw is None:
-            if self.objective_model is None or self.policy_spec is None:
-                raise ValueError(
-                    "Provide objective and theta0, or objective_model and policy_spec."
-                )
-            if isinstance(self.policy_spec, PolicySpec):
-                policy = self.policy_spec.as_policy()
-                theta0_raw = self.policy_spec.theta
-            else:
-                policy = self.policy_spec
-                if theta0_raw is None:
-                    raise ValueError("theta0 must be provided when policy_spec is a Policy instance.")
-            objective = PolicyObjective(action_objective=self.objective_model, policy=policy)
-            object.__setattr__(self, "objective", objective)
-
-        theta0_arr = np.asarray(theta0_raw, dtype=float)
+        theta0_arr = np.asarray(self.theta0, dtype=float)
         if theta0_arr.ndim != 1 or theta0_arr.size < 1:
             raise ValueError("theta0 must be a 1D array with at least one element.")
         object.__setattr__(self, "theta0", theta0_arr)
@@ -153,6 +134,7 @@ class ExperimentConfig:
         if self.n_grad_samples <= 0:
             raise ValueError("n_grad_samples must be positive.")
 
+        objective = self.objective
         value_fn = getattr(objective, "value", None)
         grad_fn = getattr(objective, "grad", None)
         if value_fn is None or not callable(value_fn):
@@ -175,12 +157,7 @@ class ExperimentConfig:
                 raise ValueError("policy.grad(theta0, x) must match theta0 shape.")
 
     def to_dict(self) -> dict[str, Any]:
-        objective = self.objective
-        if objective is None:
-            raise ValueError("objective must be initialized before serialization.")
-        theta0 = self.theta0
-        if theta0 is None:
-            raise ValueError("theta0 must be initialized before serialization.")
+        """Serialize config to dictionary for JSON output."""
         return {
             "state_dim": int(self.state_dim),
             "n_samples": int(self.n_samples),
@@ -199,8 +176,8 @@ class ExperimentConfig:
             "plot": bool(self.plot),
             "plot_dir": self.plot_dir,
             "enabled_estimators": list(self.enabled_estimators),
-            "theta0": _as_list(theta0),
-            "objective": _theta_objective_to_dict(objective),
+            "theta0": _as_list(self.theta0),
+            "objective": _objective_to_dict(self.objective),
             "wandb": {
                 "enabled": bool(self.wandb_enabled),
                 "project": self.wandb_project,
@@ -218,27 +195,31 @@ class ExperimentConfig:
         }
 
 
-def _action_objective_to_dict(action_objective: object) -> dict[str, Any]:
-    if isinstance(action_objective, FixedRegressionObjective):
+def _objective_to_dict(objective: Objective) -> dict[str, Any]:
+    """Serialize objective to dictionary."""
+    if isinstance(objective, FixedRegressionObjective):
         return {
             "type": "FixedRegressionObjective",
-            "beta_1": _as_list(action_objective.acceptance.beta_1),
-            "beta_2": float(action_objective.acceptance.beta_2),
-            "beta_3": _as_list(action_objective.loss.beta_3),
-            "beta_4": float(action_objective.revenue.beta_4),
+            "policy": _policy_to_dict(objective.policy),
+            "beta_1": _as_list(objective.beta_1),
+            "beta_2": float(objective.beta_2),
+            "beta_3": _as_list(objective.beta_3),
+            "beta_4": float(objective.beta_4),
         }
-    if isinstance(action_objective, PlantedLogisticObjective):
+    if isinstance(objective, PlantedLogisticObjective):
         return {
             "type": "PlantedLogisticObjective",
-            "alpha": float(action_objective.alpha),
-            "beta": _as_list(action_objective.beta),
-            "bias": float(action_objective.bias),
-            "u_star": float(action_objective.u_star),
+            "policy": _policy_to_dict(objective.policy),
+            "alpha": float(objective.alpha),
+            "beta": _as_list(objective.beta),
+            "bias": float(objective.bias),
+            "u_star": float(objective.u_star),
         }
-    return {"type": type(action_objective).__name__}
+    return {"type": type(objective).__name__}
 
 
 def _policy_to_dict(policy: object) -> dict[str, Any]:
+    """Serialize policy to dictionary."""
     if isinstance(policy, ConstantPolicy):
         return {"type": "ConstantPolicy"}
     if isinstance(policy, LinearPolicy):
@@ -248,17 +229,8 @@ def _policy_to_dict(policy: object) -> dict[str, Any]:
     return {"type": type(policy).__name__}
 
 
-def _theta_objective_to_dict(objective: Objective) -> dict[str, Any]:
-    if isinstance(objective, PolicyObjective):
-        return {
-            "type": "PolicyObjective",
-            "action_objective": _action_objective_to_dict(objective.action_objective),
-            "policy": _policy_to_dict(objective.policy),
-        }
-    return {"type": type(objective).__name__}
-
-
 def _correctness_to_dict(correctness: CorrectnessSpec) -> dict[str, Any]:
+    """Serialize correctness spec to dictionary."""
     return {
         "gradient_source": correctness.gradient_source,
         "numdiff_method": correctness.numdiff_method,
@@ -271,18 +243,25 @@ def _correctness_to_dict(correctness: CorrectnessSpec) -> dict[str, Any]:
 
 
 def _as_list(values: object) -> list[float]:
+    """Convert array-like to list of floats."""
     arr = np.asarray(values, dtype=float)
     return [float(val) for val in arr.tolist()]
 
 
+# --- Factory helpers for preset configs ---
+
+
 def make_fixed_regression_objective(
     *,
-    beta_1: np.ndarray,
+    policy: Policy,
+    beta_1: np.ndarray | Sequence[float],
     beta_2: float,
-    beta_3: np.ndarray,
+    beta_3: np.ndarray | Sequence[float],
     beta_4: float,
 ) -> FixedRegressionObjective:
+    """Create a FixedRegressionObjective with the given parameters."""
     return FixedRegressionObjective.from_parameters(
+        policy=policy,
         beta_1=np.asarray(beta_1, dtype=float),
         beta_2=float(beta_2),
         beta_3=np.asarray(beta_3, dtype=float),
@@ -292,12 +271,15 @@ def make_fixed_regression_objective(
 
 def make_planted_logistic_objective(
     *,
+    policy: Policy,
     alpha: float,
-    beta: np.ndarray,
+    beta: np.ndarray | Sequence[float],
     bias: float,
     u_star: float,
 ) -> PlantedLogisticObjective:
-    return PlantedLogisticObjective(
+    """Create a PlantedLogisticObjective with the given parameters."""
+    return PlantedLogisticObjective.from_parameters(
+        policy=policy,
         alpha=float(alpha),
         beta=np.asarray(beta, dtype=float),
         bias=float(bias),
@@ -306,11 +288,8 @@ def make_planted_logistic_objective(
 
 
 def make_softmax_policy() -> SoftmaxPolicy:
+    """Create a SoftmaxPolicy instance."""
     return SoftmaxPolicy()
-
-
-def make_policy_objective(*, action_objective: object, policy: Policy) -> PolicyObjective:
-    return PolicyObjective(action_objective=action_objective, policy=policy)
 
 
 def canonical_training_block(
@@ -326,6 +305,7 @@ def canonical_training_block(
     grad_norm_tol: float | None = None,
     ftol: float | None = None,
 ) -> dict[str, Any]:
+    """Create a canonical training configuration block."""
     return {
         "n_samples": int(n_samples),
         "step_rule": step_rule,
@@ -355,6 +335,7 @@ def canonical_runtime_block(
     wandb_log_plots: bool = True,
     wandb_estimator_allowlist: tuple[str, ...] | None = None,
 ) -> dict[str, Any]:
+    """Create a canonical runtime configuration block."""
     return {
         "plot": bool(plot),
         "plot_dir": plot_dir,
@@ -383,6 +364,7 @@ def build_experiment_config(
     runtime: Mapping[str, Any] | None = None,
     correctness: CorrectnessSpec | None = None,
 ) -> ExperimentConfig:
+    """Build an ExperimentConfig from component blocks."""
     payload: dict[str, Any] = {
         "seed": int(seed),
         "state_dim": int(state_dim),

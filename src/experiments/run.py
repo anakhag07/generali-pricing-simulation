@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import time
-from typing import Any, cast
 
 import numpy as np
 
 from objective.base import StateVector, default_rng
+from objective.utils import action_value_at_u, mean_action, optimal_u
 from experiments.config import ExperimentConfig
 from experiments.helpers import (
     resolve_true_grad_theta_fn,
@@ -23,10 +23,16 @@ def run_experiment(
     config: ExperimentConfig,
     step_reporter: StepReporter | None = None,
 ) -> ExperimentResult:
-    objective_raw = config.objective
-    if objective_raw is None:
-        raise ValueError("config.objective must be initialized.")
-    objective = cast(Any, objective_raw)
+    """Run a complete experiment with enabled estimators.
+
+    Args:
+        config: Experiment configuration.
+        step_reporter: Optional reporter for per-step metrics.
+
+    Returns:
+        ExperimentResult with traces and final values for all enabled estimators.
+    """
+    objective = config.objective
     enabled_estimators = tuple(config.enabled_estimators)
 
     rng = default_rng(config.seed)
@@ -37,17 +43,19 @@ def run_experiment(
     theta_initial = np.asarray(config.theta0, dtype=float)
     initial_value = float(objective.value(theta_initial, x_array))
 
-    u_star = None
-    optimal_u = getattr(objective, "optimal_u", None)
-    if callable(optimal_u):
-        u_star_candidate = optimal_u()
-        if u_star_candidate is not None:
-            u_star = float(u_star_candidate)
+    # Get optimal u if available
+    u_star = optimal_u(objective)
 
+    # Compute value at u* if available
     value_at_u_star = None
-    action_value = getattr(objective, "action_value", None)
-    if u_star is not None and callable(action_value):
-        value_at_u_star = float(np.mean([action_value(x, u_star) for x in x_samples]))
+    if u_star is not None:
+        try:
+            value_at_u_star = action_value_at_u(objective, x_array, u_star)
+        except ValueError:
+            pass
+
+    # Get policy from objective for mean_action computation
+    policy = getattr(objective, "policy", None)
 
     results: dict[str, EstimatorResult] = {}
     traces = {}
@@ -71,10 +79,7 @@ def run_experiment(
             step_reporter=step_reporter,
         )
         time_first = time.perf_counter() - start_first
-        mean_action = getattr(objective, "mean_action", None)
-        if not callable(mean_action):
-            raise ValueError("objective must provide mean_action(theta, x_batch).")
-        u_first = float(mean_action(theta_first, x_array))
+        u_first = mean_action(policy, theta_first, x_array) if policy is not None else float("nan")
         value_first = float(objective.value(theta_first, x_array))
         results["first_order"] = EstimatorResult(theta=theta_first, u=u_first, value=value_first, time=time_first)
         traces["first_order"] = trace_first
@@ -98,10 +103,7 @@ def run_experiment(
             step_reporter=step_reporter,
         )
         time_zero = time.perf_counter() - start_zero
-        mean_action = getattr(objective, "mean_action", None)
-        if not callable(mean_action):
-            raise ValueError("objective must provide mean_action(theta, x_batch).")
-        u_zero = float(mean_action(theta_zero, x_array))
+        u_zero = mean_action(policy, theta_zero, x_array) if policy is not None else float("nan")
         value_zero = float(objective.value(theta_zero, x_array))
         results["gauss_stein"] = EstimatorResult(theta=theta_zero, u=u_zero, value=value_zero, time=time_zero)
         traces["gauss_stein"] = trace_zero
@@ -125,10 +127,7 @@ def run_experiment(
             step_reporter=step_reporter,
         )
         time_spsa = time.perf_counter() - start_spsa
-        mean_action = getattr(objective, "mean_action", None)
-        if not callable(mean_action):
-            raise ValueError("objective must provide mean_action(theta, x_batch).")
-        u_spsa = float(mean_action(theta_spsa, x_array))
+        u_spsa = mean_action(policy, theta_spsa, x_array) if policy is not None else float("nan")
         value_spsa = float(objective.value(theta_spsa, x_array))
         results["spsa"] = EstimatorResult(theta=theta_spsa, u=u_spsa, value=value_spsa, time=time_spsa)
         traces["spsa"] = trace_spsa

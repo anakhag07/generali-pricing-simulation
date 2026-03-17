@@ -8,10 +8,8 @@ import numpy as np
 from scipy.optimize import minimize
 
 from objective.base import Objective, StateVector
-from objective.composed import PolicyObjective
-from objective.policy import policy_from_kind
+from objective.utils import mean_action
 from optimization.helpers import (
-    mean_action_on_indices,
     objective_value_on_indices,
     sample_indices,
     scipy_method,
@@ -32,10 +30,9 @@ class Optimization:
 
     def __init__(
         self,
-        objective: Objective | object,
-        x_samples_or_policy: Sequence[StateVector] | str,
-        gradient_or_x_samples: Any,
-        gradient: Any | None = None,
+        objective: Objective,
+        x_samples: Sequence[StateVector],
+        gradient: Any,
         *,
         algorithm: str = STEP_RULE_LBFGSB,
         t_steps: int,
@@ -45,30 +42,32 @@ class Optimization:
         true_grad_theta_fn: TrueThetaGradFn | None = None,
         grad_norm_tol: float | None = None,
         ftol: float | None = None,
-        step_reporter: StepReporter | None = None,
+        step_reporter: "StepReporter | None" = None,
         method_label: str | None = None,
         rng: np.random.Generator | None = None,
         minimize_fn: MinimizeFn = minimize,
     ) -> None:
         """Configure SciPy-based optimization over theta.
 
-        Accepts either a theta-level objective directly, or a legacy
-        ``(action objective, policy kind)`` pair that is composed internally.
+        Args:
+            objective: Theta-level objective implementing value(theta, x_batch) and grad(theta, x_batch).
+            x_samples: Sequence of StateVector samples.
+            gradient: Gradient method object with setup() and theta_grad() methods.
+            algorithm: Optimization algorithm (default: 'l-bfgs-b').
+            t_steps: Maximum number of optimization steps.
+            n_grad_samples: Number of gradient samples for zeroth-order methods.
+            sigma: Perturbation scale for zeroth-order methods.
+            batch_size: Mini-batch size (None for full batch).
+            true_grad_theta_fn: Optional function for computing true theta gradients.
+            grad_norm_tol: Early stopping threshold on gradient norm.
+            ftol: SciPy function tolerance.
+            step_reporter: Optional reporter for per-step metrics.
+            method_label: Label for this optimization method.
+            rng: Random number generator.
+            minimize_fn: SciPy minimize function (for testing).
         """
-        if isinstance(x_samples_or_policy, str):
-            if gradient is None:
-                raise ValueError("gradient must be provided when using legacy policy_kind signature.")
-            policy_kind = x_samples_or_policy
-            x_samples = gradient_or_x_samples
-            self.objective = PolicyObjective(
-                action_objective=objective,
-                policy=policy_from_kind(policy_kind),
-            )
-            self.gradient = gradient
-        else:
-            self.objective = objective
-            x_samples = x_samples_or_policy
-            self.gradient = gradient_or_x_samples
+        self.objective = objective
+        self.gradient = gradient
         self.algorithm = algorithm
         self.t_steps = int(t_steps)
         self.n_grad_samples = int(n_grad_samples)
@@ -137,7 +136,13 @@ class Optimization:
                 true_theta_grad_norm = float(np.linalg.norm(grad_true))
 
             step = len(steps)
-            mean_u = mean_action_on_indices(self.objective, self.x_array, self.n_total, theta_arr, indices)
+            
+            # Compute mean action if policy is available
+            policy = getattr(self.objective, "policy", None)
+            if policy is not None:
+                mean_u = mean_action(policy, theta_arr, x_batch(self.x_array, indices, self.n_total))
+            else:
+                mean_u = float("nan")
 
             steps.append(step)
             u_values.append(mean_u)

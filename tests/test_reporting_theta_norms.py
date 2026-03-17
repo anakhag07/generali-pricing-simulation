@@ -6,26 +6,28 @@ from pathlib import Path
 import numpy as np
 
 from experiments.config import ExperimentConfig
+from experiments.defaults import default_theta0
 from experiments.reporters import RunContext, _build_summary_payload
 from experiments.results import EstimatorResult, ExperimentResult, OptimizationTrace
 from objective.base import StateVector
-from objective.fixed_objective import FixedRegressionObjective
-from objective.policy import POLICY_LINEAR, PolicySpec
+from objective import FixedRegressionObjective, LinearPolicy
 from reporting.logging import log_summary
 
 
 def _build_result() -> ExperimentResult:
+    policy = LinearPolicy()
     objective = FixedRegressionObjective.from_parameters(
+        policy=policy,
         beta_1=np.asarray([0.2], dtype=float),
         beta_2=-0.8,
         beta_3=np.asarray([0.1], dtype=float),
         beta_4=0.3,
     )
-    policy = PolicySpec(theta=np.asarray([0.1, 0.2], dtype=float), kind=POLICY_LINEAR)
+    theta0 = np.asarray([0.1, 0.2], dtype=float)
     config = ExperimentConfig(
         state_dim=1,
-        objective_model=objective,
-        policy_spec=policy,
+        objective=objective,
+        theta0=theta0,
         n_samples=1,
         step_rule="constant",
         t_steps=3,
@@ -37,13 +39,13 @@ def _build_result() -> ExperimentResult:
         u_values=[0.1, 0.2],
         objective_values=[1.0, 0.8],
         u_grad_estimates=[0.4, 0.2],
-        theta_values=[policy.theta.copy(), np.asarray([0.3, -0.2], dtype=float)],
+        theta_values=[theta0.copy(), np.asarray([0.3, -0.2], dtype=float)],
         optimizer_status=0,
         optimizer_message="CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
     )
     result = ExperimentResult(
         config=config,
-        x_samples=[StateVector(values=[0.5])],
+        x_samples=[StateVector(values=np.asarray([0.5], dtype=float))],
         initial_value=1.0,
         results={
             "first_order": EstimatorResult(

@@ -1,6 +1,7 @@
 # Generali Pricing Simulation
 
-Pricing simulation and optimization demo using exact and Gaussian-Stein gradients.
+Pricing simulation and black-box optimization demo with pluggable objectives,
+policies, and estimators.
 
 ## Quickstart
 
@@ -37,48 +38,89 @@ pytest -q
 If you use a different environment name or tool, update `AGENTS.md` to match
 your local setup.
 
+To switch scenarios quickly, edit `RUN_CONFIGS` in `main.py`:
 
-Runtime dependencies live in `requirements.txt` and mirror `pyproject.toml`
-(numpy >= 1.24, matplotlib >= 3.7, scipy >= 1.10, wandb >= 0.19).
+```python
+RUN_CONFIGS = ["fixed_regression_base"]
+```
+
+### Adding a New Zeroth-Order Method
+
+To add a new value-query estimator and run it through experiments:
+
+1. Add a `GradientMethod` class in `src/optimization/gradients/methods.py`
+   (follow `GaussSteinGradient` / `SPSAGradient`).
+2. Re-export it in `src/optimization/gradients/__init__.py`.
+3. Add a solver wrapper in `src/optimization/solvers.py` that instantiates
+   `Optimization(..., <YourGradientMethod>(), ...)`.
+4. Add a corresponding experiment helper in `src/experiments/helpers.py`, then
+   call it from `src/experiments/run.py`.
+5. Register the estimator key in `src/experiments/config.py`
+   (`allowed_estimators` in `ExperimentConfig.__post_init__`).
+6. Add plot metadata in `src/reporting/visualization.py`
+   (`ESTIMATOR_STYLES` and `_TRACE_ORDER`) so it renders in plots.
+
+Finally, include your estimator key in `enabled_estimators=(...)` in a preset
+under `src/experiments/configs/`.
 
 
 ## What This Does
 
-1. Samples a batch of synthetic customer feature vectors from a standard normal
-   distribution.
-2. Evaluates a deterministic objective combining acceptance probability,
-   expected loss, and revenue.
-3. Optimizes a pricing policy parameter `theta` using one or more of:
-    - First-order (exact gradient) descent
-    - Zeroth-order Stein gradient estimator
-    - SPSA estimator
-4. Saves run artifacts under `outputs/<experiment_name>/<timestamp>/`:
-   - `summary.json` -- full result payload
-   - `steps.csv` -- per-step metrics for every estimator
-   - `plots/` -- loss curves, gradient norms, objective slices, step sizes,
-     and theta-objective contour plots
+This project is a configurable simulator for black-box optimization scenarios.
+Each experiment is defined by three choices:
+
+1. **Objective**: the action-level function to optimize (for example,
+   fixed-regression or planted-logistic).
+2. **Policy**: the map from state and parameters to action,
+   $u = \pi_\theta(x)$ (`ConstantPolicy`, `LinearPolicy`, `SoftmaxPolicy`).
+3. **Optimization method**: the estimator used to update `theta`
+   (`first_order`, `gauss_stein`, `spsa`).
+
+For each run, the system samples synthetic state vectors, optimizes in
+theta-space, and writes artifacts under `outputs/<experiment_name>/<timestamp>/`:
+
+- `summary.json` -- full result payload
+- `steps.csv` -- per-step metrics for every estimator
+- `plots/` -- loss curves, gradient norms, objective slices, step sizes,
+  and theta-objective contour plots
 
 ## Mathematical Model
 
-### Decision Variables and Components
+### Base Model (Objective + Policy Composition)
+
+The framework optimizes a parameterized policy over random state vectors:
 
 $$
 x \sim \mathcal{N}(0, I),\quad \theta \in \mathbb{R}^p,\quad u = \pi_\theta(x)
 $$
 
-$$
-a(x, u) \in (0, 1),\quad \ell(x) \ge 0,\quad r(u)
-$$
+An action objective defines per-sample value/cost as a function of action and
+state:
 
 $$
-f(u; x) = a(x, u)\,\big(\ell(x) - r(u)\big),
-\qquad
-\min_{\theta}\; \mathbb{E}_x\big[f(\pi_\theta(x); x)\big]
+f(u; x)
 $$
 
-### Fixed Regression Objective
+The optimizer then solves the theta-space objective:
 
-The default objective uses an explicit parametric form:
+$$
+\min_{\theta} J(\theta),\qquad
+J(\theta) = \mathbb{E}_x\big[f(\pi_\theta(x); x)\big]
+$$
+
+In code, this composition is implemented by `PolicyObjective`, which combines
+an action objective with a policy into `value(theta, x_batch)` and
+`grad(theta, x_batch)`.
+
+### Fixed Regression Form (Default Pricing Objective)
+
+The default objective specifies:
+
+$$
+f(u; x) = a(x, u)\,\big(\ell(x) - r(u)\big)
+$$
+
+with
 
 $$
 a(x, u) = \sigma\!\left(\beta_1^\top x + \beta_2 u\right),
@@ -91,10 +133,6 @@ $$
 
 $$
 r(u) = \beta_4 u, \qquad \beta_4 > 0
-$$
-
-$$
-f(u; x) = a(x, u)\,\big(\ell(x) - r(u)\big)
 $$
 
 The beta values are configurable via `FixedRegressionObjective`. `beta_2` must

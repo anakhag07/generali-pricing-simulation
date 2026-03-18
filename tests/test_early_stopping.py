@@ -2,7 +2,6 @@
 
 import numpy as np
 
-from objective.base import StateVector
 from objective import FixedRegressionObjective
 from objective.policy import LinearPolicy
 from optimization.solvers import run_first_order_minimize, run_gauss_stein_minimize
@@ -21,7 +20,7 @@ def _build_theta_objective() -> FixedRegressionObjective:
 
 def test_first_order_early_stops_on_grad_norm() -> None:
     theta_start = np.array([0.1, 0.2], dtype=float)
-    x_samples = [StateVector(values=np.asarray([1.0], dtype=float))]
+    x_samples = np.array([[1.0]], dtype=float)
     objective = _build_theta_objective()
     _, trace = run_first_order_minimize(
         theta_start,
@@ -39,7 +38,7 @@ def test_first_order_early_stops_on_grad_norm() -> None:
 
 def test_gauss_stein_early_stops_on_grad_norm() -> None:
     theta_start = np.array([0.1, 0.2], dtype=float)
-    x_samples = [StateVector(values=np.asarray([1.0], dtype=float))]
+    x_samples = np.array([[1.0]], dtype=float)
     objective = _build_theta_objective()
     rng = np.random.default_rng(0)
     _, trace = run_gauss_stein_minimize(

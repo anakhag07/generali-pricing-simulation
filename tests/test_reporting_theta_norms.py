@@ -9,7 +9,6 @@ from experiments.config import ExperimentConfig
 from experiments.defaults import default_theta0
 from experiments.reporters import RunContext, _build_summary_payload
 from experiments.results import EstimatorResult, ExperimentResult, OptimizationTrace
-from objective.base import StateVector
 from objective import FixedRegressionObjective, LinearPolicy
 from reporting.logging import log_summary
 
@@ -45,7 +44,7 @@ def _build_result() -> ExperimentResult:
     )
     result = ExperimentResult(
         config=config,
-        x_samples=[StateVector(values=np.asarray([0.5], dtype=float))],
+        x_samples=np.array([[0.5]], dtype=float),
         initial_value=1.0,
         results={
             "first_order": EstimatorResult(

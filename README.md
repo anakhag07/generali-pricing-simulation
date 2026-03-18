@@ -43,6 +43,10 @@ Pluggable components:
 - **Policies**: `ConstantPolicy`, `LinearPolicy`, `SoftmaxPolicy`
 - **Gradient estimators**: `first_order`, `gauss_stein`, `spsa`
 
+Core API convention:
+- `sample_states(rng, n, dim)` produces state batches with shape `(n, dim)`.
+- `Policy.value/grad` and `Objective.value/grad` operate on 2D `x_batch` arrays.
+
 ## Documentation
 
 Full API documentation, objective formulas, and configuration reference are

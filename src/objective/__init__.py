@@ -1,17 +1,18 @@
 """Objective module public API.
 
 This module provides:
-- Base interfaces: Objective, Policy, StateVector
+- Base interfaces: Objective, Policy
+- Sampling: sample_states, default_rng
 - Concrete policies: ConstantPolicy, LinearPolicy, SoftmaxPolicy
 - Concrete objectives: FixedRegressionObjective, PlantedLogisticObjective
-- Utility functions: mean_action, optimal_u, theta_grad_from_u_grad
+- Utility: optimal_u
 """
 
 from objective.base import (
     Objective,
     Policy,
-    StateVector,
     default_rng,
+    sample_states,
 )
 from objective.objectives import (
     FixedRegressionObjective,
@@ -21,28 +22,16 @@ from objective.policy import (
     ConstantPolicy,
     LinearPolicy,
     SoftmaxPolicy,
-    policy_constant,
     policy_from_kind,
-    policy_linear,
-    policy_softmax,
 )
-from objective.utils import (
-    action_value_at_u,
-    mean_action,
-    optimal_u,
-    theta_grad_from_u_grad,
-)
+from objective.utils import optimal_u
 
 __all__ = [
     # Base interfaces
     "Objective",
     "Policy",
-    "StateVector",
     "default_rng",
-    # Policy constants
-    "policy_constant",
-    "policy_linear",
-    "policy_softmax",
+    "sample_states",
     # Concrete policies
     "ConstantPolicy",
     "LinearPolicy",
@@ -51,9 +40,6 @@ __all__ = [
     # Concrete objectives
     "FixedRegressionObjective",
     "PlantedLogisticObjective",
-    # Utility functions
-    "mean_action",
+    # Utility
     "optimal_u",
-    "action_value_at_u",
-    "theta_grad_from_u_grad",
 ]

@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Sequence
+from typing import TYPE_CHECKING, Any, Callable
 
 import numpy as np
 from scipy.optimize import minimize
 
-from objective.base import Objective, StateVector
-from objective.utils import mean_action
+from objective.base import Objective
+from objective.utils import _mean_action
 from optimization.helpers import (
     objective_value_on_indices,
     sample_indices,
@@ -31,7 +31,7 @@ class Optimization:
     def __init__(
         self,
         objective: Objective,
-        x_samples: Sequence[StateVector],
+        x_samples: np.ndarray,
         gradient: Any,
         *,
         algorithm: str = STEP_RULE_LBFGSB,
@@ -51,7 +51,7 @@ class Optimization:
 
         Args:
             objective: Theta-level objective implementing value(theta, x_batch) and grad(theta, x_batch).
-            x_samples: Sequence of StateVector samples.
+            x_samples: State samples array, shape (n_samples, state_dim).
             gradient: Gradient method object with setup() and theta_grad() methods.
             algorithm: Optimization algorithm (default: 'l-bfgs-b').
             t_steps: Maximum number of optimization steps.
@@ -81,10 +81,12 @@ class Optimization:
         self.rng = rng if rng is not None else np.random.default_rng(0)
         self._minimize_fn = minimize_fn
 
-        x_list = list(x_samples)
-        if not x_list:
-            raise ValueError("x_samples must contain at least one StateVector.")
-        self.x_array = np.stack([np.asarray(x, dtype=float) for x in x_list], axis=0).astype(float)
+        x_arr = np.asarray(x_samples, dtype=float)
+        if x_arr.ndim != 2:
+            raise ValueError("x_samples must be a 2D array.")
+        if x_arr.shape[0] < 1:
+            raise ValueError("x_samples must contain at least one sample.")
+        self.x_array = x_arr
         self.n_total = self.x_array.shape[0]
         self.batch_size_eff = self.n_total if batch_size is None else int(batch_size)
         if self.batch_size_eff <= 0 or self.batch_size_eff > self.n_total:
@@ -140,7 +142,7 @@ class Optimization:
             # Compute mean action if policy is available
             policy = getattr(self.objective, "policy", None)
             if policy is not None:
-                mean_u = mean_action(policy, theta_arr, x_batch(self.x_array, indices, self.n_total))
+                mean_u = _mean_action(policy, theta_arr, x_batch(self.x_array, indices, self.n_total))
             else:
                 mean_u = float("nan")
 

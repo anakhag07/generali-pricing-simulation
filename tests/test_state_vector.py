@@ -2,10 +2,16 @@ from __future__ import annotations
 
 import numpy as np
 
-from objective.base import StateVector, default_rng
+from objective.base import default_rng, sample_states
 
 
-def test_state_vector_sample_dim() -> None:
+def test_sample_states_shape() -> None:
     rng = default_rng(123)
-    vector = StateVector.sample(rng, dim=5)
-    assert np.asarray(vector, dtype=float).shape == (5,)
+    x_samples = sample_states(rng, n=10, dim=5)
+    assert x_samples.shape == (10, 5)
+
+
+def test_sample_states_dtype() -> None:
+    rng = default_rng(456)
+    x_samples = sample_states(rng, n=3, dim=2)
+    assert x_samples.dtype == float

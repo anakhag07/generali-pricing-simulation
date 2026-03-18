@@ -3,7 +3,6 @@
 import numpy as np
 from types import SimpleNamespace
 
-from objective.base import StateVector
 from objective import FixedRegressionObjective
 from objective.policy import LinearPolicy
 from optimization.solvers import (
@@ -27,10 +26,7 @@ def _build_theta_objective() -> FixedRegressionObjective:
 
 def test_first_order_minimize_reduces_objective() -> None:
     theta_start = np.asarray([0.2, 0.3], dtype=float)
-    x_samples = [
-        StateVector(values=np.asarray([1.0], dtype=float)),
-        StateVector(values=np.asarray([-0.5], dtype=float)),
-    ]
+    x_samples = np.array([[1.0], [-0.5]], dtype=float)
     objective = _build_theta_objective()
 
     theta_final, trace = run_first_order_minimize(
@@ -48,10 +44,7 @@ def test_first_order_minimize_reduces_objective() -> None:
 
 def test_gauss_stein_minimize_is_seed_deterministic() -> None:
     theta_start = np.asarray([0.2, 0.3], dtype=float)
-    x_samples = [
-        StateVector(values=np.asarray([1.0], dtype=float)),
-        StateVector(values=np.asarray([-0.5], dtype=float)),
-    ]
+    x_samples = np.array([[1.0], [-0.5]], dtype=float)
     objective = _build_theta_objective()
 
     theta_a, trace_a = run_gauss_stein_minimize(
@@ -79,10 +72,7 @@ def test_gauss_stein_minimize_is_seed_deterministic() -> None:
 
 def test_spsa_minimize_is_seed_deterministic() -> None:
     theta_start = np.asarray([0.2, 0.3], dtype=float)
-    x_samples = [
-        StateVector(values=np.asarray([1.0], dtype=float)),
-        StateVector(values=np.asarray([-0.5], dtype=float)),
-    ]
+    x_samples = np.array([[1.0], [-0.5]], dtype=float)
     objective = _build_theta_objective()
 
     theta_a, trace_a = run_spsa_minimize(
@@ -110,10 +100,7 @@ def test_spsa_minimize_is_seed_deterministic() -> None:
 
 def test_first_order_passes_ftol_to_minimize(monkeypatch) -> None:
     theta_start = np.asarray([0.2, 0.3], dtype=float)
-    x_samples = [
-        StateVector(values=np.asarray([1.0], dtype=float)),
-        StateVector(values=np.asarray([-0.5], dtype=float)),
-    ]
+    x_samples = np.array([[1.0], [-0.5]], dtype=float)
     objective = _build_theta_objective()
     captured_options: dict[str, float | int] = {}
 

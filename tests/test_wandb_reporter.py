@@ -13,7 +13,6 @@ from experiments.config import ExperimentConfig
 from experiments.defaults import default_theta0, default_policy
 from experiments.reporters import ReporterStack, RunContext, WandbReporter
 from experiments.results import EstimatorResult, ExperimentResult
-from objective.base import StateVector
 from objective import FixedRegressionObjective
 
 
@@ -81,7 +80,7 @@ def _build_run_context(tmp_path: Path) -> RunContext:
 
 
 def _build_result(config: ExperimentConfig) -> ExperimentResult:
-    x_samples = [StateVector(np.asarray([0.1], dtype=float))]
+    x_samples = np.array([[0.1]], dtype=float)
     results = {
         "first_order": EstimatorResult(
             theta=np.asarray([0.1, 0.2], dtype=float),

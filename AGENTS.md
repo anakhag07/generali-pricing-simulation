@@ -77,23 +77,31 @@ Guidelines:
 
 #### Objective Layer (`src/objective/`)
 
+- **`src/objective/_math.py`** (private)
+  - `_sigmoid(z)`: numerically stable vectorized sigmoid
+
 - **`src/objective/base.py`**
-  - `StateVector`: lightweight class wrapping a 1D numpy array; has `sample(rng, dim)` static method
-  - `Policy`: policy interface class (`value`, `grad`) where `grad` is with respect to `theta`
+  - `sample_states(rng, n, dim)`: sample n state vectors from N(0, I), returns (n, dim) array
+  - `Policy`: batch-only policy interface (`value`, `grad`) operating on 2D arrays
   - `Objective`: theta-space interface class (`value`, `grad`)
   - `default_rng(seed)`: wrapper around `np.random.default_rng`
 
 - **`src/objective/objectives/fixed_regression.py`** (source of truth for objective math)
-  - `FixedRegressionObjective`: pricing objective $$f(u;x) = a(x,u)(\ell(x) - r(u))$$; `from_parameters` classmethod, scalar + batch evaluation
+  - `FixedRegressionObjective`: pricing objective $$f(u;x) = a(x,u)(\ell(x) - r(u))$$
+  - `from_parameters` classmethod; batch evaluation via `value()`, `grad()`, `value_at_u()`
 
 - **`src/objective/objectives/planted_logistic.py`**
   - `PlantedLogisticObjective`: convex logistic objective with known optimum `u_star`
   - `optimal_u()` method exposes the planted optimum
 
 - **`src/objective/policy.py`**
-  - Implements `Policy` with `value(theta, x)` and `grad(theta, x)` methods
+  - Implements `Policy` with batch methods `value(theta, x_batch)` and `grad(theta, x_batch)`
   - Concrete policies: `ConstantPolicy`, `LinearPolicy`, `SoftmaxPolicy`
-  - Compatibility helpers: `PolicySpec`, `policy_u`, `policy_u_batch`, `policy_grad_theta`
+  - `policy_from_kind(kind)`: factory function
+
+- **`src/objective/utils.py`**
+  - `optimal_u(objective)`: public helper to extract u* from objective if available
+  - Private helpers: `_theta_grad_from_u_grad`, `_mean_action`, `_action_value_at_u`
 
 #### Data Layer (`src/data/`)
 
@@ -131,7 +139,7 @@ Guidelines:
 - **`src/experiments/config.py`**
   - `ExperimentConfig`: frozen dataclass with extensive `__post_init__` validation
   - Primary fields: `objective` (theta objective) and `theta0` (initial theta)
-  - Legacy compatibility fields `objective_model` and `policy_spec` are auto-composed into `PolicyObjective`
+  - Objective/policy wiring is explicit; configs pass a concrete theta-level objective instance
   - `batch_size: int | None = None` enables stochastic mini-batch optimization when set
   - `CorrectnessSpec`: controls how "true" gradients are computed (`"exact"`, `"numdiff"`, `"none"`)
   - `verbose: bool = False` controls terminal output of per-step metrics
@@ -145,7 +153,7 @@ Guidelines:
 
 - **`src/experiments/defaults.py`**
   - `default_theta0(state_dim)`: returns default initial theta with `state_dim + 1` params
-  - `default_policy_spec(state_dim)`: compatibility helper returning softmax `PolicySpec`
+  - `default_policy(state_dim)`: returns default `SoftmaxPolicy`
 
 - **`src/experiments/helpers.py`** (largest file; orchestration + wrappers)
   - `resolve_true_grad_theta_fn(objective, correctness)`: resolves the "true" theta-gradient function from correctness spec
@@ -190,7 +198,7 @@ Guidelines:
   - `plot_loss_curves(...)`: objective vs step; optional |u - u*| subplot
   - `plot_gradient_norms(...)`: true theta gradient norms; optional error subplot
   - `plot_step_sizes(...)`: per-step step sizes (log scale y-axis)
-  - `plot_objective_u_slice(...)`: objective and gradient vs u grid
+  - `plot_objective_u_slice(...)`: objective vs u grid (no gradient subplot)
   - `plot_theta_objective_contours(...)`: 2D contour plot with optimization paths
   - `select_theta_axes_max_variance(...)`: picks the two theta axes with highest variance for contour plots
 
@@ -205,19 +213,6 @@ Guidelines:
 
 These are documented here so agents can account for them and clean them up
 when appropriate.
-
-- **Duplicated private helpers:** `_logistic`, `_logistic_batch`, and
-  `_beta_dot_x` are duplicated verbatim in `src/objective/fixed_objective.py` and
-  `src/objective/planted_logistic.py`. These could be factored into a shared
-  utility module.
-
-- **`clip_u` is removed / commented out:** `apply_policy` does not clip
-  actions. The softmax policy naturally maps to `(0.5, 1.5)` but
-  linear and constant policies are unbounded.
-
-- **`policy_grad_theta` is unused in the pipeline:** The optimization pipeline
-  computes chain-rule gradients inside `src/objective/composed.py` rather than
-  calling this function.
 
 - **`plot_dir` on `ExperimentConfig` is ignored by `PlotReporter`:**
   `PlotReporter` always uses `run_context.plots_dir` (which is
@@ -246,14 +241,14 @@ when appropriate.
 | `test_minibatch_stochasticity.py` | Mini-batch determinism and full-batch equivalence |
 | `test_minimize_orders.py` | SciPy first/Gauss-Stein/SPSA wrappers (decrease + seed determinism) |
 | `test_optimization_class.py` | Class-based optimizer entry point and gradient-object behavior |
-| `test_objective_batch.py` | Batch vs scalar consistency for both objectives |
+| `test_objective_batch.py` | Deterministic objective private batch helpers and `value_at_u` |
 | `test_objective_package_exports.py` | objective package API exports remain importable |
 | `test_objective_models.py` | FixedRegressionObjective value and gradient correctness |
 | `test_planted_logistic_objective.py` | Planted logistic gradient at u_star and minimum |
 | `test_plot_u_star.py` | u_star selection for plotting |
-| `test_policy_batch.py` | policy_u_batch matches scalar for all kinds |
+| `test_policy_batch.py` | Policy batch `value/grad` shapes, bounds, and kind labels |
 | `test_run_context.py` | default output directory and run context paths |
-| `test_state_vector.py` | StateVector.sample shape |
+| `test_state_vector.py` | `sample_states` shape and dtype |
 | `test_step_rules.py` | Armijo backtracking on quadratic |
 | `test_theta_contours.py` | Contour grid shapes, axis selection |
 | `test_trace_theta_values.py` | theta_values recorded in first/Gauss-Stein traces |
@@ -277,7 +272,7 @@ Regenerate docs when public API changes significantly.
 Major classes and methods MUST have docstrings that render via pdoc:
 - Objective classes (`FixedRegressionObjective`, `PlantedLogisticObjective`)
 - Policy classes (`ConstantPolicy`, `LinearPolicy`, `SoftmaxPolicy`)
-- Core interfaces (`StateVector`, `Policy`, `Objective`)
+- Core interfaces (`Policy`, `Objective`) and sampling helper (`sample_states`)
 - Optimization classes (`Optimization`, `GradientMethod` subclasses)
 - Experiment config and results (`ExperimentConfig`, `ExperimentResult`, etc.)
 - Runner functions (`run_experiment`)

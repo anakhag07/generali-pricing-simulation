@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Callable, Sequence
+from typing import Callable
 
 import numpy as np
 
-from objective.base import Objective, StateVector
+from objective.base import Objective
 from experiments.config import CorrectnessSpec
 from experiments.reporters import StepReporter
 from experiments.results import OptimizationTrace
@@ -95,7 +95,7 @@ def resolve_true_grad_theta_fn(
 
 def run_first_order(
     theta_start: np.ndarray,
-    x_samples: Sequence[StateVector],
+    x_samples: np.ndarray,
     objective: Objective,
     rng: np.random.Generator,
     t_steps: int,
@@ -128,7 +128,7 @@ def run_first_order(
 
 def run_gauss_stein(
     theta_start: np.ndarray,
-    x_samples: Sequence[StateVector],
+    x_samples: np.ndarray,
     objective: Objective,
     rng: np.random.Generator,
     t_steps: int,
@@ -162,7 +162,7 @@ def run_gauss_stein(
 
 def run_spsa(
     theta_start: np.ndarray,
-    x_samples: Sequence[StateVector],
+    x_samples: np.ndarray,
     objective: Objective,
     rng: np.random.Generator,
     t_steps: int,

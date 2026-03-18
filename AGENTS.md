@@ -1,10 +1,10 @@
 # Agent Instructions
 
-Project context: pricing simulation and optimization demo. Primary entry point is `main.py`.
+Project context: simulation and optimization repo. Users should be able to specify an experiment config and compare how different gradient methods perform across different objectives and policy types. Primary entry point is `main.py`.
 
 ## Core Working Rules
 
-- Prefer small, focused changes with clear doc updates.
+- Prefer small, focused changes with clear doc updates. Prior to making code changes, think about whether the code addition is necessary and if it keeps a clean, intuitive repo structure for the public api. 
 - Keep simulation logic deterministic when a seed is set.
 - Include short comments or specs for functions when helpful.
 - Prefer vectorized or cached computations when they preserve existing logic.

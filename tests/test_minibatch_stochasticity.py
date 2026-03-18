@@ -4,18 +4,14 @@ from __future__ import annotations
 
 import numpy as np
 
-from objective.base import StateVector
 from objective import FixedRegressionObjective
 from objective.policy import LinearPolicy
 from optimization.solvers import run_first_order_minimize
 
 
-def _build_inputs() -> tuple[np.ndarray, list[StateVector], FixedRegressionObjective]:
+def _build_inputs() -> tuple[np.ndarray, np.ndarray, FixedRegressionObjective]:
     theta_start = np.asarray([0.1, -0.2], dtype=float)
-    x_samples = [
-        StateVector(values=np.asarray([x], dtype=float))
-        for x in np.linspace(-1.5, 1.5, num=12, dtype=float)
-    ]
+    x_samples = np.linspace(-1.5, 1.5, num=12, dtype=float).reshape(-1, 1)
     objective = FixedRegressionObjective.from_parameters(
         policy=LinearPolicy(),
         beta_1=np.asarray([0.3], dtype=float),
@@ -57,6 +53,7 @@ def test_minibatch_first_order_is_seed_deterministic() -> None:
 def test_batch_size_equal_n_samples_matches_full_batch() -> None:
     """Setting batch_size to n_samples should match full-batch behavior."""
     theta_start, x_samples, objective = _build_inputs()
+    n_samples = x_samples.shape[0]
 
     theta_full, trace_full = run_first_order_minimize(
         theta_start,
@@ -74,7 +71,7 @@ def test_batch_size_equal_n_samples_matches_full_batch() -> None:
         t_steps=10,
         n_grad_samples=4,
         sigma=0.1,
-        batch_size=len(x_samples),
+        batch_size=n_samples,
     )
 
     assert np.allclose(theta_full, theta_batch)

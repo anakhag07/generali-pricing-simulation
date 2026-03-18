@@ -3,7 +3,6 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from objective.base import StateVector
 from objective import FixedRegressionObjective, LinearPolicy
 from reporting.visualization import select_theta_axes_max_variance, theta_objective_contour_grid
 
@@ -19,12 +18,12 @@ def _build_theta_objective() -> FixedRegressionObjective:
 
 
 def test_theta_objective_contour_grid_shapes() -> None:
-    x = StateVector(values=np.asarray([1.0, -1.0], dtype=float))
+    x_samples = np.array([[1.0, -1.0]], dtype=float)
     theta_base = np.asarray([0.1, 0.2, 0.3], dtype=float)
     objective = _build_theta_objective()
 
     grid_x, grid_y, objective_grid = theta_objective_contour_grid(
-        [x],
+        x_samples,
         objective,
         theta_base,
         axis_indices=(0, 1),
@@ -38,13 +37,13 @@ def test_theta_objective_contour_grid_shapes() -> None:
 
 
 def test_theta_objective_contour_grid_rejects_invalid_axes() -> None:
-    x = StateVector(values=np.asarray([1.0, 0.5], dtype=float))
+    x_samples = np.array([[1.0, 0.5]], dtype=float)
     theta_base = np.asarray([0.1, 0.2, 0.3], dtype=float)
     objective = _build_theta_objective()
 
     with pytest.raises(ValueError, match="distinct"):
         theta_objective_contour_grid(
-            [x],
+            x_samples,
             objective,
             theta_base,
             axis_indices=(1, 1),
@@ -52,7 +51,7 @@ def test_theta_objective_contour_grid_rejects_invalid_axes() -> None:
 
     with pytest.raises(ValueError, match="valid indices"):
         theta_objective_contour_grid(
-            [x],
+            x_samples,
             objective,
             theta_base,
             axis_indices=(0, 5),

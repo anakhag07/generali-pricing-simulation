@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from objective.policy import SoftmaxPolicy, policy_softmax
+from objective.policy import SoftmaxPolicy
 
 
 def default_theta0(state_dim: int) -> np.ndarray:

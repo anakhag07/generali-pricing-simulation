@@ -6,7 +6,7 @@ from typing import Any
 
 import numpy as np
 
-from objective.utils import mean_action
+from objective.utils import _mean_action
 from optimization.steps import STEP_RULE_LBFGSB
 
 
@@ -68,7 +68,7 @@ def mean_action_on_indices(
     """Compute mean action on mini-batch."""
     policy = getattr(objective, "policy", None)
     if policy is not None:
-        return float(mean_action(policy, theta, x_batch(x_array, indices, n_total)))
+        return float(_mean_action(policy, theta, x_batch(x_array, indices, n_total)))
     return float("nan")
 
 

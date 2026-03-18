@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import numpy as np
 
-from objective.base import StateVector
 from objective import FixedRegressionObjective
 from objective.policy import LinearPolicy
 from optimization import FirstOrderGradient, GaussSteinGradient, Optimization
@@ -21,10 +20,7 @@ def _build_theta_objective() -> FixedRegressionObjective:
 
 def test_optimization_first_order_reduces_objective() -> None:
     theta_start = np.asarray([0.2, 0.3], dtype=float)
-    x_samples = [
-        StateVector(values=np.asarray([1.0], dtype=float)),
-        StateVector(values=np.asarray([-0.5], dtype=float)),
-    ]
+    x_samples = np.array([[1.0], [-0.5]], dtype=float)
     objective = _build_theta_objective()
 
     optimizer = Optimization(
@@ -45,7 +41,7 @@ def test_optimization_first_order_reduces_objective() -> None:
 
 def test_optimization_invalid_algorithm_raises() -> None:
     objective = _build_theta_objective()
-    x_samples = [StateVector(values=np.asarray([1.0], dtype=float))]
+    x_samples = np.array([[1.0]], dtype=float)
     optimizer = Optimization(
         objective,
         x_samples,
@@ -66,10 +62,7 @@ def test_optimization_invalid_algorithm_raises() -> None:
 
 def test_optimization_gauss_stein_is_seed_deterministic() -> None:
     theta_start = np.asarray([0.2, 0.3], dtype=float)
-    x_samples = [
-        StateVector(values=np.asarray([1.0], dtype=float)),
-        StateVector(values=np.asarray([-0.5], dtype=float)),
-    ]
+    x_samples = np.array([[1.0], [-0.5]], dtype=float)
     objective = _build_theta_objective()
 
     optimizer_a = Optimization(

@@ -7,29 +7,9 @@ from typing import Sequence
 
 import numpy as np
 
-from objective.base import Objective, Policy, StateVector
-from objective.utils import theta_grad_from_u_grad
-
-
-def _logistic(z: float) -> float:
-    """Numerically stable scalar sigmoid."""
-    if z >= 0.0:
-        exp_neg = float(np.exp(-z))
-        return float(1.0 / (1.0 + exp_neg))
-    exp_pos = float(np.exp(z))
-    return float(exp_pos / (1.0 + exp_pos))
-
-
-def _logistic_batch(z: np.ndarray) -> np.ndarray:
-    """Numerically stable vectorized sigmoid."""
-    z_arr = np.asarray(z, dtype=float)
-    out = np.empty_like(z_arr, dtype=float)
-    positive = z_arr >= 0.0
-    exp_neg = np.exp(-z_arr[positive])
-    out[positive] = 1.0 / (1.0 + exp_neg)
-    exp_pos = np.exp(z_arr[~positive])
-    out[~positive] = exp_pos / (1.0 + exp_pos)
-    return out
+from objective._math import _sigmoid
+from objective.base import Objective, Policy
+from objective.utils import _theta_grad_from_u_grad
 
 
 @dataclass(frozen=True)
@@ -84,7 +64,7 @@ class PlantedLogisticObjective(Objective):
         x_arr = np.asarray(x_batch, dtype=float)
         if x_arr.ndim != 2:
             raise ValueError("x_batch must be a 2D array.")
-        u_batch = self.policy.value_batch(theta, x_arr)
+        u_batch = self.policy.value(theta, x_arr)
         values = self._value_batch(x_arr, u_batch)
         return float(np.mean(values))
 
@@ -94,9 +74,9 @@ class PlantedLogisticObjective(Objective):
         if x_arr.ndim != 2:
             raise ValueError("x_batch must be a 2D array.")
         theta_arr = np.asarray(theta, dtype=float)
-        u_batch = self.policy.value_batch(theta_arr, x_arr)
+        u_batch = self.policy.value(theta_arr, x_arr)
         grad_u = self._grad_u_batch(x_arr, u_batch)
-        return theta_grad_from_u_grad(self.policy, theta_arr, x_arr, grad_u)
+        return _theta_grad_from_u_grad(self.policy, theta_arr, x_arr, grad_u)
 
     def value_at_u(self, x_batch: np.ndarray, u: float) -> float:
         """Compute mean objective value at a fixed action u."""
@@ -112,7 +92,7 @@ class PlantedLogisticObjective(Objective):
         beta_x = x_array @ self.beta[: x_array.shape[1]]
         z = self.alpha * u_array + beta_x + self.bias
         z_star = self.alpha * self.u_star + beta_x + self.bias
-        p_star = _logistic_batch(z_star)
+        p_star = _sigmoid(z_star)
         return np.logaddexp(0.0, z) - p_star * z
 
     def _grad_u_batch(self, x_array: np.ndarray, u_array: np.ndarray) -> np.ndarray:
@@ -120,26 +100,9 @@ class PlantedLogisticObjective(Objective):
         beta_x = x_array @ self.beta[: x_array.shape[1]]
         z = self.alpha * u_array + beta_x + self.bias
         z_star = self.alpha * self.u_star + beta_x + self.bias
-        p = _logistic_batch(z)
-        p_star = _logistic_batch(z_star)
+        p = _sigmoid(z)
+        p_star = _sigmoid(z_star)
         return self.alpha * (p - p_star)
-
-    # Scalar methods for single-sample evaluation (used in some tests/visualizations)
-    def value_scalar(self, x: StateVector, u: float) -> float:
-        """Compute objective value for a single (x, u) pair."""
-        x_arr = np.asarray(x, dtype=float)
-        z = self.alpha * u + float(np.dot(self.beta[: x_arr.size], x_arr)) + self.bias
-        p_star = _logistic(self.alpha * self.u_star + float(np.dot(self.beta[: x_arr.size], x_arr)) + self.bias)
-        return float(np.logaddexp(0.0, z) - p_star * z)
-
-    def grad_u_scalar(self, x: StateVector, u: float) -> float:
-        """Compute gradient w.r.t. u for a single (x, u) pair."""
-        x_arr = np.asarray(x, dtype=float)
-        z = self.alpha * u + float(np.dot(self.beta[: x_arr.size], x_arr)) + self.bias
-        z_star = self.alpha * self.u_star + float(np.dot(self.beta[: x_arr.size], x_arr)) + self.bias
-        p = _logistic(z)
-        p_star = _logistic(z_star)
-        return float(self.alpha * (p - p_star))
 
 
 __all__ = ["PlantedLogisticObjective"]

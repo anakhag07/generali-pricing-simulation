@@ -7,7 +7,7 @@ from typing import Any, Literal, Mapping, Optional, Sequence
 
 import numpy as np
 
-from objective.base import Objective, Policy, StateVector
+from objective.base import Objective, Policy
 from objective.objectives import FixedRegressionObjective, PlantedLogisticObjective
 from objective.policy import ConstantPolicy, LinearPolicy, SoftmaxPolicy
 from optimization.steps import STEP_RULES
@@ -147,14 +147,15 @@ class ExperimentConfig:
             policy_value = getattr(policy, "value", None)
             policy_grad = getattr(policy, "grad", None)
             if not callable(policy_value) or not callable(policy_grad):
-                raise ValueError("policy must implement value(theta, x) and grad(theta, x).")
-            x_probe = StateVector(values=np.zeros(self.state_dim, dtype=float))
-            u_probe = float(np.asarray(policy_value(theta0_arr, x_probe), dtype=float))
-            if not np.isfinite(u_probe):
-                raise ValueError("policy.value(theta0, x) must be finite.")
+                raise ValueError("policy must implement value(theta, x_batch) and grad(theta, x_batch).")
+            # Probe with a single-sample batch
+            x_probe = np.zeros((1, self.state_dim), dtype=float)
+            u_probe = policy_value(theta0_arr, x_probe)
+            if not np.all(np.isfinite(u_probe)):
+                raise ValueError("policy.value(theta0, x_batch) must be finite.")
             grad_probe = np.asarray(policy_grad(theta0_arr, x_probe), dtype=float)
-            if grad_probe.shape != theta0_arr.shape:
-                raise ValueError("policy.grad(theta0, x) must match theta0 shape.")
+            if grad_probe.ndim != 2 or grad_probe.shape[1] != theta0_arr.size:
+                raise ValueError("policy.grad(theta0, x_batch) must return (n_samples, theta_dim).")
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize config to dictionary for JSON output."""

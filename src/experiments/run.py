@@ -6,8 +6,8 @@ import time
 
 import numpy as np
 
-from objective.base import StateVector, default_rng
-from objective.utils import action_value_at_u, mean_action, optimal_u
+from objective.base import default_rng, sample_states
+from objective.utils import _action_value_at_u, _mean_action, optimal_u
 from experiments.config import ExperimentConfig
 from experiments.helpers import (
     resolve_true_grad_theta_fn,
@@ -28,12 +28,11 @@ def run_experiment(
     enabled_estimators = tuple(config.enabled_estimators)
 
     rng = default_rng(config.seed)
-    x_samples = [StateVector.sample(rng, dim=config.state_dim) for _ in range(config.n_samples)]
-    x_array = np.stack([np.asarray(x, dtype=float) for x in x_samples], axis=0).astype(float)
+    x_samples = sample_states(rng, config.n_samples, config.state_dim)
     true_grad_theta_fn = resolve_true_grad_theta_fn(objective, config.correctness)
 
     theta_initial = np.asarray(config.theta0, dtype=float)
-    initial_value = float(objective.value(theta_initial, x_array))
+    initial_value = float(objective.value(theta_initial, x_samples))
 
     # Get optimal u if available
     u_star = optimal_u(objective)
@@ -42,7 +41,7 @@ def run_experiment(
     value_at_u_star = None
     if u_star is not None:
         try:
-            value_at_u_star = action_value_at_u(objective, x_array, u_star)
+            value_at_u_star = _action_value_at_u(objective, x_samples, u_star)
         except ValueError:
             pass
 
@@ -71,8 +70,8 @@ def run_experiment(
             step_reporter=step_reporter,
         )
         time_first = time.perf_counter() - start_first
-        u_first = mean_action(policy, theta_first, x_array) if policy is not None else float("nan")
-        value_first = float(objective.value(theta_first, x_array))
+        u_first = _mean_action(policy, theta_first, x_samples) if policy is not None else float("nan")
+        value_first = float(objective.value(theta_first, x_samples))
         results["first_order"] = EstimatorResult(theta=theta_first, u=u_first, value=value_first, time=time_first)
         traces["first_order"] = trace_first
 
@@ -95,8 +94,8 @@ def run_experiment(
             step_reporter=step_reporter,
         )
         time_zero = time.perf_counter() - start_zero
-        u_zero = mean_action(policy, theta_zero, x_array) if policy is not None else float("nan")
-        value_zero = float(objective.value(theta_zero, x_array))
+        u_zero = _mean_action(policy, theta_zero, x_samples) if policy is not None else float("nan")
+        value_zero = float(objective.value(theta_zero, x_samples))
         results["gauss_stein"] = EstimatorResult(theta=theta_zero, u=u_zero, value=value_zero, time=time_zero)
         traces["gauss_stein"] = trace_zero
 
@@ -119,8 +118,8 @@ def run_experiment(
             step_reporter=step_reporter,
         )
         time_spsa = time.perf_counter() - start_spsa
-        u_spsa = mean_action(policy, theta_spsa, x_array) if policy is not None else float("nan")
-        value_spsa = float(objective.value(theta_spsa, x_array))
+        u_spsa = _mean_action(policy, theta_spsa, x_samples) if policy is not None else float("nan")
+        value_spsa = float(objective.value(theta_spsa, x_samples))
         results["spsa"] = EstimatorResult(theta=theta_spsa, u=u_spsa, value=value_spsa, time=time_spsa)
         traces["spsa"] = trace_spsa
 

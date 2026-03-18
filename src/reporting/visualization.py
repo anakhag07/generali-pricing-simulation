@@ -9,7 +9,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
-from objective.base import Objective, StateVector
+from objective.base import Objective
 from experiments.results import OptimizationTrace
 
 matplotlib.use("Agg")
@@ -33,15 +33,6 @@ def _ensure_plot_dir(plot_dir: str) -> Path:
     path = Path(plot_dir)
     path.mkdir(parents=True, exist_ok=True)
     return path
-
-
-def _as_state_list(x_samples: Sequence[StateVector]) -> list[StateVector]:
-    if isinstance(x_samples, StateVector):
-        return [x_samples]
-    x_list = list(x_samples)
-    if not x_list:
-        raise ValueError("x_samples must contain at least one StateVector.")
-    return x_list
 
 
 def plot_loss_curves(
@@ -204,21 +195,24 @@ def plot_step_sizes(
 
 
 def plot_objective_u_slice(
-    x_samples: Sequence[StateVector],
+    x_samples: np.ndarray,
     objective: Objective,
     traces: Mapping[str, OptimizationTrace],
     plot_dir: str,
     u_star: Optional[float] = None,
 ) -> None:
-    """Plot objective value and gradient as functions of u.
-    
-    Uses the objective's value_scalar and grad_u_scalar methods if available.
+    """Plot objective value as a function of u.
+
+    Uses the objective's value_at_u method for computing values at fixed u.
     """
     trace_items = _ordered_traces(traces)
     if not trace_items:
         return
     path = _ensure_plot_dir(plot_dir)
-    x_list = _as_state_list(x_samples)
+    x_arr = np.asarray(x_samples, dtype=float)
+    if x_arr.ndim != 2:
+        raise ValueError("x_samples must be a 2D array.")
+
     u_values: list[float] = []
     for _, trace in trace_items:
         u_values.extend(list(trace.u_values))
@@ -234,24 +228,21 @@ def plot_objective_u_slice(
         u_grid = np.linspace(u_min - pad, u_max + pad, 200)
     else:
         u_grid = np.linspace(0.5, 1.5, 200)
-    
-    # Try to get scalar value/grad methods
-    value_scalar_fn = getattr(objective, "value_scalar", None)
-    grad_u_scalar_fn = getattr(objective, "grad_u_scalar", None)
-    if not callable(value_scalar_fn) or not callable(grad_u_scalar_fn):
+
+    # Use value_at_u method if available
+    value_at_u_fn = getattr(objective, "value_at_u", None)
+    if not callable(value_at_u_fn):
         return
-    
-    obj_grid = [float(np.mean([value_scalar_fn(x, u) for x in x_list])) for u in u_grid]
-    grad_grid = [float(np.mean([grad_u_scalar_fn(x, u) for x in x_list])) for u in u_grid]
 
-    fig, axes = plt.subplots(2, 1, figsize=(8, 8), sharex=True)
-    ax_obj, ax_grad = axes
+    obj_grid = [float(value_at_u_fn(x_arr, u)) for u in u_grid]
 
-    ax_obj.plot(u_grid, obj_grid, color="black", label="objective", alpha=0.6)
+    fig, ax = plt.subplots(1, 1, figsize=(8, 5))
+
+    ax.plot(u_grid, obj_grid, color="black", label="objective", alpha=0.6)
     for name, trace in trace_items:
         style = ESTIMATOR_STYLES[name]
         zorder = 4 if name == "gauss_stein" else 3
-        ax_obj.scatter(
+        ax.scatter(
             trace.u_values,
             trace.objective_values,
             color=style["color"],
@@ -262,9 +253,10 @@ def plot_objective_u_slice(
             alpha=0.6,
             zorder=zorder,
         )
-    ax_obj.set_ylabel("Objective value")
+    ax.set_ylabel("Objective value")
+    ax.set_xlabel("u")
     if u_star is not None:
-        ax_obj.axvline(
+        ax.axvline(
             u_star,
             color="#444444",
             linestyle="--",
@@ -272,37 +264,8 @@ def plot_objective_u_slice(
             alpha=0.8,
             label="u*",
         )
-    ax_obj.legend()
-    ax_obj.grid(True, alpha=0.3)
-
-    ax_grad.plot(u_grid, grad_grid, color="black", label="true u-grad", alpha=0.6)
-    for name, trace in trace_items:
-        style = ESTIMATOR_STYLES[name]
-        zorder = 4 if name == "gauss_stein" else 3
-        ax_grad.scatter(
-            trace.u_values,
-            trace.u_grad_estimates,
-            color=style["color"],
-            label=f"{style['label']} estimate",
-            marker=style["marker"],
-            edgecolors=style["color"],
-            linewidths=0.4,
-            alpha=0.6,
-            zorder=zorder,
-        )
-    ax_grad.set_ylabel("Gradient w.r.t. u")
-    ax_grad.set_xlabel("u")
-    if u_star is not None:
-        ax_grad.axvline(
-            u_star,
-            color="#444444",
-            linestyle="--",
-            linewidth=1.2,
-            alpha=0.8,
-            label="u*",
-        )
-    ax_grad.legend()
-    ax_grad.grid(True, alpha=0.3)
+    ax.legend()
+    ax.grid(True, alpha=0.3)
 
     fig.tight_layout()
     fig.savefig(path / "objective_u_slice.png", dpi=200)
@@ -349,7 +312,7 @@ def select_theta_axes_max_variance(theta_points: Sequence[np.ndarray]) -> tuple[
 
 
 def theta_objective_contour_grid(
-    x_samples: Sequence[StateVector],
+    x_samples: np.ndarray,
     objective: Objective,
     theta_base: np.ndarray,
     axis_indices: tuple[int, int] = (0, 1),
@@ -359,8 +322,9 @@ def theta_objective_contour_grid(
     min_pad: float = 0.05,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Compute contour grid for theta-level objective."""
-    x_list = _as_state_list(x_samples)
-    x_arr = np.stack([np.asarray(x, dtype=float) for x in x_list], axis=0).astype(float)
+    x_arr = np.asarray(x_samples, dtype=float)
+    if x_arr.ndim != 2:
+        raise ValueError("x_samples must be a 2D array.")
     theta_arr = np.asarray(theta_base, dtype=float)
     if len(axis_indices) != 2:
         raise ValueError("axis_indices must contain exactly two indices.")
@@ -387,7 +351,7 @@ def theta_objective_contour_grid(
 
 
 def plot_theta_objective_contours(
-    x_samples: Sequence[StateVector],
+    x_samples: np.ndarray,
     objective: Objective,
     theta_base: np.ndarray,
     plot_dir: str,
@@ -400,9 +364,12 @@ def plot_theta_objective_contours(
     levels: int = 15,
     filename: str = "theta_objective_contours.png",
 ) -> None:
+    x_arr = np.asarray(x_samples, dtype=float)
+    if x_arr.ndim != 2:
+        raise ValueError("x_samples must be a 2D array.")
     path = _ensure_plot_dir(plot_dir)
     grid_x, grid_y, objective_grid = theta_objective_contour_grid(
-        x_samples,
+        x_arr,
         objective,
         theta_base,
         axis_indices=axis_indices,

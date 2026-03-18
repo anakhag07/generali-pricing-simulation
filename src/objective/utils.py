@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from objective.base import Objective, Policy
 
 
-def theta_grad_from_u_grad(
+def _theta_grad_from_u_grad(
     policy: "Policy",
     theta: np.ndarray,
     x_array: np.ndarray,
@@ -27,11 +27,11 @@ def theta_grad_from_u_grad(
     Returns:
         Gradient of objective w.r.t. theta, shape (theta_dim,).
     """
-    policy_grad = policy.grad_batch(theta, x_array)  # (n_samples, theta_dim)
+    policy_grad = policy.grad(theta, x_array)  # (n_samples, theta_dim)
     return np.mean(grad_u[:, None] * policy_grad, axis=0)
 
 
-def mean_action(policy: "Policy", theta: np.ndarray, x_array: np.ndarray) -> float:
+def _mean_action(policy: "Policy", theta: np.ndarray, x_array: np.ndarray) -> float:
     """Compute mean policy action across batch.
 
     Args:
@@ -42,7 +42,7 @@ def mean_action(policy: "Policy", theta: np.ndarray, x_array: np.ndarray) -> flo
     Returns:
         Mean action value across the batch.
     """
-    return float(np.mean(policy.value_batch(theta, x_array)))
+    return float(np.mean(policy.value(theta, x_array)))
 
 
 def optimal_u(objective: "Objective") -> float | None:
@@ -69,7 +69,7 @@ def optimal_u(objective: "Objective") -> float | None:
     return None
 
 
-def action_value_at_u(
+def _action_value_at_u(
     objective: "Objective",
     x_array: np.ndarray,
     u: float,
@@ -90,9 +90,4 @@ def action_value_at_u(
     raise ValueError("objective does not support value_at_u(x_array, u).")
 
 
-__all__ = [
-    "theta_grad_from_u_grad",
-    "mean_action",
-    "optimal_u",
-    "action_value_at_u",
-]
+__all__ = ["optimal_u"]

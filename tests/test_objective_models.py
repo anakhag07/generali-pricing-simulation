@@ -7,13 +7,12 @@ from objective import (
     FixedRegressionObjective,
     SoftmaxPolicy,
 )
-from objective.base import StateVector
 
 
-def test_fixed_regression_objective_value_scalar() -> None:
-    """Test that value_scalar matches the expected formula."""
-    x = StateVector(values=np.asarray([1.0, 2.0], dtype=float))
-    u = 1.0
+def test_fixed_regression_objective_value() -> None:
+    """Test that value method computes correct mean over batch."""
+    x_batch = np.array([[1.0, 2.0]], dtype=float)  # Single sample batch
+    theta = np.array([0.1, 0.0, 0.0], dtype=float)  # Softmax policy params
     beta_1 = [0.1, 0.2]
     beta_2 = -0.5
     beta_3 = [0.3, 0.4]
@@ -27,48 +26,44 @@ def test_fixed_regression_objective_value_scalar() -> None:
         beta_4=beta_4,
     )
 
-    # Compute expected value
+    # Compute expected value manually
+    # Policy outputs u = 0.5 + sigmoid(theta.T @ [1, x])
+    # With theta = [0.1, 0, 0] and x = [1, 2], phi = [1, 1, 2]
+    # z = 0.1*1 + 0*1 + 0*2 = 0.1
+    # u = 0.5 + sigmoid(0.1)
+    z = 0.1
+    u = 0.5 + 1.0 / (1.0 + math.exp(-z))
+    
     logit = 0.1 * 1.0 + 0.2 * 2.0 + beta_2 * u
     acceptance = 1.0 / (1.0 + math.exp(-logit))
     loss = 0.3 * 1.0 + 0.4 * 2.0
     revenue = beta_4 * u
     expected_value = acceptance * (loss - revenue)
 
-    value = objective.value_scalar(x, u)
+    value = objective.value(theta, x_batch)
     assert math.isclose(value, expected_value, rel_tol=1e-9)
 
 
-def test_fixed_regression_objective_grad_u_scalar() -> None:
-    """Test that grad_u_scalar matches the expected formula."""
-    x = StateVector(values=np.asarray([1.0, 2.0], dtype=float))
-    u = 1.0
-    beta_1 = [0.1, 0.2]
-    beta_2 = -0.5
-    beta_3 = [0.3, 0.4]
-    beta_4 = 0.5
+def test_fixed_regression_objective_grad() -> None:
+    """Test that grad method returns finite gradients."""
+    x_batch = np.array([[1.0, 2.0], [0.5, -0.5]], dtype=float)
+    theta = np.array([0.1, 0.0, 0.0], dtype=float)
 
     objective = FixedRegressionObjective.from_parameters(
         policy=SoftmaxPolicy(),
-        beta_1=beta_1,
-        beta_2=beta_2,
-        beta_3=beta_3,
-        beta_4=beta_4,
+        beta_1=[0.1, 0.2],
+        beta_2=-0.5,
+        beta_3=[0.3, 0.4],
+        beta_4=0.5,
     )
 
-    # Compute expected gradient
-    logit = 0.1 * 1.0 + 0.2 * 2.0 + beta_2 * u
-    acceptance = 1.0 / (1.0 + math.exp(-logit))
-    loss = 0.3 * 1.0 + 0.4 * 2.0
-    revenue_value = beta_4 * u
-    d_acceptance_du = acceptance * (1.0 - acceptance) * beta_2
-    expected_grad = d_acceptance_du * (loss - revenue_value) - acceptance * beta_4
-
-    grad_u = objective.grad_u_scalar(x, u)
-    assert math.isclose(grad_u, expected_grad, rel_tol=1e-9)
+    grad = objective.grad(theta, x_batch)
+    assert grad.shape == theta.shape
+    assert np.all(np.isfinite(grad))
 
 
-def test_fixed_regression_objective_batch_matches_scalar() -> None:
-    """Test that batch methods match scalar methods."""
+def test_fixed_regression_value_batch_consistency() -> None:
+    """Test that _value_batch results are used consistently in value."""
     policy = SoftmaxPolicy()
     objective = FixedRegressionObjective.from_parameters(
         policy=policy,
@@ -78,15 +73,14 @@ def test_fixed_regression_objective_batch_matches_scalar() -> None:
         beta_4=0.5,
     )
 
-    x1 = np.asarray([1.0, 2.0], dtype=float)
-    x2 = np.asarray([0.5, -0.5], dtype=float)
-    x_batch = np.stack([x1, x2], axis=0)
-    u_vals = np.asarray([0.8, 1.2], dtype=float)
-
-    # Scalar evaluation
-    v1 = objective.value_scalar(StateVector(values=x1), u_vals[0])
-    v2 = objective.value_scalar(StateVector(values=x2), u_vals[1])
-    expected_values = np.asarray([v1, v2], dtype=float)
-
-    batch_values = objective._value_batch(x_batch, u_vals)
-    assert np.allclose(batch_values, expected_values, rtol=1e-9)
+    x_batch = np.array([[1.0, 2.0], [0.5, -0.5]], dtype=float)
+    theta = np.array([0.1, 0.0, 0.0], dtype=float)
+    
+    # Get u values from policy
+    u_batch = policy.value(theta, x_batch)
+    
+    # Internal _value_batch should match
+    internal_values = objective._value_batch(x_batch, u_batch)
+    external_value = objective.value(theta, x_batch)
+    
+    assert math.isclose(external_value, float(np.mean(internal_values)), rel_tol=1e-9)

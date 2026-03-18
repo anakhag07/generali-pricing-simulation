@@ -77,23 +77,31 @@ Guidelines:
 
 #### Objective Layer (`src/objective/`)
 
+- **`src/objective/_math.py`** (private)
+  - `_sigmoid(z)`: numerically stable vectorized sigmoid
+
 - **`src/objective/base.py`**
-  - `StateVector`: lightweight class wrapping a 1D numpy array; has `sample(rng, dim)` static method
-  - `Policy`: policy interface class (`value`, `grad`) where `grad` is with respect to `theta`
+  - `sample_states(rng, n, dim)`: sample n state vectors from N(0, I), returns (n, dim) array
+  - `Policy`: batch-only policy interface (`value`, `grad`) operating on 2D arrays
   - `Objective`: theta-space interface class (`value`, `grad`)
   - `default_rng(seed)`: wrapper around `np.random.default_rng`
 
 - **`src/objective/objectives/fixed_regression.py`** (source of truth for objective math)
-  - `FixedRegressionObjective`: pricing objective $$f(u;x) = a(x,u)(\ell(x) - r(u))$$; `from_parameters` classmethod, scalar + batch evaluation
+  - `FixedRegressionObjective`: pricing objective $$f(u;x) = a(x,u)(\ell(x) - r(u))$$
+  - `from_parameters` classmethod; batch evaluation via `value()`, `grad()`, `value_at_u()`
 
 - **`src/objective/objectives/planted_logistic.py`**
   - `PlantedLogisticObjective`: convex logistic objective with known optimum `u_star`
   - `optimal_u()` method exposes the planted optimum
 
 - **`src/objective/policy.py`**
-  - Implements `Policy` with `value(theta, x)` and `grad(theta, x)` methods
+  - Implements `Policy` with batch methods `value(theta, x_batch)` and `grad(theta, x_batch)`
   - Concrete policies: `ConstantPolicy`, `LinearPolicy`, `SoftmaxPolicy`
-  - Compatibility helpers: `PolicySpec`, `policy_u`, `policy_u_batch`, `policy_grad_theta`
+  - `policy_from_kind(kind)`: factory function
+
+- **`src/objective/utils.py`**
+  - `optimal_u(objective)`: public helper to extract u* from objective if available
+  - Private helpers: `_theta_grad_from_u_grad`, `_mean_action`, `_action_value_at_u`
 
 #### Data Layer (`src/data/`)
 
@@ -190,7 +198,7 @@ Guidelines:
   - `plot_loss_curves(...)`: objective vs step; optional |u - u*| subplot
   - `plot_gradient_norms(...)`: true theta gradient norms; optional error subplot
   - `plot_step_sizes(...)`: per-step step sizes (log scale y-axis)
-  - `plot_objective_u_slice(...)`: objective and gradient vs u grid
+  - `plot_objective_u_slice(...)`: objective vs u grid (no gradient subplot)
   - `plot_theta_objective_contours(...)`: 2D contour plot with optimization paths
   - `select_theta_axes_max_variance(...)`: picks the two theta axes with highest variance for contour plots
 

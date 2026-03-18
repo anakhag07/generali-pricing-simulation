@@ -7,7 +7,6 @@ from typing import Mapping, Optional, Sequence
 
 import numpy as np
 
-from objective.base import StateVector
 from experiments.config import ExperimentConfig
 
 
@@ -43,7 +42,7 @@ class ExperimentResult:
     """Full experiment result: config, samples, traces, and final values per estimator."""
 
     config: ExperimentConfig
-    x_samples: Sequence[StateVector]
+    x_samples: np.ndarray  # Shape (n_samples, state_dim)
     initial_value: float
     results: Mapping[str, EstimatorResult]
     traces: Mapping[str, OptimizationTrace]

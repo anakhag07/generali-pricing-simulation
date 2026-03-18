@@ -148,6 +148,7 @@ Guidelines:
 
 - **`src/experiments/configs/`** (preset registry)
   - `__init__.py`: `get_config(name)` and `list_configs()` registry
+  - `first_order_runs_diff_starts.py`: fixed-regression preset configured for first-order comparison runs across different initial starts
   - `fixed_regression_base.py`: base fixed-regression config (4D, L-BFGS-B step rule, W&B enabled)
   - `planted_logistic_base.py`: planted logistic base config (3D, L-BFGS-B step rule, 5000 steps, u*=1.1)
   - `config_template.py`: copy-first scaffold with `None` placeholders for all `ExperimentConfig` fields plus objective/correctness parameter blocks; not registered as a runnable preset

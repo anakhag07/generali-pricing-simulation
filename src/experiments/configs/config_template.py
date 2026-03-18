@@ -1,93 +1,138 @@
 """Template scaffold for creating new experiment presets.
 
-Copy this file, replace ``None`` placeholders with concrete values, and then
-register the new preset in ``experiments.configs.__init__``.
+Copy this file, fill in the ``None`` placeholders, then register your new
+preset in ``experiments.configs.__init__``.
 """
 
 from __future__ import annotations
 
-from typing import Literal, Sequence, TypeAlias
+# Fill these placeholders first.
 
-from experiments.config import CorrectnessSpec
-from objective.base import Objective, Policy
+# --- Core ExperimentConfig fields ---
+STATE_DIM = None  # REQUIRED
+N_SAMPLES = None  # REQUIRED
+STEP_RULE = None  # REQUIRED
+OBJECTIVE = None  # REQUIRED
+THETA0 = None  # REQUIRED
+BATCH_SIZE = None  # OPTIONAL
+SEED = None  # REQUIRED
+T_STEPS = None  # REQUIRED
+STEP_SIZE = None  # REQUIRED
+GRAD_NORM_TOL = None  # OPTIONAL
+FTOL = None  # OPTIONAL
+SIGMA = None  # REQUIRED
+N_GRAD_SAMPLES = None  # REQUIRED
+VERBOSE = None  # OPTIONAL
+PLOT = None  # OPTIONAL
+PLOT_DIR = None  # OPTIONAL
+ENABLED_ESTIMATORS = None  # REQUIRED
+WANDB_ENABLED = None  # OPTIONAL
+WANDB_PROJECT = None  # OPTIONAL
+WANDB_ENTITY = None  # OPTIONAL
+WANDB_GROUP = None  # OPTIONAL
+WANDB_JOB_TYPE = None  # OPTIONAL
+WANDB_TAGS = None  # OPTIONAL
+WANDB_MODE = None  # OPTIONAL
+WANDB_LOG_PLOTS = None  # OPTIONAL
+WANDB_ESTIMATOR_ALLOWLIST = None  # OPTIONAL
+CORRECTNESS = None  # OPTIONAL
+
+# --- Objective parameter placeholders ---
+POLICY = None  # REQUIRED when building objective
+
+FIXED_BETA_1 = None  # REQUIRED for fixed regression
+FIXED_BETA_2 = None  # REQUIRED for fixed regression
+FIXED_BETA_3 = None  # REQUIRED for fixed regression
+FIXED_BETA_4 = None  # REQUIRED for fixed regression
+
+PLANTED_ALPHA = None  # REQUIRED for planted logistic
+PLANTED_BETA = None  # REQUIRED for planted logistic
+PLANTED_BIAS = None  # REQUIRED for planted logistic
+PLANTED_U_STAR = None  # REQUIRED for planted logistic
+
+# --- CorrectnessSpec parameter placeholders ---
+CORRECTNESS_GRADIENT_SOURCE = None  # OPTIONAL: exact | numdiff | none
+CORRECTNESS_NUMDIFF_METHOD = None  # OPTIONAL: central | forward | backward
+CORRECTNESS_NUMDIFF_STEP = None  # OPTIONAL
+CORRECTNESS_NUMDIFF_AGGREGATE = None  # OPTIONAL: per-sample | batch
+CORRECTNESS_NUMDIFF_BOUNDS = None  # OPTIONAL
 
 # --- Uncomment this block to build a runnable config ---
-import numpy as np
-from experiments.config import (
-    CorrectnessSpec,
-    build_experiment_config,
-    canonical_runtime_block,
-    canonical_training_block,
-    make_fixed_regression_objective,
-    make_planted_logistic_objective,
-    make_softmax_policy,
-)
-
-# REQUIRED: define policy and initial theta
-POLICY = make_softmax_policy()
-THETA0 = np.asarray([0.1] + [0.01] * STATE_DIM, dtype=float)
-
-# REQUIRED: choose exactly ONE objective block
-OBJECTIVE = make_fixed_regression_objective(
-    policy=POLICY,
-    beta_1=None,
-    beta_2=FIXED_BETA_2,
-    beta_3=FIXED_BETA_3,
-    beta_4=FIXED_BETA_4,
-)
-# OBJECTIVE = make_planted_logistic_objective(
+# import numpy as np
+# from experiments.config import (
+#     CorrectnessSpec,
+#     build_experiment_config,
+#     canonical_runtime_block,
+#     canonical_training_block,
+#     make_fixed_regression_objective,
+#     make_planted_logistic_objective,
+#     make_softmax_policy,
+# )
+#
+# POLICY = make_softmax_policy()
+# THETA0 = np.asarray([0.1] + [0.01] * STATE_DIM, dtype=float)
+#
+# # Choose exactly one objective block.
+# OBJECTIVE = make_fixed_regression_objective(
 #     policy=POLICY,
-#     alpha=PLANTED_ALPHA,
-#     beta=PLANTED_BETA,
-#     bias=PLANTED_BIAS,
-#     u_star=PLANTED_U_STAR,
+#     beta_1=FIXED_BETA_1,
+#     beta_2=FIXED_BETA_2,
+#     beta_3=FIXED_BETA_3,
+#     beta_4=FIXED_BETA_4,
+# )
+# # OBJECTIVE = make_planted_logistic_objective(
+# #     policy=POLICY,
+# #     alpha=PLANTED_ALPHA,
+# #     beta=PLANTED_BETA,
+# #     bias=PLANTED_BIAS,
+# #     u_star=PLANTED_U_STAR,
+# # )
+#
+# TRAINING = canonical_training_block(
+#     n_samples=N_SAMPLES,
+#     step_rule=STEP_RULE,
+#     t_steps=T_STEPS,
+#     step_size=STEP_SIZE,
+#     sigma=SIGMA,
+#     n_grad_samples=N_GRAD_SAMPLES,
+#     enabled_estimators=ENABLED_ESTIMATORS,
+#     batch_size=BATCH_SIZE,
+#     grad_norm_tol=GRAD_NORM_TOL,
+#     ftol=FTOL,
+# )
+#
+# RUNTIME = canonical_runtime_block(
+#     plot=PLOT,
+#     verbose=VERBOSE,
+#     wandb_enabled=WANDB_ENABLED,
+#     plot_dir=PLOT_DIR,
+#     wandb_project=WANDB_PROJECT,
+#     wandb_entity=WANDB_ENTITY,
+#     wandb_group=WANDB_GROUP,
+#     wandb_job_type=WANDB_JOB_TYPE,
+#     wandb_tags=WANDB_TAGS,
+#     wandb_mode=WANDB_MODE,
+#     wandb_log_plots=WANDB_LOG_PLOTS,
+#     wandb_estimator_allowlist=WANDB_ESTIMATOR_ALLOWLIST,
+# )
+#
+# CORRECTNESS = CorrectnessSpec(
+#     gradient_source=CORRECTNESS_GRADIENT_SOURCE,
+#     numdiff_method=CORRECTNESS_NUMDIFF_METHOD,
+#     numdiff_step=CORRECTNESS_NUMDIFF_STEP,
+#     numdiff_aggregate=CORRECTNESS_NUMDIFF_AGGREGATE,
+#     numdiff_bounds=CORRECTNESS_NUMDIFF_BOUNDS,
+# )
+#
+# CONFIG = build_experiment_config(
+#     seed=SEED,
+#     state_dim=STATE_DIM,
+#     objective=OBJECTIVE,
+#     theta0=THETA0,
+#     training=TRAINING,
+#     runtime=RUNTIME,
+#     correctness=CORRECTNESS,
 # )
 
-TRAINING = canonical_training_block(
-    n_samples=N_SAMPLES,
-    step_rule=STEP_RULE,
-    t_steps=T_STEPS,
-    step_size=STEP_SIZE,
-    sigma=SIGMA,
-    n_grad_samples=N_GRAD_SAMPLES,
-    enabled_estimators=ENABLED_ESTIMATORS,
-    batch_size=BATCH_SIZE,
-    grad_norm_tol=GRAD_NORM_TOL,
-    ftol=FTOL,
-)
-
-RUNTIME = canonical_runtime_block(
-    plot=PLOT,
-    verbose=VERBOSE,
-    wandb_enabled=WANDB_ENABLED,
-    plot_dir=PLOT_DIR,
-    wandb_project=WANDB_PROJECT,
-    wandb_entity=WANDB_ENTITY,
-    wandb_group=WANDB_GROUP,
-    wandb_job_type=WANDB_JOB_TYPE,
-    wandb_tags=WANDB_TAGS,
-    wandb_mode=WANDB_MODE,
-    wandb_log_plots=WANDB_LOG_PLOTS,
-    wandb_estimator_allowlist=WANDB_ESTIMATOR_ALLOWLIST,
-)
-
-CORRECTNESS = CorrectnessSpec(
-    gradient_source=CORRECTNESS_GRADIENT_SOURCE,
-    numdiff_method=CORRECTNESS_NUMDIFF_METHOD,
-    numdiff_step=CORRECTNESS_NUMDIFF_STEP,
-    numdiff_aggregate=CORRECTNESS_NUMDIFF_AGGREGATE,
-    numdiff_bounds=CORRECTNESS_NUMDIFF_BOUNDS,
-)
-
-CONFIG = build_experiment_config(
-    seed=SEED,
-    state_dim=STATE_DIM,
-    objective=OBJECTIVE,
-    theta0=THETA0,
-    training=TRAINING,
-    runtime=RUNTIME,
-    correctness=CORRECTNESS,
-)
-
-# Optional placeholder if you keep this file and choose to fill it in place.
-CONFIG: object | None = None
+# Keep this template non-runnable by default.
+CONFIG = None

@@ -18,5 +18,6 @@ def test_get_config_unknown_name() -> None:
 
 def test_list_configs_includes_defaults() -> None:
     configs = list_configs()
+    assert "first_order_runs_diff_starts" in configs
     assert "fixed_regression_base" in configs
     assert "planted_logistic_base" in configs

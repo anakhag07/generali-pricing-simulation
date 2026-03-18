@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from experiments.config import ExperimentConfig
+from experiments.configs.first_order_runs_diff_starts import CONFIG as first_order_runs_diff_starts
 from experiments.configs.fixed_regression_base import CONFIG as fixed_regression_base
 from experiments.configs.planted_logistic_base import CONFIG as planted_logistic_base
 
 _CONFIGS = {
+    "first_order_runs_diff_starts": first_order_runs_diff_starts,
     "fixed_regression_base": fixed_regression_base,
     "planted_logistic_base": planted_logistic_base,
 }

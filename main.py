@@ -14,7 +14,7 @@ from experiments.reporters import (
 )
 from experiments.run import run_experiment
 
-RUN_CONFIGS = ["fixed_regression_base"]
+RUN_CONFIGS = ["first_order_runs_diff_starts"]  # List of config names to run, must be defined as a variable in the corresponding config module and included in the
 
 def main() -> None:
     for config_name in RUN_CONFIGS:

@@ -79,10 +79,11 @@ def log_summary(result: ExperimentResult) -> None:
             print(f"Objective at u*: {value_at_u_star_value:.4f}")
     print("=== Results ===")
 
-    order = ("first_order", "gauss_stein", "spsa")
+    order = ("first_order", "gauss_stein", "stein_difference", "spsa")
     labels = {
         "first_order": "first-order",
         "gauss_stein": "gauss-stein",
+        "stein_difference": "stein-difference",
         "spsa": "SPSA",
     }
     ordered = [name for name in order if name in result.results]

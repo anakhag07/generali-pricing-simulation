@@ -25,7 +25,7 @@ N_GRAD_SAMPLES = 2
 VERBOSE = True
 PLOT = True
 PLOT_DIR = "plots"
-ENABLED_ESTIMATORS = ("first_order",)
+ENABLED_ESTIMATORS = ("first_order", "stein-difference")
 WANDB_ENABLED = False
 
 FIXED_BETA_1 = np.linspace(0.02, 0.5, num=STATE_DIM, dtype=float)

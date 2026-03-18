@@ -4,7 +4,12 @@ import numpy as np
 
 from objective import FixedRegressionObjective
 from objective.policy import LinearPolicy
-from optimization import FirstOrderGradient, GaussSteinGradient, Optimization
+from optimization import (
+    FirstOrderGradient,
+    GaussSteinGradient,
+    Optimization,
+    SteinDifferenceGradient,
+)
 
 
 def _build_theta_objective() -> FixedRegressionObjective:
@@ -84,6 +89,39 @@ def test_optimization_gauss_stein_is_seed_deterministic() -> None:
         n_grad_samples=8,
         sigma=0.1,
         rng=np.random.default_rng(11),
+    )
+
+    theta_a, trace_a = optimizer_a.solve(theta_start)
+    theta_b, trace_b = optimizer_b.solve(theta_start)
+
+    assert np.allclose(theta_a, theta_b)
+    assert np.allclose(trace_a.objective_values, trace_b.objective_values)
+
+
+def test_optimization_stein_difference_is_seed_deterministic() -> None:
+    theta_start = np.asarray([0.2, 0.3], dtype=float)
+    x_samples = np.array([[1.0], [-0.5]], dtype=float)
+    objective = _build_theta_objective()
+
+    optimizer_a = Optimization(
+        objective,
+        x_samples,
+        SteinDifferenceGradient(),
+        algorithm="l-bfgs-b",
+        t_steps=20,
+        n_grad_samples=8,
+        sigma=0.1,
+        rng=np.random.default_rng(29),
+    )
+    optimizer_b = Optimization(
+        objective,
+        x_samples,
+        SteinDifferenceGradient(),
+        algorithm="l-bfgs-b",
+        t_steps=20,
+        n_grad_samples=8,
+        sigma=0.1,
+        rng=np.random.default_rng(29),
     )
 
     theta_a, trace_a = optimizer_a.solve(theta_start)

@@ -2,15 +2,24 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 from scipy.optimize import minimize
 
-from experiments.reporters import StepReporter
-from experiments.results import OptimizationTrace
 from objective.base import Objective
 from optimization.base import Optimization, TrueThetaGradFn
-from optimization.gradients import FirstOrderGradient, GaussSteinGradient, SPSAGradient
+from optimization.gradients import (
+    FirstOrderGradient,
+    GaussSteinGradient,
+    SPSAGradient,
+    SteinDifferenceGradient,
+)
 from optimization.steps import STEP_RULE_LBFGSB
+
+if TYPE_CHECKING:
+    from experiments.reporters import StepReporter
+    from experiments.results import OptimizationTrace
 
 
 def run_first_order_minimize(
@@ -113,4 +122,43 @@ def run_spsa_minimize(
     return optimizer.solve(theta_start)
 
 
-__all__ = ["run_first_order_minimize", "run_gauss_stein_minimize", "run_spsa_minimize"]
+def run_stein_difference_minimize(
+    theta_start: np.ndarray,
+    x_samples: np.ndarray,
+    objective: Objective,
+    rng: np.random.Generator,
+    t_steps: int,
+    n_grad_samples: int,
+    sigma: float,
+    batch_size: int | None = None,
+    true_grad_theta_fn: TrueThetaGradFn | None = None,
+    grad_norm_tol: float | None = None,
+    ftol: float | None = None,
+    step_reporter: StepReporter | None = None,
+) -> tuple[np.ndarray, OptimizationTrace]:
+    optimizer = Optimization(
+        objective,
+        x_samples,
+        SteinDifferenceGradient(),
+        algorithm=STEP_RULE_LBFGSB,
+        t_steps=t_steps,
+        n_grad_samples=n_grad_samples,
+        sigma=sigma,
+        batch_size=batch_size,
+        true_grad_theta_fn=true_grad_theta_fn,
+        grad_norm_tol=grad_norm_tol,
+        ftol=ftol,
+        step_reporter=step_reporter,
+        method_label="stein-difference",
+        rng=rng,
+        minimize_fn=minimize,
+    )
+    return optimizer.solve(theta_start)
+
+
+__all__ = [
+    "run_first_order_minimize",
+    "run_gauss_stein_minimize",
+    "run_spsa_minimize",
+    "run_stein_difference_minimize",
+]

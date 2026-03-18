@@ -14,6 +14,7 @@ from optimization.solvers import (
     run_first_order_minimize,
     run_gauss_stein_minimize,
     run_spsa_minimize,
+    run_stein_difference_minimize,
 )
 
 
@@ -179,6 +180,40 @@ def run_spsa(
     """Run SPSA zeroth-order optimization."""
     del step_rule, step_size  # Not used by SPSA minimize
     return run_spsa_minimize(
+        theta_start=theta_start,
+        x_samples=x_samples,
+        objective=objective,
+        rng=rng,
+        t_steps=t_steps,
+        n_grad_samples=n_grad_samples,
+        sigma=sigma,
+        batch_size=batch_size,
+        true_grad_theta_fn=true_grad_theta_fn,
+        grad_norm_tol=grad_norm_tol,
+        ftol=ftol,
+        step_reporter=step_reporter,
+    )
+
+
+def run_stein_difference(
+    theta_start: np.ndarray,
+    x_samples: np.ndarray,
+    objective: Objective,
+    rng: np.random.Generator,
+    t_steps: int,
+    step_rule: str,
+    step_size: float,
+    n_grad_samples: int,
+    sigma: float,
+    batch_size: int | None,
+    true_grad_theta_fn: TrueThetaGradFn | None = None,
+    grad_norm_tol: float | None = None,
+    ftol: float | None = None,
+    step_reporter: StepReporter | None = None,
+) -> tuple[np.ndarray, OptimizationTrace]:
+    """Run Stein-difference zeroth-order optimization."""
+    del step_rule, step_size  # Not used by SciPy minimize
+    return run_stein_difference_minimize(
         theta_start=theta_start,
         x_samples=x_samples,
         objective=objective,

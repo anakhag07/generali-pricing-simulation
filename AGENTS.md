@@ -150,6 +150,7 @@ Guidelines:
   - `__init__.py`: `get_config(name)` and `list_configs()` registry
   - `fixed_regression_base.py`: base fixed-regression config (4D, L-BFGS-B step rule, W&B enabled)
   - `planted_logistic_base.py`: planted logistic base config (3D, L-BFGS-B step rule, 5000 steps, u*=1.1)
+  - `config_template.py`: copy-first scaffold with `None` placeholders for all `ExperimentConfig` fields plus objective/correctness parameter blocks; not registered as a runnable preset
 
 - **`src/experiments/defaults.py`**
   - `default_theta0(state_dim)`: returns default initial theta with `state_dim + 1` params

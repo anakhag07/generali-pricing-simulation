@@ -52,6 +52,13 @@ Core API convention:
 Full API documentation, objective formulas, and configuration reference are
 available in `docs/` (generated via pdoc).
 
+## Creating Config Presets
+
+Use `src/experiments/configs/config_template.py` as a scaffold when creating a
+new preset. Fill in the `None` placeholders, save it as a new module under
+`src/experiments/configs/`, and register that module in
+`src/experiments/configs/__init__.py`.
+
 ## Outputs
 
 Each run writes artifacts to `outputs/<experiment_name>/<timestamp>/`:

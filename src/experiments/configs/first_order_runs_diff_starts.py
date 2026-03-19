@@ -16,17 +16,17 @@ from optimization.steps import STEP_RULE_CONSTANT, STEP_RULE_LBFGSB
 
 STATE_DIM = 5
 N_SAMPLES = 100
-STEP_RULE = STEP_RULE_CONSTANT
+STEP_RULE = STEP_RULE_LBFGSB
 SEED = 7
 T_STEPS = 1000
 STEP_SIZE = 0.01
-SIGMA = 0.00001
-N_GRAD_SAMPLES = 50000
+SIGMA = 0.01
+N_GRAD_SAMPLES = 8
 VERBOSE = True
 PLOT = True
 PLOT_DIR = "plots"
 ENABLED_ESTIMATORS = ("first_order", "spsa", "gauss_stein", "stein-difference")
-WANDB_ENABLED = False
+WANDB_ENABLED = True
 
 FIXED_BETA_1 = np.linspace(0.02, 0.5, num=STATE_DIM, dtype=float)
 FIXED_BETA_2 = -1.2

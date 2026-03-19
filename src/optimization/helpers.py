@@ -14,7 +14,11 @@ def scipy_method(algorithm: str) -> str:
     """Map algorithm string to SciPy method name."""
     if algorithm.lower() == STEP_RULE_LBFGSB:
         return "L-BFGS-B"
-    raise ValueError(f"Unsupported algorithm '{algorithm}'.")
+    raise ValueError(
+        f"Unsupported algorithm '{algorithm}'. "
+        f"Currently only '{STEP_RULE_LBFGSB}' is supported. "
+        f"Use step_rule='{STEP_RULE_LBFGSB}' in your config."
+    )
 
 
 def sample_indices(

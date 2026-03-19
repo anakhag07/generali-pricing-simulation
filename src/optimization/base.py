@@ -38,6 +38,7 @@ class Optimization:
         t_steps: int,
         n_grad_samples: int,
         sigma: float,
+        step_size: float = 0.01,
         batch_size: int | None = None,
         true_grad_theta_fn: TrueThetaGradFn | None = None,
         grad_norm_tol: float | None = None,
@@ -57,6 +58,7 @@ class Optimization:
             t_steps: Maximum number of optimization steps.
             n_grad_samples: Number of gradient samples for zeroth-order methods.
             sigma: Perturbation scale for zeroth-order methods.
+            step_size: Step size for gradient descent algorithms.
             batch_size: Mini-batch size (None for full batch).
             true_grad_theta_fn: Optional function for computing true theta gradients.
             grad_norm_tol: Early stopping threshold on gradient norm.
@@ -72,6 +74,7 @@ class Optimization:
         self.t_steps = int(t_steps)
         self.n_grad_samples = int(n_grad_samples)
         self.sigma = float(sigma)
+        self.step_size = float(step_size)
         self.batch_size = batch_size
         self.true_grad_theta_fn = true_grad_theta_fn
         self.grad_norm_tol = grad_norm_tol

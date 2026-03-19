@@ -111,7 +111,7 @@ def run_first_order(
     step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     """Run first-order optimization."""
-    del rng, step_rule, step_size  # Not used by first-order minimize
+    del rng  # Not used by first-order minimize
     return run_first_order_minimize(
         theta_start=theta_start,
         x_samples=x_samples,
@@ -119,6 +119,8 @@ def run_first_order(
         t_steps=t_steps,
         n_grad_samples=n_grad_samples,
         sigma=sigma,
+        algorithm=step_rule,
+        step_size=step_size,
         batch_size=batch_size,
         true_grad_theta_fn=true_grad_theta_fn,
         grad_norm_tol=grad_norm_tol,
@@ -144,7 +146,6 @@ def run_gauss_stein(
     step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     """Run Gauss-Stein zeroth-order optimization."""
-    del step_rule, step_size  # Not used by Gauss-Stein minimize
     return run_gauss_stein_minimize(
         theta_start=theta_start,
         x_samples=x_samples,
@@ -153,6 +154,8 @@ def run_gauss_stein(
         t_steps=t_steps,
         n_grad_samples=n_grad_samples,
         sigma=sigma,
+        algorithm=step_rule,
+        step_size=step_size,
         batch_size=batch_size,
         true_grad_theta_fn=true_grad_theta_fn,
         grad_norm_tol=grad_norm_tol,
@@ -178,7 +181,6 @@ def run_spsa(
     step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     """Run SPSA zeroth-order optimization."""
-    del step_rule, step_size  # Not used by SPSA minimize
     return run_spsa_minimize(
         theta_start=theta_start,
         x_samples=x_samples,
@@ -187,6 +189,8 @@ def run_spsa(
         t_steps=t_steps,
         n_grad_samples=n_grad_samples,
         sigma=sigma,
+        algorithm=step_rule,
+        step_size=step_size,
         batch_size=batch_size,
         true_grad_theta_fn=true_grad_theta_fn,
         grad_norm_tol=grad_norm_tol,
@@ -212,7 +216,6 @@ def run_stein_difference(
     step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     """Run Stein-difference zeroth-order optimization."""
-    del step_rule, step_size  # Not used by SciPy minimize
     return run_stein_difference_minimize(
         theta_start=theta_start,
         x_samples=x_samples,
@@ -221,6 +224,8 @@ def run_stein_difference(
         t_steps=t_steps,
         n_grad_samples=n_grad_samples,
         sigma=sigma,
+        algorithm=step_rule,
+        step_size=step_size,
         batch_size=batch_size,
         true_grad_theta_fn=true_grad_theta_fn,
         grad_norm_tol=grad_norm_tol,

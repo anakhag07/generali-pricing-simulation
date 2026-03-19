@@ -9,6 +9,7 @@ from optimization.solvers import (
     run_first_order_minimize,
     run_gauss_stein_minimize,
     run_spsa_minimize,
+    run_stein_difference_minimize,
 )
 import optimization.solvers as solvers
 
@@ -89,6 +90,34 @@ def test_spsa_minimize_is_seed_deterministic() -> None:
         x_samples,
         objective,
         np.random.default_rng(17),
+        t_steps=20,
+        n_grad_samples=8,
+        sigma=0.1,
+    )
+
+    assert np.allclose(theta_a, theta_b)
+    assert np.allclose(trace_a.objective_values, trace_b.objective_values)
+
+
+def test_stein_difference_minimize_is_seed_deterministic() -> None:
+    theta_start = np.asarray([0.2, 0.3], dtype=float)
+    x_samples = np.array([[1.0], [-0.5]], dtype=float)
+    objective = _build_theta_objective()
+
+    theta_a, trace_a = run_stein_difference_minimize(
+        theta_start,
+        x_samples,
+        objective,
+        np.random.default_rng(23),
+        t_steps=20,
+        n_grad_samples=8,
+        sigma=0.1,
+    )
+    theta_b, trace_b = run_stein_difference_minimize(
+        theta_start,
+        x_samples,
+        objective,
+        np.random.default_rng(23),
         t_steps=20,
         n_grad_samples=8,
         sigma=0.1,

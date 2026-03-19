@@ -3,6 +3,7 @@ from optimization.gradients.methods import (
     GaussSteinGradient,
     GradientMethod,
     SPSAGradient,
+    SteinDifferenceGradient,
 )
 
 __all__ = [
@@ -10,4 +11,5 @@ __all__ = [
     "FirstOrderGradient",
     "GaussSteinGradient",
     "SPSAGradient",
+    "SteinDifferenceGradient",
 ]

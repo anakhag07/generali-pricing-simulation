@@ -14,6 +14,7 @@ from experiments.helpers import (
     run_first_order,
     run_gauss_stein,
     run_spsa,
+    run_stein_difference,
 )
 from experiments.reporters import StepReporter
 from experiments.results import EstimatorResult, ExperimentResult
@@ -122,6 +123,35 @@ def run_experiment(
         value_spsa = float(objective.value(theta_spsa, x_samples))
         results["spsa"] = EstimatorResult(theta=theta_spsa, u=u_spsa, value=value_spsa, time=time_spsa)
         traces["spsa"] = trace_spsa
+
+    if "stein_difference" in enabled_estimators:
+        start_stein = time.perf_counter()
+        theta_stein, trace_stein = run_stein_difference(
+            theta_initial,
+            x_samples,
+            objective,
+            rng,
+            config.t_steps,
+            config.step_rule,
+            config.step_size,
+            config.n_grad_samples,
+            config.sigma,
+            config.batch_size,
+            true_grad_theta_fn=true_grad_theta_fn,
+            grad_norm_tol=config.grad_norm_tol,
+            ftol=config.ftol,
+            step_reporter=step_reporter,
+        )
+        time_stein = time.perf_counter() - start_stein
+        u_stein = _mean_action(policy, theta_stein, x_samples) if policy is not None else float("nan")
+        value_stein = float(objective.value(theta_stein, x_samples))
+        results["stein_difference"] = EstimatorResult(
+            theta=theta_stein,
+            u=u_stein,
+            value=value_stein,
+            time=time_stein,
+        )
+        traces["stein_difference"] = trace_stein
 
     return ExperimentResult(
         config=config,

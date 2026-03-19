@@ -74,13 +74,16 @@ class ExperimentConfig:
     correctness: CorrectnessSpec = field(default_factory=CorrectnessSpec)
 
     def __post_init__(self) -> None:
-        enabled_estimators = tuple(self.enabled_estimators)
+        estimator_aliases = {
+            "stein-difference": "stein_difference",
+        }
+        enabled_estimators = tuple(estimator_aliases.get(name, name) for name in self.enabled_estimators)
         object.__setattr__(self, "enabled_estimators", enabled_estimators)
         if not enabled_estimators:
             raise ValueError("enabled_estimators must include at least one estimator.")
         if len(set(enabled_estimators)) != len(enabled_estimators):
             raise ValueError("enabled_estimators must not contain duplicates.")
-        allowed_estimators = {"first_order", "gauss_stein", "spsa"}
+        allowed_estimators = {"first_order", "gauss_stein", "spsa", "stein_difference"}
         unknown = [name for name in enabled_estimators if name not in allowed_estimators]
         if unknown:
             allowed = ", ".join(sorted(allowed_estimators))
@@ -94,7 +97,7 @@ class ExperimentConfig:
         if self.wandb_enabled and self.wandb_mode == "disabled":
             raise ValueError("wandb_mode='disabled' is incompatible with wandb_enabled=True.")
         if self.wandb_estimator_allowlist is not None:
-            wandb_allowlist = tuple(self.wandb_estimator_allowlist)
+            wandb_allowlist = tuple(estimator_aliases.get(name, name) for name in self.wandb_estimator_allowlist)
             object.__setattr__(self, "wandb_estimator_allowlist", wandb_allowlist)
             if len(set(wandb_allowlist)) != len(wandb_allowlist):
                 raise ValueError("wandb_estimator_allowlist must not contain duplicates.")
@@ -150,8 +153,8 @@ class ExperimentConfig:
                 raise ValueError("policy must implement value(theta, x_batch) and grad(theta, x_batch).")
             # Probe with a single-sample batch
             x_probe = np.zeros((1, self.state_dim), dtype=float)
-            u_probe = policy_value(theta0_arr, x_probe)
-            if not np.all(np.isfinite(u_probe)):
+            u_probe_arr = np.asarray(policy_value(theta0_arr, x_probe), dtype=float)
+            if not bool(np.isfinite(u_probe_arr).all()):
                 raise ValueError("policy.value(theta0, x_batch) must be finite.")
             grad_probe = np.asarray(policy_grad(theta0_arr, x_probe), dtype=float)
             if grad_probe.ndim != 2 or grad_probe.shape[1] != theta0_arr.size:

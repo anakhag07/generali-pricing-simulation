@@ -12,20 +12,20 @@ from experiments.config import (
     make_fixed_regression_objective,
     make_softmax_policy,
 )
-from optimization.steps import STEP_RULE_LBFGSB
+from optimization.steps import STEP_RULE_CONSTANT, STEP_RULE_LBFGSB
 
 STATE_DIM = 5
 N_SAMPLES = 100
-STEP_RULE = STEP_RULE_LBFGSB
+STEP_RULE = STEP_RULE_CONSTANT
 SEED = 7
 T_STEPS = 1000
 STEP_SIZE = 0.01
-SIGMA = 0.05
-N_GRAD_SAMPLES = 2
+SIGMA = 0.5
+N_GRAD_SAMPLES = 50000
 VERBOSE = True
 PLOT = True
 PLOT_DIR = "plots"
-ENABLED_ESTIMATORS = ("first_order",)
+ENABLED_ESTIMATORS = ("first_order", "spsa", "gauss_stein", "stein-difference")
 WANDB_ENABLED = False
 
 FIXED_BETA_1 = np.linspace(0.02, 0.5, num=STATE_DIM, dtype=float)
@@ -36,7 +36,7 @@ FIXED_BETA_4 = 0.4
 CORRECTNESS_GRADIENT_SOURCE = "exact"
 
 POLICY = make_softmax_policy()
-THETA0 = np.asarray([-1] + [0.1] * STATE_DIM, dtype=float)
+THETA0 = np.asarray([0.1] + [0.01] * STATE_DIM, dtype=float)
 
 OBJECTIVE = make_fixed_regression_objective(
     policy=POLICY,

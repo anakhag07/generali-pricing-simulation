@@ -124,15 +124,16 @@ Guidelines:
   - `GradientMethod`: base interface for pluggable gradient estimators
   - `FirstOrderGradient`: exact theta-gradient from `objective.grad(...)`
   - `GaussSteinGradient`: value-only theta-space Gaussian-Stein estimator
+  - `SteinDifferenceGradient`: action-space Stein-SPSA hybrid estimator mapped through `policy.grad(...)`
   - `SPSAGradient`: two-sided SPSA theta-gradient estimator
 
 - **`src/optimization/solvers.py`**
-  - `run_first_order_minimize(...)`, `run_gauss_stein_minimize(...)`, `run_spsa_minimize(...)`: compatibility wrappers that instantiate `Optimization` with the corresponding gradient object and call `solve(...)`
+  - `run_first_order_minimize(...)`, `run_gauss_stein_minimize(...)`, `run_stein_difference_minimize(...)`, `run_spsa_minimize(...)`: compatibility wrappers that instantiate `Optimization` with the corresponding gradient object and call `solve(...)`
 
 - **`src/optimization/steps.py`**
   - `STEP_RULE_LBFGSB`, `STEP_RULE_CONSTANT`, `STEP_RULE_ARMIJO`, `STEP_RULES`
   - `constant_step_size(step_size)`: returns the step size unchanged
-  - `armijo_backtracking_step_size(...)`: Armijo line search utility (not used by SciPy first/Gauss-Stein/SPSA solvers)
+  - `armijo_backtracking_step_size(...)`: Armijo line search utility (not used by SciPy first/Gauss-Stein/Stein-difference/SPSA solvers)
 
 #### Experiment Layer (`src/experiments/`)
 
@@ -161,6 +162,7 @@ Guidelines:
   - `resolve_true_grad_theta_fn(objective, correctness)`: resolves the "true" theta-gradient function from correctness spec
   - `run_first_order(...)`: wrapper delegating to `optimization.solvers.run_first_order_minimize`
   - `run_gauss_stein(...)`: wrapper delegating to `optimization.solvers.run_gauss_stein_minimize`
+  - `run_stein_difference(...)`: wrapper delegating to `optimization.solvers.run_stein_difference_minimize`
   - `run_spsa(...)`: wrapper delegating to `optimization.solvers.run_spsa_minimize`
   - Internal: `_numdiff_theta_grad(...)` for finite-difference theta gradients
 
@@ -241,7 +243,7 @@ when appropriate.
 | `test_experiment_configs.py` | Config registry (get_config, list_configs) |
 | `test_file_step_logger.py` | FileStepLogger CSV output |
 | `test_minibatch_stochasticity.py` | Mini-batch determinism and full-batch equivalence |
-| `test_minimize_orders.py` | SciPy first/Gauss-Stein/SPSA wrappers (decrease + seed determinism) |
+| `test_minimize_orders.py` | SciPy first/Gauss-Stein/Stein-difference/SPSA wrappers (decrease + seed determinism) |
 | `test_optimization_class.py` | Class-based optimizer entry point and gradient-object behavior |
 | `test_objective_batch.py` | Deterministic objective private batch helpers and `value_at_u` |
 | `test_objective_package_exports.py` | objective package API exports remain importable |
@@ -253,7 +255,7 @@ when appropriate.
 | `test_state_vector.py` | `sample_states` shape and dtype |
 | `test_step_rules.py` | Armijo backtracking on quadratic |
 | `test_theta_contours.py` | Contour grid shapes, axis selection |
-| `test_trace_theta_values.py` | theta_values recorded in first/Gauss-Stein traces |
+| `test_trace_theta_values.py` | theta_values recorded in first/Gauss-Stein/Stein-difference traces |
 | `test_verbose_config.py` | verbose flag defaults and serialization |
 | `test_visualization_step_sizes.py` | step_sizes plot uses log y-scale |
 | `test_sweep_utils.py` | Override-grid expansion and preset sweep config generation |

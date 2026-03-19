@@ -88,6 +88,12 @@ def _build_result(config: ExperimentConfig) -> ExperimentResult:
             value=-0.12,
             time=0.04,
         ),
+        "stein_difference": EstimatorResult(
+            theta=np.asarray([0.15, 0.25], dtype=float),
+            u=0.56,
+            value=-0.11,
+            time=0.05,
+        ),
         "spsa": EstimatorResult(
             theta=np.asarray([0.2, 0.3], dtype=float),
             u=0.57,
@@ -186,3 +192,34 @@ def test_wandb_reporter_logs_plot_images(tmp_path: Path, monkeypatch) -> None:
     image = plot_payloads[0]["plots/loss_curves"]
     assert isinstance(image, _FakeImage)
     assert image.path.endswith("loss_curves.png")
+
+
+def test_wandb_reporter_accepts_stein_difference_alias_allowlist(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    fake_wandb = _FakeWandb()
+    monkeypatch.setitem(sys.modules, "wandb", fake_wandb)
+
+    config = _build_config(
+        enabled_estimators=("stein-difference",),
+        wandb_estimator_allowlist=("stein-difference",),
+        wandb_log_plots=False,
+    )
+    run_context = _build_run_context(tmp_path)
+    result = _build_result(config)
+
+    reporter = ReporterStack([WandbReporter()])
+    reporter.on_start(run_context, config)
+    reporter.log_step("stein_difference", 0, 0.56, -0.11, grad_norm=0.25)
+    reporter.on_end(run_context, result)
+
+    flattened_keys = {
+        key
+        for payload, _ in fake_wandb.log_calls
+        for key in payload.keys()
+    }
+    defined_metrics = {name for name, _ in fake_wandb.define_metric_calls}
+    assert "curve/stein_difference/step" in defined_metrics
+    assert "curve/stein_difference/objective" in flattened_keys
+    assert "final/stein_difference/value" in flattened_keys

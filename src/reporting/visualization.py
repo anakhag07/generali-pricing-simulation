@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Mapping, Optional, Sequence
+from typing import Callable, Mapping, Optional, Sequence, cast
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -18,9 +18,10 @@ matplotlib.use("Agg")
 ESTIMATOR_STYLES = {
     "first_order": {"label": "first-order", "color": "#1f77b4", "marker": "o"},
     "gauss_stein": {"label": "gauss-stein", "color": "#ff7f0e", "marker": "o"},
+    "stein_difference": {"label": "stein-difference", "color": "#2ca02c", "marker": "o"},
     "spsa": {"label": "SPSA", "color": "#d62728", "marker": "o"},
 }
-_TRACE_ORDER = ("first_order", "gauss_stein", "spsa")
+_TRACE_ORDER = ("first_order", "gauss_stein", "stein_difference", "spsa")
 
 
 def _ordered_traces(
@@ -233,8 +234,12 @@ def plot_objective_u_slice(
     value_at_u_fn = getattr(objective, "value_at_u", None)
     if not callable(value_at_u_fn):
         return
+    value_at_u_typed = cast(Callable[[np.ndarray, float], float], value_at_u_fn)
 
-    obj_grid = [float(value_at_u_fn(x_arr, u)) for u in u_grid]
+    def value_at_u_scalar(u: float) -> float:
+        return float(value_at_u_typed(x_arr, float(u)))
+
+    obj_grid = [value_at_u_scalar(float(u)) for u in u_grid]
 
     fig, ax = plt.subplots(1, 1, figsize=(8, 5))
 

@@ -17,11 +17,18 @@ matplotlib.use("Agg")
 
 ESTIMATOR_STYLES = {
     "first_order": {"label": "first-order", "color": "#1f77b4", "marker": "o"},
-    "gauss_stein": {"label": "gauss-stein", "color": "#ff7f0e", "marker": "o"},
-    "stein_difference": {"label": "stein-difference", "color": "#2ca02c", "marker": "o"},
-    "spsa": {"label": "SPSA", "color": "#d62728", "marker": "o"},
+    "gauss_stein": {"label": "gauss-stein", "color": "#ff7f0e", "marker": "s"},
+    "stein_difference": {"label": "stein-difference", "color": "#2ca02c", "marker": "^"},
+    "spsa": {"label": "SPSA", "color": "#d62728", "marker": "D"},
 }
 _TRACE_ORDER = ("first_order", "gauss_stein", "stein_difference", "spsa")
+_LINE_ALPHA = 0.6
+_LINE_WIDTH = 1.8
+_MARKER_SIZE = 4.2
+
+
+def _marker_every(num_points: int) -> int:
+    return max(1, num_points // 15)
 
 
 def _ordered_traces(
@@ -59,7 +66,11 @@ def plot_loss_curves(
             trace.objective_values,
             label=style["label"],
             color=style["color"],
-            alpha=0.6,
+            alpha=_LINE_ALPHA,
+            linewidth=_LINE_WIDTH,
+            marker=style["marker"],
+            markersize=_MARKER_SIZE,
+            markevery=_marker_every(len(trace.steps)),
         )
     ax_loss.set_ylabel("Objective value")
     ax_loss.legend()
@@ -74,7 +85,11 @@ def plot_loss_curves(
                 dist_values,
                 label=style["label"],
                 color=style["color"],
-                alpha=0.6,
+                alpha=_LINE_ALPHA,
+                linewidth=_LINE_WIDTH,
+                marker=style["marker"],
+                markersize=_MARKER_SIZE,
+                markevery=_marker_every(len(trace.steps)),
             )
         ax_dist.set_ylabel("|u - u*|")
         ax_dist.set_xlabel("Step")
@@ -118,7 +133,11 @@ def plot_gradient_norms(
             series,
             label=style["label"],
             color=style["color"],
-            alpha=0.6,
+            alpha=_LINE_ALPHA,
+            linewidth=_LINE_WIDTH,
+            marker=style["marker"],
+            markersize=_MARKER_SIZE,
+            markevery=_marker_every(len(trace.steps)),
         )
     if has_true:
         ax_norm.set_ylabel("|theta grad norm| (true)")
@@ -141,7 +160,11 @@ def plot_gradient_norms(
                 err_values,
                 label=f"{style['label']} error",
                 color=style["color"],
-                alpha=0.6,
+                alpha=_LINE_ALPHA,
+                linewidth=_LINE_WIDTH,
+                marker=style["marker"],
+                markersize=_MARKER_SIZE,
+                markevery=_marker_every(len(trace.steps)),
             )
         ax_err.set_ylabel("|norm error|")
         ax_err.set_xlabel("Step")
@@ -177,7 +200,11 @@ def plot_step_sizes(
             trace.step_sizes,
             label=style["label"],
             color=style["color"],
-            alpha=0.6,
+            alpha=_LINE_ALPHA,
+            linewidth=_LINE_WIDTH,
+            marker=style["marker"],
+            markersize=_MARKER_SIZE,
+            markevery=_marker_every(len(trace.steps)),
         )
         has_series = True
 
@@ -243,7 +270,7 @@ def plot_objective_u_slice(
 
     fig, ax = plt.subplots(1, 1, figsize=(8, 5))
 
-    ax.plot(u_grid, obj_grid, color="black", label="objective", alpha=0.6)
+    ax.plot(u_grid, obj_grid, color="black", label="objective", alpha=_LINE_ALPHA, linewidth=_LINE_WIDTH)
     for name, trace in trace_items:
         style = ESTIMATOR_STYLES[name]
         zorder = 4 if name == "gauss_stein" else 3
@@ -255,7 +282,7 @@ def plot_objective_u_slice(
             marker=style["marker"],
             edgecolors=style["color"],
             linewidths=0.4,
-            alpha=0.6,
+            alpha=0.75,
             zorder=zorder,
         )
     ax.set_ylabel("Objective value")
@@ -407,8 +434,11 @@ def plot_theta_objective_contours(
                 theta_path[:, axis_indices[0]],
                 theta_path[:, axis_indices[1]],
                 color=style["color"],
-                alpha=0.6,
-                linewidth=1.4,
+                alpha=_LINE_ALPHA,
+                linewidth=_LINE_WIDTH,
+                marker=style["marker"],
+                markersize=_MARKER_SIZE,
+                markevery=_marker_every(theta_path.shape[0]),
                 label=f"{style['label']} path",
             )
             show_legend = True

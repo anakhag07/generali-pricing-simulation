@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 from experiments.results import OptimizationTrace
-from reporting.visualization import plot_step_sizes
+from reporting.visualization import ESTIMATOR_STYLES, plot_loss_curves
 
 
 class DummyAxis:
     def __init__(self) -> None:
-        self._yscale = "linear"
         self.plot_calls: list[dict[str, object]] = []
 
     def plot(self, *_args, **kwargs) -> None:
@@ -24,12 +23,6 @@ class DummyAxis:
     def grid(self, *_args, **_kwargs) -> None:
         return None
 
-    def set_yscale(self, scale: str) -> None:
-        self._yscale = scale
-
-    def get_yscale(self) -> str:
-        return self._yscale
-
 
 class DummyFigure:
     def tight_layout(self) -> None:
@@ -39,7 +32,13 @@ class DummyFigure:
         return None
 
 
-def test_plot_step_sizes_uses_log_scale(monkeypatch, tmp_path) -> None:
+def test_estimator_styles_use_distinct_markers() -> None:
+    ordered_names = ("first_order", "gauss_stein", "stein_difference", "spsa")
+    markers = [ESTIMATOR_STYLES[name]["marker"] for name in ordered_names]
+    assert len(markers) == len(set(markers))
+
+
+def test_plot_loss_curves_uses_marker_and_darker_lines(monkeypatch, tmp_path) -> None:
     dummy_ax = DummyAxis()
     dummy_fig = DummyFigure()
 
@@ -57,17 +56,16 @@ def test_plot_step_sizes_uses_log_scale(monkeypatch, tmp_path) -> None:
     )
 
     trace = OptimizationTrace(
-        steps=[0, 1, 2],
-        u_values=[0.0, 0.0, 0.0],
-        objective_values=[0.0, 0.0, 0.0],
-        u_grad_estimates=[0.0, 0.0, 0.0],
-        step_sizes=[1e-2, 1e-3, 1e-4],
+        steps=[0, 1, 2, 3],
+        u_values=[0.0, 0.0, 0.0, 0.0],
+        objective_values=[1.0, 0.8, 0.6, 0.5],
+        u_grad_estimates=[0.1, 0.1, 0.1, 0.1],
     )
 
-    plot_step_sizes({"first_order": trace}, plot_dir="unused")
+    plot_loss_curves({"gauss_stein": trace}, plot_dir="unused")
 
-    assert dummy_ax.get_yscale() == "log"
     assert len(dummy_ax.plot_calls) == 1
     kwargs = dummy_ax.plot_calls[0]
-    assert kwargs["marker"] == "o"
-    assert float(kwargs["alpha"]) > 0.8
+    assert kwargs["marker"] == ESTIMATOR_STYLES["gauss_stein"]["marker"]
+    assert float(kwargs["alpha"]) == 0.6
+    assert float(kwargs["linewidth"]) >= 1.8

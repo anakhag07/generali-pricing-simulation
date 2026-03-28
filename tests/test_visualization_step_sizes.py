@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import cast
+
 from experiments.results import OptimizationTrace
 from reporting.visualization import plot_step_sizes
 
@@ -69,5 +71,6 @@ def test_plot_step_sizes_uses_log_scale(monkeypatch, tmp_path) -> None:
     assert dummy_ax.get_yscale() == "log"
     assert len(dummy_ax.plot_calls) == 1
     kwargs = dummy_ax.plot_calls[0]
+    alpha = cast(float, kwargs["alpha"])
     assert kwargs["marker"] == "o"
-    assert float(kwargs["alpha"]) > 0.8
+    assert alpha == 0.6

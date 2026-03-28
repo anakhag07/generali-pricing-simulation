@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import cast
+
 from experiments.results import OptimizationTrace
 from reporting.visualization import ESTIMATOR_STYLES, plot_loss_curves
 
@@ -66,6 +68,8 @@ def test_plot_loss_curves_uses_marker_and_darker_lines(monkeypatch, tmp_path) ->
 
     assert len(dummy_ax.plot_calls) == 1
     kwargs = dummy_ax.plot_calls[0]
+    alpha = cast(float, kwargs["alpha"])
+    linewidth = cast(float, kwargs["linewidth"])
     assert kwargs["marker"] == ESTIMATOR_STYLES["gauss_stein"]["marker"]
-    assert float(kwargs["alpha"]) == 0.6
-    assert float(kwargs["linewidth"]) >= 1.8
+    assert alpha == 0.6
+    assert linewidth >= 1.8

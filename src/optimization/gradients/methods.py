@@ -58,19 +58,12 @@ class GaussSteinGradient(GradientMethod):
 
     name = "gauss-stein"
 
-    def __init__(self) -> None:
-        self._eps_base: np.ndarray | None = None
-
     def setup(self, optimizer: "Optimization", theta0: np.ndarray) -> None:
+        del theta0
         if optimizer.n_grad_samples <= 0:
             raise ValueError("n_grad_samples must be positive.")
         if optimizer.sigma <= 0.0:
             raise ValueError("sigma must be positive.")
-        self._eps_base = optimizer.rng.normal(
-            0.0,
-            1.0,
-            size=(optimizer.n_grad_samples, theta0.size),
-        ).astype(float)
 
     def theta_grad(
         self,
@@ -78,10 +71,13 @@ class GaussSteinGradient(GradientMethod):
         theta: np.ndarray,
         indices: np.ndarray,
     ) -> np.ndarray:
-        if self._eps_base is None:
-            raise ValueError("GaussSteinGradient.setup must be called before solve.")
+        eps_samples = optimizer.rng.normal(
+            0.0,
+            1.0,
+            size=(optimizer.n_grad_samples, theta.size),
+        ).astype(float)
         accum = np.zeros_like(theta, dtype=float)
-        for eps in self._eps_base:
+        for eps in eps_samples:
             value = objective_value_on_indices(
                 optimizer.objective,
                 optimizer.x_array,
@@ -90,7 +86,7 @@ class GaussSteinGradient(GradientMethod):
                 indices,
             )
             accum += value * eps
-        return accum / float(self._eps_base.shape[0]) / max(optimizer.sigma, 1e-8)
+        return accum / float(eps_samples.shape[0]) / max(optimizer.sigma, 1e-8)
 
 
 class SPSAGradient(GradientMethod):
@@ -98,18 +94,12 @@ class SPSAGradient(GradientMethod):
 
     name = "spsa"
 
-    def __init__(self) -> None:
-        self._delta_base: np.ndarray | None = None
-
     def setup(self, optimizer: "Optimization", theta0: np.ndarray) -> None:
+        del theta0
         if optimizer.n_grad_samples <= 0:
             raise ValueError("n_grad_samples must be positive.")
         if optimizer.sigma <= 0.0:
             raise ValueError("sigma must be positive.")
-        self._delta_base = optimizer.rng.choice(
-            np.asarray([-1.0, 1.0], dtype=float),
-            size=(optimizer.n_grad_samples, theta0.size),
-        )
 
     def theta_grad(
         self,
@@ -117,10 +107,12 @@ class SPSAGradient(GradientMethod):
         theta: np.ndarray,
         indices: np.ndarray,
     ) -> np.ndarray:
-        if self._delta_base is None:
-            raise ValueError("SPSAGradient.setup must be called before solve.")
+        delta_samples = optimizer.rng.choice(
+            np.asarray([-1.0, 1.0], dtype=float),
+            size=(optimizer.n_grad_samples, theta.size),
+        )
         grad_theta = np.zeros_like(theta, dtype=float)
-        for delta in self._delta_base:
+        for delta in delta_samples:
             value_plus = objective_value_on_indices(
                 optimizer.objective,
                 optimizer.x_array,
@@ -136,7 +128,7 @@ class SPSAGradient(GradientMethod):
                 indices,
             )
             grad_theta += ((value_plus - value_minus) / (2.0 * optimizer.sigma)) * delta
-        return grad_theta / float(self._delta_base.shape[0])
+        return grad_theta / float(delta_samples.shape[0])
 
 
 def _action_objective_values(objective: object, x_array: np.ndarray, u_array: np.ndarray) -> np.ndarray:
@@ -176,16 +168,12 @@ class SteinDifferenceGradient(GradientMethod):
 
     name = "stein-difference"
 
-    def __init__(self) -> None:
-        self._w_base: np.ndarray | None = None
-
     def setup(self, optimizer: "Optimization", theta0: np.ndarray) -> None:
         del theta0
         if optimizer.n_grad_samples <= 0:
             raise ValueError("n_grad_samples must be positive.")
         if optimizer.sigma <= 0.0:
             raise ValueError("sigma must be positive.")
-        self._w_base = optimizer.rng.normal(0.0, 1.0, size=optimizer.n_grad_samples).astype(float)
 
     def theta_grad(
         self,
@@ -193,9 +181,6 @@ class SteinDifferenceGradient(GradientMethod):
         theta: np.ndarray,
         indices: np.ndarray,
     ) -> np.ndarray:
-        if self._w_base is None:
-            raise ValueError("SteinDifferenceGradient.setup must be called before solve.")
-
         policy = getattr(optimizer.objective, "policy", None)
         policy_value = getattr(policy, "value", None)
         policy_grad = getattr(policy, "grad", None)
@@ -214,11 +199,12 @@ class SteinDifferenceGradient(GradientMethod):
 
         sigma = optimizer.sigma
         grad_u = np.zeros(x_arr.shape[0], dtype=float)
-        for w_j in self._w_base:
+        w_samples = optimizer.rng.normal(0.0, 1.0, size=optimizer.n_grad_samples).astype(float)
+        for w_j in w_samples:
             values_plus = _action_objective_values(optimizer.objective, x_arr, u_arr + sigma * w_j)
             values_minus = _action_objective_values(optimizer.objective, x_arr, u_arr - sigma * w_j)
             grad_u += ((values_plus - values_minus) / (2.0 * sigma)) * w_j
-        grad_u /= float(self._w_base.shape[0])
+        grad_u /= float(w_samples.shape[0])
 
         return np.mean(grad_u[:, None] * grad_pi, axis=0)
 

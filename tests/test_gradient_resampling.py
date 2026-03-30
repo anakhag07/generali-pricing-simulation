@@ -5,6 +5,7 @@ import numpy as np
 from objective import FixedRegressionObjective
 from objective.policy import LinearPolicy
 from optimization import (
+    FiniteDifferenceGradient,
     FirstOrderGradient,
     GaussSteinGradient,
     Optimization,
@@ -38,6 +39,18 @@ def _build_optimizer(gradient: object, seed: int) -> Optimization:
 
 def test_first_order_theta_grad_is_stable_across_calls() -> None:
     optimizer = _build_optimizer(FirstOrderGradient(), seed=0)
+    theta = np.asarray([0.2, 0.3], dtype=float)
+    indices = np.arange(optimizer.n_total, dtype=int)
+
+    optimizer.gradient.setup(optimizer, theta)
+    grad_a = optimizer.gradient.theta_grad(optimizer, theta, indices)
+    grad_b = optimizer.gradient.theta_grad(optimizer, theta, indices)
+
+    assert np.allclose(grad_a, grad_b)
+
+
+def test_finite_difference_theta_grad_is_stable_across_calls() -> None:
+    optimizer = _build_optimizer(FiniteDifferenceGradient(), seed=5)
     theta = np.asarray([0.2, 0.3], dtype=float)
     indices = np.arange(optimizer.n_total, dtype=int)
 

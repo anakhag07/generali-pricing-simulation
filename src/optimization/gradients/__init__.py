@@ -1,4 +1,5 @@
 from optimization.gradients.methods import (
+    FiniteDifferenceGradient,
     FirstOrderGradient,
     GaussSteinGradient,
     GradientMethod,
@@ -9,6 +10,7 @@ from optimization.gradients.methods import (
 __all__ = [
     "GradientMethod",
     "FirstOrderGradient",
+    "FiniteDifferenceGradient",
     "GaussSteinGradient",
     "SPSAGradient",
     "SteinDifferenceGradient",

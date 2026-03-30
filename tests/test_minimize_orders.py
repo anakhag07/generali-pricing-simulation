@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from objective import FixedRegressionObjective
 from objective.policy import LinearPolicy
 from optimization.solvers import (
+    run_finite_difference_minimize,
     run_first_order_minimize,
     run_gauss_stein_minimize,
     run_spsa_minimize,
@@ -41,6 +42,50 @@ def test_first_order_minimize_reduces_objective() -> None:
     assert trace.objective_values
     assert trace.objective_values[-1] <= trace.objective_values[0] + 1e-10
     assert theta_final.shape == theta_start.shape
+
+
+def test_finite_difference_minimize_reduces_objective() -> None:
+    theta_start = np.asarray([0.2, 0.3], dtype=float)
+    x_samples = np.array([[1.0], [-0.5]], dtype=float)
+    objective = _build_theta_objective()
+
+    theta_final, trace = run_finite_difference_minimize(
+        theta_start,
+        x_samples,
+        objective,
+        t_steps=25,
+        n_grad_samples=1,
+        sigma=1e-3,
+    )
+    assert trace.objective_values
+    assert trace.objective_values[-1] <= trace.objective_values[0] + 1e-10
+    assert theta_final.shape == theta_start.shape
+
+
+def test_finite_difference_minimize_is_deterministic() -> None:
+    theta_start = np.asarray([0.2, 0.3], dtype=float)
+    x_samples = np.array([[1.0], [-0.5]], dtype=float)
+    objective = _build_theta_objective()
+
+    theta_a, trace_a = run_finite_difference_minimize(
+        theta_start,
+        x_samples,
+        objective,
+        t_steps=20,
+        n_grad_samples=1,
+        sigma=1e-3,
+    )
+    theta_b, trace_b = run_finite_difference_minimize(
+        theta_start,
+        x_samples,
+        objective,
+        t_steps=20,
+        n_grad_samples=1,
+        sigma=1e-3,
+    )
+
+    assert np.allclose(theta_a, theta_b)
+    assert np.allclose(trace_a.objective_values, trace_b.objective_values)
 
 
 def test_gauss_stein_minimize_is_seed_deterministic() -> None:

@@ -2,12 +2,20 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 
 from objective.utils import _mean_action
 from optimization.steps import STEP_RULE_LBFGSB
+
+
+def _clamp_theta(theta: np.ndarray, bounds: tuple[float, float] | None) -> np.ndarray:
+    theta_arr = np.asarray(theta, dtype=float)
+    if bounds is None:
+        return theta_arr
+    lower, upper = bounds
+    return np.clip(theta_arr, lower, upper)
 
 
 def scipy_method(algorithm: str) -> str:
@@ -62,6 +70,52 @@ def objective_grad_on_indices(
     return np.asarray(objective.grad(theta, x_batch(x_array, indices, n_total)), dtype=float)
 
 
+def finite_difference_theta_grad(
+    value_fn: Callable[[np.ndarray], float],
+    theta: np.ndarray,
+    method: str,
+    step: float,
+    bounds: tuple[float, float] | None = None,
+) -> np.ndarray:
+    """Compute a theta gradient from scalar objective evaluations."""
+    theta_arr = np.asarray(theta, dtype=float)
+    if method not in {"central", "forward", "backward"}:
+        raise ValueError(f"Unknown numdiff method '{method}'.")
+    if step <= 0.0:
+        raise ValueError("Finite-difference step must be positive.")
+
+    grad = np.zeros_like(theta_arr)
+    center_value = float(value_fn(theta_arr)) if method in {"forward", "backward"} else None
+
+    for idx in range(theta_arr.size):
+        basis = np.zeros_like(theta_arr)
+        basis[idx] = 1.0
+        if method == "central":
+            theta_plus = _clamp_theta(theta_arr + step * basis, bounds)
+            theta_minus = _clamp_theta(theta_arr - step * basis, bounds)
+            denom = theta_plus[idx] - theta_minus[idx]
+            if denom == 0.0:
+                grad[idx] = 0.0
+            else:
+                grad[idx] = (float(value_fn(theta_plus)) - float(value_fn(theta_minus))) / denom
+            continue
+        if method == "forward":
+            theta_plus = _clamp_theta(theta_arr + step * basis, bounds)
+            denom = theta_plus[idx] - theta_arr[idx]
+            if denom == 0.0:
+                grad[idx] = 0.0
+            else:
+                grad[idx] = (float(value_fn(theta_plus)) - float(center_value)) / denom
+            continue
+        theta_minus = _clamp_theta(theta_arr - step * basis, bounds)
+        denom = theta_arr[idx] - theta_minus[idx]
+        if denom == 0.0:
+            grad[idx] = 0.0
+        else:
+            grad[idx] = (float(center_value) - float(value_fn(theta_minus))) / denom
+    return grad
+
+
 def mean_action_on_indices(
     objective: Any,
     x_array: np.ndarray,
@@ -77,6 +131,7 @@ def mean_action_on_indices(
 
 
 __all__ = [
+    "finite_difference_theta_grad",
     "mean_action_on_indices",
     "objective_grad_on_indices",
     "objective_value_on_indices",

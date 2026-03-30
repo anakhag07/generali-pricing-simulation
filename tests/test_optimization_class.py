@@ -5,6 +5,7 @@ import numpy as np
 from objective import FixedRegressionObjective
 from objective.policy import LinearPolicy
 from optimization import (
+    FiniteDifferenceGradient,
     FirstOrderGradient,
     GaussSteinGradient,
     Optimization,
@@ -36,6 +37,27 @@ def test_optimization_first_order_reduces_objective() -> None:
         t_steps=25,
         n_grad_samples=4,
         sigma=0.1,
+    )
+    theta_final, trace = optimizer.solve(theta_start)
+
+    assert trace.objective_values
+    assert trace.objective_values[-1] <= trace.objective_values[0] + 1e-10
+    assert theta_final.shape == theta_start.shape
+
+
+def test_optimization_finite_difference_reduces_objective() -> None:
+    theta_start = np.asarray([0.2, 0.3], dtype=float)
+    x_samples = np.array([[1.0], [-0.5]], dtype=float)
+    objective = _build_theta_objective()
+
+    optimizer = Optimization(
+        objective,
+        x_samples,
+        FiniteDifferenceGradient(),
+        algorithm="l-bfgs-b",
+        t_steps=25,
+        n_grad_samples=1,
+        sigma=1e-3,
     )
     theta_final, trace = optimizer.solve(theta_start)
 

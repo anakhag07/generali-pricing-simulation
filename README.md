@@ -41,7 +41,10 @@ $$
 Pluggable components:
 - **Objectives**: `FixedRegressionObjective`, `PlantedLogisticObjective`
 - **Policies**: `ConstantPolicy`, `LinearPolicy`, `SoftmaxPolicy`
-- **Gradient estimators**: `first_order`, `gauss_stein`, `stein_difference`, `spsa`
+- **Gradient estimators**: `first_order`, `finite_difference`, `gauss_stein`, `stein_difference`, `spsa`
+
+`finite_difference` is a deterministic coordinate-wise central-difference baseline
+that uses `2 * dim(theta)` objective evaluations per gradient call.
 
 Core API convention:
 - `sample_states(rng, n, dim)` produces state batches with shape `(n, dim)`.
@@ -75,7 +78,8 @@ docstrings in `src/experiments/config.py` for W&B configuration fields.
 To add a new value-query estimator and run it through experiments:
 
 1. Add a `GradientMethod` class in `src/optimization/gradients/methods.py`
-   (follow `GaussSteinGradient` / `SteinDifferenceGradient` / `SPSAGradient`).
+   (follow `FiniteDifferenceGradient` / `GaussSteinGradient` /
+   `SteinDifferenceGradient` / `SPSAGradient`).
 2. Re-export it in `src/optimization/gradients/__init__.py`.
 3. Add a solver wrapper in `src/optimization/solvers.py` that instantiates
    `Optimization(..., <YourGradientMethod>(), ...)`.

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from experiments.configs.planted_logistic_base import BETA
 import numpy as np
 
 from experiments.config import (
@@ -10,6 +11,7 @@ from experiments.config import (
     canonical_runtime_block,
     canonical_training_block,
     make_fixed_regression_objective,
+    make_planted_logistic_objective,
     make_softmax_policy,
 )
 from optimization.steps import STEP_RULE_CONSTANT, STEP_RULE_LBFGSB
@@ -38,13 +40,20 @@ CORRECTNESS_GRADIENT_SOURCE = "exact"
 POLICY = make_softmax_policy()
 THETA0 = np.asarray([0.1] + [0.01] * STATE_DIM, dtype=float)
 
-OBJECTIVE = make_fixed_regression_objective(
-    policy=POLICY,
-    beta_1=FIXED_BETA_1,
-    beta_2=FIXED_BETA_2,
-    beta_3=FIXED_BETA_3,
-    beta_4=FIXED_BETA_4,
-)
+# OBJECTIVE = make_fixed_regression_objective(
+#     policy=POLICY,
+#     beta_1=FIXED_BETA_1,
+#     beta_2=FIXED_BETA_2,
+#     beta_3=FIXED_BETA_3,
+#     beta_4=FIXED_BETA_4,
+# )
+OBJECTIVE = make_planted_logistic_objective(
+    policy=make_softmax_policy(),
+    alpha=1.0,
+    beta=BETA,
+    bias=-0.2,
+    u_star=1.1,
+),
 
 TRAINING = canonical_training_block(
     n_samples=N_SAMPLES,

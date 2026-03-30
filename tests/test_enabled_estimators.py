@@ -35,6 +35,36 @@ def test_run_experiment_single_estimator() -> None:
     assert "lbfgs" not in result.results
 
 
+def test_run_experiment_finite_difference_only() -> None:
+    objective = FixedRegressionObjective.from_parameters(
+        policy=default_policy(1),
+        beta_1=[0.1],
+        beta_2=-0.5,
+        beta_3=[0.2],
+        beta_4=0.4,
+    )
+    config = ExperimentConfig(
+        seed=3,
+        state_dim=1,
+        objective=objective,
+        theta0=default_theta0(1),
+        n_samples=1,
+        step_rule="l-bfgs-b",
+        t_steps=2,
+        step_size=0.01,
+        n_grad_samples=1,
+        sigma=1e-3,
+        plot=False,
+        enabled_estimators=("finite_difference",),
+    )
+    result = run_experiment(config)
+    assert "finite_difference" in result.results
+    assert isinstance(result.results["finite_difference"].u, float)
+    assert "first_order" not in result.results
+    assert "gauss_stein" not in result.results
+    assert "spsa" not in result.results
+
+
 def test_run_experiment_spsa_only() -> None:
     objective = FixedRegressionObjective.from_parameters(
         policy=default_policy(1),

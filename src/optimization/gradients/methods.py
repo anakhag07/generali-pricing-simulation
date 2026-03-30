@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Callable, cast
 import numpy as np
 
 from optimization.helpers import (
+    finite_difference_theta_grad,
     objective_grad_on_indices,
     objective_value_on_indices,
     x_batch,
@@ -50,6 +51,36 @@ class FirstOrderGradient(GradientMethod):
             optimizer.n_total,
             theta,
             indices,
+        )
+
+
+class FiniteDifferenceGradient(GradientMethod):
+    """Central finite-difference estimator: $$\\sum_{k=1}^d \\frac{J(\\theta+\\sigma e_k)-J(\\theta-\\sigma e_k)}{2\\sigma} e_k$$."""
+
+    name = "finite-difference"
+
+    def setup(self, optimizer: "Optimization", theta0: np.ndarray) -> None:
+        del theta0
+        if optimizer.sigma <= 0.0:
+            raise ValueError("sigma must be positive.")
+
+    def theta_grad(
+        self,
+        optimizer: "Optimization",
+        theta: np.ndarray,
+        indices: np.ndarray,
+    ) -> np.ndarray:
+        return finite_difference_theta_grad(
+            lambda theta_eval: objective_value_on_indices(
+                optimizer.objective,
+                optimizer.x_array,
+                optimizer.n_total,
+                theta_eval,
+                indices,
+            ),
+            theta,
+            method="central",
+            step=optimizer.sigma,
         )
 
 
@@ -212,6 +243,7 @@ class SteinDifferenceGradient(GradientMethod):
 __all__ = [
     "GradientMethod",
     "FirstOrderGradient",
+    "FiniteDifferenceGradient",
     "GaussSteinGradient",
     "SPSAGradient",
     "SteinDifferenceGradient",

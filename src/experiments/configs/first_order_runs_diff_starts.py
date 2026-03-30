@@ -21,12 +21,12 @@ SEED = 7
 T_STEPS = 1000
 STEP_SIZE = 0.01
 SIGMA = 0.01
-N_GRAD_SAMPLES = 2
+N_GRAD_SAMPLES = 256
 VERBOSE = True
 PLOT = True
 PLOT_DIR = "plots"
-ENABLED_ESTIMATORS = ("first_order", "spsa", "gauss_stein", "stein-difference")
-WANDB_ENABLED = True
+ENABLED_ESTIMATORS = ("first_order", "stein-difference")
+WANDB_ENABLED = False
 
 FIXED_BETA_1 = np.linspace(0.02, 0.5, num=STATE_DIM, dtype=float)
 FIXED_BETA_2 = -1.2

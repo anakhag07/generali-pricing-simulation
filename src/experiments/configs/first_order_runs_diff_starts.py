@@ -44,20 +44,20 @@ CORRECTNESS_GRADIENT_SOURCE = "exact"
 POLICY = make_softmax_policy()
 THETA0 = np.asarray([0.1] + [0.01] * STATE_DIM, dtype=float)
 
-# OBJECTIVE = make_fixed_regression_objective(
-#     policy=POLICY,
-#     beta_1=FIXED_BETA_1,
-#     beta_2=FIXED_BETA_2,
-#     beta_3=FIXED_BETA_3,
-#     beta_4=FIXED_BETA_4,
-# )
-OBJECTIVE = make_planted_logistic_objective(
+OBJECTIVE = make_fixed_regression_objective(
     policy=POLICY,
-    alpha=PLANTED_ALPHA,
-    beta=PLANTED_BETA,
-    bias=PLANTED_BIAS,
-    u_star=PLANTED_U_STAR,
+    beta_1=FIXED_BETA_1,
+    beta_2=FIXED_BETA_2,
+    beta_3=FIXED_BETA_3,
+    beta_4=FIXED_BETA_4,
 )
+# OBJECTIVE = make_planted_logistic_objective(
+#     policy=POLICY,
+#     alpha=PLANTED_ALPHA,
+#     beta=PLANTED_BETA,
+#     bias=PLANTED_BIAS,
+#     u_star=PLANTED_U_STAR,
+# )
 
 TRAINING = canonical_training_block(
     n_samples=N_SAMPLES,

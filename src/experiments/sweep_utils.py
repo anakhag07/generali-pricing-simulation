@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import fields, replace
 from itertools import product
+from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from experiments.config import ExperimentConfig
@@ -49,11 +50,30 @@ def make_sweep_name(base_name: str, index: int, overrides: Mapping[str, Any]) ->
     return f"{base_name}__sweep_{index:03d}__{suffix}"
 
 
+def make_display_name(
+    base_name: str,
+    index: int,
+    overrides: Mapping[str, Any],
+    *,
+    display_keys: Sequence[str] | None = None,
+) -> str:
+    """Build a compact display name using only selected override keys."""
+    if display_keys is None:
+        keys = sorted(overrides.keys())
+    else:
+        keys = [key for key in display_keys if key in overrides]
+    if not keys:
+        return f"{base_name}__run_{index:03d}"
+    parts = [f"{_display_key_label(key)}-{_stringify_override_value(overrides[key])}" for key in keys]
+    return "__".join(parts)
+
+
 def generate_sweep_runs(
     *,
     base_preset: str,
     override_grid: Mapping[str, Sequence[Any]] | None = None,
     override_list: Sequence[Mapping[str, Any]] | None = None,
+    display_keys: Sequence[str] | None = None,
 ) -> list[tuple[str, ExperimentConfig, dict[str, Any]]]:
     """Generate named configs by applying overrides to a base preset."""
     if override_grid is not None and override_list is not None:
@@ -70,7 +90,12 @@ def generate_sweep_runs(
     runs: list[tuple[str, ExperimentConfig, dict[str, Any]]] = []
     for index, override in enumerate(overrides, start=1):
         config = apply_config_overrides(base_config, override)
-        run_name = make_sweep_name(base_preset, index=index, overrides=override)
+        run_name = make_display_name(
+            base_preset,
+            index=index,
+            overrides=override,
+            display_keys=display_keys,
+        )
         runs.append((run_name, config, override))
     return runs
 
@@ -81,17 +106,21 @@ def run_preset_sweep(
     override_grid: Mapping[str, Sequence[Any]] | None = None,
     override_list: Sequence[Mapping[str, Any]] | None = None,
     runs_root: str = "outputs",
+    project_name: str | None = None,
+    display_keys: Sequence[str] | None = None,
 ) -> list[tuple[str, ExperimentResult]]:
     """Execute a preset sweep and return `(run_name, result)` pairs."""
     sweep_runs = generate_sweep_runs(
         base_preset=base_preset,
         override_grid=override_grid,
         override_list=override_list,
+        display_keys=display_keys,
     )
     results: list[tuple[str, ExperimentResult]] = []
+    runs_root_path = _project_runs_root(runs_root, project_name)
 
     for run_name, config, _ in sweep_runs:
-        run_context = create_run_context(run_name, runs_root=runs_root)
+        run_context = create_run_context(run_name, runs_root=runs_root_path)
         reporter_list = [
             ConsoleReporter(verbose=config.verbose),
             FileStepLogger(),
@@ -112,3 +141,17 @@ def run_preset_sweep(
 def _stringify_override_value(value: Any) -> str:
     text = str(value)
     return text.replace(" ", "").replace("/", "-")
+
+
+def _display_key_label(key: str) -> str:
+    aliases = {
+        "n_grad_samples": "ngrad",
+        "n_samples": "nsamp",
+    }
+    return aliases.get(key, key)
+
+
+def _project_runs_root(runs_root: str, project_name: str | None) -> str:
+    if not project_name:
+        return runs_root
+    return str(Path(runs_root) / _stringify_override_value(project_name))

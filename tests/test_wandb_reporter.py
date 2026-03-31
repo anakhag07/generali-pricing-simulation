@@ -13,6 +13,7 @@ from experiments.config import ExperimentConfig
 from experiments.defaults import default_theta0, default_policy
 from experiments.reporters import ReporterStack, RunContext, WandbReporter
 from experiments.results import EstimatorResult, ExperimentResult
+from experiments.run import run_experiment
 from objective import FixedRegressionObjective
 
 
@@ -131,6 +132,8 @@ def test_wandb_reporter_streams_and_summarizes(tmp_path: Path, monkeypatch) -> N
 
     defined = {name: kwargs for name, kwargs in fake_wandb.define_metric_calls}
     assert "curve/first_order/step" in defined
+    assert defined["curve/first_order/step"]["hidden"] is True
+    assert defined["curve/first_order/step"]["summary"] == "none"
     assert defined["curve/first_order/objective"]["step_metric"] == "curve/first_order/step"
     assert defined["curve/first_order/u"]["step_metric"] == "curve/first_order/step"
 
@@ -223,3 +226,39 @@ def test_wandb_reporter_accepts_stein_difference_alias_allowlist(
     assert "curve/stein_difference/step" in defined_metrics
     assert "curve/stein_difference/objective" in flattened_keys
     assert "final/stein_difference/value" in flattened_keys
+
+
+def test_wandb_reporter_runtime_logs_use_canonical_estimator_keys(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    fake_wandb = _FakeWandb()
+    monkeypatch.setitem(sys.modules, "wandb", fake_wandb)
+
+    config = _build_config(
+        step_rule="l-bfgs-b",
+        t_steps=1,
+        sigma=1e-3,
+        n_grad_samples=2,
+        wandb_log_plots=False,
+        enabled_estimators=("first_order", "finite_difference", "spsa", "stein_difference"),
+    )
+    run_context = _build_run_context(tmp_path)
+    reporter = ReporterStack([WandbReporter()])
+
+    reporter.on_start(run_context, config)
+    result = run_experiment(config, step_reporter=reporter)
+    reporter.on_end(run_context, result)
+
+    curve_steps: dict[str, list[int]] = {}
+    for payload, _ in fake_wandb.log_calls:
+        for key, value in payload.items():
+            if not key.startswith("curve/") or not key.endswith("/step"):
+                continue
+            method = key.removeprefix("curve/").removesuffix("/step")
+            curve_steps.setdefault(method, []).append(int(value))
+
+    assert set(curve_steps) == set(config.enabled_estimators)
+    assert all("-" not in method for method in curve_steps)
+    for method in config.enabled_estimators:
+        assert curve_steps[method][0] == 0

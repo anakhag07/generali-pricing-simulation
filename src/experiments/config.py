@@ -338,7 +338,7 @@ def canonical_runtime_block(
     wandb_enabled: bool,
     plot_dir: str = "plots",
     wandb_project: str | None = None,
-    wandb_entity: str | None = None,
+    wandb_entity: str | None = "generali-pricing",
     wandb_group: str | None = None,
     wandb_job_type: str = "experiment",
     wandb_tags: tuple[str, ...] = (),

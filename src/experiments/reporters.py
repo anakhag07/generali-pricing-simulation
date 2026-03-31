@@ -230,7 +230,7 @@ class WandbReporter:
             return
         for method in self._tracked_estimators:
             step_metric = f"curve/{method}/step"
-            self._wandb.define_metric(step_metric)
+            self._wandb.define_metric(step_metric, hidden=True, summary="none")
             self._wandb.define_metric(f"curve/{method}/u", step_metric=step_metric)
             self._wandb.define_metric(f"curve/{method}/objective", step_metric=step_metric)
             self._wandb.define_metric(

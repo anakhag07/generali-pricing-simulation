@@ -52,7 +52,7 @@ def run_first_order_minimize(
         grad_norm_tol=grad_norm_tol,
         ftol=ftol,
         step_reporter=step_reporter,
-        method_label="first-order",
+        method_label="first_order",
         minimize_fn=minimize,
     )
     return optimizer.solve(theta_start)
@@ -87,7 +87,7 @@ def run_finite_difference_minimize(
         grad_norm_tol=grad_norm_tol,
         ftol=ftol,
         step_reporter=step_reporter,
-        method_label="finite-difference",
+        method_label="finite_difference",
         minimize_fn=minimize,
     )
     return optimizer.solve(theta_start)
@@ -123,7 +123,7 @@ def run_gauss_stein_minimize(
         grad_norm_tol=grad_norm_tol,
         ftol=ftol,
         step_reporter=step_reporter,
-        method_label="gauss-stein",
+        method_label="gauss_stein",
         rng=rng,
         minimize_fn=minimize,
     )
@@ -197,7 +197,7 @@ def run_stein_difference_minimize(
         grad_norm_tol=grad_norm_tol,
         ftol=ftol,
         step_reporter=step_reporter,
-        method_label="stein-difference",
+        method_label="stein_difference",
         rng=rng,
         minimize_fn=minimize,
     )

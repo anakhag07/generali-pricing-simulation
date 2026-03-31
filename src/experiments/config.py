@@ -62,6 +62,7 @@ class ExperimentConfig:
     plot: bool = True
     plot_dir: str = "plots"
     enabled_estimators: tuple[str, ...] = ("first_order", "gauss_stein")
+    perturbation_space: Literal["theta", "u"] = "theta"
     wandb_enabled: bool = False
     wandb_project: str | None = None
     wandb_entity: str | None = None
@@ -77,6 +78,7 @@ class ExperimentConfig:
         estimator_aliases = {
             "finite-difference": "finite_difference",
             "stein-difference": "stein_difference",
+            "stein-difference-theta": "stein_difference_theta",
         }
         enabled_estimators = tuple(estimator_aliases.get(name, name) for name in self.enabled_estimators)
         object.__setattr__(self, "enabled_estimators", enabled_estimators)
@@ -90,12 +92,16 @@ class ExperimentConfig:
             "gauss_stein",
             "spsa",
             "stein_difference",
+            "stein_difference_theta",
         }
         unknown = [name for name in enabled_estimators if name not in allowed_estimators]
         if unknown:
             allowed = ", ".join(sorted(allowed_estimators))
             unknown_list = ", ".join(unknown)
             raise ValueError(f"Unknown estimators: {unknown_list}. Allowed: {allowed}.")
+
+        if self.perturbation_space not in {"theta", "u"}:
+            raise ValueError("perturbation_space must be 'theta' or 'u'.")
 
         wandb_tags = tuple(self.wandb_tags)
         object.__setattr__(self, "wandb_tags", wandb_tags)
@@ -114,6 +120,13 @@ class ExperimentConfig:
                 unknown_list = ", ".join(unknown_wandb)
                 raise ValueError(
                     f"Unknown wandb estimators: {unknown_list}. Allowed: {allowed}."
+                )
+
+        if self.perturbation_space == "u":
+            policy = getattr(self.objective, "policy", None)
+            if policy is None or not callable(getattr(policy, "value", None)) or not callable(getattr(policy, "grad", None)):
+                raise ValueError(
+                    "perturbation_space='u' requires objective.policy with value() and grad()."
                 )
 
         if self.state_dim <= 0:
@@ -187,6 +200,7 @@ class ExperimentConfig:
             "plot": bool(self.plot),
             "plot_dir": self.plot_dir,
             "enabled_estimators": list(self.enabled_estimators),
+            "perturbation_space": self.perturbation_space,
             "theta0": _as_list(self.theta0),
             "objective": _objective_to_dict(self.objective),
             "wandb": {

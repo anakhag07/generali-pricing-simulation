@@ -55,7 +55,11 @@ class FirstOrderGradient(GradientMethod):
 
 
 class FiniteDifferenceGradient(GradientMethod):
-    """Central finite-difference estimator: $$\\sum_{k=1}^d \\frac{J(\\theta+\\sigma e_k)-J(\\theta-\\sigma e_k)}{2\\sigma} e_k$$."""
+    """Central finite-difference estimator: $$\\sum_{k=1}^d \\frac{J(\\theta+\\sigma e_k)-J(\\theta-\\sigma e_k)}{2\\sigma} e_k$$.
+
+    When ``optimizer.perturbation_space == "u"``, perturbs actions instead of parameters,
+    requiring only 2 objective evaluations regardless of ``dim(theta)``.
+    """
 
     name = "finite-difference"
 
@@ -70,6 +74,8 @@ class FiniteDifferenceGradient(GradientMethod):
         theta: np.ndarray,
         indices: np.ndarray,
     ) -> np.ndarray:
+        if getattr(optimizer, "perturbation_space", "theta") == "u":
+            return _u_space_fd_grad(optimizer, theta, indices)
         return finite_difference_theta_grad(
             lambda theta_eval: objective_value_on_indices(
                 optimizer.objective,
@@ -85,7 +91,11 @@ class FiniteDifferenceGradient(GradientMethod):
 
 
 class GaussSteinGradient(GradientMethod):
-    """Stein estimator: $$\\hat{g} = \\mathbb{E}[J(\\theta + \\sigma\\varepsilon)\\varepsilon]/\\sigma$$."""
+    """Stein estimator: $$\\hat{g} = \\mathbb{E}[J(\\theta + \\sigma\\varepsilon)\\varepsilon]/\\sigma$$.
+
+    When ``optimizer.perturbation_space == "u"``, applies one-sided Gaussian perturbations
+    to actions and maps back to theta via chain rule.
+    """
 
     name = "gauss-stein"
 
@@ -102,6 +112,8 @@ class GaussSteinGradient(GradientMethod):
         theta: np.ndarray,
         indices: np.ndarray,
     ) -> np.ndarray:
+        if getattr(optimizer, "perturbation_space", "theta") == "u":
+            return _u_space_gauss_stein_grad(optimizer, theta, indices)
         eps_samples = optimizer.rng.normal(
             0.0,
             1.0,
@@ -121,7 +133,11 @@ class GaussSteinGradient(GradientMethod):
 
 
 class SPSAGradient(GradientMethod):
-    """SPSA estimator: $$\\hat{g} = (J(\\theta+\\sigma\\Delta) - J(\\theta-\\sigma\\Delta))\\Delta / 2\\sigma$$."""
+    """SPSA estimator: $$\\hat{g} = (J(\\theta+\\sigma\\Delta) - J(\\theta-\\sigma\\Delta))\\Delta / 2\\sigma$$.
+
+    When ``optimizer.perturbation_space == "u"``, applies Rademacher perturbations to actions
+    and maps back to theta via chain rule.
+    """
 
     name = "spsa"
 
@@ -138,6 +154,8 @@ class SPSAGradient(GradientMethod):
         theta: np.ndarray,
         indices: np.ndarray,
     ) -> np.ndarray:
+        if getattr(optimizer, "perturbation_space", "theta") == "u":
+            return _u_space_spsa_grad(optimizer, theta, indices)
         delta_samples = optimizer.rng.choice(
             np.asarray([-1.0, 1.0], dtype=float),
             size=(optimizer.n_grad_samples, theta.size),
@@ -162,6 +180,71 @@ class SPSAGradient(GradientMethod):
         return grad_theta / float(delta_samples.shape[0])
 
 
+def _u_space_policy_setup(
+    optimizer: "Optimization",
+    theta: np.ndarray,
+    indices: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Return (x_arr, u_arr, grad_pi) for u-space gradient methods."""
+    policy = getattr(optimizer.objective, "policy", None)
+    if policy is None or not callable(getattr(policy, "value", None)) or not callable(getattr(policy, "grad", None)):
+        raise ValueError("U-space perturbation requires objective.policy with value() and grad().")
+    theta_arr = np.asarray(theta, dtype=float)
+    x_arr = x_batch(optimizer.x_array, indices, optimizer.n_total)
+    u_arr = np.asarray(policy.value(theta_arr, x_arr), dtype=float).reshape(-1)
+    grad_pi = np.asarray(policy.grad(theta_arr, x_arr), dtype=float)
+    return x_arr, u_arr, grad_pi
+
+
+def _u_space_gauss_stein_grad(
+    optimizer: "Optimization",
+    theta: np.ndarray,
+    indices: np.ndarray,
+) -> np.ndarray:
+    """One-sided Gaussian Stein estimator in action space, chain-ruled to theta."""
+    x_arr, u_arr, grad_pi = _u_space_policy_setup(optimizer, theta, indices)
+    w_samples = optimizer.rng.normal(0.0, 1.0, size=optimizer.n_grad_samples).astype(float)
+    grad_u = np.zeros(x_arr.shape[0], dtype=float)
+    for w in w_samples:
+        values = _action_objective_values(optimizer.objective, x_arr, u_arr + optimizer.sigma * w)
+        grad_u += values * w
+    grad_u /= float(w_samples.shape[0]) * max(optimizer.sigma, 1e-8)
+    return np.mean(grad_u[:, None] * grad_pi, axis=0)
+
+
+def _u_space_spsa_grad(
+    optimizer: "Optimization",
+    theta: np.ndarray,
+    indices: np.ndarray,
+) -> np.ndarray:
+    """Two-sided Rademacher SPSA estimator in action space, chain-ruled to theta."""
+    x_arr, u_arr, grad_pi = _u_space_policy_setup(optimizer, theta, indices)
+    delta_samples = optimizer.rng.choice(
+        np.asarray([-1.0, 1.0], dtype=float), size=optimizer.n_grad_samples
+    )
+    grad_u = np.zeros(x_arr.shape[0], dtype=float)
+    for delta in delta_samples:
+        values_plus = _action_objective_values(optimizer.objective, x_arr, u_arr + optimizer.sigma * delta)
+        values_minus = _action_objective_values(optimizer.objective, x_arr, u_arr - optimizer.sigma * delta)
+        grad_u += ((values_plus - values_minus) / (2.0 * optimizer.sigma)) * delta
+    grad_u /= float(delta_samples.shape[0])
+    return np.mean(grad_u[:, None] * grad_pi, axis=0)
+
+
+def _u_space_fd_grad(
+    optimizer: "Optimization",
+    theta: np.ndarray,
+    indices: np.ndarray,
+) -> np.ndarray:
+    """Central finite-difference in action space (2 evals total), chain-ruled to theta."""
+    x_arr, u_arr, grad_pi = _u_space_policy_setup(optimizer, theta, indices)
+    sigma = optimizer.sigma
+    values_plus = _action_objective_values(optimizer.objective, x_arr, u_arr + sigma)
+    values_minus = _action_objective_values(optimizer.objective, x_arr, u_arr - sigma)
+    grad_u = (values_plus - values_minus) / (2.0 * sigma)
+    return np.mean(grad_u[:, None] * grad_pi, axis=0)
+
+
 def _action_objective_values(objective: object, x_array: np.ndarray, u_array: np.ndarray) -> np.ndarray:
     """Compute per-sample action-level objective values ``M(x_i, u_i)``."""
     u_arr = np.asarray(u_array, dtype=float).reshape(-1)
@@ -184,7 +267,7 @@ def _action_objective_values(objective: object, x_array: np.ndarray, u_array: np
         return values
 
     raise ValueError(
-        "SteinDifferenceGradient requires objective._value_batch(x_array, u_array) or "
+        "U-space perturbation requires objective._value_batch(x_array, u_array) or "
         "objective.value_at_u(x_batch, u)."
     )
 
@@ -240,6 +323,41 @@ class SteinDifferenceGradient(GradientMethod):
         return np.mean(grad_u[:, None] * grad_pi, axis=0)
 
 
+class SteinDifferenceThetaGradient(GradientMethod):
+    """Two-sided Gaussian difference in theta-space: $$\\hat{g} = \\frac{1}{m}\\sum_j \\frac{J(\\theta+\\sigma\\varepsilon_j)-J(\\theta-\\sigma\\varepsilon_j)}{2\\sigma}\\varepsilon_j$$, $$\\varepsilon_j\\sim\\mathcal{N}(0,I)$$."""
+
+    name = "stein-difference-theta"
+
+    def setup(self, optimizer: "Optimization", theta0: np.ndarray) -> None:
+        del theta0
+        if optimizer.n_grad_samples <= 0:
+            raise ValueError("n_grad_samples must be positive.")
+        if optimizer.sigma <= 0.0:
+            raise ValueError("sigma must be positive.")
+
+    def theta_grad(
+        self,
+        optimizer: "Optimization",
+        theta: np.ndarray,
+        indices: np.ndarray,
+    ) -> np.ndarray:
+        eps_samples = optimizer.rng.normal(
+            0.0, 1.0, size=(optimizer.n_grad_samples, theta.size)
+        ).astype(float)
+        grad = np.zeros_like(theta, dtype=float)
+        for eps in eps_samples:
+            value_plus = objective_value_on_indices(
+                optimizer.objective, optimizer.x_array, optimizer.n_total,
+                theta + optimizer.sigma * eps, indices,
+            )
+            value_minus = objective_value_on_indices(
+                optimizer.objective, optimizer.x_array, optimizer.n_total,
+                theta - optimizer.sigma * eps, indices,
+            )
+            grad += ((value_plus - value_minus) / (2.0 * optimizer.sigma)) * eps
+        return grad / float(eps_samples.shape[0])
+
+
 __all__ = [
     "GradientMethod",
     "FirstOrderGradient",
@@ -247,4 +365,5 @@ __all__ = [
     "GaussSteinGradient",
     "SPSAGradient",
     "SteinDifferenceGradient",
+    "SteinDifferenceThetaGradient",
 ]

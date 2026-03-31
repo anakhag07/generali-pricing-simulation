@@ -16,6 +16,7 @@ from experiments.helpers import (
     run_gauss_stein,
     run_spsa,
     run_stein_difference,
+    run_stein_difference_theta,
 )
 from experiments.reporters import StepReporter
 from experiments.results import EstimatorResult, ExperimentResult
@@ -66,6 +67,7 @@ def run_experiment(
             config.n_grad_samples,
             config.sigma,
             config.batch_size,
+            perturbation_space=config.perturbation_space,
             true_grad_theta_fn=true_grad_theta_fn,
             grad_norm_tol=config.grad_norm_tol,
             ftol=config.ftol,
@@ -90,6 +92,7 @@ def run_experiment(
             config.n_grad_samples,
             config.sigma,
             config.batch_size,
+            perturbation_space=config.perturbation_space,
             true_grad_theta_fn=true_grad_theta_fn,
             grad_norm_tol=config.grad_norm_tol,
             ftol=config.ftol,
@@ -114,6 +117,7 @@ def run_experiment(
             config.n_grad_samples,
             config.sigma,
             config.batch_size,
+            perturbation_space=config.perturbation_space,
             true_grad_theta_fn=true_grad_theta_fn,
             grad_norm_tol=config.grad_norm_tol,
             ftol=config.ftol,
@@ -138,6 +142,7 @@ def run_experiment(
             config.n_grad_samples,
             config.sigma,
             config.batch_size,
+            perturbation_space=config.perturbation_space,
             true_grad_theta_fn=true_grad_theta_fn,
             grad_norm_tol=config.grad_norm_tol,
             ftol=config.ftol,
@@ -162,6 +167,7 @@ def run_experiment(
             config.n_grad_samples,
             config.sigma,
             config.batch_size,
+            perturbation_space=config.perturbation_space,
             true_grad_theta_fn=true_grad_theta_fn,
             grad_norm_tol=config.grad_norm_tol,
             ftol=config.ftol,
@@ -177,6 +183,36 @@ def run_experiment(
             time=time_stein,
         )
         traces["stein_difference"] = trace_stein
+
+    if "stein_difference_theta" in enabled_estimators:
+        start_sdt = time.perf_counter()
+        theta_sdt, trace_sdt = run_stein_difference_theta(
+            theta_initial,
+            x_samples,
+            objective,
+            rng,
+            config.t_steps,
+            config.step_rule,
+            config.step_size,
+            config.n_grad_samples,
+            config.sigma,
+            config.batch_size,
+            perturbation_space=config.perturbation_space,
+            true_grad_theta_fn=true_grad_theta_fn,
+            grad_norm_tol=config.grad_norm_tol,
+            ftol=config.ftol,
+            step_reporter=step_reporter,
+        )
+        time_sdt = time.perf_counter() - start_sdt
+        u_sdt = _mean_action(policy, theta_sdt, x_samples) if policy is not None else float("nan")
+        value_sdt = float(objective.value(theta_sdt, x_samples))
+        results["stein_difference_theta"] = EstimatorResult(
+            theta=theta_sdt,
+            u=u_sdt,
+            value=value_sdt,
+            time=time_sdt,
+        )
+        traces["stein_difference_theta"] = trace_sdt
 
     return ExperimentResult(
         config=config,

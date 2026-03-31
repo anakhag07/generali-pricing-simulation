@@ -38,6 +38,7 @@ class Optimization:
         t_steps: int,
         n_grad_samples: int,
         sigma: float,
+        perturbation_space: str = "theta",
         step_size: float = 0.01,
         batch_size: int | None = None,
         true_grad_theta_fn: TrueThetaGradFn | None = None,
@@ -58,6 +59,9 @@ class Optimization:
             t_steps: Maximum number of optimization steps.
             n_grad_samples: Number of gradient samples for zeroth-order methods.
             sigma: Perturbation scale for zeroth-order methods.
+            perturbation_space: Space in which zeroth-order perturbations are applied:
+                ``"theta"`` (default) perturbs policy parameters directly; ``"u"`` perturbs
+                actions and maps back via chain rule (requires objective.policy).
             step_size: Step size for gradient descent algorithms.
             batch_size: Mini-batch size (None for full batch).
             true_grad_theta_fn: Optional function for computing true theta gradients.
@@ -68,8 +72,11 @@ class Optimization:
             rng: Random number generator.
             minimize_fn: SciPy minimize function (for testing).
         """
+        if perturbation_space not in {"theta", "u"}:
+            raise ValueError("perturbation_space must be 'theta' or 'u'.")
         self.objective = objective
         self.gradient = gradient
+        self.perturbation_space = perturbation_space
         self.algorithm = algorithm
         self.t_steps = int(t_steps)
         self.n_grad_samples = int(n_grad_samples)

@@ -24,6 +24,7 @@ def _make_config(verbose: bool = False) -> ExperimentConfig:
         theta0=default_theta0(2),
         n_samples=5,
         step_rule="constant",
+        perturbation_space="theta",
         verbose=verbose,
     )
 
@@ -42,6 +43,7 @@ def test_verbose_default_false() -> None:
         theta0=default_theta0(2),
         n_samples=5,
         step_rule="constant",
+        perturbation_space="theta",
     )
     assert config.verbose is False
 

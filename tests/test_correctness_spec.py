@@ -31,6 +31,7 @@ def test_correctness_exact_requires_theta_grad() -> None:
             state_dim=1,
             n_samples=1,
             step_rule="constant",
+        perturbation_space="theta",
             objective=DummyThetaObjectiveNoGrad(),
             theta0=default_theta0(1),
             correctness=CorrectnessSpec(gradient_source="exact"),
@@ -66,6 +67,7 @@ def test_numdiff_batch_is_supported_for_theta_grad() -> None:
         state_dim=1,
         n_samples=1,
         step_rule="constant",
+        perturbation_space="theta",
         objective=objective,
         theta0=default_theta0(1),
         correctness=CorrectnessSpec(

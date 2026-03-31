@@ -60,6 +60,7 @@ def _build_config(**overrides: object) -> ExperimentConfig:
         "theta0": default_theta0(1),
         "n_samples": 2,
         "step_rule": "constant",
+        "perturbation_space": "theta",
         "plot": False,
         "wandb_enabled": True,
         "wandb_project": "unit-tests",
@@ -237,6 +238,7 @@ def test_wandb_reporter_runtime_logs_use_canonical_estimator_keys(
 
     config = _build_config(
         step_rule="l-bfgs-b",
+        perturbation_space="theta",
         t_steps=1,
         sigma=1e-3,
         n_grad_samples=2,

@@ -17,6 +17,67 @@ if TYPE_CHECKING:
     from optimization.base import Optimization
 
 
+# ---------------------------------------------------------------------------
+# Shared u-space infrastructure
+# ---------------------------------------------------------------------------
+
+
+def _action_objective_values(objective: object, x_array: np.ndarray, u_array: np.ndarray) -> np.ndarray:
+    """Compute per-sample action-level objective values ``M(x_i, u_i)``.
+
+    Tries ``objective._value_batch(x_array, u_array)`` first, then falls back to
+    calling ``objective.value_at_u(x_batch, u)`` per sample.
+    """
+    u_arr = np.asarray(u_array, dtype=float).reshape(-1)
+    if u_arr.shape != (x_array.shape[0],):
+        raise ValueError("u_array must have shape (n_samples,).")
+
+    value_batch_fn = getattr(objective, "_value_batch", None)
+    if callable(value_batch_fn):
+        values = np.asarray(value_batch_fn(x_array, u_arr), dtype=float)
+        if values.shape != (x_array.shape[0],):
+            raise ValueError("objective._value_batch(x_array, u_array) must return shape (n_samples,).")
+        return values
+
+    value_at_u_fn = getattr(objective, "value_at_u", None)
+    if callable(value_at_u_fn):
+        value_at_u_typed = cast(Callable[[np.ndarray, float], float], value_at_u_fn)
+        values = np.empty(x_array.shape[0], dtype=float)
+        for idx, u_val in enumerate(u_arr):
+            values[idx] = float(value_at_u_typed(x_array[idx : idx + 1], float(u_val)))
+        return values
+
+    raise ValueError(
+        "U-space perturbation requires objective._value_batch(x_array, u_array) or "
+        "objective.value_at_u(x_batch, u)."
+    )
+
+
+def _u_space_policy_setup(
+    optimizer: "Optimization",
+    theta: np.ndarray,
+    indices: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Return ``(x_arr, u_arr, grad_pi)`` for u-space gradient methods.
+
+    Evaluates the policy at the current ``theta`` to get actions and the
+    policy Jacobian needed for the chain rule mapping back to theta-space.
+    """
+    policy = getattr(optimizer.objective, "policy", None)
+    if policy is None or not callable(getattr(policy, "value", None)) or not callable(getattr(policy, "grad", None)):
+        raise ValueError("U-space perturbation requires objective.policy with value() and grad().")
+    theta_arr = np.asarray(theta, dtype=float)
+    x_arr = x_batch(optimizer.x_array, indices, optimizer.n_total)
+    u_arr = np.asarray(policy.value(theta_arr, x_arr), dtype=float).reshape(-1)
+    grad_pi = np.asarray(policy.grad(theta_arr, x_arr), dtype=float)
+    return x_arr, u_arr, grad_pi
+
+
+# ---------------------------------------------------------------------------
+# Base class
+# ---------------------------------------------------------------------------
+
+
 class GradientMethod:
     """Base interface for theta-gradient estimators used by the optimizer."""
 
@@ -32,6 +93,11 @@ class GradientMethod:
         indices: np.ndarray,
     ) -> np.ndarray:
         raise NotImplementedError
+
+
+# ---------------------------------------------------------------------------
+# Estimator classes
+# ---------------------------------------------------------------------------
 
 
 class FirstOrderGradient(GradientMethod):
@@ -55,7 +121,13 @@ class FirstOrderGradient(GradientMethod):
 
 
 class FiniteDifferenceGradient(GradientMethod):
-    """Central finite-difference estimator: $$\\sum_{k=1}^d \\frac{J(\\theta+\\sigma e_k)-J(\\theta-\\sigma e_k)}{2\\sigma} e_k$$."""
+    """Central finite-difference estimator.
+
+    - **theta-space**: $$\\sum_{k=1}^d \\frac{J(\\theta+\\sigma e_k)-J(\\theta-\\sigma e_k)}{2\\sigma} e_k$$
+      — ``2 * dim(theta)`` objective evaluations per step.
+    - **u-space**: $$\\frac{M(x, u+\\sigma)-M(x, u-\\sigma)}{2\\sigma}$$ per sample, chain-ruled to theta
+      — only 2 evaluations per step regardless of ``dim(theta)``.
+    """
 
     name = "finite-difference"
 
@@ -65,6 +137,16 @@ class FiniteDifferenceGradient(GradientMethod):
             raise ValueError("sigma must be positive.")
 
     def theta_grad(
+        self,
+        optimizer: "Optimization",
+        theta: np.ndarray,
+        indices: np.ndarray,
+    ) -> np.ndarray:
+        if optimizer.perturbation_space == "u":
+            return self._u_grad(optimizer, theta, indices)
+        return self._theta_grad(optimizer, theta, indices)
+
+    def _theta_grad(
         self,
         optimizer: "Optimization",
         theta: np.ndarray,
@@ -83,9 +165,27 @@ class FiniteDifferenceGradient(GradientMethod):
             step=optimizer.sigma,
         )
 
+    def _u_grad(
+        self,
+        optimizer: "Optimization",
+        theta: np.ndarray,
+        indices: np.ndarray,
+    ) -> np.ndarray:
+        x_arr, u_arr, grad_pi = _u_space_policy_setup(optimizer, theta, indices)
+        sigma = optimizer.sigma
+        values_plus = _action_objective_values(optimizer.objective, x_arr, u_arr + sigma)
+        values_minus = _action_objective_values(optimizer.objective, x_arr, u_arr - sigma)
+        grad_u = (values_plus - values_minus) / (2.0 * sigma)
+        return np.mean(grad_u[:, None] * grad_pi, axis=0)
+
 
 class GaussSteinGradient(GradientMethod):
-    """Stein estimator: $$\\hat{g} = \\mathbb{E}[J(\\theta + \\sigma\\varepsilon)\\varepsilon]/\\sigma$$."""
+    """Gaussian Stein (score-function) estimator.
+
+    - **theta-space**: $$\\hat{g} = \\frac{1}{m}\\sum_j J(\\theta+\\sigma\\varepsilon_j)\\varepsilon_j / \\sigma$$,
+      $$\\varepsilon_j \\sim \\mathcal{N}(0, I^d)$$ — one-sided, ``n_grad_samples`` evaluations.
+    - **u-space**: same estimator applied to actions, chain-ruled to theta.
+    """
 
     name = "gauss-stein"
 
@@ -102,10 +202,18 @@ class GaussSteinGradient(GradientMethod):
         theta: np.ndarray,
         indices: np.ndarray,
     ) -> np.ndarray:
+        if optimizer.perturbation_space == "u":
+            return self._u_grad(optimizer, theta, indices)
+        return self._theta_grad(optimizer, theta, indices)
+
+    def _theta_grad(
+        self,
+        optimizer: "Optimization",
+        theta: np.ndarray,
+        indices: np.ndarray,
+    ) -> np.ndarray:
         eps_samples = optimizer.rng.normal(
-            0.0,
-            1.0,
-            size=(optimizer.n_grad_samples, theta.size),
+            0.0, 1.0, size=(optimizer.n_grad_samples, theta.size)
         ).astype(float)
         accum = np.zeros_like(theta, dtype=float)
         for eps in eps_samples:
@@ -119,9 +227,29 @@ class GaussSteinGradient(GradientMethod):
             accum += value * eps
         return accum / float(eps_samples.shape[0]) / max(optimizer.sigma, 1e-8)
 
+    def _u_grad(
+        self,
+        optimizer: "Optimization",
+        theta: np.ndarray,
+        indices: np.ndarray,
+    ) -> np.ndarray:
+        x_arr, u_arr, grad_pi = _u_space_policy_setup(optimizer, theta, indices)
+        w_samples = optimizer.rng.normal(0.0, 1.0, size=optimizer.n_grad_samples).astype(float)
+        grad_u = np.zeros(x_arr.shape[0], dtype=float)
+        for w in w_samples:
+            values = _action_objective_values(optimizer.objective, x_arr, u_arr + optimizer.sigma * w)
+            grad_u += values * w
+        grad_u /= float(w_samples.shape[0]) * max(optimizer.sigma, 1e-8)
+        return np.mean(grad_u[:, None] * grad_pi, axis=0)
+
 
 class SPSAGradient(GradientMethod):
-    """SPSA estimator: $$\\hat{g} = (J(\\theta+\\sigma\\Delta) - J(\\theta-\\sigma\\Delta))\\Delta / 2\\sigma$$."""
+    """SPSA estimator using Rademacher perturbations.
+
+    - **theta-space**: $$\\hat{g} = \\frac{1}{m}\\sum_j \\frac{J(\\theta+\\sigma\\Delta_j)-J(\\theta-\\sigma\\Delta_j)}{2\\sigma}\\Delta_j$$,
+      $$\\Delta_j \\sim \\{\\pm 1\\}^d$$ — two-sided, ``2 * n_grad_samples`` evaluations.
+    - **u-space**: same estimator applied to actions, chain-ruled to theta.
+    """
 
     name = "spsa"
 
@@ -138,11 +266,21 @@ class SPSAGradient(GradientMethod):
         theta: np.ndarray,
         indices: np.ndarray,
     ) -> np.ndarray:
+        if optimizer.perturbation_space == "u":
+            return self._u_grad(optimizer, theta, indices)
+        return self._theta_grad(optimizer, theta, indices)
+
+    def _theta_grad(
+        self,
+        optimizer: "Optimization",
+        theta: np.ndarray,
+        indices: np.ndarray,
+    ) -> np.ndarray:
         delta_samples = optimizer.rng.choice(
             np.asarray([-1.0, 1.0], dtype=float),
             size=(optimizer.n_grad_samples, theta.size),
         )
-        grad_theta = np.zeros_like(theta, dtype=float)
+        grad = np.zeros_like(theta, dtype=float)
         for delta in delta_samples:
             value_plus = objective_value_on_indices(
                 optimizer.objective,
@@ -158,43 +296,35 @@ class SPSAGradient(GradientMethod):
                 theta - optimizer.sigma * delta,
                 indices,
             )
-            grad_theta += ((value_plus - value_minus) / (2.0 * optimizer.sigma)) * delta
-        return grad_theta / float(delta_samples.shape[0])
+            grad += ((value_plus - value_minus) / (2.0 * optimizer.sigma)) * delta
+        return grad / float(delta_samples.shape[0])
 
-
-def _action_objective_values(objective: object, x_array: np.ndarray, u_array: np.ndarray) -> np.ndarray:
-    """Compute per-sample action-level objective values ``M(x_i, u_i)``."""
-    u_arr = np.asarray(u_array, dtype=float).reshape(-1)
-    if u_arr.shape != (x_array.shape[0],):
-        raise ValueError("u_array must have shape (n_samples,).")
-
-    value_batch_fn = getattr(objective, "_value_batch", None)
-    if callable(value_batch_fn):
-        values = np.asarray(value_batch_fn(x_array, u_arr), dtype=float)
-        if values.shape != (x_array.shape[0],):
-            raise ValueError("objective._value_batch(x_array, u_array) must return shape (n_samples,).")
-        return values
-
-    value_at_u_fn = getattr(objective, "value_at_u", None)
-    if callable(value_at_u_fn):
-        value_at_u_typed = cast(Callable[[np.ndarray, float], float], value_at_u_fn)
-        values = np.empty(x_array.shape[0], dtype=float)
-        for idx, u_val in enumerate(u_arr):
-            values[idx] = float(value_at_u_typed(x_array[idx : idx + 1], float(u_val)))
-        return values
-
-    raise ValueError(
-        "SteinDifferenceGradient requires objective._value_batch(x_array, u_array) or "
-        "objective.value_at_u(x_batch, u)."
-    )
+    def _u_grad(
+        self,
+        optimizer: "Optimization",
+        theta: np.ndarray,
+        indices: np.ndarray,
+    ) -> np.ndarray:
+        x_arr, u_arr, grad_pi = _u_space_policy_setup(optimizer, theta, indices)
+        delta_samples = optimizer.rng.choice(
+            np.asarray([-1.0, 1.0], dtype=float), size=optimizer.n_grad_samples
+        )
+        grad_u = np.zeros(x_arr.shape[0], dtype=float)
+        for delta in delta_samples:
+            values_plus = _action_objective_values(optimizer.objective, x_arr, u_arr + optimizer.sigma * delta)
+            values_minus = _action_objective_values(optimizer.objective, x_arr, u_arr - optimizer.sigma * delta)
+            grad_u += ((values_plus - values_minus) / (2.0 * optimizer.sigma)) * delta
+        grad_u /= float(delta_samples.shape[0])
+        return np.mean(grad_u[:, None] * grad_pi, axis=0)
 
 
 class SteinDifferenceGradient(GradientMethod):
-    """Stein-SPSA estimator in action-space mapped to theta by chain rule.
+    """Stein-difference estimator using two-sided Gaussian perturbations.
 
-    $$\\hat{g}_{u,i} = \\frac{1}{m}\\sum_{j=1}^m \\frac{M(x_i, u_i+\\sigma w_j)-M(x_i, u_i-\\sigma w_j)}{2\\sigma} w_j$$
-    and
-    $$\\hat{g}_\\theta = \\frac{1}{n}\\sum_{i=1}^n \\hat{g}_{u,i} \\, \\nabla_\\theta \\pi_\\theta(x_i).$$
+    - **theta-space**: $$\\hat{g} = \\frac{1}{m}\\sum_j \\frac{J(\\theta+\\sigma\\varepsilon_j)-J(\\theta-\\sigma\\varepsilon_j)}{2\\sigma}\\varepsilon_j$$,
+      $$\\varepsilon_j \\sim \\mathcal{N}(0, I^d)$$ — two-sided Gaussian in theta, ``2 * n_grad_samples`` evaluations.
+    - **u-space**: $$\\hat{g}_{u,i} = \\frac{1}{m}\\sum_j \\frac{M(x_i,u_i+\\sigma w_j)-M(x_i,u_i-\\sigma w_j)}{2\\sigma} w_j$$,
+      $$w_j \\sim \\mathcal{N}(0,1)$$, chain-ruled to theta via $$\\nabla_\\theta \\pi_\\theta(x_i)$$.
     """
 
     name = "stein-difference"
@@ -212,31 +342,47 @@ class SteinDifferenceGradient(GradientMethod):
         theta: np.ndarray,
         indices: np.ndarray,
     ) -> np.ndarray:
-        policy = getattr(optimizer.objective, "policy", None)
-        policy_value = getattr(policy, "value", None)
-        policy_grad = getattr(policy, "grad", None)
-        if not callable(policy_value) or not callable(policy_grad):
-            raise ValueError("SteinDifferenceGradient requires objective.policy with value(...) and grad(...).")
+        if optimizer.perturbation_space == "u":
+            return self._u_grad(optimizer, theta, indices)
+        return self._theta_grad(optimizer, theta, indices)
 
-        theta_arr = np.asarray(theta, dtype=float)
-        x_arr = x_batch(optimizer.x_array, indices, optimizer.n_total)
-        u_arr = np.asarray(policy_value(theta_arr, x_arr), dtype=float).reshape(-1)
-        if u_arr.shape != (x_arr.shape[0],):
-            raise ValueError("policy.value(theta, x_batch) must return shape (n_samples,).")
+    def _theta_grad(
+        self,
+        optimizer: "Optimization",
+        theta: np.ndarray,
+        indices: np.ndarray,
+    ) -> np.ndarray:
+        eps_samples = optimizer.rng.normal(
+            0.0, 1.0, size=(optimizer.n_grad_samples, theta.size)
+        ).astype(float)
+        grad = np.zeros_like(theta, dtype=float)
+        for eps in eps_samples:
+            value_plus = objective_value_on_indices(
+                optimizer.objective, optimizer.x_array, optimizer.n_total,
+                theta + optimizer.sigma * eps, indices,
+            )
+            value_minus = objective_value_on_indices(
+                optimizer.objective, optimizer.x_array, optimizer.n_total,
+                theta - optimizer.sigma * eps, indices,
+            )
+            grad += ((value_plus - value_minus) / (2.0 * optimizer.sigma)) * eps
+        return grad / float(eps_samples.shape[0])
 
-        grad_pi = np.asarray(policy_grad(theta_arr, x_arr), dtype=float)
-        if grad_pi.shape != (x_arr.shape[0], theta_arr.size):
-            raise ValueError("policy.grad(theta, x_batch) must return shape (n_samples, theta_dim).")
-
+    def _u_grad(
+        self,
+        optimizer: "Optimization",
+        theta: np.ndarray,
+        indices: np.ndarray,
+    ) -> np.ndarray:
+        x_arr, u_arr, grad_pi = _u_space_policy_setup(optimizer, theta, indices)
         sigma = optimizer.sigma
-        grad_u = np.zeros(x_arr.shape[0], dtype=float)
         w_samples = optimizer.rng.normal(0.0, 1.0, size=optimizer.n_grad_samples).astype(float)
-        for w_j in w_samples:
-            values_plus = _action_objective_values(optimizer.objective, x_arr, u_arr + sigma * w_j)
-            values_minus = _action_objective_values(optimizer.objective, x_arr, u_arr - sigma * w_j)
-            grad_u += ((values_plus - values_minus) / (2.0 * sigma)) * w_j
+        grad_u = np.zeros(x_arr.shape[0], dtype=float)
+        for w in w_samples:
+            values_plus = _action_objective_values(optimizer.objective, x_arr, u_arr + sigma * w)
+            values_minus = _action_objective_values(optimizer.objective, x_arr, u_arr - sigma * w)
+            grad_u += ((values_plus - values_minus) / (2.0 * sigma)) * w
         grad_u /= float(w_samples.shape[0])
-
         return np.mean(grad_u[:, None] * grad_pi, axis=0)
 
 

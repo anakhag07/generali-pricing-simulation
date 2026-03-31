@@ -50,6 +50,7 @@ class ExperimentConfig:
     step_rule: str
     objective: Objective
     theta0: np.ndarray
+    perturbation_space: Literal["theta", "u"]
     batch_size: int | None = None
     seed: int = 7
     t_steps: int = 100
@@ -97,6 +98,9 @@ class ExperimentConfig:
             unknown_list = ", ".join(unknown)
             raise ValueError(f"Unknown estimators: {unknown_list}. Allowed: {allowed}.")
 
+        if self.perturbation_space not in {"theta", "u"}:
+            raise ValueError("perturbation_space must be 'theta' or 'u'.")
+
         wandb_tags = tuple(self.wandb_tags)
         object.__setattr__(self, "wandb_tags", wandb_tags)
         if self.wandb_mode not in {"online", "offline", "disabled"}:
@@ -114,6 +118,13 @@ class ExperimentConfig:
                 unknown_list = ", ".join(unknown_wandb)
                 raise ValueError(
                     f"Unknown wandb estimators: {unknown_list}. Allowed: {allowed}."
+                )
+
+        if self.perturbation_space == "u":
+            policy = getattr(self.objective, "policy", None)
+            if policy is None or not callable(getattr(policy, "value", None)) or not callable(getattr(policy, "grad", None)):
+                raise ValueError(
+                    "perturbation_space='u' requires objective.policy with value() and grad()."
                 )
 
         if self.state_dim <= 0:
@@ -187,6 +198,7 @@ class ExperimentConfig:
             "plot": bool(self.plot),
             "plot_dir": self.plot_dir,
             "enabled_estimators": list(self.enabled_estimators),
+            "perturbation_space": self.perturbation_space,
             "theta0": _as_list(self.theta0),
             "objective": _objective_to_dict(self.objective),
             "wandb": {
@@ -312,6 +324,7 @@ def canonical_training_block(
     sigma: float,
     n_grad_samples: int,
     enabled_estimators: tuple[str, ...],
+    perturbation_space: Literal["theta", "u"],
     batch_size: int | None = None,
     grad_norm_tol: float | None = None,
     ftol: float | None = None,
@@ -325,6 +338,7 @@ def canonical_training_block(
         "sigma": float(sigma),
         "n_grad_samples": int(n_grad_samples),
         "enabled_estimators": tuple(enabled_estimators),
+        "perturbation_space": perturbation_space,
         "batch_size": int(batch_size) if batch_size is not None else None,
         "grad_norm_tol": float(grad_norm_tol) if grad_norm_tol is not None else None,
         "ftol": float(ftol) if ftol is not None else None,

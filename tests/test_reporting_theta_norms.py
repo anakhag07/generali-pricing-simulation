@@ -29,6 +29,7 @@ def _build_result() -> ExperimentResult:
         theta0=theta0,
         n_samples=1,
         step_rule="constant",
+        perturbation_space="theta",
         t_steps=3,
         plot=False,
         enabled_estimators=("first_order",),

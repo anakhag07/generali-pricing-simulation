@@ -67,6 +67,7 @@ TRAINING = canonical_training_block(
     sigma=SIGMA,
     n_grad_samples=N_GRAD_SAMPLES,
     enabled_estimators=ENABLED_ESTIMATORS,
+    perturbation_space="theta",
 )
 
 RUNTIME = canonical_runtime_block(

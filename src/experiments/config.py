@@ -50,6 +50,7 @@ class ExperimentConfig:
     step_rule: str
     objective: Objective
     theta0: np.ndarray
+    perturbation_space: Literal["theta", "u"]
     batch_size: int | None = None
     seed: int = 7
     t_steps: int = 100
@@ -62,7 +63,6 @@ class ExperimentConfig:
     plot: bool = True
     plot_dir: str = "plots"
     enabled_estimators: tuple[str, ...] = ("first_order", "gauss_stein")
-    perturbation_space: Literal["theta", "u"] = "theta"
     wandb_enabled: bool = False
     wandb_project: str | None = None
     wandb_entity: str | None = None
@@ -78,7 +78,6 @@ class ExperimentConfig:
         estimator_aliases = {
             "finite-difference": "finite_difference",
             "stein-difference": "stein_difference",
-            "stein-difference-theta": "stein_difference_theta",
         }
         enabled_estimators = tuple(estimator_aliases.get(name, name) for name in self.enabled_estimators)
         object.__setattr__(self, "enabled_estimators", enabled_estimators)
@@ -92,7 +91,6 @@ class ExperimentConfig:
             "gauss_stein",
             "spsa",
             "stein_difference",
-            "stein_difference_theta",
         }
         unknown = [name for name in enabled_estimators if name not in allowed_estimators]
         if unknown:
@@ -326,6 +324,7 @@ def canonical_training_block(
     sigma: float,
     n_grad_samples: int,
     enabled_estimators: tuple[str, ...],
+    perturbation_space: Literal["theta", "u"],
     batch_size: int | None = None,
     grad_norm_tol: float | None = None,
     ftol: float | None = None,
@@ -339,6 +338,7 @@ def canonical_training_block(
         "sigma": float(sigma),
         "n_grad_samples": int(n_grad_samples),
         "enabled_estimators": tuple(enabled_estimators),
+        "perturbation_space": perturbation_space,
         "batch_size": int(batch_size) if batch_size is not None else None,
         "grad_norm_tol": float(grad_norm_tol) if grad_norm_tol is not None else None,
         "ftol": float(ftol) if ftol is not None else None,

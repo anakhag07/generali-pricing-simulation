@@ -52,6 +52,7 @@ def test_state_dim_requires_matching_objective() -> None:
         theta0=default_theta0(state_dim),
         n_samples=5,
         step_rule="constant",
+        perturbation_space="theta",
     )
     assert config.state_dim == state_dim
 
@@ -71,6 +72,7 @@ def test_verbose_default_and_override() -> None:
         theta0=default_theta0(1),
         n_samples=5,
         step_rule="constant",
+        perturbation_space="theta",
     )
     assert config_default.verbose is False
 
@@ -80,6 +82,7 @@ def test_verbose_default_and_override() -> None:
         theta0=default_theta0(1),
         n_samples=5,
         step_rule="constant",
+        perturbation_space="theta",
         verbose=True,
     )
     assert config_verbose.verbose is True
@@ -102,6 +105,7 @@ def test_enabled_estimators_validation() -> None:
             theta0=theta0,
             n_samples=5,
             step_rule="constant",
+        perturbation_space="theta",
             enabled_estimators=("not-a-method",),
         )
 
@@ -112,6 +116,7 @@ def test_enabled_estimators_validation() -> None:
             theta0=theta0,
             n_samples=5,
             step_rule="constant",
+        perturbation_space="theta",
             enabled_estimators=("lbfgs",),
         )
 
@@ -122,6 +127,7 @@ def test_enabled_estimators_validation() -> None:
             theta0=theta0,
             n_samples=5,
             step_rule="constant",
+        perturbation_space="theta",
             enabled_estimators=(),
         )
 
@@ -141,6 +147,7 @@ def test_enabled_estimators_accepts_spsa() -> None:
         theta0=default_theta0(1),
         n_samples=5,
         step_rule="constant",
+        perturbation_space="theta",
         enabled_estimators=("spsa",),
     )
     assert config.enabled_estimators == ("spsa",)
@@ -161,6 +168,7 @@ def test_enabled_estimators_accepts_finite_difference() -> None:
         theta0=default_theta0(1),
         n_samples=5,
         step_rule="constant",
+        perturbation_space="theta",
         enabled_estimators=("finite_difference",),
     )
     assert config.enabled_estimators == ("finite_difference",)
@@ -181,6 +189,7 @@ def test_enabled_estimators_accepts_finite_difference_alias() -> None:
         theta0=default_theta0(1),
         n_samples=5,
         step_rule="constant",
+        perturbation_space="theta",
         enabled_estimators=("finite-difference",),
     )
     assert config.enabled_estimators == ("finite_difference",)
@@ -201,6 +210,7 @@ def test_enabled_estimators_accepts_stein_difference() -> None:
         theta0=default_theta0(1),
         n_samples=5,
         step_rule="constant",
+        perturbation_space="theta",
         enabled_estimators=("stein_difference",),
     )
     assert config.enabled_estimators == ("stein_difference",)
@@ -221,6 +231,7 @@ def test_enabled_estimators_accepts_stein_difference_alias() -> None:
         theta0=default_theta0(1),
         n_samples=5,
         step_rule="constant",
+        perturbation_space="theta",
         enabled_estimators=("stein-difference",),
     )
     assert config.enabled_estimators == ("stein_difference",)
@@ -244,6 +255,7 @@ def test_step_rule_validation() -> None:
             theta0=theta0,
             n_samples=5,
             step_rule="unknown",
+        perturbation_space="theta",
         )
 
     config = ExperimentConfig(
@@ -252,6 +264,7 @@ def test_step_rule_validation() -> None:
         theta0=theta0,
         n_samples=5,
         step_rule="l-bfgs-b",
+        perturbation_space="theta",
     )
     assert config.step_rule == "l-bfgs-b"
 
@@ -262,6 +275,7 @@ def test_step_rule_validation() -> None:
             theta0=theta0,
             n_samples=5,
             step_rule="constant",
+        perturbation_space="theta",
             step_size=0.0,
         )
 
@@ -283,6 +297,7 @@ def test_grad_norm_tol_validation() -> None:
             theta0=default_theta0(1),
             n_samples=5,
             step_rule="constant",
+        perturbation_space="theta",
             grad_norm_tol=0.0,
         )
 
@@ -305,6 +320,7 @@ def test_ftol_validation_and_serialization() -> None:
             theta0=theta0,
             n_samples=5,
             step_rule="constant",
+        perturbation_space="theta",
             ftol=0.0,
         )
 
@@ -314,6 +330,7 @@ def test_ftol_validation_and_serialization() -> None:
         theta0=theta0,
         n_samples=5,
         step_rule="constant",
+        perturbation_space="theta",
         ftol=1e-9,
     )
     payload = config.to_dict()
@@ -339,6 +356,7 @@ def test_batch_size_validation() -> None:
             n_samples=5,
             batch_size=0,
             step_rule="constant",
+        perturbation_space="theta",
         )
 
     with pytest.raises(ValueError, match="batch_size must be <= n_samples"):
@@ -349,6 +367,7 @@ def test_batch_size_validation() -> None:
             n_samples=5,
             batch_size=6,
             step_rule="constant",
+        perturbation_space="theta",
         )
 
 
@@ -368,6 +387,7 @@ def test_batch_size_serialization() -> None:
         n_samples=5,
         batch_size=2,
         step_rule="constant",
+        perturbation_space="theta",
     )
     payload = config.to_dict()
     assert payload["batch_size"] == 2
@@ -389,6 +409,7 @@ def test_wandb_allowlist_validation() -> None:
             theta0=default_theta0(1),
             n_samples=5,
             step_rule="constant",
+        perturbation_space="theta",
             wandb_estimator_allowlist=("bogus",),
         )
 
@@ -408,6 +429,7 @@ def test_wandb_config_serialization() -> None:
         theta0=default_theta0(1),
         n_samples=5,
         step_rule="constant",
+        perturbation_space="theta",
         wandb_enabled=True,
         wandb_project="pricing-sim",
         wandb_tags=("smoke", "wandb"),

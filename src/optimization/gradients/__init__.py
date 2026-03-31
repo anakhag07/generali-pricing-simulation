@@ -5,7 +5,6 @@ from optimization.gradients.methods import (
     GradientMethod,
     SPSAGradient,
     SteinDifferenceGradient,
-    SteinDifferenceThetaGradient,
 )
 
 __all__ = [
@@ -15,5 +14,4 @@ __all__ = [
     "GaussSteinGradient",
     "SPSAGradient",
     "SteinDifferenceGradient",
-    "SteinDifferenceThetaGradient",
 ]

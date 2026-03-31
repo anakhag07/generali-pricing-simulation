@@ -24,6 +24,7 @@ TRAINING = canonical_training_block(
     sigma=0.1,
     n_grad_samples=64,
     enabled_estimators=("gauss_stein", "first_order", "spsa"),
+    perturbation_space="theta",
 )
 
 RUNTIME = canonical_runtime_block(

@@ -17,7 +17,6 @@ from optimization.solvers import (
     run_gauss_stein_minimize,
     run_spsa_minimize,
     run_stein_difference_minimize,
-    run_stein_difference_theta_minimize,
 )
 
 
@@ -228,38 +227,3 @@ def run_stein_difference(
     )
 
 
-def run_stein_difference_theta(
-    theta_start: np.ndarray,
-    x_samples: np.ndarray,
-    objective: Objective,
-    rng: np.random.Generator,
-    t_steps: int,
-    step_rule: str,
-    step_size: float,
-    n_grad_samples: int,
-    sigma: float,
-    batch_size: int | None,
-    perturbation_space: str = "theta",
-    true_grad_theta_fn: TrueThetaGradFn | None = None,
-    grad_norm_tol: float | None = None,
-    ftol: float | None = None,
-    step_reporter: StepReporter | None = None,
-) -> tuple[np.ndarray, OptimizationTrace]:
-    """Run theta-space Stein-difference zeroth-order optimization."""
-    return run_stein_difference_theta_minimize(
-        theta_start=theta_start,
-        x_samples=x_samples,
-        objective=objective,
-        rng=rng,
-        t_steps=t_steps,
-        n_grad_samples=n_grad_samples,
-        sigma=sigma,
-        perturbation_space=perturbation_space,
-        algorithm=step_rule,
-        step_size=step_size,
-        batch_size=batch_size,
-        true_grad_theta_fn=true_grad_theta_fn,
-        grad_norm_tol=grad_norm_tol,
-        ftol=ftol,
-        step_reporter=step_reporter,
-    )

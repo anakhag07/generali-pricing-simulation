@@ -118,17 +118,19 @@ Guidelines:
 - **`src/optimization/helpers.py`**
   - `scipy_method(...)`: maps configured algorithm string to SciPy method name
   - `sample_indices(...)`, `x_batch(...)`: mini-batch index/data helpers
+  - `finite_difference_theta_grad(...)`: shared coordinate-wise finite-difference helper for value-only theta gradients
   - `objective_value_on_indices(...)`, `objective_grad_on_indices(...)`, `mean_action_on_indices(...)`: shared objective evaluation helpers used by optimizer + gradient methods
 
 - **`src/optimization/gradients/methods.py`**
   - `GradientMethod`: base interface for pluggable gradient estimators
   - `FirstOrderGradient`: exact theta-gradient from `objective.grad(...)`
+  - `FiniteDifferenceGradient`: deterministic central finite-difference theta-gradient from value queries
   - `GaussSteinGradient`: value-only theta-space Gaussian-Stein estimator
   - `SteinDifferenceGradient`: action-space Stein-SPSA hybrid estimator mapped through `policy.grad(...)`
   - `SPSAGradient`: two-sided SPSA theta-gradient estimator
 
 - **`src/optimization/solvers.py`**
-  - `run_first_order_minimize(...)`, `run_gauss_stein_minimize(...)`, `run_stein_difference_minimize(...)`, `run_spsa_minimize(...)`: compatibility wrappers that instantiate `Optimization` with the corresponding gradient object and call `solve(...)`
+  - `run_first_order_minimize(...)`, `run_finite_difference_minimize(...)`, `run_gauss_stein_minimize(...)`, `run_stein_difference_minimize(...)`, `run_spsa_minimize(...)`: compatibility wrappers that instantiate `Optimization` with the corresponding gradient object and call `solve(...)`
 
 - **`src/optimization/steps.py`**
   - `STEP_RULE_LBFGSB`, `STEP_RULE_CONSTANT`, `STEP_RULE_ARMIJO`, `STEP_RULES`
@@ -149,7 +151,7 @@ Guidelines:
 
 - **`src/experiments/configs/`** (preset registry)
   - `__init__.py`: `get_config(name)` and `list_configs()` registry
-  - `first_order_runs_diff_starts.py`: fixed-regression preset configured for first-order comparison runs across different initial starts
+  - `first_order_runs_diff_starts.py`: planted-logistic preset configured for comparison runs across different initial starts
   - `fixed_regression_base.py`: base fixed-regression config (4D, L-BFGS-B step rule, W&B enabled)
   - `planted_logistic_base.py`: planted logistic base config (3D, L-BFGS-B step rule, 5000 steps, u*=1.1)
   - `config_template.py`: copy-first scaffold with `None` placeholders for all `ExperimentConfig` fields plus objective/correctness parameter blocks; not registered as a runnable preset
@@ -161,10 +163,11 @@ Guidelines:
 - **`src/experiments/helpers.py`** (largest file; orchestration + wrappers)
   - `resolve_true_grad_theta_fn(objective, correctness)`: resolves the "true" theta-gradient function from correctness spec
   - `run_first_order(...)`: wrapper delegating to `optimization.solvers.run_first_order_minimize`
+  - `run_finite_difference(...)`: wrapper delegating to `optimization.solvers.run_finite_difference_minimize`
   - `run_gauss_stein(...)`: wrapper delegating to `optimization.solvers.run_gauss_stein_minimize`
   - `run_stein_difference(...)`: wrapper delegating to `optimization.solvers.run_stein_difference_minimize`
   - `run_spsa(...)`: wrapper delegating to `optimization.solvers.run_spsa_minimize`
-  - Internal: `_numdiff_theta_grad(...)` for finite-difference theta gradients
+  - Uses `optimization.helpers.finite_difference_theta_grad(...)` for correctness-mode numerical theta gradients
 
 - **`src/experiments/run.py`**
   - `run_experiment(config, step_reporter)`: main runner; samples state vectors, runs enabled estimators, returns `ExperimentResult` (pure computation, no I/O)
@@ -241,6 +244,7 @@ when appropriate.
 | `test_early_stopping.py` | grad_norm_tol early stopping |
 | `test_enabled_estimators.py` | Selective estimator execution |
 | `test_experiment_configs.py` | Config registry (get_config, list_configs) |
+| `test_finite_difference_gradient.py` | Finite-difference gradient accuracy and determinism |
 | `test_file_step_logger.py` | FileStepLogger CSV output |
 | `test_minibatch_stochasticity.py` | Mini-batch determinism and full-batch equivalence |
 | `test_minimize_orders.py` | SciPy first/Gauss-Stein/Stein-difference/SPSA wrappers (decrease + seed determinism) |

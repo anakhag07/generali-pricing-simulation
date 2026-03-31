@@ -11,6 +11,7 @@ from objective.utils import _action_value_at_u, _mean_action, optimal_u
 from experiments.config import ExperimentConfig
 from experiments.helpers import (
     resolve_true_grad_theta_fn,
+    run_finite_difference,
     run_first_order,
     run_gauss_stein,
     run_spsa,
@@ -75,6 +76,30 @@ def run_experiment(
         value_first = float(objective.value(theta_first, x_samples))
         results["first_order"] = EstimatorResult(theta=theta_first, u=u_first, value=value_first, time=time_first)
         traces["first_order"] = trace_first
+
+    if "finite_difference" in enabled_estimators:
+        start_fd = time.perf_counter()
+        theta_fd, trace_fd = run_finite_difference(
+            theta_initial,
+            x_samples,
+            objective,
+            rng,
+            config.t_steps,
+            config.step_rule,
+            config.step_size,
+            config.n_grad_samples,
+            config.sigma,
+            config.batch_size,
+            true_grad_theta_fn=true_grad_theta_fn,
+            grad_norm_tol=config.grad_norm_tol,
+            ftol=config.ftol,
+            step_reporter=step_reporter,
+        )
+        time_fd = time.perf_counter() - start_fd
+        u_fd = _mean_action(policy, theta_fd, x_samples) if policy is not None else float("nan")
+        value_fd = float(objective.value(theta_fd, x_samples))
+        results["finite_difference"] = EstimatorResult(theta=theta_fd, u=u_fd, value=value_fd, time=time_fd)
+        traces["finite_difference"] = trace_fd
 
     if "gauss_stein" in enabled_estimators:
         start_zero = time.perf_counter()

@@ -75,6 +75,7 @@ class ExperimentConfig:
 
     def __post_init__(self) -> None:
         estimator_aliases = {
+            "finite-difference": "finite_difference",
             "stein-difference": "stein_difference",
         }
         enabled_estimators = tuple(estimator_aliases.get(name, name) for name in self.enabled_estimators)
@@ -83,7 +84,13 @@ class ExperimentConfig:
             raise ValueError("enabled_estimators must include at least one estimator.")
         if len(set(enabled_estimators)) != len(enabled_estimators):
             raise ValueError("enabled_estimators must not contain duplicates.")
-        allowed_estimators = {"first_order", "gauss_stein", "spsa", "stein_difference"}
+        allowed_estimators = {
+            "first_order",
+            "finite_difference",
+            "gauss_stein",
+            "spsa",
+            "stein_difference",
+        }
         unknown = [name for name in enabled_estimators if name not in allowed_estimators]
         if unknown:
             allowed = ", ".join(sorted(allowed_estimators))

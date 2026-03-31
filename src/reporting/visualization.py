@@ -17,11 +17,12 @@ matplotlib.use("Agg")
 
 ESTIMATOR_STYLES = {
     "first_order": {"label": "first-order", "color": "#1f77b4", "marker": "o"},
+    "finite_difference": {"label": "finite-difference", "color": "#8c564b", "marker": "P"},
     "gauss_stein": {"label": "gauss-stein", "color": "#ff7f0e", "marker": "s"},
     "stein_difference": {"label": "stein-difference", "color": "#2ca02c", "marker": "^"},
     "spsa": {"label": "SPSA", "color": "#d62728", "marker": "D"},
 }
-_TRACE_ORDER = ("first_order", "gauss_stein", "stein_difference", "spsa")
+_TRACE_ORDER = ("first_order", "finite_difference", "gauss_stein", "stein_difference", "spsa")
 _LINE_ALPHA = 0.6
 _LINE_WIDTH = 1.8
 _MARKER_SIZE = 4.2

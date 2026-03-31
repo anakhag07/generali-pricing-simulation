@@ -146,6 +146,46 @@ def test_enabled_estimators_accepts_spsa() -> None:
     assert config.enabled_estimators == ("spsa",)
 
 
+def test_enabled_estimators_accepts_finite_difference() -> None:
+    policy = SoftmaxPolicy()
+    objective = FixedRegressionObjective.from_parameters(
+        policy=policy,
+        beta_1=[0.1],
+        beta_2=-0.5,
+        beta_3=[0.2],
+        beta_4=0.4,
+    )
+    config = ExperimentConfig(
+        state_dim=1,
+        objective=objective,
+        theta0=default_theta0(1),
+        n_samples=5,
+        step_rule="constant",
+        enabled_estimators=("finite_difference",),
+    )
+    assert config.enabled_estimators == ("finite_difference",)
+
+
+def test_enabled_estimators_accepts_finite_difference_alias() -> None:
+    policy = SoftmaxPolicy()
+    objective = FixedRegressionObjective.from_parameters(
+        policy=policy,
+        beta_1=[0.1],
+        beta_2=-0.5,
+        beta_3=[0.2],
+        beta_4=0.4,
+    )
+    config = ExperimentConfig(
+        state_dim=1,
+        objective=objective,
+        theta0=default_theta0(1),
+        n_samples=5,
+        step_rule="constant",
+        enabled_estimators=("finite-difference",),
+    )
+    assert config.enabled_estimators == ("finite_difference",)
+
+
 def test_enabled_estimators_accepts_stein_difference() -> None:
     policy = SoftmaxPolicy()
     objective = FixedRegressionObjective.from_parameters(

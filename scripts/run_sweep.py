@@ -4,16 +4,16 @@ from __future__ import annotations
 
 from experiments.sweep_utils import run_preset_sweep
 
-BASE_PRESET = "fixed_regression_base"
+BASE_PRESET = "first_order_runs_diff_starts"
 
 OVERRIDE_GRID = {
     "sigma": [0.01, 0.03, 0.05],
-    "n_grad_samples": [2, 4, 64, 128, 256, 1024],
-    "n_samples": [100, 500, 1000],
+    "n_grad_samples": [256], # [2, 4, 64, 128, 256, 1024],
+    "n_samples": [100], # [100, 500, 1000],
     "t_steps": [10000],
     "plot": [True],
     "wandb_enabled": [True],
-    "wandb_project": ["generali_pricing_simulation_hyperparameter_sweep"],
+    "wandb_project": ["planted_logistic_hyperparameter_sweep"],
 }
 
 

@@ -8,7 +8,12 @@ from typing import Any, Literal, Mapping, Optional, Sequence
 import numpy as np
 
 from objective.base import Objective, Policy
-from objective.objectives import FixedRegressionObjective, PlantedLogisticObjective
+from objective.objectives import (
+    CSVObjective,
+    FixedRegressionObjective,
+    ModelBasedObjective,
+    PlantedLogisticObjective,
+)
 from objective.policy import ConstantPolicy, LinearPolicy, SoftmaxPolicy
 from optimization.steps import STEP_RULES
 
@@ -73,6 +78,7 @@ class ExperimentConfig:
     wandb_log_plots: bool = True
     wandb_estimator_allowlist: tuple[str, ...] | None = None
     correctness: CorrectnessSpec = field(default_factory=CorrectnessSpec)
+    x_fixed: np.ndarray | None = None  # real data rows; replaces sample_states when set
 
     def __post_init__(self) -> None:
         estimator_aliases = {
@@ -136,6 +142,16 @@ class ExperimentConfig:
         if theta0_arr.ndim != 1 or theta0_arr.size < 1:
             raise ValueError("theta0 must be a 1D array with at least one element.")
         object.__setattr__(self, "theta0", theta0_arr)
+
+        if self.x_fixed is not None:
+            x_fixed_arr = np.asarray(self.x_fixed, dtype=float)
+            if x_fixed_arr.ndim != 2:
+                raise ValueError("x_fixed must be a 2D array of shape (n_rows, state_dim).")
+            if x_fixed_arr.shape[1] != self.state_dim:
+                raise ValueError(
+                    f"x_fixed has {x_fixed_arr.shape[1]} columns but state_dim={self.state_dim}."
+                )
+            object.__setattr__(self, "x_fixed", x_fixed_arr)
 
         if self.batch_size is not None:
             if self.batch_size <= 0:
@@ -215,6 +231,7 @@ class ExperimentConfig:
                 else None,
             },
             "correctness": _correctness_to_dict(self.correctness),
+            "x_fixed_shape": list(self.x_fixed.shape) if self.x_fixed is not None else None,
         }
 
 
@@ -237,6 +254,21 @@ def _objective_to_dict(objective: Objective) -> dict[str, Any]:
             "beta": _as_list(objective.beta),
             "bias": float(objective.bias),
             "u_star": float(objective.u_star),
+        }
+    if isinstance(objective, ModelBasedObjective):
+        return {
+            "type": "ModelBasedObjective",
+            "policy": _policy_to_dict(objective.policy),
+            "acceptance_state_cols": list(objective.acceptance_state_cols),
+            "loss_cols": list(objective.loss_cols),
+            "premium_col": int(objective.premium_col),
+            "u_coef": float(objective.u_coef) if objective.u_coef is not None else None,
+        }
+    if isinstance(objective, CSVObjective):
+        return {
+            "type": "CSVObjective",
+            "policy": _policy_to_dict(objective.policy),
+            "tol": float(objective.tol),
         }
     return {"type": type(objective).__name__}
 
@@ -315,6 +347,40 @@ def make_softmax_policy() -> SoftmaxPolicy:
     return SoftmaxPolicy()
 
 
+def make_model_based_objective(
+    *,
+    policy: Policy,
+    acceptance_model: object,
+    loss_model: object,
+    acceptance_state_cols: tuple[str, ...],
+    loss_cols: tuple[str, ...],
+    premium_col: int = 9,
+    u_coef: float | None = None,
+) -> ModelBasedObjective:
+    """Create a ModelBasedObjective wrapping trained sklearn/XGBoost models."""
+    return ModelBasedObjective(
+        policy=policy,
+        acceptance_model=acceptance_model,
+        loss_model=loss_model,
+        acceptance_state_cols=acceptance_state_cols,
+        loss_cols=loss_cols,
+        premium_col=premium_col,
+        u_coef=u_coef,
+    )
+
+
+def make_csv_objective(
+    *,
+    df: object,
+    policy: Policy,
+    tol: float = 0.005,
+) -> CSVObjective:
+    """Create a CSVObjective from a pre-loaded merged DataFrame."""
+    import pandas as pd
+
+    return CSVObjective(_df=pd.DataFrame(df), policy=policy, tol=tol)
+
+
 def canonical_training_block(
     *,
     n_samples: int,
@@ -388,8 +454,13 @@ def build_experiment_config(
     training: Mapping[str, Any],
     runtime: Mapping[str, Any] | None = None,
     correctness: CorrectnessSpec | None = None,
+    x_fixed: np.ndarray | None = None,
 ) -> ExperimentConfig:
-    """Build an ExperimentConfig from component blocks."""
+    """Build an ExperimentConfig from component blocks.
+
+    If ``x_fixed`` is provided, the runner uses it directly as the state array
+    instead of sampling from N(0, I).
+    """
     payload: dict[str, Any] = {
         "seed": int(seed),
         "state_dim": int(state_dim),
@@ -401,4 +472,6 @@ def build_experiment_config(
         payload.update(dict(runtime))
     if correctness is not None:
         payload["correctness"] = correctness
+    if x_fixed is not None:
+        payload["x_fixed"] = np.asarray(x_fixed, dtype=float)
     return ExperimentConfig(**payload)

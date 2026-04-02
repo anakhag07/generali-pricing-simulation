@@ -310,7 +310,7 @@ Regenerate docs when public API changes significantly.
 
 ```bash
 conda activate simulation_env
-pdoc src/objective src/optimization src/experiments src/data src/reporting -o docs
+pdoc --math src/objective src/optimization src/experiments src/data src/reporting -o docs
 ```
 
 Run this command whenever docstrings are added, updated, or removed in any

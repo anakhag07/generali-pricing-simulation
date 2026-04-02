@@ -6,6 +6,7 @@ import pytest
 
 @pytest.mark.parametrize("name", [
     "real_data_glm_base",
+    "real_data_glm_linear_base",
     "real_data_xgb_base",
 ])
 def test_config_loads(name):
@@ -17,6 +18,15 @@ def test_config_loads(name):
 def test_glm_base_x_fixed_shape():
     from experiments.configs import get_config
     cfg = get_config("real_data_glm_base")
+    assert cfg.x_fixed is not None
+    assert cfg.x_fixed.shape == (5000, 12)
+    assert cfg.state_dim == 12
+
+
+def test_glm_linear_base_x_fixed_shape():
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_glm_linear_base")
     assert cfg.x_fixed is not None
     assert cfg.x_fixed.shape == (5000, 12)
     assert cfg.state_dim == 12
@@ -36,6 +46,22 @@ def test_glm_base_has_first_order():
     assert "first_order" in cfg.enabled_estimators
 
 
+def test_glm_linear_base_has_first_order():
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_glm_linear_base")
+    assert "first_order" in cfg.enabled_estimators
+
+
+def test_glm_linear_base_initial_action_is_constant_1_1():
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_glm_linear_base")
+    assert cfg.x_fixed is not None
+    u_batch = cfg.objective.policy.value(cfg.theta0, cfg.x_fixed)
+    assert np.allclose(u_batch, 1.1)
+
+
 def test_xgb_base_no_first_order():
     from experiments.configs import get_config
     cfg = get_config("real_data_xgb_base")
@@ -44,6 +70,7 @@ def test_xgb_base_no_first_order():
 
 @pytest.mark.parametrize("name", [
     "real_data_glm_base",
+    "real_data_glm_linear_base",
     "real_data_xgb_base",
 ])
 def test_real_data_configs_disable_correctness_gradients(name):
@@ -55,6 +82,7 @@ def test_real_data_configs_disable_correctness_gradients(name):
 
 @pytest.mark.parametrize("name", [
     "real_data_glm_base",
+    "real_data_glm_linear_base",
     "real_data_xgb_base",
 ])
 def test_real_data_configs_enable_verbose_and_wandb(name):

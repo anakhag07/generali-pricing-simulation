@@ -169,6 +169,7 @@ Guidelines:
   - `fixed_regression_base.py`: base fixed-regression config (4D, L-BFGS-B step rule, W&B enabled)
   - `planted_logistic_base.py`: planted logistic base config (3D, L-BFGS-B step rule, 5000 steps, u*=1.1)
   - `real_data_glm_base.py`: GLM pickle-based config; state_dim=12; all 5 estimators; analytical first-order gradient via u_coef
+  - `real_data_glm_linear_base.py`: GLM pickle-based diagnostic config; same data/models as `real_data_glm_base` but with `LinearPolicy` and constant-`u=1.1` initialization to inspect behavior without softmax saturation
   - `real_data_xgb_base.py`: XGBoost pickle-based config; state_dim=10; 4 estimators (no first_order); FD for d_acceptance/du
   - `config_template.py`: copy-first scaffold with `None` placeholders for all `ExperimentConfig` fields plus objective/correctness parameter blocks; not registered as a runnable preset
 

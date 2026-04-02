@@ -11,6 +11,7 @@ _CONFIG_MODULES = {
     "fixed_regression_base": "experiments.configs.fixed_regression_base",
     "planted_logistic_base": "experiments.configs.planted_logistic_base",
     "real_data_glm_base": "experiments.configs.real_data_glm_base",
+    "real_data_glm_linear_base": "experiments.configs.real_data_glm_linear_base",
     "real_data_xgb_base": "experiments.configs.real_data_xgb_base",
 }
 

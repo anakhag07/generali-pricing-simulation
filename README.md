@@ -57,12 +57,13 @@ available in `docs/` (generated via pdoc).
 
 ## Data Sources
 
-Three state-distribution modes are available, selected by config preset:
+Four state-distribution modes are available, selected by config preset:
 
 | Preset | State source | Objective |
 |---|---|---|
 | `fixed_regression_base` | Synthetic N(0, I) | `FixedRegressionObjective` |
 | `real_data_glm_base` | First 5K rows of real CSV (pickle path) | `ModelBasedObjective` (GLM, analytical grad) |
+| `real_data_glm_linear_base` | First 5K rows of real CSV (pickle path) | `ModelBasedObjective` (GLM, linear-policy diagnostic) |
 | `real_data_xgb_base` | First 5K rows of real CSV (pickle path) | `ModelBasedObjective` (XGBoost, FD grad) |
 
 The objective for real-data configs is $$f(u; x) = a(x,u)(\hat{Y}(x) - u \cdot p(x))$$

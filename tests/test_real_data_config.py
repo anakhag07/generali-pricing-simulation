@@ -58,6 +58,33 @@ def test_csv_configs_state_dim_is_1():
         assert cfg.state_dim == 1
 
 
+@pytest.mark.parametrize("name", [
+    "real_data_glm_base",
+    "real_data_xgb_base",
+    "real_data_glm_csv",
+    "real_data_xgb_csv",
+])
+def test_real_data_configs_disable_correctness_gradients(name):
+    from experiments.configs import get_config
+
+    cfg = get_config(name)
+    assert cfg.correctness.gradient_source == "none"
+
+
+@pytest.mark.parametrize("name", [
+    "real_data_glm_base",
+    "real_data_xgb_base",
+    "real_data_glm_csv",
+    "real_data_xgb_csv",
+])
+def test_real_data_configs_enable_verbose_and_wandb(name):
+    from experiments.configs import get_config
+
+    cfg = get_config(name)
+    assert cfg.verbose is True
+    assert cfg.wandb_enabled is True
+
+
 def test_x_fixed_validation_wrong_dim():
     """ExperimentConfig raises when x_fixed columns don't match state_dim."""
     from experiments.configs import get_config

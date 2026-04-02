@@ -24,6 +24,7 @@ from data.loader import (
     load_x_array,
 )
 from experiments.config import (
+    CorrectnessSpec,
     build_experiment_config,
     canonical_runtime_block,
     canonical_training_block,
@@ -52,9 +53,11 @@ TRAINING = canonical_training_block(
 
 RUNTIME = canonical_runtime_block(
     plot=True,
-    verbose=False,
-    wandb_enabled=False,
+    verbose=True,
+    wandb_enabled=True,
 )
+
+CORRECTNESS = CorrectnessSpec(gradient_source="none")
 
 CONFIG = build_experiment_config(
     seed=42,
@@ -72,4 +75,5 @@ CONFIG = build_experiment_config(
     theta0=THETA0,
     training=TRAINING,
     runtime=RUNTIME,
+    correctness=CORRECTNESS,
 )

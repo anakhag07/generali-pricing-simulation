@@ -306,13 +306,25 @@ Point users to `docs/` for detailed API reference.
 ### docs/ (pdoc-generated)
 Regenerate docs when public API changes significantly.
 
+**Regeneration command:**
+
+```bash
+conda activate simulation_env
+pdoc src/objective src/optimization src/experiments src/data src/reporting -o docs
+```
+
+Run this command whenever docstrings are added, updated, or removed in any
+public class or function under `src/`. The command regenerates HTML for all
+modules at once so cross-module links stay consistent.
+
 Major classes and methods MUST have docstrings that render via pdoc:
-- Objective classes (`FixedRegressionObjective`, `PlantedLogisticObjective`)
+- Objective classes (`FixedRegressionObjective`, `PlantedLogisticObjective`, `ModelBasedObjective`, `CSVObjective`)
 - Policy classes (`ConstantPolicy`, `LinearPolicy`, `SoftmaxPolicy`)
 - Core interfaces (`Policy`, `Objective`) and sampling helper (`sample_states`)
 - Optimization classes (`Optimization`, `GradientMethod` subclasses)
 - Experiment config and results (`ExperimentConfig`, `ExperimentResult`, etc.)
 - Runner functions (`run_experiment`)
+- Data loaders (`load_x_array`, `load_model_artifacts`, `load_csv_dataset`)
 
 Docstrings should be 1-2 lines with LaTeX where it aids clarity.
 Use double delimiters `$$...$$` for math rendering in pdoc (do not use single `$...$`).

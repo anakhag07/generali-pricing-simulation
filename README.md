@@ -39,7 +39,7 @@ J(\theta) = \mathbb{E}_x\big[f(\pi_\theta(x); x)\big]
 $$
 
 Pluggable components:
-- **Objectives**: `FixedRegressionObjective`, `PlantedLogisticObjective`, `ModelBasedObjective`, `CSVObjective`
+- **Objectives**: `FixedRegressionObjective`, `PlantedLogisticObjective`, `ModelBasedObjective`
 - **Policies**: `ConstantPolicy`, `LinearPolicy`, `SoftmaxPolicy`
 - **Gradient estimators**: `first_order`, `finite_difference`, `gauss_stein`, `stein_difference`, `spsa`
 
@@ -64,8 +64,6 @@ Three state-distribution modes are available, selected by config preset:
 | `fixed_regression_base` | Synthetic N(0, I) | `FixedRegressionObjective` |
 | `real_data_glm_base` | First 5K rows of real CSV (pickle path) | `ModelBasedObjective` (GLM, analytical grad) |
 | `real_data_xgb_base` | First 5K rows of real CSV (pickle path) | `ModelBasedObjective` (XGBoost, FD grad) |
-| `real_data_glm_csv` | Pre-computed CSV lookup | `CSVObjective` (GLM) |
-| `real_data_xgb_csv` | Pre-computed CSV lookup | `CSVObjective` (XGBoost) |
 
 The objective for real-data configs is $$f(u; x) = a(x,u)(\hat{Y}(x) - u \cdot p(x))$$
 where $$a$$ is acceptance probability, $$\hat{Y}$$ is expected financial loss, and $$p$$ is policy premium.

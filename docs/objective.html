@@ -142,30 +142,6 @@
                     <a class="function" href="#policy_from_kind">policy_from_kind</a>
             </li>
             <li>
-                    <a class="class" href="#CSVObjective">CSVObjective</a>
-                            <ul class="memberlist">
-                        <li>
-                                <a class="function" href="#CSVObjective.__init__">CSVObjective</a>
-                        </li>
-                        <li>
-                                <a class="variable" href="#CSVObjective.policy">policy</a>
-                        </li>
-                        <li>
-                                <a class="variable" href="#CSVObjective.tol">tol</a>
-                        </li>
-                        <li>
-                                <a class="function" href="#CSVObjective.value_at_u">value_at_u</a>
-                        </li>
-                        <li>
-                                <a class="function" href="#CSVObjective.value">value</a>
-                        </li>
-                        <li>
-                                <a class="function" href="#CSVObjective.grad">grad</a>
-                        </li>
-                </ul>
-
-            </li>
-            <li>
                     <a class="class" href="#FixedRegressionObjective">FixedRegressionObjective</a>
                             <ul class="memberlist">
                         <li>
@@ -307,7 +283,7 @@ objective    </h1>
 <li>Sampling: sample_states, default_rng</li>
 <li>Concrete policies: ConstantPolicy, LinearPolicy, SoftmaxPolicy</li>
 <li>Concrete objectives: FixedRegressionObjective, PlantedLogisticObjective,
-ModelBasedObjective, CSVObjective</li>
+ModelBasedObjective</li>
 <li>Utility: optimal_u</li>
 </ul>
 </div>
@@ -323,7 +299,7 @@ ModelBasedObjective, CSVObjective</li>
 </span><span id="L-5"><a href="#L-5"><span class="linenos"> 5</span></a><span class="sd">- Sampling: sample_states, default_rng</span>
 </span><span id="L-6"><a href="#L-6"><span class="linenos"> 6</span></a><span class="sd">- Concrete policies: ConstantPolicy, LinearPolicy, SoftmaxPolicy</span>
 </span><span id="L-7"><a href="#L-7"><span class="linenos"> 7</span></a><span class="sd">- Concrete objectives: FixedRegressionObjective, PlantedLogisticObjective,</span>
-</span><span id="L-8"><a href="#L-8"><span class="linenos"> 8</span></a><span class="sd">  ModelBasedObjective, CSVObjective</span>
+</span><span id="L-8"><a href="#L-8"><span class="linenos"> 8</span></a><span class="sd">  ModelBasedObjective</span>
 </span><span id="L-9"><a href="#L-9"><span class="linenos"> 9</span></a><span class="sd">- Utility: optimal_u</span>
 </span><span id="L-10"><a href="#L-10"><span class="linenos">10</span></a><span class="sd">&quot;&quot;&quot;</span>
 </span><span id="L-11"><a href="#L-11"><span class="linenos">11</span></a>
@@ -334,38 +310,36 @@ ModelBasedObjective, CSVObjective</li>
 </span><span id="L-16"><a href="#L-16"><span class="linenos">16</span></a>    <span class="n">sample_states</span><span class="p">,</span>
 </span><span id="L-17"><a href="#L-17"><span class="linenos">17</span></a><span class="p">)</span>
 </span><span id="L-18"><a href="#L-18"><span class="linenos">18</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">objective.objectives</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-</span><span id="L-19"><a href="#L-19"><span class="linenos">19</span></a>    <span class="n">CSVObjective</span><span class="p">,</span>
-</span><span id="L-20"><a href="#L-20"><span class="linenos">20</span></a>    <span class="n">FixedRegressionObjective</span><span class="p">,</span>
-</span><span id="L-21"><a href="#L-21"><span class="linenos">21</span></a>    <span class="n">ModelBasedObjective</span><span class="p">,</span>
-</span><span id="L-22"><a href="#L-22"><span class="linenos">22</span></a>    <span class="n">PlantedLogisticObjective</span><span class="p">,</span>
-</span><span id="L-23"><a href="#L-23"><span class="linenos">23</span></a><span class="p">)</span>
-</span><span id="L-24"><a href="#L-24"><span class="linenos">24</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">objective.policy</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-</span><span id="L-25"><a href="#L-25"><span class="linenos">25</span></a>    <span class="n">ConstantPolicy</span><span class="p">,</span>
-</span><span id="L-26"><a href="#L-26"><span class="linenos">26</span></a>    <span class="n">LinearPolicy</span><span class="p">,</span>
-</span><span id="L-27"><a href="#L-27"><span class="linenos">27</span></a>    <span class="n">SoftmaxPolicy</span><span class="p">,</span>
-</span><span id="L-28"><a href="#L-28"><span class="linenos">28</span></a>    <span class="n">policy_from_kind</span><span class="p">,</span>
-</span><span id="L-29"><a href="#L-29"><span class="linenos">29</span></a><span class="p">)</span>
-</span><span id="L-30"><a href="#L-30"><span class="linenos">30</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">objective.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">optimal_u</span>
-</span><span id="L-31"><a href="#L-31"><span class="linenos">31</span></a>
-</span><span id="L-32"><a href="#L-32"><span class="linenos">32</span></a><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
-</span><span id="L-33"><a href="#L-33"><span class="linenos">33</span></a>    <span class="c1"># Base interfaces</span>
-</span><span id="L-34"><a href="#L-34"><span class="linenos">34</span></a>    <span class="s2">&quot;Objective&quot;</span><span class="p">,</span>
-</span><span id="L-35"><a href="#L-35"><span class="linenos">35</span></a>    <span class="s2">&quot;Policy&quot;</span><span class="p">,</span>
-</span><span id="L-36"><a href="#L-36"><span class="linenos">36</span></a>    <span class="s2">&quot;default_rng&quot;</span><span class="p">,</span>
-</span><span id="L-37"><a href="#L-37"><span class="linenos">37</span></a>    <span class="s2">&quot;sample_states&quot;</span><span class="p">,</span>
-</span><span id="L-38"><a href="#L-38"><span class="linenos">38</span></a>    <span class="c1"># Concrete policies</span>
-</span><span id="L-39"><a href="#L-39"><span class="linenos">39</span></a>    <span class="s2">&quot;ConstantPolicy&quot;</span><span class="p">,</span>
-</span><span id="L-40"><a href="#L-40"><span class="linenos">40</span></a>    <span class="s2">&quot;LinearPolicy&quot;</span><span class="p">,</span>
-</span><span id="L-41"><a href="#L-41"><span class="linenos">41</span></a>    <span class="s2">&quot;SoftmaxPolicy&quot;</span><span class="p">,</span>
-</span><span id="L-42"><a href="#L-42"><span class="linenos">42</span></a>    <span class="s2">&quot;policy_from_kind&quot;</span><span class="p">,</span>
-</span><span id="L-43"><a href="#L-43"><span class="linenos">43</span></a>    <span class="c1"># Concrete objectives</span>
-</span><span id="L-44"><a href="#L-44"><span class="linenos">44</span></a>    <span class="s2">&quot;CSVObjective&quot;</span><span class="p">,</span>
-</span><span id="L-45"><a href="#L-45"><span class="linenos">45</span></a>    <span class="s2">&quot;FixedRegressionObjective&quot;</span><span class="p">,</span>
-</span><span id="L-46"><a href="#L-46"><span class="linenos">46</span></a>    <span class="s2">&quot;ModelBasedObjective&quot;</span><span class="p">,</span>
-</span><span id="L-47"><a href="#L-47"><span class="linenos">47</span></a>    <span class="s2">&quot;PlantedLogisticObjective&quot;</span><span class="p">,</span>
-</span><span id="L-48"><a href="#L-48"><span class="linenos">48</span></a>    <span class="c1"># Utility</span>
-</span><span id="L-49"><a href="#L-49"><span class="linenos">49</span></a>    <span class="s2">&quot;optimal_u&quot;</span><span class="p">,</span>
-</span><span id="L-50"><a href="#L-50"><span class="linenos">50</span></a><span class="p">]</span>
+</span><span id="L-19"><a href="#L-19"><span class="linenos">19</span></a>    <span class="n">FixedRegressionObjective</span><span class="p">,</span>
+</span><span id="L-20"><a href="#L-20"><span class="linenos">20</span></a>    <span class="n">ModelBasedObjective</span><span class="p">,</span>
+</span><span id="L-21"><a href="#L-21"><span class="linenos">21</span></a>    <span class="n">PlantedLogisticObjective</span><span class="p">,</span>
+</span><span id="L-22"><a href="#L-22"><span class="linenos">22</span></a><span class="p">)</span>
+</span><span id="L-23"><a href="#L-23"><span class="linenos">23</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">objective.policy</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+</span><span id="L-24"><a href="#L-24"><span class="linenos">24</span></a>    <span class="n">ConstantPolicy</span><span class="p">,</span>
+</span><span id="L-25"><a href="#L-25"><span class="linenos">25</span></a>    <span class="n">LinearPolicy</span><span class="p">,</span>
+</span><span id="L-26"><a href="#L-26"><span class="linenos">26</span></a>    <span class="n">SoftmaxPolicy</span><span class="p">,</span>
+</span><span id="L-27"><a href="#L-27"><span class="linenos">27</span></a>    <span class="n">policy_from_kind</span><span class="p">,</span>
+</span><span id="L-28"><a href="#L-28"><span class="linenos">28</span></a><span class="p">)</span>
+</span><span id="L-29"><a href="#L-29"><span class="linenos">29</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">objective.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">optimal_u</span>
+</span><span id="L-30"><a href="#L-30"><span class="linenos">30</span></a>
+</span><span id="L-31"><a href="#L-31"><span class="linenos">31</span></a><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="L-32"><a href="#L-32"><span class="linenos">32</span></a>    <span class="c1"># Base interfaces</span>
+</span><span id="L-33"><a href="#L-33"><span class="linenos">33</span></a>    <span class="s2">&quot;Objective&quot;</span><span class="p">,</span>
+</span><span id="L-34"><a href="#L-34"><span class="linenos">34</span></a>    <span class="s2">&quot;Policy&quot;</span><span class="p">,</span>
+</span><span id="L-35"><a href="#L-35"><span class="linenos">35</span></a>    <span class="s2">&quot;default_rng&quot;</span><span class="p">,</span>
+</span><span id="L-36"><a href="#L-36"><span class="linenos">36</span></a>    <span class="s2">&quot;sample_states&quot;</span><span class="p">,</span>
+</span><span id="L-37"><a href="#L-37"><span class="linenos">37</span></a>    <span class="c1"># Concrete policies</span>
+</span><span id="L-38"><a href="#L-38"><span class="linenos">38</span></a>    <span class="s2">&quot;ConstantPolicy&quot;</span><span class="p">,</span>
+</span><span id="L-39"><a href="#L-39"><span class="linenos">39</span></a>    <span class="s2">&quot;LinearPolicy&quot;</span><span class="p">,</span>
+</span><span id="L-40"><a href="#L-40"><span class="linenos">40</span></a>    <span class="s2">&quot;SoftmaxPolicy&quot;</span><span class="p">,</span>
+</span><span id="L-41"><a href="#L-41"><span class="linenos">41</span></a>    <span class="s2">&quot;policy_from_kind&quot;</span><span class="p">,</span>
+</span><span id="L-42"><a href="#L-42"><span class="linenos">42</span></a>    <span class="c1"># Concrete objectives</span>
+</span><span id="L-43"><a href="#L-43"><span class="linenos">43</span></a>    <span class="s2">&quot;FixedRegressionObjective&quot;</span><span class="p">,</span>
+</span><span id="L-44"><a href="#L-44"><span class="linenos">44</span></a>    <span class="s2">&quot;ModelBasedObjective&quot;</span><span class="p">,</span>
+</span><span id="L-45"><a href="#L-45"><span class="linenos">45</span></a>    <span class="s2">&quot;PlantedLogisticObjective&quot;</span><span class="p">,</span>
+</span><span id="L-46"><a href="#L-46"><span class="linenos">46</span></a>    <span class="c1"># Utility</span>
+</span><span id="L-47"><a href="#L-47"><span class="linenos">47</span></a>    <span class="s2">&quot;optimal_u&quot;</span><span class="p">,</span>
+</span><span id="L-48"><a href="#L-48"><span class="linenos">48</span></a><span class="p">]</span>
 </span></pre></div>
 
 
@@ -974,229 +948,6 @@ ModelBasedObjective, CSVObjective</li>
 </div>
 
 
-                </section>
-                <section id="CSVObjective">
-                            <input id="CSVObjective-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
-<div class="attr class">
-                    <div class="decorator decorator-dataclass">@dataclass(frozen=True)</div>
-
-    <span class="def">class</span>
-    <span class="name">CSVObjective</span><wbr>(<span class="base"><a href="#Objective">objective.Objective</a></span>):
-
-                <label class="view-source-button" for="CSVObjective-view-source"><span>View Source</span></label>
-
-    </div>
-    <a class="headerlink" href="#CSVObjective"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="CSVObjective-15"><a href="#CSVObjective-15"><span class="linenos">15</span></a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="CSVObjective-16"><a href="#CSVObjective-16"><span class="linenos">16</span></a><span class="k">class</span><span class="w"> </span><span class="nc">CSVObjective</span><span class="p">(</span><span class="n">Objective</span><span class="p">):</span>
-</span><span id="CSVObjective-17"><a href="#CSVObjective-17"><span class="linenos">17</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;U-space objective from pre-computed CSV predictions.</span>
-</span><span id="CSVObjective-18"><a href="#CSVObjective-18"><span class="linenos">18</span></a>
-</span><span id="CSVObjective-19"><a href="#CSVObjective-19"><span class="linenos">19</span></a><span class="sd">    Evaluates $$f(u) = \\text{mean}(a \\cdot (\\hat{Y} - u \\cdot p))$$ where</span>
-</span><span id="CSVObjective-20"><a href="#CSVObjective-20"><span class="linenos">20</span></a><span class="sd">    $$a$$ (``prob_acceptance``), $$\\hat{Y}$$ (``Y_hat``), and $$p$$ (``X_policy_premium``)</span>
-</span><span id="CSVObjective-21"><a href="#CSVObjective-21"><span class="linenos">21</span></a><span class="sd">    are taken from rows of the CSV near the query u.</span>
-</span><span id="CSVObjective-22"><a href="#CSVObjective-22"><span class="linenos">22</span></a>
-</span><span id="CSVObjective-23"><a href="#CSVObjective-23"><span class="linenos">23</span></a><span class="sd">    ``value_at_u(x_batch, u)``: matches the standard ``Objective`` interface;</span>
-</span><span id="CSVObjective-24"><a href="#CSVObjective-24"><span class="linenos">24</span></a><span class="sd">    ``x_batch`` is ignored — lookup uses only u against the CSV ``U`` column.</span>
-</span><span id="CSVObjective-25"><a href="#CSVObjective-25"><span class="linenos">25</span></a><span class="sd">    Filters rows where ``|U - u| &lt; tol``; falls back to the k nearest rows when</span>
-</span><span id="CSVObjective-26"><a href="#CSVObjective-26"><span class="linenos">26</span></a><span class="sd">    fewer than ``_k_fallback`` rows are found within tolerance.</span>
-</span><span id="CSVObjective-27"><a href="#CSVObjective-27"><span class="linenos">27</span></a>
-</span><span id="CSVObjective-28"><a href="#CSVObjective-28"><span class="linenos">28</span></a><span class="sd">    ``value(theta, x_batch)``: computes u as the mean policy action over x_batch,</span>
-</span><span id="CSVObjective-29"><a href="#CSVObjective-29"><span class="linenos">29</span></a><span class="sd">    then delegates to ``value_at_u``.</span>
-</span><span id="CSVObjective-30"><a href="#CSVObjective-30"><span class="linenos">30</span></a>
-</span><span id="CSVObjective-31"><a href="#CSVObjective-31"><span class="linenos">31</span></a><span class="sd">    ``grad()``: raises ``NotImplementedError`` — use FD/SPSA/Gauss-Stein estimators.</span>
-</span><span id="CSVObjective-32"><a href="#CSVObjective-32"><span class="linenos">32</span></a><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="CSVObjective-33"><a href="#CSVObjective-33"><span class="linenos">33</span></a>
-</span><span id="CSVObjective-34"><a href="#CSVObjective-34"><span class="linenos">34</span></a>    <span class="n">_df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>            <span class="c1"># must contain: U, prob_acceptance, Y_hat, X_policy_premium</span>
-</span><span id="CSVObjective-35"><a href="#CSVObjective-35"><span class="linenos">35</span></a>    <span class="n">policy</span><span class="p">:</span> <span class="n">Policy</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">SoftmaxPolicy</span><span class="p">)</span>
-</span><span id="CSVObjective-36"><a href="#CSVObjective-36"><span class="linenos">36</span></a>    <span class="n">tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.005</span>
-</span><span id="CSVObjective-37"><a href="#CSVObjective-37"><span class="linenos">37</span></a>    <span class="n">_k_fallback</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span>
-</span><span id="CSVObjective-38"><a href="#CSVObjective-38"><span class="linenos">38</span></a>
-</span><span id="CSVObjective-39"><a href="#CSVObjective-39"><span class="linenos">39</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">value_at_u</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x_batch</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">u</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-</span><span id="CSVObjective-40"><a href="#CSVObjective-40"><span class="linenos">40</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Mean objective at query u using pre-computed CSV predictions.</span>
-</span><span id="CSVObjective-41"><a href="#CSVObjective-41"><span class="linenos">41</span></a>
-</span><span id="CSVObjective-42"><a href="#CSVObjective-42"><span class="linenos">42</span></a><span class="sd">        ``x_batch`` is ignored; lookup is performed against the CSV U column.</span>
-</span><span id="CSVObjective-43"><a href="#CSVObjective-43"><span class="linenos">43</span></a><span class="sd">        Filters rows where ``|U - u| &lt; tol``. Falls back to k nearest rows</span>
-</span><span id="CSVObjective-44"><a href="#CSVObjective-44"><span class="linenos">44</span></a><span class="sd">        when fewer than ``_k_fallback`` rows are within tolerance.</span>
-</span><span id="CSVObjective-45"><a href="#CSVObjective-45"><span class="linenos">45</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="CSVObjective-46"><a href="#CSVObjective-46"><span class="linenos">46</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lookup_at_u</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">u</span><span class="p">))</span>
-</span><span id="CSVObjective-47"><a href="#CSVObjective-47"><span class="linenos">47</span></a>
-</span><span id="CSVObjective-48"><a href="#CSVObjective-48"><span class="linenos">48</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">theta</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">x_batch</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-</span><span id="CSVObjective-49"><a href="#CSVObjective-49"><span class="linenos">49</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute objective value by evaluating policy on x_batch to get mean u.&quot;&quot;&quot;</span>
-</span><span id="CSVObjective-50"><a href="#CSVObjective-50"><span class="linenos">50</span></a>        <span class="n">theta_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-</span><span id="CSVObjective-51"><a href="#CSVObjective-51"><span class="linenos">51</span></a>        <span class="n">x_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">x_batch</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-</span><span id="CSVObjective-52"><a href="#CSVObjective-52"><span class="linenos">52</span></a>        <span class="k">if</span> <span class="n">x_arr</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
-</span><span id="CSVObjective-53"><a href="#CSVObjective-53"><span class="linenos">53</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;x_batch must be 2D.&quot;</span><span class="p">)</span>
-</span><span id="CSVObjective-54"><a href="#CSVObjective-54"><span class="linenos">54</span></a>        <span class="n">u_batch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">policy</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="n">theta_arr</span><span class="p">,</span> <span class="n">x_arr</span><span class="p">)</span>
-</span><span id="CSVObjective-55"><a href="#CSVObjective-55"><span class="linenos">55</span></a>        <span class="n">u_scalar</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">u_batch</span><span class="p">))</span>
-</span><span id="CSVObjective-56"><a href="#CSVObjective-56"><span class="linenos">56</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lookup_at_u</span><span class="p">(</span><span class="n">u_scalar</span><span class="p">)</span>
-</span><span id="CSVObjective-57"><a href="#CSVObjective-57"><span class="linenos">57</span></a>
-</span><span id="CSVObjective-58"><a href="#CSVObjective-58"><span class="linenos">58</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">grad</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">theta</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">x_batch</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-</span><span id="CSVObjective-59"><a href="#CSVObjective-59"><span class="linenos">59</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Not implemented: use FD/SPSA/Gauss-Stein estimators instead.&quot;&quot;&quot;</span>
-</span><span id="CSVObjective-60"><a href="#CSVObjective-60"><span class="linenos">60</span></a>        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
-</span><span id="CSVObjective-61"><a href="#CSVObjective-61"><span class="linenos">61</span></a>            <span class="s2">&quot;CSVObjective does not support analytical gradients. &quot;</span>
-</span><span id="CSVObjective-62"><a href="#CSVObjective-62"><span class="linenos">62</span></a>            <span class="s2">&quot;Use finite_difference, spsa, or gauss_stein estimators.&quot;</span>
-</span><span id="CSVObjective-63"><a href="#CSVObjective-63"><span class="linenos">63</span></a>        <span class="p">)</span>
-</span><span id="CSVObjective-64"><a href="#CSVObjective-64"><span class="linenos">64</span></a>
-</span><span id="CSVObjective-65"><a href="#CSVObjective-65"><span class="linenos">65</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_lookup_at_u</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-</span><span id="CSVObjective-66"><a href="#CSVObjective-66"><span class="linenos">66</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Filter CSV rows near u and compute mean objective value.&quot;&quot;&quot;</span>
-</span><span id="CSVObjective-67"><a href="#CSVObjective-67"><span class="linenos">67</span></a>        <span class="n">k</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_k_fallback</span><span class="p">)</span>
-</span><span id="CSVObjective-68"><a href="#CSVObjective-68"><span class="linenos">68</span></a>        <span class="n">u_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_df</span><span class="p">[</span><span class="s2">&quot;U&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-</span><span id="CSVObjective-69"><a href="#CSVObjective-69"><span class="linenos">69</span></a>        <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">u_col</span> <span class="o">-</span> <span class="n">u</span><span class="p">)</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">tol</span>
-</span><span id="CSVObjective-70"><a href="#CSVObjective-70"><span class="linenos">70</span></a>        <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span> <span class="o">&lt;</span> <span class="n">k</span><span class="p">:</span>
-</span><span id="CSVObjective-71"><a href="#CSVObjective-71"><span class="linenos">71</span></a>            <span class="c1"># Fallback: k nearest rows</span>
-</span><span id="CSVObjective-72"><a href="#CSVObjective-72"><span class="linenos">72</span></a>            <span class="n">distances</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">u_col</span> <span class="o">-</span> <span class="n">u</span><span class="p">)</span>
-</span><span id="CSVObjective-73"><a href="#CSVObjective-73"><span class="linenos">73</span></a>            <span class="n">kk</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">distances</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
-</span><span id="CSVObjective-74"><a href="#CSVObjective-74"><span class="linenos">74</span></a>            <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argpartition</span><span class="p">(</span><span class="n">distances</span><span class="p">,</span> <span class="n">kk</span><span class="p">)[:</span><span class="n">k</span><span class="p">]</span>
-</span><span id="CSVObjective-75"><a href="#CSVObjective-75"><span class="linenos">75</span></a>            <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">u_col</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
-</span><span id="CSVObjective-76"><a href="#CSVObjective-76"><span class="linenos">76</span></a>            <span class="n">mask</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
-</span><span id="CSVObjective-77"><a href="#CSVObjective-77"><span class="linenos">77</span></a>
-</span><span id="CSVObjective-78"><a href="#CSVObjective-78"><span class="linenos">78</span></a>        <span class="n">rows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_df</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
-</span><span id="CSVObjective-79"><a href="#CSVObjective-79"><span class="linenos">79</span></a>        <span class="n">prob_acc</span> <span class="o">=</span> <span class="n">rows</span><span class="p">[</span><span class="s2">&quot;prob_acceptance&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-</span><span id="CSVObjective-80"><a href="#CSVObjective-80"><span class="linenos">80</span></a>        <span class="n">y_hat</span> <span class="o">=</span> <span class="n">rows</span><span class="p">[</span><span class="s2">&quot;Y_hat&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-</span><span id="CSVObjective-81"><a href="#CSVObjective-81"><span class="linenos">81</span></a>        <span class="n">premium</span> <span class="o">=</span> <span class="n">rows</span><span class="p">[</span><span class="s2">&quot;X_policy_premium&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-</span><span id="CSVObjective-82"><a href="#CSVObjective-82"><span class="linenos">82</span></a>        <span class="n">revenue</span> <span class="o">=</span> <span class="n">u</span> <span class="o">*</span> <span class="n">premium</span>
-</span><span id="CSVObjective-83"><a href="#CSVObjective-83"><span class="linenos">83</span></a>        <span class="n">values</span> <span class="o">=</span> <span class="n">prob_acc</span> <span class="o">*</span> <span class="p">(</span><span class="n">y_hat</span> <span class="o">-</span> <span class="n">revenue</span><span class="p">)</span>
-</span><span id="CSVObjective-84"><a href="#CSVObjective-84"><span class="linenos">84</span></a>        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">values</span><span class="p">))</span>
-</span></pre></div>
-
-
-            <div class="docstring"><p>U-space objective from pre-computed CSV predictions.</p>
-
-<p>Evaluates $$f(u) = \text{mean}(a \cdot (\hat{Y} - u \cdot p))$$ where
-$$a$$ (<code>prob_acceptance</code>), $$\hat{Y}$$ (<code>Y_hat</code>), and $$p$$ (<code>X_policy_premium</code>)
-are taken from rows of the CSV near the query u.</p>
-
-<p><code>value_at_u(x_batch, u)</code>: matches the standard <code><a href="#Objective">Objective</a></code> interface;
-<code>x_batch</code> is ignored — lookup uses only u against the CSV <code>U</code> column.
-Filters rows where <code>|U - u| &lt; tol</code>; falls back to the k nearest rows when
-fewer than <code>_k_fallback</code> rows are found within tolerance.</p>
-
-<p><code>value(theta, x_batch)</code>: computes u as the mean policy action over x_batch,
-then delegates to <code><a href="#CSVObjective.value_at_u">value_at_u</a></code>.</p>
-
-<p><code><a href="#CSVObjective.grad">grad()</a></code>: raises <code>NotImplementedError</code> — use FD/SPSA/Gauss-Stein estimators.</p>
-</div>
-
-
-                            <div id="CSVObjective.__init__" class="classattr">
-                                <div class="attr function">
-            
-        <span class="name">CSVObjective</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">_df</span><span class="p">:</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span>,</span><span class="param">	<span class="n">policy</span><span class="p">:</span> <span class="n"><a href="#Policy">Policy</a></span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">factory</span><span class="o">&gt;</span>,</span><span class="param">	<span class="n">tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.005</span>,</span><span class="param">	<span class="n">_k_fallback</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span></span>)</span>
-
-        
-    </div>
-    <a class="headerlink" href="#CSVObjective.__init__"></a>
-    
-    
-
-                            </div>
-                            <div id="CSVObjective.policy" class="classattr">
-                                <div class="attr variable">
-            <span class="name">policy</span><span class="annotation">: <a href="#Policy">Policy</a></span>
-
-        
-    </div>
-    <a class="headerlink" href="#CSVObjective.policy"></a>
-    
-    
-
-                            </div>
-                            <div id="CSVObjective.tol" class="classattr">
-                                <div class="attr variable">
-            <span class="name">tol</span><span class="annotation">: float</span>        =
-<span class="default_value">0.005</span>
-
-        
-    </div>
-    <a class="headerlink" href="#CSVObjective.tol"></a>
-    
-    
-
-                            </div>
-                            <div id="CSVObjective.value_at_u" class="classattr">
-                                        <input id="CSVObjective.value_at_u-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
-<div class="attr function">
-            
-        <span class="def">def</span>
-        <span class="name">value_at_u</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">x_batch</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>, </span><span class="param"><span class="n">u</span><span class="p">:</span> <span class="nb">float</span></span><span class="return-annotation">) -> <span class="nb">float</span>:</span></span>
-
-                <label class="view-source-button" for="CSVObjective.value_at_u-view-source"><span>View Source</span></label>
-
-    </div>
-    <a class="headerlink" href="#CSVObjective.value_at_u"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="CSVObjective.value_at_u-39"><a href="#CSVObjective.value_at_u-39"><span class="linenos">39</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">value_at_u</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x_batch</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">u</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-</span><span id="CSVObjective.value_at_u-40"><a href="#CSVObjective.value_at_u-40"><span class="linenos">40</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Mean objective at query u using pre-computed CSV predictions.</span>
-</span><span id="CSVObjective.value_at_u-41"><a href="#CSVObjective.value_at_u-41"><span class="linenos">41</span></a>
-</span><span id="CSVObjective.value_at_u-42"><a href="#CSVObjective.value_at_u-42"><span class="linenos">42</span></a><span class="sd">        ``x_batch`` is ignored; lookup is performed against the CSV U column.</span>
-</span><span id="CSVObjective.value_at_u-43"><a href="#CSVObjective.value_at_u-43"><span class="linenos">43</span></a><span class="sd">        Filters rows where ``|U - u| &lt; tol``. Falls back to k nearest rows</span>
-</span><span id="CSVObjective.value_at_u-44"><a href="#CSVObjective.value_at_u-44"><span class="linenos">44</span></a><span class="sd">        when fewer than ``_k_fallback`` rows are within tolerance.</span>
-</span><span id="CSVObjective.value_at_u-45"><a href="#CSVObjective.value_at_u-45"><span class="linenos">45</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="CSVObjective.value_at_u-46"><a href="#CSVObjective.value_at_u-46"><span class="linenos">46</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lookup_at_u</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">u</span><span class="p">))</span>
-</span></pre></div>
-
-
-            <div class="docstring"><p>Mean objective at query u using pre-computed CSV predictions.</p>
-
-<p><code>x_batch</code> is ignored; lookup is performed against the CSV U column.
-Filters rows where <code>|U - u| &lt; tol</code>. Falls back to k nearest rows
-when fewer than <code>_k_fallback</code> rows are within tolerance.</p>
-</div>
-
-
-                            </div>
-                            <div id="CSVObjective.value" class="classattr">
-                                        <input id="CSVObjective.value-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
-<div class="attr function">
-            
-        <span class="def">def</span>
-        <span class="name">value</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">theta</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>, </span><span class="param"><span class="n">x_batch</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span><span class="return-annotation">) -> <span class="nb">float</span>:</span></span>
-
-                <label class="view-source-button" for="CSVObjective.value-view-source"><span>View Source</span></label>
-
-    </div>
-    <a class="headerlink" href="#CSVObjective.value"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="CSVObjective.value-48"><a href="#CSVObjective.value-48"><span class="linenos">48</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">theta</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">x_batch</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-</span><span id="CSVObjective.value-49"><a href="#CSVObjective.value-49"><span class="linenos">49</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute objective value by evaluating policy on x_batch to get mean u.&quot;&quot;&quot;</span>
-</span><span id="CSVObjective.value-50"><a href="#CSVObjective.value-50"><span class="linenos">50</span></a>        <span class="n">theta_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-</span><span id="CSVObjective.value-51"><a href="#CSVObjective.value-51"><span class="linenos">51</span></a>        <span class="n">x_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">x_batch</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-</span><span id="CSVObjective.value-52"><a href="#CSVObjective.value-52"><span class="linenos">52</span></a>        <span class="k">if</span> <span class="n">x_arr</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
-</span><span id="CSVObjective.value-53"><a href="#CSVObjective.value-53"><span class="linenos">53</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;x_batch must be 2D.&quot;</span><span class="p">)</span>
-</span><span id="CSVObjective.value-54"><a href="#CSVObjective.value-54"><span class="linenos">54</span></a>        <span class="n">u_batch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">policy</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="n">theta_arr</span><span class="p">,</span> <span class="n">x_arr</span><span class="p">)</span>
-</span><span id="CSVObjective.value-55"><a href="#CSVObjective.value-55"><span class="linenos">55</span></a>        <span class="n">u_scalar</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">u_batch</span><span class="p">))</span>
-</span><span id="CSVObjective.value-56"><a href="#CSVObjective.value-56"><span class="linenos">56</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lookup_at_u</span><span class="p">(</span><span class="n">u_scalar</span><span class="p">)</span>
-</span></pre></div>
-
-
-            <div class="docstring"><p>Compute objective value by evaluating policy on x_batch to get mean u.</p>
-</div>
-
-
-                            </div>
-                            <div id="CSVObjective.grad" class="classattr">
-                                        <input id="CSVObjective.grad-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
-<div class="attr function">
-            
-        <span class="def">def</span>
-        <span class="name">grad</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">theta</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>, </span><span class="param"><span class="n">x_batch</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span><span class="return-annotation">) -> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>:</span></span>
-
-                <label class="view-source-button" for="CSVObjective.grad-view-source"><span>View Source</span></label>
-
-    </div>
-    <a class="headerlink" href="#CSVObjective.grad"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="CSVObjective.grad-58"><a href="#CSVObjective.grad-58"><span class="linenos">58</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">grad</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">theta</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">x_batch</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-</span><span id="CSVObjective.grad-59"><a href="#CSVObjective.grad-59"><span class="linenos">59</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Not implemented: use FD/SPSA/Gauss-Stein estimators instead.&quot;&quot;&quot;</span>
-</span><span id="CSVObjective.grad-60"><a href="#CSVObjective.grad-60"><span class="linenos">60</span></a>        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
-</span><span id="CSVObjective.grad-61"><a href="#CSVObjective.grad-61"><span class="linenos">61</span></a>            <span class="s2">&quot;CSVObjective does not support analytical gradients. &quot;</span>
-</span><span id="CSVObjective.grad-62"><a href="#CSVObjective.grad-62"><span class="linenos">62</span></a>            <span class="s2">&quot;Use finite_difference, spsa, or gauss_stein estimators.&quot;</span>
-</span><span id="CSVObjective.grad-63"><a href="#CSVObjective.grad-63"><span class="linenos">63</span></a>        <span class="p">)</span>
-</span></pre></div>
-
-
-            <div class="docstring"><p>Not implemented: use FD/SPSA/Gauss-Stein estimators instead.</p>
-</div>
-
-
-                            </div>
                 </section>
                 <section id="FixedRegressionObjective">
                             <input id="FixedRegressionObjective-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">

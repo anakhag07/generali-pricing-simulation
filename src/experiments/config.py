@@ -9,7 +9,6 @@ import numpy as np
 
 from objective.base import Objective, Policy
 from objective.objectives import (
-    CSVObjective,
     FixedRegressionObjective,
     ModelBasedObjective,
     PlantedLogisticObjective,
@@ -264,12 +263,6 @@ def _objective_to_dict(objective: Objective) -> dict[str, Any]:
             "premium_col": int(objective.premium_col),
             "u_coef": float(objective.u_coef) if objective.u_coef is not None else None,
         }
-    if isinstance(objective, CSVObjective):
-        return {
-            "type": "CSVObjective",
-            "policy": _policy_to_dict(objective.policy),
-            "tol": float(objective.tol),
-        }
     return {"type": type(objective).__name__}
 
 
@@ -367,18 +360,6 @@ def make_model_based_objective(
         premium_col=premium_col,
         u_coef=u_coef,
     )
-
-
-def make_csv_objective(
-    *,
-    df: object,
-    policy: Policy,
-    tol: float = 0.005,
-) -> CSVObjective:
-    """Create a CSVObjective from a pre-loaded merged DataFrame."""
-    import pandas as pd
-
-    return CSVObjective(_df=pd.DataFrame(df), policy=policy, tol=tol)
 
 
 def canonical_training_block(

@@ -7,8 +7,6 @@ import pytest
 @pytest.mark.parametrize("name", [
     "real_data_glm_base",
     "real_data_xgb_base",
-    "real_data_glm_csv",
-    "real_data_xgb_csv",
 ])
 def test_config_loads(name):
     from experiments.configs import get_config
@@ -44,25 +42,9 @@ def test_xgb_base_no_first_order():
     assert "first_order" not in cfg.enabled_estimators
 
 
-def test_csv_configs_no_first_order():
-    from experiments.configs import get_config
-    for name in ("real_data_glm_csv", "real_data_xgb_csv"):
-        cfg = get_config(name)
-        assert "first_order" not in cfg.enabled_estimators
-
-
-def test_csv_configs_state_dim_is_1():
-    from experiments.configs import get_config
-    for name in ("real_data_glm_csv", "real_data_xgb_csv"):
-        cfg = get_config(name)
-        assert cfg.state_dim == 1
-
-
 @pytest.mark.parametrize("name", [
     "real_data_glm_base",
     "real_data_xgb_base",
-    "real_data_glm_csv",
-    "real_data_xgb_csv",
 ])
 def test_real_data_configs_disable_correctness_gradients(name):
     from experiments.configs import get_config
@@ -74,8 +56,6 @@ def test_real_data_configs_disable_correctness_gradients(name):
 @pytest.mark.parametrize("name", [
     "real_data_glm_base",
     "real_data_xgb_base",
-    "real_data_glm_csv",
-    "real_data_xgb_csv",
 ])
 def test_real_data_configs_enable_verbose_and_wandb(name):
     from experiments.configs import get_config

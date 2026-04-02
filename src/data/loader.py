@@ -61,23 +61,13 @@ _ARTIFACT_PATHS: dict[str, dict[str, Path]] = {
     },
 }
 
-_CSV_PATHS: dict[str, dict[str, Path]] = {
-    "glm": {
-        "acceptance": _DATA_DIR
-        / "dataset_bbox_optim_linear_models"
-        / "df_acceptance_linear_model_black_box.csv",
-        "loss": _DATA_DIR
-        / "dataset_bbox_optim_linear_models"
-        / "df_exp_financial_loss_linear_black_box.csv",
-    },
-    "xgb": {
-        "acceptance": _DATA_DIR
-        / "dataset_bbox_optim_xgb_models"
-        / "df_acceptance_xgb_black_box.csv",
-        "loss": _DATA_DIR
-        / "dataset_bbox_optim_xgb_models"
-        / "df_exp_financial_loss_xgb_black_box.csv",
-    },
+_ACCEPTANCE_CSV_PATHS: dict[str, Path] = {
+    "glm": _DATA_DIR
+    / "dataset_bbox_optim_linear_models"
+    / "df_acceptance_linear_model_black_box.csv",
+    "xgb": _DATA_DIR
+    / "dataset_bbox_optim_xgb_models"
+    / "df_acceptance_xgb_black_box.csv",
 }
 
 
@@ -104,39 +94,11 @@ def load_x_array(model_type: Literal["glm", "xgb"], n_rows: int = 5000) -> np.nd
     XGB: returns shape (n_rows, 10) using FEATURE_COLS_XGB (base + premium only).
     Metadata columns (1-Z, Z, Y, Y_hat, U, prob_acceptance, etc.) are excluded.
     """
-    if model_type not in _CSV_PATHS:
+    if model_type not in _ACCEPTANCE_CSV_PATHS:
         raise ValueError(f"model_type must be 'glm' or 'xgb', got '{model_type}'.")
     feature_cols = FEATURE_COLS_GLM if model_type == "glm" else FEATURE_COLS_XGB
-    df = pd.read_csv(_CSV_PATHS[model_type]["acceptance"], sep=";", nrows=n_rows)
+    df = pd.read_csv(_ACCEPTANCE_CSV_PATHS[model_type], sep=";", nrows=n_rows)
     return df[feature_cols].to_numpy(dtype=float)
-
-
-def load_csv_dataset(model_type: Literal["glm", "xgb"]) -> pd.DataFrame:
-    """Load and join acceptance + loss CSVs for pre-computed CSV-based evaluation.
-
-    Joins on 'id'. The GLM loss CSV stores U as a percentage change
-    (range ~[-0.002, 0.418]); this is normalized to uplift-factor scale (+1.0)
-    before joining so all U values are on the same [0.998, 1.418] scale.
-
-    Returns DataFrame with columns: FEATURE_COLS + [U, prob_acceptance, Y_hat].
-    """
-    if model_type not in _CSV_PATHS:
-        raise ValueError(f"model_type must be 'glm' or 'xgb', got '{model_type}'.")
-
-    acc_df = pd.read_csv(_CSV_PATHS[model_type]["acceptance"], sep=";")
-    loss_df = pd.read_csv(_CSV_PATHS[model_type]["loss"], sep=";")
-
-    # Normalize GLM loss CSV U column from percentage-change to uplift-factor scale
-    if model_type == "glm":
-        loss_df = loss_df.copy()
-        loss_df["U"] = loss_df["U"] + 1.0
-
-    loss_sub = loss_df[["id", "Y_hat"]].rename(columns={"Y_hat": "Y_hat"})
-    merged = acc_df.merge(loss_sub, on="id", how="inner")
-
-    feature_cols = FEATURE_COLS_GLM if model_type == "glm" else FEATURE_COLS_XGB
-    keep_cols = feature_cols + ["U", "prob_acceptance", "Y_hat"]
-    return merged[keep_cols].reset_index(drop=True)
 
 
 def extract_glm_u_coef(glm_pipeline: Any) -> float:
@@ -184,6 +146,5 @@ __all__ = [
     "ACCEPTANCE_STATE_COLS",
     "load_model_artifacts",
     "load_x_array",
-    "load_csv_dataset",
     "extract_glm_u_coef",
 ]

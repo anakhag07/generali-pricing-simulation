@@ -12,8 +12,6 @@ _CONFIG_MODULES = {
     "planted_logistic_base": "experiments.configs.planted_logistic_base",
     "real_data_glm_base": "experiments.configs.real_data_glm_base",
     "real_data_xgb_base": "experiments.configs.real_data_xgb_base",
-    "real_data_glm_csv": "experiments.configs.real_data_glm_csv",
-    "real_data_xgb_csv": "experiments.configs.real_data_xgb_csv",
 }
 
 _CONFIG_CACHE: dict[str, ExperimentConfig] = {}

@@ -5,7 +5,7 @@ This module provides:
 - Sampling: sample_states, default_rng
 - Concrete policies: ConstantPolicy, LinearPolicy, SoftmaxPolicy
 - Concrete objectives: FixedRegressionObjective, PlantedLogisticObjective,
-  ModelBasedObjective, CSVObjective
+  ModelBasedObjective
 - Utility: optimal_u
 """
 
@@ -16,7 +16,6 @@ from objective.base import (
     sample_states,
 )
 from objective.objectives import (
-    CSVObjective,
     FixedRegressionObjective,
     ModelBasedObjective,
     PlantedLogisticObjective,
@@ -41,7 +40,6 @@ __all__ = [
     "SoftmaxPolicy",
     "policy_from_kind",
     # Concrete objectives
-    "CSVObjective",
     "FixedRegressionObjective",
     "ModelBasedObjective",
     "PlantedLogisticObjective",

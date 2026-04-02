@@ -96,12 +96,6 @@ Guidelines:
   - `u_coef` enables analytical gradient for GLM; `None` triggers central FD for XGBoost
   - `value()`, `grad()`, `value_at_u()`
 
-- **`src/objective/objectives/csv_objective.py`**
-  - `CSVObjective`: u-space objective from pre-computed CSV predictions (no analytical gradient)
-  - `value_at_u(u)`: filters rows where `|U - u| < tol`; falls back to k-nearest rows
-  - `value(theta, x_batch)`: computes mean policy action from x_batch, then calls `value_at_u`
-  - `grad()`: raises `NotImplementedError` — use FD/SPSA/Gauss-Stein estimators
-
 - **`src/objective/objectives/planted_logistic.py`**
   - `PlantedLogisticObjective`: convex logistic objective with known optimum `u_star`
   - `optimal_u()` method exposes the planted optimum
@@ -124,7 +118,6 @@ Guidelines:
   - `LOSS_FEATURE_COLS`: 9 base cols passed to loss model
   - `load_x_array(model_type, n_rows=5000)`: loads first n_rows of X features from acceptance CSV; returns (n, 12) for GLM, (n, 10) for XGB
   - `load_model_artifacts(model_type)`: loads (acceptance_model, loss_model) from pickle files
-  - `load_csv_dataset(model_type)`: loads and joins acceptance + loss CSVs by id; normalizes GLM loss U column (+1.0 from %-change to uplift-factor scale)
   - `extract_glm_u_coef(glm_pipeline)`: extracts effective d_logit/dU = w_U / std_U from fitted GLM Pipeline for analytical gradient computation
 
 #### Optimization Layer (`src/optimization/`)
@@ -168,7 +161,7 @@ Guidelines:
   - `CorrectnessSpec`: controls how "true" gradients are computed (`"exact"`, `"numdiff"`, `"none"`)
   - `verbose: bool = False` controls terminal output of per-step metrics
   - Preset-composition helpers: `make_*_objective`, `make_softmax_policy`, `make_model_based_objective`,
-    `make_csv_objective`, `canonical_training_block`, `canonical_runtime_block`, and `build_experiment_config`
+    `canonical_training_block`, `canonical_runtime_block`, and `build_experiment_config`
 
 - **`src/experiments/configs/`** (preset registry)
   - `__init__.py`: `get_config(name)` and `list_configs()` registry
@@ -177,8 +170,6 @@ Guidelines:
   - `planted_logistic_base.py`: planted logistic base config (3D, L-BFGS-B step rule, 5000 steps, u*=1.1)
   - `real_data_glm_base.py`: GLM pickle-based config; state_dim=12; all 5 estimators; analytical first-order gradient via u_coef
   - `real_data_xgb_base.py`: XGBoost pickle-based config; state_dim=10; 4 estimators (no first_order); FD for d_acceptance/du
-  - `real_data_glm_csv.py`: GLM CSV-backed u-space config; state_dim=1; 4 estimators (no first_order)
-  - `real_data_xgb_csv.py`: XGBoost CSV-backed u-space config; same structure as GLM CSV variant
   - `config_template.py`: copy-first scaffold with `None` placeholders for all `ExperimentConfig` fields plus objective/correctness parameter blocks; not registered as a runnable preset
 
 - **`src/experiments/defaults.py`**
@@ -318,13 +309,13 @@ public class or function under `src/`. The command regenerates HTML for all
 modules at once so cross-module links stay consistent.
 
 Major classes and methods MUST have docstrings that render via pdoc:
-- Objective classes (`FixedRegressionObjective`, `PlantedLogisticObjective`, `ModelBasedObjective`, `CSVObjective`)
+- Objective classes (`FixedRegressionObjective`, `PlantedLogisticObjective`, `ModelBasedObjective`)
 - Policy classes (`ConstantPolicy`, `LinearPolicy`, `SoftmaxPolicy`)
 - Core interfaces (`Policy`, `Objective`) and sampling helper (`sample_states`)
 - Optimization classes (`Optimization`, `GradientMethod` subclasses)
 - Experiment config and results (`ExperimentConfig`, `ExperimentResult`, etc.)
 - Runner functions (`run_experiment`)
-- Data loaders (`load_x_array`, `load_model_artifacts`, `load_csv_dataset`)
+- Data loaders (`load_x_array`, `load_model_artifacts`)
 
 Docstrings should be 1-2 lines with LaTeX where it aids clarity.
 Use double delimiters `$$...$$` for math rendering in pdoc (do not use single `$...$`).

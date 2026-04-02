@@ -40,38 +40,6 @@ def test_load_model_artifacts_types():
     assert isinstance(xgb_loss, xgboost.XGBRegressor)
 
 
-def test_load_csv_dataset_columns_glm():
-    from data.loader import load_csv_dataset, FEATURE_COLS_GLM
-
-    df = load_csv_dataset("glm")
-    expected = set(FEATURE_COLS_GLM) | {"U", "prob_acceptance", "Y_hat"}
-    assert expected == set(df.columns)
-
-
-def test_load_csv_dataset_columns_xgb():
-    from data.loader import load_csv_dataset, FEATURE_COLS_XGB
-
-    df = load_csv_dataset("xgb")
-    expected = set(FEATURE_COLS_XGB) | {"U", "prob_acceptance", "Y_hat"}
-    assert expected == set(df.columns)
-
-
-def test_glm_loss_u_normalized():
-    """GLM loss CSV U is normalized to uplift-factor scale (all values > 0.9)."""
-    from data.loader import load_csv_dataset
-
-    df = load_csv_dataset("glm")
-    assert df["U"].min() > 0.9, "GLM loss U should be on uplift-factor scale after +1.0"
-
-
-def test_xgb_csv_u_range():
-    from data.loader import load_csv_dataset
-
-    df = load_csv_dataset("xgb")
-    assert df["U"].min() > 0.9
-    assert df["U"].max() < 1.6
-
-
 def test_extract_glm_u_coef_is_finite():
     from data.loader import extract_glm_u_coef, load_model_artifacts
 

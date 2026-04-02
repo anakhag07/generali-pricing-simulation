@@ -47,7 +47,7 @@ TRAINING = canonical_training_block(
     sigma=0.05,
     n_grad_samples=50,
     enabled_estimators=("first_order", "finite_difference", "spsa", "gauss_stein", "stein_difference"),
-    perturbation_space="theta",
+    perturbation_space="u",
     grad_norm_tol=1e-6,
 )
 

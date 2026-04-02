@@ -90,6 +90,18 @@ Guidelines:
   - `FixedRegressionObjective`: pricing objective $$f(u;x) = a(x,u)(\ell(x) - r(u))$$
   - `from_parameters` classmethod; batch evaluation via `value()`, `grad()`, `value_at_u()`
 
+- **`src/objective/objectives/model_based.py`**
+  - `ModelBasedObjective`: pricing objective $$f(u;x) = a(x,u)(\hat{Y}(x) - u \cdot p(x))$$ backed by trained sklearn/XGBoost models
+  - Takes `acceptance_model` (GLM Pipeline or XGBClassifier) and `loss_model` (LinearRegression or XGBRegressor)
+  - `u_coef` enables analytical gradient for GLM; `None` triggers central FD for XGBoost
+  - `value()`, `grad()`, `value_at_u()`
+
+- **`src/objective/objectives/csv_objective.py`**
+  - `CSVObjective`: u-space objective from pre-computed CSV predictions (no analytical gradient)
+  - `value_at_u(u)`: filters rows where `|U - u| < tol`; falls back to k-nearest rows
+  - `value(theta, x_batch)`: computes mean policy action from x_batch, then calls `value_at_u`
+  - `grad()`: raises `NotImplementedError` — use FD/SPSA/Gauss-Stein estimators
+
 - **`src/objective/objectives/planted_logistic.py`**
   - `PlantedLogisticObjective`: convex logistic objective with known optimum `u_star`
   - `optimal_u()` method exposes the planted optimum
@@ -105,7 +117,15 @@ Guidelines:
 
 #### Data Layer (`src/data/`)
 
-- Reserved for dataset adapters and external data-source integrations.
+- **`src/data/loader.py`**
+  - `FEATURE_COLS_GLM`: 12-column state feature list for GLM configs (9 base + premium + X_prev_renewal_perc + X_year)
+  - `FEATURE_COLS_XGB`: 10-column state feature list for XGB configs (9 base + premium)
+  - `ACCEPTANCE_STATE_COLS`: 10 cols passed to acceptance model (base + premium, no U)
+  - `LOSS_FEATURE_COLS`: 9 base cols passed to loss model
+  - `load_x_array(model_type, n_rows=5000)`: loads first n_rows of X features from acceptance CSV; returns (n, 12) for GLM, (n, 10) for XGB
+  - `load_model_artifacts(model_type)`: loads (acceptance_model, loss_model) from pickle files
+  - `load_csv_dataset(model_type)`: loads and joins acceptance + loss CSVs by id; normalizes GLM loss U column (+1.0 from %-change to uplift-factor scale)
+  - `extract_glm_u_coef(glm_pipeline)`: extracts effective d_logit/dU = w_U / std_U from fitted GLM Pipeline for analytical gradient computation
 
 #### Optimization Layer (`src/optimization/`)
 
@@ -142,18 +162,23 @@ Guidelines:
 - **`src/experiments/config.py`**
   - `ExperimentConfig`: frozen dataclass with extensive `__post_init__` validation
   - Primary fields: `objective` (theta objective) and `theta0` (initial theta)
+  - `x_fixed: np.ndarray | None = None`: when set, runner uses this 2D array as state batch instead of sampling from N(0, I)
   - Objective/policy wiring is explicit; configs pass a concrete theta-level objective instance
   - `batch_size: int | None = None` enables stochastic mini-batch optimization when set
   - `CorrectnessSpec`: controls how "true" gradients are computed (`"exact"`, `"numdiff"`, `"none"`)
   - `verbose: bool = False` controls terminal output of per-step metrics
-  - Preset-composition helpers: `make_*_objective`, `make_softmax_policy`, `make_policy_objective`,
-    `canonical_training_block`, `canonical_runtime_block`, and `build_experiment_config`
+  - Preset-composition helpers: `make_*_objective`, `make_softmax_policy`, `make_model_based_objective`,
+    `make_csv_objective`, `canonical_training_block`, `canonical_runtime_block`, and `build_experiment_config`
 
 - **`src/experiments/configs/`** (preset registry)
   - `__init__.py`: `get_config(name)` and `list_configs()` registry
   - `first_order_runs_diff_starts.py`: planted-logistic preset configured for comparison runs across different initial starts
   - `fixed_regression_base.py`: base fixed-regression config (4D, L-BFGS-B step rule, W&B enabled)
   - `planted_logistic_base.py`: planted logistic base config (3D, L-BFGS-B step rule, 5000 steps, u*=1.1)
+  - `real_data_glm_base.py`: GLM pickle-based config; state_dim=12; all 5 estimators; analytical first-order gradient via u_coef
+  - `real_data_xgb_base.py`: XGBoost pickle-based config; state_dim=10; 4 estimators (no first_order); FD for d_acceptance/du
+  - `real_data_glm_csv.py`: GLM CSV-backed u-space config; state_dim=1; 4 estimators (no first_order)
+  - `real_data_xgb_csv.py`: XGBoost CSV-backed u-space config; same structure as GLM CSV variant
   - `config_template.py`: copy-first scaffold with `None` placeholders for all `ExperimentConfig` fields plus objective/correctness parameter blocks; not registered as a runnable preset
 
 - **`src/experiments/defaults.py`**
@@ -170,7 +195,7 @@ Guidelines:
   - Uses `optimization.helpers.finite_difference_theta_grad(...)` for correctness-mode numerical theta gradients
 
 - **`src/experiments/run.py`**
-  - `run_experiment(config, step_reporter)`: main runner; samples state vectors, runs enabled estimators, returns `ExperimentResult` (pure computation, no I/O)
+  - `run_experiment(config, step_reporter)`: main runner; uses `config.x_fixed` as state array when set, otherwise samples from N(0, I); runs enabled estimators; returns `ExperimentResult` (pure computation, no I/O)
 
 - **`src/experiments/sweep_utils.py`**
   - `expand_override_grid(...)`: cartesian product of override values
@@ -263,6 +288,10 @@ when appropriate.
 | `test_verbose_config.py` | verbose flag defaults and serialization |
 | `test_visualization_step_sizes.py` | step_sizes plot uses log y-scale |
 | `test_sweep_utils.py` | Override-grid expansion and preset sweep config generation |
+| `test_data_loader.py` | `load_x_array` shape/dtype, model artifact types, U normalization, CSV column sets |
+| `test_model_based_objective.py` | `value()`, `grad()` shape, `value_at_u()`, analytical vs FD grad agreement |
+| `test_csv_objective.py` | `value_at_u`, k-fallback, `grad()` raises NotImplementedError |
+| `test_real_data_config.py` | All 4 real-data presets load; x_fixed shape; correct estimator sets |
 
 ## Documentation and Maintenance
 

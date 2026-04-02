@@ -30,7 +30,10 @@ def run_experiment(
     enabled_estimators = tuple(config.enabled_estimators)
 
     rng = default_rng(config.seed)
-    x_samples = sample_states(rng, config.n_samples, config.state_dim)
+    if config.x_fixed is not None:
+        x_samples = np.asarray(config.x_fixed, dtype=float)
+    else:
+        x_samples = sample_states(rng, config.n_samples, config.state_dim)
     true_grad_theta_fn = resolve_true_grad_theta_fn(objective, config.correctness)
 
     theta_initial = np.asarray(config.theta0, dtype=float)

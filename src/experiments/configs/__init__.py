@@ -10,6 +10,10 @@ _CONFIG_MODULES = {
     "first_order_runs_diff_starts": "experiments.configs.first_order_runs_diff_starts",
     "fixed_regression_base": "experiments.configs.fixed_regression_base",
     "planted_logistic_base": "experiments.configs.planted_logistic_base",
+    "real_data_glm_base": "experiments.configs.real_data_glm_base",
+    "real_data_xgb_base": "experiments.configs.real_data_xgb_base",
+    "real_data_glm_csv": "experiments.configs.real_data_glm_csv",
+    "real_data_xgb_csv": "experiments.configs.real_data_xgb_csv",
 }
 
 _CONFIG_CACHE: dict[str, ExperimentConfig] = {}

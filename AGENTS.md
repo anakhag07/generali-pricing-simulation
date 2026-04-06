@@ -296,7 +296,7 @@ Keep README concise—a quick-start and overview only. Update when:
 Point users to `docs/` for detailed API reference.
 
 ### docs/ (pdoc-generated)
-Regenerate docs when public API changes significantly.
+Regenerate docs when public API changes.
 
 **Regeneration command:**
 

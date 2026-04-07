@@ -138,6 +138,107 @@ def extract_glm_u_coef(glm_pipeline: Any) -> float:
     raise ValueError("Could not find a StandardScaler containing 'U' in the GLM pipeline preprocessor.")
 
 
+def extract_glm_churn_coefficients(glm_pipeline: Any) -> dict[str, Any]:
+    """Extract raw-space churn coefficients from a fitted GLM Pipeline.
+
+    Returns coefficients for the churn logit in the original feature space:
+    ``logit(p_churn(x, u)) = intercept + beta_x^T x + beta_u * u``.
+    """
+    preprocessor = glm_pipeline.named_steps["preprocessor"]
+    classifier = glm_pipeline.named_steps["classifier"]
+    transformed_names = list(preprocessor.get_feature_names_out())
+
+    numeric_transformer = None
+    numeric_cols: list[str] | None = None
+    for _, transformer, cols in preprocessor.transformers_:
+        if not hasattr(transformer, "named_steps"):
+            continue
+        if "scaler" not in transformer.named_steps:
+            continue
+        numeric_transformer = transformer
+        numeric_cols = list(cols)
+        break
+
+    if numeric_transformer is None or numeric_cols is None:
+        raise ValueError("Could not find a scaled numeric transformer in the GLM pipeline preprocessor.")
+
+    if len(transformed_names) != len(numeric_cols):
+        raise ValueError(
+            "GLM coefficient extraction only supports one-to-one preprocessing. "
+            f"Found {len(transformed_names)} transformed features for {len(numeric_cols)} raw numeric columns."
+        )
+
+    for out_name, raw_name in zip(transformed_names, numeric_cols):
+        if not (out_name.endswith(f"__{raw_name}") or out_name == raw_name):
+            raise ValueError(
+                "GLM coefficient extraction requires transformed feature names to align "
+                f"with raw numeric columns. Got transformed name '{out_name}' for raw column '{raw_name}'."
+            )
+
+    scaler = numeric_transformer.named_steps["scaler"]
+    coef_scaled = np.asarray(classifier.coef_[0], dtype=float)
+    intercept_scaled = float(classifier.intercept_[0])
+    mean = np.asarray(scaler.mean_, dtype=float)
+    scale = np.asarray(scaler.scale_, dtype=float)
+    coef_raw = coef_scaled / scale
+    intercept_raw = intercept_scaled - float(np.dot(coef_scaled, mean / scale))
+
+    if "U" not in numeric_cols:
+        raise ValueError(f"Expected raw numeric columns to include 'U'. Got: {numeric_cols}")
+
+    u_index = numeric_cols.index("U")
+    x_feature_names = [name for name in numeric_cols if name != "U"]
+    x_coef = np.delete(coef_raw, u_index)
+    u_coef = float(coef_raw[u_index])
+
+    return {
+        "formula": "logit(p_churn(x, u)) = intercept + beta_x^T x + beta_u * u",
+        "x_feature_names": x_feature_names,
+        "x_coef": [float(val) for val in x_coef.tolist()],
+        "u_coef": u_coef,
+        "intercept": intercept_raw,
+    }
+
+
+def extract_linear_loss_coefficients(linear_model: Any) -> dict[str, Any]:
+    """Extract coefficients from a fitted linear-regression loss model.
+
+    Returns coefficients for ``loss_hat(x) = intercept + gamma_x^T x``.
+    """
+    if not hasattr(linear_model, "coef_") or not hasattr(linear_model, "intercept_"):
+        raise ValueError("Expected a fitted linear model with coef_ and intercept_.")
+    if not hasattr(linear_model, "feature_names_in_"):
+        raise ValueError("Expected the fitted linear model to expose feature_names_in_.")
+
+    coef = np.asarray(linear_model.coef_, dtype=float)
+    feature_names = [str(name) for name in linear_model.feature_names_in_.tolist()]
+    if coef.shape != (len(feature_names),):
+        raise ValueError(
+            "Expected one coefficient per raw loss feature. "
+            f"Got coefficient shape {coef.shape} for {len(feature_names)} features."
+        )
+
+    return {
+        "formula": "loss_hat(x) = intercept + gamma_x^T x",
+        "x_feature_names": feature_names,
+        "x_coef": [float(val) for val in coef.tolist()],
+        "intercept": float(linear_model.intercept_),
+    }
+
+
+def extract_model_based_coefficients(acceptance_model: Any, loss_model: Any) -> dict[str, dict[str, Any]] | None:
+    """Extract printable coefficient summaries for supported model-based artifacts.
+
+    Returns ``None`` for unsupported artifact types such as XGBoost.
+    """
+    try:
+        churn = extract_glm_churn_coefficients(acceptance_model)
+        loss = extract_linear_loss_coefficients(loss_model)
+    except (AttributeError, KeyError, TypeError, ValueError):
+        return None
+    return {"churn": churn, "loss": loss}
+
+
 __all__ = [
     "FEATURE_COLS",
     "FEATURE_COLS_GLM",
@@ -147,4 +248,7 @@ __all__ = [
     "load_model_artifacts",
     "load_x_array",
     "extract_glm_u_coef",
+    "extract_glm_churn_coefficients",
+    "extract_linear_loss_coefficients",
+    "extract_model_based_coefficients",
 ]

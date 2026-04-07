@@ -26,7 +26,7 @@ from experiments.config import (
     canonical_training_block,
     make_model_based_objective,
 )
-from objective.policy import LinearPolicy
+from objective.policy import LinearPolicy, SoftmaxPolicy
 
 STATE_DIM = 12  # 9 base + premium + X_prev_renewal_perc + X_year
 
@@ -40,9 +40,9 @@ TRAINING = canonical_training_block(
     step_rule="l-bfgs-b",
     t_steps=1000,
     step_size=0.01,
-    sigma=0.05,
+    sigma=0.001,
     n_grad_samples=50,
-    enabled_estimators=("first_order", "finite_difference", "spsa", "gauss_stein", "stein_difference"),
+    enabled_estimators=("first_order", "finite_difference", "spsa", "stein_difference"),
     perturbation_space="u",
     grad_norm_tol=1e-6,
 )
@@ -50,7 +50,7 @@ TRAINING = canonical_training_block(
 RUNTIME = canonical_runtime_block(
     plot=True,
     verbose=True,
-    wandb_enabled=True,
+    wandb_enabled=False,
 )
 
 CORRECTNESS = CorrectnessSpec(gradient_source="none")
@@ -58,9 +58,9 @@ CORRECTNESS = CorrectnessSpec(gradient_source="none")
 CONFIG = build_experiment_config(
     seed=8,
     state_dim=STATE_DIM,
-    x_fixed=load_x_array("glm", n_rows=5000),
+    x_fixed=load_x_array("glm", n_rows=5000), 
     objective=make_model_based_objective(
-        policy=LinearPolicy(),
+        policy=SoftmaxPolicy(),
         acceptance_model=_acceptance_model,
         loss_model=_loss_model,
         acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),

@@ -49,6 +49,46 @@ def test_extract_glm_u_coef_is_finite():
     assert coef != 0.0
 
 
+def test_extract_glm_churn_coefficients_matches_u_coef():
+    from data.loader import (
+        ACCEPTANCE_STATE_COLS,
+        extract_glm_churn_coefficients,
+        extract_glm_u_coef,
+        load_model_artifacts,
+    )
+
+    glm_acc, _ = load_model_artifacts("glm")
+    coeffs = extract_glm_churn_coefficients(glm_acc)
+
+    assert coeffs["x_feature_names"] == list(ACCEPTANCE_STATE_COLS)
+    assert len(coeffs["x_coef"]) == len(ACCEPTANCE_STATE_COLS)
+    assert np.isfinite(coeffs["intercept"])
+    assert coeffs["u_coef"] == pytest.approx(extract_glm_u_coef(glm_acc))
+
+
+def test_extract_linear_loss_coefficients_has_expected_features():
+    from data.loader import LOSS_FEATURE_COLS, extract_linear_loss_coefficients, load_model_artifacts
+
+    _, glm_loss = load_model_artifacts("glm")
+    coeffs = extract_linear_loss_coefficients(glm_loss)
+
+    assert coeffs["x_feature_names"] == list(LOSS_FEATURE_COLS)
+    assert len(coeffs["x_coef"]) == len(LOSS_FEATURE_COLS)
+    assert np.isfinite(coeffs["intercept"])
+
+
+def test_extract_model_based_coefficients_glm_and_xgb_support():
+    from data.loader import extract_model_based_coefficients, load_model_artifacts
+
+    glm_acc, glm_loss = load_model_artifacts("glm")
+    coeffs = extract_model_based_coefficients(glm_acc, glm_loss)
+    assert coeffs is not None
+    assert set(coeffs) == {"churn", "loss"}
+
+    xgb_acc, xgb_loss = load_model_artifacts("xgb")
+    assert extract_model_based_coefficients(xgb_acc, xgb_loss) is None
+
+
 def test_load_x_array_invalid_type():
     from data.loader import load_x_array
 

@@ -6,7 +6,8 @@ from typing import Optional
 
 import numpy as np
 
-from objective.objectives import FixedRegressionObjective, PlantedLogisticObjective
+from data.loader import extract_model_based_coefficients
+from objective.objectives import FixedRegressionObjective, ModelBasedObjective, PlantedLogisticObjective
 from experiments.results import ExperimentResult
 
 
@@ -60,6 +61,25 @@ def log_summary(result: ExperimentResult) -> None:
             f"alpha={objective.alpha:.3f}, bias={objective.bias:.3f}, "
             f"u*={objective.u_star:.3f}, beta={beta}"
         )
+    elif isinstance(objective, ModelBasedObjective):
+        print("Objective: f(u; x) = p_acc(x, u) * (loss_hat(x) - u * premium(x))")
+        coeffs = extract_model_based_coefficients(
+            objective.acceptance_model,
+            objective.loss_model,
+        )
+        if coeffs is not None:
+            churn = coeffs["churn"]
+            loss = coeffs["loss"]
+            print("p_churn(x, u) = sigmoid(beta_0 + beta_x^T x_acc + beta_u * u)")
+            print("p_acc(x, u) = 1 - p_churn(x, u)")
+            print("loss_hat(x) = gamma_0 + gamma_x^T x_loss")
+            print(f"x_acc = {churn['x_feature_names']}")
+            print(f"beta_x = {format_array(churn['x_coef'])}")
+            print(f"beta_u = {float(churn['u_coef']):.6f}")
+            print(f"beta_0 = {float(churn['intercept']):.6f}")
+            print(f"x_loss = {loss['x_feature_names']}")
+            print(f"gamma_x = {format_array(loss['x_coef'])}")
+            print(f"gamma_0 = {float(loss['intercept']):.6f}")
     else:
         print(f"Objective: {type(objective).__name__}")
 

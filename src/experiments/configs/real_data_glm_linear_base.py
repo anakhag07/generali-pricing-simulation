@@ -40,9 +40,9 @@ TRAINING = canonical_training_block(
     step_rule="l-bfgs-b",
     t_steps=1000,
     step_size=0.01,
-    sigma=0.05,
+    sigma=0.001,
     n_grad_samples=50,
-    enabled_estimators=("first_order", "finite_difference", "spsa", "gauss_stein", "stein_difference"),
+    enabled_estimators=("first_order", "finite_difference", "spsa", "stein_difference"),
     perturbation_space="u",
     grad_norm_tol=1e-6,
 )

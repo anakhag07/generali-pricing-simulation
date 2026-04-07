@@ -26,7 +26,7 @@ from experiments.config import (
     canonical_training_block,
     make_model_based_objective,
 )
-from objective.policy import LinearPolicy
+from objective.policy import LinearPolicy, SoftmaxPolicy
 
 STATE_DIM = 12  # 9 base + premium + X_prev_renewal_perc + X_year
 
@@ -60,7 +60,7 @@ CONFIG = build_experiment_config(
     state_dim=STATE_DIM,
     x_fixed=load_x_array("glm", n_rows=5000),
     objective=make_model_based_objective(
-        policy=LinearPolicy(),
+        policy=SoftmaxPolicy(),
         acceptance_model=_acceptance_model,
         loss_model=_loss_model,
         acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),

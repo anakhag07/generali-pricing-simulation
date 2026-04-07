@@ -11,6 +11,7 @@ from typing import IO, Protocol, runtime_checkable, Sequence
 
 import numpy as np
 
+from data.loader import extract_model_based_coefficients
 from objective.objectives import FixedRegressionObjective
 from experiments.config import ExperimentConfig
 from reporting.logging import log_step, log_summary
@@ -413,7 +414,7 @@ def _build_summary_payload(run_context: RunContext, result: ExperimentResult) ->
                 "min_objective": float(np.min(trace.objective_values)),
             }
 
-    return {
+    payload = {
         "run": {
             "experiment_name": run_context.experiment_name,
             "run_id": run_context.run_id,
@@ -429,6 +430,19 @@ def _build_summary_payload(run_context: RunContext, result: ExperimentResult) ->
         "estimators": estimators,
         "trace_summary": trace_summary,
     }
+    coeffs = extract_model_based_coefficients(
+        result.config.objective.acceptance_model,
+        result.config.objective.loss_model,
+    ) if hasattr(result.config.objective, "acceptance_model") and hasattr(result.config.objective, "loss_model") else None
+    if coeffs is not None:
+        payload["model_formulas"] = {
+            "objective": "f(u; x) = p_acc(x, u) * (loss_hat(x) - u * premium(x))",
+            "churn": "p_churn(x, u) = sigmoid(beta_0 + beta_x^T x_acc + beta_u * u)",
+            "acceptance": "p_acc(x, u) = 1 - p_churn(x, u)",
+            "loss": "loss_hat(x) = gamma_0 + gamma_x^T x_loss",
+        }
+        payload["model_coefficients"] = coeffs
+    return payload
 
 
 def _as_list(values: object) -> list[float]:

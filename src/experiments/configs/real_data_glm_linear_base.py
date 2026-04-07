@@ -50,7 +50,7 @@ TRAINING = canonical_training_block(
 RUNTIME = canonical_runtime_block(
     plot=True,
     verbose=True,
-    wandb_enabled=True,
+    wandb_enabled=False,
 )
 
 CORRECTNESS = CorrectnessSpec(gradient_source="none")
@@ -58,7 +58,7 @@ CORRECTNESS = CorrectnessSpec(gradient_source="none")
 CONFIG = build_experiment_config(
     seed=8,
     state_dim=STATE_DIM,
-    x_fixed=load_x_array("glm", n_rows=5000),
+    x_fixed=load_x_array("glm", n_rows=5000), 
     objective=make_model_based_objective(
         policy=SoftmaxPolicy(),
         acceptance_model=_acceptance_model,

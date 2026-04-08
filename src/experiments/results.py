@@ -35,6 +35,7 @@ class EstimatorResult:
     u: float
     value: float
     time: float
+    mean_acceptance: float | None = None
 
 
 @dataclass(frozen=True)
@@ -48,6 +49,7 @@ class ExperimentResult:
     traces: Mapping[str, OptimizationTrace]
     u_star: Optional[float] = None
     value_at_u_star: Optional[float] = None
+    initial_mean_acceptance: Optional[float] = None
 
 
 __all__ = [

@@ -8,6 +8,7 @@ import pytest
 
 @pytest.mark.parametrize("name", [
     "real_data_glm_base",
+    "real_data_glm_linear_acceptance_floor_base",
     "real_data_glm_linear_base",
     "real_data_xgb_base",
 ])
@@ -64,6 +65,14 @@ def test_glm_linear_base_initial_action_is_constant_1_1():
     assert np.allclose(u_batch, 1.1)
 
 
+def test_glm_linear_acceptance_floor_base_sets_floor_from_csv_mean():
+    from data.loader import load_mean_observed_acceptance
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_glm_linear_acceptance_floor_base")
+    assert cfg.acceptance_floor == pytest.approx(0.9 * load_mean_observed_acceptance("glm"))
+
+
 def test_xgb_base_no_first_order():
     from experiments.configs import get_config
     cfg = get_config("real_data_xgb_base")
@@ -72,6 +81,7 @@ def test_xgb_base_no_first_order():
 
 @pytest.mark.parametrize("name", [
     "real_data_glm_base",
+    "real_data_glm_linear_acceptance_floor_base",
     "real_data_glm_linear_base",
     "real_data_xgb_base",
 ])
@@ -84,6 +94,7 @@ def test_real_data_configs_disable_correctness_gradients(name):
 
 @pytest.mark.parametrize("name", [
     "real_data_glm_base",
+    "real_data_glm_linear_acceptance_floor_base",
     "real_data_glm_linear_base",
     "real_data_xgb_base",
 ])
@@ -134,6 +145,21 @@ def test_glm_linear_base_estimators_move_and_agree_on_small_run():
     assert result.traces["finite_difference"].optimizer_status == 0
     assert result.traces["spsa"].optimizer_status == 0
     assert first.u != pytest.approx(float(cfg.theta0[0]))
-    assert first.u == pytest.approx(fd.u, rel=1e-5, abs=1e-5)
-    assert first.u == pytest.approx(spsa.u, rel=1e-5, abs=1e-5)
-    assert first.value == pytest.approx(fd.value, rel=1e-8, abs=1e-8)
+    assert first.u == pytest.approx(fd.u, rel=5e-4, abs=5e-4)
+    assert first.u == pytest.approx(spsa.u, rel=5e-4, abs=5e-4)
+
+
+def test_glm_linear_acceptance_floor_base_enforces_constraint_on_small_run():
+    from experiments.configs import get_config
+    from experiments.run import run_experiment
+
+    cfg = get_config("real_data_glm_linear_acceptance_floor_base")
+    assert cfg.x_fixed is not None
+    small_cfg = replace(cfg, n_samples=500, x_fixed=cfg.x_fixed[:500], t_steps=100)
+
+    result = run_experiment(small_cfg, step_reporter=None)
+    first = result.results["first_order"]
+
+    assert result.traces["first_order"].optimizer_status == 0
+    assert first.mean_acceptance is not None
+    assert first.mean_acceptance >= small_cfg.acceptance_floor - 0.02

@@ -1,7 +1,11 @@
 """Tests for ModelBasedObjective."""
 
+from dataclasses import replace
+
 import numpy as np
 import pytest
+
+from optimization.helpers import finite_difference_theta_grad
 
 
 def _make_glm_objective(n_rows=20):
@@ -146,3 +150,52 @@ def test_policy_hooks_use_acceptance_preprocessor() -> None:
     assert processed.shape[1] == obj.acceptance_model.policy_feature_dim()
     assert np.allclose(hook_u, direct_u)
     assert np.allclose(hook_grad, direct_grad)
+
+
+def test_mean_acceptance_grad_matches_fd() -> None:
+    obj, x, policy_dim = _make_glm_objective(n_rows=30)
+    theta = np.array([0.4] + [0.01] * policy_dim, dtype=float)
+
+    grad = obj.mean_acceptance_grad(theta, x)
+    grad_fd = finite_difference_theta_grad(
+        lambda theta_eval: obj.mean_acceptance(theta_eval, x),
+        theta,
+        method="central",
+        step=1e-6,
+    )
+    np.testing.assert_allclose(grad, grad_fd, rtol=1e-4, atol=1e-6)
+
+
+def test_acceptance_penalty_raises_value_when_floor_is_higher() -> None:
+    obj, x, policy_dim = _make_glm_objective(n_rows=30)
+    theta = np.array([0.4] + [0.01] * policy_dim, dtype=float)
+    baseline_acceptance = obj.mean_acceptance(theta, x)
+
+    constrained = replace(
+        obj,
+        acceptance_floor=baseline_acceptance + 0.01,
+        acceptance_penalty_weight=100.0,
+        acceptance_penalty_temperature=1e-4,
+    )
+    assert constrained.value(theta, x) > obj.value(theta, x)
+
+
+def test_constrained_grad_matches_fd() -> None:
+    obj, x, policy_dim = _make_glm_objective(n_rows=30)
+    theta = np.array([0.4] + [0.01] * policy_dim, dtype=float)
+    baseline_acceptance = obj.mean_acceptance(theta, x)
+    constrained = replace(
+        obj,
+        acceptance_floor=baseline_acceptance + 0.01,
+        acceptance_penalty_weight=100.0,
+        acceptance_penalty_temperature=1e-4,
+    )
+
+    grad = constrained.grad(theta, x)
+    grad_fd = finite_difference_theta_grad(
+        lambda theta_eval: constrained.value(theta_eval, x),
+        theta,
+        method="central",
+        step=1e-6,
+    )
+    np.testing.assert_allclose(grad, grad_fd, rtol=1e-4, atol=1e-6)

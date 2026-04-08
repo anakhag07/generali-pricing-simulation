@@ -64,6 +64,7 @@ Four state-distribution modes are available, selected by config preset:
 | `fixed_regression_base` | Synthetic N(0, I) | `FixedRegressionObjective` |
 | `real_data_glm_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, analytical grad) |
 | `real_data_glm_linear_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, linear-policy diagnostic) |
+| `real_data_glm_linear_acceptance_floor_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, linear policy + mean-acceptance floor) |
 | `real_data_xgb_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, FD grad) |
 
 The objective for real-data configs is $$f(u; x) = a(x,u)(\hat{Y}(x) - u \cdot p(x))$$
@@ -74,6 +75,11 @@ pickle bundles the fitted estimator with its saved `FeatureProcessor`. The
 objective keeps raw CSV rows at the optimization boundary and reuses the
 acceptance bundle's saved preprocessing internally for both `u(theta, x)` and
 `du/dtheta`.
+
+`ExperimentConfig` also supports a smooth mean-acceptance floor via
+`acceptance_floor`, `acceptance_penalty_weight`, and
+`acceptance_penalty_temperature`. This is implemented as a differentiable
+penalty on `ModelBasedObjective` while keeping the SciPy `L-BFGS-B` solver.
 
 ## Creating Config Presets
 

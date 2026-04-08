@@ -194,6 +194,14 @@ def load_x_array(model_type: Literal["glm", "xgb"], n_rows: int = 5000) -> np.nd
     return df[feature_cols].to_numpy(dtype=float)
 
 
+def load_mean_observed_acceptance(model_type: Literal["glm", "xgb"]) -> float:
+    """Load mean acceptance probability from the exported acceptance CSV."""
+    if model_type not in _ACCEPTANCE_CSV_PATHS:
+        raise ValueError(f"model_type must be 'glm' or 'xgb', got '{model_type}'.")
+    df = pd.read_csv(_ACCEPTANCE_CSV_PATHS[model_type], sep=";", usecols=["prob_acceptance"])
+    return float(df["prob_acceptance"].mean())
+
+
 def extract_glm_u_coef(glm_pipeline: Any) -> float:
     """Extract effective d_logit/dU = w_U / std_U from a fitted GLM Pipeline."""
     glm_pipeline = unwrap_model_artifact(glm_pipeline)
@@ -327,6 +335,7 @@ __all__ = [
     "ModelArtifactBundle",
     "load_model_artifacts",
     "load_x_array",
+    "load_mean_observed_acceptance",
     "unwrap_model_artifact",
     "extract_glm_u_coef",
     "extract_glm_churn_coefficients",

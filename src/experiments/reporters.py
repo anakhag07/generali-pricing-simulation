@@ -214,6 +214,8 @@ class WandbReporter:
             final_payload[f"final/{name}/value"] = float(estimator_result.value)
             final_payload[f"final/{name}/runtime_sec"] = float(estimator_result.time)
             final_payload[f"final/{name}/theta_l2_norm"] = theta_l2_norm
+            if estimator_result.mean_acceptance is not None:
+                final_payload[f"final/{name}/mean_acceptance"] = float(estimator_result.mean_acceptance)
         if final_payload:
             wandb_api.log(final_payload, step=self._global_step)
 
@@ -400,6 +402,8 @@ def _build_summary_payload(run_context: RunContext, result: ExperimentResult) ->
             "theta_l2_norm": theta_l2_norm,
             "theta_delta_l2_norm": theta_delta_l2_norm,
         }
+        if estimator_result.mean_acceptance is not None:
+            estimator_payload["mean_acceptance"] = float(estimator_result.mean_acceptance)
         if trace is not None:
             estimator_payload["optimizer_status"] = trace.optimizer_status
             estimator_payload["optimizer_message"] = trace.optimizer_message
@@ -423,6 +427,9 @@ def _build_summary_payload(run_context: RunContext, result: ExperimentResult) ->
         },
         "config": result.config.to_dict(),
         "initial_value": float(result.initial_value),
+        "initial_mean_acceptance": float(result.initial_mean_acceptance)
+        if result.initial_mean_acceptance is not None
+        else None,
         "u_star": float(result.u_star) if result.u_star is not None else None,
         "value_at_u_star": float(result.value_at_u_star)
         if result.value_at_u_star is not None

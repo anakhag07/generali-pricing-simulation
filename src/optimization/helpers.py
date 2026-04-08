@@ -126,7 +126,7 @@ def mean_action_on_indices(
     """Compute mean action on mini-batch."""
     policy = getattr(objective, "policy", None)
     if policy is not None:
-        return float(_mean_action(policy, theta, x_batch(x_array, indices, n_total)))
+        return float(_mean_action(objective, theta, x_batch(x_array, indices, n_total)))
     return float("nan")
 
 

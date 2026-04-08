@@ -152,7 +152,7 @@ class Optimization:
             # Compute mean action if policy is available
             policy = getattr(self.objective, "policy", None)
             if policy is not None:
-                mean_u = _mean_action(policy, theta_arr, x_batch(self.x_array, indices, self.n_total))
+                mean_u = _mean_action(self.objective, theta_arr, x_batch(self.x_array, indices, self.n_total))
             else:
                 mean_u = float("nan")
 

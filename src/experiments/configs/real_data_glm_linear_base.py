@@ -1,8 +1,8 @@
 """GLM-backed diagnostic config using a linear policy on real insurance data.
 
 Uses the same trained GLM artifacts and fixed state batch as ``real_data_glm_base``
-but swaps in ``LinearPolicy`` over the processed acceptance features so the
-first-order path is not masked by the softmax policy's upper-bound saturation.
+but swaps in ``LinearPolicy`` while keeping preprocessing inside the objective,
+so raw CSV rows remain the external state seen by the optimizer.
 
 The initial theta sets a constant action ``u = 1.1`` across the batch, which
 starts near the GLM training U range before optimization moves the policy.
@@ -27,18 +27,13 @@ from experiments.config import (
     canonical_training_block,
     make_model_based_objective,
 )
-from objective.policy import FeatureProcessedPolicy, LinearPolicy
+from objective.policy import LinearPolicy
 
 STATE_DIM = len(FEATURE_COLS_GLM)
 
 _acceptance_model, _loss_model = load_model_artifacts("glm")
 _u_coef = extract_glm_u_coef(_acceptance_model)
-_policy = FeatureProcessedPolicy(
-    policy=LinearPolicy(),
-    raw_feature_cols=tuple(FEATURE_COLS_GLM),
-    preprocess_feature_cols=_acceptance_model.x_feature_cols,
-    preprocessor=_acceptance_model.preprocessor,
-)
+_policy = LinearPolicy()
 
 THETA0 = np.array([1.1] + [0.0] * _acceptance_model.policy_feature_dim(), dtype=float)
 
@@ -47,8 +42,8 @@ TRAINING = canonical_training_block(
     step_rule="l-bfgs-b",
     t_steps=1000,
     step_size=0.01,
-    sigma=0.001,
-    n_grad_samples=50,
+    sigma=0.01,
+    n_grad_samples=10,
     enabled_estimators=("first_order", "finite_difference", "spsa", "stein_difference"),
     perturbation_space="u",
     grad_norm_tol=1e-6,

@@ -76,7 +76,7 @@ def run_experiment(
             step_reporter=step_reporter,
         )
         time_first = time.perf_counter() - start_first
-        u_first = _mean_action(policy, theta_first, x_samples) if policy is not None else float("nan")
+        u_first = _mean_action(objective, theta_first, x_samples) if policy is not None else float("nan")
         value_first = float(objective.value(theta_first, x_samples))
         results["first_order"] = EstimatorResult(theta=theta_first, u=u_first, value=value_first, time=time_first)
         traces["first_order"] = trace_first
@@ -101,7 +101,7 @@ def run_experiment(
             step_reporter=step_reporter,
         )
         time_fd = time.perf_counter() - start_fd
-        u_fd = _mean_action(policy, theta_fd, x_samples) if policy is not None else float("nan")
+        u_fd = _mean_action(objective, theta_fd, x_samples) if policy is not None else float("nan")
         value_fd = float(objective.value(theta_fd, x_samples))
         results["finite_difference"] = EstimatorResult(theta=theta_fd, u=u_fd, value=value_fd, time=time_fd)
         traces["finite_difference"] = trace_fd
@@ -126,7 +126,7 @@ def run_experiment(
             step_reporter=step_reporter,
         )
         time_zero = time.perf_counter() - start_zero
-        u_zero = _mean_action(policy, theta_zero, x_samples) if policy is not None else float("nan")
+        u_zero = _mean_action(objective, theta_zero, x_samples) if policy is not None else float("nan")
         value_zero = float(objective.value(theta_zero, x_samples))
         results["gauss_stein"] = EstimatorResult(theta=theta_zero, u=u_zero, value=value_zero, time=time_zero)
         traces["gauss_stein"] = trace_zero
@@ -151,7 +151,7 @@ def run_experiment(
             step_reporter=step_reporter,
         )
         time_spsa = time.perf_counter() - start_spsa
-        u_spsa = _mean_action(policy, theta_spsa, x_samples) if policy is not None else float("nan")
+        u_spsa = _mean_action(objective, theta_spsa, x_samples) if policy is not None else float("nan")
         value_spsa = float(objective.value(theta_spsa, x_samples))
         results["spsa"] = EstimatorResult(theta=theta_spsa, u=u_spsa, value=value_spsa, time=time_spsa)
         traces["spsa"] = trace_spsa
@@ -176,7 +176,7 @@ def run_experiment(
             step_reporter=step_reporter,
         )
         time_stein = time.perf_counter() - start_stein
-        u_stein = _mean_action(policy, theta_stein, x_samples) if policy is not None else float("nan")
+        u_stein = _mean_action(objective, theta_stein, x_samples) if policy is not None else float("nan")
         value_stein = float(objective.value(theta_stein, x_samples))
         results["stein_difference"] = EstimatorResult(
             theta=theta_stein,

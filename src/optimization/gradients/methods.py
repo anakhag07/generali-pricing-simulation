@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Callable, cast
 
 import numpy as np
 
+from objective.utils import _policy_grad, _policy_value
 from optimization.helpers import (
     finite_difference_theta_grad,
     objective_grad_on_indices,
@@ -68,8 +69,8 @@ def _u_space_policy_setup(
         raise ValueError("U-space perturbation requires objective.policy with value() and grad().")
     theta_arr = np.asarray(theta, dtype=float)
     x_arr = x_batch(optimizer.x_array, indices, optimizer.n_total)
-    u_arr = np.asarray(policy.value(theta_arr, x_arr), dtype=float).reshape(-1)
-    grad_pi = np.asarray(policy.grad(theta_arr, x_arr), dtype=float)
+    u_arr = _policy_value(optimizer.objective, theta_arr, x_arr).reshape(-1)
+    grad_pi = _policy_grad(optimizer.objective, theta_arr, x_arr)
     return x_arr, u_arr, grad_pi
 
 

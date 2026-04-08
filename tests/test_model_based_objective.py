@@ -8,26 +8,19 @@ def _make_glm_objective(n_rows=20):
     """Create a ModelBasedObjective with GLM models and a small x_batch fixture."""
     from data.loader import (
         ACCEPTANCE_STATE_COLS,
-        FEATURE_COLS_GLM,
         LOSS_FEATURE_COLS,
         extract_glm_u_coef,
         load_model_artifacts,
         load_x_array,
     )
     from objective.objectives.model_based import ModelBasedObjective
-    from objective.policy import FeatureProcessedPolicy, SoftmaxPolicy
+    from objective.policy import SoftmaxPolicy
 
     acc_model, loss_model = load_model_artifacts("glm")
     u_coef = extract_glm_u_coef(acc_model)
-    policy = FeatureProcessedPolicy(
-        policy=SoftmaxPolicy(),
-        raw_feature_cols=tuple(FEATURE_COLS_GLM),
-        preprocess_feature_cols=acc_model.x_feature_cols,
-        preprocessor=acc_model.preprocessor,
-    )
     x = load_x_array("glm", n_rows=n_rows)
     obj = ModelBasedObjective(
-        policy=policy,
+        policy=SoftmaxPolicy(),
         acceptance_model=acc_model,
         loss_model=loss_model,
         acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),
@@ -95,28 +88,21 @@ def test_analytical_vs_fd_grad_glm():
     """Analytical GLM gradient should closely match central FD gradient."""
     from data.loader import (
         ACCEPTANCE_STATE_COLS,
-        FEATURE_COLS_GLM,
         LOSS_FEATURE_COLS,
         extract_glm_u_coef,
         load_model_artifacts,
         load_x_array,
     )
     from objective.objectives.model_based import ModelBasedObjective
-    from objective.policy import FeatureProcessedPolicy, SoftmaxPolicy
+    from objective.policy import SoftmaxPolicy
 
     acc_model, loss_model = load_model_artifacts("glm")
     u_coef = extract_glm_u_coef(acc_model)
     x = load_x_array("glm", n_rows=30)
-    policy = FeatureProcessedPolicy(
-        policy=SoftmaxPolicy(),
-        raw_feature_cols=tuple(FEATURE_COLS_GLM),
-        preprocess_feature_cols=acc_model.x_feature_cols,
-        preprocessor=acc_model.preprocessor,
-    )
     theta = np.array([0.4] + [0.01] * acc_model.policy_feature_dim(), dtype=float)
 
     obj_analytical = ModelBasedObjective(
-        policy=policy,
+        policy=SoftmaxPolicy(),
         acceptance_model=acc_model,
         loss_model=loss_model,
         acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),
@@ -125,7 +111,7 @@ def test_analytical_vs_fd_grad_glm():
         u_coef=u_coef,
     )
     obj_fd = ModelBasedObjective(
-        policy=policy,
+        policy=SoftmaxPolicy(),
         acceptance_model=acc_model,
         loss_model=loss_model,
         acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),
@@ -145,3 +131,18 @@ def test_x_batch_must_be_2d():
     theta = np.array([0.4] + [0.01] * policy_dim, dtype=float)
     with pytest.raises(ValueError):
         obj.value(theta, np.zeros(12))
+
+
+def test_policy_hooks_use_acceptance_preprocessor() -> None:
+    obj, x, _ = _make_glm_objective(n_rows=5)
+    theta = np.array([0.4] + [0.01] * obj.acceptance_model.policy_feature_dim(), dtype=float)
+
+    processed = obj._policy_features(x)
+    direct_u = obj.policy.value(theta, processed)
+    hook_u = obj.policy_value(theta, x)
+    hook_grad = obj.policy_grad(theta, x)
+    direct_grad = obj.policy.grad(theta, processed)
+
+    assert processed.shape[1] == obj.acceptance_model.policy_feature_dim()
+    assert np.allclose(hook_u, direct_u)
+    assert np.allclose(hook_grad, direct_grad)

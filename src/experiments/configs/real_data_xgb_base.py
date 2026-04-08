@@ -2,7 +2,8 @@
 
 Uses trained XGBoost artifacts (classifier + regressor) with the first 5,000
 rows of the real dataset as the fixed state distribution.
-SoftmaxPolicy maps 10-dimensional state -> action u.
+The policy consumes the acceptance bundle's processed state features while the
+objective still evaluates the black-box models on raw CSV rows.
 
 XGBoost has no analytical gradient; d_acceptance/du is computed via central
 finite differences inside ModelBasedObjective. first_order is disabled.
@@ -14,6 +15,7 @@ import numpy as np
 
 from data.loader import (
     ACCEPTANCE_STATE_COLS,
+    FEATURE_COLS_XGB,
     LOSS_FEATURE_COLS,
     load_model_artifacts,
     load_x_array,
@@ -24,14 +26,20 @@ from experiments.config import (
     canonical_runtime_block,
     canonical_training_block,
     make_model_based_objective,
-    make_softmax_policy,
 )
+from objective.policy import FeatureProcessedPolicy, SoftmaxPolicy
 
-STATE_DIM = 10  # 9 base + premium
+STATE_DIM = len(FEATURE_COLS_XGB)
 
 _acceptance_model, _loss_model = load_model_artifacts("xgb")
+_policy = FeatureProcessedPolicy(
+    policy=SoftmaxPolicy(),
+    raw_feature_cols=tuple(FEATURE_COLS_XGB),
+    preprocess_feature_cols=_acceptance_model.x_feature_cols,
+    preprocessor=_acceptance_model.preprocessor,
+)
 
-THETA0 = np.array([0.4] + [0.01] * STATE_DIM, dtype=float)  # length 11
+THETA0 = np.array([0.4] + [0.01] * _acceptance_model.policy_feature_dim(), dtype=float)
 
 TRAINING = canonical_training_block(
     n_samples=5000,
@@ -58,7 +66,7 @@ CONFIG = build_experiment_config(
     state_dim=STATE_DIM,
     x_fixed=load_x_array("xgb", n_rows=5000),
     objective=make_model_based_objective(
-        policy=make_softmax_policy(),
+        policy=_policy,
         acceptance_model=_acceptance_model,
         loss_model=_loss_model,
         acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),

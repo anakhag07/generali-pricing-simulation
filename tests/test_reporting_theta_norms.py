@@ -63,15 +63,23 @@ def _build_result() -> ExperimentResult:
 def _build_model_based_result() -> ExperimentResult:
     from data.loader import (
         ACCEPTANCE_STATE_COLS,
+        FEATURE_COLS_GLM,
         LOSS_FEATURE_COLS,
         extract_glm_u_coef,
         load_model_artifacts,
         load_x_array,
     )
+    from objective.policy import FeatureProcessedPolicy
 
     acceptance_model, loss_model = load_model_artifacts("glm")
-    objective = ModelBasedObjective(
+    policy = FeatureProcessedPolicy(
         policy=SoftmaxPolicy(),
+        raw_feature_cols=tuple(FEATURE_COLS_GLM),
+        preprocess_feature_cols=acceptance_model.x_feature_cols,
+        preprocessor=acceptance_model.preprocessor,
+    )
+    objective = ModelBasedObjective(
+        policy=policy,
         acceptance_model=acceptance_model,
         loss_model=loss_model,
         acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),
@@ -79,7 +87,7 @@ def _build_model_based_result() -> ExperimentResult:
         premium_col=9,
         u_coef=extract_glm_u_coef(acceptance_model),
     )
-    theta0 = np.array([0.4] + [0.01] * 12, dtype=float)
+    theta0 = np.array([0.4] + [0.01] * acceptance_model.policy_feature_dim(), dtype=float)
     config = ExperimentConfig(
         state_dim=12,
         objective=objective,

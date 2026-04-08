@@ -92,7 +92,7 @@ Guidelines:
 
 - **`src/objective/objectives/model_based.py`**
   - `ModelBasedObjective`: pricing objective $$f(u;x) = a(x,u)(\hat{Y}(x) - u \cdot p(x))$$ backed by trained sklearn/XGBoost models
-  - Takes `acceptance_model` (GLM Pipeline or XGBClassifier) and `loss_model` (LinearRegression or XGBRegressor)
+  - Takes `acceptance_model` / `loss_model` artifact bundles that can apply saved external preprocessing before calling the inner sklearn/XGBoost model
   - `u_coef` enables analytical gradient for GLM; `None` triggers central FD for XGBoost
   - `value()`, `grad()`, `value_at_u()`
 
@@ -102,7 +102,7 @@ Guidelines:
 
 - **`src/objective/policy.py`**
   - Implements `Policy` with batch methods `value(theta, x_batch)` and `grad(theta, x_batch)`
-  - Concrete policies: `ConstantPolicy`, `LinearPolicy`, `SoftmaxPolicy`
+  - Concrete policies: `ConstantPolicy`, `LinearPolicy`, `SoftmaxPolicy`, `FeatureProcessedPolicy`
   - `policy_from_kind(kind)`: factory function
 
 - **`src/objective/utils.py`**
@@ -111,14 +111,18 @@ Guidelines:
 
 #### Data Layer (`src/data/`)
 
+- **`src/data/feature_processor.py`**
+  - `FeatureProcessor`: notebook-extracted whitening/PCA preprocessor used by the bundled real-data artifacts
+
 - **`src/data/loader.py`**
   - `FEATURE_COLS_GLM`: 12-column state feature list for GLM configs (9 base + premium + X_prev_renewal_perc + X_year)
   - `FEATURE_COLS_XGB`: 10-column state feature list for XGB configs (9 base + premium)
   - `ACCEPTANCE_STATE_COLS`: 10 cols passed to acceptance model (base + premium, no U)
   - `LOSS_FEATURE_COLS`: 9 base cols passed to loss model
-  - `load_x_array(model_type, n_rows=5000)`: loads first n_rows of X features from acceptance CSV; returns (n, 12) for GLM, (n, 10) for XGB
-  - `load_model_artifacts(model_type)`: loads (acceptance_model, loss_model) from pickle files
-  - `extract_glm_u_coef(glm_pipeline)`: extracts effective d_logit/dU = w_U / std_U from fitted GLM Pipeline for analytical gradient computation
+  - `load_x_array(model_type, n_rows=5000)`: loads first n_rows of raw acceptance-state features from the current `*_feat_processor.csv` exports; string columns are replay-encoded to match the notebook's numeric training inputs
+  - `load_model_artifacts(model_type)`: loads `(acceptance_artifact, loss_artifact)` bundles from `src/data/artifacts_preproc_pipeline/`
+  - `ModelArtifactBundle.model_frame(raw_frame)`: converts raw notebook-space columns into the exact model-input frame expected by the bundled estimator
+  - `extract_glm_u_coef(glm_pipeline)`: extracts effective d_logit/dU = w_U / std_U from the inner fitted GLM Pipeline for analytical gradient computation
 
 #### Optimization Layer (`src/optimization/`)
 

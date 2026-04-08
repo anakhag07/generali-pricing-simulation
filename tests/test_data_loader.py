@@ -29,15 +29,21 @@ def test_load_model_artifacts_types():
     import sklearn.pipeline
     import xgboost
 
-    from data.loader import load_model_artifacts
+    from data.loader import ModelArtifactBundle, load_model_artifacts, unwrap_model_artifact
 
     glm_acc, glm_loss = load_model_artifacts("glm")
-    assert isinstance(glm_acc, sklearn.pipeline.Pipeline)
-    assert hasattr(glm_loss, "predict")  # LinearRegression
+    assert isinstance(glm_acc, ModelArtifactBundle)
+    assert isinstance(glm_loss, ModelArtifactBundle)
+    assert glm_acc.preprocessor is not None
+    assert glm_loss.preprocessor is not None
+    assert isinstance(unwrap_model_artifact(glm_acc), sklearn.pipeline.Pipeline)
+    assert hasattr(unwrap_model_artifact(glm_loss), "predict")
 
     xgb_acc, xgb_loss = load_model_artifacts("xgb")
-    assert isinstance(xgb_acc, xgboost.XGBClassifier)
-    assert isinstance(xgb_loss, xgboost.XGBRegressor)
+    assert isinstance(xgb_acc, ModelArtifactBundle)
+    assert isinstance(xgb_loss, ModelArtifactBundle)
+    assert isinstance(unwrap_model_artifact(xgb_acc), xgboost.XGBClassifier)
+    assert isinstance(unwrap_model_artifact(xgb_loss), xgboost.XGBRegressor)
 
 
 def test_extract_glm_u_coef_is_finite():
@@ -50,30 +56,26 @@ def test_extract_glm_u_coef_is_finite():
 
 
 def test_extract_glm_churn_coefficients_matches_u_coef():
-    from data.loader import (
-        ACCEPTANCE_STATE_COLS,
-        extract_glm_churn_coefficients,
-        extract_glm_u_coef,
-        load_model_artifacts,
-    )
+    from data.loader import extract_glm_churn_coefficients, extract_glm_u_coef, load_model_artifacts
 
     glm_acc, _ = load_model_artifacts("glm")
     coeffs = extract_glm_churn_coefficients(glm_acc)
 
-    assert coeffs["x_feature_names"] == list(ACCEPTANCE_STATE_COLS)
-    assert len(coeffs["x_coef"]) == len(ACCEPTANCE_STATE_COLS)
+    assert len(coeffs["x_feature_names"]) == len(coeffs["x_coef"])
+    assert coeffs["x_feature_names"]
+    assert all(name != "U" for name in coeffs["x_feature_names"])
     assert np.isfinite(coeffs["intercept"])
     assert coeffs["u_coef"] == pytest.approx(extract_glm_u_coef(glm_acc))
 
 
 def test_extract_linear_loss_coefficients_has_expected_features():
-    from data.loader import LOSS_FEATURE_COLS, extract_linear_loss_coefficients, load_model_artifacts
+    from data.loader import extract_linear_loss_coefficients, load_model_artifacts, unwrap_model_artifact
 
     _, glm_loss = load_model_artifacts("glm")
     coeffs = extract_linear_loss_coefficients(glm_loss)
 
-    assert coeffs["x_feature_names"] == list(LOSS_FEATURE_COLS)
-    assert len(coeffs["x_coef"]) == len(LOSS_FEATURE_COLS)
+    assert coeffs["x_feature_names"] == list(unwrap_model_artifact(glm_loss).feature_names_in_)
+    assert len(coeffs["x_coef"]) == len(coeffs["x_feature_names"])
     assert np.isfinite(coeffs["intercept"])
 
 

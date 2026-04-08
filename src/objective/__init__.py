@@ -22,6 +22,7 @@ from objective.objectives import (
 )
 from objective.policy import (
     ConstantPolicy,
+    FeatureProcessedPolicy,
     LinearPolicy,
     SoftmaxPolicy,
     policy_from_kind,
@@ -36,6 +37,7 @@ __all__ = [
     "sample_states",
     # Concrete policies
     "ConstantPolicy",
+    "FeatureProcessedPolicy",
     "LinearPolicy",
     "SoftmaxPolicy",
     "policy_from_kind",

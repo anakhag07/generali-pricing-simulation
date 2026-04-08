@@ -62,12 +62,18 @@ Four state-distribution modes are available, selected by config preset:
 | Preset | State source | Objective |
 |---|---|---|
 | `fixed_regression_base` | Synthetic N(0, I) | `FixedRegressionObjective` |
-| `real_data_glm_base` | First 5K rows of real CSV (pickle path) | `ModelBasedObjective` (GLM, analytical grad) |
-| `real_data_glm_linear_base` | First 5K rows of real CSV (pickle path) | `ModelBasedObjective` (GLM, linear-policy diagnostic) |
-| `real_data_xgb_base` | First 5K rows of real CSV (pickle path) | `ModelBasedObjective` (XGBoost, FD grad) |
+| `real_data_glm_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, analytical grad) |
+| `real_data_glm_linear_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, linear-policy diagnostic) |
+| `real_data_xgb_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, FD grad) |
 
 The objective for real-data configs is $$f(u; x) = a(x,u)(\hat{Y}(x) - u \cdot p(x))$$
 where $$a$$ is acceptance probability, $$\hat{Y}$$ is expected financial loss, and $$p$$ is policy premium.
+
+Real-data artifacts now live under `src/data/artifacts_preproc_pipeline/` and each
+pickle bundles the fitted estimator with its saved `FeatureProcessor`. The
+objective still evaluates the black-box models on raw CSV rows, while the
+policy uses the acceptance bundle's processed feature space for `u(theta, x)`
+and `du/dtheta`.
 
 ## Creating Config Presets
 

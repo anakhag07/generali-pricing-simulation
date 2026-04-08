@@ -1,8 +1,8 @@
 """GLM-backed diagnostic config using a linear policy on real insurance data.
 
 Uses the same trained GLM artifacts and fixed state batch as ``real_data_glm_base``
-but swaps in ``LinearPolicy`` so the first-order path is not masked by the
-softmax policy's upper-bound saturation at ``u = 1.5``.
+but swaps in ``LinearPolicy`` over the processed acceptance features so the
+first-order path is not masked by the softmax policy's upper-bound saturation.
 
 The initial theta sets a constant action ``u = 1.1`` across the batch, which
 starts near the GLM training U range before optimization moves the policy.
@@ -14,6 +14,7 @@ import numpy as np
 
 from data.loader import (
     ACCEPTANCE_STATE_COLS,
+    FEATURE_COLS_GLM,
     LOSS_FEATURE_COLS,
     extract_glm_u_coef,
     load_model_artifacts,
@@ -26,14 +27,20 @@ from experiments.config import (
     canonical_training_block,
     make_model_based_objective,
 )
-from objective.policy import LinearPolicy, SoftmaxPolicy
+from objective.policy import FeatureProcessedPolicy, LinearPolicy
 
-STATE_DIM = 12  # 9 base + premium + X_prev_renewal_perc + X_year
+STATE_DIM = len(FEATURE_COLS_GLM)
 
 _acceptance_model, _loss_model = load_model_artifacts("glm")
 _u_coef = extract_glm_u_coef(_acceptance_model)
+_policy = FeatureProcessedPolicy(
+    policy=LinearPolicy(),
+    raw_feature_cols=tuple(FEATURE_COLS_GLM),
+    preprocess_feature_cols=_acceptance_model.x_feature_cols,
+    preprocessor=_acceptance_model.preprocessor,
+)
 
-THETA0 = np.array([1.1] + [0.0] * STATE_DIM, dtype=float)  # length 13; initial u == 1.1
+THETA0 = np.array([1.1] + [0.0] * _acceptance_model.policy_feature_dim(), dtype=float)
 
 TRAINING = canonical_training_block(
     n_samples=5000,
@@ -50,7 +57,7 @@ TRAINING = canonical_training_block(
 RUNTIME = canonical_runtime_block(
     plot=True,
     verbose=True,
-    wandb_enabled=False,
+    wandb_enabled=True,
 )
 
 CORRECTNESS = CorrectnessSpec(gradient_source="none")
@@ -60,7 +67,7 @@ CONFIG = build_experiment_config(
     state_dim=STATE_DIM,
     x_fixed=load_x_array("glm", n_rows=5000), 
     objective=make_model_based_objective(
-        policy=SoftmaxPolicy(),
+        policy=_policy,
         acceptance_model=_acceptance_model,
         loss_model=_loss_model,
         acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),

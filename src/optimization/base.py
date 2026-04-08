@@ -44,6 +44,7 @@ class Optimization:
         true_grad_theta_fn: TrueThetaGradFn | None = None,
         grad_norm_tol: float | None = None,
         ftol: float | None = None,
+        theta_bounds: tuple[float, float] | None = None,
         step_reporter: "StepReporter | None" = None,
         method_label: str | None = None,
         rng: np.random.Generator | None = None,
@@ -67,6 +68,7 @@ class Optimization:
             true_grad_theta_fn: Optional function for computing true theta gradients.
             grad_norm_tol: Early stopping threshold on gradient norm.
             ftol: SciPy function tolerance.
+            theta_bounds: Optional (lower, upper) bounds applied to every theta component.
             step_reporter: Optional reporter for per-step metrics.
             method_label: Label for this optimization method.
             rng: Random number generator.
@@ -86,6 +88,7 @@ class Optimization:
         self.true_grad_theta_fn = true_grad_theta_fn
         self.grad_norm_tol = grad_norm_tol
         self.ftol = ftol
+        self.theta_bounds = theta_bounds
         self.step_reporter = step_reporter
         self.method_label = method_label if method_label is not None else getattr(self.gradient, "name", "opt")
         self.rng = rng if rng is not None else np.random.default_rng(0)
@@ -175,11 +178,16 @@ class Optimization:
         if self.ftol is not None:
             options["ftol"] = float(self.ftol)
 
+        bounds = None
+        if self.theta_bounds is not None:
+            bounds = [self.theta_bounds] * len(theta0)
+
         result = self._minimize_fn(
             value_fn,
             x0=theta0,
             jac=grad_fn,
             method=scipy_method(self.algorithm),
+            bounds=bounds,
             options=options,
             callback=record,
         )

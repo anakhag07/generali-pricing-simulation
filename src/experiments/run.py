@@ -73,6 +73,7 @@ def run_experiment(
             true_grad_theta_fn=true_grad_theta_fn,
             grad_norm_tol=config.grad_norm_tol,
             ftol=config.ftol,
+            theta_bounds=config.theta_bounds,
             step_reporter=step_reporter,
         )
         time_first = time.perf_counter() - start_first
@@ -98,6 +99,7 @@ def run_experiment(
             true_grad_theta_fn=true_grad_theta_fn,
             grad_norm_tol=config.grad_norm_tol,
             ftol=config.ftol,
+            theta_bounds=config.theta_bounds,
             step_reporter=step_reporter,
         )
         time_fd = time.perf_counter() - start_fd
@@ -123,6 +125,7 @@ def run_experiment(
             true_grad_theta_fn=true_grad_theta_fn,
             grad_norm_tol=config.grad_norm_tol,
             ftol=config.ftol,
+            theta_bounds=config.theta_bounds,
             step_reporter=step_reporter,
         )
         time_zero = time.perf_counter() - start_zero
@@ -148,6 +151,7 @@ def run_experiment(
             true_grad_theta_fn=true_grad_theta_fn,
             grad_norm_tol=config.grad_norm_tol,
             ftol=config.ftol,
+            theta_bounds=config.theta_bounds,
             step_reporter=step_reporter,
         )
         time_spsa = time.perf_counter() - start_spsa
@@ -173,6 +177,7 @@ def run_experiment(
             true_grad_theta_fn=true_grad_theta_fn,
             grad_norm_tol=config.grad_norm_tol,
             ftol=config.ftol,
+            theta_bounds=config.theta_bounds,
             step_reporter=step_reporter,
         )
         time_stein = time.perf_counter() - start_stein

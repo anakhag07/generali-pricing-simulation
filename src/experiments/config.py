@@ -61,6 +61,7 @@ class ExperimentConfig:
     step_size: float = 0.01
     grad_norm_tol: Optional[float] = None
     ftol: Optional[float] = None
+    theta_bounds: Optional[tuple[float, float]] = None
     sigma: float = 0.1
     n_grad_samples: int = 64
     verbose: bool = False
@@ -167,6 +168,11 @@ class ExperimentConfig:
             raise ValueError("grad_norm_tol must be positive when provided.")
         if self.ftol is not None and self.ftol <= 0.0:
             raise ValueError("ftol must be positive when provided.")
+        if self.theta_bounds is not None:
+            lo, hi = self.theta_bounds
+            if float(lo) >= float(hi):
+                raise ValueError("theta_bounds must be an increasing (lower, upper) tuple.")
+            object.__setattr__(self, "theta_bounds", (float(lo), float(hi)))
         if self.n_grad_samples <= 0:
             raise ValueError("n_grad_samples must be positive.")
 
@@ -211,6 +217,7 @@ class ExperimentConfig:
             if self.grad_norm_tol is not None
             else None,
             "ftol": float(self.ftol) if self.ftol is not None else None,
+            "theta_bounds": list(self.theta_bounds) if self.theta_bounds is not None else None,
             "sigma": float(self.sigma),
             "n_grad_samples": int(self.n_grad_samples),
             "verbose": bool(self.verbose),
@@ -379,6 +386,7 @@ def canonical_training_block(
     batch_size: int | None = None,
     grad_norm_tol: float | None = None,
     ftol: float | None = None,
+    theta_bounds: tuple[float, float] | None = None,
 ) -> dict[str, Any]:
     """Create a canonical training configuration block."""
     return {
@@ -393,6 +401,7 @@ def canonical_training_block(
         "batch_size": int(batch_size) if batch_size is not None else None,
         "grad_norm_tol": float(grad_norm_tol) if grad_norm_tol is not None else None,
         "ftol": float(ftol) if ftol is not None else None,
+        "theta_bounds": tuple(theta_bounds) if theta_bounds is not None else None,
     }
 
 

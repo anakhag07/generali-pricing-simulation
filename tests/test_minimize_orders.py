@@ -178,8 +178,8 @@ def test_first_order_passes_ftol_to_minimize(monkeypatch) -> None:
     objective = _build_theta_objective()
     captured_options: dict[str, float | int] = {}
 
-    def fake_minimize(fun, x0, jac, method, bounds, options, callback):  # type: ignore[no-untyped-def]
-        del fun, jac, bounds
+    def fake_minimize(fun, x0, jac, method, options, callback):  # type: ignore[no-untyped-def]
+        del fun, jac
         assert method == "L-BFGS-B"
         captured_options.update(options)
         callback(x0)

@@ -57,7 +57,6 @@ def run_first_order(
     true_grad_theta_fn: TrueThetaGradFn | None = None,
     grad_norm_tol: float | None = None,
     ftol: float | None = None,
-    theta_bounds: tuple[float, float] | None = None,
     step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     """Run first-order optimization."""
@@ -76,7 +75,6 @@ def run_first_order(
         true_grad_theta_fn=true_grad_theta_fn,
         grad_norm_tol=grad_norm_tol,
         ftol=ftol,
-        theta_bounds=theta_bounds,
         step_reporter=step_reporter,
     )
 
@@ -96,7 +94,6 @@ def run_finite_difference(
     true_grad_theta_fn: TrueThetaGradFn | None = None,
     grad_norm_tol: float | None = None,
     ftol: float | None = None,
-    theta_bounds: tuple[float, float] | None = None,
     step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     """Run finite-difference value-query optimization."""
@@ -115,7 +112,6 @@ def run_finite_difference(
         true_grad_theta_fn=true_grad_theta_fn,
         grad_norm_tol=grad_norm_tol,
         ftol=ftol,
-        theta_bounds=theta_bounds,
         step_reporter=step_reporter,
     )
 
@@ -135,7 +131,6 @@ def run_gauss_stein(
     true_grad_theta_fn: TrueThetaGradFn | None = None,
     grad_norm_tol: float | None = None,
     ftol: float | None = None,
-    theta_bounds: tuple[float, float] | None = None,
     step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     """Run Gauss-Stein zeroth-order optimization."""
@@ -154,7 +149,6 @@ def run_gauss_stein(
         true_grad_theta_fn=true_grad_theta_fn,
         grad_norm_tol=grad_norm_tol,
         ftol=ftol,
-        theta_bounds=theta_bounds,
         step_reporter=step_reporter,
     )
 
@@ -174,7 +168,6 @@ def run_spsa(
     true_grad_theta_fn: TrueThetaGradFn | None = None,
     grad_norm_tol: float | None = None,
     ftol: float | None = None,
-    theta_bounds: tuple[float, float] | None = None,
     step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     """Run SPSA zeroth-order optimization."""
@@ -193,7 +186,6 @@ def run_spsa(
         true_grad_theta_fn=true_grad_theta_fn,
         grad_norm_tol=grad_norm_tol,
         ftol=ftol,
-        theta_bounds=theta_bounds,
         step_reporter=step_reporter,
     )
 
@@ -213,7 +205,6 @@ def run_stein_difference(
     true_grad_theta_fn: TrueThetaGradFn | None = None,
     grad_norm_tol: float | None = None,
     ftol: float | None = None,
-    theta_bounds: tuple[float, float] | None = None,
     step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     """Run Stein-difference zeroth-order optimization."""
@@ -232,7 +223,6 @@ def run_stein_difference(
         true_grad_theta_fn=true_grad_theta_fn,
         grad_norm_tol=grad_norm_tol,
         ftol=ftol,
-        theta_bounds=theta_bounds,
         step_reporter=step_reporter,
     )
 

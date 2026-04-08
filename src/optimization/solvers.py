@@ -37,7 +37,6 @@ def run_first_order_minimize(
     true_grad_theta_fn: TrueThetaGradFn | None = None,
     grad_norm_tol: float | None = None,
     ftol: float | None = None,
-    theta_bounds: tuple[float, float] | None = None,
     step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     optimizer = Optimization(
@@ -54,7 +53,6 @@ def run_first_order_minimize(
         true_grad_theta_fn=true_grad_theta_fn,
         grad_norm_tol=grad_norm_tol,
         ftol=ftol,
-        theta_bounds=theta_bounds,
         step_reporter=step_reporter,
         method_label="first_order",
         minimize_fn=minimize,
@@ -76,7 +74,6 @@ def run_finite_difference_minimize(
     true_grad_theta_fn: TrueThetaGradFn | None = None,
     grad_norm_tol: float | None = None,
     ftol: float | None = None,
-    theta_bounds: tuple[float, float] | None = None,
     step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     optimizer = Optimization(
@@ -93,7 +90,6 @@ def run_finite_difference_minimize(
         true_grad_theta_fn=true_grad_theta_fn,
         grad_norm_tol=grad_norm_tol,
         ftol=ftol,
-        theta_bounds=theta_bounds,
         step_reporter=step_reporter,
         method_label="finite_difference",
         minimize_fn=minimize,
@@ -116,7 +112,6 @@ def run_gauss_stein_minimize(
     true_grad_theta_fn: TrueThetaGradFn | None = None,
     grad_norm_tol: float | None = None,
     ftol: float | None = None,
-    theta_bounds: tuple[float, float] | None = None,
     step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     optimizer = Optimization(
@@ -133,7 +128,6 @@ def run_gauss_stein_minimize(
         true_grad_theta_fn=true_grad_theta_fn,
         grad_norm_tol=grad_norm_tol,
         ftol=ftol,
-        theta_bounds=theta_bounds,
         step_reporter=step_reporter,
         method_label="gauss_stein",
         rng=rng,
@@ -157,7 +151,6 @@ def run_spsa_minimize(
     true_grad_theta_fn: TrueThetaGradFn | None = None,
     grad_norm_tol: float | None = None,
     ftol: float | None = None,
-    theta_bounds: tuple[float, float] | None = None,
     step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     optimizer = Optimization(
@@ -174,7 +167,6 @@ def run_spsa_minimize(
         true_grad_theta_fn=true_grad_theta_fn,
         grad_norm_tol=grad_norm_tol,
         ftol=ftol,
-        theta_bounds=theta_bounds,
         step_reporter=step_reporter,
         method_label="spsa",
         rng=rng,
@@ -198,7 +190,6 @@ def run_stein_difference_minimize(
     true_grad_theta_fn: TrueThetaGradFn | None = None,
     grad_norm_tol: float | None = None,
     ftol: float | None = None,
-    theta_bounds: tuple[float, float] | None = None,
     step_reporter: StepReporter | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     optimizer = Optimization(
@@ -215,7 +206,6 @@ def run_stein_difference_minimize(
         true_grad_theta_fn=true_grad_theta_fn,
         grad_norm_tol=grad_norm_tol,
         ftol=ftol,
-        theta_bounds=theta_bounds,
         step_reporter=step_reporter,
         method_label="stein_difference",
         rng=rng,

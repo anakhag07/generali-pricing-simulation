@@ -1,9 +1,9 @@
 """GLM-backed experiment config using real insurance data (pickle path).
 
 Uses trained GLM artifacts (logistic regression + linear regression) with the
-first 5,000 rows of the real dataset as the fixed state distribution.
-The policy consumes the acceptance bundle's processed state features while the
-objective still evaluates the black-box models on raw CSV rows.
+first 5,000 rows of the real dataset as the fixed state distribution. The
+objective owns the acceptance-side preprocessing from the bundled pickle so raw
+CSV rows stay at the optimization boundary.
 
 GLM enables an analytical first-order gradient (u_coef extracted from the
 logistic regression pipeline). All 5 estimators are enabled for comparison.
@@ -32,18 +32,13 @@ from experiments.config import (
     canonical_training_block,
     make_model_based_objective,
 )
-from objective.policy import FeatureProcessedPolicy, SoftmaxPolicy
+from objective.policy import SoftmaxPolicy
 
 STATE_DIM = len(FEATURE_COLS_GLM)
 
 _acceptance_model, _loss_model = load_model_artifacts("glm")
 _u_coef = extract_glm_u_coef(_acceptance_model)
-_policy = FeatureProcessedPolicy(
-    policy=SoftmaxPolicy(),
-    raw_feature_cols=tuple(FEATURE_COLS_GLM),
-    preprocess_feature_cols=_acceptance_model.x_feature_cols,
-    preprocessor=_acceptance_model.preprocessor,
-)
+_policy = SoftmaxPolicy()
 
 THETA0 = np.array([0.4] + [0.01] * _acceptance_model.policy_feature_dim(), dtype=float)
 

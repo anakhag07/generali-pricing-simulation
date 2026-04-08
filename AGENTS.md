@@ -93,6 +93,7 @@ Guidelines:
 - **`src/objective/objectives/model_based.py`**
   - `ModelBasedObjective`: pricing objective $$f(u;x) = a(x,u)(\hat{Y}(x) - u \cdot p(x))$$ backed by trained sklearn/XGBoost models
   - Takes `acceptance_model` / `loss_model` artifact bundles that can apply saved external preprocessing before calling the inner sklearn/XGBoost model
+  - Owns the policy-side raw-to-processed bridge: raw `x_batch` stays at the objective boundary and the acceptance bundle's saved `FeatureProcessor` is reused internally for `u(theta, x)` and `du/dtheta`
   - `u_coef` enables analytical gradient for GLM; `None` triggers central FD for XGBoost
   - `value()`, `grad()`, `value_at_u()`
 

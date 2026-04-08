@@ -1,5 +1,7 @@
 """Tests for real-data experiment config presets."""
 
+from dataclasses import replace
+
 import numpy as np
 import pytest
 
@@ -58,7 +60,7 @@ def test_glm_linear_base_initial_action_is_constant_1_1():
 
     cfg = get_config("real_data_glm_linear_base")
     assert cfg.x_fixed is not None
-    u_batch = cfg.objective.policy.value(cfg.theta0, cfg.x_fixed)
+    u_batch = cfg.objective.policy_value(cfg.theta0, cfg.x_fixed)
     assert np.allclose(u_batch, 1.1)
 
 
@@ -113,3 +115,25 @@ def test_x_fixed_none_still_works_for_synthetic_config():
     from experiments.configs import get_config
     cfg = get_config("fixed_regression_base")
     assert cfg.x_fixed is None
+
+
+def test_glm_linear_base_estimators_move_and_agree_on_small_run():
+    from experiments.configs import get_config
+    from experiments.run import run_experiment
+
+    cfg = get_config("real_data_glm_linear_base")
+    assert cfg.x_fixed is not None
+    small_cfg = replace(cfg, n_samples=250, x_fixed=cfg.x_fixed[:250], t_steps=50)
+
+    result = run_experiment(small_cfg, step_reporter=None)
+    first = result.results["first_order"]
+    fd = result.results["finite_difference"]
+    spsa = result.results["spsa"]
+
+    assert result.traces["first_order"].optimizer_status == 0
+    assert result.traces["finite_difference"].optimizer_status == 0
+    assert result.traces["spsa"].optimizer_status == 0
+    assert first.u != pytest.approx(float(cfg.theta0[0]))
+    assert first.u == pytest.approx(fd.u, rel=1e-5, abs=1e-5)
+    assert first.u == pytest.approx(spsa.u, rel=1e-5, abs=1e-5)
+    assert first.value == pytest.approx(fd.value, rel=1e-8, abs=1e-8)

@@ -71,9 +71,9 @@ where $$a$$ is acceptance probability, $$\hat{Y}$$ is expected financial loss, a
 
 Real-data artifacts now live under `src/data/artifacts_preproc_pipeline/` and each
 pickle bundles the fitted estimator with its saved `FeatureProcessor`. The
-objective still evaluates the black-box models on raw CSV rows, while the
-policy uses the acceptance bundle's processed feature space for `u(theta, x)`
-and `du/dtheta`.
+objective keeps raw CSV rows at the optimization boundary and reuses the
+acceptance bundle's saved preprocessing internally for both `u(theta, x)` and
+`du/dtheta`.
 
 ## Creating Config Presets
 

@@ -180,8 +180,12 @@ class ExperimentConfig:
 
         policy = getattr(objective, "policy", None)
         if policy is not None:
-            policy_value = getattr(policy, "value", None)
-            policy_grad = getattr(policy, "grad", None)
+            policy_value = getattr(objective, "policy_value", None)
+            policy_grad = getattr(objective, "policy_grad", None)
+            if not callable(policy_value):
+                policy_value = getattr(policy, "value", None)
+            if not callable(policy_grad):
+                policy_grad = getattr(policy, "grad", None)
             if not callable(policy_value) or not callable(policy_grad):
                 raise ValueError("policy must implement value(theta, x_batch) and grad(theta, x_batch).")
             # Probe with a single-sample batch

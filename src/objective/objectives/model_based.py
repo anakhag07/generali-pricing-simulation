@@ -69,20 +69,35 @@ class ModelBasedObjective(Objective):
 
     # --- Private helpers ---
 
+    @staticmethod
+    def _artifact_model(artifact: Any) -> Any:
+        return getattr(artifact, "model", artifact)
+
+    @staticmethod
+    def _artifact_frame(artifact: Any, raw_frame: pd.DataFrame) -> pd.DataFrame:
+        model_frame = getattr(artifact, "model_frame", None)
+        if callable(model_frame):
+            return model_frame(raw_frame)
+        return raw_frame
+
     def _acceptance_proba(self, x_batch: np.ndarray, u_arr: np.ndarray) -> np.ndarray:
         """Call acceptance model on (x_batch state cols + u_arr). Returns shape (n,)."""
         x_state = x_batch[:, : len(self.acceptance_state_cols)]
-        df = pd.DataFrame(
+        raw_df = pd.DataFrame(
             np.column_stack([x_state, u_arr]),
             columns=list(self.acceptance_state_cols) + ["U"],
         )
-        return np.asarray(self.acceptance_model.predict_proba(df)[:, 1], dtype=float)
+        model_df = self._artifact_frame(self.acceptance_model, raw_df)
+        model = self._artifact_model(self.acceptance_model)
+        return np.asarray(model.predict_proba(model_df)[:, 1], dtype=float)
 
     def _loss_prediction(self, x_batch: np.ndarray) -> np.ndarray:
         """Call loss model on loss_cols subset of x_batch. Returns shape (n,)."""
         x_loss = x_batch[:, : len(self.loss_cols)]
-        df = pd.DataFrame(x_loss, columns=list(self.loss_cols))
-        return np.asarray(self.loss_model.predict(df), dtype=float)
+        raw_df = pd.DataFrame(x_loss, columns=list(self.loss_cols))
+        model_df = self._artifact_frame(self.loss_model, raw_df)
+        model = self._artifact_model(self.loss_model)
+        return np.asarray(model.predict(model_df), dtype=float)
 
     def _value_batch(self, x_batch: np.ndarray, u_arr: np.ndarray) -> np.ndarray:
         """Compute per-sample objective values."""

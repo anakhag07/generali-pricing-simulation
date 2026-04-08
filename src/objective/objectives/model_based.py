@@ -38,7 +38,14 @@ class ModelBasedObjective(Objective):
     loss_cols: tuple[str, ...]
     premium_col: int = 9
     u_coef: float | None = None
+    u_bounds: tuple[float, float] | None = None
     _fd_eps: float = 1e-4
+
+    def _clip_u(self, u: np.ndarray) -> np.ndarray:
+        """Clip u to bounds if set."""
+        if self.u_bounds is not None:
+            return np.clip(u, *self.u_bounds)
+        return u
 
     def value(self, theta: np.ndarray, x_batch: np.ndarray) -> float:
         """Compute mean objective value across batch."""
@@ -46,7 +53,7 @@ class ModelBasedObjective(Objective):
         if x_arr.ndim != 2:
             raise ValueError("x_batch must be 2D.")
         theta_arr = np.asarray(theta, dtype=float)
-        u_batch = self.policy_value(theta_arr, x_arr)
+        u_batch = self._clip_u(self.policy_value(theta_arr, x_arr))
         return float(np.mean(self._value_batch(x_arr, u_batch)))
 
     def grad(self, theta: np.ndarray, x_batch: np.ndarray) -> np.ndarray:
@@ -55,8 +62,13 @@ class ModelBasedObjective(Objective):
         if x_arr.ndim != 2:
             raise ValueError("x_batch must be 2D.")
         theta_arr = np.asarray(theta, dtype=float)
-        u_batch = self.policy_value(theta_arr, x_arr)
-        grad_u = self._grad_u_batch(x_arr, u_batch)
+        u_raw = self.policy_value(theta_arr, x_arr)
+        u_clipped = self._clip_u(u_raw)
+        grad_u = self._grad_u_batch(x_arr, u_clipped)
+        # Zero gradient for samples where u was clipped (subgradient)
+        if self.u_bounds is not None:
+            interior = (u_raw > self.u_bounds[0]) & (u_raw < self.u_bounds[1])
+            grad_u = grad_u * interior
         return _theta_grad_from_u_grad(self, theta_arr, x_arr, grad_u)
 
     def policy_value(self, theta: np.ndarray, x_batch: np.ndarray) -> np.ndarray:
@@ -76,7 +88,10 @@ class ModelBasedObjective(Objective):
         x_arr = np.asarray(x_batch, dtype=float)
         if x_arr.ndim != 2:
             raise ValueError("x_batch must be 2D.")
-        u_arr = np.full(x_arr.shape[0], float(u), dtype=float)
+        u_val = float(u)
+        if self.u_bounds is not None:
+            u_val = float(np.clip(u_val, *self.u_bounds))
+        u_arr = np.full(x_arr.shape[0], u_val, dtype=float)
         return float(np.mean(self._value_batch(x_arr, u_arr)))
 
     @staticmethod

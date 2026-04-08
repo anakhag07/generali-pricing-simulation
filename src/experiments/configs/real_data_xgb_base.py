@@ -68,6 +68,7 @@ CONFIG = build_experiment_config(
         loss_cols=tuple(LOSS_FEATURE_COLS),
         premium_col=9,
         u_coef=None,  # XGBoost: use numerical FD for d_acceptance/du
+        u_bounds=(-0.05, 0.5),  # constrain u to XGB training data range
     ),
     theta0=THETA0,
     training=TRAINING,

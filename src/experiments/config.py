@@ -266,6 +266,7 @@ def _objective_to_dict(objective: Objective) -> dict[str, Any]:
             "loss_cols": list(objective.loss_cols),
             "premium_col": int(objective.premium_col),
             "u_coef": float(objective.u_coef) if objective.u_coef is not None else None,
+            "u_bounds": list(objective.u_bounds) if objective.u_bounds is not None else None,
         }
     return {"type": type(objective).__name__}
 
@@ -353,6 +354,7 @@ def make_model_based_objective(
     loss_cols: tuple[str, ...],
     premium_col: int = 9,
     u_coef: float | None = None,
+    u_bounds: tuple[float, float] | None = None,
 ) -> ModelBasedObjective:
     """Create a ModelBasedObjective wrapping trained sklearn/XGBoost models."""
     return ModelBasedObjective(
@@ -363,6 +365,7 @@ def make_model_based_objective(
         loss_cols=loss_cols,
         premium_col=premium_col,
         u_coef=u_coef,
+        u_bounds=u_bounds,
     )
 
 

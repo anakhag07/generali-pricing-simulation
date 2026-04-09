@@ -11,6 +11,7 @@ import pytest
     "real_data_glm_linear_acceptance_floor_base",
     "real_data_glm_linear_base",
     "real_data_xgb_base",
+    "real_data_xgb_linear_acceptance_floor_base",
 ])
 def test_config_loads(name):
     from experiments.configs import get_config
@@ -38,6 +39,15 @@ def test_glm_linear_base_x_fixed_shape():
 def test_xgb_base_x_fixed_shape():
     from experiments.configs import get_config
     cfg = get_config("real_data_xgb_base")
+    assert cfg.x_fixed is not None
+    assert cfg.x_fixed.shape == (5000, 10)
+    assert cfg.state_dim == 10
+
+
+def test_xgb_linear_acceptance_floor_base_x_fixed_shape():
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_xgb_linear_acceptance_floor_base")
     assert cfg.x_fixed is not None
     assert cfg.x_fixed.shape == (5000, 10)
     assert cfg.state_dim == 10
@@ -73,10 +83,34 @@ def test_glm_linear_acceptance_floor_base_sets_floor_from_csv_mean():
     assert cfg.acceptance_floor == pytest.approx(0.9 * load_mean_observed_acceptance("glm"))
 
 
+def test_xgb_linear_acceptance_floor_base_sets_floor_from_csv_mean():
+    from data.loader import load_mean_observed_acceptance
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_xgb_linear_acceptance_floor_base")
+    assert cfg.acceptance_floor == pytest.approx(0.9 * load_mean_observed_acceptance("xgb"))
+
+
 def test_xgb_base_no_first_order():
     from experiments.configs import get_config
     cfg = get_config("real_data_xgb_base")
     assert "first_order" not in cfg.enabled_estimators
+
+
+def test_xgb_linear_acceptance_floor_base_no_first_order():
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_xgb_linear_acceptance_floor_base")
+    assert "first_order" not in cfg.enabled_estimators
+
+
+def test_xgb_linear_acceptance_floor_base_initial_action_is_constant_0_2():
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_xgb_linear_acceptance_floor_base")
+    assert cfg.x_fixed is not None
+    u_batch = cfg.objective.policy_value(cfg.theta0, cfg.x_fixed)
+    assert np.allclose(u_batch, 0.2)
 
 
 @pytest.mark.parametrize("name", [
@@ -84,6 +118,7 @@ def test_xgb_base_no_first_order():
     "real_data_glm_linear_acceptance_floor_base",
     "real_data_glm_linear_base",
     "real_data_xgb_base",
+    "real_data_xgb_linear_acceptance_floor_base",
 ])
 def test_real_data_configs_disable_correctness_gradients(name):
     from experiments.configs import get_config
@@ -97,6 +132,7 @@ def test_real_data_configs_disable_correctness_gradients(name):
     "real_data_glm_linear_acceptance_floor_base",
     "real_data_glm_linear_base",
     "real_data_xgb_base",
+    "real_data_xgb_linear_acceptance_floor_base",
 ])
 def test_real_data_configs_enable_verbose_and_wandb(name):
     from experiments.configs import get_config

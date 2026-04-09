@@ -14,6 +14,7 @@ _CONFIG_MODULES = {
     "real_data_glm_linear_acceptance_floor_base": "experiments.configs.real_data_glm_linear_acceptance_floor_base",
     "real_data_glm_linear_base": "experiments.configs.real_data_glm_linear_base",
     "real_data_xgb_base": "experiments.configs.real_data_xgb_base",
+    "real_data_xgb_linear_acceptance_floor_base": "experiments.configs.real_data_xgb_linear_acceptance_floor_base",
 }
 
 _CONFIG_CACHE: dict[str, ExperimentConfig] = {}

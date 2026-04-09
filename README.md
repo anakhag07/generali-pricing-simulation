@@ -66,6 +66,7 @@ Four state-distribution modes are available, selected by config preset:
 | `real_data_glm_linear_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, linear-policy diagnostic) |
 | `real_data_glm_linear_acceptance_floor_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, linear policy + mean-acceptance floor) |
 | `real_data_xgb_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, FD grad) |
+| `real_data_xgb_linear_acceptance_floor_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, linear policy + mean-acceptance floor) |
 
 The objective for real-data configs is $$f(u; x) = a(x,u)(\hat{Y}(x) - u \cdot p(x))$$
 where $$a$$ is acceptance probability, $$\hat{Y}$$ is expected financial loss, and $$p$$ is policy premium.

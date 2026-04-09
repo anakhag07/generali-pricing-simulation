@@ -179,6 +179,7 @@ Guidelines:
   - `real_data_glm_linear_base.py`: GLM pickle-based diagnostic config; same data/models as `real_data_glm_base` but with `LinearPolicy` and constant-`u=1.1` initialization to inspect behavior without softmax saturation
   - `real_data_glm_linear_acceptance_floor_base.py`: constrained GLM diagnostic config with `LinearPolicy` and a smooth mean-acceptance floor set to 90% of the observed CSV acceptance level; uses first-order optimization only
   - `real_data_xgb_base.py`: XGBoost pickle-based config; state_dim=10; 4 estimators (no first_order); FD for d_acceptance/du
+  - `real_data_xgb_linear_acceptance_floor_base.py`: constrained XGBoost diagnostic config with `LinearPolicy`, constant `u=0.2` initialization inside XGB `u_bounds`, and a smooth mean-acceptance floor set to 90% of the observed CSV acceptance level; uses finite_difference, SPSA, and stein_difference
   - `config_template.py`: copy-first scaffold with `None` placeholders for all `ExperimentConfig` fields plus objective/correctness parameter blocks; not registered as a runnable preset
 
 - **`src/experiments/defaults.py`**

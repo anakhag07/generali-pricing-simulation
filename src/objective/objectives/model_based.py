@@ -111,6 +111,21 @@ class ModelBasedObjective(Objective):
         u_batch = self._clip_u(self.policy_value(theta_arr, x_arr))
         return float(np.mean(self._acceptance_proba(x_arr, u_batch)))
 
+    def _step_metrics(self, theta: np.ndarray, x_batch: np.ndarray) -> dict[str, float]:
+        """Return per-step mean metrics for reporter logging."""
+        x_arr = np.asarray(x_batch, dtype=float)
+        theta_arr = np.asarray(theta, dtype=float)
+        u_batch = self._clip_u(self.policy_value(theta_arr, x_arr))
+        acceptance = self._acceptance_proba(x_arr, u_batch)
+        loss = self._loss_prediction(x_arr)
+        premium = x_arr[:, self.premium_col]
+        revenue = u_batch * premium
+        return {
+            "mean_acceptance": float(np.mean(acceptance)),
+            "projected_loss": float(np.mean(loss)),
+            "projected_revenue": float(np.mean(revenue)),
+        }
+
     def mean_acceptance_grad(self, theta: np.ndarray, x_batch: np.ndarray) -> np.ndarray:
         """Return theta-gradient of mean acceptance under the current policy."""
         x_arr = np.asarray(x_batch, dtype=float)

@@ -75,6 +75,9 @@ class StepReporter(Protocol):
         value: float,
         grad_norm: float | None = None,
         step_size: float | None = None,
+        mean_acceptance: float | None = None,
+        projected_loss: float | None = None,
+        projected_revenue: float | None = None,
     ) -> None:
         ...
 
@@ -108,10 +111,23 @@ class ReporterStack:
         value: float,
         grad_norm: float | None = None,
         step_size: float | None = None,
+        mean_acceptance: float | None = None,
+        projected_loss: float | None = None,
+        projected_revenue: float | None = None,
     ) -> None:
         for reporter in self._reporters:
             if isinstance(reporter, StepReporter):
-                reporter.log_step(method, step, u, value, grad_norm, step_size)
+                reporter.log_step(
+                    method,
+                    step,
+                    u,
+                    value,
+                    grad_norm,
+                    step_size,
+                    mean_acceptance,
+                    projected_loss,
+                    projected_revenue,
+                )
 
 
 class ConsoleReporter:
@@ -134,9 +150,22 @@ class ConsoleReporter:
         value: float,
         grad_norm: float | None = None,
         step_size: float | None = None,
+        mean_acceptance: float | None = None,
+        projected_loss: float | None = None,
+        projected_revenue: float | None = None,
     ) -> None:
         if self._verbose:
-            log_step(method, step, u, value, grad_norm, step_size)
+            log_step(
+                method,
+                step,
+                u,
+                value,
+                grad_norm,
+                step_size,
+                mean_acceptance,
+                projected_loss,
+                projected_revenue,
+            )
 
 
 class JsonReporter:
@@ -241,6 +270,9 @@ class WandbReporter:
                 step_metric=step_metric,
             )
             self._wandb.define_metric(f"curve/{method}/step_size", step_metric=step_metric)
+            self._wandb.define_metric(f"curve/{method}/mean_acceptance", step_metric=step_metric)
+            self._wandb.define_metric(f"curve/{method}/projected_loss", step_metric=step_metric)
+            self._wandb.define_metric(f"curve/{method}/projected_revenue", step_metric=step_metric)
 
     def log_step(
         self,
@@ -250,6 +282,9 @@ class WandbReporter:
         value: float,
         grad_norm: float | None = None,
         step_size: float | None = None,
+        mean_acceptance: float | None = None,
+        projected_loss: float | None = None,
+        projected_revenue: float | None = None,
     ) -> None:
         if not self._enabled or self._wandb is None:
             return
@@ -264,6 +299,12 @@ class WandbReporter:
             payload[f"curve/{method}/theta_grad_norm"] = float(grad_norm)
         if step_size is not None:
             payload[f"curve/{method}/step_size"] = float(step_size)
+        if mean_acceptance is not None:
+            payload[f"curve/{method}/mean_acceptance"] = float(mean_acceptance)
+        if projected_loss is not None:
+            payload[f"curve/{method}/projected_loss"] = float(projected_loss)
+        if projected_revenue is not None:
+            payload[f"curve/{method}/projected_revenue"] = float(projected_revenue)
         self._global_step += 1
         self._wandb.log(payload, step=self._global_step)
 
@@ -352,7 +393,9 @@ class FileStepLogger:
     def on_start(self, run_context: RunContext, config: ExperimentConfig) -> None:
         self._path = run_context.run_dir / "steps.csv"
         self._file = self._path.open("w", encoding="utf-8")
-        self._file.write("method,step,u,value,grad_norm,step_size\n")  # type: ignore[union-attr]
+        self._file.write(
+            "method,step,u,value,grad_norm,step_size,mean_acceptance,projected_loss,projected_revenue\n"
+        )  # type: ignore[union-attr]
 
     def on_end(self, run_context: RunContext, result: ExperimentResult) -> None:
         if self._file is not None:
@@ -367,12 +410,21 @@ class FileStepLogger:
         value: float,
         grad_norm: float | None = None,
         step_size: float | None = None,
+        mean_acceptance: float | None = None,
+        projected_loss: float | None = None,
+        projected_revenue: float | None = None,
     ) -> None:
         if self._file is None:
             return
         grad_str = f"{grad_norm:.6f}" if grad_norm is not None else ""
         step_str = f"{step_size:.6f}" if step_size is not None else ""
-        self._file.write(f"{method},{step},{u:.6f},{value:.6f},{grad_str},{step_str}\n")
+        acceptance_str = f"{mean_acceptance:.6f}" if mean_acceptance is not None else ""
+        loss_str = f"{projected_loss:.6f}" if projected_loss is not None else ""
+        revenue_str = f"{projected_revenue:.6f}" if projected_revenue is not None else ""
+        self._file.write(
+            f"{method},{step},{u:.6f},{value:.6f},{grad_str},{step_str},"
+            f"{acceptance_str},{loss_str},{revenue_str}\n"
+        )
 
 
 def _u_star_for_plot(

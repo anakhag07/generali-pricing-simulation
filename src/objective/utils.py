@@ -60,7 +60,11 @@ def _mean_action(target: "Objective | Policy", theta: np.ndarray, x_array: np.nd
     Returns:
         Mean action value across the batch.
     """
-    return float(np.mean(_policy_value(target, theta, x_array)))
+    u_batch = _policy_value(target, theta, x_array)
+    clip_fn = getattr(target, "_clip_u", None)
+    if callable(clip_fn):
+        u_batch = np.asarray(clip_fn(u_batch), dtype=float)
+    return float(np.mean(u_batch))
 
 
 def optimal_u(objective: "Objective") -> float | None:

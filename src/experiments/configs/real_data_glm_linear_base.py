@@ -43,7 +43,7 @@ TRAINING = canonical_training_block(
     t_steps=1000,
     step_size=0.01,
     sigma=0.01,
-    n_grad_samples=10,
+    n_grad_samples=50,
     enabled_estimators=("first_order", "finite_difference", "spsa", "stein_difference"),
     perturbation_space="u",
     grad_norm_tol=1e-6,
@@ -53,6 +53,7 @@ RUNTIME = canonical_runtime_block(
     plot=True,
     verbose=True,
     wandb_enabled=True,
+    wandb_project='glm-linear-policy',
 )
 
 CORRECTNESS = CorrectnessSpec(gradient_source="none")

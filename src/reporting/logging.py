@@ -18,6 +18,9 @@ def log_step(
     value: float,
     grad_norm: float | None = None,
     step_size: float | None = None,
+    mean_acceptance: float | None = None,
+    projected_loss: float | None = None,
+    projected_revenue: float | None = None,
 ) -> None:
     """Print a single optimization step to console."""
     parts = [f"[{method}] step={step}", f"u={u:.4f}", f"value={value:.4f}"]
@@ -25,6 +28,12 @@ def log_step(
         parts.append(f"grad_norm={grad_norm:.4f}")
     if step_size is not None:
         parts.append(f"step_size={step_size:.6f}")
+    if mean_acceptance is not None:
+        parts.append(f"mean_acceptance={mean_acceptance:.4f}")
+    if projected_loss is not None:
+        parts.append(f"projected_loss={projected_loss:.4f}")
+    if projected_revenue is not None:
+        parts.append(f"revenue={projected_revenue:.4f}")
     print(" ".join(parts))
 
 

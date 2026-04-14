@@ -1,12 +1,9 @@
-"""XGBoost-backed experiment config using real insurance data (pickle path).
+"""XGBoost-backed constrained diagnostic config with a mean-acceptance floor.
 
-Uses trained XGBoost artifacts (classifier + regressor) with the first 5,000
-rows of the real dataset as the fixed state distribution. The objective owns
-the acceptance-side preprocessing from the bundled pickle so raw CSV rows stay
-at the optimization boundary.
-
-XGBoost has no analytical gradient; d_acceptance/du is computed via central
-finite differences inside ModelBasedObjective. first_order is disabled.
+Uses the same trained XGBoost artifacts and raw state batch as
+``real_data_xgb_base`` but swaps in ``LinearPolicy`` and adds a smooth
+config-driven penalty so mean acceptance stays above 90% of the observed
+acceptance level in the exported notebook CSV.
 """
 
 from __future__ import annotations
@@ -17,6 +14,7 @@ from data.loader import (
     ACCEPTANCE_STATE_COLS,
     FEATURE_COLS_XGB,
     LOSS_FEATURE_COLS,
+    load_mean_observed_acceptance,
     load_model_artifacts,
     load_x_array,
 )
@@ -27,25 +25,30 @@ from experiments.config import (
     canonical_training_block,
     make_model_based_objective,
 )
-from objective.policy import LinearPolicy, SoftmaxPolicy
+from objective.policy import LinearPolicy
 
 STATE_DIM = len(FEATURE_COLS_XGB)
 
 _acceptance_model, _loss_model = load_model_artifacts("xgb")
-_policy = SoftmaxPolicy()
+_policy = LinearPolicy()
+_acceptance_floor = 0.9 * load_mean_observed_acceptance("xgb")
 
-THETA0 = np.zeros(_acceptance_model.policy_feature_dim() + 1, dtype=float)
+# Start from a constant in-range action so the linear policy does not begin clipped.
+THETA0 = np.array([0.2] + [0.0] * _acceptance_model.policy_feature_dim(), dtype=float)
 
 TRAINING = canonical_training_block(
     n_samples=5000,
     step_rule="l-bfgs-b",
     t_steps=1000,
     step_size=0.01,
-    sigma=0.05,
-    n_grad_samples=50,
-    enabled_estimators=("finite_difference", "spsa", "gauss_stein", "stein_difference"),
+    sigma=0.01,
+    n_grad_samples=10,
+    enabled_estimators=("finite_difference", "spsa", "stein_difference"),
     perturbation_space="u",
     grad_norm_tol=1e-6,
+    acceptance_floor=_acceptance_floor,
+    acceptance_penalty_weight=1e4,
+    acceptance_penalty_temperature=0.05,
 )
 
 RUNTIME = canonical_runtime_block(
@@ -57,7 +60,7 @@ RUNTIME = canonical_runtime_block(
 CORRECTNESS = CorrectnessSpec(gradient_source="none")
 
 CONFIG = build_experiment_config(
-    seed=42,
+    seed=8,
     state_dim=STATE_DIM,
     x_fixed=load_x_array("xgb", n_rows=5000),
     objective=make_model_based_objective(
@@ -67,8 +70,8 @@ CONFIG = build_experiment_config(
         acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),
         loss_cols=tuple(LOSS_FEATURE_COLS),
         premium_col=9,
-        u_coef=None,  # XGBoost: use numerical FD for d_acceptance/du
-        # u_bounds=(-0.05, 0.5),  # constrain u to XGB training data range
+        u_coef=None,
+        u_bounds=(-0.05, 0.5),
     ),
     theta0=THETA0,
     training=TRAINING,

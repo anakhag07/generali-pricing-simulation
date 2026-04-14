@@ -39,6 +39,9 @@ class ModelBasedObjective(Objective):
     premium_col: int = 9
     u_coef: float | None = None
     u_bounds: tuple[float, float] | None = None
+    acceptance_floor: float | None = None
+    acceptance_penalty_weight: float | None = None
+    acceptance_penalty_temperature: float = 0.01
     _fd_eps: float = 1e-4
 
     def _clip_u(self, u: np.ndarray) -> np.ndarray:
@@ -54,7 +57,8 @@ class ModelBasedObjective(Objective):
             raise ValueError("x_batch must be 2D.")
         theta_arr = np.asarray(theta, dtype=float)
         u_batch = self._clip_u(self.policy_value(theta_arr, x_arr))
-        return float(np.mean(self._value_batch(x_arr, u_batch)))
+        base_value = float(np.mean(self._value_batch(x_arr, u_batch)))
+        return base_value + self._acceptance_penalty(self._acceptance_proba(x_arr, u_batch))[0]
 
     def grad(self, theta: np.ndarray, x_batch: np.ndarray) -> np.ndarray:
         """Compute theta-gradient via chain rule: df/dtheta = mean(df/du * du/dtheta)."""
@@ -69,7 +73,12 @@ class ModelBasedObjective(Objective):
         if self.u_bounds is not None:
             interior = (u_raw > self.u_bounds[0]) & (u_raw < self.u_bounds[1])
             grad_u = grad_u * interior
-        return _theta_grad_from_u_grad(self, theta_arr, x_arr, grad_u)
+        grad_theta = _theta_grad_from_u_grad(self, theta_arr, x_arr, grad_u)
+        penalty_value, penalty_scale = self._acceptance_penalty(self._acceptance_proba(x_arr, u_clipped))
+        del penalty_value
+        if penalty_scale == 0.0:
+            return grad_theta
+        return grad_theta + penalty_scale * self.mean_acceptance_grad(theta_arr, x_arr)
 
     def policy_value(self, theta: np.ndarray, x_batch: np.ndarray) -> np.ndarray:
         """Evaluate policy actions on acceptance-preprocessed features from raw state."""
@@ -92,7 +101,42 @@ class ModelBasedObjective(Objective):
         if self.u_bounds is not None:
             u_val = float(np.clip(u_val, *self.u_bounds))
         u_arr = np.full(x_arr.shape[0], u_val, dtype=float)
-        return float(np.mean(self._value_batch(x_arr, u_arr)))
+        base_value = float(np.mean(self._value_batch(x_arr, u_arr)))
+        return base_value + self._acceptance_penalty(self._acceptance_proba(x_arr, u_arr))[0]
+
+    def mean_acceptance(self, theta: np.ndarray, x_batch: np.ndarray) -> float:
+        """Return mean acceptance probability under the current policy."""
+        x_arr = np.asarray(x_batch, dtype=float)
+        theta_arr = np.asarray(theta, dtype=float)
+        u_batch = self._clip_u(self.policy_value(theta_arr, x_arr))
+        return float(np.mean(self._acceptance_proba(x_arr, u_batch)))
+
+    def _step_metrics(self, theta: np.ndarray, x_batch: np.ndarray) -> dict[str, float]:
+        """Return per-step mean metrics for reporter logging."""
+        x_arr = np.asarray(x_batch, dtype=float)
+        theta_arr = np.asarray(theta, dtype=float)
+        u_batch = self._clip_u(self.policy_value(theta_arr, x_arr))
+        acceptance = self._acceptance_proba(x_arr, u_batch)
+        loss = self._loss_prediction(x_arr)
+        premium = x_arr[:, self.premium_col]
+        revenue = u_batch * premium
+        return {
+            "mean_acceptance": float(np.mean(acceptance)),
+            "projected_loss": float(np.mean(loss)),
+            "projected_revenue": float(np.mean(revenue)),
+        }
+
+    def mean_acceptance_grad(self, theta: np.ndarray, x_batch: np.ndarray) -> np.ndarray:
+        """Return theta-gradient of mean acceptance under the current policy."""
+        x_arr = np.asarray(x_batch, dtype=float)
+        theta_arr = np.asarray(theta, dtype=float)
+        u_raw = self.policy_value(theta_arr, x_arr)
+        u_clipped = self._clip_u(u_raw)
+        d_acceptance_du = self._d_acceptance_du_batch(x_arr, u_clipped)
+        if self.u_bounds is not None:
+            interior = (u_raw > self.u_bounds[0]) & (u_raw < self.u_bounds[1])
+            d_acceptance_du = d_acceptance_du * interior
+        return _theta_grad_from_u_grad(self, theta_arr, x_arr, d_acceptance_du)
 
     @staticmethod
     def _artifact_model(artifact: Any) -> Any:
@@ -157,6 +201,31 @@ class ModelBasedObjective(Objective):
         revenue = u_arr * premium
         return acceptance * (loss - revenue)
 
+    def _d_acceptance_du_batch(self, x_batch: np.ndarray, u_arr: np.ndarray) -> np.ndarray:
+        """Compute d acceptance / du for each sample."""
+        acceptance = self._acceptance_proba(x_batch, u_arr)
+        if self.u_coef is not None:
+            return -acceptance * (1.0 - acceptance) * self.u_coef
+        eps = self._fd_eps
+        a_plus = self._acceptance_proba(x_batch, u_arr + eps)
+        a_minus = self._acceptance_proba(x_batch, u_arr - eps)
+        return (a_plus - a_minus) / (2.0 * eps)
+
+    def _acceptance_penalty(self, acceptance: np.ndarray) -> tuple[float, float]:
+        """Return ``(penalty_value, d penalty / d mean_acceptance)``."""
+        if self.acceptance_floor is None or self.acceptance_penalty_weight is None:
+            return 0.0, 0.0
+        mean_acceptance = float(np.mean(acceptance))
+        gap = float(self.acceptance_floor) - mean_acceptance
+        temp = float(self.acceptance_penalty_temperature)
+        scaled_gap = gap / temp
+        soft_gap = temp * float(np.logaddexp(0.0, scaled_gap))
+        sigmoid_gap = 1.0 / (1.0 + np.exp(-scaled_gap))
+        weight = float(self.acceptance_penalty_weight)
+        penalty_value = weight * soft_gap * soft_gap
+        penalty_grad_mean = -2.0 * weight * soft_gap * sigmoid_gap
+        return penalty_value, penalty_grad_mean
+
     def _grad_u_batch(self, x_batch: np.ndarray, u_arr: np.ndarray) -> np.ndarray:
         """Compute df/du for each sample."""
         acceptance = self._acceptance_proba(x_batch, u_arr)
@@ -164,14 +233,7 @@ class ModelBasedObjective(Objective):
         premium = x_batch[:, self.premium_col]
         revenue = u_arr * premium
 
-        if self.u_coef is not None:
-            d_acceptance_du = -acceptance * (1.0 - acceptance) * self.u_coef
-        else:
-            eps = self._fd_eps
-            a_plus = self._acceptance_proba(x_batch, u_arr + eps)
-            a_minus = self._acceptance_proba(x_batch, u_arr - eps)
-            d_acceptance_du = (a_plus - a_minus) / (2.0 * eps)
-
+        d_acceptance_du = self._d_acceptance_du_batch(x_batch, u_arr)
         return d_acceptance_du * (loss - revenue) - acceptance * premium
 
 

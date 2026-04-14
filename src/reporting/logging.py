@@ -18,6 +18,9 @@ def log_step(
     value: float,
     grad_norm: float | None = None,
     step_size: float | None = None,
+    mean_acceptance: float | None = None,
+    projected_loss: float | None = None,
+    projected_revenue: float | None = None,
 ) -> None:
     """Print a single optimization step to console."""
     parts = [f"[{method}] step={step}", f"u={u:.4f}", f"value={value:.4f}"]
@@ -25,6 +28,12 @@ def log_step(
         parts.append(f"grad_norm={grad_norm:.4f}")
     if step_size is not None:
         parts.append(f"step_size={step_size:.6f}")
+    if mean_acceptance is not None:
+        parts.append(f"mean_acceptance={mean_acceptance:.4f}")
+    if projected_loss is not None:
+        parts.append(f"projected_loss={projected_loss:.4f}")
+    if projected_revenue is not None:
+        parts.append(f"revenue={projected_revenue:.4f}")
     print(" ".join(parts))
 
 
@@ -89,6 +98,15 @@ def log_summary(result: ExperimentResult) -> None:
         f"step_rule={config.step_rule}"
     )
     print(f"Initial objective value: {result.initial_value:.4f}")
+    if config.acceptance_floor is not None:
+        print(
+            "Acceptance floor: "
+            f"mean_acceptance >= {float(config.acceptance_floor):.4f} "
+            f"(weight={float(config.acceptance_penalty_weight):.2f}, "
+            f"temp={float(config.acceptance_penalty_temperature):.4f})"
+        )
+    if result.initial_mean_acceptance is not None:
+        print(f"Initial mean acceptance: {float(result.initial_mean_acceptance):.4f}")
     u_star_value = float(u_star) if u_star is not None else None
     value_at_u_star_value = (
         float(value_at_u_star) if value_at_u_star is not None else None
@@ -117,6 +135,13 @@ def log_summary(result: ExperimentResult) -> None:
         )
         print(f"Final u: {final_u}")
         print(f"Final objective: {final_value}")
+        if any(result.results[name].mean_acceptance is not None for name in ordered):
+            final_acceptance = ", ".join(
+                f"{labels[name]}={float(result.results[name].mean_acceptance):.4f}"
+                for name in ordered
+                if result.results[name].mean_acceptance is not None
+            )
+            print(f"Final mean acceptance: {final_acceptance}")
         if u_star_value is not None:
             u_gap = ", ".join(
                 f"{labels[name]}={abs(result.results[name].u - u_star_value):.4f}"

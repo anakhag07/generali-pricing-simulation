@@ -88,6 +88,42 @@ def test_verbose_default_and_override() -> None:
     assert config_verbose.verbose is True
 
 
+def test_acceptance_floor_requires_supporting_objective() -> None:
+    policy = SoftmaxPolicy()
+    objective = FixedRegressionObjective.from_parameters(
+        policy=policy,
+        beta_1=[0.1],
+        beta_2=-0.5,
+        beta_3=[0.2],
+        beta_4=0.4,
+    )
+    with pytest.raises(ValueError, match="mean_acceptance"):
+        ExperimentConfig(
+            state_dim=1,
+            objective=objective,
+            theta0=default_theta0(1),
+            n_samples=5,
+            step_rule="constant",
+            perturbation_space="theta",
+            acceptance_floor=0.2,
+            acceptance_penalty_weight=10.0,
+        )
+
+
+def test_acceptance_floor_requires_positive_penalty_weight() -> None:
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_glm_linear_base")
+    with pytest.raises(ValueError, match="acceptance_penalty_weight"):
+        ExperimentConfig(
+            **{
+                **{k: getattr(cfg, k) for k in cfg.__dataclass_fields__},
+                "acceptance_floor": 0.5,
+                "acceptance_penalty_weight": 0.0,
+            }
+        )
+
+
 def test_enabled_estimators_validation() -> None:
     policy = SoftmaxPolicy()
     objective = FixedRegressionObjective.from_parameters(

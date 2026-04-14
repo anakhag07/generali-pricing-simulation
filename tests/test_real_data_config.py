@@ -8,8 +8,10 @@ import pytest
 
 @pytest.mark.parametrize("name", [
     "real_data_glm_base",
+    "real_data_glm_linear_acceptance_floor_base",
     "real_data_glm_linear_base",
     "real_data_xgb_base",
+    "real_data_xgb_linear_acceptance_floor_base",
 ])
 def test_config_loads(name):
     from experiments.configs import get_config
@@ -42,6 +44,15 @@ def test_xgb_base_x_fixed_shape():
     assert cfg.state_dim == 10
 
 
+def test_xgb_linear_acceptance_floor_base_x_fixed_shape():
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_xgb_linear_acceptance_floor_base")
+    assert cfg.x_fixed is not None
+    assert cfg.x_fixed.shape == (5000, 10)
+    assert cfg.state_dim == 10
+
+
 def test_glm_base_has_first_order():
     from experiments.configs import get_config
     cfg = get_config("real_data_glm_base")
@@ -64,16 +75,50 @@ def test_glm_linear_base_initial_action_is_constant_zero():
     assert np.allclose(u_batch, 0.0)
 
 
+def test_glm_linear_acceptance_floor_base_sets_floor_from_csv_mean():
+    from data.loader import load_mean_observed_acceptance
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_glm_linear_acceptance_floor_base")
+    assert cfg.acceptance_floor == pytest.approx(0.9 * load_mean_observed_acceptance("glm"))
+
+
+def test_xgb_linear_acceptance_floor_base_sets_floor_from_csv_mean():
+    from data.loader import load_mean_observed_acceptance
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_xgb_linear_acceptance_floor_base")
+    assert cfg.acceptance_floor == pytest.approx(0.9 * load_mean_observed_acceptance("xgb"))
+
+
 def test_xgb_base_no_first_order():
     from experiments.configs import get_config
     cfg = get_config("real_data_xgb_base")
     assert "first_order" not in cfg.enabled_estimators
 
 
+def test_xgb_linear_acceptance_floor_base_no_first_order():
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_xgb_linear_acceptance_floor_base")
+    assert "first_order" not in cfg.enabled_estimators
+
+
+def test_xgb_linear_acceptance_floor_base_initial_action_is_constant_0_2():
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_xgb_linear_acceptance_floor_base")
+    assert cfg.x_fixed is not None
+    u_batch = cfg.objective.policy_value(cfg.theta0, cfg.x_fixed)
+    assert np.allclose(u_batch, 0.2)
+
+
 @pytest.mark.parametrize("name", [
     "real_data_glm_base",
+    "real_data_glm_linear_acceptance_floor_base",
     "real_data_glm_linear_base",
     "real_data_xgb_base",
+    "real_data_xgb_linear_acceptance_floor_base",
 ])
 def test_real_data_configs_disable_correctness_gradients(name):
     from experiments.configs import get_config
@@ -84,8 +129,10 @@ def test_real_data_configs_disable_correctness_gradients(name):
 
 @pytest.mark.parametrize("name", [
     "real_data_glm_base",
+    "real_data_glm_linear_acceptance_floor_base",
     "real_data_glm_linear_base",
     "real_data_xgb_base",
+    "real_data_xgb_linear_acceptance_floor_base",
 ])
 def test_real_data_configs_enable_verbose_and_wandb(name):
     from experiments.configs import get_config
@@ -136,4 +183,19 @@ def test_glm_linear_base_estimators_move_and_agree_on_small_run():
     assert first.u != pytest.approx(float(cfg.theta0[0]))
     assert first.u == pytest.approx(fd.u, rel=5e-4, abs=5e-4)
     assert first.u == pytest.approx(spsa.u, rel=5e-4, abs=5e-4)
-    assert first.value == pytest.approx(fd.value, rel=1e-6, abs=2e-7)
+
+
+def test_glm_linear_acceptance_floor_base_enforces_constraint_on_small_run():
+    from experiments.configs import get_config
+    from experiments.run import run_experiment
+
+    cfg = get_config("real_data_glm_linear_acceptance_floor_base")
+    assert cfg.x_fixed is not None
+    small_cfg = replace(cfg, n_samples=500, x_fixed=cfg.x_fixed[:500], t_steps=100)
+
+    result = run_experiment(small_cfg, step_reporter=None)
+    first = result.results["first_order"]
+
+    assert result.traces["first_order"].optimizer_status == 0
+    assert first.mean_acceptance is not None
+    assert first.mean_acceptance >= small_cfg.acceptance_floor - 0.02

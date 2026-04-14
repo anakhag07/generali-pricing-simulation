@@ -66,13 +66,13 @@ def test_glm_linear_base_has_first_order():
     assert "first_order" in cfg.enabled_estimators
 
 
-def test_glm_linear_base_initial_action_is_constant_1_1():
+def test_glm_linear_base_initial_action_is_constant_zero():
     from experiments.configs import get_config
 
     cfg = get_config("real_data_glm_linear_base")
     assert cfg.x_fixed is not None
     u_batch = cfg.objective.policy_value(cfg.theta0, cfg.x_fixed)
-    assert np.allclose(u_batch, 1.1)
+    assert np.allclose(u_batch, 0.0)
 
 
 def test_glm_linear_acceptance_floor_base_sets_floor_from_csv_mean():

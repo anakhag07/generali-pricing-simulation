@@ -84,7 +84,7 @@ class LinearPolicy(Policy):
 
 @dataclass(frozen=True)
 class SoftmaxPolicy(Policy):
-    """Softmax policy: $$u = 0.5 + \\sigma(\\theta^\\top \\phi(x)) \\in (0.5, 1.5)$$."""
+    """Softmax policy: $$u = 0.5 - \\sigma(\\theta^\\top \\phi(x)) \\in (-0.5, 0.5)$$."""
 
     kind: str = _POLICY_SOFTMAX
 
@@ -95,17 +95,17 @@ class SoftmaxPolicy(Policy):
         if theta_arr.size < features.shape[1]:
             raise ValueError("theta must have at least state_dim + 1 elements.")
         z = features @ theta_arr[: features.shape[1]]
-        return (0.5 + _sigmoid(z)).astype(float)
+        return (0.5 - _sigmoid(z)).astype(float)
 
     def grad(self, theta: np.ndarray, x_batch: np.ndarray) -> np.ndarray:
-        """Return gradient sigma'(z) * phi(x) for all samples, shape (n_samples, theta_dim)."""
+        """Return gradient ``-sigma'(z) * phi(x)`` for all samples, shape ``(n_samples, theta_dim)``."""
         features = _phi(x_batch)
         theta_arr = np.asarray(theta, dtype=float)
         if theta_arr.size < features.shape[1]:
             raise ValueError("theta must have at least state_dim + 1 elements.")
         z = features @ theta_arr[: features.shape[1]]
         sigma = _sigmoid(z)
-        du_dz = sigma * (1.0 - sigma)
+        du_dz = -sigma * (1.0 - sigma)
         n_samples = features.shape[0]
         grad = np.zeros((n_samples, theta_arr.size), dtype=float)
         grad[:, : features.shape[1]] = du_dz[:, None] * features

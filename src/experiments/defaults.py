@@ -9,7 +9,7 @@ from objective.policy import SoftmaxPolicy
 
 def default_theta0(state_dim: int) -> np.ndarray:
     """Return default initial theta for a policy with given state dimension."""
-    return np.asarray([0.1] + [0.01] * state_dim, dtype=float)
+    return np.zeros(state_dim + 1, dtype=float)
 
 
 def default_policy(state_dim: int = 1) -> SoftmaxPolicy:

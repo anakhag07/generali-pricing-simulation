@@ -37,12 +37,12 @@ FIXED_BETA_4 = 0.4
 PLANTED_ALPHA = 1.0
 PLANTED_BETA = np.asarray([0.5, -0.2, 0.3, 0.1, -0.4], dtype=float)
 PLANTED_BIAS = -0.2
-PLANTED_U_STAR = 1.1
+PLANTED_U_STAR = 0.1
 
 CORRECTNESS_GRADIENT_SOURCE = "exact"
 
 POLICY = make_softmax_policy()
-THETA0 = np.asarray([0.1] + [0.01] * STATE_DIM, dtype=float)
+THETA0 = np.zeros(STATE_DIM + 1, dtype=float)
 
 OBJECTIVE = make_fixed_regression_objective(
     policy=POLICY,

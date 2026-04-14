@@ -14,7 +14,7 @@ from experiments.config import (
 
 STATE_DIM = 3
 BETA = np.asarray([0.5, -0.2, 0.3], dtype=float)
-POLICY_THETA = np.asarray([0.1] + [0.01] * STATE_DIM, dtype=float)
+POLICY_THETA = np.zeros(STATE_DIM + 1, dtype=float)
 
 TRAINING = canonical_training_block(
     n_samples=20,
@@ -41,7 +41,7 @@ CONFIG = build_experiment_config(
         alpha=1.0,
         beta=BETA,
         bias=-0.2,
-        u_star=1.1,
+        u_star=0.1,
     ),
     theta0=POLICY_THETA,
     training=TRAINING,

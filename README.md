@@ -43,6 +43,9 @@ Pluggable components:
 - **Policies**: `ConstantPolicy`, `LinearPolicy`, `SoftmaxPolicy`
 - **Gradient estimators**: `first_order`, `finite_difference`, `gauss_stein`, `stein_difference`, `spsa`
 
+The default bounded policy is `SoftmaxPolicy`, which maps
+`u = 0.5 - sigma(theta^T phi(x))`, so its action range is `(-0.5, 0.5)`.
+
 `finite_difference` is a deterministic coordinate-wise central-difference baseline
 that uses `2 * dim(theta)` objective evaluations per gradient call.
 

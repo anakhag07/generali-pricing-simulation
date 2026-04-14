@@ -4,8 +4,8 @@ Uses the same trained GLM artifacts and fixed state batch as ``real_data_glm_bas
 but swaps in ``LinearPolicy`` while keeping preprocessing inside the objective,
 so raw CSV rows remain the external state seen by the optimizer.
 
-The initial theta sets a constant action ``u = 1.1`` across the batch, which
-starts near the GLM training U range before optimization moves the policy.
+The initial theta sets a constant action ``u = 0`` across the batch, giving a
+neutral zero-centered starting point before optimization moves the policy.
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ _acceptance_model, _loss_model = load_model_artifacts("glm")
 _u_coef = extract_glm_u_coef(_acceptance_model)
 _policy = LinearPolicy()
 
-THETA0 = np.array([1.1] + [0.0] * _acceptance_model.policy_feature_dim(), dtype=float)
+THETA0 = np.zeros(_acceptance_model.policy_feature_dim() + 1, dtype=float)
 
 TRAINING = canonical_training_block(
     n_samples=5000,

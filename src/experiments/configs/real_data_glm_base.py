@@ -8,9 +8,9 @@ CSV rows stay at the optimization boundary.
 GLM enables an analytical first-order gradient (u_coef extracted from the
 logistic regression pipeline). All 5 estimators are enabled for comparison.
 
-Note: SoftmaxPolicy outputs u in (0.5, 1.5). The GLM training U range is
-[0.998, 1.418] (mean ≈ 1.08), so the policy operates near the training
-distribution. Initial theta[0] ≈ 0.4 yields u ≈ 1.1.
+Note: SoftmaxPolicy now outputs u in (-0.5, 0.5), so this preset starts from
+theta = 0 to initialize at u = 0 with the largest policy slope. That action
+range lies below the historical GLM training U range [0.998, 1.418].
 """
 
 from __future__ import annotations
@@ -40,7 +40,7 @@ _acceptance_model, _loss_model = load_model_artifacts("glm")
 _u_coef = extract_glm_u_coef(_acceptance_model)
 _policy = SoftmaxPolicy()
 
-THETA0 = np.array([0.4] + [0.01] * _acceptance_model.policy_feature_dim(), dtype=float)
+THETA0 = np.zeros(_acceptance_model.policy_feature_dim() + 1, dtype=float)
 
 TRAINING = canonical_training_block(
     n_samples=5000,

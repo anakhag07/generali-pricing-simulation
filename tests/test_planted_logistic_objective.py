@@ -12,7 +12,7 @@ def test_planted_logistic_minimum_at_u_star() -> None:
         alpha=1.2,
         beta=np.asarray([0.3, -0.1], dtype=float),
         bias=0.05,
-        u_star=1.1,
+        u_star=0.1,
     )
     x_batch = np.array([[0.2, -0.4]], dtype=float)
     u_star = objective.optimal_u()
@@ -37,6 +37,6 @@ def test_planted_logistic_optimal_u() -> None:
         alpha=1.0,
         beta=[0.1, 0.2],
         bias=0.0,
-        u_star=1.5,
+        u_star=0.3,
     )
-    assert objective.optimal_u() == 1.5
+    assert objective.optimal_u() == 0.3

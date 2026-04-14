@@ -33,7 +33,7 @@ def _make_glm_objective(n_rows=20):
 
 def test_value_returns_scalar():
     obj, x, policy_dim = _make_glm_objective()
-    theta = np.array([0.4] + [0.01] * policy_dim, dtype=float)
+    theta = np.zeros(policy_dim + 1, dtype=float)
     val = obj.value(theta, x)
     assert isinstance(val, float)
     assert np.isfinite(val)
@@ -41,7 +41,7 @@ def test_value_returns_scalar():
 
 def test_grad_shape():
     obj, x, policy_dim = _make_glm_objective()
-    theta = np.array([0.4] + [0.01] * policy_dim, dtype=float)
+    theta = np.zeros(policy_dim + 1, dtype=float)
     grad = obj.grad(theta, x)
     assert grad.shape == theta.shape
     assert np.all(np.isfinite(grad))
@@ -49,7 +49,7 @@ def test_grad_shape():
 
 def test_value_at_u_returns_scalar():
     obj, x, _ = _make_glm_objective()
-    val = obj.value_at_u(x, 1.1)
+    val = obj.value_at_u(x, 0.0)
     assert isinstance(val, float)
     assert np.isfinite(val)
 
@@ -79,7 +79,7 @@ def test_value_at_u_consistent_with_value():
         premium_col=9,
         u_coef=u_coef,
     )
-    u_val = 1.1
+    u_val = 0.0
     theta = np.array([u_val], dtype=float)
     assert abs(obj.value(theta, x) - obj.value_at_u(x, u_val)) < 1e-8
 
@@ -99,7 +99,7 @@ def test_analytical_vs_fd_grad_glm():
     acc_model, loss_model = load_model_artifacts("glm")
     u_coef = extract_glm_u_coef(acc_model)
     x = load_x_array("glm", n_rows=30)
-    theta = np.array([0.4] + [0.01] * acc_model.policy_feature_dim(), dtype=float)
+    theta = np.zeros(acc_model.policy_feature_dim() + 1, dtype=float)
 
     obj_analytical = ModelBasedObjective(
         policy=SoftmaxPolicy(),
@@ -128,14 +128,14 @@ def test_analytical_vs_fd_grad_glm():
 
 def test_x_batch_must_be_2d():
     obj, _, policy_dim = _make_glm_objective()
-    theta = np.array([0.4] + [0.01] * policy_dim, dtype=float)
+    theta = np.zeros(policy_dim + 1, dtype=float)
     with pytest.raises(ValueError):
         obj.value(theta, np.zeros(12))
 
 
 def test_policy_hooks_use_acceptance_preprocessor() -> None:
     obj, x, _ = _make_glm_objective(n_rows=5)
-    theta = np.array([0.4] + [0.01] * obj.acceptance_model.policy_feature_dim(), dtype=float)
+    theta = np.zeros(obj.acceptance_model.policy_feature_dim() + 1, dtype=float)
 
     processed = obj._policy_features(x)
     direct_u = obj.policy.value(theta, processed)

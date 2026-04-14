@@ -27,12 +27,12 @@ def test_fixed_regression_objective_value() -> None:
     )
 
     # Compute expected value manually
-    # Policy outputs u = 0.5 + sigmoid(theta.T @ [1, x])
+    # Policy outputs u = 0.5 - sigmoid(theta.T @ [1, x])
     # With theta = [0.1, 0, 0] and x = [1, 2], phi = [1, 1, 2]
     # z = 0.1*1 + 0*1 + 0*2 = 0.1
-    # u = 0.5 + sigmoid(0.1)
+    # u = 0.5 - sigmoid(0.1)
     z = 0.1
-    u = 0.5 + 1.0 / (1.0 + math.exp(-z))
+    u = 0.5 - 1.0 / (1.0 + math.exp(-z))
     
     logit = 0.1 * 1.0 + 0.2 * 2.0 + beta_2 * u
     acceptance = 1.0 / (1.0 + math.exp(-logit))

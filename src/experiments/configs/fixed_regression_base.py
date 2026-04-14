@@ -19,7 +19,7 @@ BETA_2 = -1.2
 BETA_3 = np.linspace(0.005, 0.2, num=STATE_DIM, dtype=float)
 BETA_4 = 0.4
 
-POLICY_THETA = np.asarray([0.1] + [0.01] * STATE_DIM, dtype=float)
+POLICY_THETA = np.zeros(STATE_DIM + 1, dtype=float)
 
 TRAINING = canonical_training_block(
     n_samples=100,

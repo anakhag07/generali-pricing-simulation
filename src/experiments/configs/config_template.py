@@ -70,7 +70,7 @@ CORRECTNESS_NUMDIFF_BOUNDS = None  # OPTIONAL
 # )
 #
 # POLICY = make_softmax_policy()
-# THETA0 = np.asarray([0.1] + [0.01] * STATE_DIM, dtype=float)
+# THETA0 = np.zeros(STATE_DIM + 1, dtype=float)
 #
 # # Choose exactly one objective block.
 # OBJECTIVE = make_fixed_regression_objective(

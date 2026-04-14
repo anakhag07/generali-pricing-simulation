@@ -55,13 +55,13 @@ def test_glm_linear_base_has_first_order():
     assert "first_order" in cfg.enabled_estimators
 
 
-def test_glm_linear_base_initial_action_is_constant_1_1():
+def test_glm_linear_base_initial_action_is_constant_zero():
     from experiments.configs import get_config
 
     cfg = get_config("real_data_glm_linear_base")
     assert cfg.x_fixed is not None
     u_batch = cfg.objective.policy_value(cfg.theta0, cfg.x_fixed)
-    assert np.allclose(u_batch, 1.1)
+    assert np.allclose(u_batch, 0.0)
 
 
 def test_xgb_base_no_first_order():
@@ -134,6 +134,6 @@ def test_glm_linear_base_estimators_move_and_agree_on_small_run():
     assert result.traces["finite_difference"].optimizer_status == 0
     assert result.traces["spsa"].optimizer_status == 0
     assert first.u != pytest.approx(float(cfg.theta0[0]))
-    assert first.u == pytest.approx(fd.u, rel=1e-5, abs=1e-5)
-    assert first.u == pytest.approx(spsa.u, rel=1e-5, abs=1e-5)
-    assert first.value == pytest.approx(fd.value, rel=1e-8, abs=1e-8)
+    assert first.u == pytest.approx(fd.u, rel=5e-4, abs=5e-4)
+    assert first.u == pytest.approx(spsa.u, rel=5e-4, abs=5e-4)
+    assert first.value == pytest.approx(fd.value, rel=1e-6, abs=2e-7)

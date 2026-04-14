@@ -256,7 +256,7 @@ def plot_objective_u_slice(
             pad = 0.1 * (u_max - u_min)
         u_grid = np.linspace(u_min - pad, u_max + pad, 200)
     else:
-        u_grid = np.linspace(0.5, 1.5, 200)
+        u_grid = np.linspace(-0.5, 0.5, 200)
 
     # Use value_at_u method if available
     value_at_u_fn = getattr(objective, "value_at_u", None)

@@ -79,7 +79,7 @@ def _build_model_based_result() -> ExperimentResult:
         premium_col=9,
         u_coef=extract_glm_u_coef(acceptance_model),
     )
-    theta0 = np.array([0.4] + [0.01] * acceptance_model.policy_feature_dim(), dtype=float)
+    theta0 = np.zeros(acceptance_model.policy_feature_dim() + 1, dtype=float)
     config = ExperimentConfig(
         state_dim=12,
         objective=objective,
@@ -94,7 +94,7 @@ def _build_model_based_result() -> ExperimentResult:
     )
     trace = OptimizationTrace(
         steps=[0, 1],
-        u_values=[1.1, 1.12],
+        u_values=[0.0, 0.02],
         objective_values=[-20.0, -21.0],
         u_grad_estimates=[0.3, 0.2],
         theta_values=[theta0.copy(), theta0.copy()],
@@ -108,7 +108,7 @@ def _build_model_based_result() -> ExperimentResult:
         results={
             "first_order": EstimatorResult(
                 theta=theta0.copy(),
-                u=1.12,
+                u=0.02,
                 value=-21.0,
                 time=0.01,
             )

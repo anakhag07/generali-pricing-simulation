@@ -135,6 +135,7 @@ class Optimization:
         def record(theta_vec: np.ndarray) -> None:
             theta_arr = np.asarray(theta_vec, dtype=float)
             indices = sample_indices(self.rng, self.batch_size_eff, self.n_total, self._full_indices)
+            x_batch_arr = x_batch(self.x_array, indices, self.n_total)
             value = objective_value_on_indices(self.objective, self.x_array, self.n_total, theta_arr, indices)
             grad_theta = np.asarray(self.gradient.theta_grad(self, theta_arr, indices), dtype=float)
             theta_grad_norm = float(np.linalg.norm(grad_theta))
@@ -142,19 +143,29 @@ class Optimization:
             true_theta_grad_norm = None
             if self.true_grad_theta_fn is not None:
                 grad_true = np.asarray(
-                    self.true_grad_theta_fn(theta_arr, x_batch(self.x_array, indices, self.n_total)),
+                    self.true_grad_theta_fn(theta_arr, x_batch_arr),
                     dtype=float,
                 )
                 true_theta_grad_norm = float(np.linalg.norm(grad_true))
 
             step = len(steps)
-            
+
             # Compute mean action if policy is available
             policy = getattr(self.objective, "policy", None)
             if policy is not None:
-                mean_u = _mean_action(self.objective, theta_arr, x_batch(self.x_array, indices, self.n_total))
+                mean_u = _mean_action(self.objective, theta_arr, x_batch_arr)
             else:
                 mean_u = float("nan")
+
+            mean_acceptance = None
+            projected_loss = None
+            projected_revenue = None
+            step_metrics_fn = getattr(self.objective, "_step_metrics", None)
+            if callable(step_metrics_fn):
+                metrics = step_metrics_fn(theta_arr, x_batch_arr)
+                mean_acceptance = metrics.get("mean_acceptance")
+                projected_loss = metrics.get("projected_loss")
+                projected_revenue = metrics.get("projected_revenue")
 
             steps.append(step)
             u_values.append(mean_u)
@@ -165,7 +176,16 @@ class Optimization:
             if true_theta_grad_norm is not None:
                 true_theta_grad_norms.append(true_theta_grad_norm)
             if self.step_reporter is not None:
-                self.step_reporter.log_step(self.method_label, step, mean_u, value, theta_grad_norm)
+                self.step_reporter.log_step(
+                    self.method_label,
+                    step,
+                    mean_u,
+                    value,
+                    theta_grad_norm,
+                    mean_acceptance=mean_acceptance,
+                    projected_loss=projected_loss,
+                    projected_revenue=projected_revenue,
+                )
 
         record(theta0)
 

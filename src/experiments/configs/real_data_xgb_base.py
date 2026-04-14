@@ -27,7 +27,7 @@ from experiments.config import (
     canonical_training_block,
     make_model_based_objective,
 )
-from objective.policy import SoftmaxPolicy
+from objective.policy import LinearPolicy, SoftmaxPolicy
 
 STATE_DIM = len(FEATURE_COLS_XGB)
 
@@ -68,7 +68,7 @@ CONFIG = build_experiment_config(
         loss_cols=tuple(LOSS_FEATURE_COLS),
         premium_col=9,
         u_coef=None,  # XGBoost: use numerical FD for d_acceptance/du
-        u_bounds=(-0.05, 0.5),  # constrain u to XGB training data range
+        # u_bounds=(-0.05, 0.5),  # constrain u to XGB training data range
     ),
     theta0=THETA0,
     training=TRAINING,

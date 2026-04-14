@@ -61,6 +61,9 @@ class ExperimentConfig:
     step_size: float = 0.01
     grad_norm_tol: Optional[float] = None
     ftol: Optional[float] = None
+    acceptance_floor: float | None = None
+    acceptance_penalty_weight: float | None = None
+    acceptance_penalty_temperature: float = 0.01
     sigma: float = 0.1
     n_grad_samples: int = 64
     verbose: bool = False
@@ -167,6 +170,26 @@ class ExperimentConfig:
             raise ValueError("grad_norm_tol must be positive when provided.")
         if self.ftol is not None and self.ftol <= 0.0:
             raise ValueError("ftol must be positive when provided.")
+        if self.acceptance_floor is not None:
+            if not 0.0 < self.acceptance_floor < 1.0:
+                raise ValueError("acceptance_floor must be in (0, 1) when provided.")
+            if self.acceptance_penalty_weight is None or self.acceptance_penalty_weight <= 0.0:
+                raise ValueError(
+                    "acceptance_penalty_weight must be positive when acceptance_floor is provided."
+                )
+            if self.acceptance_penalty_temperature <= 0.0:
+                raise ValueError(
+                    "acceptance_penalty_temperature must be positive when acceptance_floor is provided."
+                )
+            mean_acceptance_fn = getattr(self.objective, "mean_acceptance", None)
+            if not callable(mean_acceptance_fn):
+                raise ValueError(
+                    "acceptance_floor requires an objective with mean_acceptance(theta, x_batch)."
+                )
+        elif self.acceptance_penalty_weight is not None:
+            raise ValueError(
+                "acceptance_penalty_weight requires acceptance_floor to be provided."
+            )
         if self.n_grad_samples <= 0:
             raise ValueError("n_grad_samples must be positive.")
 
@@ -211,6 +234,13 @@ class ExperimentConfig:
             if self.grad_norm_tol is not None
             else None,
             "ftol": float(self.ftol) if self.ftol is not None else None,
+            "acceptance_floor": float(self.acceptance_floor)
+            if self.acceptance_floor is not None
+            else None,
+            "acceptance_penalty_weight": float(self.acceptance_penalty_weight)
+            if self.acceptance_penalty_weight is not None
+            else None,
+            "acceptance_penalty_temperature": float(self.acceptance_penalty_temperature),
             "sigma": float(self.sigma),
             "n_grad_samples": int(self.n_grad_samples),
             "verbose": bool(self.verbose),
@@ -267,6 +297,13 @@ def _objective_to_dict(objective: Objective) -> dict[str, Any]:
             "premium_col": int(objective.premium_col),
             "u_coef": float(objective.u_coef) if objective.u_coef is not None else None,
             "u_bounds": list(objective.u_bounds) if objective.u_bounds is not None else None,
+            "acceptance_floor": float(objective.acceptance_floor)
+            if objective.acceptance_floor is not None
+            else None,
+            "acceptance_penalty_weight": float(objective.acceptance_penalty_weight)
+            if objective.acceptance_penalty_weight is not None
+            else None,
+            "acceptance_penalty_temperature": float(objective.acceptance_penalty_temperature),
         }
     return {"type": type(objective).__name__}
 
@@ -355,6 +392,9 @@ def make_model_based_objective(
     premium_col: int = 9,
     u_coef: float | None = None,
     u_bounds: tuple[float, float] | None = None,
+    acceptance_floor: float | None = None,
+    acceptance_penalty_weight: float | None = None,
+    acceptance_penalty_temperature: float = 0.01,
 ) -> ModelBasedObjective:
     """Create a ModelBasedObjective wrapping trained sklearn/XGBoost models."""
     return ModelBasedObjective(
@@ -366,6 +406,9 @@ def make_model_based_objective(
         premium_col=premium_col,
         u_coef=u_coef,
         u_bounds=u_bounds,
+        acceptance_floor=acceptance_floor,
+        acceptance_penalty_weight=acceptance_penalty_weight,
+        acceptance_penalty_temperature=acceptance_penalty_temperature,
     )
 
 
@@ -382,6 +425,9 @@ def canonical_training_block(
     batch_size: int | None = None,
     grad_norm_tol: float | None = None,
     ftol: float | None = None,
+    acceptance_floor: float | None = None,
+    acceptance_penalty_weight: float | None = None,
+    acceptance_penalty_temperature: float = 0.01,
 ) -> dict[str, Any]:
     """Create a canonical training configuration block."""
     return {
@@ -396,6 +442,11 @@ def canonical_training_block(
         "batch_size": int(batch_size) if batch_size is not None else None,
         "grad_norm_tol": float(grad_norm_tol) if grad_norm_tol is not None else None,
         "ftol": float(ftol) if ftol is not None else None,
+        "acceptance_floor": float(acceptance_floor) if acceptance_floor is not None else None,
+        "acceptance_penalty_weight": float(acceptance_penalty_weight)
+        if acceptance_penalty_weight is not None
+        else None,
+        "acceptance_penalty_temperature": float(acceptance_penalty_temperature),
     }
 
 

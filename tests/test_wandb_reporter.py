@@ -122,7 +122,16 @@ def test_wandb_reporter_streams_and_summarizes(tmp_path: Path, monkeypatch) -> N
 
     reporter = WandbReporter()
     reporter.on_start(run_context, config)
-    reporter.log_step("first_order", 0, 0.53, -0.08, grad_norm=0.2)
+    reporter.log_step(
+        "first_order",
+        0,
+        0.53,
+        -0.08,
+        grad_norm=0.2,
+        mean_acceptance=0.81,
+        projected_loss=120.0,
+        projected_revenue=0.04,
+    )
     reporter.log_step("first_order", 1, 0.52, -0.09, grad_norm=0.1, step_size=0.01)
     reporter.on_end(run_context, result)
 
@@ -137,10 +146,16 @@ def test_wandb_reporter_streams_and_summarizes(tmp_path: Path, monkeypatch) -> N
     assert defined["curve/first_order/step"]["summary"] == "none"
     assert defined["curve/first_order/objective"]["step_metric"] == "curve/first_order/step"
     assert defined["curve/first_order/u"]["step_metric"] == "curve/first_order/step"
+    assert defined["curve/first_order/mean_acceptance"]["step_metric"] == "curve/first_order/step"
+    assert defined["curve/first_order/projected_loss"]["step_metric"] == "curve/first_order/step"
+    assert defined["curve/first_order/projected_revenue"]["step_metric"] == "curve/first_order/step"
 
     curve_payloads = [payload for payload, _ in fake_wandb.log_calls if "curve/first_order/objective" in payload]
     assert len(curve_payloads) == 2
     assert "curve/first_order/theta_grad_norm" in curve_payloads[0]
+    assert curve_payloads[0]["curve/first_order/mean_acceptance"] == 0.81
+    assert curve_payloads[0]["curve/first_order/projected_loss"] == 120.0
+    assert curve_payloads[0]["curve/first_order/projected_revenue"] == 0.04
     assert "curve/first_order/step_size" in curve_payloads[1]
 
     final_payloads = [payload for payload, _ in fake_wandb.log_calls if "final/first_order/value" in payload]

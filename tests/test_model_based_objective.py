@@ -1,7 +1,12 @@
 """Tests for ModelBasedObjective."""
 
+from dataclasses import replace
+
 import numpy as np
 import pytest
+
+from objective.utils import _mean_action
+from optimization.helpers import finite_difference_theta_grad
 
 
 def _make_glm_objective(n_rows=20):
@@ -146,3 +151,87 @@ def test_policy_hooks_use_acceptance_preprocessor() -> None:
     assert processed.shape[1] == obj.acceptance_model.policy_feature_dim()
     assert np.allclose(hook_u, direct_u)
     assert np.allclose(hook_grad, direct_grad)
+
+
+def test_mean_acceptance_grad_matches_fd() -> None:
+    obj, x, policy_dim = _make_glm_objective(n_rows=30)
+    theta = np.array([0.4] + [0.01] * policy_dim, dtype=float)
+
+    grad = obj.mean_acceptance_grad(theta, x)
+    grad_fd = finite_difference_theta_grad(
+        lambda theta_eval: obj.mean_acceptance(theta_eval, x),
+        theta,
+        method="central",
+        step=1e-6,
+    )
+    np.testing.assert_allclose(grad, grad_fd, rtol=1e-4, atol=1e-6)
+
+
+def test_step_metrics_match_objective_components() -> None:
+    obj, x, policy_dim = _make_glm_objective(n_rows=30)
+    theta = np.array([0.4] + [0.01] * policy_dim, dtype=float)
+
+    metrics = obj._step_metrics(theta, x)
+    u_batch = obj._clip_u(obj.policy_value(theta, x))
+    premium = x[:, obj.premium_col]
+
+    assert metrics["mean_acceptance"] == pytest.approx(obj.mean_acceptance(theta, x))
+    assert metrics["projected_loss"] == pytest.approx(float(np.mean(obj._loss_prediction(x))))
+    assert metrics["projected_revenue"] == pytest.approx(float(np.mean(u_batch * premium)))
+
+
+def test_mean_action_uses_clipped_u_when_bounds_present() -> None:
+    from data.loader import ACCEPTANCE_STATE_COLS, LOSS_FEATURE_COLS, load_model_artifacts, load_x_array
+    from objective.objectives.model_based import ModelBasedObjective
+    from objective.policy import LinearPolicy
+
+    acc_model, loss_model = load_model_artifacts("xgb")
+    x = load_x_array("xgb", n_rows=30)
+    obj = ModelBasedObjective(
+        policy=LinearPolicy(),
+        acceptance_model=acc_model,
+        loss_model=loss_model,
+        acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),
+        loss_cols=tuple(LOSS_FEATURE_COLS),
+        premium_col=9,
+        u_coef=None,
+        u_bounds=(-0.05, 0.5),
+    )
+    theta = np.array([10.0] + [0.0] * acc_model.policy_feature_dim(), dtype=float)
+
+    assert _mean_action(obj, theta, x) == pytest.approx(0.5)
+
+
+def test_acceptance_penalty_raises_value_when_floor_is_higher() -> None:
+    obj, x, policy_dim = _make_glm_objective(n_rows=30)
+    theta = np.array([0.4] + [0.01] * policy_dim, dtype=float)
+    baseline_acceptance = obj.mean_acceptance(theta, x)
+
+    constrained = replace(
+        obj,
+        acceptance_floor=baseline_acceptance + 0.01,
+        acceptance_penalty_weight=100.0,
+        acceptance_penalty_temperature=1e-4,
+    )
+    assert constrained.value(theta, x) > obj.value(theta, x)
+
+
+def test_constrained_grad_matches_fd() -> None:
+    obj, x, policy_dim = _make_glm_objective(n_rows=30)
+    theta = np.array([0.4] + [0.01] * policy_dim, dtype=float)
+    baseline_acceptance = obj.mean_acceptance(theta, x)
+    constrained = replace(
+        obj,
+        acceptance_floor=baseline_acceptance + 0.01,
+        acceptance_penalty_weight=100.0,
+        acceptance_penalty_temperature=1e-4,
+    )
+
+    grad = constrained.grad(theta, x)
+    grad_fd = finite_difference_theta_grad(
+        lambda theta_eval: constrained.value(theta_eval, x),
+        theta,
+        method="central",
+        step=1e-6,
+    )
+    np.testing.assert_allclose(grad, grad_fd, rtol=1e-4, atol=1e-6)

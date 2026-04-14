@@ -25,6 +25,18 @@ def test_load_x_array_glm_has_more_cols_than_xgb():
     assert glm_x.shape[1] > xgb_x.shape[1]
 
 
+def test_load_observed_u_array_matches_requested_rows():
+    from data.loader import _load_observed_u_array
+
+    glm_u = _load_observed_u_array("glm", n_rows=25)
+    xgb_u = _load_observed_u_array("xgb", n_rows=25)
+
+    assert glm_u.shape == (25,)
+    assert xgb_u.shape == (25,)
+    assert np.all(np.isfinite(glm_u))
+    assert np.all(np.isfinite(xgb_u))
+
+
 def test_load_model_artifacts_types():
     import sklearn.pipeline
     import xgboost

@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from objective.base import Objective
+from objective.utils import _policy_value
 from experiments.results import OptimizationTrace
 
 matplotlib.use("Agg")
@@ -220,6 +221,88 @@ def plot_step_sizes(
     ax.grid(True, alpha=0.3)
     fig.tight_layout()
     fig.savefig(path / "step_sizes.png", dpi=200)
+    plt.close(fig)
+
+
+def _policy_output_histogram_bins(series_list: Sequence[np.ndarray]) -> np.ndarray:
+    combined = np.concatenate([np.asarray(series, dtype=float).reshape(-1) for series in series_list])
+    min_val = float(np.min(combined))
+    max_val = float(np.max(combined))
+    if np.isclose(min_val, max_val):
+        pad = 0.05 if min_val == 0.0 else abs(min_val) * 0.05
+        return np.linspace(min_val - pad, max_val + pad, 20)
+    return np.histogram_bin_edges(combined, bins="auto")
+
+
+def _policy_outputs_for_theta(
+    objective: Objective,
+    theta: np.ndarray,
+    x_samples: np.ndarray,
+) -> np.ndarray:
+    u_values = np.asarray(_policy_value(objective, np.asarray(theta, dtype=float), x_samples), dtype=float)
+    clip_fn = getattr(objective, "_clip_u", None)
+    if callable(clip_fn):
+        u_values = np.asarray(clip_fn(u_values), dtype=float)
+    return u_values.reshape(-1)
+
+
+def _plot_policy_u_histograms(
+    observed_u: np.ndarray,
+    x_samples: np.ndarray,
+    objective: Objective,
+    theta_by_estimator: Mapping[str, np.ndarray],
+    plot_dir: str,
+    filename: str = "policy_u_histograms.png",
+) -> None:
+    x_arr = np.asarray(x_samples, dtype=float)
+    if x_arr.ndim != 2:
+        raise ValueError("x_samples must be a 2D array.")
+    observed_u_arr = np.asarray(observed_u, dtype=float).reshape(-1)
+    if observed_u_arr.shape != (x_arr.shape[0],):
+        raise ValueError("observed_u must match the number of x_samples rows.")
+    if not theta_by_estimator:
+        return
+
+    path = _ensure_plot_dir(plot_dir)
+    ordered_names = [name for name in _TRACE_ORDER if name in theta_by_estimator]
+    extra_names = sorted(name for name in theta_by_estimator if name not in _TRACE_ORDER)
+    ordered_names.extend(extra_names)
+    policy_outputs = {
+        name: _policy_outputs_for_theta(objective, theta_by_estimator[name], x_arr)
+        for name in ordered_names
+    }
+    bins = _policy_output_histogram_bins([observed_u_arr, *policy_outputs.values()])
+
+    fig, ax = plt.subplots(1, 1, figsize=(8, 4.75))
+    ax.hist(
+        observed_u_arr,
+        bins=bins,
+        density=True,
+        label="observed U",
+        color="#bdbdbd",
+        edgecolor="#969696",
+        alpha=0.45,
+        linewidth=0.8,
+    )
+    for name in ordered_names:
+        style = ESTIMATOR_STYLES[name]
+        ax.hist(
+            policy_outputs[name],
+            bins=bins,
+            density=True,
+            label=style["label"],
+            color=style["color"],
+            histtype="step",
+            alpha=0.95,
+            linewidth=1.8,
+        )
+
+    ax.set_xlabel("u")
+    ax.set_ylabel("Density")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(path / filename, dpi=200)
     plt.close(fig)
 
 

@@ -98,7 +98,7 @@ Each run writes artifacts to `outputs/<experiment_name>/<timestamp>/`:
 
 - `summary.json` -- full result payload
 - `steps.csv` -- per-step metrics for every estimator
-- `plots/` -- loss curves, gradient norms, objective slices, contour plots
+- `plots/` -- loss curves, gradient norms, objective slices, contour plots, and real-data policy-vs-observed `u` histograms
 
 Weights & Biases integration is available for experiment tracking. See the
 docstrings in `src/experiments/config.py` for W&B configuration fields.

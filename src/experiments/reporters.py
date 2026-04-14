@@ -11,12 +11,18 @@ from typing import IO, Protocol, runtime_checkable, Sequence
 
 import numpy as np
 
-from data.loader import extract_model_based_coefficients
+from data.loader import (
+    FEATURE_COLS_GLM,
+    FEATURE_COLS_XGB,
+    _load_observed_u_array,
+    extract_model_based_coefficients,
+)
 from objective.objectives import FixedRegressionObjective
 from experiments.config import ExperimentConfig
 from reporting.logging import log_step, log_summary
 from experiments.results import ExperimentResult
 from reporting.visualization import (
+    _plot_policy_u_histograms,
     ESTIMATOR_STYLES,
     plot_gradient_norms,
     plot_loss_curves,
@@ -329,6 +335,15 @@ class PlotReporter:
             u_star=u_star_plot,
         )
         plot_gradient_norms(traces, plot_dir)
+        observed_u = _observed_u_reference(result)
+        if observed_u is not None:
+            _plot_policy_u_histograms(
+                observed_u,
+                result.x_samples,
+                objective,
+                {name: estimator_result.theta for name, estimator_result in result.results.items()},
+                plot_dir,
+            )
         if action_objective is not None:
             plot_objective_u_slice(
                 result.x_samples,
@@ -436,6 +451,22 @@ def _u_star_for_plot(
     if u_star is not None:
         return u_star
     return None
+
+
+def _observed_u_reference(result: ExperimentResult) -> np.ndarray | None:
+    objective = result.config.objective
+    if result.config.x_fixed is None:
+        return None
+    if not hasattr(objective, "acceptance_model") or not hasattr(objective, "loss_model"):
+        return None
+    state_dim = int(result.x_samples.shape[1])
+    if state_dim == len(FEATURE_COLS_GLM):
+        model_type = "glm"
+    elif state_dim == len(FEATURE_COLS_XGB):
+        model_type = "xgb"
+    else:
+        return None
+    return _load_observed_u_array(model_type, n_rows=result.x_samples.shape[0])
 
 
 def _build_summary_payload(run_context: RunContext, result: ExperimentResult) -> dict:

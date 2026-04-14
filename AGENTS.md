@@ -130,7 +130,7 @@ Guidelines:
 
 - **`src/optimization/base.py`**
   - `Optimization`: class-based optimization entry point
-  - `Optimization.solve(theta_start)`: runs SciPy `minimize` (`L-BFGS-B`) with configured gradient method, mini-batching, and trace recording
+  - `Optimization.solve(theta_start)`: dispatches to SciPy `minimize` for `step_rule="l-bfgs-b"` and to an internal manual gradient loop for `step_rule="constant"` / `"armijo"`; handles mini-batching, trace recording, and optional step-size history for manual rules
   - Contains only constructor + solve orchestration; batching/objective helpers live in `src/optimization/helpers.py`
   - Solvers consume theta-level objectives only (`value(theta, x_batch)`, `grad(theta, x_batch)`)
 
@@ -154,7 +154,7 @@ Guidelines:
 - **`src/optimization/steps.py`**
   - `STEP_RULE_LBFGSB`, `STEP_RULE_CONSTANT`, `STEP_RULE_ARMIJO`, `STEP_RULES`
   - `constant_step_size(step_size)`: returns the step size unchanged
-  - `armijo_backtracking_step_size(...)`: Armijo line search utility (not used by SciPy first/Gauss-Stein/Stein-difference/SPSA solvers)
+  - `armijo_backtracking_step_size(...)`: Armijo line search utility used by the optimizer's manual `step_rule="armijo"` path
 
 #### Experiment Layer (`src/experiments/`)
 
@@ -218,7 +218,7 @@ Guidelines:
   - `ConsoleReporter`: prints to terminal; per-step output controlled by `verbose`
   - `FileStepLogger`: writes per-step metrics to `steps.csv` in the run directory
   - `JsonReporter`: writes `summary.json` on end
-  - `PlotReporter`: generates all matplotlib plots on end
+  - `PlotReporter`: generates all matplotlib plots on end; step-size plots are emitted whenever traces include `step_sizes`
 
 #### Reporting Layer (`src/reporting/`)
 

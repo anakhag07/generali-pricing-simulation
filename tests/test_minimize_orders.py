@@ -44,6 +44,46 @@ def test_first_order_minimize_reduces_objective() -> None:
     assert theta_final.shape == theta_start.shape
 
 
+def test_first_order_constant_step_rule_reduces_objective() -> None:
+    theta_start = np.asarray([0.2, 0.3], dtype=float)
+    x_samples = np.array([[1.0], [-0.5]], dtype=float)
+    objective = _build_theta_objective()
+
+    theta_final, trace = run_first_order_minimize(
+        theta_start,
+        x_samples,
+        objective,
+        t_steps=25,
+        n_grad_samples=4,
+        sigma=0.1,
+        algorithm="constant",
+        step_size=0.05,
+    )
+    assert trace.objective_values
+    assert trace.objective_values[-1] <= trace.objective_values[0] + 1e-10
+    assert theta_final.shape == theta_start.shape
+
+
+def test_first_order_armijo_step_rule_reduces_objective() -> None:
+    theta_start = np.asarray([0.2, 0.3], dtype=float)
+    x_samples = np.array([[1.0], [-0.5]], dtype=float)
+    objective = _build_theta_objective()
+
+    theta_final, trace = run_first_order_minimize(
+        theta_start,
+        x_samples,
+        objective,
+        t_steps=25,
+        n_grad_samples=4,
+        sigma=0.1,
+        algorithm="armijo",
+        step_size=0.1,
+    )
+    assert trace.objective_values
+    assert trace.objective_values[-1] <= trace.objective_values[0] + 1e-10
+    assert theta_final.shape == theta_start.shape
+
+
 def test_finite_difference_minimize_reduces_objective() -> None:
     theta_start = np.asarray([0.2, 0.3], dtype=float)
     x_samples = np.array([[1.0], [-0.5]], dtype=float)
@@ -110,6 +150,38 @@ def test_gauss_stein_minimize_is_seed_deterministic() -> None:
         t_steps=20,
         n_grad_samples=8,
         sigma=0.1,
+    )
+
+    assert np.allclose(theta_a, theta_b)
+    assert np.allclose(trace_a.objective_values, trace_b.objective_values)
+
+
+def test_gauss_stein_constant_step_rule_is_seed_deterministic() -> None:
+    theta_start = np.asarray([0.2, 0.3], dtype=float)
+    x_samples = np.array([[1.0], [-0.5]], dtype=float)
+    objective = _build_theta_objective()
+
+    theta_a, trace_a = run_gauss_stein_minimize(
+        theta_start,
+        x_samples,
+        objective,
+        np.random.default_rng(11),
+        t_steps=20,
+        n_grad_samples=8,
+        sigma=0.1,
+        algorithm="constant",
+        step_size=0.01,
+    )
+    theta_b, trace_b = run_gauss_stein_minimize(
+        theta_start,
+        x_samples,
+        objective,
+        np.random.default_rng(11),
+        t_steps=20,
+        n_grad_samples=8,
+        sigma=0.1,
+        algorithm="constant",
+        step_size=0.01,
     )
 
     assert np.allclose(theta_a, theta_b)
@@ -207,3 +279,28 @@ def test_first_order_passes_ftol_to_minimize(monkeypatch) -> None:
     assert captured_options["ftol"] == 1e-9
     assert trace.optimizer_status == 0
     assert trace.optimizer_message == "stub"
+
+
+def test_constant_step_rule_skips_scipy_minimize(monkeypatch) -> None:
+    theta_start = np.asarray([0.2, 0.3], dtype=float)
+    x_samples = np.array([[1.0], [-0.5]], dtype=float)
+    objective = _build_theta_objective()
+
+    def fail_minimize(*args, **kwargs):  # type: ignore[no-untyped-def]
+        raise AssertionError("SciPy minimize should not be called for constant step rule")
+
+    monkeypatch.setattr(solvers, "minimize", fail_minimize)
+
+    theta_final, trace = run_first_order_minimize(
+        theta_start,
+        x_samples,
+        objective,
+        t_steps=5,
+        n_grad_samples=4,
+        sigma=0.1,
+        algorithm="constant",
+        step_size=0.05,
+    )
+
+    assert theta_final.shape == theta_start.shape
+    assert trace.objective_values

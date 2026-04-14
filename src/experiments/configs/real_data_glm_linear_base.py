@@ -27,7 +27,7 @@ from experiments.config import (
     canonical_training_block,
     make_model_based_objective,
 )
-from objective.policy import LinearPolicy
+from objective.policy import ConstantPolicy, LinearPolicy
 
 STATE_DIM = len(FEATURE_COLS_GLM)
 
@@ -39,7 +39,7 @@ THETA0 = np.zeros(_acceptance_model.policy_feature_dim() + 1, dtype=float)
 
 TRAINING = canonical_training_block(
     n_samples=5000,
-    step_rule="l-bfgs-b",
+    step_rule="constant",
     t_steps=1000,
     step_size=0.01,
     sigma=0.01,

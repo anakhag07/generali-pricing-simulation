@@ -53,6 +53,11 @@ Core API convention:
 - `sample_states(rng, n, dim)` produces state batches with shape `(n, dim)`.
 - `Policy.value/grad` and `Objective.value/grad` operate on 2D `x_batch` arrays.
 
+Optimization step rules:
+- `l-bfgs-b` uses `scipy.minimize(method="L-BFGS-B")`.
+- `constant` uses the repo's manual gradient loop with fixed `step_size`.
+- `armijo` uses the same manual loop with Armijo backtracking seeded by `step_size`.
+
 ## Documentation
 
 Full API documentation, objective formulas, and configuration reference are
@@ -83,7 +88,8 @@ acceptance bundle's saved preprocessing internally for both `u(theta, x)` and
 `ExperimentConfig` also supports a smooth mean-acceptance floor via
 `acceptance_floor`, `acceptance_penalty_weight`, and
 `acceptance_penalty_temperature`. This is implemented as a differentiable
-penalty on `ModelBasedObjective` while keeping the SciPy `L-BFGS-B` solver.
+penalty on `ModelBasedObjective` and works with the standard optimizer step
+rules.
 
 ## Creating Config Presets
 

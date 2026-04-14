@@ -23,6 +23,7 @@ from reporting.logging import log_step, log_summary
 from experiments.results import ExperimentResult
 from reporting.visualization import (
     _plot_policy_u_histograms,
+    _plot_policy_u_vs_objective,
     ESTIMATOR_STYLES,
     plot_gradient_norms,
     plot_loss_curves,
@@ -337,11 +338,21 @@ class PlotReporter:
         plot_gradient_norms(traces, plot_dir)
         observed_u = _observed_u_reference(result)
         if observed_u is not None:
+            theta_by_estimator = {
+                name: estimator_result.theta for name, estimator_result in result.results.items()
+            }
             _plot_policy_u_histograms(
                 observed_u,
                 result.x_samples,
                 objective,
-                {name: estimator_result.theta for name, estimator_result in result.results.items()},
+                theta_by_estimator,
+                plot_dir,
+            )
+            _plot_policy_u_vs_objective(
+                observed_u,
+                result.x_samples,
+                objective,
+                theta_by_estimator,
                 plot_dir,
             )
         if action_objective is not None:

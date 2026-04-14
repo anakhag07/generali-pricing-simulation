@@ -27,6 +27,8 @@ _TRACE_ORDER = ("first_order", "finite_difference", "gauss_stein", "stein_differ
 _LINE_ALPHA = 0.6
 _LINE_WIDTH = 1.8
 _MARKER_SIZE = 4.2
+_SCATTER_ALPHA = 0.3
+_SCATTER_SIZE = 16.0
 
 
 def _marker_every(num_points: int) -> int:
@@ -246,6 +248,75 @@ def _policy_outputs_for_theta(
     return u_values.reshape(-1)
 
 
+def _row_objective_values(
+    objective: Objective,
+    x_samples: np.ndarray,
+    u_values: np.ndarray,
+) -> np.ndarray:
+    x_arr = np.asarray(x_samples, dtype=float)
+    if x_arr.ndim != 2:
+        raise ValueError("x_samples must be a 2D array.")
+    u_arr = np.asarray(u_values, dtype=float).reshape(-1)
+    if u_arr.shape != (x_arr.shape[0],):
+        raise ValueError("u_values must match the number of x_samples rows.")
+
+    value_batch_fn = getattr(objective, "_value_batch", None)
+    if callable(value_batch_fn):
+        values = np.asarray(value_batch_fn(x_arr, u_arr), dtype=float)
+        if values.shape != (x_arr.shape[0],):
+            raise ValueError("objective._value_batch(x_array, u_array) must return shape (n_samples,).")
+        return values
+
+    value_at_u_fn = getattr(objective, "value_at_u", None)
+    if callable(value_at_u_fn):
+        value_at_u_typed = cast(Callable[[np.ndarray, float], float], value_at_u_fn)
+        values = np.empty(x_arr.shape[0], dtype=float)
+        for idx, u_val in enumerate(u_arr):
+            values[idx] = float(value_at_u_typed(x_arr[idx : idx + 1], float(u_val)))
+        return values
+
+    raise ValueError(
+        "Objective diagnostics require objective._value_batch(x_array, u_array) or "
+        "objective.value_at_u(x_batch, u)."
+    )
+
+
+def _binned_mean_line(
+    x_values: np.ndarray,
+    y_values: np.ndarray,
+    bins: np.ndarray,
+    min_count: int = 10,
+) -> tuple[np.ndarray, np.ndarray]:
+    x_arr = np.asarray(x_values, dtype=float).reshape(-1)
+    y_arr = np.asarray(y_values, dtype=float).reshape(-1)
+    if x_arr.shape != y_arr.shape:
+        raise ValueError("x_values and y_values must have matching shapes.")
+    if bins.ndim != 1 or bins.size < 2:
+        raise ValueError("bins must be a 1D array with at least two edges.")
+
+    bin_ids = np.digitize(x_arr, bins, right=False) - 1
+    last_bin_index = bins.size - 2
+    bin_ids = np.clip(bin_ids, 0, last_bin_index)
+
+    def collect(required_count: int) -> tuple[np.ndarray, np.ndarray]:
+        centers: list[float] = []
+        means: list[float] = []
+        for idx in range(bins.size - 1):
+            mask = bin_ids == idx
+            count = int(np.count_nonzero(mask))
+            if count < required_count:
+                continue
+            centers.append(float(0.5 * (bins[idx] + bins[idx + 1])))
+            means.append(float(np.mean(y_arr[mask])))
+        return np.asarray(centers, dtype=float), np.asarray(means, dtype=float)
+
+    centers, means = collect(min_count)
+    if centers.size > 0:
+        return centers, means
+
+    return collect(1)
+
+
 def _plot_policy_u_histograms(
     observed_u: np.ndarray,
     x_samples: np.ndarray,
@@ -299,6 +370,87 @@ def _plot_policy_u_histograms(
 
     ax.set_xlabel("u")
     ax.set_ylabel("Density")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(path / filename, dpi=200)
+    plt.close(fig)
+
+
+def _plot_policy_u_vs_objective(
+    observed_u: np.ndarray,
+    x_samples: np.ndarray,
+    objective: Objective,
+    theta_by_estimator: Mapping[str, np.ndarray],
+    plot_dir: str,
+    filename: str = "policy_u_vs_objective.png",
+) -> None:
+    x_arr = np.asarray(x_samples, dtype=float)
+    if x_arr.ndim != 2:
+        raise ValueError("x_samples must be a 2D array.")
+    observed_u_arr = np.asarray(observed_u, dtype=float).reshape(-1)
+    if observed_u_arr.shape != (x_arr.shape[0],):
+        raise ValueError("observed_u must match the number of x_samples rows.")
+    if not theta_by_estimator:
+        return
+
+    path = _ensure_plot_dir(plot_dir)
+    ordered_names = [name for name in _TRACE_ORDER if name in theta_by_estimator]
+    extra_names = sorted(name for name in theta_by_estimator if name not in _TRACE_ORDER)
+    ordered_names.extend(extra_names)
+    policy_outputs = {
+        name: _policy_outputs_for_theta(objective, theta_by_estimator[name], x_arr)
+        for name in ordered_names
+    }
+    bins = _policy_output_histogram_bins([observed_u_arr, *policy_outputs.values()])
+    observed_values = _row_objective_values(objective, x_arr, observed_u_arr)
+
+    fig, ax = plt.subplots(1, 1, figsize=(8.25, 5.0))
+    ax.scatter(
+        observed_u_arr,
+        observed_values,
+        color="#969696",
+        alpha=_SCATTER_ALPHA,
+        s=_SCATTER_SIZE,
+        linewidths=0.0,
+    )
+    observed_centers, observed_means = _binned_mean_line(observed_u_arr, observed_values, bins)
+    if observed_centers.size > 0:
+        ax.plot(
+            observed_centers,
+            observed_means,
+            color="#636363",
+            linewidth=2.0,
+            alpha=0.95,
+            label="observed U",
+        )
+
+    for name in ordered_names:
+        style = ESTIMATOR_STYLES[name]
+        policy_u = policy_outputs[name]
+        objective_values = _row_objective_values(objective, x_arr, policy_u)
+        ax.scatter(
+            policy_u,
+            objective_values,
+            color=style["color"],
+            alpha=_SCATTER_ALPHA,
+            s=_SCATTER_SIZE,
+            linewidths=0.0,
+        )
+        centers, means = _binned_mean_line(policy_u, objective_values, bins)
+        if centers.size == 0:
+            continue
+        ax.plot(
+            centers,
+            means,
+            color=style["color"],
+            linewidth=2.0,
+            alpha=0.95,
+            label=style["label"],
+        )
+
+    ax.set_xlabel("u")
+    ax.set_ylabel("M(x, u)")
     ax.legend()
     ax.grid(True, alpha=0.3)
     fig.tight_layout()

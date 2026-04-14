@@ -1,4 +1,4 @@
-"""Class-based optimization entry point backed by SciPy minimize."""
+"""Class-based optimization entry point for SciPy and manual step rules."""
 
 from __future__ import annotations
 
@@ -15,7 +15,13 @@ from optimization.helpers import (
     scipy_method,
     x_batch,
 )
-from optimization.steps import STEP_RULE_LBFGSB
+from optimization.steps import (
+    STEP_RULE_ARMIJO,
+    STEP_RULE_CONSTANT,
+    STEP_RULE_LBFGSB,
+    armijo_backtracking_step_size,
+    constant_step_size,
+)
 
 if TYPE_CHECKING:
     from experiments.reporters import StepReporter
@@ -26,7 +32,7 @@ MinimizeFn = Callable[..., Any]
 
 
 class Optimization:
-    """SciPy L-BFGS-B optimizer for theta-level objectives with pluggable gradient methods."""
+    """Theta optimizer with SciPy L-BFGS-B or manual fixed-step updates."""
 
     def __init__(
         self,
@@ -55,14 +61,14 @@ class Optimization:
             objective: Theta-level objective implementing value(theta, x_batch) and grad(theta, x_batch).
             x_samples: State samples array, shape (n_samples, state_dim).
             gradient: Gradient method object with setup() and theta_grad() methods.
-            algorithm: Optimization algorithm (default: 'l-bfgs-b').
+            algorithm: Optimization step rule (``"l-bfgs-b"``, ``"constant"``, or ``"armijo"``).
             t_steps: Maximum number of optimization steps.
             n_grad_samples: Number of gradient samples for zeroth-order methods.
             sigma: Perturbation scale for zeroth-order methods.
             perturbation_space: Space in which zeroth-order perturbations are applied:
                 ``"theta"`` (default) perturbs policy parameters directly; ``"u"`` perturbs
                 actions and maps back via chain rule (requires objective.policy).
-            step_size: Step size for gradient descent algorithms.
+            step_size: Initial/manual step size for non-SciPy step rules.
             batch_size: Mini-batch size (None for full batch).
             true_grad_theta_fn: Optional function for computing true theta gradients.
             grad_norm_tol: Early stopping threshold on gradient norm.
@@ -110,7 +116,7 @@ class Optimization:
         self._full_indices = np.arange(self.n_total, dtype=int)
 
     def solve(self, theta_start: np.ndarray) -> tuple[np.ndarray, "OptimizationTrace"]:
-        """Run SciPy ``minimize`` and return final theta with trace."""
+        """Run the configured optimizer and return final theta with trace."""
         theta0 = np.asarray(theta_start, dtype=float)
         self.gradient.setup(self, theta0)
 
@@ -121,6 +127,9 @@ class Optimization:
         theta_grad_norms: list[float] = []
         true_theta_grad_norms: list[float] = []
         theta_values: list[np.ndarray] = []
+        step_sizes: list[float] | None = (
+            [] if self.algorithm in {STEP_RULE_CONSTANT, STEP_RULE_ARMIJO} else None
+        )
 
         def value_fn(theta_vec: np.ndarray) -> float:
             theta_arr = np.asarray(theta_vec, dtype=float)
@@ -132,7 +141,7 @@ class Optimization:
             indices = sample_indices(self.rng, self.batch_size_eff, self.n_total, self._full_indices)
             return np.asarray(self.gradient.theta_grad(self, theta_arr, indices), dtype=float)
 
-        def record(theta_vec: np.ndarray) -> None:
+        def record(theta_vec: np.ndarray, step_size: float | None = None) -> None:
             theta_arr = np.asarray(theta_vec, dtype=float)
             indices = sample_indices(self.rng, self.batch_size_eff, self.n_total, self._full_indices)
             x_batch_arr = x_batch(self.x_array, indices, self.n_total)
@@ -173,6 +182,8 @@ class Optimization:
             u_grad_estimates.append(float("nan"))
             theta_grad_norms.append(theta_grad_norm)
             theta_values.append(theta_arr.copy())
+            if step_sizes is not None:
+                step_sizes.append(float("nan") if step_size is None else float(step_size))
             if true_theta_grad_norm is not None:
                 true_theta_grad_norms.append(true_theta_grad_norm)
             if self.step_reporter is not None:
@@ -182,31 +193,68 @@ class Optimization:
                     mean_u,
                     value,
                     theta_grad_norm,
+                    step_size=step_size,
                     mean_acceptance=mean_acceptance,
                     projected_loss=projected_loss,
                     projected_revenue=projected_revenue,
                 )
 
         record(theta0)
+        optimizer_status: int
+        optimizer_message: str
 
-        options: dict[str, float | int] = {"maxiter": int(self.t_steps)}
-        if self.grad_norm_tol is not None:
-            options["gtol"] = float(self.grad_norm_tol)
-        if self.ftol is not None:
-            options["ftol"] = float(self.ftol)
+        if self.algorithm in {STEP_RULE_CONSTANT, STEP_RULE_ARMIJO}:
+            theta_final = theta0.copy()
+            optimizer_status = 1
+            optimizer_message = "STOP: reached maximum iterations"
+            for _ in range(self.t_steps):
+                indices = sample_indices(self.rng, self.batch_size_eff, self.n_total, self._full_indices)
+                grad_theta = np.asarray(self.gradient.theta_grad(self, theta_final, indices), dtype=float)
+                grad_norm = float(np.linalg.norm(grad_theta))
+                if self.grad_norm_tol is not None and grad_norm <= self.grad_norm_tol:
+                    optimizer_status = 0
+                    optimizer_message = "STOP: gradient norm below tolerance"
+                    break
 
-        result = self._minimize_fn(
-            value_fn,
-            x0=theta0,
-            jac=grad_fn,
-            method=scipy_method(self.algorithm),
-            options=options,
-            callback=record,
-        )
+                if self.algorithm == STEP_RULE_CONSTANT:
+                    step_size = constant_step_size(self.step_size)
+                else:
+                    step_size = armijo_backtracking_step_size(
+                        theta_final,
+                        grad_theta,
+                        objective_fn=lambda theta_eval: objective_value_on_indices(
+                            self.objective,
+                            self.x_array,
+                            self.n_total,
+                            theta_eval,
+                            indices,
+                        ),
+                        initial_step=self.step_size,
+                    )
 
-        theta_final = np.asarray(result.x, dtype=float)
-        if not np.allclose(theta_final, theta_values[-1]):
-            record(theta_final)
+                theta_final = theta_final - step_size * grad_theta
+                record(theta_final, step_size=step_size)
+        else:
+            options: dict[str, float | int] = {"maxiter": int(self.t_steps)}
+            if self.grad_norm_tol is not None:
+                options["gtol"] = float(self.grad_norm_tol)
+            if self.ftol is not None:
+                options["ftol"] = float(self.ftol)
+
+            result = self._minimize_fn(
+                value_fn,
+                x0=theta0,
+                jac=grad_fn,
+                method=scipy_method(self.algorithm),
+                options=options,
+                callback=record,
+            )
+
+            theta_final = np.asarray(result.x, dtype=float)
+            optimizer_status = int(result.status)
+            optimizer_message = str(result.message)
+            if not np.allclose(theta_final, theta_values[-1]):
+                record(theta_final)
 
         from experiments.results import OptimizationTrace
 
@@ -218,9 +266,10 @@ class Optimization:
             u_true_gradients=None,
             theta_grad_norms=theta_grad_norms,
             true_theta_grad_norms=true_theta_grad_norms if true_theta_grad_norms else None,
+            step_sizes=step_sizes,
             theta_values=theta_values,
-            optimizer_status=int(result.status),
-            optimizer_message=str(result.message),
+            optimizer_status=optimizer_status,
+            optimizer_message=optimizer_message,
         )
         return theta_final, trace
 

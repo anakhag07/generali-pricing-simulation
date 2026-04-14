@@ -32,9 +32,6 @@ from reporting.visualization import (
     plot_theta_objective_contours,
     select_theta_axes_max_variance,
 )
-from optimization.steps import STEP_RULE_ARMIJO
-
-
 @dataclass(frozen=True)
 class RunContext:
     experiment_name: str
@@ -363,7 +360,7 @@ class PlotReporter:
                 plot_dir,
                 u_star=u_star_plot,
             )
-        if config.step_rule == STEP_RULE_ARMIJO:
+        if any(trace.step_sizes is not None for trace in traces.values()):
             plot_step_sizes(traces, plot_dir)
         if config.theta0.size >= 2:
             axis_indices = (0, 1)

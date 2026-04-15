@@ -310,7 +310,7 @@ class WandbReporter:
         if projected_revenue is not None:
             payload[f"curve/{method}/projected_revenue"] = float(projected_revenue)
         self._global_step += 1
-        self._wandb.log(payload, step=self._global_step)
+        self._wandb.log(payload)
 
 
 class PlotReporter:

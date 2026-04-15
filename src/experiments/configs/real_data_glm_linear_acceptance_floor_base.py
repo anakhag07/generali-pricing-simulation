@@ -32,7 +32,7 @@ STATE_DIM = len(FEATURE_COLS_GLM)
 _acceptance_model, _loss_model = load_model_artifacts("glm")
 _u_coef = extract_glm_u_coef(_acceptance_model)
 _policy = LinearPolicy()
-_acceptance_floor = 0.9 * load_mean_observed_acceptance("glm")
+_acceptance_floor = load_mean_observed_acceptance("glm")
 print(f"Using acceptance floor of {_acceptance_floor:.4f} in config {__file__}")
 
 THETA0 = np.array([1.1] + [0.0] * _acceptance_model.policy_feature_dim(), dtype=float)

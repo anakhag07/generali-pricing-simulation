@@ -31,7 +31,7 @@ STATE_DIM = len(FEATURE_COLS_XGB)
 
 _acceptance_model, _loss_model = load_model_artifacts("xgb")
 _policy = LinearPolicy()
-_acceptance_floor = 0.9 * load_mean_observed_acceptance("xgb")
+_acceptance_floor = load_mean_observed_acceptance("xgb")
 
 # Start from a constant in-range action so the linear policy does not begin clipped.
 THETA0 = np.array([0.2] + [0.0] * _acceptance_model.policy_feature_dim(), dtype=float)

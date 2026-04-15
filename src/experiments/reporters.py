@@ -184,30 +184,34 @@ class JsonReporter:
 
 
 class WandbReporter:
+    """Logs one wandb run per estimator so overlay charts share a 0-based step axis."""
+
     def __init__(self) -> None:
         self._enabled = False
         self._allowlist: set[str] | None = None
         self._wandb: object | None = None
-        self._run: object | None = None
-        self._global_step = 0
         self._plots_enabled = True
         self._plots_dir: Path | None = None
-        self._tracked_estimators: tuple[str, ...] = ()
+        # Deferred — stored in on_start, used by _ensure_run
+        self._config: ExperimentConfig | None = None
+        self._run_context: RunContext | None = None
+        self._config_payload: dict | None = None
+        # Per-estimator run tracking
+        self._current_run: object | None = None
+        self._current_method: str | None = None
 
     def on_start(self, run_context: RunContext, config: ExperimentConfig) -> None:
-        self._global_step = 0
         self._enabled = bool(config.wandb_enabled)
         self._plots_enabled = bool(config.wandb_log_plots)
         self._plots_dir = run_context.plots_dir
+        self._current_run = None
+        self._current_method = None
         if config.wandb_estimator_allowlist is None:
             self._allowlist = None
-            self._tracked_estimators = tuple(config.enabled_estimators)
         else:
             self._allowlist = set(config.wandb_estimator_allowlist)
-            self._tracked_estimators = tuple(config.wandb_estimator_allowlist)
         if not self._enabled:
             self._wandb = None
-            self._run = None
             return
         try:
             import wandb  # type: ignore
@@ -215,29 +219,65 @@ class WandbReporter:
             raise RuntimeError(
                 "wandb_enabled=True but wandb is not installed. Install wandb or disable W&B."
             ) from exc
-
-        config_payload = config.to_dict()
         self._wandb = wandb
-        self._run = wandb.init(
-            project=config.wandb_project,
-            entity=config.wandb_entity,
-            group=config.wandb_group,
-            job_type=config.wandb_job_type,
-            tags=list(config.wandb_tags),
-            mode=config.wandb_mode,
-            name=f"{run_context.experiment_name}-{run_context.run_id}",
+        self._config = config
+        self._run_context = run_context
+        self._config_payload = config.to_dict()
+
+    def _ensure_run(self, method: str) -> None:
+        """Start a new wandb run when the estimator method changes."""
+        if method == self._current_method:
+            return
+        if self._current_run is not None:
+            self._current_run.finish()
+        self._current_method = method
+        rc = self._run_context
+        cfg = self._config
+        group = cfg.wandb_group or f"{rc.experiment_name}-{rc.run_id}"
+        self._current_run = self._wandb.init(
+            project=cfg.wandb_project,
+            entity=cfg.wandb_entity,
+            group=group,
+            job_type=method,
+            tags=list(cfg.wandb_tags),
+            mode=cfg.wandb_mode,
+            name=f"{rc.experiment_name}-{rc.run_id}-{method}",
             config={
-                "experiment_name": run_context.experiment_name,
-                "run_id": run_context.run_id,
-                **config_payload,
+                "experiment_name": rc.experiment_name,
+                "run_id": rc.run_id,
+                "estimator": method,
+                **self._config_payload,
             },
+            reinit=True,
         )
-        self._define_curve_metrics()
 
     def on_end(self, run_context: RunContext, result: ExperimentResult) -> None:
         if not self._enabled or self._wandb is None:
             return
-        wandb_api = self._wandb
+        # Finish the last estimator run
+        if self._current_run is not None:
+            self._current_run.finish()
+            self._current_run = None
+
+        # Summary run for final metrics and plots
+        rc = self._run_context
+        cfg = self._config
+        group = cfg.wandb_group or f"{rc.experiment_name}-{rc.run_id}"
+        summary_run = self._wandb.init(
+            project=cfg.wandb_project,
+            entity=cfg.wandb_entity,
+            group=group,
+            job_type="summary",
+            tags=list(cfg.wandb_tags),
+            mode=cfg.wandb_mode,
+            name=f"{rc.experiment_name}-{rc.run_id}-summary",
+            config={
+                "experiment_name": rc.experiment_name,
+                "run_id": rc.run_id,
+                **self._config_payload,
+            },
+            reinit=True,
+        )
         final_payload = {}
         for name, estimator_result in result.results.items():
             if self._allowlist is not None and name not in self._allowlist:
@@ -250,33 +290,15 @@ class WandbReporter:
             if estimator_result.mean_acceptance is not None:
                 final_payload[f"final/{name}/mean_acceptance"] = float(estimator_result.mean_acceptance)
         if final_payload:
-            wandb_api.log(final_payload, step=self._global_step)
+            summary_run.log(final_payload)
 
         if self._plots_enabled and self._plots_dir is not None and self._plots_dir.exists():
             plot_payload = {}
             for plot_path in sorted(self._plots_dir.glob("*.png")):
-                plot_payload[f"plots/{plot_path.stem}"] = wandb_api.Image(str(plot_path))
+                plot_payload[f"plots/{plot_path.stem}"] = self._wandb.Image(str(plot_path))
             if plot_payload:
-                wandb_api.log(plot_payload, step=self._global_step)
-        wandb_api.finish()
-        self._run = None
-
-    def _define_curve_metrics(self) -> None:
-        if self._wandb is None:
-            return
-        for method in self._tracked_estimators:
-            step_metric = f"curve/{method}/step"
-            self._wandb.define_metric(step_metric, hidden=True, summary="none")
-            self._wandb.define_metric(f"curve/{method}/u", step_metric=step_metric)
-            self._wandb.define_metric(f"curve/{method}/objective", step_metric=step_metric)
-            self._wandb.define_metric(
-                f"curve/{method}/theta_grad_norm",
-                step_metric=step_metric,
-            )
-            self._wandb.define_metric(f"curve/{method}/step_size", step_metric=step_metric)
-            self._wandb.define_metric(f"curve/{method}/mean_acceptance", step_metric=step_metric)
-            self._wandb.define_metric(f"curve/{method}/projected_loss", step_metric=step_metric)
-            self._wandb.define_metric(f"curve/{method}/projected_revenue", step_metric=step_metric)
+                summary_run.log(plot_payload)
+        summary_run.finish()
 
     def log_step(
         self,
@@ -294,23 +316,22 @@ class WandbReporter:
             return
         if self._allowlist is not None and method not in self._allowlist:
             return
+        self._ensure_run(method)
         payload = {
-            f"curve/{method}/step": int(step),
-            f"curve/{method}/u": float(u),
-            f"curve/{method}/objective": float(value),
+            "u": float(u),
+            "objective": float(value),
         }
         if grad_norm is not None:
-            payload[f"curve/{method}/theta_grad_norm"] = float(grad_norm)
+            payload["theta_grad_norm"] = float(grad_norm)
         if step_size is not None:
-            payload[f"curve/{method}/step_size"] = float(step_size)
+            payload["step_size"] = float(step_size)
         if mean_acceptance is not None:
-            payload[f"curve/{method}/mean_acceptance"] = float(mean_acceptance)
+            payload["mean_acceptance"] = float(mean_acceptance)
         if projected_loss is not None:
-            payload[f"curve/{method}/projected_loss"] = float(projected_loss)
+            payload["projected_loss"] = float(projected_loss)
         if projected_revenue is not None:
-            payload[f"curve/{method}/projected_revenue"] = float(projected_revenue)
-        self._global_step += 1
-        self._wandb.log(payload, step=self._global_step)
+            payload["projected_revenue"] = float(projected_revenue)
+        self._current_run.log(payload, step=int(step))
 
 
 class PlotReporter:

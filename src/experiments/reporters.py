@@ -189,13 +189,11 @@ class WandbReporter:
         self._allowlist: set[str] | None = None
         self._wandb: object | None = None
         self._run: object | None = None
-        self._global_step = 0
         self._plots_enabled = True
         self._plots_dir: Path | None = None
         self._tracked_estimators: tuple[str, ...] = ()
 
     def on_start(self, run_context: RunContext, config: ExperimentConfig) -> None:
-        self._global_step = 0
         self._enabled = bool(config.wandb_enabled)
         self._plots_enabled = bool(config.wandb_log_plots)
         self._plots_dir = run_context.plots_dir
@@ -250,33 +248,23 @@ class WandbReporter:
             if estimator_result.mean_acceptance is not None:
                 final_payload[f"final/{name}/mean_acceptance"] = float(estimator_result.mean_acceptance)
         if final_payload:
-            wandb_api.log(final_payload, step=self._global_step + 1)
+            wandb_api.log(final_payload)
 
         if self._plots_enabled and self._plots_dir is not None and self._plots_dir.exists():
             plot_payload = {}
             for plot_path in sorted(self._plots_dir.glob("*.png")):
                 plot_payload[f"plots/{plot_path.stem}"] = wandb_api.Image(str(plot_path))
             if plot_payload:
-                wandb_api.log(plot_payload, step=self._global_step + 1)
+                wandb_api.log(plot_payload)
         wandb_api.finish()
         self._run = None
 
     def _define_curve_metrics(self) -> None:
         if self._wandb is None:
             return
+        self._wandb.define_metric("optimization_step", hidden=True, summary="none")
         for method in self._tracked_estimators:
-            step_metric = f"curve/{method}/step"
-            self._wandb.define_metric(step_metric, hidden=True, summary="none")
-            self._wandb.define_metric(f"curve/{method}/u", step_metric=step_metric)
-            self._wandb.define_metric(f"curve/{method}/objective", step_metric=step_metric)
-            self._wandb.define_metric(
-                f"curve/{method}/theta_grad_norm",
-                step_metric=step_metric,
-            )
-            self._wandb.define_metric(f"curve/{method}/step_size", step_metric=step_metric)
-            self._wandb.define_metric(f"curve/{method}/mean_acceptance", step_metric=step_metric)
-            self._wandb.define_metric(f"curve/{method}/projected_loss", step_metric=step_metric)
-            self._wandb.define_metric(f"curve/{method}/projected_revenue", step_metric=step_metric)
+            self._wandb.define_metric(f"curve/{method}/*", step_metric="optimization_step")
 
     def log_step(
         self,
@@ -295,7 +283,7 @@ class WandbReporter:
         if self._allowlist is not None and method not in self._allowlist:
             return
         payload = {
-            f"curve/{method}/step": int(step),
+            "optimization_step": int(step),
             f"curve/{method}/u": float(u),
             f"curve/{method}/objective": float(value),
         }
@@ -309,8 +297,7 @@ class WandbReporter:
             payload[f"curve/{method}/projected_loss"] = float(projected_loss)
         if projected_revenue is not None:
             payload[f"curve/{method}/projected_revenue"] = float(projected_revenue)
-        self._global_step = max(self._global_step, int(step))
-        self._wandb.log(payload, step=int(step))
+        self._wandb.log(payload)
 
 
 class PlotReporter:

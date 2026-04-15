@@ -4,19 +4,20 @@ from __future__ import annotations
 
 from experiments.sweep_utils import run_preset_sweep
 
-BASE_PRESET = "first_order_runs_diff_starts"
-PROJECT_NAME = "nonconvex_smooth_m_sweep"
-DISPLAY_KEYS = ("n_grad_samples",)
+BASE_PRESET = "real_data_glm_linear_base"
+PROJECT_NAME = "glm-linear-policy-diff-starts"
+DISPLAY_KEYS = ("seed",)
 
 OVERRIDE_GRID = {
-    "sigma": [0.001], #[0.0001, 0.001, 0.01, 0.05, 0.1],
-    "n_grad_samples": [2, 4, 64, 128, 256, 1024, 2048, 1024 * 8],
-    "n_samples": [100], # [100, 500, 1000],
-    "t_steps": [10000],
+    # "sigma": [0.01], #[0.0001, 0.001, 0.01, 0.05, 0.1],
+    # "n_grad_samples": [2, 4, 64, 128, 256, 1024, 2048, 1024 * 8],
+    # "n_samples": [100], # [100, 500, 1000],
+    # "t_steps": [10000],
+    "seed": [8, 16, 24, 32, 64, 128, 256, 512],
     "plot": [True],
     "wandb_enabled": [True],
     "wandb_project": [PROJECT_NAME],
-    "wandb_group": [PROJECT_NAME],
+    # "wandb_group": [PROJECT_NAME],
 }
 
 

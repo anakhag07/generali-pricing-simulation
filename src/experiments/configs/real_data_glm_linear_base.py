@@ -35,11 +35,12 @@ _acceptance_model, _loss_model = load_model_artifacts("glm")
 _u_coef = extract_glm_u_coef(_acceptance_model)
 _policy = LinearPolicy()
 
-THETA0 = np.zeros(_acceptance_model.policy_feature_dim() + 1, dtype=float)
+# THETA0 = np.zeros(_acceptance_model.policy_feature_dim() + 1, dtype=float)
+THETA0 = None
 
 TRAINING = canonical_training_block(
     n_samples=5000,
-    step_rule="constant",
+    step_rule="l-bfgs-b",
     t_steps=1000,
     step_size=0.01,
     sigma=0.01,
@@ -53,7 +54,7 @@ RUNTIME = canonical_runtime_block(
     plot=True,
     verbose=True,
     wandb_enabled=True,
-    wandb_project='glm-linear-policy',
+    wandb_project='glm-linear-policy-diff-starts',
 )
 
 CORRECTNESS = CorrectnessSpec(gradient_source="none")
@@ -76,3 +77,4 @@ CONFIG = build_experiment_config(
     runtime=RUNTIME,
     correctness=CORRECTNESS,
 )
+

@@ -59,6 +59,8 @@ def run_experiment(
         rng = default_rng(main_child)
         policy = getattr(objective, "policy", None)
         theta_initial = random_theta0(effective_config.state_dim, policy, theta0_rng)
+        # Persist the resolved theta0 so reporters/plots can access it
+        effective_config = replace(effective_config, theta0=theta_initial)
     else:
         rng = default_rng(effective_config.seed)
         theta_initial = np.asarray(effective_config.theta0, dtype=float)

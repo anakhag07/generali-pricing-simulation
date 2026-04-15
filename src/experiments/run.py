@@ -6,8 +6,10 @@ from dataclasses import replace
 import time
 
 import numpy as np
+from numpy.random import SeedSequence
 
 from objective.base import default_rng, sample_states
+from experiments.defaults import random_theta0
 from objective.utils import _action_value_at_u, _mean_action, optimal_u
 from experiments.config import ExperimentConfig
 from experiments.helpers import (
@@ -47,14 +49,25 @@ def run_experiment(
     objective = effective_config.objective
     enabled_estimators = tuple(effective_config.enabled_estimators)
 
-    rng = default_rng(effective_config.seed)
+    # When theta0 is None (random init), split the seed so theta0 generation
+    # doesn't alter the state-sampling RNG stream. Explicit theta0 preserves
+    # the original RNG path for backward compatibility.
+    if effective_config.theta0 is None:
+        ss = SeedSequence(effective_config.seed)
+        theta0_child, main_child = ss.spawn(2)
+        theta0_rng = default_rng(theta0_child)
+        rng = default_rng(main_child)
+        policy = getattr(objective, "policy", None)
+        theta_initial = random_theta0(effective_config.state_dim, policy, theta0_rng)
+    else:
+        rng = default_rng(effective_config.seed)
+        theta_initial = np.asarray(effective_config.theta0, dtype=float)
+
     if effective_config.x_fixed is not None:
         x_samples = np.asarray(effective_config.x_fixed, dtype=float)
     else:
         x_samples = sample_states(rng, effective_config.n_samples, effective_config.state_dim)
     true_grad_theta_fn = resolve_true_grad_theta_fn(objective, effective_config.correctness)
-
-    theta_initial = np.asarray(effective_config.theta0, dtype=float)
     initial_value = float(objective.value(theta_initial, x_samples))
     mean_acceptance_fn = getattr(objective, "mean_acceptance", None)
     initial_mean_acceptance = (

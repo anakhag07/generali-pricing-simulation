@@ -53,8 +53,8 @@ class ExperimentConfig:
     n_samples: int
     step_rule: str
     objective: Objective
-    theta0: np.ndarray
     perturbation_space: Literal["theta", "u"]
+    theta0: np.ndarray | None = None
     batch_size: int | None = None
     seed: int = 7
     t_steps: int = 100
@@ -140,10 +140,11 @@ class ExperimentConfig:
         if self.n_samples <= 0:
             raise ValueError("n_samples must be positive.")
 
-        theta0_arr = np.asarray(self.theta0, dtype=float)
-        if theta0_arr.ndim != 1 or theta0_arr.size < 1:
-            raise ValueError("theta0 must be a 1D array with at least one element.")
-        object.__setattr__(self, "theta0", theta0_arr)
+        if self.theta0 is not None:
+            theta0_arr = np.asarray(self.theta0, dtype=float)
+            if theta0_arr.ndim != 1 or theta0_arr.size < 1:
+                raise ValueError("theta0 must be a 1D array with at least one element.")
+            object.__setattr__(self, "theta0", theta0_arr)
 
         if self.x_fixed is not None:
             x_fixed_arr = np.asarray(self.x_fixed, dtype=float)
@@ -212,12 +213,16 @@ class ExperimentConfig:
             if not callable(policy_value) or not callable(policy_grad):
                 raise ValueError("policy must implement value(theta, x_batch) and grad(theta, x_batch).")
             # Probe with a single-sample batch
+            probe_theta = (
+                theta0_arr if self.theta0 is not None
+                else np.zeros(self.state_dim + 1, dtype=float)
+            )
             x_probe = np.zeros((1, self.state_dim), dtype=float)
-            u_probe_arr = np.asarray(policy_value(theta0_arr, x_probe), dtype=float)
+            u_probe_arr = np.asarray(policy_value(probe_theta, x_probe), dtype=float)
             if not bool(np.isfinite(u_probe_arr).all()):
                 raise ValueError("policy.value(theta0, x_batch) must be finite.")
-            grad_probe = np.asarray(policy_grad(theta0_arr, x_probe), dtype=float)
-            if grad_probe.ndim != 2 or grad_probe.shape[1] != theta0_arr.size:
+            grad_probe = np.asarray(policy_grad(probe_theta, x_probe), dtype=float)
+            if grad_probe.ndim != 2 or grad_probe.shape[1] != probe_theta.size:
                 raise ValueError("policy.grad(theta0, x_batch) must return (n_samples, theta_dim).")
 
     def to_dict(self) -> dict[str, Any]:
@@ -248,7 +253,7 @@ class ExperimentConfig:
             "plot_dir": self.plot_dir,
             "enabled_estimators": list(self.enabled_estimators),
             "perturbation_space": self.perturbation_space,
-            "theta0": _as_list(self.theta0),
+            "theta0": _as_list(self.theta0) if self.theta0 is not None else None,
             "objective": _objective_to_dict(self.objective),
             "wandb": {
                 "enabled": bool(self.wandb_enabled),
@@ -489,7 +494,7 @@ def build_experiment_config(
     seed: int,
     state_dim: int,
     objective: Objective,
-    theta0: np.ndarray,
+    theta0: np.ndarray | None = None,
     training: Mapping[str, Any],
     runtime: Mapping[str, Any] | None = None,
     correctness: CorrectnessSpec | None = None,
@@ -504,7 +509,7 @@ def build_experiment_config(
         "seed": int(seed),
         "state_dim": int(state_dim),
         "objective": objective,
-        "theta0": np.asarray(theta0, dtype=float),
+        "theta0": np.asarray(theta0, dtype=float) if theta0 is not None else None,
     }
     payload.update(dict(training))
     if runtime is not None:

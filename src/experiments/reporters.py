@@ -250,14 +250,14 @@ class WandbReporter:
             if estimator_result.mean_acceptance is not None:
                 final_payload[f"final/{name}/mean_acceptance"] = float(estimator_result.mean_acceptance)
         if final_payload:
-            wandb_api.log(final_payload, step=self._global_step)
+            wandb_api.log(final_payload, step=self._global_step + 1)
 
         if self._plots_enabled and self._plots_dir is not None and self._plots_dir.exists():
             plot_payload = {}
             for plot_path in sorted(self._plots_dir.glob("*.png")):
                 plot_payload[f"plots/{plot_path.stem}"] = wandb_api.Image(str(plot_path))
             if plot_payload:
-                wandb_api.log(plot_payload, step=self._global_step)
+                wandb_api.log(plot_payload, step=self._global_step + 1)
         wandb_api.finish()
         self._run = None
 
@@ -309,8 +309,8 @@ class WandbReporter:
             payload[f"curve/{method}/projected_loss"] = float(projected_loss)
         if projected_revenue is not None:
             payload[f"curve/{method}/projected_revenue"] = float(projected_revenue)
-        self._global_step += 1
-        self._wandb.log(payload)
+        self._global_step = max(self._global_step, int(step))
+        self._wandb.log(payload, step=int(step))
 
 
 class PlotReporter:

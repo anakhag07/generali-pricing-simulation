@@ -24,6 +24,8 @@ class OptimizationTrace:
     step_sizes: Optional[Sequence[float]] = None
     theta_values: Optional[Sequence[np.ndarray]] = None
     optimizer_success: Optional[bool] = None
+    optimizer_optimality: Optional[float] = None
+    optimizer_lagrangian_grad: Optional[Sequence[float]] = None
     optimizer_status: Optional[int] = None
     optimizer_message: Optional[str] = None
     constraint_violation: Optional[float] = None

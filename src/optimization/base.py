@@ -134,6 +134,8 @@ class Optimization:
         )
         constraint_violation: float | None = None
         acceptance_multiplier: float | None = None
+        optimizer_optimality: float | None = None
+        optimizer_lagrangian_grad: np.ndarray | None = None
 
         def value_fn(theta_vec: np.ndarray) -> float:
             theta_arr = np.asarray(theta_vec, dtype=float)
@@ -322,6 +324,12 @@ class Optimization:
             if self.algorithm == STEP_RULE_TRUST_CONSTR:
                 constraint_violation = final_constraint_violation(theta_final)
                 acceptance_multiplier = extract_acceptance_multiplier(result)
+                optimality = getattr(result, "optimality", None)
+                if optimality is not None:
+                    optimizer_optimality = float(optimality)
+                lagrangian_grad = getattr(result, "lagrangian_grad", None)
+                if lagrangian_grad is not None:
+                    optimizer_lagrangian_grad = np.asarray(lagrangian_grad, dtype=float)
             if not np.allclose(theta_final, theta_values[-1]):
                 record(theta_final)
 
@@ -338,6 +346,8 @@ class Optimization:
             step_sizes=step_sizes,
             theta_values=theta_values,
             optimizer_success=optimizer_success,
+            optimizer_optimality=optimizer_optimality,
+            optimizer_lagrangian_grad=optimizer_lagrangian_grad,
             optimizer_status=optimizer_status,
             optimizer_message=optimizer_message,
             constraint_violation=constraint_violation,

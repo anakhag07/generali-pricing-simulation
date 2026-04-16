@@ -33,7 +33,8 @@ _acceptance_model, _loss_model = load_model_artifacts("xgb")
 _policy = LinearPolicy()
 _acceptance_floor = load_mean_observed_acceptance("xgb")
 
-# Start from a constant in-range action so the linear policy does not begin clipped.
+# Start from a constant centered action so the linear policy does not begin clipped.
+# Under the shifted revenue term this is a 1.2 premium multiplier.
 THETA0 = np.array([0.2] + [0.0] * _acceptance_model.policy_feature_dim(), dtype=float)
 
 TRAINING = canonical_training_block(

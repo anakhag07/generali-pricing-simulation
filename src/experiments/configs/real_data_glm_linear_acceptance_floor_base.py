@@ -34,7 +34,8 @@ _u_coef = extract_glm_u_coef(_acceptance_model)
 _policy = LinearPolicy()
 _acceptance_floor = load_mean_observed_acceptance("glm")
 
-THETA0 = np.array([1.1] + [0.0] * _acceptance_model.policy_feature_dim(), dtype=float)
+# Start from the centered baseline action so revenue begins at 1.0 * premium.
+THETA0 = np.array([0.0] + [0.0] * _acceptance_model.policy_feature_dim(), dtype=float)
 
 TRAINING = canonical_training_block(
     n_samples=5000,
@@ -46,6 +47,7 @@ TRAINING = canonical_training_block(
     enabled_estimators=(
         "first_order",
         "finite_difference",
+        "gauss_stein",
         "spsa",
         "stein_difference",
     ),

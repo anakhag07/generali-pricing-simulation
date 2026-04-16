@@ -45,6 +45,8 @@ Pluggable components:
 
 The default bounded policy is `SoftmaxPolicy`, which maps
 `u = 0.5 - sigma(theta^T phi(x))`, so its action range is `(-0.5, 0.5)`.
+For the real-data model-based objective, this `u` remains centered and the
+revenue term uses premium multiplier `u + 1`.
 
 `finite_difference` is a deterministic coordinate-wise central-difference baseline
 that uses `2 * dim(theta)` objective evaluations per gradient call.
@@ -78,7 +80,7 @@ Four state-distribution modes are available, selected by config preset:
 | `real_data_xgb_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, FD grad) |
 | `real_data_xgb_linear_acceptance_floor_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, linear policy + penalty acceptance floor) |
 
-The objective for real-data configs is $$f(u; x) = a(x,u)(\hat{Y}(x) - u \cdot p(x))$$
+The objective for real-data configs is $$f(u; x) = a(x,u)(\hat{Y}(x) - (u + 1) \cdot p(x))$$
 where $$a$$ is acceptance probability, $$\hat{Y}$$ is expected financial loss, and $$p$$ is policy premium.
 
 Real-data artifacts now live under `src/data/artifacts_preproc_pipeline/` and each

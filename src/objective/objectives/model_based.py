@@ -16,11 +16,13 @@ from objective.utils import _theta_grad_from_u_grad
 class ModelBasedObjective(Objective):
     r"""Pricing objective backed by trained ML models.
 
-    $$f(u; x) = a(x,u) \cdot (\hat{Y}(x) - u \cdot p(x))$$
+    $$f(u; x) = a(x,u) \cdot (\hat{Y}(x) - (u + 1) \cdot p(x))$$
 
     where $$a(x,u)$$ is acceptance derived from the bundled churn classifier,
     $$\hat{Y}(x)$$ is the expected financial loss (LinearRegression or XGBRegressor),
     and $$p(x)$$ is the policy premium extracted from column ``premium_col`` of x.
+    The policy output ``u`` stays centered at 0, so ``u = 0`` means the baseline
+    premium multiplier and revenue uses ``(u + 1) * p(x)``.
 
     ``acceptance_model`` expects a DataFrame with ``acceptance_state_cols + ["U"]`` and
     returns churn probability in class 1, which this objective maps to acceptance via
@@ -123,7 +125,7 @@ class ModelBasedObjective(Objective):
         acceptance = self._acceptance_proba(x_arr, u_batch)
         loss = self._loss_prediction(x_arr)
         premium = x_arr[:, self.premium_col]
-        revenue = u_batch * premium
+        revenue = (u_batch + 1.0) * premium
         return {
             "mean_acceptance": float(np.mean(acceptance)),
             "projected_loss": float(np.mean(loss)),
@@ -202,7 +204,7 @@ class ModelBasedObjective(Objective):
         acceptance = self._acceptance_proba(x_batch, u_arr)
         loss = self._loss_prediction(x_batch)
         premium = x_batch[:, self.premium_col]
-        revenue = u_arr * premium
+        revenue = (u_arr + 1.0) * premium
         return acceptance * (loss - revenue)
 
     def _d_acceptance_du_batch(self, x_batch: np.ndarray, u_arr: np.ndarray) -> np.ndarray:
@@ -235,7 +237,7 @@ class ModelBasedObjective(Objective):
         acceptance = self._acceptance_proba(x_batch, u_arr)
         loss = self._loss_prediction(x_batch)
         premium = x_batch[:, self.premium_col]
-        revenue = u_arr * premium
+        revenue = (u_arr + 1.0) * premium
 
         d_acceptance_du = self._d_acceptance_du_batch(x_batch, u_arr)
         return d_acceptance_du * (loss - revenue) - acceptance * premium

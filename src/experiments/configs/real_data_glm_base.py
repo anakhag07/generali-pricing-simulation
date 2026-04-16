@@ -8,9 +8,9 @@ CSV rows stay at the optimization boundary.
 GLM enables an analytical first-order gradient (u_coef extracted from the
 logistic regression pipeline). All 5 estimators are enabled for comparison.
 
-Note: SoftmaxPolicy now outputs u in (-0.5, 0.5), so this preset starts from
-theta = 0 to initialize at u = 0 with the largest policy slope. That action
-range lies below the historical GLM training U range [0.998, 1.418].
+Note: SoftmaxPolicy outputs centered u in (-0.5, 0.5), so this preset starts
+from theta = 0 to initialize at the baseline premium multiplier (u = 0 means
+revenue uses 1.0 * premium) with the largest policy slope.
 """
 
 from __future__ import annotations

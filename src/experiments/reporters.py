@@ -572,7 +572,7 @@ def _build_summary_payload(run_context: RunContext, result: ExperimentResult) ->
     ) if hasattr(result.config.objective, "acceptance_model") and hasattr(result.config.objective, "loss_model") else None
     if coeffs is not None:
         payload["model_formulas"] = {
-            "objective": "f(u; x) = p_acc(x, u) * (loss_hat(x) - u * premium(x))",
+            "objective": "f(u; x) = p_acc(x, u) * (loss_hat(x) - (u + 1) * premium(x))",
             "churn": "p_churn(x, u) = sigmoid(beta_0 + beta_x^T x_acc + beta_u * u)",
             "acceptance": "p_acc(x, u) = 1 - p_churn(x, u)",
             "loss": "loss_hat(x) = gamma_0 + gamma_x^T x_loss",

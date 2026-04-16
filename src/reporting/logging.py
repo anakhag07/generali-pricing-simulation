@@ -71,7 +71,7 @@ def log_summary(result: ExperimentResult) -> None:
             f"u*={objective.u_star:.3f}, beta={beta}"
         )
     elif isinstance(objective, ModelBasedObjective):
-        print("Objective: f(u; x) = p_acc(x, u) * (loss_hat(x) - u * premium(x))")
+        print("Objective: f(u; x) = p_acc(x, u) * (loss_hat(x) - (u + 1) * premium(x))")
         coeffs = extract_model_based_coefficients(
             objective.acceptance_model,
             objective.loss_model,

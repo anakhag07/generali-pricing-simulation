@@ -124,6 +124,94 @@ def test_acceptance_floor_requires_positive_penalty_weight() -> None:
         )
 
 
+def test_trust_constr_requires_acceptance_floor() -> None:
+    policy = SoftmaxPolicy()
+    objective = FixedRegressionObjective.from_parameters(
+        policy=policy,
+        beta_1=[0.1],
+        beta_2=-0.5,
+        beta_3=[0.2],
+        beta_4=0.4,
+    )
+
+    with pytest.raises(ValueError, match="requires acceptance_floor"):
+        ExperimentConfig(
+            state_dim=1,
+            objective=objective,
+            theta0=default_theta0(1),
+            n_samples=5,
+            step_rule="trust-constr",
+            perturbation_space="theta",
+        )
+
+
+def test_trust_constr_requires_mean_acceptance_grad() -> None:
+    policy = SoftmaxPolicy()
+    objective = FixedRegressionObjective.from_parameters(
+        policy=policy,
+        beta_1=[0.1],
+        beta_2=-0.5,
+        beta_3=[0.2],
+        beta_4=0.4,
+    )
+
+    with pytest.raises(ValueError, match="mean_acceptance"):
+        ExperimentConfig(
+            state_dim=1,
+            objective=objective,
+            theta0=default_theta0(1),
+            n_samples=5,
+            step_rule="trust-constr",
+            perturbation_space="theta",
+            acceptance_floor=0.2,
+        )
+
+
+def test_trust_constr_rejects_penalty_weight() -> None:
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_glm_linear_base")
+    with pytest.raises(ValueError, match="acceptance_penalty_weight"):
+        ExperimentConfig(
+            **{
+                **{k: getattr(cfg, k) for k in cfg.__dataclass_fields__},
+                "step_rule": "trust-constr",
+                "acceptance_floor": 0.5,
+                "acceptance_penalty_weight": 10.0,
+            }
+        )
+
+
+def test_trust_constr_requires_full_batch() -> None:
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_glm_linear_base")
+    with pytest.raises(ValueError, match="batch_size=None"):
+        ExperimentConfig(
+            **{
+                **{k: getattr(cfg, k) for k in cfg.__dataclass_fields__},
+                "step_rule": "trust-constr",
+                "acceptance_floor": 0.5,
+                "batch_size": 32,
+            }
+        )
+
+
+def test_trust_constr_rejects_ftol() -> None:
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_glm_linear_base")
+    with pytest.raises(ValueError, match="ftol"):
+        ExperimentConfig(
+            **{
+                **{k: getattr(cfg, k) for k in cfg.__dataclass_fields__},
+                "step_rule": "trust-constr",
+                "acceptance_floor": 0.5,
+                "ftol": 1e-8,
+            }
+        )
+
+
 def test_enabled_estimators_validation() -> None:
     policy = SoftmaxPolicy()
     objective = FixedRegressionObjective.from_parameters(
@@ -303,6 +391,18 @@ def test_step_rule_validation() -> None:
         perturbation_space="theta",
     )
     assert config.step_rule == "l-bfgs-b"
+
+    from experiments.configs import get_config
+
+    glm_cfg = get_config("real_data_glm_linear_base")
+    trust_config = ExperimentConfig(
+        **{
+            **{k: getattr(glm_cfg, k) for k in glm_cfg.__dataclass_fields__},
+            "step_rule": "trust-constr",
+            "acceptance_floor": 0.5,
+        }
+    )
+    assert trust_config.step_rule == "trust-constr"
 
     with pytest.raises(ValueError, match="step_size must be positive"):
         ExperimentConfig(

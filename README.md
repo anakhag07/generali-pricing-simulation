@@ -55,6 +55,8 @@ Core API convention:
 
 Optimization step rules:
 - `l-bfgs-b` uses `scipy.minimize(method="L-BFGS-B")`.
+- `trust-constr` uses `scipy.minimize(method="trust-constr")` and adds the
+  acceptance-floor equation directly as a nonlinear constraint.
 - `constant` uses the repo's manual gradient loop with fixed `step_size`.
 - `armijo` uses the same manual loop with Armijo backtracking seeded by `step_size`.
 
@@ -72,9 +74,9 @@ Four state-distribution modes are available, selected by config preset:
 | `fixed_regression_base` | Synthetic N(0, I) | `FixedRegressionObjective` |
 | `real_data_glm_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, analytical grad) |
 | `real_data_glm_linear_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, linear-policy diagnostic) |
-| `real_data_glm_linear_acceptance_floor_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, linear policy + mean-acceptance floor) |
+| `real_data_glm_linear_acceptance_floor_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, linear policy + trust-constr acceptance floor) |
 | `real_data_xgb_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, FD grad) |
-| `real_data_xgb_linear_acceptance_floor_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, linear policy + mean-acceptance floor) |
+| `real_data_xgb_linear_acceptance_floor_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, linear policy + penalty acceptance floor) |
 
 The objective for real-data configs is $$f(u; x) = a(x,u)(\hat{Y}(x) - u \cdot p(x))$$
 where $$a$$ is acceptance probability, $$\hat{Y}$$ is expected financial loss, and $$p$$ is policy premium.
@@ -85,11 +87,16 @@ objective keeps raw CSV rows at the optimization boundary and reuses the
 acceptance bundle's saved preprocessing internally for both `u(theta, x)` and
 `du/dtheta`.
 
-`ExperimentConfig` also supports a smooth mean-acceptance floor via
-`acceptance_floor`, `acceptance_penalty_weight`, and
-`acceptance_penalty_temperature`. This is implemented as a differentiable
-penalty on `ModelBasedObjective` and works with the standard optimizer step
-rules.
+`ExperimentConfig` supports two acceptance-floor paths for objectives exposing
+`mean_acceptance(theta, x_batch)`:
+
+- `step_rule="trust-constr"` enforces `mean_acceptance >= acceptance_floor`
+  directly inside SciPy as a nonlinear constraint. This is the constrained GLM
+  path used for comparing all five estimators under the same solver.
+- penalty-based step rules such as `l-bfgs-b` use
+  `acceptance_penalty_weight` and `acceptance_penalty_temperature`, which add a
+  differentiable penalty to `ModelBasedObjective`. This remains the XGBoost
+  floor path.
 
 ## Creating Config Presets
 

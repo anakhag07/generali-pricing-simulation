@@ -14,7 +14,7 @@ from objective.objectives import (
     PlantedLogisticObjective,
 )
 from objective.policy import ConstantPolicy, LinearPolicy, SoftmaxPolicy
-from optimization.steps import STEP_RULES
+from optimization.steps import STEP_RULES, STEP_RULE_TRUST_CONSTR
 
 
 @dataclass(frozen=True)
@@ -171,26 +171,52 @@ class ExperimentConfig:
             raise ValueError("grad_norm_tol must be positive when provided.")
         if self.ftol is not None and self.ftol <= 0.0:
             raise ValueError("ftol must be positive when provided.")
+        if self.step_rule == STEP_RULE_TRUST_CONSTR and self.ftol is not None:
+            raise ValueError("ftol is not supported when step_rule='trust-constr'.")
         if self.acceptance_floor is not None:
             if not 0.0 < self.acceptance_floor < 1.0:
                 raise ValueError("acceptance_floor must be in (0, 1) when provided.")
-            if self.acceptance_penalty_weight is None or self.acceptance_penalty_weight <= 0.0:
-                raise ValueError(
-                    "acceptance_penalty_weight must be positive when acceptance_floor is provided."
-                )
-            if self.acceptance_penalty_temperature <= 0.0:
-                raise ValueError(
-                    "acceptance_penalty_temperature must be positive when acceptance_floor is provided."
-                )
             mean_acceptance_fn = getattr(self.objective, "mean_acceptance", None)
             if not callable(mean_acceptance_fn):
                 raise ValueError(
                     "acceptance_floor requires an objective with mean_acceptance(theta, x_batch)."
                 )
+            if self.step_rule == STEP_RULE_TRUST_CONSTR:
+                mean_acceptance_grad_fn = getattr(self.objective, "mean_acceptance_grad", None)
+                if not callable(mean_acceptance_grad_fn):
+                    raise ValueError(
+                        "step_rule='trust-constr' requires an objective with "
+                        "mean_acceptance_grad(theta, x_batch)."
+                    )
+                if self.batch_size is not None:
+                    raise ValueError(
+                        "step_rule='trust-constr' requires batch_size=None so the constraint is full-batch."
+                    )
+                if self.acceptance_penalty_weight is not None:
+                    raise ValueError(
+                        "acceptance_penalty_weight is only used by the penalty path and must be omitted "
+                        "when step_rule='trust-constr'."
+                    )
+                if self.acceptance_penalty_temperature != 0.01:
+                    raise ValueError(
+                        "acceptance_penalty_temperature is only used by the penalty path and must stay "
+                        "at the default when step_rule='trust-constr'."
+                    )
+            else:
+                if self.acceptance_penalty_weight is None or self.acceptance_penalty_weight <= 0.0:
+                    raise ValueError(
+                        "acceptance_penalty_weight must be positive when acceptance_floor is provided."
+                    )
+                if self.acceptance_penalty_temperature <= 0.0:
+                    raise ValueError(
+                        "acceptance_penalty_temperature must be positive when acceptance_floor is provided."
+                    )
         elif self.acceptance_penalty_weight is not None:
             raise ValueError(
                 "acceptance_penalty_weight requires acceptance_floor to be provided."
             )
+        elif self.step_rule == STEP_RULE_TRUST_CONSTR:
+            raise ValueError("step_rule='trust-constr' requires acceptance_floor to be provided.")
         if self.n_grad_samples <= 0:
             raise ValueError("n_grad_samples must be positive.")
 

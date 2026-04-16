@@ -1,8 +1,8 @@
 """GLM-backed constrained diagnostic config with a mean-acceptance floor.
 
 Uses the same trained GLM artifacts and raw state batch as ``real_data_glm_linear_base``
-but adds a smooth config-driven penalty so mean acceptance stays above 90% of the
-observed acceptance level in the exported notebook CSV.
+but enforces the historical observed acceptance level directly with SciPy's
+trust-region constrained solver.
 """
 
 from __future__ import annotations
@@ -33,23 +33,26 @@ _acceptance_model, _loss_model = load_model_artifacts("glm")
 _u_coef = extract_glm_u_coef(_acceptance_model)
 _policy = LinearPolicy()
 _acceptance_floor = load_mean_observed_acceptance("glm")
-print(f"Using acceptance floor of {_acceptance_floor:.4f} in config {__file__}")
 
 THETA0 = np.array([1.1] + [0.0] * _acceptance_model.policy_feature_dim(), dtype=float)
 
 TRAINING = canonical_training_block(
     n_samples=5000,
-    step_rule="l-bfgs-b",
+    step_rule="trust-constr",
     t_steps=1000,
     step_size=0.01,
     sigma=0.01,
     n_grad_samples=10,
-    enabled_estimators=("first_order", "finite_difference", "spsa", "stein_difference"),
+    enabled_estimators=(
+        "first_order",
+        "finite_difference",
+        "gauss_stein",
+        "spsa",
+        "stein_difference",
+    ),
     perturbation_space="u",
     grad_norm_tol=1e-6,
     acceptance_floor=_acceptance_floor,
-    acceptance_penalty_weight=1e4,
-    acceptance_penalty_temperature=0.05,
 )
 
 RUNTIME = canonical_runtime_block(

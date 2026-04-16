@@ -2,7 +2,7 @@
 
 Uses the same trained XGBoost artifacts and raw state batch as
 ``real_data_xgb_base`` but swaps in ``LinearPolicy`` and adds a smooth
-config-driven penalty so mean acceptance stays above 90% of the observed
+config-driven penalty so mean acceptance stays above the observed
 acceptance level in the exported notebook CSV.
 """
 

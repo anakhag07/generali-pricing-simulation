@@ -289,6 +289,10 @@ class WandbReporter:
             final_payload[f"final/{name}/theta_l2_norm"] = theta_l2_norm
             if estimator_result.mean_acceptance is not None:
                 final_payload[f"final/{name}/mean_acceptance"] = float(estimator_result.mean_acceptance)
+            if estimator_result.constraint_violation is not None:
+                final_payload[f"final/{name}/constraint_violation"] = float(estimator_result.constraint_violation)
+            if estimator_result.acceptance_multiplier is not None:
+                final_payload[f"final/{name}/acceptance_multiplier"] = float(estimator_result.acceptance_multiplier)
         if final_payload:
             summary_run.log(final_payload)
 
@@ -516,6 +520,10 @@ def _build_summary_payload(run_context: RunContext, result: ExperimentResult) ->
         }
         if estimator_result.mean_acceptance is not None:
             estimator_payload["mean_acceptance"] = float(estimator_result.mean_acceptance)
+        if estimator_result.constraint_violation is not None:
+            estimator_payload["constraint_violation"] = float(estimator_result.constraint_violation)
+        if estimator_result.acceptance_multiplier is not None:
+            estimator_payload["acceptance_multiplier"] = float(estimator_result.acceptance_multiplier)
         if trace is not None:
             estimator_payload["optimizer_status"] = trace.optimizer_status
             estimator_payload["optimizer_message"] = trace.optimizer_message

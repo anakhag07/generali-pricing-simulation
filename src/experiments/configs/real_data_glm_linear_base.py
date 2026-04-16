@@ -4,8 +4,9 @@ Uses the same trained GLM artifacts and fixed state batch as ``real_data_glm_bas
 but swaps in ``LinearPolicy`` while keeping preprocessing inside the objective,
 so raw CSV rows remain the external state seen by the optimizer.
 
-The initial theta sets a constant action ``u = 0`` across the batch, giving a
-neutral zero-centered starting point before optimization moves the policy.
+The initial theta is resolved at runtime from the experiment seed so different
+starts can be compared without baking one linear-policy initialization into the
+preset itself.
 """
 
 from __future__ import annotations
@@ -77,4 +78,3 @@ CONFIG = build_experiment_config(
     runtime=RUNTIME,
     correctness=CORRECTNESS,
 )
-

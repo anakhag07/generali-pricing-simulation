@@ -25,6 +25,8 @@ class OptimizationTrace:
     theta_values: Optional[Sequence[np.ndarray]] = None
     optimizer_status: Optional[int] = None
     optimizer_message: Optional[str] = None
+    constraint_violation: Optional[float] = None
+    acceptance_multiplier: Optional[float] = None
 
 
 @dataclass(frozen=True)
@@ -36,6 +38,8 @@ class EstimatorResult:
     value: float
     time: float
     mean_acceptance: float | None = None
+    constraint_violation: float | None = None
+    acceptance_multiplier: float | None = None
 
 
 @dataclass(frozen=True)

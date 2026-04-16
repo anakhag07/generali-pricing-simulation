@@ -34,7 +34,11 @@ def _maybe_apply_acceptance_floor(config: ExperimentConfig) -> ExperimentConfig:
     objective_with_floor = replace(
         objective,
         acceptance_floor=float(config.acceptance_floor),
-        acceptance_penalty_weight=float(config.acceptance_penalty_weight),
+        acceptance_penalty_weight=(
+            float(config.acceptance_penalty_weight)
+            if config.acceptance_penalty_weight is not None
+            else None
+        ),
         acceptance_penalty_temperature=float(config.acceptance_penalty_temperature),
     )
     return replace(config, objective=objective_with_floor)
@@ -122,6 +126,8 @@ def run_experiment(
             value=value_first,
             time=time_first,
             mean_acceptance=acceptance_first,
+            constraint_violation=trace_first.constraint_violation,
+            acceptance_multiplier=trace_first.acceptance_multiplier,
         )
         traces["first_order"] = trace_first
 
@@ -154,6 +160,8 @@ def run_experiment(
             value=value_fd,
             time=time_fd,
             mean_acceptance=acceptance_fd,
+            constraint_violation=trace_fd.constraint_violation,
+            acceptance_multiplier=trace_fd.acceptance_multiplier,
         )
         traces["finite_difference"] = trace_fd
 
@@ -186,6 +194,8 @@ def run_experiment(
             value=value_zero,
             time=time_zero,
             mean_acceptance=acceptance_zero,
+            constraint_violation=trace_zero.constraint_violation,
+            acceptance_multiplier=trace_zero.acceptance_multiplier,
         )
         traces["gauss_stein"] = trace_zero
 
@@ -218,6 +228,8 @@ def run_experiment(
             value=value_spsa,
             time=time_spsa,
             mean_acceptance=acceptance_spsa,
+            constraint_violation=trace_spsa.constraint_violation,
+            acceptance_multiplier=trace_spsa.acceptance_multiplier,
         )
         traces["spsa"] = trace_spsa
 
@@ -250,6 +262,8 @@ def run_experiment(
             value=value_stein,
             time=time_stein,
             mean_acceptance=acceptance_stein,
+            constraint_violation=trace_stein.constraint_violation,
+            acceptance_multiplier=trace_stein.acceptance_multiplier,
         )
         traces["stein_difference"] = trace_stein
 

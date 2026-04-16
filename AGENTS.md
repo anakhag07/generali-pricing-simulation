@@ -94,7 +94,7 @@ Guidelines:
   - `ModelBasedObjective`: pricing objective $$f(u;x) = a(x,u)(\hat{Y}(x) - u \cdot p(x))$$ backed by trained sklearn/XGBoost models
   - Takes `acceptance_model` / `loss_model` artifact bundles that can apply saved external preprocessing before calling the inner sklearn/XGBoost model
   - Owns the policy-side raw-to-processed bridge: raw `x_batch` stays at the objective boundary and the acceptance bundle's saved `FeatureProcessor` is reused internally for `u(theta, x)` and `du/dtheta`
-  - Optional config-driven mean-acceptance floor is implemented as a smooth penalty on the objective; keep using `L-BFGS-B` rather than SciPy nonlinear constraints
+  - Optional config-driven mean-acceptance floor is implemented either as a smooth penalty on the objective or directly as a SciPy `trust-constr` nonlinear constraint, depending on `step_rule`
   - `u_coef` enables analytical gradient for GLM; `None` triggers central FD for XGBoost
   - `value()`, `grad()`, `value_at_u()`
 
@@ -130,7 +130,7 @@ Guidelines:
 
 - **`src/optimization/base.py`**
   - `Optimization`: class-based optimization entry point
-  - `Optimization.solve(theta_start)`: dispatches to SciPy `minimize` for `step_rule="l-bfgs-b"` and to an internal manual gradient loop for `step_rule="constant"` / `"armijo"`; handles mini-batching, trace recording, and optional step-size history for manual rules
+  - `Optimization.solve(theta_start)`: dispatches to SciPy `minimize` for `step_rule="l-bfgs-b"` / `"trust-constr"` and to an internal manual gradient loop for `step_rule="constant"` / `"armijo"`; handles mini-batching, trace recording, and optional step-size history for manual rules
   - Contains only constructor + solve orchestration; batching/objective helpers live in `src/optimization/helpers.py`
   - Solvers consume theta-level objectives only (`value(theta, x_batch)`, `grad(theta, x_batch)`)
 
@@ -152,7 +152,7 @@ Guidelines:
   - `run_first_order_minimize(...)`, `run_finite_difference_minimize(...)`, `run_gauss_stein_minimize(...)`, `run_stein_difference_minimize(...)`, `run_spsa_minimize(...)`: compatibility wrappers that instantiate `Optimization` with the corresponding gradient object and call `solve(...)`
 
 - **`src/optimization/steps.py`**
-  - `STEP_RULE_LBFGSB`, `STEP_RULE_CONSTANT`, `STEP_RULE_ARMIJO`, `STEP_RULES`
+  - `STEP_RULE_LBFGSB`, `STEP_RULE_TRUST_CONSTR`, `STEP_RULE_CONSTANT`, `STEP_RULE_ARMIJO`, `STEP_RULES`
   - `constant_step_size(step_size)`: returns the step size unchanged
   - `armijo_backtracking_step_size(...)`: Armijo line search utility used by the optimizer's manual `step_rule="armijo"` path
 
@@ -164,7 +164,7 @@ Guidelines:
   - `x_fixed: np.ndarray | None = None`: when set, runner uses this 2D array as state batch instead of sampling from N(0, I)
   - Objective/policy wiring is explicit; configs pass a concrete theta-level objective instance
   - `batch_size: int | None = None` enables stochastic mini-batch optimization when set
-  - `acceptance_floor`, `acceptance_penalty_weight`, `acceptance_penalty_temperature` add an optional smooth floor on mean acceptance for objectives that expose `mean_acceptance(...)`
+  - `acceptance_floor` can be enforced directly with `step_rule="trust-constr"` or via the smooth penalty path using `acceptance_penalty_weight` / `acceptance_penalty_temperature`
   - `CorrectnessSpec`: controls how "true" gradients are computed (`"exact"`, `"numdiff"`, `"none"`)
   - `verbose: bool = False` controls terminal output of per-step metrics
   - Preset-composition helpers: `make_*_objective`, `make_softmax_policy`, `make_model_based_objective`,
@@ -176,10 +176,10 @@ Guidelines:
   - `fixed_regression_base.py`: base fixed-regression config (4D, L-BFGS-B step rule, W&B enabled)
   - `planted_logistic_base.py`: planted logistic base config (3D, L-BFGS-B step rule, 5000 steps, u*=1.1)
   - `real_data_glm_base.py`: GLM pickle-based config; state_dim=12; all 5 estimators; analytical first-order gradient via u_coef
-  - `real_data_glm_linear_base.py`: GLM pickle-based diagnostic config; same data/models as `real_data_glm_base` but with `LinearPolicy` and constant-`u=1.1` initialization to inspect behavior without softmax saturation
-  - `real_data_glm_linear_acceptance_floor_base.py`: constrained GLM diagnostic config with `LinearPolicy` and a smooth mean-acceptance floor set to 90% of the observed CSV acceptance level; uses first-order optimization only
+  - `real_data_glm_linear_base.py`: GLM pickle-based diagnostic config; same data/models as `real_data_glm_base` but with `LinearPolicy` and runtime-resolved random initialization to inspect behavior without softmax saturation
+  - `real_data_glm_linear_acceptance_floor_base.py`: constrained GLM diagnostic config with `LinearPolicy` and a trust-constr mean-acceptance floor set to the observed CSV acceptance level; enables all 5 estimators for constrained comparison
   - `real_data_xgb_base.py`: XGBoost pickle-based config; state_dim=10; 4 estimators (no first_order); FD for d_acceptance/du
-  - `real_data_xgb_linear_acceptance_floor_base.py`: constrained XGBoost diagnostic config with `LinearPolicy`, constant `u=0.2` initialization inside XGB `u_bounds`, and a smooth mean-acceptance floor set to 90% of the observed CSV acceptance level; uses finite_difference, SPSA, and stein_difference
+  - `real_data_xgb_linear_acceptance_floor_base.py`: constrained XGBoost diagnostic config with `LinearPolicy`, constant `u=0.2` initialization inside XGB `u_bounds`, and a smooth mean-acceptance floor set to the observed CSV acceptance level; uses finite_difference, SPSA, and stein_difference
   - `config_template.py`: copy-first scaffold with `None` placeholders for all `ExperimentConfig` fields plus objective/correctness parameter blocks; not registered as a runnable preset
 
 - **`src/experiments/defaults.py`**
@@ -206,7 +206,7 @@ Guidelines:
 
 - **`src/experiments/results.py`**
   - `OptimizationTrace`: per-step trace with u values, objective values, gradient estimates, optional theta values and step sizes
-  - `EstimatorResult`: final theta, u, value, and wall-clock time
+  - `EstimatorResult`: final theta, u, value, wall-clock time, and optional acceptance-constraint diagnostics
   - `ExperimentResult`: full result including config, traces, and optional u_star
 
 - **`src/experiments/reporters.py`**

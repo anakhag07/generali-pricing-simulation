@@ -7,7 +7,7 @@ from typing import Any, Callable
 import numpy as np
 
 from objective.utils import _mean_action
-from optimization.steps import STEP_RULE_LBFGSB
+from optimization.steps import STEP_RULE_LBFGSB, STEP_RULE_TRUST_CONSTR
 
 
 def _clamp_theta(theta: np.ndarray, bounds: tuple[float, float] | None) -> np.ndarray:
@@ -22,10 +22,12 @@ def scipy_method(algorithm: str) -> str:
     """Map algorithm string to SciPy method name."""
     if algorithm.lower() == STEP_RULE_LBFGSB:
         return "L-BFGS-B"
+    if algorithm.lower() == STEP_RULE_TRUST_CONSTR:
+        return STEP_RULE_TRUST_CONSTR
     raise ValueError(
         f"Unsupported algorithm '{algorithm}'. "
-        f"Currently only '{STEP_RULE_LBFGSB}' is supported. "
-        f"Use step_rule='{STEP_RULE_LBFGSB}' in your config."
+        f"Currently only '{STEP_RULE_LBFGSB}' and '{STEP_RULE_TRUST_CONSTR}' are supported. "
+        f"Use one of those step_rule values in your config."
     )
 
 

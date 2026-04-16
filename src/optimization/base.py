@@ -257,11 +257,13 @@ class Optimization:
                 )
 
         record(theta0)
+        optimizer_success: bool
         optimizer_status: int
         optimizer_message: str
 
         if self.algorithm in {STEP_RULE_CONSTANT, STEP_RULE_ARMIJO}:
             theta_final = theta0.copy()
+            optimizer_success = False
             optimizer_status = 1
             optimizer_message = "STOP: reached maximum iterations"
             for _ in range(self.t_steps):
@@ -269,6 +271,7 @@ class Optimization:
                 grad_theta = np.asarray(self.gradient.theta_grad(self, theta_final, indices), dtype=float)
                 grad_norm = float(np.linalg.norm(grad_theta))
                 if self.grad_norm_tol is not None and grad_norm <= self.grad_norm_tol:
+                    optimizer_success = True
                     optimizer_status = 0
                     optimizer_message = "STOP: gradient norm below tolerance"
                     break
@@ -313,6 +316,7 @@ class Optimization:
             result = self._minimize_fn(value_fn, **minimize_kwargs)
 
             theta_final = np.asarray(result.x, dtype=float)
+            optimizer_success = bool(result.success)
             optimizer_status = int(result.status)
             optimizer_message = str(result.message)
             if self.algorithm == STEP_RULE_TRUST_CONSTR:
@@ -333,6 +337,7 @@ class Optimization:
             true_theta_grad_norms=true_theta_grad_norms if true_theta_grad_norms else None,
             step_sizes=step_sizes,
             theta_values=theta_values,
+            optimizer_success=optimizer_success,
             optimizer_status=optimizer_status,
             optimizer_message=optimizer_message,
             constraint_violation=constraint_violation,

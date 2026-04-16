@@ -23,6 +23,7 @@ class OptimizationTrace:
     true_theta_grad_norms: Optional[Sequence[float]] = None
     step_sizes: Optional[Sequence[float]] = None
     theta_values: Optional[Sequence[np.ndarray]] = None
+    optimizer_success: Optional[bool] = None
     optimizer_status: Optional[int] = None
     optimizer_message: Optional[str] = None
     constraint_violation: Optional[float] = None

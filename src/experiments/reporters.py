@@ -525,6 +525,7 @@ def _build_summary_payload(run_context: RunContext, result: ExperimentResult) ->
         if estimator_result.acceptance_multiplier is not None:
             estimator_payload["acceptance_multiplier"] = float(estimator_result.acceptance_multiplier)
         if trace is not None:
+            estimator_payload["optimizer_success"] = trace.optimizer_success
             estimator_payload["optimizer_status"] = trace.optimizer_status
             estimator_payload["optimizer_message"] = trace.optimizer_message
         estimators[name] = estimator_payload

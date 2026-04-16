@@ -289,6 +289,10 @@ class WandbReporter:
             final_payload[f"final/{name}/theta_l2_norm"] = theta_l2_norm
             if estimator_result.mean_acceptance is not None:
                 final_payload[f"final/{name}/mean_acceptance"] = float(estimator_result.mean_acceptance)
+            if estimator_result.constraint_violation is not None:
+                final_payload[f"final/{name}/constraint_violation"] = float(estimator_result.constraint_violation)
+            if estimator_result.acceptance_multiplier is not None:
+                final_payload[f"final/{name}/acceptance_multiplier"] = float(estimator_result.acceptance_multiplier)
         if final_payload:
             summary_run.log(final_payload)
 
@@ -516,9 +520,22 @@ def _build_summary_payload(run_context: RunContext, result: ExperimentResult) ->
         }
         if estimator_result.mean_acceptance is not None:
             estimator_payload["mean_acceptance"] = float(estimator_result.mean_acceptance)
+        if estimator_result.constraint_violation is not None:
+            estimator_payload["constraint_violation"] = float(estimator_result.constraint_violation)
+        if estimator_result.acceptance_multiplier is not None:
+            estimator_payload["acceptance_multiplier"] = float(estimator_result.acceptance_multiplier)
         if trace is not None:
+            estimator_payload["optimizer_success"] = trace.optimizer_success
+            if trace.optimizer_optimality is not None:
+                estimator_payload["optimizer_optimality"] = float(trace.optimizer_optimality)
+            if trace.optimizer_lagrangian_grad is not None:
+                estimator_payload["optimizer_lagrangian_grad"] = _as_list(
+                    trace.optimizer_lagrangian_grad
+                )
             estimator_payload["optimizer_status"] = trace.optimizer_status
             estimator_payload["optimizer_message"] = trace.optimizer_message
+            lagrangian_diag = _final_lagrangian_diagnostics(result, estimator_result.theta, trace)
+            estimator_payload.update(lagrangian_diag)
         estimators[name] = estimator_payload
 
     trace_summary: dict[str, dict] = {}
@@ -567,6 +584,22 @@ def _build_summary_payload(run_context: RunContext, result: ExperimentResult) ->
 def _as_list(values: object) -> list[float]:
     arr = np.asarray(values, dtype=float)
     return [float(val) for val in arr.tolist()]
+
+
+def _final_lagrangian_diagnostics(result: ExperimentResult, theta: np.ndarray, trace: object) -> dict:
+    acceptance_multiplier = getattr(trace, "acceptance_multiplier", None)
+    if acceptance_multiplier is None:
+        return {}
+    mean_acceptance_grad_fn = getattr(result.config.objective, "mean_acceptance_grad", None)
+    if not callable(mean_acceptance_grad_fn):
+        return {}
+    objective_grad = np.asarray(result.config.objective.grad(theta, result.x_samples), dtype=float)
+    constraint_grad = np.asarray(mean_acceptance_grad_fn(theta, result.x_samples), dtype=float)
+    lagrangian_grad = objective_grad - float(acceptance_multiplier) * constraint_grad
+    return {
+        "final_lagrangian_grad": _as_list(lagrangian_grad),
+        "final_lagrangian_grad_inf_norm": float(np.linalg.norm(lagrangian_grad, ord=np.inf)),
+    }
 
 
 __all__ = [

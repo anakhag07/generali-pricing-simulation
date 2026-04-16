@@ -2,7 +2,7 @@
 
 Uses the same trained XGBoost artifacts and raw state batch as
 ``real_data_xgb_base`` but swaps in ``LinearPolicy`` and adds a smooth
-config-driven penalty so mean acceptance stays above 90% of the observed
+config-driven penalty so mean acceptance stays above the observed
 acceptance level in the exported notebook CSV.
 """
 
@@ -31,7 +31,7 @@ STATE_DIM = len(FEATURE_COLS_XGB)
 
 _acceptance_model, _loss_model = load_model_artifacts("xgb")
 _policy = LinearPolicy()
-_acceptance_floor = 0.9 * load_mean_observed_acceptance("xgb")
+_acceptance_floor = load_mean_observed_acceptance("xgb")
 
 # Start from a constant in-range action so the linear policy does not begin clipped.
 THETA0 = np.array([0.2] + [0.0] * _acceptance_model.policy_feature_dim(), dtype=float)

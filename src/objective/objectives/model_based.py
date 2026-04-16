@@ -29,6 +29,10 @@ class ModelBasedObjective(Objective):
     If ``u_coef`` is provided, it is interpreted as $$d\,\text{logit}(p_{churn}) / dU$$,
     so the analytical acceptance gradient uses the opposite sign.
     Otherwise numerical central finite differences are used (XGBoost path).
+
+    When ``acceptance_floor`` and ``acceptance_penalty_weight`` are both set,
+    ``value()`` adds a smooth mean-acceptance penalty. Direct trust-region
+    constraints are handled at the optimizer level via ``step_rule="trust-constr"``.
     """
 
     policy: Policy

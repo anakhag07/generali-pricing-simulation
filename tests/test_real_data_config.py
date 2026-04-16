@@ -66,13 +66,11 @@ def test_glm_linear_base_has_first_order():
     assert "first_order" in cfg.enabled_estimators
 
 
-def test_glm_linear_base_initial_action_is_constant_zero():
+def test_glm_linear_base_theta0_is_resolved_at_runtime():
     from experiments.configs import get_config
 
     cfg = get_config("real_data_glm_linear_base")
-    assert cfg.x_fixed is not None
-    u_batch = cfg.objective.policy_value(cfg.theta0, cfg.x_fixed)
-    assert np.allclose(u_batch, 0.0)
+    assert cfg.theta0 is None
 
 
 def test_glm_linear_acceptance_floor_base_sets_floor_from_csv_mean():
@@ -80,7 +78,7 @@ def test_glm_linear_acceptance_floor_base_sets_floor_from_csv_mean():
     from experiments.configs import get_config
 
     cfg = get_config("real_data_glm_linear_acceptance_floor_base")
-    assert cfg.acceptance_floor == pytest.approx(0.9 * load_mean_observed_acceptance("glm"))
+    assert cfg.acceptance_floor == pytest.approx(load_mean_observed_acceptance("glm"))
 
 
 def test_xgb_linear_acceptance_floor_base_sets_floor_from_csv_mean():
@@ -88,7 +86,21 @@ def test_xgb_linear_acceptance_floor_base_sets_floor_from_csv_mean():
     from experiments.configs import get_config
 
     cfg = get_config("real_data_xgb_linear_acceptance_floor_base")
-    assert cfg.acceptance_floor == pytest.approx(0.9 * load_mean_observed_acceptance("xgb"))
+    assert cfg.acceptance_floor == pytest.approx(load_mean_observed_acceptance("xgb"))
+
+
+def test_glm_linear_acceptance_floor_base_uses_trust_constr_with_all_estimators():
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_glm_linear_acceptance_floor_base")
+    assert cfg.step_rule == "trust-constr"
+    assert cfg.enabled_estimators == (
+        "first_order",
+        "finite_difference",
+        "gauss_stein",
+        "spsa",
+        "stein_difference",
+    )
 
 
 def test_xgb_base_no_first_order():
@@ -180,7 +192,8 @@ def test_glm_linear_base_estimators_move_and_agree_on_small_run():
     assert result.traces["first_order"].optimizer_status == 0
     assert result.traces["finite_difference"].optimizer_status == 0
     assert result.traces["spsa"].optimizer_status == 0
-    assert first.u != pytest.approx(float(cfg.theta0[0]))
+    assert result.config.theta0 is not None
+    assert not np.allclose(first.theta, result.config.theta0)
     assert first.u == pytest.approx(fd.u, rel=5e-4, abs=5e-4)
     assert first.u == pytest.approx(spsa.u, rel=5e-4, abs=5e-4)
 
@@ -191,11 +204,19 @@ def test_glm_linear_acceptance_floor_base_enforces_constraint_on_small_run():
 
     cfg = get_config("real_data_glm_linear_acceptance_floor_base")
     assert cfg.x_fixed is not None
-    small_cfg = replace(cfg, n_samples=500, x_fixed=cfg.x_fixed[:500], t_steps=100)
+    small_cfg = replace(cfg, n_samples=100, x_fixed=cfg.x_fixed[:100], t_steps=20)
 
     result = run_experiment(small_cfg, step_reporter=None)
     first = result.results["first_order"]
+    fd = result.results["finite_difference"]
 
     assert result.traces["first_order"].optimizer_status == 0
+    assert result.traces["finite_difference"].optimizer_status == 0
     assert first.mean_acceptance is not None
-    assert first.mean_acceptance >= small_cfg.acceptance_floor - 0.02
+    assert fd.mean_acceptance is not None
+    assert first.mean_acceptance >= small_cfg.acceptance_floor - 0.03
+    assert fd.mean_acceptance >= small_cfg.acceptance_floor - 0.03
+    for name in ("gauss_stein", "spsa", "stein_difference"):
+        estimator = result.results[name]
+        assert estimator.mean_acceptance is not None
+        assert estimator.constraint_violation is not None

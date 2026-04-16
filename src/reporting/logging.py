@@ -99,12 +99,18 @@ def log_summary(result: ExperimentResult) -> None:
     )
     print(f"Initial objective value: {result.initial_value:.4f}")
     if config.acceptance_floor is not None:
-        print(
-            "Acceptance floor: "
-            f"mean_acceptance >= {float(config.acceptance_floor):.4f} "
-            f"(weight={float(config.acceptance_penalty_weight):.2f}, "
-            f"temp={float(config.acceptance_penalty_temperature):.4f})"
-        )
+        if config.step_rule == "trust-constr":
+            print(
+                "Acceptance constraint: "
+                f"mean_acceptance >= {float(config.acceptance_floor):.4f} via trust-constr"
+            )
+        else:
+            print(
+                "Acceptance floor: "
+                f"mean_acceptance >= {float(config.acceptance_floor):.4f} "
+                f"(weight={float(config.acceptance_penalty_weight):.2f}, "
+                f"temp={float(config.acceptance_penalty_temperature):.4f})"
+            )
     if result.initial_mean_acceptance is not None:
         print(f"Initial mean acceptance: {float(result.initial_mean_acceptance):.4f}")
     u_star_value = float(u_star) if u_star is not None else None
@@ -142,6 +148,20 @@ def log_summary(result: ExperimentResult) -> None:
                 if result.results[name].mean_acceptance is not None
             )
             print(f"Final mean acceptance: {final_acceptance}")
+        if any(result.results[name].constraint_violation is not None for name in ordered):
+            final_violation = ", ".join(
+                f"{labels[name]}={float(result.results[name].constraint_violation):.4e}"
+                for name in ordered
+                if result.results[name].constraint_violation is not None
+            )
+            print(f"Constraint violation: {final_violation}")
+        if any(result.results[name].acceptance_multiplier is not None for name in ordered):
+            final_multiplier = ", ".join(
+                f"{labels[name]}={float(result.results[name].acceptance_multiplier):.4f}"
+                for name in ordered
+                if result.results[name].acceptance_multiplier is not None
+            )
+            print(f"Acceptance multiplier: {final_multiplier}")
         if u_star_value is not None:
             u_gap = ", ".join(
                 f"{labels[name]}={abs(result.results[name].u - u_star_value):.4f}"

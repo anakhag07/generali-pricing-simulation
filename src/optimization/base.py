@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Callable
 
 import numpy as np
-from scipy.optimize import minimize
+from scipy.optimize import NonlinearConstraint, minimize
 
 from objective.base import Objective
 from objective.utils import _mean_action
@@ -19,6 +19,7 @@ from optimization.steps import (
     STEP_RULE_ARMIJO,
     STEP_RULE_CONSTANT,
     STEP_RULE_LBFGSB,
+    STEP_RULE_TRUST_CONSTR,
     armijo_backtracking_step_size,
     constant_step_size,
 )
@@ -32,7 +33,7 @@ MinimizeFn = Callable[..., Any]
 
 
 class Optimization:
-    """Theta optimizer with SciPy L-BFGS-B or manual fixed-step updates."""
+    """Theta optimizer with SciPy constrained/unconstrained or manual fixed-step updates."""
 
     def __init__(
         self,
@@ -61,7 +62,8 @@ class Optimization:
             objective: Theta-level objective implementing value(theta, x_batch) and grad(theta, x_batch).
             x_samples: State samples array, shape (n_samples, state_dim).
             gradient: Gradient method object with setup() and theta_grad() methods.
-            algorithm: Optimization step rule (``"l-bfgs-b"``, ``"constant"``, or ``"armijo"``).
+            algorithm: Optimization step rule (``"l-bfgs-b"``, ``"trust-constr"``,
+                ``"constant"``, or ``"armijo"``).
             t_steps: Maximum number of optimization steps.
             n_grad_samples: Number of gradient samples for zeroth-order methods.
             sigma: Perturbation scale for zeroth-order methods.
@@ -130,6 +132,10 @@ class Optimization:
         step_sizes: list[float] | None = (
             [] if self.algorithm in {STEP_RULE_CONSTANT, STEP_RULE_ARMIJO} else None
         )
+        constraint_violation: float | None = None
+        acceptance_multiplier: float | None = None
+        optimizer_optimality: float | None = None
+        optimizer_lagrangian_grad: np.ndarray | None = None
 
         def value_fn(theta_vec: np.ndarray) -> float:
             theta_arr = np.asarray(theta_vec, dtype=float)
@@ -140,6 +146,59 @@ class Optimization:
             theta_arr = np.asarray(theta_vec, dtype=float)
             indices = sample_indices(self.rng, self.batch_size_eff, self.n_total, self._full_indices)
             return np.asarray(self.gradient.theta_grad(self, theta_arr, indices), dtype=float)
+
+        def acceptance_floor() -> float | None:
+            floor = getattr(self.objective, "acceptance_floor", None)
+            if floor is None:
+                return None
+            return float(floor)
+
+        def mean_acceptance_fn(theta_vec: np.ndarray) -> float:
+            acceptance_fn = getattr(self.objective, "mean_acceptance", None)
+            if not callable(acceptance_fn):
+                raise ValueError(
+                    "step_rule='trust-constr' requires objective.mean_acceptance(theta, x_batch)."
+                )
+            return float(acceptance_fn(np.asarray(theta_vec, dtype=float), self.x_array))
+
+        def mean_acceptance_grad_fn(theta_vec: np.ndarray) -> np.ndarray:
+            acceptance_grad_fn = getattr(self.objective, "mean_acceptance_grad", None)
+            if not callable(acceptance_grad_fn):
+                raise ValueError(
+                    "step_rule='trust-constr' requires objective.mean_acceptance_grad(theta, x_batch)."
+                )
+            return np.asarray(acceptance_grad_fn(np.asarray(theta_vec, dtype=float), self.x_array), dtype=float)
+
+        def trust_constr_constraint() -> NonlinearConstraint:
+            floor = acceptance_floor()
+            if floor is None:
+                raise ValueError("step_rule='trust-constr' requires objective.acceptance_floor.")
+            return NonlinearConstraint(
+                fun=lambda theta_vec: np.asarray([mean_acceptance_fn(theta_vec)], dtype=float),
+                lb=np.asarray([floor], dtype=float),
+                ub=np.asarray([np.inf], dtype=float),
+                jac=lambda theta_vec: np.atleast_2d(mean_acceptance_grad_fn(theta_vec)),
+            )
+
+        def trust_constr_callback(theta_vec: np.ndarray, state: Any | None = None) -> bool:
+            del state
+            record(theta_vec)
+            return False
+
+        def final_constraint_violation(theta_vec: np.ndarray) -> float | None:
+            floor = acceptance_floor()
+            if floor is None:
+                return None
+            return max(0.0, floor - mean_acceptance_fn(theta_vec))
+
+        def extract_acceptance_multiplier(result: Any) -> float | None:
+            dual = getattr(result, "v", None)
+            if dual is None or len(dual) == 0:
+                return None
+            first_dual = np.asarray(dual[0], dtype=float).reshape(-1)
+            if first_dual.size == 0:
+                return None
+            return max(0.0, float(-first_dual[0]))
 
         def record(theta_vec: np.ndarray, step_size: float | None = None) -> None:
             theta_arr = np.asarray(theta_vec, dtype=float)
@@ -200,11 +259,13 @@ class Optimization:
                 )
 
         record(theta0)
+        optimizer_success: bool
         optimizer_status: int
         optimizer_message: str
 
         if self.algorithm in {STEP_RULE_CONSTANT, STEP_RULE_ARMIJO}:
             theta_final = theta0.copy()
+            optimizer_success = False
             optimizer_status = 1
             optimizer_message = "STOP: reached maximum iterations"
             for _ in range(self.t_steps):
@@ -212,6 +273,7 @@ class Optimization:
                 grad_theta = np.asarray(self.gradient.theta_grad(self, theta_final, indices), dtype=float)
                 grad_norm = float(np.linalg.norm(grad_theta))
                 if self.grad_norm_tol is not None and grad_norm <= self.grad_norm_tol:
+                    optimizer_success = True
                     optimizer_status = 0
                     optimizer_message = "STOP: gradient norm below tolerance"
                     break
@@ -238,21 +300,36 @@ class Optimization:
             options: dict[str, float | int] = {"maxiter": int(self.t_steps)}
             if self.grad_norm_tol is not None:
                 options["gtol"] = float(self.grad_norm_tol)
-            if self.ftol is not None:
+            if self.ftol is not None and self.algorithm != STEP_RULE_TRUST_CONSTR:
                 options["ftol"] = float(self.ftol)
 
-            result = self._minimize_fn(
-                value_fn,
-                x0=theta0,
-                jac=grad_fn,
-                method=scipy_method(self.algorithm),
-                options=options,
-                callback=record,
-            )
+            minimize_kwargs: dict[str, Any] = {
+                "x0": theta0,
+                "jac": grad_fn,
+                "method": scipy_method(self.algorithm),
+                "options": options,
+            }
+            if self.algorithm == STEP_RULE_TRUST_CONSTR:
+                minimize_kwargs["constraints"] = [trust_constr_constraint()]
+                minimize_kwargs["callback"] = trust_constr_callback
+            else:
+                minimize_kwargs["callback"] = record
+
+            result = self._minimize_fn(value_fn, **minimize_kwargs)
 
             theta_final = np.asarray(result.x, dtype=float)
+            optimizer_success = bool(result.success)
             optimizer_status = int(result.status)
             optimizer_message = str(result.message)
+            if self.algorithm == STEP_RULE_TRUST_CONSTR:
+                constraint_violation = final_constraint_violation(theta_final)
+                acceptance_multiplier = extract_acceptance_multiplier(result)
+                optimality = getattr(result, "optimality", None)
+                if optimality is not None:
+                    optimizer_optimality = float(optimality)
+                lagrangian_grad = getattr(result, "lagrangian_grad", None)
+                if lagrangian_grad is not None:
+                    optimizer_lagrangian_grad = np.asarray(lagrangian_grad, dtype=float)
             if not np.allclose(theta_final, theta_values[-1]):
                 record(theta_final)
 
@@ -268,8 +345,13 @@ class Optimization:
             true_theta_grad_norms=true_theta_grad_norms if true_theta_grad_norms else None,
             step_sizes=step_sizes,
             theta_values=theta_values,
+            optimizer_success=optimizer_success,
+            optimizer_optimality=optimizer_optimality,
+            optimizer_lagrangian_grad=optimizer_lagrangian_grad,
             optimizer_status=optimizer_status,
             optimizer_message=optimizer_message,
+            constraint_violation=constraint_violation,
+            acceptance_multiplier=acceptance_multiplier,
         )
         return theta_final, trace
 

@@ -91,9 +91,10 @@ Guidelines:
   - `from_parameters` classmethod; batch evaluation via `value()`, `grad()`, `value_at_u()`
 
 - **`src/objective/objectives/model_based.py`**
-  - `ModelBasedObjective`: pricing objective $$f(u;x) = a(x,u)(\hat{Y}(x) - u \cdot p(x))$$ backed by trained sklearn/XGBoost models
+  - `ModelBasedObjective`: pricing objective $$f(u;x) = a(x,u)(\hat{Y}(x) - (u + 1) \cdot p(x))$$ backed by trained sklearn/XGBoost models
   - Takes `acceptance_model` / `loss_model` artifact bundles that can apply saved external preprocessing before calling the inner sklearn/XGBoost model
   - Owns the policy-side raw-to-processed bridge: raw `x_batch` stays at the objective boundary and the acceptance bundle's saved `FeatureProcessor` is reused internally for `u(theta, x)` and `du/dtheta`
+  - Policy output `u` remains centered at 0 for the acceptance model; only the revenue term shifts to multiplier `u + 1`
   - Optional config-driven mean-acceptance floor is implemented either as a smooth penalty on the objective or directly as a SciPy `trust-constr` nonlinear constraint, depending on `step_rule`
   - `u_coef` enables analytical gradient for GLM; `None` triggers central FD for XGBoost
   - `value()`, `grad()`, `value_at_u()`

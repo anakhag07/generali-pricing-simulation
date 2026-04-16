@@ -150,7 +150,7 @@ def test_log_summary_prints_model_coefficients(capsys) -> None:
     result = _build_model_based_result()
     log_summary(result)
     captured = capsys.readouterr().out
-    assert "Objective: f(u; x) = p_acc(x, u) * (loss_hat(x) - u * premium(x))" in captured
+    assert "Objective: f(u; x) = p_acc(x, u) * (loss_hat(x) - (u + 1) * premium(x))" in captured
     assert "p_churn(x, u) = sigmoid(beta_0 + beta_x^T x_acc + beta_u * u)" in captured
     assert "p_acc(x, u) = 1 - p_churn(x, u)" in captured
     assert "loss_hat(x) = gamma_0 + gamma_x^T x_loss" in captured

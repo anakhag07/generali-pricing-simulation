@@ -89,6 +89,40 @@ def test_value_at_u_consistent_with_value():
     assert abs(obj.value(theta, x) - obj.value_at_u(x, u_val)) < 1e-8
 
 
+def test_value_at_u_uses_shifted_revenue_multiplier() -> None:
+    from objective.objectives.model_based import ModelBasedObjective
+    from objective.policy import ConstantPolicy
+
+    class ConstantAcceptanceModel:
+        def predict_proba(self, x_frame):
+            churn = np.full(len(x_frame), 0.25, dtype=float)
+            return np.column_stack([1.0 - churn, churn])
+
+    class ConstantLossModel:
+        def predict(self, x_frame):
+            return np.full(len(x_frame), 10.0, dtype=float)
+
+    x = np.array(
+        [
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4.0],
+        ],
+        dtype=float,
+    )
+    obj = ModelBasedObjective(
+        policy=ConstantPolicy(),
+        acceptance_model=ConstantAcceptanceModel(),
+        loss_model=ConstantLossModel(),
+        acceptance_state_cols=tuple(f"x{i}" for i in range(10)),
+        loss_cols=tuple(f"x{i}" for i in range(9)),
+        premium_col=9,
+        u_coef=0.0,
+    )
+
+    expected_value = 0.75 * (10.0 - 3.0)
+    assert obj.value_at_u(x, 0.0) == pytest.approx(expected_value)
+
+
 def test_analytical_vs_fd_grad_glm():
     """Analytical GLM gradient should closely match central FD gradient."""
     from data.loader import (
@@ -177,7 +211,7 @@ def test_step_metrics_match_objective_components() -> None:
 
     assert metrics["mean_acceptance"] == pytest.approx(obj.mean_acceptance(theta, x))
     assert metrics["projected_loss"] == pytest.approx(float(np.mean(obj._loss_prediction(x))))
-    assert metrics["projected_revenue"] == pytest.approx(float(np.mean(u_batch * premium)))
+    assert metrics["projected_revenue"] == pytest.approx(float(np.mean((u_batch + 1.0) * premium)))
 
 
 def test_mean_action_uses_clipped_u_when_bounds_present() -> None:

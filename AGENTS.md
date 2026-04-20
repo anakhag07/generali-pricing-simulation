@@ -24,8 +24,11 @@ Before editing code:
 3. Inspect the relevant entry points and neighboring files.
 4. Check recent tests related to the feature area.
 5. Confirm the current branch and task scope.
-6. If working in a parallel terminal or worktree, assume other branches may have changed the repo recently and re-check branch state.
-7. If repo structure or behavior appears inconsistent with `README.md` or `AGENTS.md`, update docs as part of the task.
+6. **Check out a new branch before making any changes.** Never commit directly
+   to `main`. Use a descriptive branch name (e.g., `feature/add-pca-tests`,
+   `fix/armijo-edge-case`, `refactor/test-reorg`).
+7. If working in a parallel terminal or worktree, assume other branches may have changed the repo recently and re-check branch state.
+8. If repo structure or behavior appears inconsistent with `README.md` or `AGENTS.md`, update docs as part of the task.
 
 ### End of Session
 Before finishing a build session:
@@ -50,6 +53,27 @@ Before finishing a build session:
 - Run validation commands after changes.
 - Prepare a concise handoff summary suitable for a commit, PR, or later session.
 
+### Math Changes
+
+When modifying or adding code that implements a mathematical formula:
+
+1. **Identify the formula.** Find the corresponding entry in `MATH.md`. If none
+   exists, add one before proceeding.
+2. **Cross-reference.** Verify the implementation matches the `MATH.md` formula
+   line-by-line. Pay attention to signs, index ranges, and normalization
+   constants.
+3. **Derive or verify.** For gradient changes, derive the gradient by hand from
+   the value formula (or confirm it matches a textbook/paper reference). For
+   estimator changes, confirm convergence properties (e.g., unbiasedness) hold.
+4. **Suggest verification tests.** Propose 2–3 small tests the user can run to
+   confirm correctness. Examples:
+   - "Gradient should be zero at the known optimum u*."
+   - "Finite-difference gradient should match analytical within 1e-5."
+   - "Estimator variance should decrease as n_grad_samples increases."
+   - "Transformed data should have identity covariance."
+5. **Update MATH.md.** If the formula changed, update the `MATH.md` entry and
+   the source docstring in the same commit.
+
 ## Source of Truth
 
 When behavior and documentation disagree, use this priority:
@@ -57,8 +81,9 @@ When behavior and documentation disagree, use this priority:
 1. `src/objective/objectives/fixed_regression.py`
 2. Current implementation in the relevant source module
 3. Tests
-4. `README.md`
-5. `AGENTS.md`
+4. `MATH.md`
+5. `README.md`
+6. `AGENTS.md`
 
 If lower-priority docs are stale, update them in the same task.
 
@@ -259,41 +284,81 @@ when appropriate.
 - Avoid plotting, filesystem I/O, or long-running simulations in tests.
 - Prefer testing pure functions and small components.
 - Keep tests fast.
-- Keep tests in the existing flat `tests/` layout for now.
+- Tests are organized into subdirectories mirroring `src/`:
+  - `tests/objective/` — objective, policy, and math utility tests
+  - `tests/optimization/` — gradient estimator, step rule, and helper tests
+  - `tests/data/` — loader and feature processor tests
+  - `tests/experiments/` — config, runner, and sweep tests
+  - `tests/reporting/` — visualization and logging tests
+  - `tests/integration/` — end-to-end tests
+- Place new tests in the subdirectory matching the module under test.
 
 ### Current Test Coverage
 
+#### `tests/objective/`
 | Test File | Area |
 |---|---|
-| `test_baseline_test.py` | End-to-end smoke test with fixed_regression_base overrides |
-| `test_config.py` | ExperimentConfig validation rules |
-| `test_correctness_spec.py` | CorrectnessSpec gradient source modes |
-| `test_early_stopping.py` | grad_norm_tol early stopping |
-| `test_enabled_estimators.py` | Selective estimator execution |
-| `test_experiment_configs.py` | Config registry (get_config, list_configs) |
-| `test_finite_difference_gradient.py` | Finite-difference gradient accuracy and determinism |
-| `test_file_step_logger.py` | FileStepLogger CSV output |
-| `test_minibatch_stochasticity.py` | Mini-batch determinism and full-batch equivalence |
-| `test_minimize_orders.py` | SciPy first/Gauss-Stein/Stein-difference/SPSA wrappers (decrease + seed determinism) |
-| `test_optimization_class.py` | Class-based optimizer entry point and gradient-object behavior |
+| `test_math.py` | `_sigmoid` stability, symmetry, monotonicity, derivative |
+| `test_utils.py` | `_theta_grad_from_u_grad` chain rule, `optimal_u`, `_action_value_at_u` |
+| `test_objective_models.py` | FixedRegressionObjective value and gradient correctness |
 | `test_objective_batch.py` | Deterministic objective private batch helpers and `value_at_u` |
 | `test_objective_package_exports.py` | objective package API exports remain importable |
-| `test_objective_models.py` | FixedRegressionObjective value and gradient correctness |
 | `test_planted_logistic_objective.py` | Planted logistic gradient at u_star and minimum |
-| `test_plot_u_star.py` | u_star selection for plotting |
-| `test_policy_batch.py` | Policy batch `value/grad` shapes, bounds, and kind labels |
-| `test_run_context.py` | default output directory and run context paths |
-| `test_state_vector.py` | `sample_states` shape and dtype |
-| `test_step_rules.py` | Armijo backtracking on quadratic |
-| `test_theta_contours.py` | Contour grid shapes, axis selection |
-| `test_trace_theta_values.py` | theta_values recorded in first/Gauss-Stein/Stein-difference traces |
-| `test_verbose_config.py` | verbose flag defaults and serialization |
-| `test_visualization_step_sizes.py` | step_sizes plot uses log y-scale |
-| `test_sweep_utils.py` | Override-grid expansion and preset sweep config generation |
-| `test_data_loader.py` | `load_x_array` shape/dtype, model artifact types, U normalization, CSV column sets |
 | `test_model_based_objective.py` | `value()`, `grad()` shape, `value_at_u()`, analytical vs FD grad agreement |
-| `test_csv_objective.py` | `value_at_u`, k-fallback, `grad()` raises NotImplementedError |
-| `test_real_data_config.py` | All 4 real-data presets load; x_fixed shape; correct estimator sets |
+| `test_policy_batch.py` | Policy batch `value/grad` shapes, bounds, and kind labels |
+| `test_policy_u_histograms.py` | Policy u-distribution visualization |
+
+#### `tests/optimization/`
+| Test File | Area |
+|---|---|
+| `test_helpers.py` | `_clamp_theta`, `sample_indices`, `x_batch`, `finite_difference_theta_grad` |
+| `test_gradient_methods_math.py` | Gauss-Stein, SPSA, Stein-Difference convergence; FD u-space vs theta-space; SPSA variance |
+| `test_step_rules.py` | Armijo sufficient decrease, edge cases, input validation |
+| `test_finite_difference_gradient.py` | Finite-difference gradient accuracy and determinism |
+| `test_gradient_resampling.py` | Gradient method resampling behavior |
+| `test_optimization_class.py` | Class-based optimizer entry point and gradient-object behavior |
+| `test_minibatch_stochasticity.py` | Mini-batch determinism and full-batch equivalence |
+| `test_minimize_orders.py` | SciPy first/Gauss-Stein/Stein-difference/SPSA wrappers |
+| `test_early_stopping.py` | grad_norm_tol early stopping |
+| `test_trust_constr_constraint.py` | Trust-region constraint acceptance floor |
+
+#### `tests/data/`
+| Test File | Area |
+|---|---|
+| `test_data_loader.py` | `load_x_array` shape/dtype, model artifact types, U normalization, CSV column sets |
+| `test_feature_processor.py` | Centering, sphering, PCA whitening, inverse transform, categorical encoding |
+
+#### `tests/experiments/`
+| Test File | Area |
+|---|---|
+| `test_config.py` | ExperimentConfig validation rules |
+| `test_config_template.py` | Config template scaffold |
+| `test_correctness_spec.py` | CorrectnessSpec gradient source modes |
+| `test_experiment_configs.py` | Config registry (get_config, list_configs) |
+| `test_real_data_config.py` | All real-data presets load; x_fixed shape; correct estimator sets |
+| `test_enabled_estimators.py` | Selective estimator execution |
+| `test_verbose_config.py` | verbose flag defaults and serialization |
+| `test_baseline_test.py` | End-to-end smoke test with fixed_regression_base overrides |
+| `test_run_context.py` | default output directory and run context paths |
+| `test_sweep_utils.py` | Override-grid expansion and preset sweep config generation |
+
+#### `tests/reporting/`
+| Test File | Area |
+|---|---|
+| `test_logging.py` | Step logging output format |
+| `test_file_step_logger.py` | FileStepLogger CSV output |
+| `test_wandb_reporter.py` | W&B reporter integration |
+| `test_reporting_theta_norms.py` | Theta norm visualization |
+| `test_plot_u_star.py` | u_star selection for plotting |
+| `test_theta_contours.py` | Contour grid shapes, axis selection |
+| `test_trace_theta_values.py` | theta_values recorded in traces |
+| `test_visualization_step_sizes.py` | step_sizes plot uses log y-scale |
+| `test_visualization_styles.py` | Estimator style configuration |
+
+#### `tests/integration/`
+| Test File | Area |
+|---|---|
+| `test_state_vector.py` | `sample_states` shape and dtype |
 
 ## Documentation and Maintenance
 

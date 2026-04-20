@@ -6,7 +6,7 @@ import numpy as np
 
 
 def _sigmoid(z: np.ndarray) -> np.ndarray:
-    """Numerically stable sigmoid for arrays."""
+    """Numerically stable sigmoid: $$\\sigma(z) = 1/(1+e^{-z})$$ for $$z \\ge 0$$, $$e^z/(1+e^z)$$ for $$z < 0$$."""
     z_arr = np.asarray(z, dtype=float)
     out = np.empty_like(z_arr, dtype=float)
     positive = z_arr >= 0.0

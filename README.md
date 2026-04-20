@@ -65,7 +65,9 @@ Optimization step rules:
 ## Documentation
 
 Full API documentation, objective formulas, and configuration reference are
-available in `docs/` (generated via pdoc).
+available in `docs/` (generated via pdoc). `MATH.md` provides a central
+reference for all mathematical formulas implemented in `src/`, organized by
+module layer.
 
 ## Data Sources
 

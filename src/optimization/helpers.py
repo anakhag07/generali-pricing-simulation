@@ -79,7 +79,12 @@ def finite_difference_theta_grad(
     step: float,
     bounds: tuple[float, float] | None = None,
 ) -> np.ndarray:
-    """Compute a theta gradient from scalar objective evaluations."""
+    """Compute a theta gradient from scalar objective evaluations.
+
+    Central: $$(f(\\theta+h e_k) - f(\\theta-h e_k))/(2h)$$.
+    Forward: $$(f(\\theta+h e_k) - f(\\theta))/h$$.
+    Backward: $$(f(\\theta) - f(\\theta-h e_k))/h$$.
+    """
     theta_arr = np.asarray(theta, dtype=float)
     if method not in {"central", "forward", "backward"}:
         raise ValueError(f"Unknown numdiff method '{method}'.")

@@ -1,0 +1,327 @@
+# Math Reference
+
+Central reference for every mathematical formula implemented in the codebase.
+Each entry lists the formula, the implementing source file and function, and
+a brief note where helpful.
+
+---
+
+## 1. Shared Utilities
+
+### 1.1 Numerically Stable Sigmoid
+
+$$\sigma(z) = \begin{cases} \frac{1}{1 + e^{-z}} & z \ge 0 \\ \frac{e^z}{1 + e^z} & z < 0 \end{cases}$$
+
+- **Source:** `src/objective/_math.py` :: `_sigmoid(z)`
+- **Notes:** Two-branch form avoids overflow in `exp()`. Output is always in
+  $(0, 1)$. Derivative: $\sigma'(z) = \sigma(z)(1 - \sigma(z))$.
+
+---
+
+## 2. Policies
+
+All policies map parameters $\theta$ and state $x$ to a scalar action $u$.
+
+### 2.1 Feature Construction
+
+$$\phi(x) = [1,\; x_1,\; \dots,\; x_d]$$
+
+- **Source:** `src/objective/policy.py` :: `_phi(x_batch)`
+- **Notes:** Prepends a bias column to the feature matrix.
+
+### 2.2 Constant Policy
+
+$$u = \theta_0$$
+
+- **Gradient:** $\frac{\partial u}{\partial \theta} = [1, 0, \dots, 0]$
+- **Source:** `src/objective/policy.py` :: `ConstantPolicy.value()`, `ConstantPolicy.grad()`
+
+### 2.3 Linear Policy
+
+$$u = \theta^\top \phi(x)$$
+
+- **Gradient:** $\frac{\partial u}{\partial \theta} = \phi(x)$
+- **Source:** `src/objective/policy.py` :: `LinearPolicy.value()`, `LinearPolicy.grad()`
+
+### 2.4 Softmax (Bounded) Policy
+
+$$u = 0.5 - \sigma(\theta^\top \phi(x)) \;\in\; (-0.5,\; 0.5)$$
+
+- **Gradient:** $\frac{\partial u}{\partial \theta} = -\sigma(z)(1 - \sigma(z))\;\phi(x)$
+  where $z = \theta^\top \phi(x)$
+- **Source:** `src/objective/policy.py` :: `SoftmaxPolicy.value()`, `SoftmaxPolicy.grad()`
+
+### 2.5 Feature-Processed Policy
+
+Wrapper that applies a saved `FeatureProcessor` to raw state $x$ before
+delegating to an inner policy (Constant, Linear, or Softmax).
+
+- **Source:** `src/objective/policy.py` :: `FeatureProcessedPolicy`
+
+---
+
+## 3. Objectives
+
+### 3.1 Fixed Regression Objective
+
+$$f(u;\, x) = a(x, u)\,\bigl(\ell(x) - r(u)\bigr)$$
+
+where:
+- Acceptance: $a(x, u) = \sigma(\beta_1^\top x + \beta_2\, u)$
+- Loss: $\ell(x) = \beta_3^\top x$
+- Revenue: $r(u) = \beta_4\, u$
+
+**Gradient w.r.t. $u$:**
+
+$$\frac{\partial f}{\partial u} = \frac{\partial a}{\partial u}\,(\ell - r) - a\,\beta_4$$
+
+where $\frac{\partial a}{\partial u} = a(1 - a)\,\beta_2$.
+
+- **Source:** `src/objective/objectives/fixed_regression.py` :: `FixedRegressionObjective`
+  - `_value_batch()` — per-sample values
+  - `_grad_u_batch()` — per-sample $\partial f/\partial u$
+
+### 3.2 Planted Logistic Objective
+
+$$L(u;\, x) = \log(1 + e^z) - p^*(x)\, z$$
+
+where:
+- $z = \alpha\, u + \beta^\top x + b$
+- $z^* = \alpha\, u^* + \beta^\top x + b$
+- $p^*(x) = \sigma(z^*)$
+
+**Gradient w.r.t. $u$:**
+
+$$\frac{\partial L}{\partial u} = \alpha\,\bigl(\sigma(z) - p^*(x)\bigr)$$
+
+- **Source:** `src/objective/objectives/planted_logistic.py` :: `PlantedLogisticObjective`
+  - `_value_batch()` — uses `np.logaddexp(0, z)` for numerical stability
+  - `_grad_u_batch()` — zero at $u = u^*$ by construction
+- **Notes:** Convex in $u$. Known optimum $u^*$ is planted at construction.
+
+### 3.3 Model-Based Objective
+
+$$f(u;\, x) = a(x, u)\,\bigl(\hat{Y}(x) - (u + 1)\, p(x)\bigr)$$
+
+where:
+- $a(x, u) = 1 - p_{\text{churn}}(x, u)$ — acceptance from trained classifier
+- $\hat{Y}(x)$ — expected financial loss (LinearRegression or XGBRegressor)
+- $p(x)$ — policy premium extracted from state column `premium_col`
+- $(u + 1)\, p(x)$ — revenue (centered: $u = 0$ is baseline multiplier)
+
+**Gradient w.r.t. $u$:**
+
+$$\frac{\partial f}{\partial u} = \frac{\partial a}{\partial u}\,(\hat{Y} - (u+1)\,p) - a\, p$$
+
+Acceptance derivative:
+- **GLM (analytical):** $\frac{\partial a}{\partial u} = -a(1-a)\;\texttt{u\_coef}$
+  where `u_coef` $= \frac{w_U}{\text{std}_U}$
+- **XGBoost (numerical):** central FD with $\epsilon = 10^{-4}$
+
+**Acceptance penalty** (smooth floor enforcement):
+
+$$\text{penalty} = w \cdot \bigl[\tau\,\log(1 + e^{g/\tau})\bigr]^2$$
+
+where $g = \text{floor} - \bar{a}(\theta)$ and $\tau$ is temperature.
+
+$$\frac{\partial\,\text{penalty}}{\partial\,\bar{a}} = -2w\,\text{softplus}(g/\tau)\,\sigma(g/\tau)$$
+
+- **Source:** `src/objective/objectives/model_based.py` :: `ModelBasedObjective`
+  - `_value_batch()` — per-sample values
+  - `_grad_u_batch()` — per-sample $\partial f/\partial u$
+  - `_d_acceptance_du_batch()` — analytical or FD acceptance derivative
+  - `_acceptance_penalty()` — penalty value and gradient scale
+
+---
+
+## 4. Chain Rule (Theta-Gradient from Action-Gradient)
+
+$$\nabla_\theta J = \mathbb{E}\!\left[\frac{\partial f}{\partial u}\;\frac{\partial u}{\partial \theta}\right] = \frac{1}{n}\sum_{i=1}^n \frac{\partial f}{\partial u_i}\;\nabla_\theta \pi_\theta(x_i)$$
+
+- **Source:** `src/objective/utils.py` :: `_theta_grad_from_u_grad()`
+- **Notes:** Used by all three objectives to compose the action-level gradient
+  with the policy Jacobian.
+
+---
+
+## 5. Gradient Estimators
+
+All estimators produce $\hat{g} \approx \nabla_\theta J(\theta)$. Each has a
+theta-space and a u-space variant. The u-space variant applies the estimator to
+the action-level objective $M(x, u)$ and chain-rules back to theta via
+$\nabla_\theta \pi_\theta(x)$.
+
+### 5.1 First-Order (Exact) Gradient
+
+$$\hat{g} = \nabla_\theta J(\theta) \quad\text{(analytical, from \texttt{objective.grad})}$$
+
+- **Source:** `src/optimization/gradients/methods.py` :: `FirstOrderGradient`
+- **Cost:** 1 objective gradient evaluation.
+
+### 5.2 Finite Difference
+
+**Theta-space (central):**
+
+$$\hat{g}_k = \frac{J(\theta + \sigma e_k) - J(\theta - \sigma e_k)}{2\sigma}$$
+
+- **Cost:** $2d$ objective evaluations ($d = \dim\theta$).
+- **Source:** `src/optimization/helpers.py` :: `finite_difference_theta_grad()` (also supports forward and backward variants)
+
+**U-space:**
+
+$$\hat{g}_{u,i} = \frac{M(x_i, u_i + \sigma) - M(x_i, u_i - \sigma)}{2\sigma}$$
+
+then chain-rule: $\hat{g}_\theta = \frac{1}{n}\sum_i \hat{g}_{u,i}\;\nabla_\theta\pi(x_i)$.
+
+- **Cost:** 2 batch evaluations regardless of $d$.
+- **Source:** `src/optimization/gradients/methods.py` :: `FiniteDifferenceGradient._u_grad()`
+
+### 5.3 Gauss-Stein (Score Function) Estimator
+
+**Theta-space (one-sided):**
+
+$$\hat{g} = \frac{1}{m}\sum_{j=1}^m \frac{J(\theta + \sigma\varepsilon_j)}{\sigma}\;\varepsilon_j, \qquad \varepsilon_j \sim \mathcal{N}(0, I^d)$$
+
+- **Cost:** $m$ = `n_grad_samples` evaluations.
+- **Source:** `src/optimization/gradients/methods.py` :: `GaussSteinGradient._theta_grad()`
+
+**U-space (one-sided):**
+
+Same estimator applied per sample with scalar $w_j \sim \mathcal{N}(0,1)$,
+chain-ruled to theta.
+
+- **Source:** `src/optimization/gradients/methods.py` :: `GaussSteinGradient._u_grad()`
+
+### 5.4 SPSA (Rademacher) Estimator
+
+**Theta-space (two-sided):**
+
+$$\hat{g} = \frac{1}{m}\sum_{j=1}^m \frac{J(\theta + \sigma\Delta_j) - J(\theta - \sigma\Delta_j)}{2\sigma}\;\Delta_j, \qquad \Delta_j \sim \{+1, -1\}^d$$
+
+- **Cost:** $2m$ evaluations.
+- **Source:** `src/optimization/gradients/methods.py` :: `SPSAGradient._theta_grad()`
+
+**U-space (two-sided):**
+
+Same with scalar $\Delta_j \sim \{+1, -1\}$, chain-ruled to theta.
+
+- **Source:** `src/optimization/gradients/methods.py` :: `SPSAGradient._u_grad()`
+
+### 5.5 Stein-Difference Estimator
+
+**Theta-space (two-sided Gaussian):**
+
+$$\hat{g} = \frac{1}{m}\sum_{j=1}^m \frac{J(\theta + \sigma\varepsilon_j) - J(\theta - \sigma\varepsilon_j)}{2\sigma}\;\varepsilon_j, \qquad \varepsilon_j \sim \mathcal{N}(0, I^d)$$
+
+- **Cost:** $2m$ evaluations.
+- **Source:** `src/optimization/gradients/methods.py` :: `SteinDifferenceGradient._theta_grad()`
+
+**U-space (two-sided Gaussian):**
+
+$$\hat{g}_{u,i} = \frac{1}{m}\sum_{j=1}^m \frac{M(x_i, u_i + \sigma w_j) - M(x_i, u_i - \sigma w_j)}{2\sigma}\; w_j, \qquad w_j \sim \mathcal{N}(0,1)$$
+
+chain-ruled to theta via $\nabla_\theta\pi(x_i)$.
+
+- **Source:** `src/optimization/gradients/methods.py` :: `SteinDifferenceGradient._u_grad()`
+
+---
+
+## 6. Step Rules
+
+### 6.1 Constant Step Size
+
+$$\alpha_t = \alpha \quad\text{(identity)}$$
+
+- **Source:** `src/optimization/steps.py` :: `constant_step_size()`
+
+### 6.2 Armijo Backtracking
+
+Find the largest $\alpha = \alpha_0\, \rho^i$ satisfying the sufficient decrease
+condition:
+
+$$J(\theta + \alpha\, d) \;\le\; J(\theta) + c\,\alpha\,\nabla J^\top d$$
+
+where $d = -\nabla J$ (steepest descent), $\rho$ = `shrink` $\in (0, 1)$,
+$c$ = `1e-4`.
+
+- **Source:** `src/optimization/steps.py` :: `armijo_backtracking_step_size()`
+- **Notes:** Falls back to `min_step` if the condition is never met within
+  `max_backtracks` iterations.
+
+---
+
+## 7. Feature Processing
+
+### 7.1 Centering
+
+$$x_{\text{centered}} = x - \mu$$
+
+where $\mu$ is the column-wise mean from `fit()`.
+
+- **Source:** `src/data/feature_processor.py` :: `FeatureProcessor.fit()` / `.transform()`
+
+### 7.2 Sphering (Without PCA)
+
+$$x_{\text{out}} = (x - \mu)\, S, \qquad S = V\,\text{diag}(1/\sqrt{\lambda})\,V^\top$$
+
+where $V, \lambda$ are eigenvectors/eigenvalues of the sample covariance
+(sorted descending). Eigenvalues are floored at `regularization` to avoid
+division by zero.
+
+- **Source:** `src/data/feature_processor.py` :: `FeatureProcessor.fit()` (with `use_pca=False`)
+
+### 7.3 PCA Whitening
+
+$$x_{\text{out}} = (x - \mu)\, V_k\,\text{diag}(1/\sqrt{\lambda_k})$$
+
+where $V_k$ is the top-$k$ eigenvectors, selected by `n_components` or
+`explained_variance_threshold`.
+
+- **Source:** `src/data/feature_processor.py` :: `FeatureProcessor.fit()` (with `use_pca=True`)
+
+### 7.4 PCA Inverse Transform
+
+$$\hat{x}_{\text{raw}} = x_{\text{out}}\, V_k^\top + \mu$$
+
+- **Source:** `src/data/feature_processor.py` :: `FeatureProcessor.inverse_transform_numeric()`
+- **Notes:** Only available when `use_pca=True`.
+
+### 7.5 Categorical Encoding
+
+Each category $c$ in column $j$ is mapped to $\frac{\text{label}(c)}{|\text{categories}_j|}$
+where $\text{label}(c) \in \{0, 1, \dots\}$. Unknown categories receive code
+$|\text{categories}_j|$.
+
+- **Source:** `src/data/feature_processor.py` :: `FeatureProcessor.fit()` / `.transform()`
+
+---
+
+## 8. GLM Coefficient Extraction
+
+### 8.1 Effective U Coefficient
+
+$$\frac{d\,\text{logit}(p_{\text{churn}})}{dU} = \frac{w_U}{\text{std}_U}$$
+
+where $w_U$ is the scaled GLM coefficient for `U` and $\text{std}_U$ comes
+from the pipeline's `StandardScaler`.
+
+- **Source:** `src/data/loader.py` :: `extract_glm_u_coef()`
+
+### 8.2 Unscaled Churn Coefficients
+
+$$\beta_{\text{raw}} = \frac{\beta_{\text{scaled}}}{\text{scale}}, \qquad \beta_{0,\text{raw}} = \beta_{0,\text{scaled}} - \beta_{\text{scaled}}^\top \frac{\mu}{\text{scale}}$$
+
+Maps the pipeline's scaled logistic-regression coefficients back to raw feature
+space.
+
+- **Source:** `src/data/loader.py` :: `extract_glm_churn_coefficients()`
+- **Notes:** Formula: $\text{logit}(p_{\text{churn}}) = \beta_{0,\text{raw}} + \beta_{x,\text{raw}}^\top x + \beta_{u,\text{raw}}\, u$
+
+### 8.3 Linear Loss Coefficients
+
+$$\hat{Y}(x) = \gamma_0 + \gamma_x^\top x$$
+
+Extracts intercept and per-feature coefficients from a fitted
+`LinearRegression`.
+
+- **Source:** `src/data/loader.py` :: `extract_linear_loss_coefficients()`

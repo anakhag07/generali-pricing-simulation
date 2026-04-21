@@ -433,6 +433,7 @@ def _plot_policy_u_vs_objective(
             policy_u,
             objective_values,
             color=style["color"],
+            marker=style["marker"],
             alpha=_SCATTER_ALPHA,
             s=_SCATTER_SIZE,
             linewidths=0.0,

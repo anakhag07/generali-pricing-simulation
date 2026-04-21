@@ -156,6 +156,14 @@ def test_plot_policy_u_vs_objective_draws_points_and_binned_lines(monkeypatch, t
     assert observed_scatter_kwargs["color"] == "#969696"
     assert observed_scatter_kwargs["alpha"] == _SCATTER_ALPHA
 
+    first_order_scatter_kwargs = dummy_ax.scatter_calls[1]["kwargs"]
+    assert first_order_scatter_kwargs["color"] == ESTIMATOR_STYLES["first_order"]["color"]
+    assert first_order_scatter_kwargs["marker"] == ESTIMATOR_STYLES["first_order"]["marker"]
+
+    spsa_scatter_kwargs = dummy_ax.scatter_calls[2]["kwargs"]
+    assert spsa_scatter_kwargs["color"] == ESTIMATOR_STYLES["spsa"]["color"]
+    assert spsa_scatter_kwargs["marker"] == ESTIMATOR_STYLES["spsa"]["marker"]
+
     observed_line_kwargs = dummy_ax.plot_calls[0]["kwargs"]
     assert observed_line_kwargs["label"] == "observed U"
     assert observed_line_kwargs["color"] == "#636363"

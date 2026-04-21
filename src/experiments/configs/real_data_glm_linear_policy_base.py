@@ -53,7 +53,7 @@ RUNTIME = canonical_runtime_block(
     plot=True,
     verbose=True,
     wandb_enabled=True,
-    wandb_project='glm-linear-policy-diff-starts',
+    wandb_project='glm-linear-policy-unconstrained',
 )
 
 CORRECTNESS = CorrectnessSpec(gradient_source="none")

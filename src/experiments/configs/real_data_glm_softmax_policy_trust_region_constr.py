@@ -58,7 +58,7 @@ RUNTIME = canonical_runtime_block(
     plot=True,
     verbose=True,
     wandb_enabled=True,
-    wandb_project='glm-softmax-policy-trust-region-constr'
+    wandb_project='glm-softmax-policy-trust-region-constrained'
 )
 
 CORRECTNESS = CorrectnessSpec(gradient_source="none")

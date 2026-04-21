@@ -21,4 +21,6 @@ def test_list_configs_includes_defaults() -> None:
     assert "first_order_runs_diff_starts" in configs
     assert "fixed_regression_base" in configs
     assert "planted_logistic_base" in configs
+    assert "real_data_glm_softmax_policy_base" in configs
+    assert "real_data_glm_linear_policy_trust_region_constr" in configs
     assert "real_data_xgb_linear_acceptance_floor_base" in configs

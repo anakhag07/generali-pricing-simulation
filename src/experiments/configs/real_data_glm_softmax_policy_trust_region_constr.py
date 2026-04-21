@@ -1,16 +1,8 @@
-"""GLM-backed experiment config using real insurance data (pickle path).
+"""GLM-backed softmax-policy config with a trust-region acceptance floor.
 
-Uses trained GLM artifacts (logistic regression + linear regression) with the
-first 5,000 rows of the real dataset as the fixed state distribution. The
-objective owns the acceptance-side preprocessing from the bundled pickle so raw
-CSV rows stay at the optimization boundary.
-
-GLM enables an analytical first-order gradient (u_coef extracted from the
-logistic regression pipeline). All 5 estimators are enabled for comparison.
-
-Note: SoftmaxPolicy outputs centered u in (-0.5, 0.5), so this preset starts
-from theta = 0 to initialize at the baseline premium multiplier (u = 0 means
-revenue uses 1.0 * premium) with the largest policy slope.
+Uses the same trained GLM artifacts and fixed state batch as
+``real_data_glm_softmax_policy_base`` but enforces the historical observed
+acceptance level directly with SciPy's trust-region constrained solver.
 """
 
 from __future__ import annotations
@@ -51,7 +43,12 @@ TRAINING = canonical_training_block(
     step_size=0.01,
     sigma=0.05,
     n_grad_samples=50,
-    enabled_estimators=("first_order", "finite_difference", "spsa", "stein_difference"),
+    enabled_estimators=(
+        "first_order",
+        "finite_difference",
+        "spsa",
+        "stein_difference",
+    ),
     perturbation_space="u",
     grad_norm_tol=1e-6,
     acceptance_floor=_acceptance_floor,
@@ -61,6 +58,7 @@ RUNTIME = canonical_runtime_block(
     plot=True,
     verbose=True,
     wandb_enabled=True,
+    wandb_project='glm-softmax-policy-trust-region-constr'
 )
 
 CORRECTNESS = CorrectnessSpec(gradient_source="none")

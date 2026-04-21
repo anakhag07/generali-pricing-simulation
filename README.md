@@ -71,14 +71,15 @@ module layer.
 
 ## Data Sources
 
-Four state-distribution modes are available, selected by config preset:
+Several preset configs are available, selected by config preset:
 
 | Preset | State source | Objective |
 |---|---|---|
 | `fixed_regression_base` | Synthetic N(0, I) | `FixedRegressionObjective` |
-| `real_data_glm_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, analytical grad) |
-| `real_data_glm_linear_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, linear-policy diagnostic) |
-| `real_data_glm_linear_acceptance_floor_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, linear policy + trust-constr acceptance floor) |
+| `real_data_glm_softmax_policy_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, softmax policy, analytical grad) |
+| `real_data_glm_softmax_policy_trust_region_constr` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, softmax policy + trust-constr acceptance floor) |
+| `real_data_glm_linear_policy_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, linear-policy diagnostic) |
+| `real_data_glm_linear_policy_trust_region_constr` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, linear policy + trust-constr acceptance floor) |
 | `real_data_xgb_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, FD grad) |
 | `real_data_xgb_linear_acceptance_floor_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, linear policy + penalty acceptance floor) |
 
@@ -96,7 +97,7 @@ acceptance bundle's saved preprocessing internally for both `u(theta, x)` and
 
 - `step_rule="trust-constr"` enforces `mean_acceptance >= acceptance_floor`
   directly inside SciPy as a nonlinear constraint. This is the constrained GLM
-  path used for comparing all five estimators under the same solver.
+  path used by the softmax and linear trust-region presets.
 - penalty-based step rules such as `l-bfgs-b` use
   `acceptance_penalty_weight` and `acceptance_penalty_temperature`, which add a
   differentiable penalty to `ModelBasedObjective`. This remains the XGBoost

@@ -80,6 +80,7 @@ Several preset configs are available, selected by config preset:
 | `real_data_glm_softmax_policy_trust_region_constr` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, softmax policy + trust-constr acceptance floor) |
 | `real_data_glm_linear_policy_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, linear-policy diagnostic) |
 | `real_data_glm_linear_policy_trust_region_constr` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, linear policy + trust-constr acceptance floor) |
+| `real_data_glm_constant_policy_trust_region_constr` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, constant policy + trust-constr acceptance floor) |
 | `real_data_xgb_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, FD grad) |
 | `real_data_xgb_linear_acceptance_floor_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, linear policy + penalty acceptance floor) |
 

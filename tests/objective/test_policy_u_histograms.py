@@ -6,6 +6,9 @@ from experiments.results import OptimizationTrace  # noqa: F401
 from objective import FixedRegressionObjective, LinearPolicy
 from reporting.visualization import (
     ESTIMATOR_STYLES,
+    _LINE_ALPHA,
+    _LINE_WIDTH,
+    _SCATTER_ALPHA,
     _plot_policy_u_histograms,
     _plot_policy_u_vs_objective,
 )
@@ -90,16 +93,21 @@ def test_plot_policy_u_histograms_draws_observed_and_estimator_series(monkeypatc
     observed_kwargs = dummy_ax.hist_calls[0]["kwargs"]
     assert observed_kwargs["label"] == "observed U"
     assert observed_kwargs["density"] is True
+    assert observed_kwargs["alpha"] == _SCATTER_ALPHA
 
     first_order_kwargs = dummy_ax.hist_calls[1]["kwargs"]
     assert first_order_kwargs["label"] == ESTIMATOR_STYLES["first_order"]["label"]
     assert first_order_kwargs["color"] == ESTIMATOR_STYLES["first_order"]["color"]
     assert first_order_kwargs["histtype"] == "step"
+    assert first_order_kwargs["alpha"] == _LINE_ALPHA
+    assert first_order_kwargs["linewidth"] == _LINE_WIDTH
 
     spsa_kwargs = dummy_ax.hist_calls[2]["kwargs"]
     assert spsa_kwargs["label"] == ESTIMATOR_STYLES["spsa"]["label"]
     assert spsa_kwargs["color"] == ESTIMATOR_STYLES["spsa"]["color"]
     assert spsa_kwargs["histtype"] == "step"
+    assert spsa_kwargs["alpha"] == _LINE_ALPHA
+    assert spsa_kwargs["linewidth"] == _LINE_WIDTH
 
 
 def test_plot_policy_u_vs_objective_draws_points_and_binned_lines(monkeypatch, tmp_path) -> None:
@@ -146,16 +154,22 @@ def test_plot_policy_u_vs_objective_draws_points_and_binned_lines(monkeypatch, t
 
     observed_scatter_kwargs = dummy_ax.scatter_calls[0]["kwargs"]
     assert observed_scatter_kwargs["color"] == "#969696"
-    assert observed_scatter_kwargs["alpha"] == 0.3
+    assert observed_scatter_kwargs["alpha"] == _SCATTER_ALPHA
 
     observed_line_kwargs = dummy_ax.plot_calls[0]["kwargs"]
     assert observed_line_kwargs["label"] == "observed U"
     assert observed_line_kwargs["color"] == "#636363"
+    assert observed_line_kwargs["alpha"] == _LINE_ALPHA
+    assert observed_line_kwargs["linewidth"] == _LINE_WIDTH
 
     first_order_line_kwargs = dummy_ax.plot_calls[1]["kwargs"]
     assert first_order_line_kwargs["label"] == ESTIMATOR_STYLES["first_order"]["label"]
     assert first_order_line_kwargs["color"] == ESTIMATOR_STYLES["first_order"]["color"]
+    assert first_order_line_kwargs["alpha"] == _LINE_ALPHA
+    assert first_order_line_kwargs["linewidth"] == _LINE_WIDTH
 
     spsa_line_kwargs = dummy_ax.plot_calls[2]["kwargs"]
     assert spsa_line_kwargs["label"] == ESTIMATOR_STYLES["spsa"]["label"]
     assert spsa_line_kwargs["color"] == ESTIMATOR_STYLES["spsa"]["color"]
+    assert spsa_line_kwargs["alpha"] == _LINE_ALPHA
+    assert spsa_line_kwargs["linewidth"] == _LINE_WIDTH

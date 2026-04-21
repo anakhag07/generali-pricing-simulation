@@ -71,5 +71,5 @@ def test_plot_loss_curves_uses_marker_and_darker_lines(monkeypatch, tmp_path) ->
     alpha = cast(float, kwargs["alpha"])
     linewidth = cast(float, kwargs["linewidth"])
     assert kwargs["marker"] == ESTIMATOR_STYLES["gauss_stein"]["marker"]
-    assert alpha == 0.6
+    assert alpha == 0.5
     assert linewidth >= 1.8

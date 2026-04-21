@@ -29,6 +29,7 @@ def armijo_backtracking_step_size(
     max_backtracks: int = 20,
     min_step: float = 1e-6,
 ) -> float:
+    """Armijo backtracking: find $$\\alpha = \\alpha_0 \\rho^i$$ s.t. $$J(\\theta+\\alpha d) \\le J(\\theta)+c\\alpha\\nabla J^\\top d$$."""
     if initial_step <= 0.0:
         raise ValueError("initial_step must be positive.")
     if max_backtracks < 0:

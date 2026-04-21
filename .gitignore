@@ -11,3 +11,7 @@ runs/
 worktrees/
 outputs/
 wandb/
+
+.agents/
+.claude/
+skills-lock.json

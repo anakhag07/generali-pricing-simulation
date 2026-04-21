@@ -7,9 +7,11 @@ import pytest
 
 
 @pytest.mark.parametrize("name", [
-    "real_data_glm_base",
-    "real_data_glm_linear_acceptance_floor_base",
-    "real_data_glm_linear_base",
+    "real_data_glm_constant_policy_trust_region_constr",
+    "real_data_glm_linear_policy_base",
+    "real_data_glm_linear_policy_trust_region_constr",
+    "real_data_glm_softmax_policy_base",
+    "real_data_glm_softmax_policy_trust_region_constr",
     "real_data_xgb_base",
     "real_data_xgb_linear_acceptance_floor_base",
 ])
@@ -19,18 +21,37 @@ def test_config_loads(name):
     assert cfg is not None
 
 
-def test_glm_base_x_fixed_shape():
+def test_glm_softmax_policy_base_x_fixed_shape():
     from experiments.configs import get_config
-    cfg = get_config("real_data_glm_base")
+
+    cfg = get_config("real_data_glm_softmax_policy_base")
     assert cfg.x_fixed is not None
     assert cfg.x_fixed.shape == (5000, 12)
     assert cfg.state_dim == 12
 
 
-def test_glm_linear_base_x_fixed_shape():
+def test_glm_softmax_policy_trust_region_constr_x_fixed_shape():
     from experiments.configs import get_config
 
-    cfg = get_config("real_data_glm_linear_base")
+    cfg = get_config("real_data_glm_softmax_policy_trust_region_constr")
+    assert cfg.x_fixed is not None
+    assert cfg.x_fixed.shape == (5000, 12)
+    assert cfg.state_dim == 12
+
+
+def test_glm_linear_policy_base_x_fixed_shape():
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_glm_linear_policy_base")
+    assert cfg.x_fixed is not None
+    assert cfg.x_fixed.shape == (5000, 12)
+    assert cfg.state_dim == 12
+
+
+def test_glm_constant_policy_trust_region_constr_x_fixed_shape():
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_glm_constant_policy_trust_region_constr")
     assert cfg.x_fixed is not None
     assert cfg.x_fixed.shape == (5000, 12)
     assert cfg.state_dim == 12
@@ -53,31 +74,62 @@ def test_xgb_linear_acceptance_floor_base_x_fixed_shape():
     assert cfg.state_dim == 10
 
 
-def test_glm_base_has_first_order():
+def test_glm_softmax_policy_base_has_first_order():
     from experiments.configs import get_config
-    cfg = get_config("real_data_glm_base")
+
+    cfg = get_config("real_data_glm_softmax_policy_base")
     assert "first_order" in cfg.enabled_estimators
 
 
-def test_glm_linear_base_has_first_order():
+def test_glm_linear_policy_base_has_first_order():
     from experiments.configs import get_config
 
-    cfg = get_config("real_data_glm_linear_base")
+    cfg = get_config("real_data_glm_linear_policy_base")
     assert "first_order" in cfg.enabled_estimators
 
 
-def test_glm_linear_base_theta0_is_resolved_at_runtime():
+def test_glm_linear_policy_base_theta0_is_resolved_at_runtime():
     from experiments.configs import get_config
 
-    cfg = get_config("real_data_glm_linear_base")
+    cfg = get_config("real_data_glm_linear_policy_base")
     assert cfg.theta0 is None
 
 
-def test_glm_linear_acceptance_floor_base_sets_floor_from_csv_mean():
+def test_glm_softmax_policy_base_is_unconstrained() -> None:
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_glm_softmax_policy_base")
+    assert cfg.step_rule == "l-bfgs-b"
+    assert cfg.acceptance_floor is None
+    assert cfg.enabled_estimators == (
+        "first_order",
+        "finite_difference",
+        "spsa",
+        "stein_difference",
+    )
+
+
+def test_glm_softmax_policy_trust_region_constr_sets_floor_from_csv_mean():
     from data.loader import load_mean_observed_acceptance
     from experiments.configs import get_config
 
-    cfg = get_config("real_data_glm_linear_acceptance_floor_base")
+    cfg = get_config("real_data_glm_softmax_policy_trust_region_constr")
+    assert cfg.acceptance_floor == pytest.approx(load_mean_observed_acceptance("glm"))
+
+
+def test_glm_linear_policy_trust_region_constr_sets_floor_from_csv_mean():
+    from data.loader import load_mean_observed_acceptance
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_glm_linear_policy_trust_region_constr")
+    assert cfg.acceptance_floor == pytest.approx(load_mean_observed_acceptance("glm"))
+
+
+def test_glm_constant_policy_trust_region_constr_sets_floor_from_csv_mean():
+    from data.loader import load_mean_observed_acceptance
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_glm_constant_policy_trust_region_constr")
     assert cfg.acceptance_floor == pytest.approx(load_mean_observed_acceptance("glm"))
 
 
@@ -89,18 +141,52 @@ def test_xgb_linear_acceptance_floor_base_sets_floor_from_csv_mean():
     assert cfg.acceptance_floor == pytest.approx(load_mean_observed_acceptance("xgb"))
 
 
-def test_glm_linear_acceptance_floor_base_uses_trust_constr_with_all_estimators():
+def test_glm_softmax_policy_trust_region_constr_uses_trust_constr_with_selected_estimators():
     from experiments.configs import get_config
 
-    cfg = get_config("real_data_glm_linear_acceptance_floor_base")
+    cfg = get_config("real_data_glm_softmax_policy_trust_region_constr")
     assert cfg.step_rule == "trust-constr"
     assert cfg.enabled_estimators == (
         "first_order",
         "finite_difference",
-        "gauss_stein",
         "spsa",
         "stein_difference",
     )
+
+
+def test_glm_linear_policy_trust_region_constr_uses_trust_constr_with_selected_estimators():
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_glm_linear_policy_trust_region_constr")
+    assert cfg.step_rule == "trust-constr"
+    assert cfg.enabled_estimators == (
+        "first_order",
+        "finite_difference",
+        "spsa",
+        "stein_difference",
+    )
+
+
+def test_glm_constant_policy_trust_region_constr_uses_trust_constr_with_selected_estimators():
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_glm_constant_policy_trust_region_constr")
+    assert cfg.step_rule == "trust-constr"
+    assert cfg.enabled_estimators == (
+        "first_order",
+        "finite_difference",
+        "spsa",
+        "stein_difference",
+    )
+
+
+def test_glm_constant_policy_trust_region_constr_initial_action_is_constant_0_0():
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_glm_constant_policy_trust_region_constr")
+    assert cfg.x_fixed is not None
+    u_batch = cfg.objective.policy_value(cfg.theta0, cfg.x_fixed)
+    assert np.allclose(u_batch, 0.0)
 
 
 def test_xgb_base_no_first_order():
@@ -126,9 +212,11 @@ def test_xgb_linear_acceptance_floor_base_initial_action_is_constant_0_2():
 
 
 @pytest.mark.parametrize("name", [
-    "real_data_glm_base",
-    "real_data_glm_linear_acceptance_floor_base",
-    "real_data_glm_linear_base",
+    "real_data_glm_constant_policy_trust_region_constr",
+    "real_data_glm_linear_policy_base",
+    "real_data_glm_linear_policy_trust_region_constr",
+    "real_data_glm_softmax_policy_base",
+    "real_data_glm_softmax_policy_trust_region_constr",
     "real_data_xgb_base",
     "real_data_xgb_linear_acceptance_floor_base",
 ])
@@ -140,9 +228,11 @@ def test_real_data_configs_disable_correctness_gradients(name):
 
 
 @pytest.mark.parametrize("name", [
-    "real_data_glm_base",
-    "real_data_glm_linear_acceptance_floor_base",
-    "real_data_glm_linear_base",
+    "real_data_glm_constant_policy_trust_region_constr",
+    "real_data_glm_linear_policy_base",
+    "real_data_glm_linear_policy_trust_region_constr",
+    "real_data_glm_softmax_policy_base",
+    "real_data_glm_softmax_policy_trust_region_constr",
     "real_data_xgb_base",
     "real_data_xgb_linear_acceptance_floor_base",
 ])
@@ -158,7 +248,8 @@ def test_x_fixed_validation_wrong_dim():
     """ExperimentConfig raises when x_fixed columns don't match state_dim."""
     from experiments.configs import get_config
     from experiments.config import ExperimentConfig
-    cfg = get_config("real_data_glm_base")
+
+    cfg = get_config("real_data_glm_softmax_policy_base")
 
     with pytest.raises(ValueError, match="x_fixed"):
         ExperimentConfig(
@@ -176,11 +267,11 @@ def test_x_fixed_none_still_works_for_synthetic_config():
     assert cfg.x_fixed is None
 
 
-def test_glm_linear_base_estimators_move_and_agree_on_small_run():
+def test_glm_linear_policy_base_estimators_move_and_agree_on_small_run():
     from experiments.configs import get_config
     from experiments.run import run_experiment
 
-    cfg = get_config("real_data_glm_linear_base")
+    cfg = get_config("real_data_glm_linear_policy_base")
     assert cfg.x_fixed is not None
     small_cfg = replace(cfg, n_samples=250, x_fixed=cfg.x_fixed[:250], t_steps=50)
 
@@ -198,11 +289,11 @@ def test_glm_linear_base_estimators_move_and_agree_on_small_run():
     assert first.u == pytest.approx(spsa.u, rel=5e-4, abs=5e-4)
 
 
-def test_glm_linear_acceptance_floor_base_enforces_constraint_on_small_run():
+def test_glm_linear_policy_trust_region_constr_enforces_constraint_on_small_run():
     from experiments.configs import get_config
     from experiments.run import run_experiment
 
-    cfg = get_config("real_data_glm_linear_acceptance_floor_base")
+    cfg = get_config("real_data_glm_linear_policy_trust_region_constr")
     assert cfg.x_fixed is not None
     small_cfg = replace(cfg, n_samples=100, x_fixed=cfg.x_fixed[:100], t_steps=20)
 
@@ -216,7 +307,7 @@ def test_glm_linear_acceptance_floor_base_enforces_constraint_on_small_run():
     assert fd.mean_acceptance is not None
     assert first.mean_acceptance >= small_cfg.acceptance_floor - 0.03
     assert fd.mean_acceptance >= small_cfg.acceptance_floor - 0.03
-    for name in ("gauss_stein", "spsa", "stein_difference"):
+    for name in ("spsa", "stein_difference"):
         estimator = result.results[name]
         assert estimator.mean_acceptance is not None
         assert estimator.constraint_violation is not None

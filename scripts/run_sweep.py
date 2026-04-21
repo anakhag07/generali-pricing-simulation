@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from experiments.sweep_utils import run_preset_sweep
 
-BASE_PRESET = "real_data_glm_linear_base"
+BASE_PRESET = "real_data_glm_linear_policy_base"
 PROJECT_NAME = "glm-linear-policy-diff-starts"
 DISPLAY_KEYS = ("seed",)
 

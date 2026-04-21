@@ -201,9 +201,11 @@ Guidelines:
   - `first_order_runs_diff_starts.py`: planted-logistic preset configured for comparison runs across different initial starts
   - `fixed_regression_base.py`: base fixed-regression config (4D, L-BFGS-B step rule, W&B enabled)
   - `planted_logistic_base.py`: planted logistic base config (3D, L-BFGS-B step rule, 5000 steps, u*=1.1)
-  - `real_data_glm_base.py`: GLM pickle-based config; state_dim=12; all 5 estimators; analytical first-order gradient via u_coef
-  - `real_data_glm_linear_base.py`: GLM pickle-based diagnostic config; same data/models as `real_data_glm_base` but with `LinearPolicy` and runtime-resolved random initialization to inspect behavior without softmax saturation
-  - `real_data_glm_linear_acceptance_floor_base.py`: constrained GLM diagnostic config with `LinearPolicy` and a trust-constr mean-acceptance floor set to the observed CSV acceptance level; enables all 5 estimators for constrained comparison
+  - `real_data_glm_softmax_policy_base.py`: GLM pickle-based softmax-policy base config; state_dim=12; unconstrained `l-bfgs-b`; first-order, finite-difference, SPSA, and stein-difference estimators; analytical first-order gradient via u_coef
+  - `real_data_glm_softmax_policy_trust_region_constr.py`: constrained GLM softmax-policy config with a trust-constr mean-acceptance floor set to the observed CSV acceptance level; otherwise mirrors the softmax base preset
+  - `real_data_glm_linear_policy_base.py`: GLM pickle-based linear-policy diagnostic config; same data/models as `real_data_glm_softmax_policy_base` but with `LinearPolicy` and runtime-resolved random initialization to inspect behavior without softmax saturation
+  - `real_data_glm_linear_policy_trust_region_constr.py`: constrained GLM linear-policy config with `LinearPolicy` and a trust-constr mean-acceptance floor set to the observed CSV acceptance level; enables first-order, finite-difference, SPSA, and stein-difference for constrained comparison
+  - `real_data_glm_constant_policy_trust_region_constr.py`: constrained GLM constant-policy config with `ConstantPolicy`, a zero-action initialization, and a trust-constr mean-acceptance floor set to the observed CSV acceptance level; enables first-order, finite-difference, SPSA, and stein-difference for constrained comparison
   - `real_data_xgb_base.py`: XGBoost pickle-based config; state_dim=10; 4 estimators (no first_order); FD for d_acceptance/du
   - `real_data_xgb_linear_acceptance_floor_base.py`: constrained XGBoost diagnostic config with `LinearPolicy`, constant `u=0.2` initialization inside XGB `u_bounds`, and a smooth mean-acceptance floor set to the observed CSV acceptance level; uses finite_difference, SPSA, and stein_difference
   - `config_template.py`: copy-first scaffold with `None` placeholders for all `ExperimentConfig` fields plus objective/correctness parameter blocks; not registered as a runnable preset

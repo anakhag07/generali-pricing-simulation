@@ -113,7 +113,7 @@ def test_acceptance_floor_requires_supporting_objective() -> None:
 def test_acceptance_floor_requires_positive_penalty_weight() -> None:
     from experiments.configs import get_config
 
-    cfg = get_config("real_data_glm_linear_base")
+    cfg = get_config("real_data_glm_linear_policy_base")
     with pytest.raises(ValueError, match="acceptance_penalty_weight"):
         ExperimentConfig(
             **{
@@ -170,7 +170,7 @@ def test_trust_constr_requires_mean_acceptance_grad() -> None:
 def test_trust_constr_rejects_penalty_weight() -> None:
     from experiments.configs import get_config
 
-    cfg = get_config("real_data_glm_linear_base")
+    cfg = get_config("real_data_glm_linear_policy_base")
     with pytest.raises(ValueError, match="acceptance_penalty_weight"):
         ExperimentConfig(
             **{
@@ -185,7 +185,7 @@ def test_trust_constr_rejects_penalty_weight() -> None:
 def test_trust_constr_requires_full_batch() -> None:
     from experiments.configs import get_config
 
-    cfg = get_config("real_data_glm_linear_base")
+    cfg = get_config("real_data_glm_linear_policy_base")
     with pytest.raises(ValueError, match="batch_size=None"):
         ExperimentConfig(
             **{
@@ -200,7 +200,7 @@ def test_trust_constr_requires_full_batch() -> None:
 def test_trust_constr_rejects_ftol() -> None:
     from experiments.configs import get_config
 
-    cfg = get_config("real_data_glm_linear_base")
+    cfg = get_config("real_data_glm_linear_policy_base")
     with pytest.raises(ValueError, match="ftol"):
         ExperimentConfig(
             **{
@@ -394,7 +394,7 @@ def test_step_rule_validation() -> None:
 
     from experiments.configs import get_config
 
-    glm_cfg = get_config("real_data_glm_linear_base")
+    glm_cfg = get_config("real_data_glm_linear_policy_base")
     trust_config = ExperimentConfig(
         **{
             **{k: getattr(glm_cfg, k) for k in glm_cfg.__dataclass_fields__},

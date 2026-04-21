@@ -1,7 +1,8 @@
-"""GLM-backed constrained diagnostic config with a mean-acceptance floor.
+"""GLM-backed constant-policy config with a trust-region acceptance floor.
 
-Uses the same trained GLM artifacts and raw state batch as ``real_data_glm_linear_base``
-but enforces the historical observed acceptance level directly with SciPy's
+Uses the same trained GLM artifacts and raw state batch as
+``real_data_glm_softmax_policy_base`` but swaps in ``ConstantPolicy`` and
+enforces the historical observed acceptance level directly with SciPy's
 trust-region constrained solver.
 """
 
@@ -25,16 +26,17 @@ from experiments.config import (
     canonical_training_block,
     make_model_based_objective,
 )
-from objective.policy import LinearPolicy
+from objective.policy import ConstantPolicy
 
 STATE_DIM = len(FEATURE_COLS_GLM)
 
 _acceptance_model, _loss_model = load_model_artifacts("glm")
 _u_coef = extract_glm_u_coef(_acceptance_model)
-_policy = LinearPolicy()
+_policy = ConstantPolicy()
 _acceptance_floor = load_mean_observed_acceptance("glm")
 
-# Start from the centered baseline action so revenue begins at 1.0 * premium.
+# Only theta[0] affects ConstantPolicy, but keeping the full theta shape keeps
+# the real-data presets consistent for reporters and optimizer traces.
 THETA0 = np.array([0.0] + [0.0] * _acceptance_model.policy_feature_dim(), dtype=float)
 
 TRAINING = canonical_training_block(
@@ -47,7 +49,6 @@ TRAINING = canonical_training_block(
     enabled_estimators=(
         "first_order",
         "finite_difference",
-        "gauss_stein",
         "spsa",
         "stein_difference",
     ),
@@ -60,7 +61,7 @@ RUNTIME = canonical_runtime_block(
     plot=True,
     verbose=True,
     wandb_enabled=True,
-    wandb_project='glm-linear-policy-trust-region-constr'
+    wandb_project="glm-constant-policy-trust-region-constrained",
 )
 
 CORRECTNESS = CorrectnessSpec(gradient_source="none")

@@ -84,10 +84,12 @@ def test_plot_loss_curves_draws_constant_u_baselines(monkeypatch, tmp_path) -> N
 
     assert len(dummy_ax.axhline_calls) == 3
     assert {call["label"] for call in dummy_ax.axhline_calls} == {
-        "const u=-0.30",
-        "const u=0.00",
-        "const u=0.20",
+        "const u=0.20 (best)",
+        "const u=0.00 (rank 2)",
+        "const u=-0.30 (rank 3)",
     }
+    colors = [call["color"] for call in dummy_ax.axhline_calls]
+    assert len({tuple(color) for color in colors}) == 3
 
 
 def test_plot_objective_u_slice_draws_constant_u_baseline_markers(monkeypatch, tmp_path) -> None:
@@ -115,4 +117,6 @@ def test_plot_objective_u_slice_draws_constant_u_baseline_markers(monkeypatch, t
 
     assert len(dummy_ax.axvline_calls) == 3
     baseline_labels = [call["label"] for call in dummy_ax.scatter_calls if "label" in call and str(call["label"]).startswith("const u=")]
-    assert baseline_labels == ["const u=-0.30", "const u=0.00", "const u=0.20"]
+    assert baseline_labels == ["const u=0.00 (best)", "const u=0.20 (rank 2)", "const u=-0.30 (rank 3)"]
+    colors = [call["color"] for call in dummy_ax.axvline_calls]
+    assert len({tuple(color) for color in colors}) == 3

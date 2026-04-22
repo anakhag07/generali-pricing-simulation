@@ -407,7 +407,7 @@ class PlotReporter:
                 if name in result.results
             ]
             theta_refs = [config.theta0]
-            theta_points = [(config.theta0, "initial", "#636363", "o")]
+            theta_points = [(config.theta0, "initial", "#636363", "o", None)]
             for name, estimator_result in ordered_results:
                 theta_refs.append(estimator_result.theta)
                 style = ESTIMATOR_STYLES[name]
@@ -417,6 +417,7 @@ class PlotReporter:
                         style["label"],
                         style["color"],
                         style["marker"],
+                        float(style.get("theta_point_size", 16.0)),
                     )
                 )
             plot_theta_objective_contours(

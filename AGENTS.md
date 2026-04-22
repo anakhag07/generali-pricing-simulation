@@ -45,6 +45,9 @@ Before finishing a build session:
 - Do not edit code.
 - Propose implementation approach, file targets, and unit-test structure.
 - Ask whether the proposed test structure is appropriate before implementing tests.
+- For non-trivial changes, ask whether the user wants incremental commits during
+  implementation. If the user approves, make small logical commits as work
+  lands during build mode; otherwise leave changes uncommitted.
 - Call out any expected `README.md` or `AGENTS.md` updates.
 
 ### Build Mode
@@ -56,6 +59,10 @@ Before finishing a build session:
   a few lines, check out a dedicated branch (if not already on one) and commit
   incrementally as logically distinct pieces of work land, rather than
   batching everything into a single end-of-session commit.
+  - Prefer small, readable commits with short commit messages.
+  - Group files into a commit only when they belong to the same logical change;
+    if a change naturally splits by file or small file group, commit that way
+    instead of batching unrelated edits together.
   - If the change is testable by the agent (unit tests, deterministic
     behavior, no manual UI/data inspection required), confirm with the user
     whether to open a PR once tests pass.

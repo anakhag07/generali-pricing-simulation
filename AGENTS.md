@@ -52,6 +52,16 @@ Before finishing a build session:
 - Keep docs in sync with implementation.
 - Run validation commands after changes.
 - Prepare a concise handoff summary suitable for a commit, PR, or later session.
+- **Incremental commits for non-trivial changes.** When a change is larger than
+  a few lines, check out a dedicated branch (if not already on one) and commit
+  incrementally as logically distinct pieces of work land, rather than
+  batching everything into a single end-of-session commit.
+  - If the change is testable by the agent (unit tests, deterministic
+    behavior, no manual UI/data inspection required), confirm with the user
+    whether to open a PR once tests pass.
+  - If the change likely needs manual testing by the user (runtime behavior,
+    plots, real-data artifacts, W&B output), just commit to the branch and
+    let the user drive the PR after their manual verification.
 
 ### Math Changes
 

@@ -73,4 +73,4 @@ def test_plot_step_sizes_uses_log_scale(monkeypatch, tmp_path) -> None:
     kwargs = dummy_ax.plot_calls[0]
     alpha = cast(float, kwargs["alpha"])
     assert kwargs["marker"] == "o"
-    assert alpha == 0.6
+    assert alpha == 0.5

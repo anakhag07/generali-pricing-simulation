@@ -24,10 +24,10 @@ ESTIMATOR_STYLES = {
     "spsa": {"label": "SPSA", "color": "#d62728", "marker": "D"},
 }
 _TRACE_ORDER = ("first_order", "finite_difference", "gauss_stein", "stein_difference", "spsa")
-_LINE_ALPHA = 0.6
+_LINE_ALPHA = 0.5
 _LINE_WIDTH = 1.8
 _MARKER_SIZE = 4.2
-_SCATTER_ALPHA = 0.3
+_SCATTER_ALPHA = 0.25
 _SCATTER_SIZE = 16.0
 
 
@@ -352,7 +352,7 @@ def _plot_policy_u_histograms(
         label="observed U",
         color="#bdbdbd",
         edgecolor="#969696",
-        alpha=0.45,
+        alpha=_SCATTER_ALPHA,
         linewidth=0.8,
     )
     for name in ordered_names:
@@ -364,8 +364,8 @@ def _plot_policy_u_histograms(
             label=style["label"],
             color=style["color"],
             histtype="step",
-            alpha=0.95,
-            linewidth=1.8,
+            alpha=_LINE_ALPHA,
+            linewidth=_LINE_WIDTH,
         )
 
     ax.set_xlabel("u")
@@ -420,8 +420,8 @@ def _plot_policy_u_vs_objective(
             observed_centers,
             observed_means,
             color="#636363",
-            linewidth=2.0,
-            alpha=0.95,
+            linewidth=_LINE_WIDTH,
+            alpha=_LINE_ALPHA,
             label="observed U",
         )
 
@@ -433,6 +433,7 @@ def _plot_policy_u_vs_objective(
             policy_u,
             objective_values,
             color=style["color"],
+            marker=style["marker"],
             alpha=_SCATTER_ALPHA,
             s=_SCATTER_SIZE,
             linewidths=0.0,
@@ -444,8 +445,8 @@ def _plot_policy_u_vs_objective(
             centers,
             means,
             color=style["color"],
-            linewidth=2.0,
-            alpha=0.95,
+            linewidth=_LINE_WIDTH,
+            alpha=_LINE_ALPHA,
             label=style["label"],
         )
 
@@ -518,7 +519,7 @@ def plot_objective_u_slice(
             marker=style["marker"],
             edgecolors=style["color"],
             linewidths=0.4,
-            alpha=0.75,
+            alpha=0.65,
             zorder=zorder,
         )
     ax.set_ylabel("Objective value")
@@ -529,7 +530,7 @@ def plot_objective_u_slice(
             color="#444444",
             linestyle="--",
             linewidth=1.2,
-            alpha=0.8,
+            alpha=0.7,
             label="u*",
         )
     ax.legend()
@@ -647,7 +648,7 @@ def plot_theta_objective_contours(
 
     fig, ax = plt.subplots(1, 1, figsize=(7.5, 6))
     contour = ax.contourf(grid_x, grid_y, objective_grid, levels=levels, cmap="viridis")
-    ax.contour(grid_x, grid_y, objective_grid, levels=levels, colors="black", linewidths=0.4, alpha=0.35)
+    ax.contour(grid_x, grid_y, objective_grid, levels=levels, colors="black", linewidths=0.4, alpha=0.3)
     colorbar = fig.colorbar(contour, ax=ax)
     colorbar.set_label("Objective value")
 
@@ -690,7 +691,7 @@ def plot_theta_objective_contours(
                 marker=marker,
                 edgecolors=color,
                 linewidths=0.5,
-                alpha=0.6,
+                alpha=0.5,
                 zorder=5,
             )
         show_legend = True

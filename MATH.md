@@ -114,7 +114,7 @@ where:
 $$\frac{\partial f}{\partial u} = \frac{\partial a}{\partial u}\,(\hat{Y} - (u+1)\,p) - a\, p$$
 
 Acceptance derivative:
-- **GLM (analytical):** $\frac{\partial a}{\partial u} = -a(1-a)\;\texttt{u\_coef}$
+- **GLM (analytical):** $\frac{\partial a}{\partial u} = -a(1-a)\;\texttt{u}\_coef$
   where `u_coef` $= \frac{w_U}{\text{std}_U}$
 - **XGBoost (numerical):** central FD with $\epsilon = 10^{-4}$
 
@@ -289,12 +289,7 @@ is the batch mean acceptance and $$\alpha_{\min}$$ is `acceptance_floor`.
 The constraint Jacobian is
 
 $$
-\nabla_\theta \bar{a}(\theta)
-=
-\frac{1}{n}\sum_{i=1}^n
-\frac{\partial a(x_i,u_i)}{\partial u}\,\nabla_\theta \pi_\theta(x_i),
-\qquad
-u_i = \pi_\theta(x_i).
+\nabla_\theta \bar{a}(\theta) = \frac{1}{n}\sum_{i=1}^n \frac{\partial a(x_i,u_i)}{\partial u}\,\nabla_\theta \pi_\theta(x_i), \qquad u_i = \pi_\theta(x_i).
 $$
 
 - **Source:** `src/optimization/base.py` :: `Optimization.solve()`

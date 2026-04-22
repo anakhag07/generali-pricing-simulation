@@ -248,11 +248,68 @@ $c$ = `1e-4`.
 - **Notes:** Falls back to `min_step` if the condition is never met within
   `max_backtracks` iterations.
 
+### 6.3 SciPy L-BFGS-B
+
+For unconstrained SciPy runs, the optimizer solves
+
+$$
+\min_{\theta} J(\theta)
+$$
+
+where
+
+$$
+J(\theta) = \frac{1}{n}\sum_{i=1}^n f(\pi_\theta(x_i); x_i).
+$$
+
+- **Source:** `src/optimization/base.py` :: `Optimization.solve()`
+- **Notes:** The repo passes `method="L-BFGS-B"` through `scipy.minimize`. In the
+  current implementation, this path is unconstrained; if an acceptance floor is
+  configured under `l-bfgs-b`, it is enforced only through the separate smooth
+  penalty added inside `ModelBasedObjective.value()`.
+
+### 6.4 SciPy Trust-Constr With Acceptance Constraint
+
+For constrained SciPy runs, the optimizer solves
+
+$$
+\min_{\theta} J(\theta)
+\quad \text{subject to} \quad
+\bar{a}(\theta) \ge \alpha_{\min},
+$$
+
+where
+
+$$
+\bar{a}(\theta) = \frac{1}{n}\sum_{i=1}^n a\bigl(x_i, \pi_\theta(x_i)\bigr)
+$$
+
+is the batch mean acceptance and $$\alpha_{\min}$$ is `acceptance_floor`.
+
+The constraint Jacobian is
+
+$$
+\nabla_\theta \bar{a}(\theta)
+=
+\frac{1}{n}\sum_{i=1}^n
+\frac{\partial a(x_i,u_i)}{\partial u}\,\nabla_\theta \pi_\theta(x_i),
+\qquad
+u_i = \pi_\theta(x_i).
+$$
+
+- **Source:** `src/optimization/base.py` :: `Optimization.solve()`
+  - `trust_constr_constraint()` builds the SciPy `NonlinearConstraint`
+- **Constraint value source:** `src/objective/objectives/model_based.py` :: `mean_acceptance()`
+- **Constraint gradient source:** `src/objective/objectives/model_based.py` :: `mean_acceptance_grad()`
+- **Notes:** The repo passes `method="trust-constr"` through `scipy.minimize`
+  and enforces the acceptance floor directly as a nonlinear inequality
+  constraint, rather than via the smooth penalty path.
+
 ---
 
-## 7. Feature Processing
+## 8. Feature Processing
 
-### 7.1 Centering
+### 8.1 Centering
 
 $$x_{\text{centered}} = x - \mu$$
 
@@ -260,7 +317,7 @@ where $\mu$ is the column-wise mean from `fit()`.
 
 - **Source:** `src/data/feature_processor.py` :: `FeatureProcessor.fit()` / `.transform()`
 
-### 7.2 Sphering (Without PCA)
+### 8.2 Sphering (Without PCA)
 
 $$x_{\text{out}} = (x - \mu)\, S, \qquad S = V\,\text{diag}(1/\sqrt{\lambda})\,V^\top$$
 
@@ -270,7 +327,7 @@ division by zero.
 
 - **Source:** `src/data/feature_processor.py` :: `FeatureProcessor.fit()` (with `use_pca=False`)
 
-### 7.3 PCA Whitening
+### 8.3 PCA Whitening
 
 $$x_{\text{out}} = (x - \mu)\, V_k\,\text{diag}(1/\sqrt{\lambda_k})$$
 
@@ -279,14 +336,14 @@ where $V_k$ is the top-$k$ eigenvectors, selected by `n_components` or
 
 - **Source:** `src/data/feature_processor.py` :: `FeatureProcessor.fit()` (with `use_pca=True`)
 
-### 7.4 PCA Inverse Transform
+### 8.4 PCA Inverse Transform
 
 $$\hat{x}_{\text{raw}} = x_{\text{out}}\, V_k^\top + \mu$$
 
 - **Source:** `src/data/feature_processor.py` :: `FeatureProcessor.inverse_transform_numeric()`
 - **Notes:** Only available when `use_pca=True`.
 
-### 7.5 Categorical Encoding
+### 8.5 Categorical Encoding
 
 Each category $c$ in column $j$ is mapped to $\frac{\text{label}(c)}{|\text{categories}_j|}$
 where $\text{label}(c) \in \{0, 1, \dots\}$. Unknown categories receive code
@@ -296,9 +353,9 @@ $|\text{categories}_j|$.
 
 ---
 
-## 8. GLM Coefficient Extraction
+## 9. GLM Coefficient Extraction
 
-### 8.1 Effective U Coefficient
+### 9.1 Effective U Coefficient
 
 $$\frac{d\,\text{logit}(p_{\text{churn}})}{dU} = \frac{w_U}{\text{std}_U}$$
 
@@ -307,7 +364,7 @@ from the pipeline's `StandardScaler`.
 
 - **Source:** `src/data/loader.py` :: `extract_glm_u_coef()`
 
-### 8.2 Unscaled Churn Coefficients
+### 9.2 Unscaled Churn Coefficients
 
 $$\beta_{\text{raw}} = \frac{\beta_{\text{scaled}}}{\text{scale}}, \qquad \beta_{0,\text{raw}} = \beta_{0,\text{scaled}} - \beta_{\text{scaled}}^\top \frac{\mu}{\text{scale}}$$
 
@@ -317,7 +374,7 @@ space.
 - **Source:** `src/data/loader.py` :: `extract_glm_churn_coefficients()`
 - **Notes:** Formula: $\text{logit}(p_{\text{churn}}) = \beta_{0,\text{raw}} + \beta_{x,\text{raw}}^\top x + \beta_{u,\text{raw}}\, u$
 
-### 8.3 Linear Loss Coefficients
+### 9.3 Linear Loss Coefficients
 
 $$\hat{Y}(x) = \gamma_0 + \gamma_x^\top x$$
 

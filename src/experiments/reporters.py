@@ -524,6 +524,8 @@ def _build_summary_payload(run_context: RunContext, result: ExperimentResult) ->
             estimator_payload["constraint_violation"] = float(estimator_result.constraint_violation)
         if estimator_result.acceptance_multiplier is not None:
             estimator_payload["acceptance_multiplier"] = float(estimator_result.acceptance_multiplier)
+        if estimator_result.constraint_penalty is not None:
+            estimator_payload["constraint_penalty"] = float(estimator_result.constraint_penalty)
         if trace is not None:
             estimator_payload["optimizer_success"] = trace.optimizer_success
             if trace.optimizer_optimality is not None:

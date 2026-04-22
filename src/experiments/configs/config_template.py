@@ -20,6 +20,7 @@ T_STEPS = None  # REQUIRED
 STEP_SIZE = None  # REQUIRED
 GRAD_NORM_TOL = None  # OPTIONAL
 FTOL = None  # OPTIONAL
+INITIAL_CONSTR_PENALTY = None  # OPTIONAL
 SIGMA = None  # REQUIRED
 N_GRAD_SAMPLES = None  # REQUIRED
 VERBOSE = None  # OPTIONAL
@@ -99,6 +100,7 @@ CORRECTNESS_NUMDIFF_BOUNDS = None  # OPTIONAL
 #     batch_size=BATCH_SIZE,
 #     grad_norm_tol=GRAD_NORM_TOL,
 #     ftol=FTOL,
+#     initial_constr_penalty=INITIAL_CONSTR_PENALTY,
 # )
 #
 # RUNTIME = canonical_runtime_block(

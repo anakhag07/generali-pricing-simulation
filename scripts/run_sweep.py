@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from experiments.sweep_utils import run_preset_sweep
 
-BASE_PRESET = "real_data_glm_linear_policy_base"
-PROJECT_NAME = "glm-linear-policy-diff-starts"
+BASE_PRESET = "real_data_glm_softmax_policy_trust_region_constr"
+PROJECT_NAME = "glm-softmax-policy-trust-region-constr-sweep"
 DISPLAY_KEYS = ("seed",)
 
 OVERRIDE_GRID = {
@@ -13,7 +13,7 @@ OVERRIDE_GRID = {
     # "n_grad_samples": [2, 4, 64, 128, 256, 1024, 2048, 1024 * 8],
     # "n_samples": [100], # [100, 500, 1000],
     # "t_steps": [10000],
-    "seed": [8, 16, 24, 32, 64, 128, 256, 512],
+    "seed": [8],
     "plot": [True],
     "wandb_enabled": [True],
     "wandb_project": [PROJECT_NAME],

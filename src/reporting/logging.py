@@ -162,6 +162,13 @@ def log_summary(result: ExperimentResult) -> None:
                 if result.results[name].acceptance_multiplier is not None
             )
             print(f"Acceptance multiplier: {final_multiplier}")
+        if any(result.results[name].constraint_penalty is not None for name in ordered):
+            final_penalty = ", ".join(
+                f"{labels[name]}={float(result.results[name].constraint_penalty):.4f}"
+                for name in ordered
+                if result.results[name].constraint_penalty is not None
+            )
+            print(f"Constraint penalty: {final_penalty}")
         if u_star_value is not None:
             u_gap = ", ".join(
                 f"{labels[name]}={abs(result.results[name].u - u_star_value):.4f}"

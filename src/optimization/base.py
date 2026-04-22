@@ -51,6 +51,7 @@ class Optimization:
         true_grad_theta_fn: TrueThetaGradFn | None = None,
         grad_norm_tol: float | None = None,
         ftol: float | None = None,
+        initial_constr_penalty: float | None = None,
         step_reporter: "StepReporter | None" = None,
         method_label: str | None = None,
         rng: np.random.Generator | None = None,
@@ -75,6 +76,7 @@ class Optimization:
             true_grad_theta_fn: Optional function for computing true theta gradients.
             grad_norm_tol: Early stopping threshold on gradient norm.
             ftol: SciPy function tolerance.
+            initial_constr_penalty: Initial trust-constr penalty parameter.
             step_reporter: Optional reporter for per-step metrics.
             method_label: Label for this optimization method.
             rng: Random number generator.
@@ -94,6 +96,7 @@ class Optimization:
         self.true_grad_theta_fn = true_grad_theta_fn
         self.grad_norm_tol = grad_norm_tol
         self.ftol = ftol
+        self.initial_constr_penalty = initial_constr_penalty
         self.step_reporter = step_reporter
         self.method_label = method_label if method_label is not None else getattr(self.gradient, "name", "opt")
         self.rng = rng if rng is not None else np.random.default_rng(0)
@@ -113,6 +116,8 @@ class Optimization:
             raise ValueError("grad_norm_tol must be positive when provided.")
         if self.ftol is not None and self.ftol <= 0.0:
             raise ValueError("ftol must be positive when provided.")
+        if self.initial_constr_penalty is not None and self.initial_constr_penalty <= 0.0:
+            raise ValueError("initial_constr_penalty must be positive when provided.")
         if self.t_steps <= 0:
             raise ValueError("t_steps must be positive.")
         self._full_indices = np.arange(self.n_total, dtype=int)
@@ -134,6 +139,7 @@ class Optimization:
         )
         constraint_violation: float | None = None
         acceptance_multiplier: float | None = None
+        constraint_penalty: float | None = None
         optimizer_optimality: float | None = None
         optimizer_lagrangian_grad: np.ndarray | None = None
 
@@ -199,6 +205,12 @@ class Optimization:
             if first_dual.size == 0:
                 return None
             return max(0.0, float(-first_dual[0]))
+
+        def extract_constraint_penalty(result: Any) -> float | None:
+            penalty = getattr(result, "constr_penalty", None)
+            if penalty is None:
+                return None
+            return float(penalty)
 
         def record(theta_vec: np.ndarray, step_size: float | None = None) -> None:
             theta_arr = np.asarray(theta_vec, dtype=float)
@@ -302,6 +314,8 @@ class Optimization:
                 options["gtol"] = float(self.grad_norm_tol)
             if self.ftol is not None and self.algorithm != STEP_RULE_TRUST_CONSTR:
                 options["ftol"] = float(self.ftol)
+            if self.algorithm == STEP_RULE_TRUST_CONSTR and self.initial_constr_penalty is not None:
+                options["initial_constr_penalty"] = float(self.initial_constr_penalty)
 
             minimize_kwargs: dict[str, Any] = {
                 "x0": theta0,
@@ -318,12 +332,13 @@ class Optimization:
             result = self._minimize_fn(value_fn, **minimize_kwargs)
 
             theta_final = np.asarray(result.x, dtype=float)
-            optimizer_success = bool(result.success)
-            optimizer_status = int(result.status)
-            optimizer_message = str(result.message)
+            optimizer_status = int(getattr(result, "status", 1))
+            optimizer_success = bool(getattr(result, "success", optimizer_status == 0))
+            optimizer_message = str(getattr(result, "message", ""))
             if self.algorithm == STEP_RULE_TRUST_CONSTR:
                 constraint_violation = final_constraint_violation(theta_final)
                 acceptance_multiplier = extract_acceptance_multiplier(result)
+                constraint_penalty = extract_constraint_penalty(result)
                 optimality = getattr(result, "optimality", None)
                 if optimality is not None:
                     optimizer_optimality = float(optimality)
@@ -352,6 +367,7 @@ class Optimization:
             optimizer_message=optimizer_message,
             constraint_violation=constraint_violation,
             acceptance_multiplier=acceptance_multiplier,
+            constraint_penalty=constraint_penalty,
         )
         return theta_final, trace
 

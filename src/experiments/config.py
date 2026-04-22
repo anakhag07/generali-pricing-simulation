@@ -61,6 +61,7 @@ class ExperimentConfig:
     step_size: float = 0.01
     grad_norm_tol: Optional[float] = None
     ftol: Optional[float] = None
+    initial_constr_penalty: float | None = None
     acceptance_floor: float | None = None
     acceptance_penalty_weight: float | None = None
     acceptance_penalty_temperature: float = 0.01
@@ -171,8 +172,14 @@ class ExperimentConfig:
             raise ValueError("grad_norm_tol must be positive when provided.")
         if self.ftol is not None and self.ftol <= 0.0:
             raise ValueError("ftol must be positive when provided.")
+        if self.initial_constr_penalty is not None and self.initial_constr_penalty <= 0.0:
+            raise ValueError("initial_constr_penalty must be positive when provided.")
         if self.step_rule == STEP_RULE_TRUST_CONSTR and self.ftol is not None:
             raise ValueError("ftol is not supported when step_rule='trust-constr'.")
+        if self.step_rule != STEP_RULE_TRUST_CONSTR and self.initial_constr_penalty is not None:
+            raise ValueError(
+                "initial_constr_penalty is only used by step_rule='trust-constr'."
+            )
         if self.acceptance_floor is not None:
             if not 0.0 < self.acceptance_floor < 1.0:
                 raise ValueError("acceptance_floor must be in (0, 1) when provided.")
@@ -265,6 +272,9 @@ class ExperimentConfig:
             if self.grad_norm_tol is not None
             else None,
             "ftol": float(self.ftol) if self.ftol is not None else None,
+            "initial_constr_penalty": float(self.initial_constr_penalty)
+            if self.initial_constr_penalty is not None
+            else None,
             "acceptance_floor": float(self.acceptance_floor)
             if self.acceptance_floor is not None
             else None,
@@ -456,6 +466,7 @@ def canonical_training_block(
     batch_size: int | None = None,
     grad_norm_tol: float | None = None,
     ftol: float | None = None,
+    initial_constr_penalty: float | None = None,
     acceptance_floor: float | None = None,
     acceptance_penalty_weight: float | None = None,
     acceptance_penalty_temperature: float = 0.01,
@@ -473,6 +484,9 @@ def canonical_training_block(
         "batch_size": int(batch_size) if batch_size is not None else None,
         "grad_norm_tol": float(grad_norm_tol) if grad_norm_tol is not None else None,
         "ftol": float(ftol) if ftol is not None else None,
+        "initial_constr_penalty": float(initial_constr_penalty)
+        if initial_constr_penalty is not None
+        else None,
         "acceptance_floor": float(acceptance_floor) if acceptance_floor is not None else None,
         "acceptance_penalty_weight": float(acceptance_penalty_weight)
         if acceptance_penalty_weight is not None

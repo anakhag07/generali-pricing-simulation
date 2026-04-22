@@ -42,6 +42,7 @@ def _build_result() -> ExperimentResult:
         theta_values=[theta0.copy(), np.asarray([0.3, -0.2], dtype=float)],
         optimizer_status=0,
         optimizer_message="CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
+        constraint_penalty=0.125,
     )
     result = ExperimentResult(
         config=config,
@@ -53,6 +54,7 @@ def _build_result() -> ExperimentResult:
                 u=0.2,
                 value=0.8,
                 time=0.01,
+                constraint_penalty=0.125,
             )
         },
         traces={"first_order": trace},
@@ -144,6 +146,14 @@ def test_summary_payload_contains_theta_norms(tmp_path: Path) -> None:
     assert "CONVERGENCE" in estimator_payload["optimizer_message"]
     assert float(estimator_payload["theta_l2_norm"]) > 0.0
     assert float(estimator_payload["theta_delta_l2_norm"]) > 0.0
+    assert estimator_payload["constraint_penalty"] == 0.125
+
+
+def test_log_summary_prints_constraint_penalty(capsys) -> None:
+    result = _build_result()
+    log_summary(result)
+    captured = capsys.readouterr().out
+    assert "Constraint penalty: first-order=0.1250" in captured
 
 
 def test_log_summary_prints_model_coefficients(capsys) -> None:

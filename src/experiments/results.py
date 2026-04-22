@@ -30,6 +30,7 @@ class OptimizationTrace:
     optimizer_message: Optional[str] = None
     constraint_violation: Optional[float] = None
     acceptance_multiplier: Optional[float] = None
+    constraint_penalty: Optional[float] = None
 
 
 @dataclass(frozen=True)
@@ -43,6 +44,7 @@ class EstimatorResult:
     mean_acceptance: float | None = None
     constraint_violation: float | None = None
     acceptance_multiplier: float | None = None
+    constraint_penalty: float | None = None
 
 
 @dataclass(frozen=True)

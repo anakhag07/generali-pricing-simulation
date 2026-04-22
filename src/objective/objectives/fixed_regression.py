@@ -92,6 +92,16 @@ class FixedRegressionObjective(Objective):
         values = self._value_batch(x_arr, u_arr)
         return float(np.mean(values))
 
+    def mean_acceptance_at_u(self, x_batch: np.ndarray, u: float) -> float:
+        """Compute mean acceptance probability at a fixed action u."""
+        x_arr = np.asarray(x_batch, dtype=float)
+        if x_arr.ndim != 2:
+            raise ValueError("x_batch must be a 2D array.")
+        u_arr = np.full(x_arr.shape[0], float(u), dtype=float)
+        beta_1_x = x_arr @ self.beta_1[: x_arr.shape[1]]
+        logits = beta_1_x + self.beta_2 * u_arr
+        return float(np.mean(_sigmoid(logits)))
+
     def _value_batch(self, x_array: np.ndarray, u_array: np.ndarray) -> np.ndarray:
         """Compute objective values for batch of (x, u) pairs."""
         beta_1_x = x_array @ self.beta_1[: x_array.shape[1]]

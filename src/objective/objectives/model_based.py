@@ -117,6 +117,17 @@ class ModelBasedObjective(Objective):
         u_batch = self._clip_u(self.policy_value(theta_arr, x_arr))
         return float(np.mean(self._acceptance_proba(x_arr, u_batch)))
 
+    def mean_acceptance_at_u(self, x_batch: np.ndarray, u: float) -> float:
+        """Return mean acceptance probability at a fixed action u."""
+        x_arr = np.asarray(x_batch, dtype=float)
+        if x_arr.ndim != 2:
+            raise ValueError("x_batch must be 2D.")
+        u_val = float(u)
+        if self.u_bounds is not None:
+            u_val = float(np.clip(u_val, *self.u_bounds))
+        u_arr = np.full(x_arr.shape[0], u_val, dtype=float)
+        return float(np.mean(self._acceptance_proba(x_arr, u_arr)))
+
     def _step_metrics(self, theta: np.ndarray, x_batch: np.ndarray) -> dict[str, float]:
         """Return per-step mean metrics for reporter logging."""
         x_arr = np.asarray(x_batch, dtype=float)

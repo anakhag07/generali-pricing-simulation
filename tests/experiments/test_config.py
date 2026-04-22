@@ -88,6 +88,51 @@ def test_verbose_default_and_override() -> None:
     assert config_verbose.verbose is True
 
 
+def test_constant_u_baselines_are_serialized() -> None:
+    policy = SoftmaxPolicy()
+    objective = FixedRegressionObjective.from_parameters(
+        policy=policy,
+        beta_1=[0.1],
+        beta_2=-0.5,
+        beta_3=[0.2],
+        beta_4=0.4,
+    )
+    config = ExperimentConfig(
+        state_dim=1,
+        objective=objective,
+        theta0=default_theta0(1),
+        n_samples=5,
+        step_rule="constant",
+        perturbation_space="theta",
+        constant_u_baselines=(-0.3, 0.0, 0.2),
+    )
+
+    assert config.constant_u_baselines == (-0.3, 0.0, 0.2)
+    assert config.to_dict()["constant_u_baselines"] == [-0.3, 0.0, 0.2]
+
+
+def test_constant_u_baselines_reject_duplicates() -> None:
+    policy = SoftmaxPolicy()
+    objective = FixedRegressionObjective.from_parameters(
+        policy=policy,
+        beta_1=[0.1],
+        beta_2=-0.5,
+        beta_3=[0.2],
+        beta_4=0.4,
+    )
+
+    with pytest.raises(ValueError, match="must not contain duplicates"):
+        ExperimentConfig(
+            state_dim=1,
+            objective=objective,
+            theta0=default_theta0(1),
+            n_samples=5,
+            step_rule="constant",
+            perturbation_space="theta",
+            constant_u_baselines=(0.0, 0.0),
+        )
+
+
 def test_acceptance_floor_requires_supporting_objective() -> None:
     policy = SoftmaxPolicy()
     objective = FixedRegressionObjective.from_parameters(

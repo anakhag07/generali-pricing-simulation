@@ -11,6 +11,15 @@ from experiments.config import ExperimentConfig
 
 
 @dataclass(frozen=True)
+class ConstantBaselineResult:
+    """Evaluation of a fixed action $$u$$ on the experiment batch."""
+
+    u: float
+    value: float
+    mean_acceptance: float | None = None
+
+
+@dataclass(frozen=True)
 class OptimizationTrace:
     """Per-step trace: u values, objective values, gradient norms, and theta history."""
 
@@ -59,9 +68,11 @@ class ExperimentResult:
     u_star: Optional[float] = None
     value_at_u_star: Optional[float] = None
     initial_mean_acceptance: Optional[float] = None
+    constant_u_baselines: Sequence[ConstantBaselineResult] = ()
 
 
 __all__ = [
+    "ConstantBaselineResult",
     "EstimatorResult",
     "ExperimentResult",
     "OptimizationTrace",

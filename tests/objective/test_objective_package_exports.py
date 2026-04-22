@@ -6,7 +6,9 @@ from objective import (
     ConstantPolicy,
     PlantedLogisticObjective,
     default_rng,
+    mean_acceptance_at_constant_u,
     sample_states,
+    value_at_constant_u,
 )
 
 
@@ -34,3 +36,5 @@ def test_objective_package_exports_are_importable() -> None:
     # Test value_at_u
     value_at_u = objective.value_at_u(x_batch, u=1.0)
     assert isinstance(value_at_u, float)
+    assert isinstance(value_at_constant_u(objective, x_batch, u=1.0), float)
+    assert mean_acceptance_at_constant_u(objective, x_batch, u=1.0) is None

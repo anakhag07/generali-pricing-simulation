@@ -71,6 +71,7 @@ class ExperimentConfig:
     plot: bool = True
     plot_dir: str = "plots"
     enabled_estimators: tuple[str, ...] = ("first_order", "gauss_stein")
+    constant_u_baselines: tuple[float, ...] = ()
     wandb_enabled: bool = False
     wandb_project: str | None = None
     wandb_entity: str | None = None
@@ -106,6 +107,13 @@ class ExperimentConfig:
             allowed = ", ".join(sorted(allowed_estimators))
             unknown_list = ", ".join(unknown)
             raise ValueError(f"Unknown estimators: {unknown_list}. Allowed: {allowed}.")
+
+        constant_u_baselines = tuple(float(u) for u in self.constant_u_baselines)
+        object.__setattr__(self, "constant_u_baselines", constant_u_baselines)
+        if len(set(constant_u_baselines)) != len(constant_u_baselines):
+            raise ValueError("constant_u_baselines must not contain duplicates.")
+        if not all(np.isfinite(u) for u in constant_u_baselines):
+            raise ValueError("constant_u_baselines must contain only finite values.")
 
         if self.perturbation_space not in {"theta", "u"}:
             raise ValueError("perturbation_space must be 'theta' or 'u'.")
@@ -234,6 +242,12 @@ class ExperimentConfig:
             raise ValueError("objective must implement value(theta, x_batch).")
         if grad_fn is None or not callable(grad_fn):
             raise ValueError("objective must implement grad(theta, x_batch).")
+        if self.constant_u_baselines:
+            value_at_u_fn = getattr(objective, "value_at_u", None)
+            if not callable(value_at_u_fn):
+                raise ValueError(
+                    "constant_u_baselines require an objective with value_at_u(x_batch, u)."
+                )
 
         policy = getattr(objective, "policy", None)
         if policy is not None:
@@ -288,6 +302,7 @@ class ExperimentConfig:
             "plot": bool(self.plot),
             "plot_dir": self.plot_dir,
             "enabled_estimators": list(self.enabled_estimators),
+            "constant_u_baselines": [float(u) for u in self.constant_u_baselines],
             "perturbation_space": self.perturbation_space,
             "theta0": _as_list(self.theta0) if self.theta0 is not None else None,
             "objective": _objective_to_dict(self.objective),
@@ -462,6 +477,7 @@ def canonical_training_block(
     sigma: float,
     n_grad_samples: int,
     enabled_estimators: tuple[str, ...],
+    constant_u_baselines: tuple[float, ...] = (),
     perturbation_space: Literal["theta", "u"],
     batch_size: int | None = None,
     grad_norm_tol: float | None = None,
@@ -480,6 +496,7 @@ def canonical_training_block(
         "sigma": float(sigma),
         "n_grad_samples": int(n_grad_samples),
         "enabled_estimators": tuple(enabled_estimators),
+        "constant_u_baselines": tuple(float(u) for u in constant_u_baselines),
         "perturbation_space": perturbation_space,
         "batch_size": int(batch_size) if batch_size is not None else None,
         "grad_norm_tol": float(grad_norm_tol) if grad_norm_tol is not None else None,

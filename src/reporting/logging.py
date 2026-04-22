@@ -121,6 +121,12 @@ def log_summary(result: ExperimentResult) -> None:
         print(f"Known optimum u*: {u_star_value:.4f}")
         if value_at_u_star_value is not None:
             print(f"Objective at u*: {value_at_u_star_value:.4f}")
+    if result.constant_u_baselines:
+        baseline_text = ", ".join(
+            f"u={baseline.u:.4f}->{baseline.value:.4f}"
+            for baseline in result.constant_u_baselines
+        )
+        print(f"Constant-u baselines: {baseline_text}")
     print("=== Results ===")
 
     order = ("first_order", "finite_difference", "gauss_stein", "stein_difference", "spsa")
@@ -141,6 +147,16 @@ def log_summary(result: ExperimentResult) -> None:
         )
         print(f"Final u: {final_u}")
         print(f"Final objective: {final_value}")
+        if result.constant_u_baselines:
+            best_baseline = min(result.constant_u_baselines, key=lambda baseline: baseline.value)
+            gap_vs_constant = ", ".join(
+                f"{labels[name]}={float(result.results[name].value - best_baseline.value):.4f}"
+                for name in ordered
+            )
+            print(
+                "Objective gap vs best constant-u baseline: "
+                f"u={best_baseline.u:.4f}, {gap_vs_constant}"
+            )
         if any(result.results[name].mean_acceptance is not None for name in ordered):
             final_acceptance = ", ".join(
                 f"{labels[name]}={float(result.results[name].mean_acceptance):.4f}"

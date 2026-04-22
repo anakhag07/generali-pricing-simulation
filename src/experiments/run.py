@@ -10,7 +10,7 @@ from numpy.random import SeedSequence
 
 from objective.base import default_rng, sample_states
 from experiments.defaults import random_theta0
-from objective.utils import _action_value_at_u, _mean_action, optimal_u
+from objective.utils import mean_acceptance_at_constant_u, _mean_action, optimal_u, value_at_constant_u
 from experiments.config import ExperimentConfig
 from experiments.helpers import (
     resolve_true_grad_theta_fn,
@@ -21,7 +21,7 @@ from experiments.helpers import (
     run_stein_difference,
 )
 from experiments.reporters import StepReporter
-from experiments.results import EstimatorResult, ExperimentResult
+from experiments.results import ConstantBaselineResult, EstimatorResult, ExperimentResult
 
 
 def _maybe_apply_acceptance_floor(config: ExperimentConfig) -> ExperimentConfig:
@@ -80,6 +80,15 @@ def run_experiment(
         float(mean_acceptance_fn(theta_initial, x_samples)) if callable(mean_acceptance_fn) else None
     )
 
+    constant_u_baselines = tuple(
+        ConstantBaselineResult(
+            u=float(u),
+            value=value_at_constant_u(objective, x_samples, float(u)),
+            mean_acceptance=mean_acceptance_at_constant_u(objective, x_samples, float(u)),
+        )
+        for u in effective_config.constant_u_baselines
+    )
+
     # Get optimal u if available
     u_star = optimal_u(objective)
 
@@ -87,7 +96,7 @@ def run_experiment(
     value_at_u_star = None
     if u_star is not None:
         try:
-            value_at_u_star = _action_value_at_u(objective, x_samples, u_star)
+            value_at_u_star = value_at_constant_u(objective, x_samples, u_star)
         except ValueError:
             pass
 
@@ -286,4 +295,5 @@ def run_experiment(
         u_star=u_star,
         value_at_u_star=value_at_u_star,
         initial_mean_acceptance=initial_mean_acceptance,
+        constant_u_baselines=constant_u_baselines,
     )

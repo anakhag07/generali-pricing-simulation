@@ -11,7 +11,7 @@ import numpy as np
 
 from objective.base import Objective
 from objective.utils import _policy_value
-from experiments.results import OptimizationTrace
+from experiments.results import ConstantBaselineResult, OptimizationTrace
 
 matplotlib.use("Agg")
 
@@ -51,6 +51,7 @@ def plot_loss_curves(
     traces: Mapping[str, OptimizationTrace],
     plot_dir: str,
     u_star: Optional[float] = None,
+    constant_u_baselines: Sequence[ConstantBaselineResult] = (),
 ) -> None:
     trace_items = _ordered_traces(traces)
     if not trace_items:
@@ -75,6 +76,15 @@ def plot_loss_curves(
             marker=style["marker"],
             markersize=_MARKER_SIZE,
             markevery=_marker_every(len(trace.steps)),
+        )
+    for baseline in constant_u_baselines:
+        ax_loss.axhline(
+            float(baseline.value),
+            color="#4d4d4d",
+            linestyle="--",
+            linewidth=1.1,
+            alpha=0.55,
+            label=f"const u={float(baseline.u):.2f}",
         )
     ax_loss.set_ylabel("Objective value")
     ax_loss.legend()
@@ -465,6 +475,7 @@ def plot_objective_u_slice(
     traces: Mapping[str, OptimizationTrace],
     plot_dir: str,
     u_star: Optional[float] = None,
+    constant_u_baselines: Sequence[ConstantBaselineResult] = (),
 ) -> None:
     """Plot objective value as a function of u.
 
@@ -483,6 +494,8 @@ def plot_objective_u_slice(
         u_values.extend(list(trace.u_values))
     if u_star is not None:
         u_values.append(float(u_star))
+    for baseline in constant_u_baselines:
+        u_values.append(float(baseline.u))
     if u_values:
         u_min = float(min(u_values))
         u_max = float(max(u_values))
@@ -532,6 +545,24 @@ def plot_objective_u_slice(
             linewidth=1.2,
             alpha=0.7,
             label="u*",
+        )
+    for baseline in constant_u_baselines:
+        ax.axvline(
+            float(baseline.u),
+            color="#4d4d4d",
+            linestyle=":",
+            linewidth=1.0,
+            alpha=0.5,
+        )
+        ax.scatter(
+            [float(baseline.u)],
+            [float(baseline.value)],
+            color="#4d4d4d",
+            marker="x",
+            s=48.0,
+            alpha=0.9,
+            label=f"const u={float(baseline.u):.2f}",
+            zorder=5,
         )
     ax.legend()
     ax.grid(True, alpha=0.3)

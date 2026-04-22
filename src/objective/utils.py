@@ -91,7 +91,7 @@ def optimal_u(objective: "Objective") -> float | None:
     return None
 
 
-def _action_value_at_u(
+def value_at_constant_u(
     objective: "Objective",
     x_array: np.ndarray,
     u: float,
@@ -112,4 +112,25 @@ def _action_value_at_u(
     raise ValueError("objective does not support value_at_u(x_array, u).")
 
 
-__all__ = ["optimal_u"]
+def mean_acceptance_at_constant_u(
+    objective: "Objective",
+    x_array: np.ndarray,
+    u: float,
+) -> float | None:
+    """Return mean acceptance at a fixed action when the objective supports it."""
+    mean_acceptance_at_u_fn = getattr(objective, "mean_acceptance_at_u", None)
+    if callable(mean_acceptance_at_u_fn):
+        return float(mean_acceptance_at_u_fn(x_array, u))
+    return None
+
+
+def _action_value_at_u(
+    objective: "Objective",
+    x_array: np.ndarray,
+    u: float,
+) -> float:
+    """Backward-compatible internal alias for fixed-action objective evaluation."""
+    return value_at_constant_u(objective, x_array, u)
+
+
+__all__ = ["mean_acceptance_at_constant_u", "optimal_u", "value_at_constant_u"]

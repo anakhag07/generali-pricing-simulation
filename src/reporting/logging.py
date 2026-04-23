@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import numpy as np
 
 from data.loader import extract_model_based_coefficients
 from objective.objectives import FixedRegressionObjective, ModelBasedObjective, PlantedLogisticObjective
-from experiments.results import ExperimentResult
+
+if TYPE_CHECKING:
+    from experiments.results import ExperimentResult
 
 
 def log_step(

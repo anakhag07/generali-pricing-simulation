@@ -15,7 +15,6 @@ def _make_glm_objective(n_rows=20):
         ACCEPTANCE_STATE_COLS,
         LOSS_FEATURE_COLS,
         extract_glm_u_coef,
-        load_mean_observed_acceptance,
         load_model_artifacts,
         load_x_array,
     )

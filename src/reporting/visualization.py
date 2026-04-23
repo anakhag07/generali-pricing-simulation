@@ -23,7 +23,6 @@ ESTIMATOR_STYLES = {
         "marker": "X",
         "marker_size": 6.2,
         "scatter_size": 28.0,
-        "theta_point_size": 60.0,
     },
     "finite_difference": {"label": "finite-difference", "color": "#8c564b", "marker": "P"},
     "gauss_stein": {"label": "gauss-stein", "color": "#ff7f0e", "marker": "s"},
@@ -50,8 +49,36 @@ def _style_scatter_size(style: Mapping[str, object]) -> float:
     return float(style.get("scatter_size", _SCATTER_SIZE))
 
 
-def _style_theta_point_size(style: Mapping[str, object]) -> float:
-    return float(style.get("theta_point_size", _SCATTER_SIZE))
+def _theta_contour_point_style(label: str) -> dict[str, object]:
+    if label == "initial":
+        return {
+            "marker": "o",
+            "s": 64.0,
+            "facecolors": "white",
+            "edgecolors": "#111111",
+            "linewidths": 1.0,
+            "alpha": 0.95,
+            "zorder": 6,
+        }
+    if label == "first-order final point":
+        return {
+            "marker": "X",
+            "s": 140.0,
+            "color": "black",
+            "edgecolors": "black",
+            "linewidths": 1.2,
+            "alpha": 0.95,
+            "zorder": 7,
+        }
+    return {
+        "marker": "o",
+        "s": _SCATTER_SIZE,
+        "color": "#636363",
+        "edgecolors": "#636363",
+        "linewidths": 0.5,
+        "alpha": 0.5,
+        "zorder": 5,
+    }
 
 
 def _constant_baseline_styles(
@@ -707,7 +734,7 @@ def plot_theta_objective_contours(
     axis_indices: tuple[int, int] = (0, 1),
     axis_labels: Optional[tuple[str, str]] = None,
     theta_refs: Optional[Sequence[np.ndarray]] = None,
-    theta_points: Optional[Sequence[tuple[np.ndarray, str, str, str, float | None]]] = None,
+    theta_points: Optional[Sequence[tuple[np.ndarray, str]]] = None,
     traces: Optional[Mapping[str, OptimizationTrace]] = None,
     grid_size: int = 60,
     levels: int = 15,
@@ -753,27 +780,19 @@ def plot_theta_objective_contours(
                 color=style["color"],
                 alpha=_LINE_ALPHA,
                 linewidth=_LINE_WIDTH,
-                marker=style["marker"],
-                markersize=_style_marker_size(style),
-                markevery=_marker_every(theta_path.shape[0]),
-                label=f"{style['label']} path",
+                label=str(style["label"]),
             )
             show_legend = True
 
     if theta_points is not None:
-        for theta, label, color, marker, size in theta_points:
+        for theta, label in theta_points:
             theta_arr = np.asarray(theta, dtype=float)
+            point_style = _theta_contour_point_style(label)
             ax.scatter(
                 [theta_arr[axis_indices[0]]],
                 [theta_arr[axis_indices[1]]],
                 label=label,
-                color=color,
-                marker=marker,
-                s=_SCATTER_SIZE if size is None else float(size),
-                edgecolors=color,
-                linewidths=0.5,
-                alpha=0.5,
-                zorder=5,
+                **point_style,
             )
         show_legend = True
 

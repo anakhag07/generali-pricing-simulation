@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+import pytest
+
 from experiments.configs import get_config
 from experiments.run import run_experiment
 

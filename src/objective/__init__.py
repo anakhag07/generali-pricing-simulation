@@ -6,7 +6,7 @@ This module provides:
 - Concrete policies: ConstantPolicy, LinearPolicy, SoftmaxPolicy
 - Concrete objectives: FixedRegressionObjective, PlantedLogisticObjective,
   ModelBasedObjective
-- Utility: optimal_u
+ - Utility: optimal_u, value_at_constant_u, mean_acceptance_at_constant_u
 """
 
 from objective.base import (
@@ -27,7 +27,7 @@ from objective.policy import (
     SoftmaxPolicy,
     policy_from_kind,
 )
-from objective.utils import optimal_u
+from objective.utils import mean_acceptance_at_constant_u, optimal_u, value_at_constant_u
 
 __all__ = [
     # Base interfaces
@@ -46,5 +46,7 @@ __all__ = [
     "ModelBasedObjective",
     "PlantedLogisticObjective",
     # Utility
+    "mean_acceptance_at_constant_u",
     "optimal_u",
+    "value_at_constant_u",
 ]

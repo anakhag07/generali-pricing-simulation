@@ -73,3 +73,35 @@ def test_plot_loss_curves_uses_marker_and_darker_lines(monkeypatch, tmp_path) ->
     assert kwargs["marker"] == ESTIMATOR_STYLES["gauss_stein"]["marker"]
     assert alpha == 0.5
     assert linewidth >= 1.8
+
+
+def test_first_order_uses_larger_x_marker(monkeypatch, tmp_path) -> None:
+    dummy_ax = DummyAxis()
+    dummy_fig = DummyFigure()
+
+    monkeypatch.setattr(
+        "reporting.visualization.plt.subplots",
+        lambda *_args, **_kwargs: (dummy_fig, dummy_ax),
+    )
+    monkeypatch.setattr(
+        "reporting.visualization._ensure_plot_dir",
+        lambda _plot_dir: tmp_path,
+    )
+    monkeypatch.setattr(
+        "reporting.visualization.plt.close",
+        lambda *_args, **_kwargs: None,
+    )
+
+    trace = OptimizationTrace(
+        steps=[0, 1, 2, 3],
+        u_values=[0.0, 0.0, 0.0, 0.0],
+        objective_values=[1.0, 0.8, 0.6, 0.5],
+        u_grad_estimates=[0.1, 0.1, 0.1, 0.1],
+    )
+
+    plot_loss_curves({"first_order": trace}, plot_dir="unused")
+
+    kwargs = dummy_ax.plot_calls[0]
+    assert kwargs["marker"] == "X"
+    assert kwargs["markersize"] == ESTIMATOR_STYLES["first_order"]["marker_size"]
+    assert kwargs["markersize"] > ESTIMATOR_STYLES["gauss_stein"].get("marker_size", 4.2)

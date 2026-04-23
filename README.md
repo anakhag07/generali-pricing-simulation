@@ -58,9 +58,15 @@ Core API convention:
 Optimization step rules:
 - `l-bfgs-b` uses `scipy.minimize(method="L-BFGS-B")`.
 - `trust-constr` uses `scipy.minimize(method="trust-constr")` and adds the
-  acceptance-floor equation directly as a nonlinear constraint.
+  acceptance-floor equation directly as a nonlinear constraint. Optional
+  `initial_constr_penalty` is passed through to SciPy when configured.
 - `constant` uses the repo's manual gradient loop with fixed `step_size`.
 - `armijo` uses the same manual loop with Armijo backtracking seeded by `step_size`.
+
+`ExperimentConfig.constant_u_baselines` can be used to evaluate fixed-action
+baselines such as `(-0.3, 0.0, 0.2)` on the same batch used for training and
+show them in `summary.json`, the console summary, `loss_curves.png`, and
+`objective_u_slice.png`.
 
 ## Documentation
 
@@ -116,6 +122,8 @@ new preset. Fill in the `None` placeholders, save it as a new module under
 Each run writes artifacts to `outputs/<experiment_name>/<timestamp>/`:
 
 - `summary.json` -- full result payload
+  including final trust-constr diagnostics such as `constraint_penalty`
+  and any configured constant-`u` baseline evaluations
 - `steps.csv` -- per-step metrics for every estimator
 - `plots/` -- loss curves, gradient norms, objective slices, contour plots, and real-data diagnostics for observed-vs-policy `u` histograms plus `u` vs `M(x, u)` trend plots
 

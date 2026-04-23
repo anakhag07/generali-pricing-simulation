@@ -42,9 +42,11 @@ def test_trust_constr_passes_nonlinear_constraint_to_minimize() -> None:
         callback(np.asarray([0.6], dtype=float), None)
         return SimpleNamespace(
             x=np.asarray([0.6], dtype=float),
+            success=True,
             status=0,
             message="ok",
             v=[np.asarray([-0.4], dtype=float)],
+            constr_penalty=0.125,
         )
 
     optimizer = Optimization(
@@ -55,6 +57,7 @@ def test_trust_constr_passes_nonlinear_constraint_to_minimize() -> None:
         t_steps=5,
         n_grad_samples=1,
         sigma=1e-3,
+        initial_constr_penalty=3.5,
         minimize_fn=fake_minimize,
     )
 
@@ -65,8 +68,10 @@ def test_trust_constr_passes_nonlinear_constraint_to_minimize() -> None:
     assert isinstance(constraints, list)
     assert len(constraints) == 1
     assert isinstance(constraints[0], NonlinearConstraint)
+    assert seen["options"]["initial_constr_penalty"] == 3.5
     assert trace.constraint_violation == 0.0
     assert trace.acceptance_multiplier == 0.4
+    assert trace.constraint_penalty == 0.125
 
 
 def test_trust_constr_first_order_enforces_acceptance_floor() -> None:

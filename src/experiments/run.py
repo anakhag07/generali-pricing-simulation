@@ -10,7 +10,7 @@ from numpy.random import SeedSequence
 
 from objective.base import default_rng, sample_states
 from experiments.defaults import random_theta0
-from objective.utils import _action_value_at_u, _mean_action, optimal_u
+from objective.utils import mean_acceptance_at_constant_u, _mean_action, optimal_u, value_at_constant_u
 from experiments.config import ExperimentConfig
 from experiments.helpers import (
     resolve_true_grad_theta_fn,
@@ -21,7 +21,7 @@ from experiments.helpers import (
     run_stein_difference,
 )
 from experiments.reporters import StepReporter
-from experiments.results import EstimatorResult, ExperimentResult
+from experiments.results import ConstantBaselineResult, EstimatorResult, ExperimentResult
 
 
 def _maybe_apply_acceptance_floor(config: ExperimentConfig) -> ExperimentConfig:
@@ -80,6 +80,15 @@ def run_experiment(
         float(mean_acceptance_fn(theta_initial, x_samples)) if callable(mean_acceptance_fn) else None
     )
 
+    constant_u_baselines = tuple(
+        ConstantBaselineResult(
+            u=float(u),
+            value=value_at_constant_u(objective, x_samples, float(u)),
+            mean_acceptance=mean_acceptance_at_constant_u(objective, x_samples, float(u)),
+        )
+        for u in effective_config.constant_u_baselines
+    )
+
     # Get optimal u if available
     u_star = optimal_u(objective)
 
@@ -87,7 +96,7 @@ def run_experiment(
     value_at_u_star = None
     if u_star is not None:
         try:
-            value_at_u_star = _action_value_at_u(objective, x_samples, u_star)
+            value_at_u_star = value_at_constant_u(objective, x_samples, u_star)
         except ValueError:
             pass
 
@@ -114,6 +123,7 @@ def run_experiment(
             true_grad_theta_fn=true_grad_theta_fn,
             grad_norm_tol=effective_config.grad_norm_tol,
             ftol=effective_config.ftol,
+            initial_constr_penalty=effective_config.initial_constr_penalty,
             step_reporter=step_reporter,
         )
         time_first = time.perf_counter() - start_first
@@ -128,6 +138,7 @@ def run_experiment(
             mean_acceptance=acceptance_first,
             constraint_violation=trace_first.constraint_violation,
             acceptance_multiplier=trace_first.acceptance_multiplier,
+            constraint_penalty=trace_first.constraint_penalty,
         )
         traces["first_order"] = trace_first
 
@@ -148,6 +159,7 @@ def run_experiment(
             true_grad_theta_fn=true_grad_theta_fn,
             grad_norm_tol=effective_config.grad_norm_tol,
             ftol=effective_config.ftol,
+            initial_constr_penalty=effective_config.initial_constr_penalty,
             step_reporter=step_reporter,
         )
         time_fd = time.perf_counter() - start_fd
@@ -162,6 +174,7 @@ def run_experiment(
             mean_acceptance=acceptance_fd,
             constraint_violation=trace_fd.constraint_violation,
             acceptance_multiplier=trace_fd.acceptance_multiplier,
+            constraint_penalty=trace_fd.constraint_penalty,
         )
         traces["finite_difference"] = trace_fd
 
@@ -182,6 +195,7 @@ def run_experiment(
             true_grad_theta_fn=true_grad_theta_fn,
             grad_norm_tol=effective_config.grad_norm_tol,
             ftol=effective_config.ftol,
+            initial_constr_penalty=effective_config.initial_constr_penalty,
             step_reporter=step_reporter,
         )
         time_zero = time.perf_counter() - start_zero
@@ -196,6 +210,7 @@ def run_experiment(
             mean_acceptance=acceptance_zero,
             constraint_violation=trace_zero.constraint_violation,
             acceptance_multiplier=trace_zero.acceptance_multiplier,
+            constraint_penalty=trace_zero.constraint_penalty,
         )
         traces["gauss_stein"] = trace_zero
 
@@ -216,6 +231,7 @@ def run_experiment(
             true_grad_theta_fn=true_grad_theta_fn,
             grad_norm_tol=effective_config.grad_norm_tol,
             ftol=effective_config.ftol,
+            initial_constr_penalty=effective_config.initial_constr_penalty,
             step_reporter=step_reporter,
         )
         time_spsa = time.perf_counter() - start_spsa
@@ -230,6 +246,7 @@ def run_experiment(
             mean_acceptance=acceptance_spsa,
             constraint_violation=trace_spsa.constraint_violation,
             acceptance_multiplier=trace_spsa.acceptance_multiplier,
+            constraint_penalty=trace_spsa.constraint_penalty,
         )
         traces["spsa"] = trace_spsa
 
@@ -250,6 +267,7 @@ def run_experiment(
             true_grad_theta_fn=true_grad_theta_fn,
             grad_norm_tol=effective_config.grad_norm_tol,
             ftol=effective_config.ftol,
+            initial_constr_penalty=effective_config.initial_constr_penalty,
             step_reporter=step_reporter,
         )
         time_stein = time.perf_counter() - start_stein
@@ -264,6 +282,7 @@ def run_experiment(
             mean_acceptance=acceptance_stein,
             constraint_violation=trace_stein.constraint_violation,
             acceptance_multiplier=trace_stein.acceptance_multiplier,
+            constraint_penalty=trace_stein.constraint_penalty,
         )
         traces["stein_difference"] = trace_stein
 
@@ -276,4 +295,5 @@ def run_experiment(
         u_star=u_star,
         value_at_u_star=value_at_u_star,
         initial_mean_acceptance=initial_mean_acceptance,
+        constant_u_baselines=constant_u_baselines,
     )

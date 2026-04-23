@@ -149,7 +149,7 @@ $$\nabla_\theta J = \mathbb{E}\!\left[\frac{\partial f}{\partial u}\;\frac{\part
 All estimators produce $\hat{g} \approx \nabla_\theta J(\theta)$. Each has a
 theta-space and a u-space variant. The u-space variant applies the estimator to
 the action-level objective $M(x, u)$ and chain-rules back to theta via
-$\nabla_\theta \pi_\theta(x)$.
+$\nabla_\ theta \pi_\theta(x)$.
 
 ### 5.1 First-Order (Exact) Gradient
 

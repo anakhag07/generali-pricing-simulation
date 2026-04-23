@@ -9,7 +9,9 @@ from objective.objectives.planted_logistic import PlantedLogisticObjective
 from objective.utils import (
     _theta_grad_from_u_grad,
     _action_value_at_u,
+    mean_acceptance_at_constant_u,
     optimal_u,
+    value_at_constant_u,
 )
 
 
@@ -116,3 +118,29 @@ def test_action_value_at_u_delegates():
     result = _action_value_at_u(obj, x_batch, u)
     expected = obj.value_at_u(x_batch, u)
     assert result == pytest.approx(expected)
+
+
+@pytest.mark.parametrize("u", [-0.3, 0.0, 0.2])
+def test_value_at_constant_u_matches_objective_value_at_u(u: float) -> None:
+    rng = np.random.default_rng(11)
+    policy = ConstantPolicy()
+    obj = _make_fixed_regression(policy)
+    x_batch = rng.normal(size=(40, 3))
+
+    assert value_at_constant_u(obj, x_batch, u) == pytest.approx(obj.value_at_u(x_batch, u))
+
+
+@pytest.mark.parametrize("u", [-0.3, 0.0, 0.2])
+def test_mean_acceptance_at_constant_u_matches_fixed_regression_formula(u: float) -> None:
+    x_batch = np.array([[0.1, -0.2, 0.3], [0.0, 0.5, -0.4]], dtype=float)
+    obj = FixedRegressionObjective.from_parameters(
+        policy=ConstantPolicy(),
+        beta_1=np.array([0.2, 0.1, 0.3], dtype=float),
+        beta_2=-0.7,
+        beta_3=np.ones(3, dtype=float),
+        beta_4=0.4,
+    )
+    logits = x_batch @ obj.beta_1 + obj.beta_2 * u
+    expected = 1.0 / (1.0 + np.exp(-logits))
+
+    assert mean_acceptance_at_constant_u(obj, x_batch, u) == pytest.approx(float(np.mean(expected)))

@@ -349,13 +349,14 @@ class PlotReporter:
         run_context.plots_dir.mkdir(parents=True, exist_ok=True)
         plot_dir = str(run_context.plots_dir)
         objective = config.objective
-        action_objective = getattr(objective, "action_objective", None)
+        action_objective = objective
         traces = result.traces
         u_star_plot = _u_star_for_plot(action_objective, result.u_star)
         plot_loss_curves(
             traces,
             plot_dir,
             u_star=u_star_plot,
+            constant_u_baselines=result.constant_u_baselines,
         )
         plot_gradient_norms(traces, plot_dir)
         observed_u = _observed_u_reference(result)
@@ -377,14 +378,14 @@ class PlotReporter:
                 theta_by_estimator,
                 plot_dir,
             )
-        if action_objective is not None:
-            plot_objective_u_slice(
-                result.x_samples,
-                action_objective,
-                traces,
-                plot_dir,
-                u_star=u_star_plot,
-            )
+        plot_objective_u_slice(
+            result.x_samples,
+            action_objective,
+            traces,
+            plot_dir,
+            u_star=u_star_plot,
+            constant_u_baselines=result.constant_u_baselines,
+        )
         if any(trace.step_sizes is not None for trace in traces.values()):
             plot_step_sizes(traces, plot_dir)
         if config.theta0.size >= 2:
@@ -406,7 +407,7 @@ class PlotReporter:
                 if name in result.results
             ]
             theta_refs = [config.theta0]
-            theta_points = [(config.theta0, "initial", "#636363", "o")]
+            theta_points = [(config.theta0, "initial", "#636363", "o", None)]
             for name, estimator_result in ordered_results:
                 theta_refs.append(estimator_result.theta)
                 style = ESTIMATOR_STYLES[name]
@@ -416,6 +417,7 @@ class PlotReporter:
                         style["label"],
                         style["color"],
                         style["marker"],
+                        float(style.get("theta_point_size", 16.0)),
                     )
                 )
             plot_theta_objective_contours(
@@ -524,6 +526,8 @@ def _build_summary_payload(run_context: RunContext, result: ExperimentResult) ->
             estimator_payload["constraint_violation"] = float(estimator_result.constraint_violation)
         if estimator_result.acceptance_multiplier is not None:
             estimator_payload["acceptance_multiplier"] = float(estimator_result.acceptance_multiplier)
+        if estimator_result.constraint_penalty is not None:
+            estimator_payload["constraint_penalty"] = float(estimator_result.constraint_penalty)
         if trace is not None:
             estimator_payload["optimizer_success"] = trace.optimizer_success
             if trace.optimizer_optimality is not None:
@@ -566,6 +570,26 @@ def _build_summary_payload(run_context: RunContext, result: ExperimentResult) ->
         "estimators": estimators,
         "trace_summary": trace_summary,
     }
+    if result.constant_u_baselines:
+        constant_baselines_payload = [
+            {
+                "u": float(baseline.u),
+                "value": float(baseline.value),
+                "mean_acceptance": float(baseline.mean_acceptance)
+                if baseline.mean_acceptance is not None
+                else None,
+            }
+            for baseline in result.constant_u_baselines
+        ]
+        payload["constant_u_baselines"] = constant_baselines_payload
+        best_baseline = min(result.constant_u_baselines, key=lambda baseline: baseline.value)
+        payload["best_constant_u_baseline"] = {
+            "u": float(best_baseline.u),
+            "value": float(best_baseline.value),
+            "mean_acceptance": float(best_baseline.mean_acceptance)
+            if best_baseline.mean_acceptance is not None
+            else None,
+        }
     coeffs = extract_model_based_coefficients(
         result.config.objective.acceptance_model,
         result.config.objective.loss_model,

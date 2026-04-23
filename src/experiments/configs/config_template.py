@@ -20,6 +20,8 @@ T_STEPS = None  # REQUIRED
 STEP_SIZE = None  # REQUIRED
 GRAD_NORM_TOL = None  # OPTIONAL
 FTOL = None  # OPTIONAL
+INITIAL_CONSTR_PENALTY = None  # OPTIONAL
+CONSTANT_U_BASELINES = None  # OPTIONAL
 SIGMA = None  # REQUIRED
 N_GRAD_SAMPLES = None  # REQUIRED
 VERBOSE = None  # OPTIONAL
@@ -96,9 +98,11 @@ CORRECTNESS_NUMDIFF_BOUNDS = None  # OPTIONAL
 #     sigma=SIGMA,
 #     n_grad_samples=N_GRAD_SAMPLES,
 #     enabled_estimators=ENABLED_ESTIMATORS,
+#     constant_u_baselines=CONSTANT_U_BASELINES,
 #     batch_size=BATCH_SIZE,
 #     grad_norm_tol=GRAD_NORM_TOL,
 #     ftol=FTOL,
+#     initial_constr_penalty=INITIAL_CONSTR_PENALTY,
 # )
 #
 # RUNTIME = canonical_runtime_block(

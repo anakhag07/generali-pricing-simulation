@@ -52,6 +52,8 @@ TRAINING = canonical_training_block(
     perturbation_space="u",
     grad_norm_tol=1e-6,
     acceptance_floor=_acceptance_floor,
+    initial_constr_penalty=1.0,
+    constant_u_baselines=[-0.5, -0.3, -0.2, -0.15, -0.1, -0.05, 0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.5],
 )
 
 RUNTIME = canonical_runtime_block(

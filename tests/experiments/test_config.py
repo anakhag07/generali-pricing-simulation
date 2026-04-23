@@ -88,6 +88,51 @@ def test_verbose_default_and_override() -> None:
     assert config_verbose.verbose is True
 
 
+def test_constant_u_baselines_are_serialized() -> None:
+    policy = SoftmaxPolicy()
+    objective = FixedRegressionObjective.from_parameters(
+        policy=policy,
+        beta_1=[0.1],
+        beta_2=-0.5,
+        beta_3=[0.2],
+        beta_4=0.4,
+    )
+    config = ExperimentConfig(
+        state_dim=1,
+        objective=objective,
+        theta0=default_theta0(1),
+        n_samples=5,
+        step_rule="constant",
+        perturbation_space="theta",
+        constant_u_baselines=(-0.3, 0.0, 0.2),
+    )
+
+    assert config.constant_u_baselines == (-0.3, 0.0, 0.2)
+    assert config.to_dict()["constant_u_baselines"] == [-0.3, 0.0, 0.2]
+
+
+def test_constant_u_baselines_reject_duplicates() -> None:
+    policy = SoftmaxPolicy()
+    objective = FixedRegressionObjective.from_parameters(
+        policy=policy,
+        beta_1=[0.1],
+        beta_2=-0.5,
+        beta_3=[0.2],
+        beta_4=0.4,
+    )
+
+    with pytest.raises(ValueError, match="must not contain duplicates"):
+        ExperimentConfig(
+            state_dim=1,
+            objective=objective,
+            theta0=default_theta0(1),
+            n_samples=5,
+            step_rule="constant",
+            perturbation_space="theta",
+            constant_u_baselines=(0.0, 0.0),
+        )
+
+
 def test_acceptance_floor_requires_supporting_objective() -> None:
     policy = SoftmaxPolicy()
     objective = FixedRegressionObjective.from_parameters(
@@ -209,6 +254,60 @@ def test_trust_constr_rejects_ftol() -> None:
                 "acceptance_floor": 0.5,
                 "ftol": 1e-8,
             }
+        )
+
+
+def test_trust_constr_accepts_initial_constr_penalty() -> None:
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_glm_linear_policy_base")
+    trust_config = ExperimentConfig(
+        **{
+            **{k: getattr(cfg, k) for k in cfg.__dataclass_fields__},
+            "step_rule": "trust-constr",
+            "acceptance_floor": 0.5,
+            "initial_constr_penalty": 2.5,
+        }
+    )
+
+    assert trust_config.initial_constr_penalty == 2.5
+    assert trust_config.to_dict()["initial_constr_penalty"] == 2.5
+
+
+def test_initial_constr_penalty_must_be_positive() -> None:
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_glm_linear_policy_base")
+    with pytest.raises(ValueError, match="initial_constr_penalty must be positive"):
+        ExperimentConfig(
+            **{
+                **{k: getattr(cfg, k) for k in cfg.__dataclass_fields__},
+                "step_rule": "trust-constr",
+                "acceptance_floor": 0.5,
+                "initial_constr_penalty": 0.0,
+            }
+        )
+
+
+def test_initial_constr_penalty_rejected_outside_trust_constr() -> None:
+    policy = SoftmaxPolicy()
+    objective = FixedRegressionObjective.from_parameters(
+        policy=policy,
+        beta_1=[0.1],
+        beta_2=-0.5,
+        beta_3=[0.2],
+        beta_4=0.4,
+    )
+
+    with pytest.raises(ValueError, match="only used by step_rule='trust-constr'"):
+        ExperimentConfig(
+            state_dim=1,
+            objective=objective,
+            theta0=default_theta0(1),
+            n_samples=5,
+            step_rule="constant",
+            perturbation_space="theta",
+            initial_constr_penalty=1.0,
         )
 
 

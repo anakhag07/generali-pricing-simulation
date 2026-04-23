@@ -8,7 +8,7 @@ import numpy as np
 from experiments.config import ExperimentConfig
 from experiments.defaults import default_theta0
 from experiments.reporters import RunContext, _build_summary_payload
-from experiments.results import EstimatorResult, ExperimentResult, OptimizationTrace
+from experiments.results import ConstantBaselineResult, EstimatorResult, ExperimentResult, OptimizationTrace
 from objective import FixedRegressionObjective, LinearPolicy, ModelBasedObjective, SoftmaxPolicy
 from reporting.logging import log_summary
 
@@ -42,6 +42,7 @@ def _build_result() -> ExperimentResult:
         theta_values=[theta0.copy(), np.asarray([0.3, -0.2], dtype=float)],
         optimizer_status=0,
         optimizer_message="CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH",
+        constraint_penalty=0.125,
     )
     result = ExperimentResult(
         config=config,
@@ -53,9 +54,15 @@ def _build_result() -> ExperimentResult:
                 u=0.2,
                 value=0.8,
                 time=0.01,
+                constraint_penalty=0.125,
             )
         },
         traces={"first_order": trace},
+        constant_u_baselines=(
+            ConstantBaselineResult(u=-0.3, value=1.3),
+            ConstantBaselineResult(u=0.0, value=1.0),
+            ConstantBaselineResult(u=0.2, value=0.9),
+        ),
     )
     return result
 
@@ -144,6 +151,18 @@ def test_summary_payload_contains_theta_norms(tmp_path: Path) -> None:
     assert "CONVERGENCE" in estimator_payload["optimizer_message"]
     assert float(estimator_payload["theta_l2_norm"]) > 0.0
     assert float(estimator_payload["theta_delta_l2_norm"]) > 0.0
+    assert estimator_payload["constraint_penalty"] == 0.125
+    assert payload["constant_u_baselines"][0]["u"] == -0.3
+    assert payload["best_constant_u_baseline"]["u"] == 0.2
+
+
+def test_log_summary_prints_constraint_penalty(capsys) -> None:
+    result = _build_result()
+    log_summary(result)
+    captured = capsys.readouterr().out
+    assert "Constraint penalty: first-order=0.1250" in captured
+    assert "Constant-u baselines: u=-0.3000->1.3000, u=0.0000->1.0000, u=0.2000->0.9000" in captured
+    assert "Objective gap vs best constant-u baseline: u=0.2000, first-order=-0.1000" in captured
 
 
 def test_log_summary_prints_model_coefficients(capsys) -> None:

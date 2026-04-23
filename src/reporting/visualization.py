@@ -11,13 +11,20 @@ import numpy as np
 
 from objective.base import Objective
 from objective.utils import _policy_value
-from experiments.results import OptimizationTrace
+from experiments.results import ConstantBaselineResult, OptimizationTrace
 
 matplotlib.use("Agg")
 
 
 ESTIMATOR_STYLES = {
-    "first_order": {"label": "first-order", "color": "#1f77b4", "marker": "o"},
+    "first_order": {
+        "label": "first-order",
+        "color": "#1f77b4",
+        "marker": "X",
+        "marker_size": 6.2,
+        "scatter_size": 28.0,
+        "theta_point_size": 60.0,
+    },
     "finite_difference": {"label": "finite-difference", "color": "#8c564b", "marker": "P"},
     "gauss_stein": {"label": "gauss-stein", "color": "#ff7f0e", "marker": "s"},
     "stein_difference": {"label": "stein-difference", "color": "#2ca02c", "marker": "^"},
@@ -33,6 +40,47 @@ _SCATTER_SIZE = 16.0
 
 def _marker_every(num_points: int) -> int:
     return max(1, num_points // 15)
+
+
+def _style_marker_size(style: Mapping[str, object]) -> float:
+    return float(style.get("marker_size", _MARKER_SIZE))
+
+
+def _style_scatter_size(style: Mapping[str, object]) -> float:
+    return float(style.get("scatter_size", _SCATTER_SIZE))
+
+
+def _style_theta_point_size(style: Mapping[str, object]) -> float:
+    return float(style.get("theta_point_size", _SCATTER_SIZE))
+
+
+def _constant_baseline_styles(
+    baselines: Sequence[ConstantBaselineResult],
+) -> list[tuple[ConstantBaselineResult, dict[str, object]]]:
+    if not baselines:
+        return []
+    ordered = sorted(baselines, key=lambda baseline: (float(baseline.value), float(baseline.u)))
+    cmap = matplotlib.colormaps["cividis"]
+    if len(ordered) == 1:
+        levels = np.asarray([0.85], dtype=float)
+    else:
+        levels = np.linspace(0.85, 0.25, num=len(ordered), dtype=float)
+    styled: list[tuple[ConstantBaselineResult, dict[str, object]]] = []
+    for rank, (baseline, level) in enumerate(zip(ordered, levels, strict=True), start=1):
+        color = cmap(float(level))
+        rank_label = "best" if rank == 1 else f"rank {rank}"
+        styled.append(
+            (
+                baseline,
+                {
+                    "color": color,
+                    "linewidth": 1.35 if rank == 1 else 1.1,
+                    "alpha": 0.8 if rank == 1 else 0.6,
+                    "label": f"const u={float(baseline.u):.2f} ({rank_label})",
+                },
+            )
+        )
+    return styled
 
 
 def _ordered_traces(
@@ -51,6 +99,7 @@ def plot_loss_curves(
     traces: Mapping[str, OptimizationTrace],
     plot_dir: str,
     u_star: Optional[float] = None,
+    constant_u_baselines: Sequence[ConstantBaselineResult] = (),
 ) -> None:
     trace_items = _ordered_traces(traces)
     if not trace_items:
@@ -73,8 +122,17 @@ def plot_loss_curves(
             alpha=_LINE_ALPHA,
             linewidth=_LINE_WIDTH,
             marker=style["marker"],
-            markersize=_MARKER_SIZE,
+            markersize=_style_marker_size(style),
             markevery=_marker_every(len(trace.steps)),
+        )
+    for baseline, baseline_style in _constant_baseline_styles(constant_u_baselines):
+        ax_loss.axhline(
+            float(baseline.value),
+            color=baseline_style["color"],
+            linestyle="--",
+            linewidth=float(baseline_style["linewidth"]),
+            alpha=float(baseline_style["alpha"]),
+            label=str(baseline_style["label"]),
         )
     ax_loss.set_ylabel("Objective value")
     ax_loss.legend()
@@ -92,7 +150,7 @@ def plot_loss_curves(
                 alpha=_LINE_ALPHA,
                 linewidth=_LINE_WIDTH,
                 marker=style["marker"],
-                markersize=_MARKER_SIZE,
+                markersize=_style_marker_size(style),
                 markevery=_marker_every(len(trace.steps)),
             )
         ax_dist.set_ylabel("|u - u*|")
@@ -140,7 +198,7 @@ def plot_gradient_norms(
             alpha=_LINE_ALPHA,
             linewidth=_LINE_WIDTH,
             marker=style["marker"],
-            markersize=_MARKER_SIZE,
+            markersize=_style_marker_size(style),
             markevery=_marker_every(len(trace.steps)),
         )
     if has_true:
@@ -167,7 +225,7 @@ def plot_gradient_norms(
                 alpha=_LINE_ALPHA,
                 linewidth=_LINE_WIDTH,
                 marker=style["marker"],
-                markersize=_MARKER_SIZE,
+                markersize=_style_marker_size(style),
                 markevery=_marker_every(len(trace.steps)),
             )
         ax_err.set_ylabel("|norm error|")
@@ -207,7 +265,7 @@ def plot_step_sizes(
             alpha=_LINE_ALPHA,
             linewidth=_LINE_WIDTH,
             marker=style["marker"],
-            markersize=_MARKER_SIZE,
+            markersize=_style_marker_size(style),
             markevery=_marker_every(len(trace.steps)),
         )
         has_series = True
@@ -435,7 +493,7 @@ def _plot_policy_u_vs_objective(
             color=style["color"],
             marker=style["marker"],
             alpha=_SCATTER_ALPHA,
-            s=_SCATTER_SIZE,
+            s=_style_scatter_size(style),
             linewidths=0.0,
         )
         centers, means = _binned_mean_line(policy_u, objective_values, bins)
@@ -465,6 +523,7 @@ def plot_objective_u_slice(
     traces: Mapping[str, OptimizationTrace],
     plot_dir: str,
     u_star: Optional[float] = None,
+    constant_u_baselines: Sequence[ConstantBaselineResult] = (),
 ) -> None:
     """Plot objective value as a function of u.
 
@@ -483,6 +542,8 @@ def plot_objective_u_slice(
         u_values.extend(list(trace.u_values))
     if u_star is not None:
         u_values.append(float(u_star))
+    for baseline in constant_u_baselines:
+        u_values.append(float(baseline.u))
     if u_values:
         u_min = float(min(u_values))
         u_max = float(max(u_values))
@@ -521,6 +582,7 @@ def plot_objective_u_slice(
             linewidths=0.4,
             alpha=0.65,
             zorder=zorder,
+            s=_style_scatter_size(style),
         )
     ax.set_ylabel("Objective value")
     ax.set_xlabel("u")
@@ -532,6 +594,24 @@ def plot_objective_u_slice(
             linewidth=1.2,
             alpha=0.7,
             label="u*",
+        )
+    for baseline, baseline_style in _constant_baseline_styles(constant_u_baselines):
+        ax.axvline(
+            float(baseline.u),
+            color=baseline_style["color"],
+            linestyle=":",
+            linewidth=1.0,
+            alpha=float(baseline_style["alpha"]),
+        )
+        ax.scatter(
+            [float(baseline.u)],
+            [float(baseline.value)],
+            color=baseline_style["color"],
+            marker="x",
+            s=48.0,
+            alpha=float(baseline_style["alpha"]),
+            label=str(baseline_style["label"]),
+            zorder=5,
         )
     ax.legend()
     ax.grid(True, alpha=0.3)
@@ -627,7 +707,7 @@ def plot_theta_objective_contours(
     axis_indices: tuple[int, int] = (0, 1),
     axis_labels: Optional[tuple[str, str]] = None,
     theta_refs: Optional[Sequence[np.ndarray]] = None,
-    theta_points: Optional[Sequence[tuple[np.ndarray, str, str, str]]] = None,
+    theta_points: Optional[Sequence[tuple[np.ndarray, str, str, str, float | None]]] = None,
     traces: Optional[Mapping[str, OptimizationTrace]] = None,
     grid_size: int = 60,
     levels: int = 15,
@@ -674,14 +754,14 @@ def plot_theta_objective_contours(
                 alpha=_LINE_ALPHA,
                 linewidth=_LINE_WIDTH,
                 marker=style["marker"],
-                markersize=_MARKER_SIZE,
+                markersize=_style_marker_size(style),
                 markevery=_marker_every(theta_path.shape[0]),
                 label=f"{style['label']} path",
             )
             show_legend = True
 
     if theta_points is not None:
-        for theta, label, color, marker in theta_points:
+        for theta, label, color, marker, size in theta_points:
             theta_arr = np.asarray(theta, dtype=float)
             ax.scatter(
                 [theta_arr[axis_indices[0]]],
@@ -689,6 +769,7 @@ def plot_theta_objective_contours(
                 label=label,
                 color=color,
                 marker=marker,
+                s=_SCATTER_SIZE if size is None else float(size),
                 edgecolors=color,
                 linewidths=0.5,
                 alpha=0.5,

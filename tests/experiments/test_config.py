@@ -169,6 +169,85 @@ def test_acceptance_floor_requires_positive_penalty_weight() -> None:
         )
 
 
+def test_lagrangian_lambda_requires_acceptance_floor() -> None:
+    policy = SoftmaxPolicy()
+    objective = FixedRegressionObjective.from_parameters(
+        policy=policy,
+        beta_1=[0.1],
+        beta_2=-0.5,
+        beta_3=[0.2],
+        beta_4=0.4,
+    )
+    with pytest.raises(ValueError, match="lagrangian_lambda requires acceptance_floor"):
+        ExperimentConfig(
+            state_dim=1,
+            objective=objective,
+            theta0=default_theta0(1),
+            n_samples=5,
+            step_rule="constant",
+            perturbation_space="theta",
+            lagrangian_lambda=0.0,
+        )
+
+
+def test_lagrangian_lambda_requires_mean_acceptance_grad() -> None:
+    class ObjectiveWithAcceptanceNoGrad:
+        def value(self, theta, x_batch):
+            del theta, x_batch
+            return 0.0
+
+        def grad(self, theta, x_batch):
+            del theta, x_batch
+            return np.zeros(2, dtype=float)
+
+        def mean_acceptance(self, theta, x_batch):
+            del theta, x_batch
+            return 0.5
+
+    objective = ObjectiveWithAcceptanceNoGrad()
+    with pytest.raises(ValueError, match="lagrangian_lambda requires an objective with mean_acceptance_grad"):
+        ExperimentConfig(
+            state_dim=1,
+            objective=objective,
+            theta0=default_theta0(1),
+            n_samples=5,
+            step_rule="constant",
+            perturbation_space="theta",
+            acceptance_floor=0.5,
+            lagrangian_lambda=2.0,
+        )
+
+
+def test_lagrangian_lambda_rejects_penalty_weight() -> None:
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_glm_linear_policy_base")
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        ExperimentConfig(
+            **{
+                **{k: getattr(cfg, k) for k in cfg.__dataclass_fields__},
+                "acceptance_floor": 0.5,
+                "acceptance_penalty_weight": 10.0,
+                "lagrangian_lambda": 2.0,
+            }
+        )
+
+
+def test_lagrangian_lambda_rejected_for_trust_constr() -> None:
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_glm_linear_policy_base")
+    with pytest.raises(ValueError, match="only supported for unconstrained step rules"):
+        ExperimentConfig(
+            **{
+                **{k: getattr(cfg, k) for k in cfg.__dataclass_fields__},
+                "step_rule": "trust-constr",
+                "acceptance_floor": 0.5,
+                "lagrangian_lambda": 2.0,
+            }
+        )
+
+
 def test_trust_constr_requires_acceptance_floor() -> None:
     policy = SoftmaxPolicy()
     objective = FixedRegressionObjective.from_parameters(

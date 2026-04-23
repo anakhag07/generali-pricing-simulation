@@ -106,10 +106,25 @@ def value_at_constant_u(
     Returns:
         Mean objective value across the batch at the fixed action.
     """
+    base_value_at_u_fn = getattr(objective, "base_value_at_u", None)
+    if callable(base_value_at_u_fn):
+        return float(base_value_at_u_fn(x_array, u))
     value_at_u_fn = getattr(objective, "value_at_u", None)
     if callable(value_at_u_fn):
         return float(value_at_u_fn(x_array, u))
     raise ValueError("objective does not support value_at_u(x_array, u).")
+
+
+def value_for_reporting(
+    objective: "Objective",
+    theta: np.ndarray,
+    x_array: np.ndarray,
+) -> float:
+    """Return the raw objective value used in summaries and frontier plots."""
+    base_value_fn = getattr(objective, "base_value", None)
+    if callable(base_value_fn):
+        return float(base_value_fn(theta, x_array))
+    return float(objective.value(theta, x_array))
 
 
 def mean_acceptance_at_constant_u(
@@ -133,4 +148,4 @@ def _action_value_at_u(
     return value_at_constant_u(objective, x_array, u)
 
 
-__all__ = ["mean_acceptance_at_constant_u", "optimal_u", "value_at_constant_u"]
+__all__ = ["mean_acceptance_at_constant_u", "optimal_u", "value_at_constant_u", "value_for_reporting"]

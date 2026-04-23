@@ -104,6 +104,12 @@ def log_summary(result: ExperimentResult) -> None:
                 "Acceptance constraint: "
                 f"mean_acceptance >= {float(config.acceptance_floor):.4f} via trust-constr"
             )
+        elif config.lagrangian_lambda is not None:
+            print(
+                "Acceptance floor: "
+                f"mean_acceptance >= {float(config.acceptance_floor):.4f} "
+                f"via lagrangian lambda={float(config.lagrangian_lambda):.4f}"
+            )
         else:
             print(
                 "Acceptance floor: "

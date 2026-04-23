@@ -10,7 +10,13 @@ from numpy.random import SeedSequence
 
 from objective.base import default_rng, sample_states
 from experiments.defaults import random_theta0
-from objective.utils import mean_acceptance_at_constant_u, _mean_action, optimal_u, value_at_constant_u
+from objective.utils import (
+    mean_acceptance_at_constant_u,
+    _mean_action,
+    optimal_u,
+    value_at_constant_u,
+    value_for_reporting,
+)
 from experiments.config import ExperimentConfig
 from experiments.helpers import (
     resolve_true_grad_theta_fn,
@@ -24,9 +30,9 @@ from experiments.reporters import StepReporter
 from experiments.results import ConstantBaselineResult, EstimatorResult, ExperimentResult
 
 
-def _maybe_apply_acceptance_floor(config: ExperimentConfig) -> ExperimentConfig:
-    """Inject a config-level acceptance floor into model-based objectives."""
-    if config.acceptance_floor is None:
+def _maybe_apply_acceptance_controls(config: ExperimentConfig) -> ExperimentConfig:
+    """Inject config-level acceptance controls into model-based objectives."""
+    if config.acceptance_floor is None and config.lagrangian_lambda is None:
         return config
     objective = config.objective
     if not hasattr(objective, "acceptance_floor"):
@@ -40,6 +46,11 @@ def _maybe_apply_acceptance_floor(config: ExperimentConfig) -> ExperimentConfig:
             else None
         ),
         acceptance_penalty_temperature=float(config.acceptance_penalty_temperature),
+        lagrangian_lambda=(
+            float(config.lagrangian_lambda)
+            if config.lagrangian_lambda is not None
+            else None
+        ),
     )
     return replace(config, objective=objective_with_floor)
 
@@ -49,7 +60,7 @@ def run_experiment(
     step_reporter: StepReporter | None = None,
 ) -> ExperimentResult:
     """Run optimization with all enabled estimators; returns traces and final values."""
-    effective_config = _maybe_apply_acceptance_floor(config)
+    effective_config = _maybe_apply_acceptance_controls(config)
     objective = effective_config.objective
     enabled_estimators = tuple(effective_config.enabled_estimators)
 
@@ -74,7 +85,7 @@ def run_experiment(
     else:
         x_samples = sample_states(rng, effective_config.n_samples, effective_config.state_dim)
     true_grad_theta_fn = resolve_true_grad_theta_fn(objective, effective_config.correctness)
-    initial_value = float(objective.value(theta_initial, x_samples))
+    initial_value = value_for_reporting(objective, theta_initial, x_samples)
     mean_acceptance_fn = getattr(objective, "mean_acceptance", None)
     initial_mean_acceptance = (
         float(mean_acceptance_fn(theta_initial, x_samples)) if callable(mean_acceptance_fn) else None
@@ -128,7 +139,7 @@ def run_experiment(
         )
         time_first = time.perf_counter() - start_first
         u_first = _mean_action(objective, theta_first, x_samples) if policy is not None else float("nan")
-        value_first = float(objective.value(theta_first, x_samples))
+        value_first = value_for_reporting(objective, theta_first, x_samples)
         acceptance_first = float(mean_acceptance_fn(theta_first, x_samples)) if callable(mean_acceptance_fn) else None
         results["first_order"] = EstimatorResult(
             theta=theta_first,
@@ -164,7 +175,7 @@ def run_experiment(
         )
         time_fd = time.perf_counter() - start_fd
         u_fd = _mean_action(objective, theta_fd, x_samples) if policy is not None else float("nan")
-        value_fd = float(objective.value(theta_fd, x_samples))
+        value_fd = value_for_reporting(objective, theta_fd, x_samples)
         acceptance_fd = float(mean_acceptance_fn(theta_fd, x_samples)) if callable(mean_acceptance_fn) else None
         results["finite_difference"] = EstimatorResult(
             theta=theta_fd,
@@ -200,7 +211,7 @@ def run_experiment(
         )
         time_zero = time.perf_counter() - start_zero
         u_zero = _mean_action(objective, theta_zero, x_samples) if policy is not None else float("nan")
-        value_zero = float(objective.value(theta_zero, x_samples))
+        value_zero = value_for_reporting(objective, theta_zero, x_samples)
         acceptance_zero = float(mean_acceptance_fn(theta_zero, x_samples)) if callable(mean_acceptance_fn) else None
         results["gauss_stein"] = EstimatorResult(
             theta=theta_zero,
@@ -236,7 +247,7 @@ def run_experiment(
         )
         time_spsa = time.perf_counter() - start_spsa
         u_spsa = _mean_action(objective, theta_spsa, x_samples) if policy is not None else float("nan")
-        value_spsa = float(objective.value(theta_spsa, x_samples))
+        value_spsa = value_for_reporting(objective, theta_spsa, x_samples)
         acceptance_spsa = float(mean_acceptance_fn(theta_spsa, x_samples)) if callable(mean_acceptance_fn) else None
         results["spsa"] = EstimatorResult(
             theta=theta_spsa,
@@ -272,7 +283,7 @@ def run_experiment(
         )
         time_stein = time.perf_counter() - start_stein
         u_stein = _mean_action(objective, theta_stein, x_samples) if policy is not None else float("nan")
-        value_stein = float(objective.value(theta_stein, x_samples))
+        value_stein = value_for_reporting(objective, theta_stein, x_samples)
         acceptance_stein = float(mean_acceptance_fn(theta_stein, x_samples)) if callable(mean_acceptance_fn) else None
         results["stein_difference"] = EstimatorResult(
             theta=theta_stein,

@@ -65,6 +65,7 @@ class ExperimentConfig:
     acceptance_floor: float | None = None
     acceptance_penalty_weight: float | None = None
     acceptance_penalty_temperature: float = 0.01
+    lagrangian_lambda: float | None = None
     sigma: float = 0.1
     n_grad_samples: int = 64
     verbose: bool = False
@@ -182,6 +183,8 @@ class ExperimentConfig:
             raise ValueError("ftol must be positive when provided.")
         if self.initial_constr_penalty is not None and self.initial_constr_penalty <= 0.0:
             raise ValueError("initial_constr_penalty must be positive when provided.")
+        if self.lagrangian_lambda is not None and self.lagrangian_lambda < 0.0:
+            raise ValueError("lagrangian_lambda must be nonnegative when provided.")
         if self.step_rule == STEP_RULE_TRUST_CONSTR and self.ftol is not None:
             raise ValueError("ftol is not supported when step_rule='trust-constr'.")
         if self.step_rule != STEP_RULE_TRUST_CONSTR and self.initial_constr_penalty is not None:
@@ -207,6 +210,11 @@ class ExperimentConfig:
                     raise ValueError(
                         "step_rule='trust-constr' requires batch_size=None so the constraint is full-batch."
                     )
+                if self.lagrangian_lambda is not None:
+                    raise ValueError(
+                        "lagrangian_lambda is only supported for unconstrained step rules and must be omitted "
+                        "when step_rule='trust-constr'."
+                    )
                 if self.acceptance_penalty_weight is not None:
                     raise ValueError(
                         "acceptance_penalty_weight is only used by the penalty path and must be omitted "
@@ -218,11 +226,27 @@ class ExperimentConfig:
                         "at the default when step_rule='trust-constr'."
                     )
             else:
-                if self.acceptance_penalty_weight is None or self.acceptance_penalty_weight <= 0.0:
+                if self.acceptance_penalty_weight is not None and self.lagrangian_lambda is not None:
+                    raise ValueError(
+                        "acceptance_penalty_weight and lagrangian_lambda are mutually exclusive; choose one "
+                        "acceptance-floor path."
+                    )
+                if self.lagrangian_lambda is not None:
+                    mean_acceptance_grad_fn = getattr(self.objective, "mean_acceptance_grad", None)
+                    if not callable(mean_acceptance_grad_fn):
+                        raise ValueError(
+                            "lagrangian_lambda requires an objective with mean_acceptance_grad(theta, x_batch)."
+                        )
+                    if self.acceptance_penalty_temperature != 0.01:
+                        raise ValueError(
+                            "acceptance_penalty_temperature is only used by the penalty path and must stay "
+                            "at the default when lagrangian_lambda is provided."
+                        )
+                elif self.acceptance_penalty_weight is None or self.acceptance_penalty_weight <= 0.0:
                     raise ValueError(
                         "acceptance_penalty_weight must be positive when acceptance_floor is provided."
                     )
-                if self.acceptance_penalty_temperature <= 0.0:
+                if self.acceptance_penalty_weight is not None and self.acceptance_penalty_temperature <= 0.0:
                     raise ValueError(
                         "acceptance_penalty_temperature must be positive when acceptance_floor is provided."
                     )
@@ -230,6 +254,8 @@ class ExperimentConfig:
             raise ValueError(
                 "acceptance_penalty_weight requires acceptance_floor to be provided."
             )
+        elif self.lagrangian_lambda is not None:
+            raise ValueError("lagrangian_lambda requires acceptance_floor to be provided.")
         elif self.step_rule == STEP_RULE_TRUST_CONSTR:
             raise ValueError("step_rule='trust-constr' requires acceptance_floor to be provided.")
         if self.n_grad_samples <= 0:
@@ -296,6 +322,9 @@ class ExperimentConfig:
             if self.acceptance_penalty_weight is not None
             else None,
             "acceptance_penalty_temperature": float(self.acceptance_penalty_temperature),
+            "lagrangian_lambda": float(self.lagrangian_lambda)
+            if self.lagrangian_lambda is not None
+            else None,
             "sigma": float(self.sigma),
             "n_grad_samples": int(self.n_grad_samples),
             "verbose": bool(self.verbose),
@@ -360,6 +389,9 @@ def _objective_to_dict(objective: Objective) -> dict[str, Any]:
             if objective.acceptance_penalty_weight is not None
             else None,
             "acceptance_penalty_temperature": float(objective.acceptance_penalty_temperature),
+            "lagrangian_lambda": float(objective.lagrangian_lambda)
+            if objective.lagrangian_lambda is not None
+            else None,
         }
     return {"type": type(objective).__name__}
 
@@ -451,6 +483,7 @@ def make_model_based_objective(
     acceptance_floor: float | None = None,
     acceptance_penalty_weight: float | None = None,
     acceptance_penalty_temperature: float = 0.01,
+    lagrangian_lambda: float | None = None,
 ) -> ModelBasedObjective:
     """Create a ModelBasedObjective wrapping trained sklearn/XGBoost models."""
     return ModelBasedObjective(
@@ -465,6 +498,7 @@ def make_model_based_objective(
         acceptance_floor=acceptance_floor,
         acceptance_penalty_weight=acceptance_penalty_weight,
         acceptance_penalty_temperature=acceptance_penalty_temperature,
+        lagrangian_lambda=lagrangian_lambda,
     )
 
 
@@ -486,6 +520,7 @@ def canonical_training_block(
     acceptance_floor: float | None = None,
     acceptance_penalty_weight: float | None = None,
     acceptance_penalty_temperature: float = 0.01,
+    lagrangian_lambda: float | None = None,
 ) -> dict[str, Any]:
     """Create a canonical training configuration block."""
     return {
@@ -509,6 +544,7 @@ def canonical_training_block(
         if acceptance_penalty_weight is not None
         else None,
         "acceptance_penalty_temperature": float(acceptance_penalty_temperature),
+        "lagrangian_lambda": float(lagrangian_lambda) if lagrangian_lambda is not None else None,
     }
 
 

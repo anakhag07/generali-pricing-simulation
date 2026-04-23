@@ -63,7 +63,7 @@ def _theta_contour_point_style(label: str) -> dict[str, object]:
     if label == "first-order final point":
         return {
             "marker": "X",
-            "s": 140.0,
+            "s": 120.0,
             "color": "black",
             "edgecolors": "black",
             "linewidths": 1.2,
@@ -780,6 +780,9 @@ def plot_theta_objective_contours(
                 color=style["color"],
                 alpha=_LINE_ALPHA,
                 linewidth=_LINE_WIDTH,
+                marker=style["marker"],
+                markersize=_style_marker_size(style),
+                markevery=_marker_every(theta_path.shape[0]),
                 label=str(style["label"]),
             )
             show_legend = True

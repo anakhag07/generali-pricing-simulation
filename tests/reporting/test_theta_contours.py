@@ -136,7 +136,7 @@ def _trace(theta_values: list[np.ndarray]) -> OptimizationTrace:
     )
 
 
-def test_plot_theta_objective_contours_uses_path_only_legend_and_special_markers(
+def test_plot_theta_objective_contours_keeps_path_markers_and_special_overlays(
     monkeypatch, tmp_path
 ) -> None:
     dummy_ax = DummyAxis()
@@ -179,7 +179,7 @@ def test_plot_theta_objective_contours_uses_path_only_legend_and_special_markers
         "stein-difference",
         "SPSA",
     ]
-    assert all("marker" not in call for call in dummy_ax.plot_calls)
+    assert [call["marker"] for call in dummy_ax.plot_calls] == ["X", "P", "^", "D"]
 
     assert [call["label"] for call in dummy_ax.scatter_calls] == [
         "initial",
@@ -195,5 +195,5 @@ def test_plot_theta_objective_contours_uses_path_only_legend_and_special_markers
     assert final_call["marker"] == "X"
     assert final_call["color"] == "black"
     assert final_call["edgecolors"] == "black"
-    assert final_call["s"] == 140.0
+    assert final_call["s"] == 120.0
     assert final_call["zorder"] == 7

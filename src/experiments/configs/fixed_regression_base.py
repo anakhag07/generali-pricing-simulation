@@ -12,7 +12,7 @@ from experiments.config import (
     make_softmax_policy,
 )
 
-STATE_DIM = 5
+STATE_DIM = 2
 
 BETA_1 = np.linspace(0.02, 0.5, num=STATE_DIM, dtype=float)
 BETA_2 = -1.2
@@ -32,7 +32,7 @@ TRAINING = canonical_training_block(
     perturbation_space="u",
     grad_norm_tol=1e-10,
     ftol=1e-10,
-    constant_u_baselines=[-0.5, -0.3, -0.2, -0.15, -0.1, -0.05, 0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.5],
+    # constant_u_baselines=[-0.5, -0.3, -0.2, -0.15, -0.1, -0.05, 0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.5],
 
 )
 

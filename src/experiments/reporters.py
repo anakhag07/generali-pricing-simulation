@@ -24,7 +24,6 @@ from experiments.results import ExperimentResult
 from reporting.visualization import (
     _plot_policy_u_histograms,
     _plot_policy_u_vs_objective,
-    ESTIMATOR_STYLES,
     plot_gradient_norms,
     plot_loss_curves,
     plot_objective_u_slice,
@@ -32,6 +31,8 @@ from reporting.visualization import (
     plot_theta_objective_contours,
     select_theta_axes_max_variance,
 )
+
+
 @dataclass(frozen=True)
 class RunContext:
     experiment_name: str
@@ -407,19 +408,12 @@ class PlotReporter:
                 if name in result.results
             ]
             theta_refs = [config.theta0]
-            theta_points = [(config.theta0, "initial", "#636363", "o", None)]
+            theta_points = [(config.theta0, "initial")]
             for name, estimator_result in ordered_results:
                 theta_refs.append(estimator_result.theta)
-                style = ESTIMATOR_STYLES[name]
-                theta_points.append(
-                    (
-                        estimator_result.theta,
-                        style["label"],
-                        style["color"],
-                        style["marker"],
-                        float(style.get("theta_point_size", 16.0)),
-                    )
-                )
+            first_order_result = result.results.get("first_order")
+            if first_order_result is not None:
+                theta_points.append((first_order_result.theta, "first-order final point"))
             plot_theta_objective_contours(
                 result.x_samples,
                 objective,

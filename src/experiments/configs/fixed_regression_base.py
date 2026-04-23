@@ -26,17 +26,19 @@ TRAINING = canonical_training_block(
     step_rule="l-bfgs-b",
     t_steps=50000,
     step_size=0.01,
-    sigma=0.05,
-    n_grad_samples=100,
-    enabled_estimators=("gauss_stein", "first_order", "spsa"),
-    perturbation_space="theta",
+    sigma=0.1,
+    n_grad_samples=10,
+    enabled_estimators=("spsa", "finite-difference", "stein-difference", "first_order"),
+    perturbation_space="u",
     grad_norm_tol=1e-10,
     ftol=1e-10,
+    constant_u_baselines=[-0.5, -0.3, -0.2, -0.15, -0.1, -0.05, 0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.5],
+
 )
 
 RUNTIME = canonical_runtime_block(
     plot=True,
-    verbose=False,
+    verbose=True,
     wandb_enabled=False,
 )
 

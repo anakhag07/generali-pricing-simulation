@@ -83,6 +83,7 @@ Several preset configs are available, selected by config preset:
 |---|---|---|
 | `fixed_regression_base` | Synthetic N(0, I) | `FixedRegressionObjective` |
 | `real_data_glm_softmax_policy_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, softmax policy, analytical grad) |
+| `real_data_glm_softmax_policy_lagrangian_small` | First 250 rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, softmax policy, analytical grad, lagrangian floor scalarization) |
 | `real_data_glm_softmax_policy_trust_region_constr` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, softmax policy + trust-constr acceptance floor) |
 | `real_data_glm_linear_policy_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, linear-policy diagnostic) |
 | `real_data_glm_linear_policy_trust_region_constr` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, linear policy + trust-constr acceptance floor) |
@@ -124,6 +125,33 @@ and writes three aggregate plots under `outputs/<project>/lagrangian_frontier_<t
 - `pareto_objective_acceptance.png` -- final objective vs acceptance, colored by
   lambda
 - `pareto_u_acceptance.png` -- final `u` vs acceptance, colored by lambda
+
+`scripts/run_acceptance_floor_sweep.py` runs the trust-constrained softmax GLM
+preset over a dense acceptance-floor grid `c in [0.50, 0.995]` and writes the
+same three aggregate plots under
+`outputs/<project>/acceptance_floor_frontier_<timestamp>/`:
+
+- `c_vs_u_acceptance.png` -- two panels for `c -> final u` and
+  `c -> mean acceptance`
+- `pareto_objective_acceptance.png` -- final objective vs acceptance, colored by
+  `c`
+- `pareto_u_acceptance.png` -- final `u` vs acceptance, colored by `c`
+
+If you already have saved acceptance-floor sweep outputs and only want the
+Pareto frontier for one estimator without rerunning optimization, use
+`scripts/plot_saved_acceptance_floor_frontier.py`:
+
+```bash
+python scripts/plot_saved_acceptance_floor_frontier.py \
+  outputs/glm-softmax-acceptance-floor-sweep
+```
+
+The script accepts either a direct `acceptance_floor_sweep.csv` path, a single
+`acceptance_floor_frontier_<timestamp>/` directory, or the parent project output
+directory. It defaults to `--estimator first_order` and writes
+`pareto_objective_acceptance_first_order.png` plus
+`pareto_u_acceptance_first_order.png` alongside the resolved CSV unless
+`--output-dir` is provided.
 
 ## Creating Config Presets
 

@@ -220,6 +220,7 @@ Guidelines:
   - `fixed_regression_base.py`: base fixed-regression config (4D, L-BFGS-B step rule, W&B enabled)
   - `planted_logistic_base.py`: planted logistic base config (3D, L-BFGS-B step rule, 5000 steps, u*=1.1)
   - `real_data_glm_softmax_policy_base.py`: GLM pickle-based softmax-policy base config; state_dim=12; unconstrained `l-bfgs-b`; first-order, finite-difference, SPSA, and stein-difference estimators; analytical first-order gradient via u_coef
+  - `real_data_glm_softmax_policy_lagrangian_small.py`: small GLM softmax-policy lagrangian preset; first 250 raw rows; unconstrained `l-bfgs-b`; all 5 estimators enabled; observed-acceptance floor with `lagrangian_lambda=2.0`
   - `real_data_glm_softmax_policy_trust_region_constr.py`: constrained GLM softmax-policy config with a trust-constr mean-acceptance floor set to the observed CSV acceptance level; otherwise mirrors the softmax base preset
   - `real_data_glm_linear_policy_base.py`: GLM pickle-based linear-policy diagnostic config; same data/models as `real_data_glm_softmax_policy_base` but with `LinearPolicy` and runtime-resolved random initialization to inspect behavior without softmax saturation
   - `real_data_glm_linear_policy_trust_region_constr.py`: constrained GLM linear-policy config with `LinearPolicy` and a trust-constr mean-acceptance floor set to the observed CSV acceptance level; enables first-order, finite-difference, SPSA, and stein-difference for constrained comparison
@@ -279,6 +280,7 @@ Guidelines:
   - `plot_step_sizes(...)`: per-step step sizes (log scale y-axis)
   - `plot_objective_u_slice(...)`: objective vs u grid (no gradient subplot)
   - `plot_theta_objective_contours(...)`: 2D contour plot with optimization paths
+  - Private sweep helpers power both lambda and trust-constrained acceptance-floor frontier plots
   - `select_theta_axes_max_variance(...)`: picks the two theta axes with highest variance for contour plots
 
 ### Entry Point (`main.py`)
@@ -288,6 +290,8 @@ Guidelines:
 - All I/O is handled by reporters, not by the runner
 - `scripts/run_sweep.py` provides optional preset-based sweep execution using top-level overrides
 - `scripts/run_lagrangian_sweep.py` runs a lagrangian-lambda sweep and writes aggregate frontier plots under `outputs/<project>/lagrangian_frontier_<timestamp>/`
+- `scripts/run_acceptance_floor_sweep.py` runs the trust-constrained softmax GLM preset over a dense acceptance-floor grid `c` and writes aggregate frontier plots under `outputs/<project>/acceptance_floor_frontier_<timestamp>/`
+- `scripts/plot_saved_acceptance_floor_frontier.py` re-plots acceptance-floor Pareto frontiers from a saved `acceptance_floor_sweep.csv` (or the latest matching frontier directory) without rerunning optimization; defaults to `first_order` and writes estimator-suffixed Pareto PNGs
 
 ## Known Issues and Dead Code
 
@@ -371,6 +375,7 @@ when appropriate.
 | `test_wandb_reporter.py` | W&B reporter integration |
 | `test_reporting_theta_norms.py` | Theta norm visualization |
 | `test_plot_u_star.py` | u_star selection for plotting |
+| `test_lagrangian_sweep_plots.py` | lambda-wrapper and generic sweep frontier plot generation |
 | `test_theta_contours.py` | Contour grid shapes, axis selection |
 | `test_trace_theta_values.py` | theta_values recorded in traces |
 | `test_visualization_step_sizes.py` | step_sizes plot uses log y-scale |

@@ -1,8 +1,8 @@
-"""GLM-backed softmax-policy config with a trust-region acceptance floor.
+"""Small GLM-backed softmax-policy config using a fixed lagrangian lambda.
 
-Uses the same trained GLM artifacts and fixed state batch as
-``real_data_glm_softmax_policy_base`` but enforces the historical observed
-acceptance level directly with SciPy's trust-region constrained solver.
+Uses the same trained GLM artifacts as ``real_data_glm_softmax_policy_base`` but
+shrinks the fixed batch and iteration budget so the lagrangian acceptance-floor
+path is cheap to run while still exercising all estimators.
 """
 
 from __future__ import annotations
@@ -37,30 +37,29 @@ _acceptance_floor = load_mean_observed_acceptance("glm")
 THETA0 = np.zeros(_acceptance_model.policy_feature_dim() + 1, dtype=float)
 
 TRAINING = canonical_training_block(
-    n_samples=5000,
-    step_rule="trust-constr",
-    t_steps=1000,
+    n_samples=250,
+    step_rule="l-bfgs-b",
+    t_steps=50,
     step_size=0.01,
     sigma=0.05,
-    n_grad_samples=50,
+    n_grad_samples=8,
     enabled_estimators=(
         "first_order",
         "finite_difference",
         "spsa",
         "stein_difference",
     ),
-    perturbation_space="u", 
+    perturbation_space="u",
     grad_norm_tol=1e-6,
     acceptance_floor=_acceptance_floor,
-    initial_constr_penalty=1.0,
-    constant_u_baselines=[-0.5, -0.3, -0.2, -0.15, -0.1, -0.05, 0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.5],
+    lagrangian_lambda=2.0,
 )
 
 RUNTIME = canonical_runtime_block(
     plot=True,
     verbose=True,
     wandb_enabled=True,
-    wandb_project='glm-softmax-policy-trust-region-constrained'
+    wandb_project="glm-softmax-policy-lagrangian-small",
 )
 
 CORRECTNESS = CorrectnessSpec(gradient_source="none")

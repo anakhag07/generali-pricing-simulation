@@ -16,7 +16,7 @@ from reporting.visualization import (
 BASE_PRESET = "real_data_glm_softmax_policy_base"
 PROJECT_NAME = "glm-softmax-lagrangian-sweep"
 DISPLAY_KEYS = ("lagrangian_lambda",)
-LAMBDA_VALUES = (0.0, 0.25, 0.5, 1.0, 2.0, 5.0)
+LAMBDA_VALUES = (0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0)
 
 OVERRIDE_GRID = {
     "acceptance_floor": [load_mean_observed_acceptance("glm")],
@@ -25,14 +25,13 @@ OVERRIDE_GRID = {
         (
             "first_order",
             "finite_difference",
-            "gauss_stein",
             "spsa",
             "stein_difference",
         )
     ],
-    "plot": [False],
-    "verbose": [False],
-    "wandb_enabled": [False],
+    "plot": [True],
+    "verbose": [True],
+    "wandb_enabled": [True],
 }
 
 

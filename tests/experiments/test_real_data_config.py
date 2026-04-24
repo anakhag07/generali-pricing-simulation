@@ -11,6 +11,7 @@ import pytest
     "real_data_glm_linear_policy_base",
     "real_data_glm_linear_policy_trust_region_constr",
     "real_data_glm_softmax_policy_base",
+    "real_data_glm_softmax_policy_lagrangian_small",
     "real_data_glm_softmax_policy_trust_region_constr",
     "real_data_xgb_base",
     "real_data_xgb_linear_acceptance_floor_base",
@@ -36,6 +37,15 @@ def test_glm_softmax_policy_trust_region_constr_x_fixed_shape():
     cfg = get_config("real_data_glm_softmax_policy_trust_region_constr")
     assert cfg.x_fixed is not None
     assert cfg.x_fixed.shape == (5000, 12)
+    assert cfg.state_dim == 12
+
+
+def test_glm_softmax_policy_lagrangian_small_x_fixed_shape():
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_glm_softmax_policy_lagrangian_small")
+    assert cfg.x_fixed is not None
+    assert cfg.x_fixed.shape == (250, 12)
     assert cfg.state_dim == 12
 
 
@@ -115,6 +125,29 @@ def test_glm_softmax_policy_trust_region_constr_sets_floor_from_csv_mean():
 
     cfg = get_config("real_data_glm_softmax_policy_trust_region_constr")
     assert cfg.acceptance_floor == pytest.approx(load_mean_observed_acceptance("glm"))
+
+
+def test_glm_softmax_policy_lagrangian_small_sets_floor_from_csv_mean():
+    from data.loader import load_mean_observed_acceptance
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_glm_softmax_policy_lagrangian_small")
+    assert cfg.acceptance_floor == pytest.approx(load_mean_observed_acceptance("glm"))
+    assert cfg.lagrangian_lambda == pytest.approx(2.0)
+
+
+def test_glm_softmax_policy_lagrangian_small_uses_all_estimators() -> None:
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_glm_softmax_policy_lagrangian_small")
+    assert cfg.step_rule == "l-bfgs-b"
+    assert cfg.enabled_estimators == (
+        "first_order",
+        "finite_difference",
+        "gauss_stein",
+        "spsa",
+        "stein_difference",
+    )
 
 
 def test_glm_linear_policy_trust_region_constr_sets_floor_from_csv_mean():
@@ -216,6 +249,7 @@ def test_xgb_linear_acceptance_floor_base_initial_action_is_constant_0_2():
     "real_data_glm_linear_policy_base",
     "real_data_glm_linear_policy_trust_region_constr",
     "real_data_glm_softmax_policy_base",
+    "real_data_glm_softmax_policy_lagrangian_small",
     "real_data_glm_softmax_policy_trust_region_constr",
     "real_data_xgb_base",
     "real_data_xgb_linear_acceptance_floor_base",
@@ -232,6 +266,7 @@ def test_real_data_configs_disable_correctness_gradients(name):
     "real_data_glm_linear_policy_base",
     "real_data_glm_linear_policy_trust_region_constr",
     "real_data_glm_softmax_policy_base",
+    "real_data_glm_softmax_policy_lagrangian_small",
     "real_data_glm_softmax_policy_trust_region_constr",
     "real_data_xgb_base",
     "real_data_xgb_linear_acceptance_floor_base",

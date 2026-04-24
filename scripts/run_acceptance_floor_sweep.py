@@ -46,9 +46,11 @@ OVERRIDE_GRID = {
             "stein_difference",
         )
     ],
-    "plot": [True],
-    "verbose": [True],
-    "wandb_enabled": [True],
+    # The sweep already writes aggregate frontier plots at the end, so disable
+    # per-run plotting and W&B logging to keep dense trust-constr sweeps tractable.
+    "plot": [False],
+    "verbose": [False],
+    "wandb_enabled": [False],
 }
 
 

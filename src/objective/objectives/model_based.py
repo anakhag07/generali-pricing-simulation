@@ -33,8 +33,12 @@ class ModelBasedObjective(Objective):
     Otherwise numerical central finite differences are used (XGBoost path).
 
     When ``acceptance_floor`` and ``acceptance_penalty_weight`` are both set,
-    ``value()`` adds a smooth mean-acceptance penalty. Direct trust-region
-    constraints are handled at the optimizer level via ``step_rule="trust-constr"``.
+    ``value()`` adds a smooth mean-acceptance penalty. When ``lagrangian_lambda``
+    is set, ``value()`` optimizes the scalarized target
+    $$J(\theta) + \lambda (\text{floor} - \bar{a}(\theta))$$ while
+    ``base_value()`` keeps exposing the raw pricing objective $$J(\theta)$$ for
+    reporting. Direct trust-region constraints are handled at the optimizer level
+    via ``step_rule="trust-constr"``.
     """
 
     policy: Policy
@@ -48,6 +52,7 @@ class ModelBasedObjective(Objective):
     acceptance_floor: float | None = None
     acceptance_penalty_weight: float | None = None
     acceptance_penalty_temperature: float = 0.01
+    lagrangian_lambda: float | None = None
     _fd_eps: float = 1e-4
 
     def _clip_u(self, u: np.ndarray) -> np.ndarray:
@@ -63,8 +68,20 @@ class ModelBasedObjective(Objective):
             raise ValueError("x_batch must be 2D.")
         theta_arr = np.asarray(theta, dtype=float)
         u_batch = self._clip_u(self.policy_value(theta_arr, x_arr))
-        base_value = float(np.mean(self._value_batch(x_arr, u_batch)))
-        return base_value + self._acceptance_penalty(self._acceptance_proba(x_arr, u_batch))[0]
+        acceptance = self._acceptance_proba(x_arr, u_batch)
+        base_value = self._mean_base_value(x_arr, u_batch)
+        penalty_value, _ = self._acceptance_penalty(acceptance)
+        lagrangian_value, _ = self._lagrangian_adjustment(acceptance)
+        return base_value + penalty_value + lagrangian_value
+
+    def base_value(self, theta: np.ndarray, x_batch: np.ndarray) -> float:
+        """Return the raw pricing objective without penalties or Lagrangian terms."""
+        x_arr = np.asarray(x_batch, dtype=float)
+        if x_arr.ndim != 2:
+            raise ValueError("x_batch must be 2D.")
+        theta_arr = np.asarray(theta, dtype=float)
+        u_batch = self._clip_u(self.policy_value(theta_arr, x_arr))
+        return self._mean_base_value(x_arr, u_batch)
 
     def grad(self, theta: np.ndarray, x_batch: np.ndarray) -> np.ndarray:
         """Compute theta-gradient via chain rule: df/dtheta = mean(df/du * du/dtheta)."""
@@ -80,11 +97,14 @@ class ModelBasedObjective(Objective):
             interior = (u_raw > self.u_bounds[0]) & (u_raw < self.u_bounds[1])
             grad_u = grad_u * interior
         grad_theta = _theta_grad_from_u_grad(self, theta_arr, x_arr, grad_u)
-        penalty_value, penalty_scale = self._acceptance_penalty(self._acceptance_proba(x_arr, u_clipped))
+        acceptance = self._acceptance_proba(x_arr, u_clipped)
+        penalty_value, penalty_scale = self._acceptance_penalty(acceptance)
         del penalty_value
-        if penalty_scale == 0.0:
+        lagrangian_value, lagrangian_scale = self._lagrangian_adjustment(acceptance)
+        del lagrangian_value
+        if penalty_scale == 0.0 and lagrangian_scale == 0.0:
             return grad_theta
-        return grad_theta + penalty_scale * self.mean_acceptance_grad(theta_arr, x_arr)
+        return grad_theta + (penalty_scale + lagrangian_scale) * self.mean_acceptance_grad(theta_arr, x_arr)
 
     def policy_value(self, theta: np.ndarray, x_batch: np.ndarray) -> np.ndarray:
         """Evaluate policy actions on acceptance-preprocessed features from raw state."""
@@ -107,8 +127,22 @@ class ModelBasedObjective(Objective):
         if self.u_bounds is not None:
             u_val = float(np.clip(u_val, *self.u_bounds))
         u_arr = np.full(x_arr.shape[0], u_val, dtype=float)
-        base_value = float(np.mean(self._value_batch(x_arr, u_arr)))
-        return base_value + self._acceptance_penalty(self._acceptance_proba(x_arr, u_arr))[0]
+        acceptance = self._acceptance_proba(x_arr, u_arr)
+        base_value = self._mean_base_value(x_arr, u_arr)
+        penalty_value, _ = self._acceptance_penalty(acceptance)
+        lagrangian_value, _ = self._lagrangian_adjustment(acceptance)
+        return base_value + penalty_value + lagrangian_value
+
+    def base_value_at_u(self, x_batch: np.ndarray, u: float) -> float:
+        """Return the raw pricing objective at a fixed action u."""
+        x_arr = np.asarray(x_batch, dtype=float)
+        if x_arr.ndim != 2:
+            raise ValueError("x_batch must be 2D.")
+        u_val = float(u)
+        if self.u_bounds is not None:
+            u_val = float(np.clip(u_val, *self.u_bounds))
+        u_arr = np.full(x_arr.shape[0], u_val, dtype=float)
+        return self._mean_base_value(x_arr, u_arr)
 
     def mean_acceptance(self, theta: np.ndarray, x_batch: np.ndarray) -> float:
         """Return mean acceptance probability under the current policy."""
@@ -228,6 +262,10 @@ class ModelBasedObjective(Objective):
         a_minus = self._acceptance_proba(x_batch, u_arr - eps)
         return (a_plus - a_minus) / (2.0 * eps)
 
+    def _mean_base_value(self, x_batch: np.ndarray, u_arr: np.ndarray) -> float:
+        """Return the raw mean pricing objective for a fixed batch of actions."""
+        return float(np.mean(self._value_batch(x_batch, u_arr)))
+
     def _acceptance_penalty(self, acceptance: np.ndarray) -> tuple[float, float]:
         """Return ``(penalty_value, d penalty / d mean_acceptance)``."""
         if self.acceptance_floor is None or self.acceptance_penalty_weight is None:
@@ -242,6 +280,15 @@ class ModelBasedObjective(Objective):
         penalty_value = weight * soft_gap * soft_gap
         penalty_grad_mean = -2.0 * weight * soft_gap * sigmoid_gap
         return penalty_value, penalty_grad_mean
+
+    def _lagrangian_adjustment(self, acceptance: np.ndarray) -> tuple[float, float]:
+        """Return ``(lagrangian_value, d lagrangian / d mean_acceptance)``."""
+        if self.acceptance_floor is None or self.lagrangian_lambda is None:
+            return 0.0, 0.0
+        mean_acceptance = float(np.mean(acceptance))
+        lambda_value = float(self.lagrangian_lambda)
+        value = lambda_value * (float(self.acceptance_floor) - mean_acceptance)
+        return value, -lambda_value
 
     def _grad_u_batch(self, x_batch: np.ndarray, u_arr: np.ndarray) -> np.ndarray:
         """Compute df/du for each sample."""

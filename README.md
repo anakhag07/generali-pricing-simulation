@@ -109,6 +109,21 @@ acceptance bundle's saved preprocessing internally for both `u(theta, x)` and
   `acceptance_penalty_weight` and `acceptance_penalty_temperature`, which add a
   differentiable penalty to `ModelBasedObjective`. This remains the XGBoost
   floor path.
+- lagrangian scalarization uses `lagrangian_lambda` together with
+  `acceptance_floor`, optimizing
+  `J(theta) + lagrangian_lambda * (acceptance_floor - mean_acceptance(theta))`.
+  This path is available on unconstrained step rules and keeps experiment
+  summaries on the raw objective `J(theta)` so lambda sweeps can be compared on
+  the same frontier.
+
+`scripts/run_lagrangian_sweep.py` runs a preset sweep over `lagrangian_lambda`
+and writes three aggregate plots under `outputs/<project>/lagrangian_frontier_<timestamp>/`:
+
+- `lambda_vs_u_acceptance.png` -- two panels for `lambda -> final u` and
+  `lambda -> mean acceptance`
+- `pareto_objective_acceptance.png` -- final objective vs acceptance, colored by
+  lambda
+- `pareto_u_acceptance.png` -- final `u` vs acceptance, colored by lambda
 
 ## Creating Config Presets
 

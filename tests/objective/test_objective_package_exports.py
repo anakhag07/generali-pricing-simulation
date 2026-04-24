@@ -9,6 +9,7 @@ from objective import (
     mean_acceptance_at_constant_u,
     sample_states,
     value_at_constant_u,
+    value_for_reporting,
 )
 
 
@@ -37,4 +38,5 @@ def test_objective_package_exports_are_importable() -> None:
     value_at_u = objective.value_at_u(x_batch, u=1.0)
     assert isinstance(value_at_u, float)
     assert isinstance(value_at_constant_u(objective, x_batch, u=1.0), float)
+    assert isinstance(value_for_reporting(objective, theta, x_batch), float)
     assert mean_acceptance_at_constant_u(objective, x_batch, u=1.0) is None

@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import numpy as np
 
 from data.loader import extract_model_based_coefficients
 from objective.objectives import FixedRegressionObjective, ModelBasedObjective, PlantedLogisticObjective
-from experiments.results import ExperimentResult
+
+if TYPE_CHECKING:
+    from experiments.results import ExperimentResult
 
 
 def log_step(
@@ -103,6 +105,12 @@ def log_summary(result: ExperimentResult) -> None:
             print(
                 "Acceptance constraint: "
                 f"mean_acceptance >= {float(config.acceptance_floor):.4f} via trust-constr"
+            )
+        elif config.lagrangian_lambda is not None:
+            print(
+                "Acceptance floor: "
+                f"mean_acceptance >= {float(config.acceptance_floor):.4f} "
+                f"via lagrangian lambda={float(config.lagrangian_lambda):.4f}"
             )
         else:
             print(

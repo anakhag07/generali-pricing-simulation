@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Callable, Mapping, Optional, Sequence, cast
+from typing import TYPE_CHECKING, Callable, Mapping, Optional, Sequence, cast
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -11,9 +11,11 @@ import numpy as np
 
 from objective.base import Objective
 from objective.utils import _policy_value
-from experiments.results import ConstantBaselineResult, OptimizationTrace
 
 matplotlib.use("Agg")
+
+if TYPE_CHECKING:
+    from experiments.results import ConstantBaselineResult, OptimizationTrace
 
 
 ESTIMATOR_STYLES = {
@@ -108,6 +110,37 @@ def _constant_baseline_styles(
             )
         )
     return styled
+
+
+def _estimator_style(estimator: str) -> Mapping[str, object]:
+    return ESTIMATOR_STYLES.get(
+        estimator,
+        {
+            "label": estimator,
+            "color": "#636363",
+            "marker": "o",
+            "marker_size": _MARKER_SIZE,
+            "scatter_size": _SCATTER_SIZE,
+        },
+    )
+
+
+def _lagrangian_points_by_estimator(
+    points: Sequence[Mapping[str, object]],
+) -> list[tuple[str, list[Mapping[str, object]]]]:
+    grouped: dict[str, list[Mapping[str, object]]] = {}
+    for point in points:
+        estimator = str(point["estimator"])
+        grouped.setdefault(estimator, []).append(point)
+    ordered: list[tuple[str, list[Mapping[str, object]]]] = []
+    for estimator in _TRACE_ORDER:
+        if estimator in grouped:
+            grouped[estimator].sort(key=lambda point: float(point["lambda"]))
+            ordered.append((estimator, grouped[estimator]))
+    for estimator in sorted(name for name in grouped if name not in _TRACE_ORDER):
+        grouped[estimator].sort(key=lambda point: float(point["lambda"]))
+        ordered.append((estimator, grouped[estimator]))
+    return ordered
 
 
 def _ordered_traces(
@@ -801,6 +834,107 @@ def plot_theta_objective_contours(
 
     if show_legend:
         ax.legend()
+
+    fig.tight_layout()
+    fig.savefig(path / filename, dpi=200)
+    plt.close(fig)
+
+
+def plot_lagrangian_lambda_tradeoffs(
+    points: Sequence[Mapping[str, object]],
+    plot_dir: str,
+    filename: str = "lambda_vs_u_acceptance.png",
+) -> None:
+    """Plot final mean action and acceptance versus lagrangian lambda."""
+    if not points:
+        return
+    path = _ensure_plot_dir(plot_dir)
+    fig, axes = plt.subplots(2, 1, figsize=(8, 7), sharex=True)
+    ax_u, ax_acceptance = axes
+
+    for estimator, estimator_points in _lagrangian_points_by_estimator(points):
+        style = _estimator_style(estimator)
+        lambda_values = [float(point["lambda"]) for point in estimator_points]
+        u_values = [float(point["u"]) for point in estimator_points]
+        acceptance_values = [float(point["mean_acceptance"]) for point in estimator_points]
+        plot_kwargs = {
+            "label": str(style["label"]),
+            "color": style["color"],
+            "alpha": _LINE_ALPHA,
+            "linewidth": _LINE_WIDTH,
+            "marker": style["marker"],
+            "markersize": _style_marker_size(style),
+        }
+        ax_u.plot(lambda_values, u_values, **plot_kwargs)
+        ax_acceptance.plot(lambda_values, acceptance_values, **plot_kwargs)
+
+    ax_u.set_ylabel("Final u")
+    ax_u.legend()
+    ax_u.grid(True, alpha=0.3)
+    ax_acceptance.set_xlabel("Lagrangian lambda")
+    ax_acceptance.set_ylabel("Mean acceptance")
+    ax_acceptance.grid(True, alpha=0.3)
+
+    fig.tight_layout()
+    fig.savefig(path / filename, dpi=200)
+    plt.close(fig)
+
+
+def plot_lagrangian_pareto_frontier(
+    points: Sequence[Mapping[str, object]],
+    plot_dir: str,
+    *,
+    y_key: str,
+    y_label: str,
+    filename: str,
+) -> None:
+    """Plot a lagrangian sweep frontier colored by lambda."""
+    if not points:
+        return
+    path = _ensure_plot_dir(plot_dir)
+    lambda_values = np.asarray([float(point["lambda"]) for point in points], dtype=float)
+    lambda_min = float(np.min(lambda_values))
+    lambda_max = float(np.max(lambda_values))
+    if np.isclose(lambda_min, lambda_max):
+        lambda_max = lambda_min + 1.0
+    norm = matplotlib.colors.Normalize(vmin=lambda_min, vmax=lambda_max)
+    cmap = matplotlib.colormaps["viridis"]
+
+    fig, ax = plt.subplots(1, 1, figsize=(8, 5))
+    for estimator, estimator_points in _lagrangian_points_by_estimator(points):
+        style = _estimator_style(estimator)
+        x_values = [float(point["mean_acceptance"]) for point in estimator_points]
+        y_values = [float(point[y_key]) for point in estimator_points]
+        point_lambdas = np.asarray([float(point["lambda"]) for point in estimator_points], dtype=float)
+        ax.plot(
+            x_values,
+            y_values,
+            color=style["color"],
+            alpha=0.25,
+            linewidth=1.0,
+        )
+        ax.scatter(
+            x_values,
+            y_values,
+            c=point_lambdas,
+            cmap=cmap,
+            norm=norm,
+            label=str(style["label"]),
+            marker=style["marker"],
+            s=_style_scatter_size(style),
+            edgecolors=style["color"],
+            linewidths=0.6,
+            alpha=0.9,
+        )
+
+    scalar_mappable = matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap)
+    scalar_mappable.set_array(lambda_values)
+    colorbar = fig.colorbar(scalar_mappable, ax=ax)
+    colorbar.set_label("Lagrangian lambda")
+    ax.set_xlabel("Mean acceptance")
+    ax.set_ylabel(y_label)
+    ax.grid(True, alpha=0.3)
+    ax.legend()
 
     fig.tight_layout()
     fig.savefig(path / filename, dpi=200)

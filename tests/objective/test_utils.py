@@ -12,6 +12,7 @@ from objective.utils import (
     mean_acceptance_at_constant_u,
     optimal_u,
     value_at_constant_u,
+    value_for_reporting,
 )
 
 
@@ -144,3 +145,36 @@ def test_mean_acceptance_at_constant_u_matches_fixed_regression_formula(u: float
     expected = 1.0 / (1.0 + np.exp(-logits))
 
     assert mean_acceptance_at_constant_u(obj, x_batch, u) == pytest.approx(float(np.mean(expected)))
+
+
+def test_value_for_reporting_prefers_base_value() -> None:
+    class ObjectiveWithBaseValue:
+        def value(self, theta: np.ndarray, x_batch: np.ndarray) -> float:
+            del theta, x_batch
+            return 10.0
+
+        def base_value(self, theta: np.ndarray, x_batch: np.ndarray) -> float:
+            del theta, x_batch
+            return 3.0
+
+    objective = ObjectiveWithBaseValue()
+    theta = np.array([0.0], dtype=float)
+    x_batch = np.zeros((2, 1), dtype=float)
+
+    assert value_for_reporting(objective, theta, x_batch) == pytest.approx(3.0)
+
+
+def test_value_at_constant_u_prefers_base_value_at_u() -> None:
+    class ObjectiveWithBaseValueAtU:
+        def value_at_u(self, x_batch: np.ndarray, u: float) -> float:
+            del x_batch, u
+            return 10.0
+
+        def base_value_at_u(self, x_batch: np.ndarray, u: float) -> float:
+            del x_batch, u
+            return 3.0
+
+    objective = ObjectiveWithBaseValueAtU()
+    x_batch = np.zeros((2, 1), dtype=float)
+
+    assert value_at_constant_u(objective, x_batch, 0.2) == pytest.approx(3.0)

@@ -132,6 +132,20 @@ $$\frac{\partial\,\text{penalty}}{\partial\,\bar{a}} = -2w\,\text{softplus}(g/\t
   - `_d_acceptance_du_batch()` — analytical or FD acceptance derivative
   - `_acceptance_penalty()` — penalty value and gradient scale
 
+**Lagrangian scalarization** (lambda sweep path):
+
+$$J_{\lambda}(\theta) = J(\theta) + \lambda\,(\text{floor} - \bar{a}(\theta))$$
+
+where $$J(\theta) = \mathbb{E}[f(\pi_\theta(x); x)]$$ and
+$$\bar{a}(\theta) = \mathbb{E}[a(x, \pi_\theta(x))]$$.
+
+**Gradient w.r.t. $\theta$:**
+
+$$\nabla_\theta J_{\lambda}(\theta) = \nabla_\theta J(\theta) - \lambda\,\nabla_\theta \bar{a}(\theta)$$
+
+- **Source:** `src/objective/objectives/model_based.py` :: `ModelBasedObjective.value()`, `ModelBasedObjective.grad()`, `ModelBasedObjective._lagrangian_adjustment()`
+- **Notes:** `base_value()` and `base_value_at_u()` keep exposing the raw objective $$J$$ for experiment summaries and sweep frontier plots while optimization uses $$J_\lambda$$.
+
 ---
 
 ## 4. Chain Rule (Theta-Gradient from Action-Gradient)

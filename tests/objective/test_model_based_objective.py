@@ -269,3 +269,43 @@ def test_constrained_grad_matches_fd() -> None:
         step=1e-6,
     )
     np.testing.assert_allclose(grad, grad_fd, rtol=1e-4, atol=1e-6)
+
+
+def test_lagrangian_value_matches_base_plus_lambda_gap() -> None:
+    from data.loader import load_mean_observed_acceptance
+
+    obj, x, policy_dim = _make_glm_objective(n_rows=30)
+    theta = np.array([0.4] + [0.01] * policy_dim, dtype=float)
+    floor = load_mean_observed_acceptance("glm")
+    lagrangian = replace(
+        obj,
+        acceptance_floor=floor,
+        lagrangian_lambda=2.0,
+    )
+
+    base_value = obj.base_value(theta, x)
+    mean_acceptance = obj.mean_acceptance(theta, x)
+    expected = base_value + 2.0 * (floor - mean_acceptance)
+
+    assert lagrangian.value(theta, x) == pytest.approx(expected)
+
+
+def test_lagrangian_grad_matches_fd() -> None:
+    from data.loader import load_mean_observed_acceptance
+
+    obj, x, policy_dim = _make_glm_objective(n_rows=30)
+    theta = np.array([0.4] + [0.01] * policy_dim, dtype=float)
+    lagrangian = replace(
+        obj,
+        acceptance_floor=load_mean_observed_acceptance("glm"),
+        lagrangian_lambda=2.0,
+    )
+
+    grad = lagrangian.grad(theta, x)
+    grad_fd = finite_difference_theta_grad(
+        lambda theta_eval: lagrangian.value(theta_eval, x),
+        theta,
+        method="central",
+        step=1e-6,
+    )
+    np.testing.assert_allclose(grad, grad_fd, rtol=1e-4, atol=1e-6)

@@ -208,6 +208,7 @@ Guidelines:
   - Objective/policy wiring is explicit; configs pass a concrete theta-level objective instance
   - `batch_size: int | None = None` enables stochastic mini-batch optimization when set
   - `acceptance_floor` can be enforced directly with `step_rule="trust-constr"` or via the smooth penalty path using `acceptance_penalty_weight` / `acceptance_penalty_temperature`
+  - `lagrangian_lambda` enables the scalarized model-based target $$J(\theta) + \lambda(\text{floor} - \bar{a}(\theta))$$ on unconstrained step rules; experiment summaries still report the raw objective $$J(\theta)$$
   - `CorrectnessSpec`: controls how "true" gradients are computed (`"exact"`, `"numdiff"`, `"none"`)
   - `verbose: bool = False` controls terminal output of per-step metrics
   - Preset-composition helpers: `make_*_objective`, `make_softmax_policy`, `make_model_based_objective`,
@@ -286,6 +287,7 @@ Guidelines:
 - For each config name: loads via `get_config()`, creates `RunContext`, assembles `ReporterStack`, calls `run_experiment()`, finalizes with `reporters.on_end()`
 - All I/O is handled by reporters, not by the runner
 - `scripts/run_sweep.py` provides optional preset-based sweep execution using top-level overrides
+- `scripts/run_lagrangian_sweep.py` runs a lagrangian-lambda sweep and writes aggregate frontier plots under `outputs/<project>/lagrangian_frontier_<timestamp>/`
 
 ## Known Issues and Dead Code
 

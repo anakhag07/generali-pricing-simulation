@@ -90,6 +90,7 @@ Several preset configs are available, selected by config preset:
 | `real_data_glm_constant_policy_trust_region_constr` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, constant policy + trust-constr acceptance floor) |
 | `real_data_xgb_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, FD grad) |
 | `real_data_xgb_linear_acceptance_floor_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, linear policy + penalty acceptance floor) |
+| `real_data_xgb_softmax_policy_trust_region_constr` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, softmax policy + trust-constr acceptance floor) |
 
 The objective for real-data configs is $$f(u; x) = a(x,u)(\hat{Y}(x) - (u + 1) \cdot p(x))$$
 where $$a$$ is acceptance probability, $$\hat{Y}$$ is expected financial loss, and $$p$$ is policy premium.
@@ -152,6 +153,19 @@ directory. It defaults to `--estimator first_order` and writes
 `pareto_objective_acceptance_first_order.png` plus
 `pareto_u_acceptance_first_order.png` alongside the resolved CSV unless
 `--output-dir` is provided.
+
+To query the existing acceptance model at fixed constant actions without
+running optimization, use:
+
+```bash
+python scripts/query_acceptance_at_u.py \
+  --preset real_data_glm_softmax_policy_base \
+  --u -0.3 0.0 0.2 \
+  --n-rows 500
+```
+
+The script loads the preset objective and state batch, then reports mean
+acceptance for each supplied `u` value.
 
 ## Creating Config Presets
 

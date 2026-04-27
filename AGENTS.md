@@ -227,6 +227,7 @@ Guidelines:
   - `real_data_glm_constant_policy_trust_region_constr.py`: constrained GLM constant-policy config with `ConstantPolicy`, a zero-action initialization, and a trust-constr mean-acceptance floor set to the observed CSV acceptance level; enables first-order, finite-difference, SPSA, and stein-difference for constrained comparison
   - `real_data_xgb_base.py`: XGBoost pickle-based config; state_dim=10; 4 estimators (no first_order); FD for d_acceptance/du
   - `real_data_xgb_linear_acceptance_floor_base.py`: constrained XGBoost diagnostic config with `LinearPolicy`, constant `u=0.2` initialization inside XGB `u_bounds`, and a smooth mean-acceptance floor set to the observed CSV acceptance level; uses finite_difference, SPSA, and stein_difference
+  - `real_data_xgb_softmax_policy_trust_region_constr.py`: constrained XGBoost softmax-policy config with a trust-constr mean-acceptance floor set to the observed CSV acceptance level; uses finite_difference, SPSA, and stein_difference
   - `config_template.py`: copy-first scaffold with `None` placeholders for all `ExperimentConfig` fields plus objective/correctness parameter blocks; not registered as a runnable preset
 
 - **`src/experiments/defaults.py`**
@@ -292,6 +293,7 @@ Guidelines:
 - `scripts/run_lagrangian_sweep.py` runs a lagrangian-lambda sweep and writes aggregate frontier plots under `outputs/<project>/lagrangian_frontier_<timestamp>/`
 - `scripts/run_acceptance_floor_sweep.py` runs the trust-constrained softmax GLM preset over a dense acceptance-floor grid `c` and writes aggregate frontier plots under `outputs/<project>/acceptance_floor_frontier_<timestamp>/`
 - `scripts/plot_saved_acceptance_floor_frontier.py` re-plots acceptance-floor Pareto frontiers from a saved `acceptance_floor_sweep.csv` (or the latest matching frontier directory) without rerunning optimization; defaults to `first_order` and writes estimator-suffixed Pareto PNGs
+- `scripts/query_acceptance_at_u.py` loads a config preset and reports mean acceptance for supplied constant `u` values without running optimization; optionally writes `u,n,mean_acceptance` CSV output
 
 ## Known Issues and Dead Code
 

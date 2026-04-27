@@ -52,7 +52,7 @@ TRAINING = canonical_training_block(
     perturbation_space="u",
     grad_norm_tol=1e-6,
     acceptance_floor=_acceptance_floor,
-    lagrangian_lambda=2.0,
+    lagrangian_lambda=250.0,
 )
 
 RUNTIME = canonical_runtime_block(

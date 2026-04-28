@@ -18,6 +18,8 @@ _CONFIG_MODULES = {
     "real_data_glm_softmax_policy_trust_region_constr": "experiments.configs.real_data_glm_softmax_policy_trust_region_constr",
     "real_data_xgb_base": "experiments.configs.real_data_xgb_base",
     "real_data_xgb_linear_acceptance_floor_base": "experiments.configs.real_data_xgb_linear_acceptance_floor_base",
+    "real_data_xgb_linear_policy_base": "experiments.configs.real_data_xgb_linear_policy_base",
+    "real_data_xgb_softmax_policy_base": "experiments.configs.real_data_xgb_softmax_policy_base",
     "real_data_xgb_softmax_policy_trust_region_constr": "experiments.configs.real_data_xgb_softmax_policy_trust_region_constr",
 }
 

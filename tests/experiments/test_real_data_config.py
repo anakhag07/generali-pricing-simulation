@@ -15,6 +15,8 @@ import pytest
     "real_data_glm_softmax_policy_trust_region_constr",
     "real_data_xgb_base",
     "real_data_xgb_linear_acceptance_floor_base",
+    "real_data_xgb_linear_policy_base",
+    "real_data_xgb_softmax_policy_base",
 ])
 def test_config_loads(name):
     from experiments.configs import get_config
@@ -79,6 +81,24 @@ def test_xgb_linear_acceptance_floor_base_x_fixed_shape():
     from experiments.configs import get_config
 
     cfg = get_config("real_data_xgb_linear_acceptance_floor_base")
+    assert cfg.x_fixed is not None
+    assert cfg.x_fixed.shape == (5000, 10)
+    assert cfg.state_dim == 10
+
+
+def test_xgb_linear_policy_base_x_fixed_shape():
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_xgb_linear_policy_base")
+    assert cfg.x_fixed is not None
+    assert cfg.x_fixed.shape == (5000, 10)
+    assert cfg.state_dim == 10
+
+
+def test_xgb_softmax_policy_base_x_fixed_shape():
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_xgb_softmax_policy_base")
     assert cfg.x_fixed is not None
     assert cfg.x_fixed.shape == (5000, 10)
     assert cfg.state_dim == 10
@@ -235,6 +255,35 @@ def test_xgb_linear_acceptance_floor_base_no_first_order():
     assert "first_order" not in cfg.enabled_estimators
 
 
+@pytest.mark.parametrize("name", [
+    "real_data_xgb_linear_policy_base",
+    "real_data_xgb_softmax_policy_base",
+])
+def test_xgb_unconstrained_policy_bases_no_first_order(name):
+    from experiments.configs import get_config
+
+    cfg = get_config(name)
+    assert "first_order" not in cfg.enabled_estimators
+
+
+@pytest.mark.parametrize("name", [
+    "real_data_xgb_linear_policy_base",
+    "real_data_xgb_softmax_policy_base",
+])
+def test_xgb_unconstrained_policy_bases_are_unconstrained(name):
+    from experiments.configs import get_config
+
+    cfg = get_config(name)
+    assert cfg.step_rule == "l-bfgs-b"
+    assert cfg.acceptance_floor is None
+    assert cfg.acceptance_penalty_weight is None
+    assert cfg.enabled_estimators == (
+        "finite_difference",
+        "spsa",
+        "stein_difference",
+    )
+
+
 def test_xgb_linear_acceptance_floor_base_initial_action_is_constant_0_2():
     from experiments.configs import get_config
 
@@ -242,6 +291,15 @@ def test_xgb_linear_acceptance_floor_base_initial_action_is_constant_0_2():
     assert cfg.x_fixed is not None
     u_batch = cfg.objective.policy_value(cfg.theta0, cfg.x_fixed)
     assert np.allclose(u_batch, 0.2)
+
+
+def test_xgb_linear_policy_base_initial_action_is_constant_0_0():
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_xgb_linear_policy_base")
+    assert cfg.x_fixed is not None
+    u_batch = cfg.objective.policy_value(cfg.theta0, cfg.x_fixed)
+    assert np.allclose(u_batch, 0.0)
 
 
 @pytest.mark.parametrize("name", [
@@ -253,6 +311,8 @@ def test_xgb_linear_acceptance_floor_base_initial_action_is_constant_0_2():
     "real_data_glm_softmax_policy_trust_region_constr",
     "real_data_xgb_base",
     "real_data_xgb_linear_acceptance_floor_base",
+    "real_data_xgb_linear_policy_base",
+    "real_data_xgb_softmax_policy_base",
 ])
 def test_real_data_configs_disable_correctness_gradients(name):
     from experiments.configs import get_config
@@ -270,6 +330,8 @@ def test_real_data_configs_disable_correctness_gradients(name):
     "real_data_glm_softmax_policy_trust_region_constr",
     "real_data_xgb_base",
     "real_data_xgb_linear_acceptance_floor_base",
+    "real_data_xgb_linear_policy_base",
+    "real_data_xgb_softmax_policy_base",
 ])
 def test_real_data_configs_enable_verbose_and_wandb(name):
     from experiments.configs import get_config

@@ -1,4 +1,4 @@
-"""XGBoost-backed experiment config using real insurance data (pickle path).
+"""XGBoost-backed base config using a softmax policy on real insurance data.
 
 Uses trained XGBoost artifacts (classifier + regressor) with the first 5,000
 rows of the real dataset as the fixed state distribution. The objective owns
@@ -27,7 +27,7 @@ from experiments.config import (
     canonical_training_block,
     make_model_based_objective,
 )
-from objective.policy import LinearPolicy, SoftmaxPolicy
+from objective.policy import SoftmaxPolicy
 
 STATE_DIM = len(FEATURE_COLS_XGB)
 
@@ -46,14 +46,13 @@ TRAINING = canonical_training_block(
     enabled_estimators=("finite_difference", "spsa", "stein_difference"),
     perturbation_space="u",
     grad_norm_tol=1e-6,
-    constant_u_baselines=[0.0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5],
 )
 
 RUNTIME = canonical_runtime_block(
     plot=True,
     verbose=True,
     wandb_enabled=True,
-    wandb_project='xgb-softmax-policy-unconstrained'
+    wandb_project="xgb-softmax-policy-unconstrained",
 )
 
 CORRECTNESS = CorrectnessSpec(gradient_source="none")
@@ -69,8 +68,7 @@ CONFIG = build_experiment_config(
         acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),
         loss_cols=tuple(LOSS_FEATURE_COLS),
         premium_col=9,
-        u_coef=None,  # XGBoost: use numerical FD for d_acceptance/du
-        # u_bounds=(-0.05, 0.5),  # constrain u to XGB training data range
+        u_coef=None,
     ),
     theta0=THETA0,
     training=TRAINING,

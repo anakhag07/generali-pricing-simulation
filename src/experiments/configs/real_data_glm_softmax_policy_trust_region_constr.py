@@ -53,7 +53,7 @@ TRAINING = canonical_training_block(
     grad_norm_tol=1e-6,
     acceptance_floor=_acceptance_floor,
     initial_constr_penalty=1.0,
-    constant_u_baselines=[-0.5, -0.3, -0.2, -0.15, -0.1, -0.05, 0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.5],
+    constant_u_baselines=[-0.5, -0.3, -0.2, -0.15, -0.1, -0.05, 0.0, 0.05, 0.1],
 )
 
 RUNTIME = canonical_runtime_block(
@@ -68,7 +68,7 @@ CORRECTNESS = CorrectnessSpec(gradient_source="none")
 CONFIG = build_experiment_config(
     seed=42,
     state_dim=STATE_DIM,
-    x_fixed=load_x_array("glm", n_rows=5000),
+    x_fixed=load_x_array("glm", n_rows=194373),
     objective=make_model_based_objective(
         policy=_policy,
         acceptance_model=_acceptance_model,

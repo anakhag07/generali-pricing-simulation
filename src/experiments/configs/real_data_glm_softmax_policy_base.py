@@ -43,7 +43,7 @@ _policy = SoftmaxPolicy()
 THETA0 = np.zeros(_acceptance_model.policy_feature_dim() + 1, dtype=float)
 
 TRAINING = canonical_training_block(
-    n_samples=5000,
+    n_samples=194373,
     step_rule="l-bfgs-b",
     t_steps=1000,
     step_size=0.01,
@@ -73,7 +73,7 @@ CORRECTNESS = CorrectnessSpec(gradient_source="none")
 CONFIG = build_experiment_config(
     seed=42,
     state_dim=STATE_DIM,
-    x_fixed=load_x_array("glm", n_rows=5000),
+    x_fixed=load_x_array("glm", n_rows=194373),
     objective=make_model_based_objective(
         policy=_policy,
         acceptance_model=_acceptance_model,

@@ -3,7 +3,7 @@ __pycache__/
 **/*__pycache__*/
 *.pyc
 *.egg-info/
-data/
+src/data/
 build/
 dist/
 plots/

@@ -35,9 +35,7 @@ _u_coef = extract_glm_u_coef(_acceptance_model)
 _policy = ConstantPolicy()
 _acceptance_floor = load_mean_observed_acceptance("glm")
 
-# Only theta[0] affects ConstantPolicy, but keeping the full theta shape keeps
-# the real-data presets consistent for reporters and optimizer traces.
-THETA0 = np.array([0.0] + [0.0] * _acceptance_model.policy_feature_dim(), dtype=float)
+THETA0 = np.zeros(_policy.theta_dim(_acceptance_model.policy_feature_dim()), dtype=float)
 
 TRAINING = canonical_training_block(
     n_samples=5000,

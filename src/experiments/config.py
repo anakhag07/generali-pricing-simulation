@@ -13,8 +13,19 @@ from objective.objectives import (
     ModelBasedObjective,
     PlantedLogisticObjective,
 )
-from objective.policy import ConstantPolicy, LinearPolicy, SoftmaxPolicy
+from objective.policy import ConstantPolicy, LinearPolicy, SoftmaxPolicy, policy_theta_dim
 from optimization.steps import STEP_RULES, STEP_RULE_TRUST_CONSTR
+
+
+def _policy_theta_dim_for_objective(objective: object, state_dim: int) -> int | None:
+    """Return the required policy theta dimension when the objective exposes one."""
+    objective_theta_dim = getattr(objective, "policy_theta_dim", None)
+    if callable(objective_theta_dim):
+        return int(objective_theta_dim(state_dim))
+    policy = getattr(objective, "policy", None)
+    if policy is None:
+        return None
+    return policy_theta_dim(policy, state_dim)
 
 
 @dataclass(frozen=True)
@@ -277,6 +288,11 @@ class ExperimentConfig:
 
         policy = getattr(objective, "policy", None)
         if policy is not None:
+            expected_theta_dim = _policy_theta_dim_for_objective(objective, self.state_dim)
+            if self.theta0 is not None and expected_theta_dim is not None and theta0_arr.size != expected_theta_dim:
+                raise ValueError(
+                    f"theta0 has dimension {theta0_arr.size}, but policy requires {expected_theta_dim}."
+                )
             policy_value = getattr(objective, "policy_value", None)
             policy_grad = getattr(objective, "policy_grad", None)
             if not callable(policy_value):
@@ -288,7 +304,7 @@ class ExperimentConfig:
             # Probe with a single-sample batch
             probe_theta = (
                 theta0_arr if self.theta0 is not None
-                else np.zeros(self.state_dim + 1, dtype=float)
+                else np.zeros(expected_theta_dim if expected_theta_dim is not None else self.state_dim + 1, dtype=float)
             )
             x_probe = np.zeros((1, self.state_dim), dtype=float)
             u_probe_arr = np.asarray(policy_value(probe_theta, x_probe), dtype=float)
@@ -398,12 +414,22 @@ def _objective_to_dict(objective: Objective) -> dict[str, Any]:
 
 def _policy_to_dict(policy: object) -> dict[str, Any]:
     """Serialize policy to dictionary."""
+    feature_map = getattr(policy, "feature_map", None)
+    feature_map_dict = None
+    if feature_map is not None:
+        feature_map_dict = {
+            "type": type(feature_map).__name__,
+            "kind": getattr(feature_map, "kind", None),
+            "feature_dim": getattr(feature_map, "feature_dim", None),
+            "include_interactions": getattr(feature_map, "include_interactions", None),
+            "name": getattr(feature_map, "name", None),
+        }
     if isinstance(policy, ConstantPolicy):
         return {"type": "ConstantPolicy"}
     if isinstance(policy, LinearPolicy):
-        return {"type": "LinearPolicy"}
+        return {"type": "LinearPolicy", "feature_map": feature_map_dict}
     if isinstance(policy, SoftmaxPolicy):
-        return {"type": "SoftmaxPolicy"}
+        return {"type": "SoftmaxPolicy", "feature_map": feature_map_dict}
     return {"type": type(policy).__name__}
 
 

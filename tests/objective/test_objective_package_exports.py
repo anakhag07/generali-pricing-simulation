@@ -4,6 +4,7 @@ import numpy as np
 
 from objective import (
     ConstantPolicy,
+    QuadraticFeatureMap,
     PlantedLogisticObjective,
     default_rng,
     mean_acceptance_at_constant_u,
@@ -20,6 +21,8 @@ def test_objective_package_exports_are_importable() -> None:
     theta = np.asarray([1.0], dtype=float)
     
     policy = ConstantPolicy()
+    feature_map = QuadraticFeatureMap()
+    assert feature_map.output_dim(2) == 5
     objective = PlantedLogisticObjective(
         policy=policy,
         alpha=1.0,

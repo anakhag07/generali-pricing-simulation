@@ -45,6 +45,12 @@ Pluggable components:
 
 The default bounded policy is `SoftmaxPolicy`, which maps
 `u = 0.5 - sigma(theta^T phi(x))`, so its action range is `(-0.5, 0.5)`.
+`LinearPolicy` and `SoftmaxPolicy` support configurable state feature maps
+`varphi(x)`. The policy prepends the intercept internally, so
+`phi(x) = [1, varphi(x)]` and custom feature maps should not include the
+leading `1`. The default `IdentityFeatureMap` gives the previous behavior
+`phi(x) = [1, x]`; `QuadraticFeatureMap` expands the state with linear,
+square, and pairwise interaction terms.
 For the real-data model-based objective, this `u` remains centered and the
 revenue term uses premium multiplier `u + 1`.
 
@@ -82,7 +88,7 @@ Several preset configs are available, selected by config preset:
 | Preset | State source | Objective |
 |---|---|---|
 | `fixed_regression_base` | Synthetic N(0, I) | `FixedRegressionObjective` |
-| `real_data_glm_softmax_policy_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, softmax policy, analytical grad) |
+| `real_data_glm_softmax_policy_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, quadratic softmax policy, analytical grad) |
 | `real_data_glm_softmax_policy_lagrangian_small` | First 250 rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, softmax policy, analytical grad, lagrangian floor scalarization) |
 | `real_data_glm_softmax_policy_trust_region_constr` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, softmax policy + trust-constr acceptance floor) |
 | `real_data_glm_linear_policy_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, linear-policy diagnostic) |

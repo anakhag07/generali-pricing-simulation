@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 
 from objective.base import Objective, Policy
+from objective.policy import policy_theta_dim
 from objective.utils import _theta_grad_from_u_grad
 
 
@@ -117,6 +118,18 @@ class ModelBasedObjective(Objective):
         theta_arr = np.asarray(theta, dtype=float)
         x_arr = np.asarray(x_batch, dtype=float)
         return np.asarray(self.policy.grad(theta_arr, self._policy_features(x_arr)), dtype=float)
+
+    def policy_input_dim(self) -> int:
+        """Return the processed state dimension seen by the policy."""
+        feature_dim_fn = getattr(self.acceptance_model, "policy_feature_dim", None)
+        if callable(feature_dim_fn):
+            return int(feature_dim_fn())
+        return len(self._artifact_x_feature_cols(self.acceptance_model, self.acceptance_state_cols))
+
+    def policy_theta_dim(self, state_dim: int | None = None) -> int:
+        """Return theta dimension required by the policy over processed features."""
+        del state_dim
+        return policy_theta_dim(self.policy, self.policy_input_dim())
 
     def value_at_u(self, x_batch: np.ndarray, u: float) -> float:
         """Compute mean objective value at a fixed action u."""

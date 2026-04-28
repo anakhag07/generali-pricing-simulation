@@ -35,7 +35,8 @@ _acceptance_floor = load_mean_observed_acceptance("xgb")
 
 # Start from a constant centered action so the linear policy does not begin clipped.
 # Under the shifted revenue term this is a 1.2 premium multiplier.
-THETA0 = np.array([0.2] + [0.0] * _acceptance_model.policy_feature_dim(), dtype=float)
+THETA0 = np.zeros(_policy.theta_dim(_acceptance_model.policy_feature_dim()), dtype=float)
+THETA0[0] = 0.2
 
 TRAINING = canonical_training_block(
     n_samples=5000,

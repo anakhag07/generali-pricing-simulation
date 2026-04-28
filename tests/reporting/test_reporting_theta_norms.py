@@ -86,7 +86,7 @@ def _build_model_based_result() -> ExperimentResult:
         premium_col=9,
         u_coef=extract_glm_u_coef(acceptance_model),
     )
-    theta0 = np.zeros(acceptance_model.policy_feature_dim() + 1, dtype=float)
+    theta0 = np.zeros(objective.policy_theta_dim(), dtype=float)
     config = ExperimentConfig(
         state_dim=12,
         objective=objective,

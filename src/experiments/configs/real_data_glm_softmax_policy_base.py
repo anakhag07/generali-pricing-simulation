@@ -32,15 +32,15 @@ from experiments.config import (
     canonical_training_block,
     make_model_based_objective,
 )
-from objective.policy import SoftmaxPolicy
+from objective.policy import QuadraticFeatureMap, SoftmaxPolicy
 
 STATE_DIM = len(FEATURE_COLS_GLM)
 
 _acceptance_model, _loss_model = load_model_artifacts("glm")
 _u_coef = extract_glm_u_coef(_acceptance_model)
-_policy = SoftmaxPolicy()
+_policy = SoftmaxPolicy(feature_map=QuadraticFeatureMap())
 
-THETA0 = np.zeros(_acceptance_model.policy_feature_dim() + 1, dtype=float)
+THETA0 = np.zeros(_policy.theta_dim(_acceptance_model.policy_feature_dim()), dtype=float)
 
 TRAINING = canonical_training_block(
     n_samples=194373,

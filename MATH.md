@@ -24,10 +24,25 @@ All policies map parameters $\theta$ and state $x$ to a scalar action $u$.
 
 ### 2.1 Feature Construction
 
-$$\phi(x) = [1,\; x_1,\; \dots,\; x_d]$$
+Policies use a configurable state feature map $$\varphi: \mathbb{R}^d \to \mathbb{R}^q$$.
+The policy layer prepends the intercept internally:
 
-- **Source:** `src/objective/policy.py` :: `_phi(x_batch)`
-- **Notes:** Prepends a bias column to the feature matrix.
+$$\phi(x) = [1,\; \varphi_1(x),\; \dots,\; \varphi_q(x)]$$
+
+Therefore $$\theta \in \mathbb{R}^{q+1}$$. User-supplied feature maps return
+only $$\varphi(x)$$; they should not include the leading intercept column.
+
+Built-in feature maps:
+
+$$\varphi_{\text{identity}}(x) = [x_1,\; \dots,\; x_d]$$
+
+$$\varphi_{\text{quadratic}}(x) = [x_1,\; \dots,\; x_d,\; x_1^2,\; x_1x_2,\; \dots,\; x_d^2]$$
+
+- **Source:** `src/objective/policy.py` :: `FeatureMap`, `IdentityFeatureMap`,
+  `QuadraticFeatureMap`, `CallableFeatureMap`, `_phi(x_batch, feature_map)`
+- **Notes:** `IdentityFeatureMap` preserves the previous default behavior
+  $$\phi(x) = [1, x]$$. `QuadraticFeatureMap` uses deterministic upper-triangular
+  pair ordering $$i \le j$$ for the degree-2 terms.
 
 ### 2.2 Constant Policy
 

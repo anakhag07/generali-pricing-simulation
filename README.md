@@ -159,13 +159,17 @@ running optimization, use:
 
 ```bash
 python scripts/query_acceptance_at_u.py \
-  --preset real_data_glm_softmax_policy_base \
-  --u -0.3 0.0 0.2 \
+  --model-type glm \
+  --u-count 101 \
   --n-rows 500
 ```
 
 The script loads the preset objective and state batch, then reports mean
-acceptance for each supplied `u` value.
+acceptance for each sampled `u` value. It writes acceptance curves and a
+historical-`U` histogram with sampled constant-`u` rug marks under
+`outputs/acceptance_queries/<model_type>/` by default. Use `--output-subdir`
+to choose a subdirectory under `outputs/acceptance_queries/`, or pass explicit
+values with `--u -0.3 0.0 0.2` instead of `--u-count`.
 
 ## Creating Config Presets
 

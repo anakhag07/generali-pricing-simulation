@@ -194,12 +194,17 @@ def load_x_array(model_type: Literal["glm", "xgb"], n_rows: int = 5000) -> np.nd
     return df[feature_cols].to_numpy(dtype=float)
 
 
-def _load_observed_u_array(model_type: Literal["glm", "xgb"], n_rows: int = 5000) -> np.ndarray:
-    """Load first n_rows of observed pricing multipliers from the acceptance CSV."""
+def load_observed_u_array(model_type: Literal["glm", "xgb"], n_rows: int | None = 5000) -> np.ndarray:
+    """Load observed pricing multipliers from the acceptance CSV."""
     if model_type not in _ACCEPTANCE_CSV_PATHS:
         raise ValueError(f"model_type must be 'glm' or 'xgb', got '{model_type}'.")
     df = pd.read_csv(_ACCEPTANCE_CSV_PATHS[model_type], sep=";", usecols=["U"], nrows=n_rows)
     return df["U"].to_numpy(dtype=float)
+
+
+def _load_observed_u_array(model_type: Literal["glm", "xgb"], n_rows: int | None = 5000) -> np.ndarray:
+    """Backward-compatible alias for loading observed pricing multipliers."""
+    return load_observed_u_array(model_type, n_rows=n_rows)
 
 
 def load_mean_observed_acceptance(model_type: Literal["glm", "xgb"]) -> float:
@@ -343,6 +348,7 @@ __all__ = [
     "ModelArtifactBundle",
     "load_model_artifacts",
     "load_x_array",
+    "load_observed_u_array",
     "load_mean_observed_acceptance",
     "unwrap_model_artifact",
     "extract_glm_u_coef",

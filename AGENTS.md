@@ -165,6 +165,7 @@ Guidelines:
   - `ACCEPTANCE_STATE_COLS`: 10 cols passed to acceptance model (base + premium, no U)
   - `LOSS_FEATURE_COLS`: 9 base cols passed to loss model
   - `load_x_array(model_type, n_rows=5000)`: loads first n_rows of raw acceptance-state features from the current `*_feat_processor.csv` exports; string columns are replay-encoded to match the notebook's numeric training inputs
+  - `load_observed_u_array(model_type, n_rows=5000)`: loads observed pricing multipliers from the current acceptance CSV exports for diagnostics and plots
   - `load_model_artifacts(model_type)`: loads `(acceptance_artifact, loss_artifact)` bundles from `src/data/artifacts_preproc_pipeline/`
   - `ModelArtifactBundle.model_frame(raw_frame)`: converts raw notebook-space columns into the exact model-input frame expected by the bundled estimator
   - `extract_glm_u_coef(glm_pipeline)`: extracts effective d_logit/dU = w_U / std_U from the inner fitted GLM Pipeline for analytical gradient computation
@@ -293,7 +294,7 @@ Guidelines:
 - `scripts/run_lagrangian_sweep.py` runs a lagrangian-lambda sweep and writes aggregate frontier plots under `outputs/<project>/lagrangian_frontier_<timestamp>/`
 - `scripts/run_acceptance_floor_sweep.py` runs the trust-constrained softmax GLM preset over a dense acceptance-floor grid `c` and writes aggregate frontier plots under `outputs/<project>/acceptance_floor_frontier_<timestamp>/`
 - `scripts/plot_saved_acceptance_floor_frontier.py` re-plots acceptance-floor Pareto frontiers from a saved `acceptance_floor_sweep.csv` (or the latest matching frontier directory) without rerunning optimization; defaults to `first_order` and writes estimator-suffixed Pareto PNGs
-- `scripts/query_acceptance_at_u.py` loads a config preset and reports mean acceptance for supplied constant `u` values without running optimization; optionally writes `u,n,mean_acceptance` CSV output
+- `scripts/query_acceptance_at_u.py` loads a config preset or default GLM/XGB model type and reports mean acceptance for supplied or evenly sampled constant `u` values without running optimization; writes acceptance-curve and historical-`U` rug plots under `outputs/acceptance_queries/` by default and optionally writes `u,n,mean_acceptance` CSV output
 
 ## Known Issues and Dead Code
 

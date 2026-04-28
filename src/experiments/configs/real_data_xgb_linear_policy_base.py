@@ -51,7 +51,7 @@ TRAINING = canonical_training_block(
 RUNTIME = canonical_runtime_block(
     plot=True,
     verbose=True,
-    wandb_enabled=False,
+    wandb_enabled=True,
     wandb_project="xgb-linear-policy-unconstrained",
 )
 

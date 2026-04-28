@@ -1,9 +1,8 @@
-"""XGBoost-backed experiment config using real insurance data (pickle path).
+"""XGBoost-backed base config using a linear policy on real insurance data.
 
-Uses trained XGBoost artifacts (classifier + regressor) with the first 5,000
-rows of the real dataset as the fixed state distribution. The objective owns
-the acceptance-side preprocessing from the bundled pickle so raw CSV rows stay
-at the optimization boundary.
+Uses the same trained XGBoost artifacts and fixed state batch as
+``real_data_xgb_softmax_policy_base`` but swaps in ``LinearPolicy`` while
+keeping the optimization unconstrained.
 
 XGBoost has no analytical gradient; d_acceptance/du is computed via central
 finite differences inside ModelBasedObjective. first_order is disabled.
@@ -27,12 +26,12 @@ from experiments.config import (
     canonical_training_block,
     make_model_based_objective,
 )
-from objective.policy import LinearPolicy, SoftmaxPolicy
+from objective.policy import LinearPolicy
 
 STATE_DIM = len(FEATURE_COLS_XGB)
 
 _acceptance_model, _loss_model = load_model_artifacts("xgb")
-_policy = SoftmaxPolicy()
+_policy = LinearPolicy()
 
 THETA0 = np.zeros(_acceptance_model.policy_feature_dim() + 1, dtype=float)
 
@@ -41,7 +40,7 @@ TRAINING = canonical_training_block(
     step_rule="l-bfgs-b",
     t_steps=1000,
     step_size=0.01,
-    sigma=0.05,
+    sigma=0.01,
     n_grad_samples=50,
     enabled_estimators=("finite_difference", "spsa", "stein_difference"),
     perturbation_space="u",
@@ -53,13 +52,13 @@ RUNTIME = canonical_runtime_block(
     plot=True,
     verbose=True,
     wandb_enabled=True,
-    wandb_project='xgb-softmax-policy-unconstrained'
+    wandb_project="xgb-linear-policy-unconstrained",
 )
 
 CORRECTNESS = CorrectnessSpec(gradient_source="none")
 
 CONFIG = build_experiment_config(
-    seed=42,
+    seed=8,
     state_dim=STATE_DIM,
     x_fixed=load_x_array("xgb", n_rows=5000),
     objective=make_model_based_objective(
@@ -69,8 +68,7 @@ CONFIG = build_experiment_config(
         acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),
         loss_cols=tuple(LOSS_FEATURE_COLS),
         premium_col=9,
-        u_coef=None,  # XGBoost: use numerical FD for d_acceptance/du
-        # u_bounds=(-0.05, 0.5),  # constrain u to XGB training data range
+        u_coef=None,
     ),
     theta0=THETA0,
     training=TRAINING,

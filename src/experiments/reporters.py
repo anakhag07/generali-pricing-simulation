@@ -500,6 +500,7 @@ def _observed_u_reference(result: ExperimentResult) -> np.ndarray | None:
 
 def _build_summary_payload(run_context: RunContext, result: ExperimentResult) -> dict:
     estimators: dict[str, dict] = {}
+    n_objective_terms = int(result.x_samples.shape[0])
     for name, estimator_result in result.results.items():
         trace = result.traces.get(name)
         theta_l2_norm = float(np.linalg.norm(estimator_result.theta))
@@ -509,6 +510,7 @@ def _build_summary_payload(run_context: RunContext, result: ExperimentResult) ->
         estimator_payload = {
             "final_u": float(estimator_result.u),
             "final_value": float(estimator_result.value),
+            "final_objective_sum": n_objective_terms * float(estimator_result.value),
             "runtime_sec": float(estimator_result.time),
             "theta": _as_list(estimator_result.theta),
             "theta_l2_norm": theta_l2_norm,

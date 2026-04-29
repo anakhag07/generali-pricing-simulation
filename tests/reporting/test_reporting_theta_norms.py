@@ -27,7 +27,7 @@ def _build_result() -> ExperimentResult:
         state_dim=1,
         objective=objective,
         theta0=theta0,
-        n_samples=1,
+        n_samples=2,
         step_rule="constant",
         perturbation_space="theta",
         t_steps=3,
@@ -46,7 +46,7 @@ def _build_result() -> ExperimentResult:
     )
     result = ExperimentResult(
         config=config,
-        x_samples=np.array([[0.5]], dtype=float),
+        x_samples=np.array([[0.5], [1.0]], dtype=float),
         initial_value=1.0,
         results={
             "first_order": EstimatorResult(
@@ -147,6 +147,8 @@ def test_summary_payload_contains_theta_norms(tmp_path: Path) -> None:
     estimator_payload = payload["estimators"]["first_order"]
     assert "theta_l2_norm" in estimator_payload
     assert "theta_delta_l2_norm" in estimator_payload
+    assert estimator_payload["final_value"] == 0.8
+    assert estimator_payload["final_objective_sum"] == 1.6
     assert estimator_payload["optimizer_status"] == 0
     assert "CONVERGENCE" in estimator_payload["optimizer_message"]
     assert float(estimator_payload["theta_l2_norm"]) > 0.0

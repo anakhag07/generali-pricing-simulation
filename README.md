@@ -193,7 +193,9 @@ Each run writes artifacts to `outputs/<experiment_name>/<timestamp>/`:
 
 - `summary.json` -- full result payload
   including final trust-constr diagnostics such as `constraint_penalty`
-  and any configured constant-`u` baseline evaluations
+  and any configured constant-`u` baseline evaluations; estimator results
+  include both the mean objective `final_value` and summed objective
+  `final_objective_sum`
 - `steps.csv` -- per-step metrics for every estimator
 - `plots/` -- loss curves, gradient norms, objective slices, contour plots, and real-data diagnostics for observed-vs-policy `u` histograms plus `u` vs `M(x, u)` trend plots
 

@@ -9,6 +9,7 @@ from experiments.config import ExperimentConfig
 _CONFIG_MODULES = {
     "first_order_runs_diff_starts": "experiments.configs.first_order_runs_diff_starts",
     "fixed_regression_base": "experiments.configs.fixed_regression_base",
+    "real_data_glm_constant_policy_base": "experiments.configs.real_data_glm_constant_policy_base",
     "real_data_glm_constant_policy_trust_region_constr": "experiments.configs.real_data_glm_constant_policy_trust_region_constr",
     "planted_logistic_base": "experiments.configs.planted_logistic_base",
     "real_data_glm_linear_policy_base": "experiments.configs.real_data_glm_linear_policy_base",

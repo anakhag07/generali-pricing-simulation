@@ -93,6 +93,7 @@ Several preset configs are available, selected by config preset:
 | `real_data_glm_softmax_policy_trust_region_constr` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, softmax policy + trust-constr acceptance floor) |
 | `real_data_glm_linear_policy_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, linear-policy diagnostic) |
 | `real_data_glm_linear_policy_trust_region_constr` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, linear policy + trust-constr acceptance floor) |
+| `real_data_glm_constant_policy_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, constant-policy diagnostic) |
 | `real_data_glm_constant_policy_trust_region_constr` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, constant policy + trust-constr acceptance floor) |
 | `real_data_xgb_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, FD grad) |
 | `real_data_xgb_softmax_policy_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, softmax policy, FD grad) |
@@ -192,7 +193,9 @@ Each run writes artifacts to `outputs/<experiment_name>/<timestamp>/`:
 
 - `summary.json` -- full result payload
   including final trust-constr diagnostics such as `constraint_penalty`
-  and any configured constant-`u` baseline evaluations
+  and any configured constant-`u` baseline evaluations; estimator results
+  include both the mean objective `final_value` and summed objective
+  `final_objective_sum`
 - `steps.csv` -- per-step metrics for every estimator
 - `plots/` -- loss curves, gradient norms, objective slices, contour plots, and real-data diagnostics for observed-vs-policy `u` histograms plus `u` vs `M(x, u)` trend plots
 

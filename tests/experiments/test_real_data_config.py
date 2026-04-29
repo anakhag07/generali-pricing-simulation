@@ -7,6 +7,7 @@ import pytest
 
 
 @pytest.mark.parametrize("name", [
+    "real_data_glm_constant_policy_base",
     "real_data_glm_constant_policy_trust_region_constr",
     "real_data_glm_linear_policy_base",
     "real_data_glm_linear_policy_trust_region_constr",
@@ -55,6 +56,15 @@ def test_glm_linear_policy_base_x_fixed_shape():
     from experiments.configs import get_config
 
     cfg = get_config("real_data_glm_linear_policy_base")
+    assert cfg.x_fixed is not None
+    assert cfg.x_fixed.shape == (5000, 12)
+    assert cfg.state_dim == 12
+
+
+def test_glm_constant_policy_base_x_fixed_shape():
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_glm_constant_policy_base")
     assert cfg.x_fixed is not None
     assert cfg.x_fixed.shape == (5000, 12)
     assert cfg.state_dim == 12
@@ -134,6 +144,21 @@ def test_glm_linear_policy_base_theta0_is_resolved_at_runtime():
 
     cfg = get_config("real_data_glm_linear_policy_base")
     assert cfg.theta0 is None
+
+
+def test_glm_constant_policy_base_is_unconstrained() -> None:
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_glm_constant_policy_base")
+    assert cfg.step_rule == "l-bfgs-b"
+    assert cfg.acceptance_floor is None
+    assert cfg.acceptance_penalty_weight is None
+    assert cfg.enabled_estimators == (
+        "first_order",
+        "finite_difference",
+        "spsa",
+        "stein_difference",
+    )
 
 
 def test_glm_softmax_policy_base_is_unconstrained() -> None:
@@ -253,6 +278,15 @@ def test_glm_constant_policy_trust_region_constr_initial_action_is_constant_0_0(
     assert np.allclose(u_batch, 0.0)
 
 
+def test_glm_constant_policy_base_initial_action_is_constant_0_0():
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_glm_constant_policy_base")
+    assert cfg.x_fixed is not None
+    u_batch = cfg.objective.policy_value(cfg.theta0, cfg.x_fixed)
+    assert np.allclose(u_batch, 0.0)
+
+
 def test_xgb_base_no_first_order():
     from experiments.configs import get_config
     cfg = get_config("real_data_xgb_base")
@@ -314,6 +348,7 @@ def test_xgb_linear_policy_base_initial_action_is_constant_0_0():
 
 
 @pytest.mark.parametrize("name", [
+    "real_data_glm_constant_policy_base",
     "real_data_glm_constant_policy_trust_region_constr",
     "real_data_glm_linear_policy_base",
     "real_data_glm_linear_policy_trust_region_constr",
@@ -333,6 +368,7 @@ def test_real_data_configs_disable_correctness_gradients(name):
 
 
 @pytest.mark.parametrize("name", [
+    "real_data_glm_constant_policy_base",
     "real_data_glm_constant_policy_trust_region_constr",
     "real_data_glm_linear_policy_base",
     "real_data_glm_linear_policy_trust_region_constr",

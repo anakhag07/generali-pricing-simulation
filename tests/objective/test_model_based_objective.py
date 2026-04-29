@@ -33,20 +33,20 @@ def _make_glm_objective(n_rows=20):
         premium_col=9,
         u_coef=u_coef,
     )
-    return obj, x, acc_model.policy_feature_dim()
+    return obj, x, obj.policy_theta_dim()
 
 
 def test_value_returns_scalar():
-    obj, x, policy_dim = _make_glm_objective()
-    theta = np.zeros(policy_dim + 1, dtype=float)
+    obj, x, theta_dim = _make_glm_objective()
+    theta = np.zeros(theta_dim, dtype=float)
     val = obj.value(theta, x)
     assert isinstance(val, float)
     assert np.isfinite(val)
 
 
 def test_grad_shape():
-    obj, x, policy_dim = _make_glm_objective()
-    theta = np.zeros(policy_dim + 1, dtype=float)
+    obj, x, theta_dim = _make_glm_objective()
+    theta = np.zeros(theta_dim, dtype=float)
     grad = obj.grad(theta, x)
     assert grad.shape == theta.shape
     assert np.all(np.isfinite(grad))
@@ -138,10 +138,11 @@ def test_analytical_vs_fd_grad_glm():
     acc_model, loss_model = load_model_artifacts("glm")
     u_coef = extract_glm_u_coef(acc_model)
     x = load_x_array("glm", n_rows=30)
-    theta = np.zeros(acc_model.policy_feature_dim() + 1, dtype=float)
+    policy = SoftmaxPolicy()
+    theta = np.zeros(policy.theta_dim(acc_model.policy_feature_dim()), dtype=float)
 
     obj_analytical = ModelBasedObjective(
-        policy=SoftmaxPolicy(),
+        policy=policy,
         acceptance_model=acc_model,
         loss_model=loss_model,
         acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),
@@ -150,7 +151,7 @@ def test_analytical_vs_fd_grad_glm():
         u_coef=u_coef,
     )
     obj_fd = ModelBasedObjective(
-        policy=SoftmaxPolicy(),
+        policy=policy,
         acceptance_model=acc_model,
         loss_model=loss_model,
         acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),
@@ -166,15 +167,15 @@ def test_analytical_vs_fd_grad_glm():
 
 
 def test_x_batch_must_be_2d():
-    obj, _, policy_dim = _make_glm_objective()
-    theta = np.zeros(policy_dim + 1, dtype=float)
+    obj, _, theta_dim = _make_glm_objective()
+    theta = np.zeros(theta_dim, dtype=float)
     with pytest.raises(ValueError):
         obj.value(theta, np.zeros(12))
 
 
 def test_policy_hooks_use_acceptance_preprocessor() -> None:
     obj, x, _ = _make_glm_objective(n_rows=5)
-    theta = np.zeros(obj.acceptance_model.policy_feature_dim() + 1, dtype=float)
+    theta = np.zeros(obj.policy_theta_dim(), dtype=float)
 
     processed = obj._policy_features(x)
     direct_u = obj.policy.value(theta, processed)
@@ -187,9 +188,28 @@ def test_policy_hooks_use_acceptance_preprocessor() -> None:
     assert np.allclose(hook_grad, direct_grad)
 
 
+def test_policy_hooks_support_quadratic_feature_map() -> None:
+    from dataclasses import replace
+
+    from objective.policy import QuadraticFeatureMap, SoftmaxPolicy
+
+    obj, x, _ = _make_glm_objective(n_rows=5)
+    quadratic_policy = SoftmaxPolicy(feature_map=QuadraticFeatureMap())
+    obj = replace(obj, policy=quadratic_policy)
+    theta = np.zeros(obj.policy_theta_dim(), dtype=float)
+
+    processed = obj._policy_features(x)
+    direct_u = quadratic_policy.value(theta, processed)
+    direct_grad = quadratic_policy.grad(theta, processed)
+
+    assert theta.size == quadratic_policy.theta_dim(processed.shape[1])
+    np.testing.assert_allclose(obj.policy_value(theta, x), direct_u)
+    np.testing.assert_allclose(obj.policy_grad(theta, x), direct_grad)
+
+
 def test_mean_acceptance_grad_matches_fd() -> None:
-    obj, x, policy_dim = _make_glm_objective(n_rows=30)
-    theta = np.array([0.4] + [0.01] * policy_dim, dtype=float)
+    obj, x, theta_dim = _make_glm_objective(n_rows=30)
+    theta = np.array([0.4] + [0.01] * (theta_dim - 1), dtype=float)
 
     grad = obj.mean_acceptance_grad(theta, x)
     grad_fd = finite_difference_theta_grad(
@@ -202,8 +222,8 @@ def test_mean_acceptance_grad_matches_fd() -> None:
 
 
 def test_step_metrics_match_objective_components() -> None:
-    obj, x, policy_dim = _make_glm_objective(n_rows=30)
-    theta = np.array([0.4] + [0.01] * policy_dim, dtype=float)
+    obj, x, theta_dim = _make_glm_objective(n_rows=30)
+    theta = np.array([0.4] + [0.01] * (theta_dim - 1), dtype=float)
 
     metrics = obj._step_metrics(theta, x)
     u_batch = obj._clip_u(obj.policy_value(theta, x))
@@ -237,8 +257,8 @@ def test_mean_action_uses_clipped_u_when_bounds_present() -> None:
 
 
 def test_acceptance_penalty_raises_value_when_floor_is_higher() -> None:
-    obj, x, policy_dim = _make_glm_objective(n_rows=30)
-    theta = np.array([0.4] + [0.01] * policy_dim, dtype=float)
+    obj, x, theta_dim = _make_glm_objective(n_rows=30)
+    theta = np.array([0.4] + [0.01] * (theta_dim - 1), dtype=float)
     baseline_acceptance = obj.mean_acceptance(theta, x)
 
     constrained = replace(
@@ -251,8 +271,8 @@ def test_acceptance_penalty_raises_value_when_floor_is_higher() -> None:
 
 
 def test_constrained_grad_matches_fd() -> None:
-    obj, x, policy_dim = _make_glm_objective(n_rows=30)
-    theta = np.array([0.4] + [0.01] * policy_dim, dtype=float)
+    obj, x, theta_dim = _make_glm_objective(n_rows=30)
+    theta = np.array([0.4] + [0.01] * (theta_dim - 1), dtype=float)
     baseline_acceptance = obj.mean_acceptance(theta, x)
     constrained = replace(
         obj,
@@ -274,8 +294,8 @@ def test_constrained_grad_matches_fd() -> None:
 def test_lagrangian_value_matches_base_plus_lambda_gap() -> None:
     from data.loader import load_mean_observed_acceptance
 
-    obj, x, policy_dim = _make_glm_objective(n_rows=30)
-    theta = np.array([0.4] + [0.01] * policy_dim, dtype=float)
+    obj, x, theta_dim = _make_glm_objective(n_rows=30)
+    theta = np.array([0.4] + [0.01] * (theta_dim - 1), dtype=float)
     floor = load_mean_observed_acceptance("glm")
     lagrangian = replace(
         obj,
@@ -293,8 +313,8 @@ def test_lagrangian_value_matches_base_plus_lambda_gap() -> None:
 def test_lagrangian_grad_matches_fd() -> None:
     from data.loader import load_mean_observed_acceptance
 
-    obj, x, policy_dim = _make_glm_objective(n_rows=30)
-    theta = np.array([0.4] + [0.01] * policy_dim, dtype=float)
+    obj, x, theta_dim = _make_glm_objective(n_rows=30)
+    theta = np.array([0.4] + [0.01] * (theta_dim - 1), dtype=float)
     lagrangian = replace(
         obj,
         acceptance_floor=load_mean_observed_acceptance("glm"),

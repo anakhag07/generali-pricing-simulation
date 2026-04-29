@@ -35,7 +35,7 @@ _policy = LinearPolicy()
 _acceptance_floor = load_mean_observed_acceptance("glm")
 
 # Start from the centered baseline action so revenue begins at 1.0 * premium.
-THETA0 = np.array([0.0] + [0.0] * _acceptance_model.policy_feature_dim(), dtype=float)
+THETA0 = np.zeros(_policy.theta_dim(_acceptance_model.policy_feature_dim()), dtype=float)
 
 TRAINING = canonical_training_block(
     n_samples=5000,

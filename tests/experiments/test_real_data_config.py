@@ -111,6 +111,17 @@ def test_glm_softmax_policy_base_has_first_order():
     assert "first_order" in cfg.enabled_estimators
 
 
+def test_glm_softmax_policy_base_uses_quadratic_feature_map():
+    from experiments.configs import get_config
+    from objective.policy import QuadraticFeatureMap
+
+    cfg = get_config("real_data_glm_softmax_policy_base")
+    policy = cfg.objective.policy
+    assert isinstance(policy.feature_map, QuadraticFeatureMap)
+    assert cfg.theta0 is not None
+    assert cfg.theta0.size == cfg.objective.policy_theta_dim()
+
+
 def test_glm_linear_policy_base_has_first_order():
     from experiments.configs import get_config
 

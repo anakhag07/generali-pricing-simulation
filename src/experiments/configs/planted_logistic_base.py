@@ -13,8 +13,9 @@ from experiments.config import (
 )
 
 STATE_DIM = 3
+POLICY = make_softmax_policy()
 BETA = np.asarray([0.5, -0.2, 0.3], dtype=float)
-POLICY_THETA = np.zeros(STATE_DIM + 1, dtype=float)
+POLICY_THETA = np.zeros(POLICY.theta_dim(STATE_DIM), dtype=float)
 
 TRAINING = canonical_training_block(
     n_samples=20,
@@ -37,7 +38,7 @@ CONFIG = build_experiment_config(
     seed=7,
     state_dim=STATE_DIM,
     objective=make_planted_logistic_objective(
-        policy=make_softmax_policy(),
+        policy=POLICY,
         alpha=1.0,
         beta=BETA,
         bias=-0.2,

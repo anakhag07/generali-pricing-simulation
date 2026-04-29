@@ -73,7 +73,11 @@ def run_experiment(
         theta0_rng = default_rng(theta0_child)
         rng = default_rng(main_child)
         policy = getattr(objective, "policy", None)
-        theta_initial = random_theta0(effective_config.state_dim, policy, theta0_rng)
+        policy_input_dim = getattr(objective, "policy_input_dim", None)
+        theta_state_dim = (
+            int(policy_input_dim()) if callable(policy_input_dim) else effective_config.state_dim
+        )
+        theta_initial = random_theta0(theta_state_dim, policy, theta0_rng)
         # Persist the resolved theta0 so reporters/plots can access it
         effective_config = replace(effective_config, theta0=theta_initial)
     else:

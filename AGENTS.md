@@ -147,6 +147,8 @@ Guidelines:
 
 - **`src/objective/policy.py`**
   - Implements `Policy` with batch methods `value(theta, x_batch)` and `grad(theta, x_batch)`
+  - Feature-map classes: `IdentityFeatureMap`, `QuadraticFeatureMap`, `CallableFeatureMap`; policies prepend the intercept internally, so custom maps return `varphi(x)`, not `[1, varphi(x)]`
+  - `policy_theta_dim(policy, state_dim)`: helper for resolving theta dimension from the policy feature map
   - Concrete policies: `ConstantPolicy`, `LinearPolicy`, `SoftmaxPolicy`, `FeatureProcessedPolicy`
   - `policy_from_kind(kind)`: factory function
 
@@ -220,7 +222,7 @@ Guidelines:
   - `first_order_runs_diff_starts.py`: planted-logistic preset configured for comparison runs across different initial starts
   - `fixed_regression_base.py`: base fixed-regression config (4D, L-BFGS-B step rule, W&B enabled)
   - `planted_logistic_base.py`: planted logistic base config (3D, L-BFGS-B step rule, 5000 steps, u*=1.1)
-  - `real_data_glm_softmax_policy_base.py`: GLM pickle-based softmax-policy base config; state_dim=12; unconstrained `l-bfgs-b`; first-order, finite-difference, SPSA, and stein-difference estimators; analytical first-order gradient via u_coef
+  - `real_data_glm_softmax_policy_base.py`: GLM pickle-based softmax-policy base config; state_dim=12; uses `QuadraticFeatureMap`; unconstrained `l-bfgs-b`; first-order, finite-difference, SPSA, and stein-difference estimators; analytical first-order gradient via u_coef
   - `real_data_glm_softmax_policy_lagrangian_small.py`: small GLM softmax-policy lagrangian preset; first 250 raw rows; unconstrained `l-bfgs-b`; all 5 estimators enabled; observed-acceptance floor with `lagrangian_lambda=2.0`
   - `real_data_glm_softmax_policy_trust_region_constr.py`: constrained GLM softmax-policy config with a trust-constr mean-acceptance floor set to the observed CSV acceptance level; otherwise mirrors the softmax base preset
   - `real_data_glm_linear_policy_base.py`: GLM pickle-based linear-policy diagnostic config; same data/models as `real_data_glm_softmax_policy_base` but with `LinearPolicy` and runtime-resolved random initialization to inspect behavior without softmax saturation
@@ -234,7 +236,7 @@ Guidelines:
   - `config_template.py`: copy-first scaffold with `None` placeholders for all `ExperimentConfig` fields plus objective/correctness parameter blocks; not registered as a runnable preset
 
 - **`src/experiments/defaults.py`**
-  - `default_theta0(state_dim)`: returns default initial theta with `state_dim + 1` params
+  - `default_theta0(state_dim, policy=None)`: returns default initial theta sized by `policy_theta_dim(policy, state_dim)` when a policy is provided, otherwise `state_dim + 1`
   - `default_policy(state_dim)`: returns default `SoftmaxPolicy`
 
 - **`src/experiments/helpers.py`** (largest file; orchestration + wrappers)

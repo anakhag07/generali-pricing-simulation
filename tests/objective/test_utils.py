@@ -30,16 +30,16 @@ def _make_fixed_regression(policy, state_dim=3):
 
 
 def test_theta_grad_constant_policy():
-    """With ConstantPolicy, theta_grad == mean(grad_u) * [1, 0, ...]."""
+    """With ConstantPolicy, theta_grad == mean(grad_u) * [1]."""
     rng = np.random.default_rng(7)
     state_dim = 3
     policy = ConstantPolicy()
-    theta = np.array([0.1, 0.0, 0.0, 0.0])
+    theta = np.array([0.1])
     x_batch = rng.normal(size=(50, state_dim))
     grad_u = rng.normal(size=50)
 
     result = _theta_grad_from_u_grad(policy, theta, x_batch, grad_u)
-    expected = np.zeros(4)
+    expected = np.zeros(1)
     expected[0] = np.mean(grad_u)
     np.testing.assert_allclose(result, expected, atol=1e-12)
 

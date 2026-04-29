@@ -13,13 +13,14 @@ from experiments.config import (
 )
 
 STATE_DIM = 2
+POLICY = make_softmax_policy()
 
 BETA_1 = np.linspace(0.02, 0.5, num=STATE_DIM, dtype=float)
 BETA_2 = -1.2
 BETA_3 = np.linspace(0.005, 0.2, num=STATE_DIM, dtype=float)
 BETA_4 = 0.4
 
-POLICY_THETA = np.zeros(STATE_DIM + 1, dtype=float)
+POLICY_THETA = np.zeros(POLICY.theta_dim(STATE_DIM), dtype=float)
 
 TRAINING = canonical_training_block(
     n_samples=100,
@@ -46,7 +47,7 @@ CONFIG = build_experiment_config(
     seed=7,
     state_dim=STATE_DIM,
     objective=make_fixed_regression_objective(
-        policy=make_softmax_policy(),
+        policy=POLICY,
         beta_1=BETA_1,
         beta_2=BETA_2,
         beta_3=BETA_3,

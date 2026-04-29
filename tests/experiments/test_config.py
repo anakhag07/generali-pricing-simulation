@@ -5,7 +5,7 @@ import pytest
 
 from experiments.config import ExperimentConfig
 from experiments.defaults import default_theta0, default_policy
-from objective import FixedRegressionObjective, SoftmaxPolicy
+from objective import FixedRegressionObjective, QuadraticFeatureMap, SoftmaxPolicy
 
 
 def test_beta_2_must_be_negative() -> None:
@@ -109,6 +109,49 @@ def test_constant_u_baselines_are_serialized() -> None:
 
     assert config.constant_u_baselines == (-0.3, 0.0, 0.2)
     assert config.to_dict()["constant_u_baselines"] == [-0.3, 0.0, 0.2]
+
+
+def test_config_accepts_quadratic_policy_theta_dim() -> None:
+    state_dim = 2
+    policy = SoftmaxPolicy(feature_map=QuadraticFeatureMap())
+    objective = FixedRegressionObjective.from_parameters(
+        policy=policy,
+        beta_1=[0.1, 0.2],
+        beta_2=-0.5,
+        beta_3=[0.2, 0.3],
+        beta_4=0.4,
+    )
+    config = ExperimentConfig(
+        state_dim=state_dim,
+        objective=objective,
+        theta0=default_theta0(state_dim, policy),
+        n_samples=5,
+        step_rule="constant",
+        perturbation_space="theta",
+    )
+
+    assert config.theta0.shape == (policy.theta_dim(state_dim),)
+
+
+def test_config_rejects_old_theta_dim_for_quadratic_policy() -> None:
+    policy = SoftmaxPolicy(feature_map=QuadraticFeatureMap())
+    objective = FixedRegressionObjective.from_parameters(
+        policy=policy,
+        beta_1=[0.1, 0.2],
+        beta_2=-0.5,
+        beta_3=[0.2, 0.3],
+        beta_4=0.4,
+    )
+
+    with pytest.raises(ValueError, match="policy requires 6"):
+        ExperimentConfig(
+            state_dim=2,
+            objective=objective,
+            theta0=np.zeros(3, dtype=float),
+            n_samples=5,
+            step_rule="constant",
+            perturbation_space="theta",
+        )
 
 
 def test_constant_u_baselines_reject_duplicates() -> None:

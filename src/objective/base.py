@@ -22,6 +22,10 @@ def sample_states(rng: np.random.Generator, n: int, dim: int) -> np.ndarray:
 class Policy:
     """Policy interface: $$u = \\pi_\\theta(x)$$ with gradient $$\\partial u / \\partial \\theta$$."""
 
+    def theta_dim(self, state_dim: int) -> int:
+        """Return required theta dimension for inputs with ``state_dim`` columns."""
+        raise NotImplementedError
+
     def value(self, theta: np.ndarray, x_batch: np.ndarray) -> np.ndarray:
         """Return action values for batch, shape (n_samples,)."""
         raise NotImplementedError

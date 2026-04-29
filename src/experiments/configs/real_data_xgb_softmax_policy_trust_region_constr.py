@@ -32,7 +32,7 @@ _acceptance_model, _loss_model = load_model_artifacts("xgb")
 _policy = SoftmaxPolicy()
 _acceptance_floor = load_mean_observed_acceptance("xgb")
 
-THETA0 = np.zeros(_acceptance_model.policy_feature_dim() + 1, dtype=float)
+THETA0 = np.zeros(_policy.theta_dim(_acceptance_model.policy_feature_dim()), dtype=float)
 
 TRAINING = canonical_training_block(
     n_samples=5000,

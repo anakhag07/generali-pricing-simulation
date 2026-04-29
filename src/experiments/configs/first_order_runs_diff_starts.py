@@ -42,7 +42,7 @@ PLANTED_U_STAR = 0.1
 CORRECTNESS_GRADIENT_SOURCE = "exact"
 
 POLICY = make_softmax_policy()
-THETA0 = np.zeros(STATE_DIM + 1, dtype=float)
+THETA0 = np.zeros(POLICY.theta_dim(STATE_DIM), dtype=float)
 
 OBJECTIVE = make_fixed_regression_objective(
     policy=POLICY,

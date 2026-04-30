@@ -10,11 +10,16 @@ import pytest
     "real_data_glm_constant_policy_base",
     "real_data_glm_constant_policy_trust_region_constr",
     "real_data_glm_linear_policy_base",
+    "real_data_glm_linear_policy_cubic_base",
+    "real_data_glm_linear_policy_quadratic_base",
+    "real_data_glm_linear_policy_quartic_base",
     "real_data_glm_linear_policy_trust_region_constr",
     "real_data_glm_mlp_policy_base",
     "real_data_glm_softmax_policy_base",
+    "real_data_glm_softmax_policy_cubic_base",
     "real_data_glm_softmax_policy_lagrangian_small",
     "real_data_glm_softmax_policy_quadratic_base",
+    "real_data_glm_softmax_policy_quartic_base",
     "real_data_glm_softmax_policy_trust_region_constr",
     "real_data_xgb_base",
     "real_data_xgb_linear_acceptance_floor_base",
@@ -149,15 +154,56 @@ def test_glm_softmax_policy_base_has_first_order():
     assert "first_order" in cfg.enabled_estimators
 
 
-def test_glm_softmax_policy_base_uses_quadratic_feature_map():
+def test_glm_softmax_policy_base_uses_identity_feature_map():
     from experiments.configs import get_config
-    from objective.policy import QuadraticFeatureMap
+    from objective.policy import IdentityFeatureMap
 
     cfg = get_config("real_data_glm_softmax_policy_base")
     policy = cfg.objective.policy
-    assert isinstance(policy.feature_map, QuadraticFeatureMap)
+    assert isinstance(policy.feature_map, IdentityFeatureMap)
     assert cfg.theta0 is not None
     assert cfg.theta0.size == cfg.objective.policy_theta_dim()
+
+
+@pytest.mark.parametrize(
+    ("name", "policy_type", "feature_map_type", "theta0_is_none"),
+    [
+        ("real_data_glm_linear_policy_base", "linear", "identity", True),
+        ("real_data_glm_linear_policy_quadratic_base", "linear", "quadratic", True),
+        ("real_data_glm_linear_policy_cubic_base", "linear", "cubic", True),
+        ("real_data_glm_linear_policy_quartic_base", "linear", "quartic", True),
+        ("real_data_glm_softmax_policy_base", "softmax", "identity", False),
+        ("real_data_glm_softmax_policy_quadratic_base", "softmax", "quadratic", False),
+        ("real_data_glm_softmax_policy_cubic_base", "softmax", "cubic", False),
+        ("real_data_glm_softmax_policy_quartic_base", "softmax", "quartic", False),
+    ],
+)
+def test_glm_policy_feature_map_presets(name, policy_type, feature_map_type, theta0_is_none):
+    from experiments.configs import get_config
+    from objective.policy import (
+        CubicFeatureMap,
+        IdentityFeatureMap,
+        LinearPolicy,
+        QuadraticFeatureMap,
+        QuarticFeatureMap,
+        SoftmaxPolicy,
+    )
+
+    policy_classes = {"linear": LinearPolicy, "softmax": SoftmaxPolicy}
+    feature_map_classes = {
+        "identity": IdentityFeatureMap,
+        "quadratic": QuadraticFeatureMap,
+        "cubic": CubicFeatureMap,
+        "quartic": QuarticFeatureMap,
+    }
+    cfg = get_config(name)
+    policy = cfg.objective.policy
+
+    assert isinstance(policy, policy_classes[policy_type])
+    assert isinstance(policy.feature_map, feature_map_classes[feature_map_type])
+    assert (cfg.theta0 is None) is theta0_is_none
+    if cfg.theta0 is not None:
+        assert cfg.theta0.size == cfg.objective.policy_theta_dim()
 
 
 def test_glm_mlp_policy_base_has_mlp_policy_and_first_order():
@@ -237,7 +283,7 @@ def test_glm_softmax_policy_lagrangian_small_sets_floor_from_csv_mean():
 
     cfg = get_config("real_data_glm_softmax_policy_lagrangian_small")
     assert cfg.acceptance_floor == pytest.approx(load_mean_observed_acceptance("glm"))
-    assert cfg.lagrangian_lambda == pytest.approx(2.0)
+    assert cfg.lagrangian_lambda == pytest.approx(250.0)
 
 
 def test_glm_softmax_policy_lagrangian_small_uses_all_estimators() -> None:
@@ -248,7 +294,6 @@ def test_glm_softmax_policy_lagrangian_small_uses_all_estimators() -> None:
     assert cfg.enabled_estimators == (
         "first_order",
         "finite_difference",
-        "gauss_stein",
         "spsa",
         "stein_difference",
     )
@@ -399,10 +444,16 @@ def test_xgb_linear_policy_base_initial_action_is_constant_0_0():
     "real_data_glm_constant_policy_base",
     "real_data_glm_constant_policy_trust_region_constr",
     "real_data_glm_linear_policy_base",
+    "real_data_glm_linear_policy_cubic_base",
+    "real_data_glm_linear_policy_quadratic_base",
+    "real_data_glm_linear_policy_quartic_base",
     "real_data_glm_linear_policy_trust_region_constr",
     "real_data_glm_mlp_policy_base",
     "real_data_glm_softmax_policy_base",
+    "real_data_glm_softmax_policy_cubic_base",
     "real_data_glm_softmax_policy_lagrangian_small",
+    "real_data_glm_softmax_policy_quadratic_base",
+    "real_data_glm_softmax_policy_quartic_base",
     "real_data_glm_softmax_policy_trust_region_constr",
     "real_data_xgb_base",
     "real_data_xgb_linear_acceptance_floor_base",
@@ -420,10 +471,16 @@ def test_real_data_configs_disable_correctness_gradients(name):
     "real_data_glm_constant_policy_base",
     "real_data_glm_constant_policy_trust_region_constr",
     "real_data_glm_linear_policy_base",
+    "real_data_glm_linear_policy_cubic_base",
+    "real_data_glm_linear_policy_quadratic_base",
+    "real_data_glm_linear_policy_quartic_base",
     "real_data_glm_linear_policy_trust_region_constr",
     "real_data_glm_mlp_policy_base",
     "real_data_glm_softmax_policy_base",
+    "real_data_glm_softmax_policy_cubic_base",
     "real_data_glm_softmax_policy_lagrangian_small",
+    "real_data_glm_softmax_policy_quadratic_base",
+    "real_data_glm_softmax_policy_quartic_base",
     "real_data_glm_softmax_policy_trust_region_constr",
     "real_data_xgb_base",
     "real_data_xgb_linear_acceptance_floor_base",

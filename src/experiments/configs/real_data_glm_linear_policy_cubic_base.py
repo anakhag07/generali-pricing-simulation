@@ -1,20 +1,12 @@
-"""Small GLM-backed softmax-policy config using a fixed lagrangian lambda.
-
-Uses the same trained GLM artifacts as ``real_data_glm_softmax_policy_base`` but
-shrinks the fixed batch and iteration budget so the lagrangian acceptance-floor
-path is cheap to run while still exercising the selected estimators.
-"""
+"""GLM-backed base config using a cubic-feature linear policy."""
 
 from __future__ import annotations
-
-import numpy as np
 
 from data.loader import (
     ACCEPTANCE_STATE_COLS,
     FEATURE_COLS_GLM,
     LOSS_FEATURE_COLS,
     extract_glm_u_coef,
-    load_mean_observed_acceptance,
     load_model_artifacts,
     load_x_array,
     sample_csv_row_indices,
@@ -26,42 +18,34 @@ from experiments.config import (
     canonical_training_block,
     make_model_based_objective,
 )
-from objective.policy import SoftmaxPolicy
+from objective.policy import CubicFeatureMap, LinearPolicy
 
 STATE_DIM = len(FEATURE_COLS_GLM)
-SEED = 42
+SEED = 8
 
 _acceptance_model, _loss_model = load_model_artifacts("glm")
 _u_coef = extract_glm_u_coef(_acceptance_model)
-_policy = SoftmaxPolicy()
-_acceptance_floor = load_mean_observed_acceptance("glm")
+_policy = LinearPolicy(feature_map=CubicFeatureMap())
 
-THETA0 = np.zeros(_policy.theta_dim(_acceptance_model.policy_feature_dim()), dtype=float)
+THETA0 = None
 
 TRAINING = canonical_training_block(
-    n_samples=250,
+    n_samples=5000,
     step_rule="l-bfgs-b",
-    t_steps=50,
+    t_steps=1000,
     step_size=0.01,
-    sigma=0.05,
-    n_grad_samples=8,
-    enabled_estimators=(
-        "first_order",
-        "finite_difference",
-        "spsa",
-        "stein_difference",
-    ),
+    sigma=0.01,
+    n_grad_samples=50,
+    enabled_estimators=("first_order", "finite_difference", "spsa", "stein_difference"),
     perturbation_space="u",
     grad_norm_tol=1e-6,
-    acceptance_floor=_acceptance_floor,
-    lagrangian_lambda=250.0,
 )
 
 RUNTIME = canonical_runtime_block(
     plot=True,
     verbose=True,
     wandb_enabled=True,
-    wandb_project="glm-softmax-policy-lagrangian-small",
+    wandb_project="glm-linear-cubic-policy-unconstrained",
 )
 
 CORRECTNESS = CorrectnessSpec(gradient_source="none")

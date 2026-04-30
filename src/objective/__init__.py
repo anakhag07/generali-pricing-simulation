@@ -5,7 +5,7 @@ This module provides:
 - Sampling: sample_states, default_rng
 - Concrete policies: ConstantPolicy, LinearPolicy, SoftmaxPolicy, MLPPolicy
 - Policy feature maps: IdentityFeatureMap, QuadraticFeatureMap,
-  CallableFeatureMap
+  CubicFeatureMap, QuarticFeatureMap, CallableFeatureMap
 - Concrete objectives: FixedRegressionObjective, PlantedLogisticObjective,
   ModelBasedObjective
  - Utility: optimal_u, value_at_constant_u, mean_acceptance_at_constant_u,
@@ -26,12 +26,14 @@ from objective.objectives import (
 from objective.policy import (
     CallableFeatureMap,
     ConstantPolicy,
+    CubicFeatureMap,
     FeatureMap,
     FeatureProcessedPolicy,
     IdentityFeatureMap,
     LinearPolicy,
     MLPPolicy,
     QuadraticFeatureMap,
+    QuarticFeatureMap,
     SoftmaxPolicy,
     mlp_init_theta,
     policy_from_kind,
@@ -48,12 +50,14 @@ __all__ = [
     # Concrete policies
     "CallableFeatureMap",
     "ConstantPolicy",
+    "CubicFeatureMap",
     "FeatureMap",
     "FeatureProcessedPolicy",
     "IdentityFeatureMap",
     "LinearPolicy",
     "MLPPolicy",
     "QuadraticFeatureMap",
+    "QuarticFeatureMap",
     "SoftmaxPolicy",
     "mlp_init_theta",
     "policy_from_kind",

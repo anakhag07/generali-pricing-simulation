@@ -50,7 +50,9 @@ The default bounded policy is `SoftmaxPolicy`, which maps
 `phi(x) = [1, varphi(x)]` and custom feature maps should not include the
 leading `1`. The default `IdentityFeatureMap` gives the previous behavior
 `phi(x) = [1, x]`; `QuadraticFeatureMap` expands the state with linear,
-square, and pairwise interaction terms.
+square, and pairwise interaction terms. `CubicFeatureMap` and
+`QuarticFeatureMap` follow the same pattern with linear terms plus exact
+degree-3 or degree-4 monomials.
 For the real-data model-based objective, this `u` remains centered and the
 revenue term uses premium multiplier `u + 1`.
 
@@ -88,12 +90,17 @@ Several preset configs are available, selected by config preset:
 | Preset | State source | Objective |
 |---|---|---|
 | `fixed_regression_base` | Synthetic N(0, I) | `FixedRegressionObjective` |
-| `real_data_glm_softmax_policy_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, quadratic softmax policy, analytical grad) |
+| `real_data_glm_softmax_policy_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, linear-feature softmax policy, analytical grad) |
 | `real_data_glm_softmax_policy_lagrangian_small` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, softmax policy, analytical grad, lagrangian floor scalarization) |
 | `real_data_glm_softmax_policy_quadratic_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, quadratic softmax policy, analytical grad) |
+| `real_data_glm_softmax_policy_cubic_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, cubic softmax policy, analytical grad) |
+| `real_data_glm_softmax_policy_quartic_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, quartic softmax policy, analytical grad) |
 | `real_data_glm_mlp_policy_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, 2-layer MLP policy, hidden=16, analytical grad) |
 | `real_data_glm_softmax_policy_trust_region_constr` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, softmax policy + trust-constr acceptance floor) |
 | `real_data_glm_linear_policy_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, linear-policy diagnostic) |
+| `real_data_glm_linear_policy_quadratic_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, quadratic-feature linear policy) |
+| `real_data_glm_linear_policy_cubic_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, cubic-feature linear policy) |
+| `real_data_glm_linear_policy_quartic_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, quartic-feature linear policy) |
 | `real_data_glm_linear_policy_trust_region_constr` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, linear policy + trust-constr acceptance floor) |
 | `real_data_glm_constant_policy_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, constant-policy diagnostic) |
 | `real_data_glm_constant_policy_trust_region_constr` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, constant policy + trust-constr acceptance floor) |

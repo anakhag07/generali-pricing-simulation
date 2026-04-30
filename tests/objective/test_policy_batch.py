@@ -3,10 +3,12 @@ import pytest
 
 from objective.policy import (
     ConstantPolicy,
+    CubicFeatureMap,
     IdentityFeatureMap,
     LinearPolicy,
     MLPPolicy,
     QuadraticFeatureMap,
+    QuarticFeatureMap,
     SoftmaxPolicy,
     mlp_init_theta,
     policy_from_kind,
@@ -134,6 +136,24 @@ def test_softmax_policy_with_quadratic_feature_map_grad_matches_fd() -> None:
         fd[idx] = (upper - lower) / (2.0 * step)
 
     np.testing.assert_allclose(analytical, fd, atol=1e-8)
+
+
+@pytest.mark.parametrize(
+    ("feature_map", "expected_dim"),
+    [(CubicFeatureMap(), 7), (QuarticFeatureMap(), 8)],
+)
+def test_linear_policy_with_higher_order_feature_map(feature_map, expected_dim) -> None:
+    x_array = np.array([[2.0, 3.0]], dtype=float)
+    theta = np.arange(expected_dim, dtype=float) / 10.0
+    policy = LinearPolicy(feature_map=feature_map)
+
+    result = policy.value(theta, x_array)
+    grad = policy.grad(theta, x_array)
+
+    assert policy.theta_dim(2) == expected_dim
+    assert result.shape == (1,)
+    assert grad.shape == (1, expected_dim)
+    np.testing.assert_allclose(result, grad @ theta)
 
 
 def test_policy_rejects_inconsistent_theta_dim() -> None:

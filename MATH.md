@@ -38,11 +38,17 @@ $$\varphi_{\text{identity}}(x) = [x_1,\; \dots,\; x_d]$$
 
 $$\varphi_{\text{quadratic}}(x) = [x_1,\; \dots,\; x_d,\; x_1^2,\; x_1x_2,\; \dots,\; x_d^2]$$
 
+$$\varphi_{\text{cubic}}(x) = [x_1,\; \dots,\; x_d,\; x_i x_j x_k\; \text{for}\; 1 \le i \le j \le k \le d]$$
+
+$$\varphi_{\text{quartic}}(x) = [x_1,\; \dots,\; x_d,\; x_i x_j x_k x_l\; \text{for}\; 1 \le i \le j \le k \le l \le d]$$
+
 - **Source:** `src/objective/policy.py` :: `FeatureMap`, `IdentityFeatureMap`,
-  `QuadraticFeatureMap`, `CallableFeatureMap`, `_phi(x_batch, feature_map)`
+  `QuadraticFeatureMap`, `CubicFeatureMap`, `QuarticFeatureMap`,
+  `CallableFeatureMap`, `_phi(x_batch, feature_map)`
 - **Notes:** `IdentityFeatureMap` preserves the previous default behavior
-  $$\phi(x) = [1, x]$$. `QuadraticFeatureMap` uses deterministic upper-triangular
-  pair ordering $$i \le j$$ for the degree-2 terms.
+  $$\phi(x) = [1, x]$$. Higher-order maps include linear terms plus exact-degree
+  monomials. Interaction terms use deterministic combinations-with-replacement
+  ordering; for degree $$k$$ the non-linear width is $$\binom{d+k-1}{k}$$.
 
 ### 2.2 Constant Policy
 

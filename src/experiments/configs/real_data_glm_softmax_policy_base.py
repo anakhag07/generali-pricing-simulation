@@ -33,7 +33,7 @@ from experiments.config import (
     canonical_training_block,
     make_model_based_objective,
 )
-from objective.policy import QuadraticFeatureMap, SoftmaxPolicy
+from objective.policy import SoftmaxPolicy
 
 STATE_DIM = len(FEATURE_COLS_GLM)
 SEED = 42

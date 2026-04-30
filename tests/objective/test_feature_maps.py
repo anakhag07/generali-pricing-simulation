@@ -1,7 +1,13 @@
 import numpy as np
 import pytest
 
-from objective.policy import CallableFeatureMap, IdentityFeatureMap, QuadraticFeatureMap
+from objective.policy import (
+    CallableFeatureMap,
+    CubicFeatureMap,
+    IdentityFeatureMap,
+    QuadraticFeatureMap,
+    QuarticFeatureMap,
+)
 
 
 def test_identity_feature_map_returns_input_features() -> None:
@@ -41,6 +47,60 @@ def test_quadratic_feature_map_without_interactions() -> None:
     np.testing.assert_allclose(result, np.array([[2.0, 3.0, 4.0, 9.0]], dtype=float))
 
 
+def test_cubic_feature_map_order_and_dim() -> None:
+    x_array = np.array([[2.0, 3.0], [-1.0, 4.0]], dtype=float)
+    feature_map = CubicFeatureMap()
+
+    result = feature_map.transform(x_array)
+    expected = np.array(
+        [
+            [2.0, 3.0, 8.0, 12.0, 18.0, 27.0],
+            [-1.0, 4.0, -1.0, 4.0, -16.0, 64.0],
+        ],
+        dtype=float,
+    )
+
+    assert feature_map.output_dim(2) == 6
+    np.testing.assert_allclose(result, expected)
+
+
+def test_cubic_feature_map_without_interactions() -> None:
+    x_array = np.array([[2.0, 3.0]], dtype=float)
+    feature_map = CubicFeatureMap(include_interactions=False)
+
+    result = feature_map.transform(x_array)
+
+    assert feature_map.output_dim(2) == 4
+    np.testing.assert_allclose(result, np.array([[2.0, 3.0, 8.0, 27.0]], dtype=float))
+
+
+def test_quartic_feature_map_order_and_dim() -> None:
+    x_array = np.array([[2.0, 3.0], [-1.0, 4.0]], dtype=float)
+    feature_map = QuarticFeatureMap()
+
+    result = feature_map.transform(x_array)
+    expected = np.array(
+        [
+            [2.0, 3.0, 16.0, 24.0, 36.0, 54.0, 81.0],
+            [-1.0, 4.0, 1.0, -4.0, 16.0, -64.0, 256.0],
+        ],
+        dtype=float,
+    )
+
+    assert feature_map.output_dim(2) == 7
+    np.testing.assert_allclose(result, expected)
+
+
+def test_quartic_feature_map_without_interactions() -> None:
+    x_array = np.array([[2.0, 3.0]], dtype=float)
+    feature_map = QuarticFeatureMap(include_interactions=False)
+
+    result = feature_map.transform(x_array)
+
+    assert feature_map.output_dim(2) == 4
+    np.testing.assert_allclose(result, np.array([[2.0, 3.0, 16.0, 81.0]], dtype=float))
+
+
 def test_callable_feature_map_accepts_valid_lambda() -> None:
     feature_map = CallableFeatureMap(
         lambda x: np.column_stack([x[:, 0], x[:, 1] ** 2]),
@@ -57,7 +117,13 @@ def test_callable_feature_map_accepts_valid_lambda() -> None:
 
 @pytest.mark.parametrize(
     "feature_map",
-    [IdentityFeatureMap(), QuadraticFeatureMap(), CallableFeatureMap(lambda x: x, feature_dim=2)],
+    [
+        IdentityFeatureMap(),
+        QuadraticFeatureMap(),
+        CubicFeatureMap(),
+        QuarticFeatureMap(),
+        CallableFeatureMap(lambda x: x, feature_dim=2),
+    ],
 )
 def test_feature_maps_reject_non_2d_input(feature_map) -> None:
     with pytest.raises(ValueError, match="2D"):

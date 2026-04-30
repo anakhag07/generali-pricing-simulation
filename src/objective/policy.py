@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from functools import lru_cache
+from itertools import combinations_with_replacement
+from math import comb
 
 import numpy as np
 import pandas as pd
@@ -49,6 +52,29 @@ def _validate_state_dim(state_dim: int) -> int:
     if dim <= 0:
         raise ValueError("state_dim must be positive.")
     return dim
+
+
+@lru_cache(maxsize=None)
+def _exact_degree_index_tuples(state_dim: int, degree: int) -> np.ndarray:
+    return np.array(list(combinations_with_replacement(range(state_dim), degree)), dtype=int)
+
+
+def _exact_degree_products(x_arr: np.ndarray, degree: int) -> np.ndarray:
+    """Return exact-degree monomial products in lexicographic replacement order."""
+    n_samples, state_dim = x_arr.shape
+    if state_dim == 0:
+        return np.empty((n_samples, 0), dtype=float)
+    index_tuples = _exact_degree_index_tuples(state_dim, int(degree))
+    products = x_arr[:, index_tuples[:, 0]].copy()
+    for degree_idx in range(1, int(degree)):
+        products *= x_arr[:, index_tuples[:, degree_idx]]
+    return products.astype(float)
+
+
+def _exact_degree_output_dim(state_dim: int, degree: int, *, include_interactions: bool) -> int:
+    dim = _validate_state_dim(state_dim)
+    monomial_dim = comb(dim + int(degree) - 1, int(degree)) if include_interactions else dim
+    return dim + monomial_dim
 
 
 def _validate_feature_output(
@@ -131,6 +157,46 @@ class QuadraticFeatureMap(FeatureMap):
         dim = _validate_state_dim(state_dim)
         quadratic_dim = dim * (dim + 1) // 2 if self.include_interactions else dim
         return dim + quadratic_dim
+
+
+@dataclass(frozen=True)
+class CubicFeatureMap(FeatureMap):
+    """Cubic map with linear terms and exact degree-3 monomials."""
+
+    include_interactions: bool = True
+    kind: str = "cubic"
+
+    def transform(self, x_batch: np.ndarray) -> np.ndarray:
+        """Return ``[x, x_i*x_j*x_k for i <= j <= k]`` features for each sample."""
+        x_arr = _as_2d_float_array(x_batch)
+        if not np.isfinite(x_arr).all():
+            raise ValueError("x_batch must contain finite values.")
+        degree_terms = _exact_degree_products(x_arr, 3) if self.include_interactions else x_arr**3
+        return np.concatenate([x_arr, degree_terms], axis=1).astype(float)
+
+    def output_dim(self, state_dim: int) -> int:
+        """Return cubic feature width excluding the policy intercept."""
+        return _exact_degree_output_dim(state_dim, 3, include_interactions=self.include_interactions)
+
+
+@dataclass(frozen=True)
+class QuarticFeatureMap(FeatureMap):
+    """Quartic map with linear terms and exact degree-4 monomials."""
+
+    include_interactions: bool = True
+    kind: str = "quartic"
+
+    def transform(self, x_batch: np.ndarray) -> np.ndarray:
+        """Return ``[x, x_i*x_j*x_k*x_l for i <= j <= k <= l]`` features for each sample."""
+        x_arr = _as_2d_float_array(x_batch)
+        if not np.isfinite(x_arr).all():
+            raise ValueError("x_batch must contain finite values.")
+        degree_terms = _exact_degree_products(x_arr, 4) if self.include_interactions else x_arr**4
+        return np.concatenate([x_arr, degree_terms], axis=1).astype(float)
+
+    def output_dim(self, state_dim: int) -> int:
+        """Return quartic feature width excluding the policy intercept."""
+        return _exact_degree_output_dim(state_dim, 4, include_interactions=self.include_interactions)
 
 
 @dataclass(frozen=True)
@@ -451,12 +517,14 @@ def policy_from_kind(kind: str) -> ConstantPolicy | LinearPolicy | SoftmaxPolicy
 __all__ = [
     "CallableFeatureMap",
     "ConstantPolicy",
+    "CubicFeatureMap",
     "FeatureMap",
     "FeatureProcessedPolicy",
     "IdentityFeatureMap",
     "LinearPolicy",
     "MLPPolicy",
     "QuadraticFeatureMap",
+    "QuarticFeatureMap",
     "SoftmaxPolicy",
     "mlp_init_theta",
     "policy_from_kind",

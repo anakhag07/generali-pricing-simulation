@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from data.loader import load_mean_observed_acceptance, load_x_array
+from data.loader import load_mean_observed_acceptance, load_x_array, sample_csv_row_indices
 from experiments.comparison_utils import ComparisonSpec, run_preset_comparison
 
 PROJECT_NAME = "glm-policy-comparison"
+SEED = 42
 _acceptance_floor = load_mean_observed_acceptance("glm")
+_row_indices = sample_csv_row_indices("glm", n_rows=5000, seed=SEED)
 
 
 COMPARISON_SPECS = (
@@ -30,7 +32,8 @@ COMPARISON_SPECS = (
 
 COMMON_OVERRIDES = {
     "n_samples": 5000,
-    "x_fixed": load_x_array("glm", n_rows=5000),
+    "x_fixed": load_x_array("glm", row_indices=_row_indices),
+    "x_fixed_row_indices": _row_indices,
     "enabled_estimators": (
         "first_order",
         # "finite_difference",

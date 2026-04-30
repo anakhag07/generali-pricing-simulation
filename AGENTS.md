@@ -166,8 +166,9 @@ Guidelines:
   - `FEATURE_COLS_XGB`: 10-column state feature list for XGB configs (9 base + premium)
   - `ACCEPTANCE_STATE_COLS`: 10 cols passed to acceptance model (base + premium, no U)
   - `LOSS_FEATURE_COLS`: 9 base cols passed to loss model
-  - `load_x_array(model_type, n_rows=5000)`: loads first n_rows of raw acceptance-state features from the current `*_feat_processor.csv` exports; string columns are replay-encoded to match the notebook's numeric training inputs
-  - `load_observed_u_array(model_type, n_rows=5000)`: loads observed pricing multipliers from the current acceptance CSV exports for diagnostics and plots
+  - `sample_csv_row_indices(model_type, n_rows, seed)`: samples acceptance CSV row positions without replacement for real-data configs
+  - `load_x_array(model_type, n_rows=5000, row_indices=None, seed=None)`: loads a random `n_rows` sample of raw acceptance-state features from the current `*_feat_processor.csv` exports, or the exact `row_indices` when provided; string columns are replay-encoded to match the notebook's numeric training inputs
+  - `load_observed_u_array(model_type, n_rows=5000, row_indices=None, seed=None)`: loads observed pricing multipliers from sampled acceptance CSV rows for diagnostics and plots
   - `load_model_artifacts(model_type)`: loads `(acceptance_artifact, loss_artifact)` bundles from `src/data/artifacts_preproc_pipeline/`
   - `ModelArtifactBundle.model_frame(raw_frame)`: converts raw notebook-space columns into the exact model-input frame expected by the bundled estimator
   - `extract_glm_u_coef(glm_pipeline)`: extracts effective d_logit/dU = w_U / std_U from the inner fitted GLM Pipeline for analytical gradient computation
@@ -208,6 +209,7 @@ Guidelines:
   - `ExperimentConfig`: frozen dataclass with extensive `__post_init__` validation
   - Primary fields: `objective` (theta objective) and `theta0` (initial theta)
   - `x_fixed: np.ndarray | None = None`: when set, runner uses this 2D array as state batch instead of sampling from N(0, I)
+  - `x_fixed_row_indices: np.ndarray | None = None`: source acceptance-CSV row positions for `x_fixed`; real-data configs pass this so observed-`U` reporting uses the same sampled rows
   - Objective/policy wiring is explicit; configs pass a concrete theta-level objective instance
   - `batch_size: int | None = None` enables stochastic mini-batch optimization when set
   - `acceptance_floor` can be enforced directly with `step_rule="trust-constr"` or via the smooth penalty path using `acceptance_penalty_weight` / `acceptance_penalty_temperature`

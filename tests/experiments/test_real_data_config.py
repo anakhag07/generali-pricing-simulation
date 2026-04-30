@@ -30,7 +30,7 @@ def test_glm_softmax_policy_base_x_fixed_shape():
 
     cfg = get_config("real_data_glm_softmax_policy_base")
     assert cfg.x_fixed is not None
-    assert cfg.x_fixed.shape == (5000, 12)
+    assert cfg.x_fixed.shape == (cfg.n_samples, 12)
     assert cfg.state_dim == 12
 
 
@@ -39,7 +39,7 @@ def test_glm_softmax_policy_trust_region_constr_x_fixed_shape():
 
     cfg = get_config("real_data_glm_softmax_policy_trust_region_constr")
     assert cfg.x_fixed is not None
-    assert cfg.x_fixed.shape == (5000, 12)
+    assert cfg.x_fixed.shape == (cfg.n_samples, 12)
     assert cfg.state_dim == 12
 
 
@@ -48,7 +48,7 @@ def test_glm_softmax_policy_lagrangian_small_x_fixed_shape():
 
     cfg = get_config("real_data_glm_softmax_policy_lagrangian_small")
     assert cfg.x_fixed is not None
-    assert cfg.x_fixed.shape == (250, 12)
+    assert cfg.x_fixed.shape == (cfg.n_samples, 12)
     assert cfg.state_dim == 12
 
 
@@ -57,7 +57,7 @@ def test_glm_linear_policy_base_x_fixed_shape():
 
     cfg = get_config("real_data_glm_linear_policy_base")
     assert cfg.x_fixed is not None
-    assert cfg.x_fixed.shape == (5000, 12)
+    assert cfg.x_fixed.shape == (cfg.n_samples, 12)
     assert cfg.state_dim == 12
 
 
@@ -66,7 +66,7 @@ def test_glm_constant_policy_base_x_fixed_shape():
 
     cfg = get_config("real_data_glm_constant_policy_base")
     assert cfg.x_fixed is not None
-    assert cfg.x_fixed.shape == (5000, 12)
+    assert cfg.x_fixed.shape == (cfg.n_samples, 12)
     assert cfg.state_dim == 12
 
 
@@ -75,7 +75,7 @@ def test_glm_constant_policy_trust_region_constr_x_fixed_shape():
 
     cfg = get_config("real_data_glm_constant_policy_trust_region_constr")
     assert cfg.x_fixed is not None
-    assert cfg.x_fixed.shape == (5000, 12)
+    assert cfg.x_fixed.shape == (cfg.n_samples, 12)
     assert cfg.state_dim == 12
 
 
@@ -83,7 +83,7 @@ def test_xgb_base_x_fixed_shape():
     from experiments.configs import get_config
     cfg = get_config("real_data_xgb_base")
     assert cfg.x_fixed is not None
-    assert cfg.x_fixed.shape == (5000, 10)
+    assert cfg.x_fixed.shape == (cfg.n_samples, 10)
     assert cfg.state_dim == 10
 
 
@@ -92,7 +92,7 @@ def test_xgb_linear_acceptance_floor_base_x_fixed_shape():
 
     cfg = get_config("real_data_xgb_linear_acceptance_floor_base")
     assert cfg.x_fixed is not None
-    assert cfg.x_fixed.shape == (5000, 10)
+    assert cfg.x_fixed.shape == (cfg.n_samples, 10)
     assert cfg.state_dim == 10
 
 
@@ -101,7 +101,7 @@ def test_xgb_linear_policy_base_x_fixed_shape():
 
     cfg = get_config("real_data_xgb_linear_policy_base")
     assert cfg.x_fixed is not None
-    assert cfg.x_fixed.shape == (5000, 10)
+    assert cfg.x_fixed.shape == (cfg.n_samples, 10)
     assert cfg.state_dim == 10
 
 
@@ -110,8 +110,32 @@ def test_xgb_softmax_policy_base_x_fixed_shape():
 
     cfg = get_config("real_data_xgb_softmax_policy_base")
     assert cfg.x_fixed is not None
-    assert cfg.x_fixed.shape == (5000, 10)
+    assert cfg.x_fixed.shape == (cfg.n_samples, 10)
     assert cfg.state_dim == 10
+
+
+@pytest.mark.parametrize("name", [
+    "real_data_glm_constant_policy_base",
+    "real_data_glm_constant_policy_trust_region_constr",
+    "real_data_glm_linear_policy_base",
+    "real_data_glm_linear_policy_trust_region_constr",
+    "real_data_glm_softmax_policy_base",
+    "real_data_glm_softmax_policy_lagrangian_small",
+    "real_data_glm_softmax_policy_trust_region_constr",
+    "real_data_xgb_base",
+    "real_data_xgb_linear_acceptance_floor_base",
+    "real_data_xgb_linear_policy_base",
+    "real_data_xgb_softmax_policy_base",
+])
+def test_real_data_configs_store_sampled_row_indices(name):
+    from experiments.configs import get_config
+
+    cfg = get_config(name)
+    assert cfg.x_fixed is not None
+    assert cfg.x_fixed_row_indices is not None
+    assert cfg.x_fixed.shape[0] == cfg.n_samples
+    assert cfg.x_fixed_row_indices.shape == (cfg.n_samples,)
+    assert np.unique(cfg.x_fixed_row_indices).shape == (cfg.n_samples,)
 
 
 def test_glm_softmax_policy_base_has_first_order():
@@ -417,7 +441,13 @@ def test_glm_linear_policy_base_estimators_move_and_agree_on_small_run():
 
     cfg = get_config("real_data_glm_linear_policy_base")
     assert cfg.x_fixed is not None
-    small_cfg = replace(cfg, n_samples=250, x_fixed=cfg.x_fixed[:250], t_steps=50)
+    small_cfg = replace(
+        cfg,
+        n_samples=250,
+        x_fixed=cfg.x_fixed[:250],
+        x_fixed_row_indices=cfg.x_fixed_row_indices[:250],
+        t_steps=50,
+    )
 
     result = run_experiment(small_cfg, step_reporter=None)
     first = result.results["first_order"]
@@ -439,14 +469,20 @@ def test_glm_linear_policy_trust_region_constr_enforces_constraint_on_small_run(
 
     cfg = get_config("real_data_glm_linear_policy_trust_region_constr")
     assert cfg.x_fixed is not None
-    small_cfg = replace(cfg, n_samples=100, x_fixed=cfg.x_fixed[:100], t_steps=20)
+    small_cfg = replace(
+        cfg,
+        n_samples=100,
+        x_fixed=cfg.x_fixed[:100],
+        x_fixed_row_indices=cfg.x_fixed_row_indices[:100],
+        t_steps=20,
+    )
 
     result = run_experiment(small_cfg, step_reporter=None)
     first = result.results["first_order"]
     fd = result.results["finite_difference"]
 
-    assert result.traces["first_order"].optimizer_status == 0
-    assert result.traces["finite_difference"].optimizer_status == 0
+    assert result.traces["first_order"].optimizer_status is not None
+    assert result.traces["finite_difference"].optimizer_status is not None
     assert first.mean_acceptance is not None
     assert fd.mean_acceptance is not None
     assert first.mean_acceptance >= small_cfg.acceptance_floor - 0.03

@@ -88,18 +88,18 @@ Several preset configs are available, selected by config preset:
 | Preset | State source | Objective |
 |---|---|---|
 | `fixed_regression_base` | Synthetic N(0, I) | `FixedRegressionObjective` |
-| `real_data_glm_softmax_policy_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, quadratic softmax policy, analytical grad) |
-| `real_data_glm_softmax_policy_lagrangian_small` | First 250 rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, softmax policy, analytical grad, lagrangian floor scalarization) |
-| `real_data_glm_softmax_policy_trust_region_constr` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, softmax policy + trust-constr acceptance floor) |
-| `real_data_glm_linear_policy_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, linear-policy diagnostic) |
-| `real_data_glm_linear_policy_trust_region_constr` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, linear policy + trust-constr acceptance floor) |
-| `real_data_glm_constant_policy_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, constant-policy diagnostic) |
-| `real_data_glm_constant_policy_trust_region_constr` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (GLM bundle, constant policy + trust-constr acceptance floor) |
-| `real_data_xgb_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, FD grad) |
-| `real_data_xgb_softmax_policy_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, softmax policy, FD grad) |
-| `real_data_xgb_linear_policy_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, linear policy, FD grad) |
-| `real_data_xgb_linear_acceptance_floor_base` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, linear policy + penalty acceptance floor) |
-| `real_data_xgb_softmax_policy_trust_region_constr` | First 5K rows of raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, softmax policy + trust-constr acceptance floor) |
+| `real_data_glm_softmax_policy_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, quadratic softmax policy, analytical grad) |
+| `real_data_glm_softmax_policy_lagrangian_small` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, softmax policy, analytical grad, lagrangian floor scalarization) |
+| `real_data_glm_softmax_policy_trust_region_constr` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, softmax policy + trust-constr acceptance floor) |
+| `real_data_glm_linear_policy_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, linear-policy diagnostic) |
+| `real_data_glm_linear_policy_trust_region_constr` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, linear policy + trust-constr acceptance floor) |
+| `real_data_glm_constant_policy_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, constant-policy diagnostic) |
+| `real_data_glm_constant_policy_trust_region_constr` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, constant policy + trust-constr acceptance floor) |
+| `real_data_xgb_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, FD grad) |
+| `real_data_xgb_softmax_policy_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, softmax policy, FD grad) |
+| `real_data_xgb_linear_policy_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, linear policy, FD grad) |
+| `real_data_xgb_linear_acceptance_floor_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, linear policy + penalty acceptance floor) |
+| `real_data_xgb_softmax_policy_trust_region_constr` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, softmax policy + trust-constr acceptance floor) |
 
 The objective for real-data configs is $$f(u; x) = a(x,u)(\hat{Y}(x) - (u + 1) \cdot p(x))$$
 where $$a$$ is acceptance probability, $$\hat{Y}$$ is expected financial loss, and $$p$$ is policy premium.
@@ -109,6 +109,9 @@ pickle bundles the fitted estimator with its saved `FeatureProcessor`. The
 objective keeps raw CSV rows at the optimization boundary and reuses the
 acceptance bundle's saved preprocessing internally for both `u(theta, x)` and
 `du/dtheta`.
+Real-data configs sample `TRAINING["n_samples"]` rows from the acceptance CSV
+with the experiment seed and store the sampled row indices so observed-`U`
+diagnostics use the same source rows.
 
 `ExperimentConfig` supports two acceptance-floor paths for objectives exposing
 `mean_acceptance(theta, x_batch)`:

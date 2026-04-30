@@ -495,7 +495,18 @@ def _observed_u_reference(result: ExperimentResult) -> np.ndarray | None:
         model_type = "xgb"
     else:
         return None
-    return _load_observed_u_array(model_type, n_rows=result.x_samples.shape[0])
+    row_indices = getattr(result.config, "x_fixed_row_indices", None)
+    if row_indices is not None:
+        row_indices = np.asarray(row_indices, dtype=int)
+        if row_indices.shape[0] < result.x_samples.shape[0]:
+            return None
+        row_indices = row_indices[: result.x_samples.shape[0]]
+    return _load_observed_u_array(
+        model_type,
+        n_rows=result.x_samples.shape[0],
+        row_indices=row_indices,
+        seed=result.config.seed,
+    )
 
 
 def _build_summary_payload(run_context: RunContext, result: ExperimentResult) -> dict:

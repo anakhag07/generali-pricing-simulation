@@ -95,6 +95,7 @@ class ExperimentConfig:
     wandb_estimator_allowlist: tuple[str, ...] | None = None
     correctness: CorrectnessSpec = field(default_factory=CorrectnessSpec)
     x_fixed: np.ndarray | None = None  # real data rows; replaces sample_states when set
+    x_fixed_row_indices: np.ndarray | None = None  # source CSV row positions for x_fixed
 
     def __post_init__(self) -> None:
         estimator_aliases = {
@@ -176,6 +177,23 @@ class ExperimentConfig:
                     f"x_fixed has {x_fixed_arr.shape[1]} columns but state_dim={self.state_dim}."
                 )
             object.__setattr__(self, "x_fixed", x_fixed_arr)
+
+        if self.x_fixed_row_indices is not None:
+            row_indices = np.asarray(self.x_fixed_row_indices)
+            if row_indices.ndim != 1:
+                raise ValueError("x_fixed_row_indices must be a 1D array.")
+            if row_indices.size == 0:
+                raise ValueError("x_fixed_row_indices must contain at least one row index.")
+            if not np.issubdtype(row_indices.dtype, np.integer):
+                raise ValueError("x_fixed_row_indices must contain integer row positions.")
+            row_indices = row_indices.astype(int, copy=False)
+            if np.any(row_indices < 0):
+                raise ValueError("x_fixed_row_indices must be nonnegative.")
+            if len(set(row_indices.tolist())) != row_indices.size:
+                raise ValueError("x_fixed_row_indices must not contain duplicates.")
+            if self.x_fixed is not None and row_indices.size != self.x_fixed.shape[0]:
+                raise ValueError("x_fixed_row_indices length must match x_fixed rows.")
+            object.__setattr__(self, "x_fixed_row_indices", row_indices)
 
         if self.batch_size is not None:
             if self.batch_size <= 0:
@@ -366,6 +384,18 @@ class ExperimentConfig:
             },
             "correctness": _correctness_to_dict(self.correctness),
             "x_fixed_shape": list(self.x_fixed.shape) if self.x_fixed is not None else None,
+            "x_fixed_row_indices_shape": list(self.x_fixed_row_indices.shape)
+            if self.x_fixed_row_indices is not None
+            else None,
+            "x_fixed_row_indices_min": int(np.min(self.x_fixed_row_indices))
+            if self.x_fixed_row_indices is not None
+            else None,
+            "x_fixed_row_indices_max": int(np.max(self.x_fixed_row_indices))
+            if self.x_fixed_row_indices is not None
+            else None,
+            "x_fixed_row_indices_head": [int(idx) for idx in self.x_fixed_row_indices[:10]]
+            if self.x_fixed_row_indices is not None
+            else None,
         }
 
 
@@ -618,6 +648,7 @@ def build_experiment_config(
     runtime: Mapping[str, Any] | None = None,
     correctness: CorrectnessSpec | None = None,
     x_fixed: np.ndarray | None = None,
+    x_fixed_row_indices: np.ndarray | None = None,
 ) -> ExperimentConfig:
     """Build an ExperimentConfig from component blocks.
 
@@ -637,4 +668,6 @@ def build_experiment_config(
         payload["correctness"] = correctness
     if x_fixed is not None:
         payload["x_fixed"] = np.asarray(x_fixed, dtype=float)
+    if x_fixed_row_indices is not None:
+        payload["x_fixed_row_indices"] = np.asarray(x_fixed_row_indices, dtype=int)
     return ExperimentConfig(**payload)

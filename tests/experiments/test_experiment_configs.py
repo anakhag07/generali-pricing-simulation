@@ -25,6 +25,7 @@ def test_list_configs_includes_defaults() -> None:
     assert "real_data_glm_constant_policy_trust_region_constr" in configs
     assert "real_data_glm_softmax_policy_base" in configs
     assert "real_data_glm_softmax_policy_lagrangian_small" in configs
+    assert "real_data_glm_softmax_policy_quadratic_base" in configs
     assert "real_data_glm_linear_policy_trust_region_constr" in configs
     assert "real_data_xgb_linear_acceptance_floor_base" in configs
     assert "real_data_xgb_linear_policy_base" in configs

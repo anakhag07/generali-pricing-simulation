@@ -226,6 +226,7 @@ Guidelines:
   - `planted_logistic_base.py`: planted logistic base config (3D, L-BFGS-B step rule, 5000 steps, u*=1.1)
   - `real_data_glm_softmax_policy_base.py`: GLM pickle-based softmax-policy base config; state_dim=12; uses `QuadraticFeatureMap`; unconstrained `l-bfgs-b`; first-order, finite-difference, SPSA, and stein-difference estimators; analytical first-order gradient via u_coef
   - `real_data_glm_softmax_policy_lagrangian_small.py`: small GLM softmax-policy lagrangian preset; first 250 raw rows; unconstrained `l-bfgs-b`; all 5 estimators enabled; observed-acceptance floor with `lagrangian_lambda=2.0`
+  - `real_data_glm_softmax_policy_quadratic_base.py`: registered GLM softmax-policy quadratic-feature config for policy comparison runs
   - `real_data_glm_softmax_policy_trust_region_constr.py`: constrained GLM softmax-policy config with a trust-constr mean-acceptance floor set to the observed CSV acceptance level; otherwise mirrors the softmax base preset
   - `real_data_glm_linear_policy_base.py`: GLM pickle-based linear-policy diagnostic config; same data/models as `real_data_glm_softmax_policy_base` but with `LinearPolicy` and runtime-resolved random initialization to inspect behavior without softmax saturation
   - `real_data_glm_linear_policy_trust_region_constr.py`: constrained GLM linear-policy config with `LinearPolicy` and a trust-constr mean-acceptance floor set to the observed CSV acceptance level; enables first-order, finite-difference, SPSA, and stein-difference for constrained comparison

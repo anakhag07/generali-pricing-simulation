@@ -21,9 +21,30 @@ def test_comparison_plots_create_expected_files(tmp_path: Path) -> None:
         {"comparison": "constant", "estimator": "spsa", "step": 1, "objective": 0.9, "u": 0.1},
     ]
     final_rows = [
-        {"comparison": "constant", "estimator": "first_order", "final_value": 0.8},
-        {"comparison": "linear", "estimator": "first_order", "final_value": 0.7},
-        {"comparison": "constant", "estimator": "spsa", "final_value": 0.9},
+        {
+            "comparison": "constant",
+            "estimator": "first_order",
+            "final_value": 0.8,
+            "final_objective_sum": 1.6,
+            "final_u": 0.1,
+            "mean_acceptance": 0.88,
+        },
+        {
+            "comparison": "linear",
+            "estimator": "first_order",
+            "final_value": 0.7,
+            "final_objective_sum": 1.4,
+            "final_u": 0.2,
+            "mean_acceptance": 0.91,
+        },
+        {
+            "comparison": "constant",
+            "estimator": "spsa",
+            "final_value": 0.9,
+            "final_objective_sum": 1.8,
+            "final_u": 0.15,
+            "mean_acceptance": 0.86,
+        },
     ]
 
     plot_comparison_objective_curves(trace_rows, str(tmp_path))
@@ -34,6 +55,27 @@ def test_comparison_plots_create_expected_files(tmp_path: Path) -> None:
         metric_key="final_value",
         metric_label="Final objective value",
         filename="final_objective.png",
+    )
+    plot_comparison_final_metric(
+        final_rows,
+        str(tmp_path),
+        metric_key="final_objective_sum",
+        metric_label="Final summed objective value",
+        filename="final_objective_sum.png",
+    )
+    plot_comparison_final_metric(
+        final_rows,
+        str(tmp_path),
+        metric_key="final_u",
+        metric_label="Final u",
+        filename="final_u.png",
+    )
+    plot_comparison_final_metric(
+        final_rows,
+        str(tmp_path),
+        metric_key="mean_acceptance",
+        metric_label="Mean acceptance",
+        filename="mean_acceptance.png",
     )
 
     assert (tmp_path / "objective_curves.png").exists()

@@ -26,9 +26,11 @@ def test_run_experiment_fixed_regression_base_smoke() -> None:
 
 
 def test_run_experiment_lagrangian_glm_smoke_reports_raw_objective() -> None:
+    base_config = get_config("real_data_glm_softmax_policy_base")
     config = replace(
-        get_config("real_data_glm_softmax_policy_base"),
-        x_fixed=get_config("real_data_glm_softmax_policy_base").x_fixed[:30],
+        base_config,
+        x_fixed=base_config.x_fixed[:30],
+        x_fixed_row_indices=base_config.x_fixed_row_indices[:30],
         n_samples=30,
         t_steps=1,
         n_grad_samples=2,

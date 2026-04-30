@@ -168,3 +168,7 @@ def test_run_preset_comparison_writes_aggregate_outputs(monkeypatch, tmp_path: P
     assert (comparison_dirs[0] / "comparison_traces.csv").exists()
     assert (comparison_dirs[0] / "comparison_finals.csv").exists()
     assert (comparison_dirs[0] / "objective_curves.png").exists()
+    assert (comparison_dirs[0] / "final_objective.png").exists()
+    assert (comparison_dirs[0] / "final_objective_sum.png").exists()
+    assert (comparison_dirs[0] / "final_u.png").exists()
+    assert (comparison_dirs[0] / "mean_acceptance.png").exists()

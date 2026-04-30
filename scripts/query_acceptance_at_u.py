@@ -302,7 +302,15 @@ def main(argv: Sequence[str] | None = None) -> None:
         print(f"Wrote acceptance query CSV to {args.csv}.")
 
     output_dir = _resolve_output_dir(args.output_root, args.output_subdir, model_type)
-    observed_u = load_observed_u_array(model_type, n_rows=rows[0].n)
+    row_indices = getattr(config, "x_fixed_row_indices", None)
+    if row_indices is not None:
+        row_indices = np.asarray(row_indices, dtype=int)[: rows[0].n]
+    observed_u = load_observed_u_array(
+        model_type,
+        n_rows=rows[0].n,
+        row_indices=row_indices,
+        seed=int(getattr(config, "seed")),
+    )
     histogram_path = _plot_constant_u_histogram(observed_u, u_values, output_dir)
     curve_path = _plot_acceptance_curve(rows, output_dir)
     print(f"Wrote constant-u histogram to {histogram_path}.")

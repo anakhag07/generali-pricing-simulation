@@ -145,6 +145,211 @@ def _sweep_points_by_estimator(
     return ordered
 
 
+def _ordered_labels(rows: Sequence[Mapping[str, object]], key: str) -> list[str]:
+    labels: list[str] = []
+    seen: set[str] = set()
+    for row in rows:
+        label = str(row[key])
+        if label not in seen:
+            labels.append(label)
+            seen.add(label)
+    return labels
+
+
+def _ordered_estimators_from_rows(rows: Sequence[Mapping[str, object]]) -> list[str]:
+    estimators = {str(row["estimator"]) for row in rows}
+    ordered = [name for name in _TRACE_ORDER if name in estimators]
+    ordered.extend(sorted(name for name in estimators if name not in _TRACE_ORDER))
+    return ordered
+
+
+def _optional_float_value(value: object) -> float | None:
+    if value is None or value == "":
+        return None
+    value_float = float(value)
+    if not np.isfinite(value_float):
+        return None
+    return value_float
+
+
+def _comparison_hatch(index: int) -> str:
+    hatches = ("", "//", "\\\\", "xx", "..", "++", "oo", "--")
+    return hatches[index % len(hatches)]
+
+
+def _comparison_alpha(index: int) -> float:
+    alphas = (0.95, 0.82, 0.70, 0.58)
+    return alphas[index % len(alphas)]
+
+
+def _comparison_trace_groups(
+    trace_rows: Sequence[Mapping[str, object]],
+    value_key: str,
+) -> list[tuple[str, str, list[tuple[int, float]]]]:
+    grouped: dict[tuple[str, str], list[tuple[int, float]]] = {}
+    for row in trace_rows:
+        value = _optional_float_value(row.get(value_key))
+        if value is None:
+            continue
+        comparison = str(row["comparison"])
+        estimator = str(row["estimator"])
+        step = int(row["step"])
+        grouped.setdefault((comparison, estimator), []).append((step, value))
+
+    comparison_order = {label: idx for idx, label in enumerate(_ordered_labels(trace_rows, "comparison"))}
+    estimator_order = {label: idx for idx, label in enumerate(_ordered_estimators_from_rows(trace_rows))}
+    ordered_keys = sorted(
+        grouped,
+        key=lambda key: (
+            comparison_order.get(key[0], len(comparison_order)),
+            estimator_order.get(key[1], len(estimator_order)),
+            key[0],
+            key[1],
+        ),
+    )
+    return [
+        (comparison, estimator, sorted(grouped[(comparison, estimator)]))
+        for comparison, estimator in ordered_keys
+    ]
+
+
+def _plot_comparison_curve(
+    trace_rows: Sequence[Mapping[str, object]],
+    plot_dir: str,
+    *,
+    value_key: str,
+    y_label: str,
+    filename: str,
+) -> None:
+    if not trace_rows:
+        return
+    groups = _comparison_trace_groups(trace_rows, value_key)
+    if not groups:
+        return
+    path = _ensure_plot_dir(plot_dir)
+    fig, ax = plt.subplots(1, 1, figsize=(9, 5.5))
+
+    comparison_order = {label: idx for idx, label in enumerate(_ordered_labels(trace_rows, "comparison"))}
+    for comparison, estimator, points in groups:
+        style = _estimator_style(estimator)
+        comparison_idx = comparison_order.get(comparison, 0)
+        steps = [step for step, _ in points]
+        values = [value for _, value in points]
+        ax.plot(
+            steps,
+            values,
+            label=f"{comparison} / {style['label']}",
+            color=style["color"],
+            alpha=_comparison_alpha(comparison_idx),
+            linewidth=_LINE_WIDTH,
+            marker=style["marker"],
+            markersize=_style_marker_size(style),
+            markevery=_marker_every(len(points)),
+            linestyle=("-" if comparison_idx % 2 == 0 else "--"),
+        )
+
+    ax.set_xlabel("Step")
+    ax.set_ylabel(y_label)
+    ax.grid(True, alpha=0.3)
+    ax.legend(fontsize="small", ncols=2)
+    fig.tight_layout()
+    fig.savefig(path / filename, dpi=200)
+    plt.close(fig)
+
+
+def plot_comparison_objective_curves(
+    trace_rows: Sequence[Mapping[str, object]],
+    plot_dir: str,
+    filename: str = "objective_curves.png",
+) -> None:
+    """Plot comparison objective traces grouped by policy and estimator."""
+    _plot_comparison_curve(
+        trace_rows,
+        plot_dir,
+        value_key="objective",
+        y_label="Objective value",
+        filename=filename,
+    )
+
+
+def plot_comparison_u_curves(
+    trace_rows: Sequence[Mapping[str, object]],
+    plot_dir: str,
+    filename: str = "u_curves.png",
+) -> None:
+    """Plot comparison action traces grouped by policy and estimator."""
+    _plot_comparison_curve(
+        trace_rows,
+        plot_dir,
+        value_key="u",
+        y_label="Mean u",
+        filename=filename,
+    )
+
+
+def plot_comparison_final_metric(
+    final_rows: Sequence[Mapping[str, object]],
+    plot_dir: str,
+    *,
+    metric_key: str,
+    metric_label: str,
+    filename: str,
+) -> None:
+    """Plot a grouped bar chart for a final comparison metric."""
+    if not final_rows:
+        return
+    comparisons = _ordered_labels(final_rows, "comparison")
+    estimators = _ordered_estimators_from_rows(final_rows)
+    if not comparisons or not estimators:
+        return
+
+    value_by_pair: dict[tuple[str, str], float] = {}
+    for row in final_rows:
+        value = _optional_float_value(row.get(metric_key))
+        if value is None:
+            continue
+        value_by_pair[(str(row["comparison"]), str(row["estimator"]))] = value
+    if not value_by_pair:
+        return
+
+    path = _ensure_plot_dir(plot_dir)
+    x_positions = np.arange(len(comparisons), dtype=float)
+    group_width = 0.78
+    bar_width = group_width / max(len(estimators), 1)
+    first_bar_positions = x_positions - group_width / 2.0 + bar_width / 2.0
+
+    fig, ax = plt.subplots(1, 1, figsize=(max(7.5, 1.35 * len(comparisons)), 5.5))
+    for estimator_idx, estimator in enumerate(estimators):
+        style = _estimator_style(estimator)
+        plotted_label = False
+        for comparison_idx, comparison in enumerate(comparisons):
+            value = value_by_pair.get((comparison, estimator))
+            if value is None:
+                continue
+            ax.bar(
+                first_bar_positions[comparison_idx] + estimator_idx * bar_width,
+                value,
+                width=bar_width * 0.92,
+                color=style["color"],
+                alpha=_comparison_alpha(comparison_idx),
+                hatch=_comparison_hatch(comparison_idx),
+                edgecolor="#252525",
+                linewidth=0.7,
+                label=str(style["label"]) if not plotted_label else None,
+            )
+            plotted_label = True
+
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels(comparisons, rotation=25, ha="right")
+    ax.set_xlabel("Policy comparison")
+    ax.set_ylabel(metric_label)
+    ax.grid(True, axis="y", alpha=0.3)
+    ax.legend(title="Estimator")
+    fig.tight_layout()
+    fig.savefig(path / filename, dpi=200)
+    plt.close(fig)
+
+
 def _ordered_traces(
     traces: Mapping[str, OptimizationTrace],
 ) -> list[tuple[str, OptimizationTrace]]:

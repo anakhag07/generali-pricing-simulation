@@ -92,7 +92,7 @@ def _build_model_based_result() -> ExperimentResult:
         objective=objective,
         theta0=theta0,
         n_samples=5,
-        x_fixed=load_x_array("glm", n_rows=5),
+        x_fixed=load_x_array("glm", n_rows=5, seed=123),
         step_rule="constant",
         perturbation_space="u",
         t_steps=3,

@@ -66,10 +66,30 @@ $$u = 0.5 - \sigma(\theta^\top \phi(x)) \;\in\; (-0.5,\; 0.5)$$
   where $z = \theta^\top \phi(x)$
 - **Source:** `src/objective/policy.py` :: `SoftmaxPolicy.value()`, `SoftmaxPolicy.grad()`
 
-### 2.5 Feature-Processed Policy
+### 2.5 MLP (Two-Layer) Policy
+
+A two-layer MLP with $\tanh$ activations and the same bounded sigmoid head as
+the softmax policy:
+
+$$h_1 = \tanh(W_1\,\varphi(x) + b_1),\quad
+h_2 = \tanh(W_2\,h_1 + b_2),\quad
+z = W_3\,h_2 + b_3,\quad
+u = 0.5 - \sigma(z)$$
+
+with $W_1\in\mathbb{R}^{H\times d_{in}}$, $W_2\in\mathbb{R}^{H\times H}$,
+$W_3\in\mathbb{R}^{1\times H}$. Theta is the row-major flat concatenation
+$[\,W_1, b_1, W_2, b_2, W_3, b_3\,]$, so
+$\dim(\theta) = d_{in}H + H + H^2 + H + H + 1$.
+
+- **Gradient:** standard chain rule via reverse-mode through both layers, with
+  $\partial u/\partial z = -\sigma(z)(1-\sigma(z))$ and
+  $\tanh'(z_\ell) = 1 - h_\ell^2$ at each hidden layer.
+- **Source:** `src/objective/policy.py` :: `MLPPolicy.value()`, `MLPPolicy.grad()`
+
+### 2.6 Feature-Processed Policy
 
 Wrapper that applies a saved `FeatureProcessor` to raw state $x$ before
-delegating to an inner policy (Constant, Linear, or Softmax).
+delegating to an inner policy (Constant, Linear, Softmax, or MLP).
 
 - **Source:** `src/objective/policy.py` :: `FeatureProcessedPolicy`
 

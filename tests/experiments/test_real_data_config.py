@@ -11,6 +11,7 @@ import pytest
     "real_data_glm_constant_policy_trust_region_constr",
     "real_data_glm_linear_policy_base",
     "real_data_glm_linear_policy_trust_region_constr",
+    "real_data_glm_mlp_policy_base",
     "real_data_glm_softmax_policy_base",
     "real_data_glm_softmax_policy_lagrangian_small",
     "real_data_glm_softmax_policy_quadratic_base",
@@ -120,6 +121,7 @@ def test_xgb_softmax_policy_base_x_fixed_shape():
     "real_data_glm_constant_policy_trust_region_constr",
     "real_data_glm_linear_policy_base",
     "real_data_glm_linear_policy_trust_region_constr",
+    "real_data_glm_mlp_policy_base",
     "real_data_glm_softmax_policy_base",
     "real_data_glm_softmax_policy_lagrangian_small",
     "real_data_glm_softmax_policy_quadratic_base",
@@ -156,6 +158,26 @@ def test_glm_softmax_policy_base_uses_quadratic_feature_map():
     assert isinstance(policy.feature_map, QuadraticFeatureMap)
     assert cfg.theta0 is not None
     assert cfg.theta0.size == cfg.objective.policy_theta_dim()
+
+
+def test_glm_mlp_policy_base_has_mlp_policy_and_first_order():
+    from experiments.configs import get_config
+    from objective.policy import IdentityFeatureMap, MLPPolicy
+
+    cfg = get_config("real_data_glm_mlp_policy_base")
+    policy = cfg.objective.policy
+    assert isinstance(policy, MLPPolicy)
+    assert isinstance(policy.feature_map, IdentityFeatureMap)
+    assert policy.hidden == 16
+    assert "first_order" in cfg.enabled_estimators
+    assert cfg.enabled_estimators == ("first_order", "spsa", "stein_difference")
+    assert cfg.theta0 is not None
+    assert cfg.theta0.size == cfg.objective.policy_theta_dim()
+    assert cfg.x_fixed is not None
+    assert cfg.x_fixed.shape == (cfg.n_samples, 12)
+    assert cfg.state_dim == 12
+    assert cfg.step_rule == "l-bfgs-b"
+    assert cfg.acceptance_floor is None
 
 
 def test_glm_linear_policy_base_has_first_order():
@@ -378,6 +400,7 @@ def test_xgb_linear_policy_base_initial_action_is_constant_0_0():
     "real_data_glm_constant_policy_trust_region_constr",
     "real_data_glm_linear_policy_base",
     "real_data_glm_linear_policy_trust_region_constr",
+    "real_data_glm_mlp_policy_base",
     "real_data_glm_softmax_policy_base",
     "real_data_glm_softmax_policy_lagrangian_small",
     "real_data_glm_softmax_policy_trust_region_constr",
@@ -398,6 +421,7 @@ def test_real_data_configs_disable_correctness_gradients(name):
     "real_data_glm_constant_policy_trust_region_constr",
     "real_data_glm_linear_policy_base",
     "real_data_glm_linear_policy_trust_region_constr",
+    "real_data_glm_mlp_policy_base",
     "real_data_glm_softmax_policy_base",
     "real_data_glm_softmax_policy_lagrangian_small",
     "real_data_glm_softmax_policy_trust_region_constr",

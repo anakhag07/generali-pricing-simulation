@@ -13,7 +13,7 @@ from objective.objectives import (
     ModelBasedObjective,
     PlantedLogisticObjective,
 )
-from objective.policy import ConstantPolicy, LinearPolicy, SoftmaxPolicy, policy_theta_dim
+from objective.policy import ConstantPolicy, LinearPolicy, MLPPolicy, SoftmaxPolicy, policy_theta_dim
 from optimization.steps import STEP_RULES, STEP_RULE_TRUST_CONSTR
 
 
@@ -460,6 +460,12 @@ def _policy_to_dict(policy: object) -> dict[str, Any]:
         return {"type": "LinearPolicy", "feature_map": feature_map_dict}
     if isinstance(policy, SoftmaxPolicy):
         return {"type": "SoftmaxPolicy", "feature_map": feature_map_dict}
+    if isinstance(policy, MLPPolicy):
+        return {
+            "type": "MLPPolicy",
+            "feature_map": feature_map_dict,
+            "hidden": int(policy.hidden),
+        }
     return {"type": type(policy).__name__}
 
 

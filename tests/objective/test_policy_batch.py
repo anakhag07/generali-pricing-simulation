@@ -5,8 +5,11 @@ from objective.policy import (
     ConstantPolicy,
     IdentityFeatureMap,
     LinearPolicy,
+    MLPPolicy,
     QuadraticFeatureMap,
     SoftmaxPolicy,
+    mlp_init_theta,
+    policy_from_kind,
 )
 
 
@@ -145,3 +148,49 @@ def test_policy_kind_constants() -> None:
     assert ConstantPolicy().kind == "constant"
     assert LinearPolicy().kind == "linear"
     assert SoftmaxPolicy().kind == "softmax"
+    assert MLPPolicy().kind == "mlp"
+
+
+def test_mlp_policy_theta_dim_formula() -> None:
+    policy = MLPPolicy(hidden=8)
+    state_dim = 5
+    expected = state_dim * 8 + 8 + 8 * 8 + 8 + 8 + 1
+    assert policy.theta_dim(state_dim) == expected
+
+
+def test_mlp_policy_theta_dim_with_quadratic_feature_map() -> None:
+    policy = MLPPolicy(feature_map=QuadraticFeatureMap(), hidden=4)
+    state_dim = 3
+    d_in = QuadraticFeatureMap().output_dim(state_dim)  # 3 + 6 = 9
+    expected = d_in * 4 + 4 + 4 * 4 + 4 + 4 + 1
+    assert policy.theta_dim(state_dim) == expected
+
+
+def test_mlp_policy_value_shape_and_range() -> None:
+    rng = np.random.default_rng(11)
+    x_array = rng.normal(size=(7, 4))
+    policy = MLPPolicy(hidden=8)
+    theta = mlp_init_theta(rng, d_in=4, hidden=8)
+    result = policy.value(theta, x_array)
+    assert result.shape == (7,)
+    assert np.all(result > -0.5)
+    assert np.all(result < 0.5)
+
+
+def test_mlp_policy_grad_shape() -> None:
+    rng = np.random.default_rng(12)
+    x_array = rng.normal(size=(7, 4))
+    policy = MLPPolicy(hidden=8)
+    theta = mlp_init_theta(rng, d_in=4, hidden=8)
+    grad = policy.grad(theta, x_array)
+    assert grad.shape == (7, policy.theta_dim(4))
+
+
+def test_policy_from_kind_returns_mlp() -> None:
+    policy = policy_from_kind("mlp")
+    assert isinstance(policy, MLPPolicy)
+
+
+def test_mlp_policy_rejects_zero_hidden() -> None:
+    with pytest.raises(ValueError, match="hidden"):
+        MLPPolicy(hidden=0)

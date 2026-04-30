@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import matplotlib.axes
+
 from reporting.visualization import (
     plot_comparison_final_metric,
     plot_comparison_objective_curves,
@@ -37,3 +39,31 @@ def test_comparison_plots_create_expected_files(tmp_path: Path) -> None:
     assert (tmp_path / "objective_curves.png").exists()
     assert (tmp_path / "u_curves.png").exists()
     assert (tmp_path / "final_objective.png").exists()
+
+
+def test_comparison_final_metric_uses_grouped_bars(monkeypatch, tmp_path: Path) -> None:
+    final_rows = [
+        {"comparison": "constant", "estimator": "first_order", "final_u": 0.8},
+        {"comparison": "linear", "estimator": "first_order", "final_u": 0.7},
+        {"comparison": "constant", "estimator": "spsa", "final_u": 0.9},
+    ]
+    bar_calls: list[dict[str, object]] = []
+    original_bar = matplotlib.axes.Axes.bar
+
+    def record_bar(self, *args, **kwargs):
+        bar_calls.append(dict(kwargs))
+        return original_bar(self, *args, **kwargs)
+
+    monkeypatch.setattr(matplotlib.axes.Axes, "bar", record_bar)
+
+    plot_comparison_final_metric(
+        final_rows,
+        str(tmp_path),
+        metric_key="final_u",
+        metric_label="Final u",
+        filename="final_u.png",
+    )
+
+    assert len(bar_calls) == 3
+    assert {call["color"] for call in bar_calls} >= {"#1f77b4", "#d62728"}
+    assert any(call.get("hatch") for call in bar_calls)

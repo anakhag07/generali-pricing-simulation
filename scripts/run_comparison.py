@@ -22,10 +22,10 @@ COMPARISON_SPECS = (
         name="softmax-linear-constrained",
         preset="real_data_glm_softmax_policy_base",
     ),
-    ComparisonSpec(
-        name="softmax-quadratic-constrained",
-        preset="real_data_glm_softmax_policy_quadratic_base",
-    ),
+    # ComparisonSpec(
+    #     name="softmax-quadratic-constrained",
+    #     preset="real_data_glm_softmax_policy_quadratic_base",
+    # ),
 )
 
 COMMON_OVERRIDES = {

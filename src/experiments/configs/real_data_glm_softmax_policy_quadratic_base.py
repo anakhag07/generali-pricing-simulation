@@ -36,7 +36,7 @@ _policy = SoftmaxPolicy(feature_map=QuadraticFeatureMap())
 THETA0 = np.zeros(_policy.theta_dim(_acceptance_model.policy_feature_dim()), dtype=float)
 
 TRAINING = canonical_training_block(
-    n_samples=194373,
+    n_samples=5000,
     step_rule="l-bfgs-b",
     t_steps=1000,
     step_size=0.01,

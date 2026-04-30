@@ -90,6 +90,7 @@ Several preset configs are available, selected by config preset:
 | `fixed_regression_base` | Synthetic N(0, I) | `FixedRegressionObjective` |
 | `real_data_glm_softmax_policy_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, quadratic softmax policy, analytical grad) |
 | `real_data_glm_softmax_policy_lagrangian_small` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, softmax policy, analytical grad, lagrangian floor scalarization) |
+| `real_data_glm_softmax_policy_quadratic_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, quadratic softmax policy, analytical grad) |
 | `real_data_glm_softmax_policy_trust_region_constr` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, softmax policy + trust-constr acceptance floor) |
 | `real_data_glm_linear_policy_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, linear-policy diagnostic) |
 | `real_data_glm_linear_policy_trust_region_constr` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, linear policy + trust-constr acceptance floor) |

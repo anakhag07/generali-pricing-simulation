@@ -289,7 +289,7 @@ Guidelines:
   - `plot_step_sizes(...)`: per-step step sizes (log scale y-axis)
   - `plot_objective_u_slice(...)`: objective vs u grid (no gradient subplot)
   - `plot_theta_objective_contours(...)`: 2D contour plot with optimization paths
-  - `plot_comparison_objective_curves(...)`, `plot_comparison_u_curves(...)`, `plot_comparison_final_metric(...)`: aggregate policy-comparison plots; final metrics render as grouped bar charts by policy with estimator colors and policy hatching
+  - `plot_comparison_objective_curves(...)`, `plot_comparison_u_curves(...)`, `plot_comparison_final_metric(...)`: aggregate policy-comparison plots; final metrics render as grouped bars by policy with estimator colors and policy hatching
   - Private sweep helpers power both lambda and trust-constrained acceptance-floor frontier plots
   - `select_theta_axes_max_variance(...)`: picks the two theta axes with highest variance for contour plots
 

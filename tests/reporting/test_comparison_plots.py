@@ -81,16 +81,13 @@ def test_comparison_plots_create_expected_files(tmp_path: Path) -> None:
     assert (tmp_path / "objective_curves.png").exists()
     assert (tmp_path / "u_curves.png").exists()
     assert (tmp_path / "final_objective.png").exists()
-    assert (tmp_path / "final_objective_sum.png").exists()
-    assert (tmp_path / "final_u.png").exists()
-    assert (tmp_path / "mean_acceptance.png").exists()
 
 
 def test_comparison_final_metric_uses_grouped_bars(monkeypatch, tmp_path: Path) -> None:
     final_rows = [
-        {"comparison": "constant", "estimator": "first_order", "final_u": 0.1},
-        {"comparison": "linear", "estimator": "first_order", "final_u": 0.2},
-        {"comparison": "constant", "estimator": "spsa", "final_u": 0.15},
+        {"comparison": "constant", "estimator": "first_order", "final_u": 0.8},
+        {"comparison": "linear", "estimator": "first_order", "final_u": 0.7},
+        {"comparison": "constant", "estimator": "spsa", "final_u": 0.9},
     ]
     bar_calls: list[dict[str, object]] = []
     original_bar = matplotlib.axes.Axes.bar

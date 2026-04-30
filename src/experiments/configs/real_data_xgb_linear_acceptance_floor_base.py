@@ -17,6 +17,7 @@ from data.loader import (
     load_mean_observed_acceptance,
     load_model_artifacts,
     load_x_array,
+    sample_csv_row_indices,
 )
 from experiments.config import (
     CorrectnessSpec,
@@ -28,6 +29,7 @@ from experiments.config import (
 from objective.policy import LinearPolicy
 
 STATE_DIM = len(FEATURE_COLS_XGB)
+SEED = 8
 
 _acceptance_model, _loss_model = load_model_artifacts("xgb")
 _policy = LinearPolicy()
@@ -60,11 +62,13 @@ RUNTIME = canonical_runtime_block(
 )
 
 CORRECTNESS = CorrectnessSpec(gradient_source="none")
+_ROW_INDICES = sample_csv_row_indices("xgb", n_rows=TRAINING["n_samples"], seed=SEED)
 
 CONFIG = build_experiment_config(
-    seed=8,
+    seed=SEED,
     state_dim=STATE_DIM,
-    x_fixed=load_x_array("xgb", n_rows=5000),
+    x_fixed=load_x_array("xgb", row_indices=_ROW_INDICES),
+    x_fixed_row_indices=_ROW_INDICES,
     objective=make_model_based_objective(
         policy=_policy,
         acceptance_model=_acceptance_model,

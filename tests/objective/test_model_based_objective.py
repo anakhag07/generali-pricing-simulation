@@ -23,7 +23,7 @@ def _make_glm_objective(n_rows=20):
 
     acc_model, loss_model = load_model_artifacts("glm")
     u_coef = extract_glm_u_coef(acc_model)
-    x = load_x_array("glm", n_rows=n_rows)
+    x = load_x_array("glm", n_rows=n_rows, seed=123)
     obj = ModelBasedObjective(
         policy=SoftmaxPolicy(),
         acceptance_model=acc_model,
@@ -73,7 +73,7 @@ def test_value_at_u_consistent_with_value():
 
     acc_model, loss_model = load_model_artifacts("glm")
     u_coef = extract_glm_u_coef(acc_model)
-    x = load_x_array("glm", n_rows=20)
+    x = load_x_array("glm", n_rows=20, seed=123)
 
     obj = ModelBasedObjective(
         policy=ConstantPolicy(),
@@ -137,7 +137,7 @@ def test_analytical_vs_fd_grad_glm():
 
     acc_model, loss_model = load_model_artifacts("glm")
     u_coef = extract_glm_u_coef(acc_model)
-    x = load_x_array("glm", n_rows=30)
+    x = load_x_array("glm", n_rows=30, seed=123)
     policy = SoftmaxPolicy()
     theta = np.zeros(policy.theta_dim(acc_model.policy_feature_dim()), dtype=float)
 
@@ -240,7 +240,7 @@ def test_mean_action_uses_clipped_u_when_bounds_present() -> None:
     from objective.policy import LinearPolicy
 
     acc_model, loss_model = load_model_artifacts("xgb")
-    x = load_x_array("xgb", n_rows=30)
+    x = load_x_array("xgb", n_rows=30, seed=123)
     obj = ModelBasedObjective(
         policy=LinearPolicy(),
         acceptance_model=acc_model,

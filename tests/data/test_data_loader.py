@@ -6,35 +6,76 @@ import pytest
 
 def test_load_x_array_glm_shape():
     from data.loader import load_x_array, FEATURE_COLS_GLM
-    x = load_x_array("glm", n_rows=50)
+    x = load_x_array("glm", n_rows=50, seed=123)
     assert x.shape == (50, len(FEATURE_COLS_GLM))
     assert x.dtype == np.float64
 
 
 def test_load_x_array_xgb_shape():
     from data.loader import load_x_array, FEATURE_COLS_XGB
-    x = load_x_array("xgb", n_rows=50)
+    x = load_x_array("xgb", n_rows=50, seed=123)
     assert x.shape == (50, len(FEATURE_COLS_XGB))
     assert x.dtype == np.float64
 
 
 def test_load_x_array_glm_has_more_cols_than_xgb():
     from data.loader import load_x_array
-    glm_x = load_x_array("glm", n_rows=10)
-    xgb_x = load_x_array("xgb", n_rows=10)
+    glm_x = load_x_array("glm", n_rows=10, seed=123)
+    xgb_x = load_x_array("xgb", n_rows=10, seed=123)
     assert glm_x.shape[1] > xgb_x.shape[1]
+
+
+def test_sample_csv_row_indices_is_deterministic():
+    from data.loader import sample_csv_row_indices
+
+    idx_1 = sample_csv_row_indices("glm", n_rows=25, seed=123)
+    idx_2 = sample_csv_row_indices("glm", n_rows=25, seed=123)
+
+    assert np.array_equal(idx_1, idx_2)
+    assert idx_1.shape == (25,)
+    assert np.unique(idx_1).shape == (25,)
+
+
+def test_sample_csv_row_indices_changes_with_seed():
+    from data.loader import sample_csv_row_indices
+
+    idx_1 = sample_csv_row_indices("glm", n_rows=25, seed=123)
+    idx_2 = sample_csv_row_indices("glm", n_rows=25, seed=456)
+
+    assert not np.array_equal(idx_1, idx_2)
+
+
+def test_load_x_array_row_indices_are_ordered_and_reusable():
+    from data.loader import load_x_array, sample_csv_row_indices
+
+    row_indices = sample_csv_row_indices("glm", n_rows=20, seed=123)
+    x_1 = load_x_array("glm", row_indices=row_indices)
+    x_2 = load_x_array("glm", row_indices=row_indices)
+
+    assert np.array_equal(x_1, x_2)
 
 
 def test_load_observed_u_array_matches_requested_rows():
     from data.loader import _load_observed_u_array
 
-    glm_u = _load_observed_u_array("glm", n_rows=25)
-    xgb_u = _load_observed_u_array("xgb", n_rows=25)
+    glm_u = _load_observed_u_array("glm", n_rows=25, seed=123)
+    xgb_u = _load_observed_u_array("xgb", n_rows=25, seed=123)
 
     assert glm_u.shape == (25,)
     assert xgb_u.shape == (25,)
     assert np.all(np.isfinite(glm_u))
     assert np.all(np.isfinite(xgb_u))
+
+
+def test_load_observed_u_array_uses_row_indices():
+    from data.loader import load_observed_u_array, sample_csv_row_indices
+
+    row_indices = sample_csv_row_indices("glm", n_rows=25, seed=123)
+    u_1 = load_observed_u_array("glm", row_indices=row_indices)
+    u_2 = load_observed_u_array("glm", row_indices=row_indices)
+
+    assert np.array_equal(u_1, u_2)
+    assert u_1.shape == (25,)
 
 
 def test_load_model_artifacts_types():

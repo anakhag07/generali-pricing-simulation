@@ -4,7 +4,9 @@ import numpy as np
 
 from objective import (
     ConstantPolicy,
+    CubicFeatureMap,
     QuadraticFeatureMap,
+    QuarticFeatureMap,
     PlantedLogisticObjective,
     default_rng,
     mean_acceptance_at_constant_u,
@@ -23,6 +25,8 @@ def test_objective_package_exports_are_importable() -> None:
     policy = ConstantPolicy()
     feature_map = QuadraticFeatureMap()
     assert feature_map.output_dim(2) == 5
+    assert CubicFeatureMap().output_dim(2) == 6
+    assert QuarticFeatureMap().output_dim(2) == 7
     objective = PlantedLogisticObjective(
         policy=policy,
         alpha=1.0,

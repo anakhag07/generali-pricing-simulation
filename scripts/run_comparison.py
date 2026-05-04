@@ -21,12 +21,32 @@ COMPARISON_SPECS = (
         preset="real_data_glm_linear_policy_base",
     ),
     ComparisonSpec(
+        name="quadratic",
+        preset="real_data_glm_linear_policy_quadratic_base",
+    ),
+    ComparisonSpec(
+        name="third-order",
+        preset="real_data_glm_linear_policy_cubic_base",
+    ),
+    ComparisonSpec(
+        name="fourth-order",
+        preset="real_data_glm_linear_policy_quartic_base",
+    ),
+    ComparisonSpec(
         name="softmax-linear",
         preset="real_data_glm_softmax_policy_base",
     ),
     ComparisonSpec(
         name="softmax-quadratic",
         preset="real_data_glm_softmax_policy_quadratic_base",
+    ),
+    ComparisonSpec(
+        name="softmax-third-order",
+        preset="real_data_glm_softmax_policy_cubic_base",
+    ),
+    ComparisonSpec(
+        name="softmax-fourth-order",
+        preset="real_data_glm_softmax_policy_quartic_base",
     ),
     ComparisonSpec(
         name="mlp",
@@ -48,8 +68,8 @@ COMMON_OVERRIDES = {
     "plot": False,
     "verbose": True,
     "wandb_enabled": False,
-    # "step_rule": "trust-constr",
-    # "acceptance_floor": _acceptance_floor,
+    "step_rule": "trust-constr",
+    "acceptance_floor": _acceptance_floor,
 }
 
 

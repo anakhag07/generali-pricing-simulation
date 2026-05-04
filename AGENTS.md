@@ -312,6 +312,7 @@ Guidelines:
 - `scripts/run_acceptance_floor_sweep.py` runs the trust-constrained softmax GLM preset over a dense acceptance-floor grid `c` and writes aggregate frontier plots under `outputs/<project>/acceptance_floor_frontier_<timestamp>/`
 - `scripts/plot_saved_acceptance_floor_frontier.py` re-plots acceptance-floor Pareto frontiers from a saved `acceptance_floor_sweep.csv` (or the latest matching frontier directory) without rerunning optimization; defaults to `first_order` and writes estimator-suffixed Pareto PNGs
 - `scripts/query_acceptance_at_u.py` loads a config preset or default GLM/XGB model type and reports mean acceptance for supplied or evenly sampled constant `u` values without running optimization; writes acceptance-curve and historical-`U` rug plots under `outputs/acceptance_queries/` by default and optionally writes `u,n,mean_acceptance` CSV output
+- `scripts/plot_pc_outcome_diagnostics.py` reads a saved run `summary.json`, rebuilds a real-data preset objective, and writes processed-policy-component scatter diagnostics against final `f_acc`, loss, and `u`; defaults beside the summary under `pc_outcome_diagnostics/<estimator>/`
 
 ## Known Issues and Dead Code
 

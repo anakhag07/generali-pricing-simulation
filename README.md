@@ -192,6 +192,20 @@ historical-`U` histogram with sampled constant-`u` rug marks under
 to choose a subdirectory under `outputs/acceptance_queries/`, or pass explicit
 values with `--u -0.3 0.0 0.2` instead of `--u-count`.
 
+To diagnose how final real-data policies relate processed policy components to
+acceptance, loss, and action variation, use a saved run `summary.json`:
+
+```bash
+python scripts/plot_pc_outcome_diagnostics.py \
+  --preset real_data_glm_mlp_policy_base \
+  --summary-json outputs/glm-policy-comparison/mlp/<run_id>/summary.json \
+  --estimator first_order
+```
+
+This writes scatter grids for processed components vs `f_acc`, loss, and final
+`u`, plus `u_vs_acceptance.png` and `pc_diagnostic_correlations.csv` beside the
+run summary by default.
+
 ## Creating Config Presets
 
 Use `src/experiments/configs/config_template.py` as a scaffold when creating a

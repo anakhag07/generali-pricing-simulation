@@ -1,16 +1,16 @@
-"""GLM-backed base config using a softmax policy on real insurance data.
+"""GLM-backed base config using a 2-layer MLP policy.
 
-Uses trained GLM artifacts (logistic regression + linear regression) with the
-first 5,000 rows of the real dataset as the fixed state distribution. The
-objective owns the acceptance-side preprocessing from the bundled pickle so raw
-CSV rows stay at the optimization boundary.
+Mirrors `real_data_glm_softmax_policy_base.py` but swaps the softmax/quadratic
+linear policy for an `MLPPolicy` with two hidden layers of width 16 and tanh
+activations. Bounded action `u = 0.5 - sigmoid(z)` is preserved so the GLM
+analytical first-order gradient (chain rule via `u_coef`) still applies.
 
-GLM enables an analytical first-order gradient (u_coef extracted from the
-logistic regression pipeline). All 5 estimators are enabled for comparison.
+Initialization is Glorot-uniform with the same SEED so theta is non-trivial
+(zero init would collapse hidden units by symmetry).
 
-Note: SoftmaxPolicy outputs centered u in (-0.5, 0.5), so this preset starts
-from theta = 0 to initialize at the baseline premium multiplier (u = 0 means
-revenue uses 1.0 * premium) with the largest policy slope.
+`finite_difference` is omitted: at theta_dim ~= 497 the FD gradient call costs
+~2 * theta_dim objective evals (~3 min/grad on this dataset, ~50 h per run).
+Use first-order, SPSA, and stein-difference for tractable comparison.
 """
 
 from __future__ import annotations
@@ -33,19 +33,21 @@ from experiments.config import (
     canonical_training_block,
     make_model_based_objective,
 )
-from objective.policy import QuadraticFeatureMap, SoftmaxPolicy
+from objective.policy import IdentityFeatureMap, MLPPolicy, mlp_init_theta
 
 STATE_DIM = len(FEATURE_COLS_GLM)
 SEED = 42
+HIDDEN = 16
 
 _acceptance_model, _loss_model = load_model_artifacts("glm")
 _u_coef = extract_glm_u_coef(_acceptance_model)
-_policy = SoftmaxPolicy()
+_policy = MLPPolicy(feature_map=IdentityFeatureMap(), hidden=HIDDEN)
 
-THETA0 = np.zeros(_policy.theta_dim(_acceptance_model.policy_feature_dim()), dtype=float)
+_d_in = _acceptance_model.policy_feature_dim()
+THETA0 = mlp_init_theta(np.random.default_rng(SEED), d_in=_d_in, hidden=HIDDEN)
 
 TRAINING = canonical_training_block(
-    n_samples=194373,
+    n_samples=5000,
     step_rule="l-bfgs-b",
     t_steps=1000,
     step_size=0.01,
@@ -53,21 +55,18 @@ TRAINING = canonical_training_block(
     n_grad_samples=50,
     enabled_estimators=(
         "first_order",
-        "finite_difference",
         "spsa",
         "stein_difference",
     ),
     perturbation_space="u",
     grad_norm_tol=1e-6,
-    # constant_u_baselines=[-0.5, -0.3, -0.2, -0.15, -0.1, -0.05, 0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.5],
-
 )
 
 RUNTIME = canonical_runtime_block(
     plot=True,
     verbose=True,
     wandb_enabled=True,
-    wandb_project='glm-softmax-policy-unconstrained'
+    wandb_project="glm-mlp-policy-unconstrained",
 )
 
 CORRECTNESS = CorrectnessSpec(gradient_source="none")

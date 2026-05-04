@@ -3,7 +3,7 @@
 This module provides:
 - Base interfaces: Objective, Policy
 - Sampling: sample_states, default_rng
-- Concrete policies: ConstantPolicy, LinearPolicy, SoftmaxPolicy
+- Concrete policies: ConstantPolicy, LinearPolicy, SoftmaxPolicy, MLPPolicy
 - Policy feature maps: IdentityFeatureMap, QuadraticFeatureMap,
   CallableFeatureMap
 - Concrete objectives: FixedRegressionObjective, PlantedLogisticObjective,
@@ -30,8 +30,10 @@ from objective.policy import (
     FeatureProcessedPolicy,
     IdentityFeatureMap,
     LinearPolicy,
+    MLPPolicy,
     QuadraticFeatureMap,
     SoftmaxPolicy,
+    mlp_init_theta,
     policy_from_kind,
     policy_theta_dim,
 )
@@ -50,8 +52,10 @@ __all__ = [
     "FeatureProcessedPolicy",
     "IdentityFeatureMap",
     "LinearPolicy",
+    "MLPPolicy",
     "QuadraticFeatureMap",
     "SoftmaxPolicy",
+    "mlp_init_theta",
     "policy_from_kind",
     "policy_theta_dim",
     # Concrete objectives

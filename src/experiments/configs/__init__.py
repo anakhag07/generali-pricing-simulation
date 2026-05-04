@@ -14,6 +14,7 @@ _CONFIG_MODULES = {
     "planted_logistic_base": "experiments.configs.planted_logistic_base",
     "real_data_glm_linear_policy_base": "experiments.configs.real_data_glm_linear_policy_base",
     "real_data_glm_linear_policy_trust_region_constr": "experiments.configs.real_data_glm_linear_policy_trust_region_constr",
+    "real_data_glm_mlp_policy_base": "experiments.configs.real_data_glm_mlp_policy_base",
     "real_data_glm_softmax_policy_base": "experiments.configs.real_data_glm_softmax_policy_base",
     "real_data_glm_softmax_policy_lagrangian_small": "experiments.configs.real_data_glm_softmax_policy_lagrangian_small",
     "real_data_glm_softmax_policy_quadratic_base": "experiments.configs.real_data_glm_softmax_policy_quadratic_base",

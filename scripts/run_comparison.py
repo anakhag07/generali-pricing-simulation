@@ -13,20 +13,24 @@ _row_indices = sample_csv_row_indices("glm", n_rows=5000, seed=SEED)
 
 COMPARISON_SPECS = (
     ComparisonSpec(
-        name="constant-constrained",
+        name="constant",
         preset="real_data_glm_constant_policy_base",
     ),
     ComparisonSpec(
-        name="linear-constrained",
+        name="linear",
         preset="real_data_glm_linear_policy_base",
     ),
     ComparisonSpec(
-        name="softmax-linear-constrained",
+        name="softmax-linear",
         preset="real_data_glm_softmax_policy_base",
     ),
     ComparisonSpec(
-        name="softmax-quadratic-constrained",
+        name="softmax-quadratic",
         preset="real_data_glm_softmax_policy_quadratic_base",
+    ),
+    ComparisonSpec(
+        name="mlp",
+        preset="real_data_glm_mlp_policy_base",
     ),
 )
 
@@ -44,8 +48,8 @@ COMMON_OVERRIDES = {
     "plot": False,
     "verbose": True,
     "wandb_enabled": False,
-    "step_rule": "trust-constr",
-    "acceptance_floor": _acceptance_floor,
+    # "step_rule": "trust-constr",
+    # "acceptance_floor": _acceptance_floor,
 }
 
 

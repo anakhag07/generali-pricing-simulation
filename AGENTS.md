@@ -149,8 +149,10 @@ Guidelines:
   - Implements `Policy` with batch methods `value(theta, x_batch)` and `grad(theta, x_batch)`
   - Feature-map classes: `IdentityFeatureMap`, `QuadraticFeatureMap`, `CallableFeatureMap`; policies prepend the intercept internally, so custom maps return `varphi(x)`, not `[1, varphi(x)]`
   - `policy_theta_dim(policy, state_dim)`: helper for resolving theta dimension from the policy feature map
-  - Concrete policies: `ConstantPolicy`, `LinearPolicy`, `SoftmaxPolicy`, `FeatureProcessedPolicy`
-  - `policy_from_kind(kind)`: factory function
+  - Concrete policies: `ConstantPolicy`, `LinearPolicy`, `SoftmaxPolicy`, `MLPPolicy`, `FeatureProcessedPolicy`
+  - `MLPPolicy`: two-layer MLP with `tanh` activations and the same bounded `0.5 - sigmoid(z)` head as `SoftmaxPolicy`; default hidden width 16; flat theta layout `[W1, b1, W2, b2, W3, b3]`
+  - `mlp_init_theta(rng, *, d_in, hidden)`: Glorot-uniform random init for `MLPPolicy.theta_dim`-sized theta (zero-init breaks because hidden units stay symmetric)
+  - `policy_from_kind(kind)`: factory function (kinds: `constant`, `linear`, `softmax`, `mlp`)
 
 - **`src/objective/utils.py`**
   - `optimal_u(objective)`: public helper to extract u* from objective if available
@@ -227,6 +229,7 @@ Guidelines:
   - `real_data_glm_softmax_policy_base.py`: GLM pickle-based softmax-policy base config; state_dim=12; uses `QuadraticFeatureMap`; unconstrained `l-bfgs-b`; first-order, finite-difference, SPSA, and stein-difference estimators; analytical first-order gradient via u_coef
   - `real_data_glm_softmax_policy_lagrangian_small.py`: small GLM softmax-policy lagrangian preset; first 250 raw rows; unconstrained `l-bfgs-b`; all 5 estimators enabled; observed-acceptance floor with `lagrangian_lambda=2.0`
   - `real_data_glm_softmax_policy_quadratic_base.py`: registered GLM softmax-policy quadratic-feature config for policy comparison runs
+  - `real_data_glm_mlp_policy_base.py`: GLM-backed config with a 2-layer `MLPPolicy` (hidden=16, tanh, identity feature map); enables `first_order`, `spsa`, `stein_difference` (FD omitted because `2*theta_dim` evals/grad is intractable); analytical first-order via `u_coef`
   - `real_data_glm_softmax_policy_trust_region_constr.py`: constrained GLM softmax-policy config with a trust-constr mean-acceptance floor set to the observed CSV acceptance level; otherwise mirrors the softmax base preset
   - `real_data_glm_linear_policy_base.py`: GLM pickle-based linear-policy diagnostic config; same data/models as `real_data_glm_softmax_policy_base` but with `LinearPolicy` and runtime-resolved random initialization to inspect behavior without softmax saturation
   - `real_data_glm_linear_policy_trust_region_constr.py`: constrained GLM linear-policy config with `LinearPolicy` and a trust-constr mean-acceptance floor set to the observed CSV acceptance level; enables first-order, finite-difference, SPSA, and stein-difference for constrained comparison
@@ -342,7 +345,8 @@ when appropriate.
 | `test_objective_package_exports.py` | objective package API exports remain importable |
 | `test_planted_logistic_objective.py` | Planted logistic gradient at u_star and minimum |
 | `test_model_based_objective.py` | `value()`, `grad()` shape, `value_at_u()`, analytical vs FD grad agreement |
-| `test_policy_batch.py` | Policy batch `value/grad` shapes, bounds, and kind labels |
+| `test_policy_batch.py` | Policy batch `value/grad` shapes, bounds, and kind labels (incl. `MLPPolicy`) |
+| `test_mlp_policy_grad.py` | `MLPPolicy.grad` matches per-coordinate FD Jacobian; `mlp_init_theta` symmetry-breaking |
 | `test_policy_u_histograms.py` | Policy u-distribution visualization |
 
 #### `tests/optimization/`

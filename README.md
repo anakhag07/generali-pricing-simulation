@@ -183,7 +183,7 @@ To run the unconstrained policy PCA-dimensionality grid over policy classes and
 policy-side PCA dimensions, use:
 
 ```bash
-python scripts/run_policy_pca_grid.py --n-samples 5000 --seeds 42 43 44
+python scripts/run_policy_pca_grid.py --n-samples 5000
 ```
 
 This keeps the GLM black-box preprocessing sealed, fits configurable policy-side

@@ -10,7 +10,7 @@ from experiments.policy_pca_grid import PCA_DIMS, POLICY_CLASSES, PolicyPcaGridS
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--n-samples", type=int, default=5000)
-    parser.add_argument("--seeds", type=int, nargs="+", default=[42, 43, 44])
+    parser.add_argument("--seeds", type=int, nargs="+", default=[42])
     parser.add_argument("--estimator", default="first_order")
     parser.add_argument("--t-steps", type=int, default=1000)
     parser.add_argument("--project-name", default="policy-pca-grid")

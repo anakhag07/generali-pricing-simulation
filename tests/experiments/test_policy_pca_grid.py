@@ -25,6 +25,10 @@ def test_policy_pca_grid_verbose_defaults_to_true() -> None:
     assert PolicyPcaGridSpec().verbose is True
 
 
+def test_policy_pca_grid_default_seed_is_single_42() -> None:
+    assert PolicyPcaGridSpec().seeds == (42,)
+
+
 def test_build_condition_uses_policy_preprocessor_dimension() -> None:
     rng = np.random.default_rng(123)
     x_fixed = rng.normal(size=(8, 12))

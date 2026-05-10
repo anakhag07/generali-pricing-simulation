@@ -54,7 +54,7 @@ class PolicyPcaGridSpec:
 
     pca_dims: tuple[int | None, ...] = PCA_DIMS
     policy_classes: tuple[str, ...] = POLICY_CLASSES
-    seeds: tuple[int, ...] = (42, 43, 44)
+    seeds: tuple[int, ...] = (42,)
     n_samples: int = 5000
     data_seed: int = 42
     estimator: str = "first_order"

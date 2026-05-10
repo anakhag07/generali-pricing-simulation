@@ -135,9 +135,11 @@ Guidelines:
 - **`src/objective/objectives/model_based.py`**
   - `ModelBasedObjective`: pricing objective $$f(u;x) = a(x,u)(\hat{Y}(x) - (u + 1) \cdot p(x))$$ backed by trained sklearn/XGBoost models
   - Takes `acceptance_model` / `loss_model` artifact bundles that can apply saved external preprocessing before calling the inner sklearn/XGBoost model
-  - Owns the policy-side raw-to-processed bridge: raw `x_batch` stays at the objective boundary and the acceptance bundle's saved `FeatureProcessor` is reused internally for `u(theta, x)` and `du/dtheta`
+  - Owns the policy-side raw-to-processed bridge: raw `x_batch` stays at the objective boundary and, by default, the acceptance bundle's saved `FeatureProcessor` is reused internally for `u(theta, x)` and `du/dtheta`
+  - Optional `policy_preprocessor` / `policy_feature_cols` decouple policy inputs from the sealed acceptance/loss artifact preprocessing; black-box model calls still receive raw `x` and use saved artifact preprocessors internally
   - Policy output `u` remains centered at 0 for the acceptance model; only the revenue term shifts to multiplier `u + 1`
   - Optional config-driven mean-acceptance floor is implemented either as a smooth penalty on the objective or directly as a SciPy `trust-constr` nonlinear constraint, depending on `step_rule`
+  - Mutable diagnostic counters (`eval_counts()`, `reset_eval_counts()`) record objective value calls and acceptance/loss prediction rows for aggregate reporting
   - `u_coef` enables analytical gradient for GLM; `None` triggers central FD for XGBoost
   - `value()`, `grad()`, `value_at_u()`
 
@@ -153,6 +155,11 @@ Guidelines:
   - `MLPPolicy`: two-layer MLP with `tanh` activations and the same bounded `0.5 - sigmoid(z)` head as `SoftmaxPolicy`; default hidden width 16; flat theta layout `[W1, b1, W2, b2, W3, b3]`
   - `mlp_init_theta(rng, *, d_in, hidden)`: Glorot-uniform random init for `MLPPolicy.theta_dim`-sized theta (zero-init breaks because hidden units stay symmetric)
   - `policy_from_kind(kind)`: factory function (kinds: `constant`, `linear`, `softmax`, `mlp`)
+
+- **`src/objective/policy_preprocessing.py`**
+  - `PolicyFeaturePreprocessor`: policy-side fit-once standardization, whitening/sphering, and optional PCA truncation independent of black-box artifact preprocessing
+  - `fit_policy_feature_preprocessor(...)`: convenience constructor for fitted policy preprocessors
+  - `make_policy_features(...)`: applies a fitted policy preprocessor to raw policy-state rows
 
 - **`src/objective/utils.py`**
   - `optimal_u(objective)`: public helper to extract u* from objective if available
@@ -269,8 +276,13 @@ Guidelines:
   - `generate_sweep_runs(...)`: expands a base preset into named sweep variants
   - `run_preset_sweep(...)`: executes sweep variants through the standard reporter pipeline
 
+- **`src/experiments/policy_pca_grid.py`**
+  - `PolicyPcaGridSpec`: configuration for the unconstrained GLM policy PCA-dimensionality grid
+  - `run_policy_pca_grid(...)`: runs `pca_dim x policy_class x seed` conditions with configurable policy-side preprocessing while preserving raw-`x` black-box calls
+  - `write_policy_pca_outputs(...)`: writes aggregate finals/traces CSVs, summary markdown, and PCA/richness-gap plots
+
 - **`src/experiments/results.py`**
-  - `OptimizationTrace`: per-step trace with u values, objective values, gradient estimates, optional theta values and step sizes
+  - `OptimizationTrace`: per-step trace with u values, objective values, gradient estimates, optional theta values, step sizes, and model-based mean-acceptance diagnostics
   - `EstimatorResult`: final theta, u, value, wall-clock time, and optional acceptance-constraint diagnostics
   - `ExperimentResult`: full result including config, traces, and optional u_star
 
@@ -313,6 +325,7 @@ Guidelines:
 - `scripts/plot_saved_acceptance_floor_frontier.py` re-plots acceptance-floor Pareto frontiers from a saved `acceptance_floor_sweep.csv` (or the latest matching frontier directory) without rerunning optimization; defaults to `first_order` and writes estimator-suffixed Pareto PNGs
 - `scripts/query_acceptance_at_u.py` loads a config preset or default GLM/XGB model type and reports mean acceptance for supplied or evenly sampled constant `u` values without running optimization; writes acceptance-curve and historical-`U` rug plots under `outputs/acceptance_queries/` by default and optionally writes `u,n,mean_acceptance` CSV output
 - `scripts/plot_pc_outcome_diagnostics.py` reads a saved run `summary.json`, rebuilds a real-data preset objective, and writes processed-policy-component scatter diagnostics against final `f_acc`, loss, and `u`; defaults beside the summary under `pc_outcome_diagnostics/<estimator>/`
+- `scripts/run_policy_pca_grid.py` runs the unconstrained GLM policy PCA-dimensionality grid over PCA dimensions `(2, 4, 6, 9, None)` and policy classes `(constant, linear, quadratic, third_order, fourth_order, mlp)`; outputs aggregate CSVs, summary markdown, and headline plots under `outputs/policy-pca-grid/`
 
 ## Known Issues and Dead Code
 
@@ -353,6 +366,7 @@ when appropriate.
 | `test_model_based_objective.py` | `value()`, `grad()` shape, `value_at_u()`, analytical vs FD grad agreement |
 | `test_policy_batch.py` | Policy batch `value/grad` shapes, bounds, and kind labels (incl. `MLPPolicy`) |
 | `test_mlp_policy_grad.py` | `MLPPolicy.grad` matches per-coordinate FD Jacobian; `mlp_init_theta` symmetry-breaking |
+| `test_policy_preprocessing.py` | Policy-side standardization, whitening, PCA dimensionality, and transform validation |
 | `test_policy_u_histograms.py` | Policy u-distribution visualization |
 
 #### `tests/optimization/`
@@ -388,6 +402,7 @@ when appropriate.
 | `test_baseline_test.py` | End-to-end smoke test with fixed_regression_base overrides |
 | `test_run_context.py` | default output directory and run context paths |
 | `test_sweep_utils.py` | Override-grid expansion and preset sweep config generation |
+| `test_policy_pca_grid.py` | Policy PCA grid condition construction and aggregate output writing |
 
 #### `tests/reporting/`
 | Test File | Area |

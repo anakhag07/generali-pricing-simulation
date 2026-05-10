@@ -31,6 +31,9 @@ class OptimizationTrace:
     theta_grad_norms: Optional[Sequence[float]] = None
     true_theta_grad_norms: Optional[Sequence[float]] = None
     step_sizes: Optional[Sequence[float]] = None
+    mean_acceptance_values: Optional[Sequence[float]] = None
+    projected_loss_values: Optional[Sequence[float]] = None
+    projected_revenue_values: Optional[Sequence[float]] = None
     theta_values: Optional[Sequence[np.ndarray]] = None
     optimizer_success: Optional[bool] = None
     optimizer_optimality: Optional[float] = None

@@ -133,6 +133,9 @@ class Optimization:
         u_grad_estimates: list[float] = []
         theta_grad_norms: list[float] = []
         true_theta_grad_norms: list[float] = []
+        mean_acceptance_values: list[float] = []
+        projected_loss_values: list[float] = []
+        projected_revenue_values: list[float] = []
         theta_values: list[np.ndarray] = []
         step_sizes: list[float] | None = (
             [] if self.algorithm in {STEP_RULE_CONSTANT, STEP_RULE_ARMIJO} else None
@@ -257,6 +260,12 @@ class Optimization:
                 step_sizes.append(float("nan") if step_size is None else float(step_size))
             if true_theta_grad_norm is not None:
                 true_theta_grad_norms.append(true_theta_grad_norm)
+            if mean_acceptance is not None:
+                mean_acceptance_values.append(float(mean_acceptance))
+            if projected_loss is not None:
+                projected_loss_values.append(float(projected_loss))
+            if projected_revenue is not None:
+                projected_revenue_values.append(float(projected_revenue))
             if self.step_reporter is not None:
                 self.step_reporter.log_step(
                     self.method_label,
@@ -359,6 +368,9 @@ class Optimization:
             theta_grad_norms=theta_grad_norms,
             true_theta_grad_norms=true_theta_grad_norms if true_theta_grad_norms else None,
             step_sizes=step_sizes,
+            mean_acceptance_values=mean_acceptance_values if mean_acceptance_values else None,
+            projected_loss_values=projected_loss_values if projected_loss_values else None,
+            projected_revenue_values=projected_revenue_values if projected_revenue_values else None,
             theta_values=theta_values,
             optimizer_success=optimizer_success,
             optimizer_optimality=optimizer_optimality,

@@ -350,6 +350,163 @@ def plot_comparison_final_metric(
     plt.close(fig)
 
 
+def plot_policy_pca_final_objective(
+    final_rows: Sequence[Mapping[str, object]],
+    plot_dir: str,
+    *,
+    filename: str = "policy_pca_final_objective.png",
+) -> None:
+    """Plot mean final objective vs policy PCA dimension with seed bands."""
+    _plot_policy_pca_metric(
+        final_rows,
+        plot_dir,
+        value_key="final_value",
+        y_label="Final objective value",
+        filename=filename,
+    )
+
+
+def plot_policy_pca_richness_gap(
+    final_rows: Sequence[Mapping[str, object]],
+    plot_dir: str,
+    *,
+    filename: str = "policy_pca_richness_gap.png",
+) -> None:
+    """Plot J(constant) - J(policy class) vs policy PCA dimension."""
+    gap_rows = _policy_pca_gap_rows(final_rows)
+    _plot_policy_pca_metric(
+        gap_rows,
+        plot_dir,
+        value_key="richness_gap",
+        y_label="J(constant) - J(policy)",
+        filename=filename,
+        skip_policy="constant",
+    )
+
+
+def _plot_policy_pca_metric(
+    rows: Sequence[Mapping[str, object]],
+    plot_dir: str,
+    *,
+    value_key: str,
+    y_label: str,
+    filename: str,
+    skip_policy: str | None = None,
+) -> None:
+    valid_rows = [row for row in rows if _row_float(row.get(value_key)) is not None]
+    if skip_policy is not None:
+        valid_rows = [row for row in valid_rows if str(row.get("policy_class")) != skip_policy]
+    if not valid_rows:
+        return
+
+    labels = _policy_pca_labels(valid_rows)
+    x_positions = np.arange(len(labels), dtype=float)
+    label_to_x = {label: idx for idx, label in enumerate(labels)}
+    policies = _ordered_labels(valid_rows, "policy_class")
+
+    path = Path(plot_dir)
+    path.mkdir(parents=True, exist_ok=True)
+    fig, ax = plt.subplots(1, 1, figsize=(max(7.5, 1.2 * len(labels)), 5.5))
+
+    for policy_idx, policy_class in enumerate(policies):
+        if policy_class == skip_policy:
+            continue
+        means: list[float] = []
+        stds: list[float] = []
+        xs: list[float] = []
+        for label in labels:
+            values = [
+                float(cast(float, _row_float(row.get(value_key))))
+                for row in valid_rows
+                if str(row.get("policy_class")) == policy_class
+                and _pca_label(row.get("pca_dim")) == label
+            ]
+            if not values:
+                continue
+            xs.append(float(label_to_x[label]))
+            means.append(float(np.mean(values)))
+            stds.append(float(np.std(values, ddof=0)))
+        if not xs:
+            continue
+        color = plt.cm.tab10(policy_idx % 10)
+        mean_arr = np.asarray(means, dtype=float)
+        std_arr = np.asarray(stds, dtype=float)
+        x_arr = np.asarray(xs, dtype=float)
+        ax.plot(x_arr, mean_arr, marker="o", linewidth=2.0, label=policy_class, color=color)
+        ax.fill_between(x_arr, mean_arr - std_arr, mean_arr + std_arr, color=color, alpha=0.16)
+
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels(labels)
+    ax.set_xlabel("Policy PCA dimension")
+    ax.set_ylabel(y_label)
+    ax.grid(True, alpha=0.3)
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(path / filename, dpi=200)
+    plt.close(fig)
+
+
+def _policy_pca_gap_rows(rows: Sequence[Mapping[str, object]]) -> list[dict[str, object]]:
+    constant_by_key: dict[tuple[str, str, str], float] = {}
+    for row in rows:
+        if str(row.get("policy_class")) != "constant":
+            continue
+        value = _row_float(row.get("final_value"))
+        if value is None:
+            continue
+        key = (str(row.get("estimator")), str(row.get("seed")), _pca_label(row.get("pca_dim")))
+        constant_by_key[key] = float(value)
+
+    gap_rows: list[dict[str, object]] = []
+    for row in rows:
+        value = _row_float(row.get("final_value"))
+        if value is None:
+            continue
+        key = (str(row.get("estimator")), str(row.get("seed")), _pca_label(row.get("pca_dim")))
+        constant_value = constant_by_key.get(key)
+        if constant_value is None:
+            continue
+        gap_row = dict(row)
+        gap_row["richness_gap"] = constant_value - float(value)
+        gap_rows.append(gap_row)
+    return gap_rows
+
+
+def _policy_pca_labels(rows: Sequence[Mapping[str, object]]) -> list[str]:
+    labels = {_pca_label(row.get("pca_dim")) for row in rows}
+    return sorted(labels, key=_pca_label_sort_key)
+
+
+def _pca_label(value: object) -> str:
+    if value is None:
+        return "none"
+    text = str(value)
+    if text == "" or text.lower() == "none":
+        return "none"
+    return text
+
+
+def _pca_label_sort_key(label: str) -> tuple[int, float | str]:
+    if label == "none":
+        return (1, float("inf"))
+    try:
+        return (0, float(label))
+    except ValueError:
+        return (0, label)
+
+
+def _row_float(value: object) -> float | None:
+    if value is None or value == "":
+        return None
+    try:
+        out = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not np.isfinite(out):
+        return None
+    return out
+
+
 def _ordered_traces(
     traces: Mapping[str, OptimizationTrace],
 ) -> list[tuple[str, OptimizationTrace]]:

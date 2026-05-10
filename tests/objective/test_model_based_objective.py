@@ -44,6 +44,20 @@ def test_value_returns_scalar():
     assert np.isfinite(val)
 
 
+def test_value_records_eval_counts() -> None:
+    obj, x, theta_dim = _make_glm_objective()
+    theta = np.zeros(theta_dim, dtype=float)
+
+    obj.reset_eval_counts()
+    obj.value(theta, x)
+    counts = obj.eval_counts()
+
+    assert counts["objective_value_calls"] == 1
+    assert counts["objective_value_calls_rows"] == x.shape[0]
+    assert counts["acceptance_predict_calls"] >= 1
+    assert counts["loss_predict_calls"] >= 1
+
+
 def test_grad_shape():
     obj, x, theta_dim = _make_glm_objective()
     theta = np.zeros(theta_dim, dtype=float)

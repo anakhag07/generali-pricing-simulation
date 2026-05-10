@@ -189,7 +189,8 @@ python scripts/run_policy_pca_grid.py --n-samples 5000 --seeds 42 43 44
 This keeps the GLM black-box preprocessing sealed, fits configurable policy-side
 preprocessors on the 10 acceptance-state columns, and writes aggregate finals,
 traces, summary markdown, and headline PCA/richness-gap plots under
-`outputs/policy-pca-grid/`.
+`outputs/policy-pca-grid/`. The script prints per-condition progress by default;
+pass `--quiet` to suppress progress output.
 
 To query the existing acceptance model at fixed constant actions without
 running optimization, use:

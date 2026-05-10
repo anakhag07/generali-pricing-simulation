@@ -14,7 +14,7 @@ def main() -> None:
     parser.add_argument("--estimator", default="first_order")
     parser.add_argument("--t-steps", type=int, default=1000)
     parser.add_argument("--project-name", default="policy-pca-grid")
-    parser.add_argument("--verbose", action="store_true")
+    parser.add_argument("--quiet", action="store_true", help="Disable per-condition progress output.")
     args = parser.parse_args()
 
     spec = PolicyPcaGridSpec(
@@ -25,7 +25,7 @@ def main() -> None:
         estimator=args.estimator,
         t_steps=args.t_steps,
         project_name=args.project_name,
-        verbose=args.verbose,
+        verbose=not args.quiet,
     )
     output = run_policy_pca_grid(spec)
     print(f"Wrote policy PCA grid outputs to {output.output_dir}")

@@ -21,6 +21,10 @@ class _LossModel:
     pass
 
 
+def test_policy_pca_grid_verbose_defaults_to_true() -> None:
+    assert PolicyPcaGridSpec().verbose is True
+
+
 def test_build_condition_uses_policy_preprocessor_dimension() -> None:
     rng = np.random.default_rng(123)
     x_fixed = rng.normal(size=(8, 12))

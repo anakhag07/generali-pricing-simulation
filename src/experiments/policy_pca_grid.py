@@ -6,6 +6,7 @@ import csv
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+import time
 from typing import Any, Mapping, Sequence
 
 import numpy as np
@@ -68,7 +69,7 @@ class PolicyPcaGridSpec:
     sphere: bool = True
     output_root: str = "outputs"
     project_name: str = "policy-pca-grid"
-    verbose: bool = False
+    verbose: bool = True
 
 
 @dataclass(frozen=True)
@@ -114,10 +115,13 @@ def run_policy_pca_grid(spec: PolicyPcaGridSpec | None = None) -> PolicyPcaGridO
 
     final_rows: list[dict[str, object]] = []
     trace_rows: list[dict[str, object]] = []
+    total_conditions = len(spec.pca_dims) * len(spec.policy_classes) * len(spec.seeds)
+    condition_index = 0
     for pca_dim in spec.pca_dims:
         policy_preprocessor = preprocessors[pca_dim]
         for policy_class in spec.policy_classes:
             for seed in spec.seeds:
+                condition_index += 1
                 condition = build_policy_pca_condition(
                     spec=spec,
                     policy_class=policy_class,
@@ -131,15 +135,49 @@ def run_policy_pca_grid(spec: PolicyPcaGridSpec | None = None) -> PolicyPcaGridO
                     policy_preprocessor=policy_preprocessor,
                 )
                 _reset_eval_counts(condition.config.objective)
+                start_time = time.perf_counter()
+                if spec.verbose:
+                    print(
+                        "[policy-pca-grid] "
+                        f"{condition_index}/{total_conditions} start "
+                        f"pca_dim={_pca_dim_value(pca_dim)} "
+                        f"policy={policy_class} seed={seed} "
+                        f"dim_theta={condition.config.objective.policy_theta_dim()}",
+                        flush=True,
+                    )
                 try:
                     result = run_experiment(condition.config)
                 except Exception as exc:  # noqa: BLE001 - grid should keep failed conditions.
                     final_rows.append(_failure_row(condition, spec, exc))
+                    if spec.verbose:
+                        elapsed = time.perf_counter() - start_time
+                        print(
+                            "[policy-pca-grid] "
+                            f"{condition_index}/{total_conditions} failed "
+                            f"pca_dim={_pca_dim_value(pca_dim)} "
+                            f"policy={policy_class} seed={seed} "
+                            f"runtime_sec={elapsed:.2f} error={exc}",
+                            flush=True,
+                        )
                     continue
                 final_rows.extend(_final_rows(condition, result, spec))
                 trace_rows.extend(_trace_rows(condition, result, spec))
+                if spec.verbose:
+                    elapsed = time.perf_counter() - start_time
+                    final_value = _first_final_value(result)
+                    final_value_text = "" if final_value is None else f" final_value={final_value:.6f}"
+                    print(
+                        "[policy-pca-grid] "
+                        f"{condition_index}/{total_conditions} done "
+                        f"pca_dim={_pca_dim_value(pca_dim)} "
+                        f"policy={policy_class} seed={seed} "
+                        f"runtime_sec={elapsed:.2f}{final_value_text}",
+                        flush=True,
+                    )
 
     write_policy_pca_outputs(final_rows, trace_rows, output_dir)
+    if spec.verbose:
+        print(f"[policy-pca-grid] wrote outputs to {output_dir}", flush=True)
     return PolicyPcaGridOutput(output_dir=output_dir, final_rows=final_rows, trace_rows=trace_rows)
 
 
@@ -410,6 +448,12 @@ def _format_float(value: object) -> str:
         return f"{float(value):.6f}"
     except (TypeError, ValueError):
         return str(value)
+
+
+def _first_final_value(result: ExperimentResult) -> float | None:
+    for estimator_result in result.results.values():
+        return float(estimator_result.value)
+    return None
 
 
 _FINAL_FIELDNAMES = [

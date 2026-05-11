@@ -46,10 +46,10 @@ from reporting.visualization import (
 PCA_DIMS: tuple[int | None, ...] = (2, 6, None)
 POLICY_CLASSES: tuple[str, ...] = (
     "constant",
-    "linear",
-    "quadratic",
-    "third_order",
-    "fourth_order",
+    # "linear",
+    # "quadratic",
+    # "third_order",
+    # "fourth_order",
     "softmax_linear",
     "softmax_quadratic",
     "softmax_third_order",

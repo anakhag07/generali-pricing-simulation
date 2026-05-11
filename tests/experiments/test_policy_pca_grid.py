@@ -55,6 +55,39 @@ def test_build_condition_uses_policy_preprocessor_dimension() -> None:
     assert condition.config.objective.policy_theta_dim() == 15
 
 
+def test_build_condition_supports_constrained_grid() -> None:
+    rng = np.random.default_rng(123)
+    x_fixed = rng.normal(size=(8, 12))
+    x_policy = x_fixed[:, : len(ACCEPTANCE_STATE_COLS)]
+    preprocessor = fit_policy_feature_preprocessor(x_policy, pca_dim=2)
+    spec = PolicyPcaGridSpec(
+        n_samples=x_fixed.shape[0],
+        seeds=(1,),
+        step_rule="trust-constr",
+        acceptance_floor=0.8,
+        initial_constr_penalty=1.0,
+        t_steps=500,
+    )
+
+    condition = build_policy_pca_condition(
+        spec=spec,
+        policy_class="constant",
+        pca_dim=2,
+        seed=1,
+        x_fixed=x_fixed,
+        row_indices=np.arange(x_fixed.shape[0]),
+        acceptance_model=_AcceptanceModel(),
+        loss_model=_LossModel(),
+        u_coef=0.0,
+        policy_preprocessor=preprocessor,
+    )
+
+    assert condition.config.step_rule == "trust-constr"
+    assert condition.config.acceptance_floor == 0.8
+    assert condition.config.initial_constr_penalty == 1.0
+    assert condition.config.t_steps == 500
+
+
 def test_write_policy_pca_outputs_creates_csvs_and_plots(tmp_path: Path) -> None:
     final_rows = [
         _final_row("constant", 2, 1, -1.0),
@@ -99,6 +132,8 @@ def _final_row(policy_class: str, pca_dim: int, seed: int, final_value: float) -
         "seed": seed,
         "policy_class": policy_class,
         "estimator": "first_order",
+        "step_rule": "l-bfgs-b",
+        "acceptance_floor": "",
         "n_samples": 10,
         "dim_policy_input": pca_dim,
         "dim_theta": pca_dim + 1,
@@ -107,6 +142,9 @@ def _final_row(policy_class: str, pca_dim: int, seed: int, final_value: float) -
         "final_objective_sum": 10 * final_value,
         "runtime_sec": 0.1,
         "mean_acceptance": 0.8,
+        "constraint_violation": "",
+        "acceptance_multiplier": "",
+        "constraint_penalty": "",
         "theta_l2_norm": 1.0,
         "theta_delta_l2_norm": 0.5,
         "objective_value_calls": 2,

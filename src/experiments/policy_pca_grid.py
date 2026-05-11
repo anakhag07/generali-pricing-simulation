@@ -65,6 +65,8 @@ class PolicyPcaGridSpec:
     n_grad_samples: int = 50
     grad_norm_tol: float | None = 1e-6
     ftol: float | None = None
+    initial_constr_penalty: float | None = None
+    acceptance_floor: float | None = None
     standardize: bool = True
     sphere: bool = True
     output_root: str = "outputs"
@@ -142,6 +144,7 @@ def run_policy_pca_grid(spec: PolicyPcaGridSpec | None = None) -> PolicyPcaGridO
                         f"{condition_index}/{total_conditions} start "
                         f"pca_dim={_pca_dim_value(pca_dim)} "
                         f"policy={policy_class} seed={seed} "
+                        f"step_rule={spec.step_rule} "
                         f"dim_theta={condition.config.objective.policy_theta_dim()}",
                         flush=True,
                     )
@@ -156,6 +159,7 @@ def run_policy_pca_grid(spec: PolicyPcaGridSpec | None = None) -> PolicyPcaGridO
                             f"{condition_index}/{total_conditions} failed "
                             f"pca_dim={_pca_dim_value(pca_dim)} "
                             f"policy={policy_class} seed={seed} "
+                            f"step_rule={spec.step_rule} "
                             f"runtime_sec={elapsed:.2f} error={exc}",
                             flush=True,
                         )
@@ -171,6 +175,7 @@ def run_policy_pca_grid(spec: PolicyPcaGridSpec | None = None) -> PolicyPcaGridO
                         f"{condition_index}/{total_conditions} done "
                         f"pca_dim={_pca_dim_value(pca_dim)} "
                         f"policy={policy_class} seed={seed} "
+                        f"step_rule={spec.step_rule} "
                         f"runtime_sec={elapsed:.2f}{final_value_text}",
                         flush=True,
                     )
@@ -220,6 +225,8 @@ def build_policy_pca_condition(
         step_size=float(spec.step_size),
         grad_norm_tol=spec.grad_norm_tol,
         ftol=spec.ftol,
+        initial_constr_penalty=spec.initial_constr_penalty,
+        acceptance_floor=spec.acceptance_floor,
         sigma=float(spec.sigma),
         n_grad_samples=int(spec.n_grad_samples),
         verbose=bool(spec.verbose),
@@ -303,6 +310,8 @@ def _condition_metadata(condition: PolicyPcaCondition, spec: PolicyPcaGridSpec) 
         "sphere": bool(spec.sphere),
         "seed": int(condition.seed),
         "estimator": spec.estimator,
+        "step_rule": spec.step_rule,
+        "acceptance_floor": _optional_float(spec.acceptance_floor),
         "n_samples": int(spec.n_samples),
         "dim_policy_input": int(preprocessor.output_dim_),
         "dim_theta": int(condition.config.theta0.size) if condition.config.theta0 is not None else int(condition.config.objective.policy_theta_dim()),
@@ -333,6 +342,9 @@ def _final_rows(
                 "final_objective_sum": float(estimator_result.value) * int(result.x_samples.shape[0]),
                 "runtime_sec": float(estimator_result.time),
                 "mean_acceptance": _optional_float(estimator_result.mean_acceptance),
+                "constraint_violation": _optional_float(estimator_result.constraint_violation),
+                "acceptance_multiplier": _optional_float(estimator_result.acceptance_multiplier),
+                "constraint_penalty": _optional_float(estimator_result.constraint_penalty),
                 "theta_l2_norm": float(np.linalg.norm(estimator_result.theta)),
                 "theta_delta_l2_norm": float(np.linalg.norm(theta_delta)),
                 "objective_value_calls": counts.get("objective_value_calls", ""),
@@ -379,6 +391,9 @@ def _failure_row(condition: PolicyPcaCondition, spec: PolicyPcaGridSpec, exc: Ex
         "final_objective_sum": "",
         "runtime_sec": "",
         "mean_acceptance": "",
+        "constraint_violation": "",
+        "acceptance_multiplier": "",
+        "constraint_penalty": "",
         "theta_l2_norm": "",
         "theta_delta_l2_norm": "",
         "objective_value_calls": "",
@@ -463,6 +478,8 @@ _FINAL_FIELDNAMES = [
     "seed",
     "policy_class",
     "estimator",
+    "step_rule",
+    "acceptance_floor",
     "n_samples",
     "dim_policy_input",
     "dim_theta",
@@ -471,6 +488,9 @@ _FINAL_FIELDNAMES = [
     "final_objective_sum",
     "runtime_sec",
     "mean_acceptance",
+    "constraint_violation",
+    "acceptance_multiplier",
+    "constraint_penalty",
     "theta_l2_norm",
     "theta_delta_l2_norm",
     "objective_value_calls",
@@ -489,6 +509,8 @@ _TRACE_FIELDNAMES = [
     "seed",
     "policy_class",
     "estimator",
+    "step_rule",
+    "acceptance_floor",
     "n_samples",
     "dim_policy_input",
     "dim_theta",

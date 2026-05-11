@@ -179,8 +179,8 @@ directory. It defaults to `--estimator first_order` and writes
 `pareto_u_acceptance_first_order.png` alongside the resolved CSV unless
 `--output-dir` is provided.
 
-To run the unconstrained policy PCA-dimensionality grid over policy classes and
-policy-side PCA dimensions, use:
+To run the policy PCA-dimensionality grid over policy classes and policy-side
+PCA dimensions, use:
 
 ```bash
 python scripts/run_policy_pca_grid.py --n-samples 5000
@@ -190,7 +190,8 @@ This keeps the GLM black-box preprocessing sealed, fits configurable policy-side
 preprocessors on the 10 acceptance-state columns, and writes aggregate finals,
 traces, summary markdown, and headline PCA/richness-gap plots under
 `outputs/policy-pca-grid/`. The script prints per-condition progress by default;
-pass `--quiet` to suppress progress output.
+pass `--quiet` to suppress progress output. Add `--constrained` to use
+`trust-constr` with the observed GLM acceptance floor and a default 500-step cap.
 
 To query the existing acceptance model at fixed constant actions without
 running optimization, use:

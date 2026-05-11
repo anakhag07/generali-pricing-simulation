@@ -37,7 +37,7 @@ from objective.policy_preprocessing import PolicyFeaturePreprocessor, fit_policy
 from reporting.visualization import plot_policy_pca_final_objective, plot_policy_pca_richness_gap
 
 
-PCA_DIMS: tuple[int | None, ...] = (2, 4, 6, 9, None)
+PCA_DIMS: tuple[int | None, ...] = (2, 6, None)
 POLICY_CLASSES: tuple[str, ...] = (
     "constant",
     "linear",

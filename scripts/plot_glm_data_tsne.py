@@ -22,6 +22,7 @@ from data.loader import (
     ACCEPTANCE_STATE_COLS,
     FEATURE_COLS_GLM,
     LOSS_FEATURE_COLS,
+    _ACCEPTANCE_CSV_PATHS,
     load_observed_u_array,
     load_x_array,
     sample_csv_row_indices,
@@ -36,6 +37,7 @@ FEATURE_SETS = {
 
 DEFAULT_COLOR_COLUMNS = (
     "cluster",
+    "F_acc",
     "observed_u",
     "X_policy_premium",
     "X_age",
@@ -50,6 +52,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     row_indices = sample_csv_row_indices("glm", n_rows=args.n_rows, seed=args.seed)
     x_all = load_x_array("glm", row_indices=row_indices)
     observed_u = load_observed_u_array("glm", row_indices=row_indices)
+    prediction_frame = load_glm_prediction_frame(row_indices)
 
     all_feature_frame = pd.DataFrame(x_all, columns=FEATURE_COLS_GLM)
     feature_frame = all_feature_frame.loc[:, list(feature_cols)]
@@ -74,6 +77,8 @@ def main(argv: Sequence[str] | None = None) -> None:
             "row_index": row_indices.astype(int),
             "tsne_1": embedding[:, 0],
             "tsne_2": embedding[:, 1],
+            "F_acc": prediction_frame["prob_acceptance"].to_numpy(dtype=float),
+            "churn_prediction": prediction_frame["churn_prediction"].to_numpy(dtype=float),
             "observed_u": observed_u,
         }
     )
@@ -121,6 +126,17 @@ def compute_tsne_embedding(
         n_jobs=n_jobs,
     )
     return np.asarray(tsne.fit_transform(tsne_input), dtype=float)
+
+
+def load_glm_prediction_frame(row_indices: np.ndarray) -> pd.DataFrame:
+    """Load saved GLM out-of-fold churn and acceptance predictions for sampled rows."""
+    csv_path = _ACCEPTANCE_CSV_PATHS["glm"]
+    predictions = pd.read_csv(
+        csv_path,
+        sep=";",
+        usecols=["churn_prediction", "prob_acceptance"],
+    )
+    return predictions.iloc[np.asarray(row_indices, dtype=int)].reset_index(drop=True)
 
 
 def compute_clusters(

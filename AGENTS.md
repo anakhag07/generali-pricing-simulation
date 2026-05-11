@@ -312,7 +312,7 @@ Guidelines:
   - `plot_objective_u_slice(...)`: objective vs u grid (no gradient subplot)
   - `plot_theta_objective_contours(...)`: 2D contour plot with optimization paths
   - `plot_comparison_objective_curves(...)`, `plot_comparison_u_curves(...)`, `plot_comparison_final_metric(...)`: aggregate policy-comparison plots; final metrics render as grouped bars by policy with estimator colors and policy hatching
-  - Model-based real-data run plots include per-row final-policy `u` histograms, per-row objective-vs-`u`, fixed-`u` acceptance quantile bands across sampled X, and final-policy acceptance histograms
+  - Model-based real-data run plots include final per-customer policy-`u` histograms with binned mean acceptance and customer-level acceptance-vs-`u` scatter (`policy_u_acceptance_histograms.png`)
   - Private sweep helpers power both lambda and trust-constrained acceptance-floor frontier plots
   - `select_theta_axes_max_variance(...)`: picks the two theta axes with highest variance for contour plots
 

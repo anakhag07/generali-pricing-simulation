@@ -23,6 +23,7 @@ from reporting.logging import log_step, log_summary
 from experiments.results import ExperimentResult
 from reporting.visualization import (
     _plot_policy_acceptance_histograms,
+    _plot_policy_u_acceptance_histograms,
     _plot_policy_u_histograms,
     _plot_policy_u_vs_acceptance_spread,
     _plot_policy_u_vs_objective,
@@ -390,6 +391,12 @@ class PlotReporter:
             )
             _plot_policy_acceptance_histograms(
                 observed_u,
+                result.x_samples,
+                objective,
+                theta_by_estimator,
+                plot_dir,
+            )
+            _plot_policy_u_acceptance_histograms(
                 result.x_samples,
                 objective,
                 theta_by_estimator,

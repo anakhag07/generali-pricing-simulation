@@ -238,6 +238,7 @@ Guidelines:
   - `real_data_glm_softmax_policy_quadratic_base.py`: registered GLM softmax-policy quadratic-feature config for policy comparison runs
   - `real_data_glm_softmax_policy_cubic_base.py`: registered GLM softmax-policy cubic-feature config for policy comparison runs
   - `real_data_glm_softmax_policy_quartic_base.py`: registered GLM softmax-policy quartic-feature config for policy comparison runs
+  - `real_data_glm_softmax_policy_quartic_no_pca.py`: GLM softmax quartic preset that keeps raw black-box preprocessing sealed but feeds the policy all 10 acceptance-state columns after policy-side standardization and full sphering/whitening with no PCA truncation; theta dim is 726
   - `real_data_glm_mlp_policy_base.py`: GLM-backed config with a 2-layer `MLPPolicy` (hidden=16, tanh, identity feature map); enables `first_order`, `spsa`, `stein_difference` (FD omitted because `2*theta_dim` evals/grad is intractable); analytical first-order via `u_coef`
   - `real_data_glm_softmax_policy_trust_region_constr.py`: constrained GLM softmax-policy config with a trust-constr mean-acceptance floor set to the observed CSV acceptance level; otherwise mirrors the softmax base preset
   - `real_data_glm_linear_policy_base.py`: GLM pickle-based linear-policy diagnostic config; same data/models as `real_data_glm_softmax_policy_base` but with `LinearPolicy` and runtime-resolved random initialization to inspect behavior without softmax saturation

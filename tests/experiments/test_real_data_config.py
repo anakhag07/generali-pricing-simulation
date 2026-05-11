@@ -20,6 +20,7 @@ import pytest
     "real_data_glm_softmax_policy_lagrangian_small",
     "real_data_glm_softmax_policy_quadratic_base",
     "real_data_glm_softmax_policy_quartic_base",
+    "real_data_glm_softmax_policy_quartic_no_pca",
     "real_data_glm_softmax_policy_trust_region_constr",
     "real_data_xgb_base",
     "real_data_xgb_linear_acceptance_floor_base",
@@ -130,6 +131,7 @@ def test_xgb_softmax_policy_base_x_fixed_shape():
     "real_data_glm_softmax_policy_base",
     "real_data_glm_softmax_policy_lagrangian_small",
     "real_data_glm_softmax_policy_quadratic_base",
+    "real_data_glm_softmax_policy_quartic_no_pca",
     "real_data_glm_softmax_policy_trust_region_constr",
     "real_data_xgb_base",
     "real_data_xgb_linear_acceptance_floor_base",
@@ -176,6 +178,7 @@ def test_glm_softmax_policy_base_uses_identity_feature_map():
         ("real_data_glm_softmax_policy_quadratic_base", "softmax", "quadratic", False),
         ("real_data_glm_softmax_policy_cubic_base", "softmax", "cubic", False),
         ("real_data_glm_softmax_policy_quartic_base", "softmax", "quartic", False),
+        ("real_data_glm_softmax_policy_quartic_no_pca", "softmax", "quartic", False),
     ],
 )
 def test_glm_policy_feature_map_presets(name, policy_type, feature_map_type, theta0_is_none):
@@ -204,6 +207,22 @@ def test_glm_policy_feature_map_presets(name, policy_type, feature_map_type, the
     assert (cfg.theta0 is None) is theta0_is_none
     if cfg.theta0 is not None:
         assert cfg.theta0.size == cfg.objective.policy_theta_dim()
+
+
+def test_glm_softmax_quartic_no_pca_uses_full_policy_preprocessing() -> None:
+    from data.loader import ACCEPTANCE_STATE_COLS
+    from experiments.configs import get_config
+
+    cfg = get_config("real_data_glm_softmax_policy_quartic_no_pca")
+
+    assert cfg.x_fixed is not None
+    assert cfg.x_fixed.shape == (cfg.n_samples, 12)
+    assert cfg.objective.policy_preprocessor is not None
+    assert cfg.objective.policy_feature_cols == tuple(ACCEPTANCE_STATE_COLS)
+    assert cfg.objective.policy_input_dim() == len(ACCEPTANCE_STATE_COLS)
+    assert cfg.theta0 is not None
+    assert cfg.theta0.size == 726
+    assert cfg.objective.policy_theta_dim() == 726
 
 
 def test_glm_mlp_policy_base_has_mlp_policy_and_first_order():
@@ -454,6 +473,7 @@ def test_xgb_linear_policy_base_initial_action_is_constant_0_0():
     "real_data_glm_softmax_policy_lagrangian_small",
     "real_data_glm_softmax_policy_quadratic_base",
     "real_data_glm_softmax_policy_quartic_base",
+    "real_data_glm_softmax_policy_quartic_no_pca",
     "real_data_glm_softmax_policy_trust_region_constr",
     "real_data_xgb_base",
     "real_data_xgb_linear_acceptance_floor_base",
@@ -481,6 +501,7 @@ def test_real_data_configs_disable_correctness_gradients(name):
     "real_data_glm_softmax_policy_lagrangian_small",
     "real_data_glm_softmax_policy_quadratic_base",
     "real_data_glm_softmax_policy_quartic_base",
+    "real_data_glm_softmax_policy_quartic_no_pca",
     "real_data_glm_softmax_policy_trust_region_constr",
     "real_data_xgb_base",
     "real_data_xgb_linear_acceptance_floor_base",

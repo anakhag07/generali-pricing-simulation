@@ -278,8 +278,8 @@ Guidelines:
 
 - **`src/experiments/policy_pca_grid.py`**
   - `PolicyPcaGridSpec`: configuration for the unconstrained GLM policy PCA-dimensionality grid
-  - `run_policy_pca_grid(...)`: runs `pca_dim x policy_class x seed` conditions with configurable policy-side preprocessing while preserving raw-`x` black-box calls
-  - `write_policy_pca_outputs(...)`: writes aggregate finals/traces CSVs, summary markdown, and PCA/richness-gap plots
+  - `run_policy_pca_grid(...)`: runs `pca_dim x policy_class x seed` conditions with configurable policy-side preprocessing while preserving raw-`x` black-box calls; policy classes include constant, linear/quadratic/third/fourth-order `LinearPolicy`, matching `SoftmaxPolicy` variants, and MLP
+  - `write_policy_pca_outputs(...)`: writes aggregate finals/traces CSVs, summary markdown, PCA/richness-gap plots, and final `u`/acceptance spread plots
 
 - **`src/experiments/results.py`**
   - `OptimizationTrace`: per-step trace with u values, objective values, gradient estimates, optional theta values, step sizes, and model-based mean-acceptance diagnostics
@@ -311,6 +311,7 @@ Guidelines:
   - `plot_objective_u_slice(...)`: objective vs u grid (no gradient subplot)
   - `plot_theta_objective_contours(...)`: 2D contour plot with optimization paths
   - `plot_comparison_objective_curves(...)`, `plot_comparison_u_curves(...)`, `plot_comparison_final_metric(...)`: aggregate policy-comparison plots; final metrics render as grouped bars by policy with estimator colors and policy hatching
+  - Model-based real-data run plots include per-row final-policy `u` histograms, per-row objective-vs-`u`, fixed-`u` acceptance quantile bands across sampled X, and final-policy acceptance histograms
   - Private sweep helpers power both lambda and trust-constrained acceptance-floor frontier plots
   - `select_theta_axes_max_variance(...)`: picks the two theta axes with highest variance for contour plots
 
@@ -325,7 +326,7 @@ Guidelines:
 - `scripts/plot_saved_acceptance_floor_frontier.py` re-plots acceptance-floor Pareto frontiers from a saved `acceptance_floor_sweep.csv` (or the latest matching frontier directory) without rerunning optimization; defaults to `first_order` and writes estimator-suffixed Pareto PNGs
 - `scripts/query_acceptance_at_u.py` loads a config preset or default GLM/XGB model type and reports mean acceptance for supplied or evenly sampled constant `u` values without running optimization; writes acceptance-curve and historical-`U` rug plots under `outputs/acceptance_queries/` by default and optionally writes `u,n,mean_acceptance` CSV output
 - `scripts/plot_pc_outcome_diagnostics.py` reads a saved run `summary.json`, rebuilds a real-data preset objective, and writes processed-policy-component scatter diagnostics against final `f_acc`, loss, and `u`; defaults beside the summary under `pc_outcome_diagnostics/<estimator>/`
-- `scripts/run_policy_pca_grid.py` runs the GLM policy PCA-dimensionality grid over PCA dimensions `(2, 4, 6, 9, None)` and policy classes `(constant, linear, quadratic, third_order, fourth_order, mlp)`; unconstrained is default, `--constrained` uses `trust-constr` with the observed GLM acceptance floor and a 500-step default cap; outputs aggregate CSVs, summary markdown, and headline plots under `outputs/policy-pca-grid/`; prints per-condition progress by default and supports `--quiet`
+- `scripts/run_policy_pca_grid.py` runs the GLM policy PCA-dimensionality grid over configured PCA dimensions and policy classes `(constant, linear, quadratic, third_order, fourth_order, softmax_linear, softmax_quadratic, softmax_third_order, softmax_fourth_order, mlp)`; unconstrained is default, `--constrained` uses `trust-constr` with the observed GLM acceptance floor and a 500-step default cap; outputs aggregate CSVs, summary markdown, and headline/spread plots under `outputs/policy-pca-grid/`; prints per-condition progress by default and supports `--quiet`
 
 ## Known Issues and Dead Code
 

@@ -55,6 +55,36 @@ def test_build_condition_uses_policy_preprocessor_dimension() -> None:
     assert condition.config.objective.policy_theta_dim() == 15
 
 
+def test_build_condition_supports_softmax_feature_policy() -> None:
+    from objective.policy import QuadraticFeatureMap, SoftmaxPolicy
+
+    rng = np.random.default_rng(123)
+    x_fixed = rng.normal(size=(8, 12))
+    x_policy = x_fixed[:, : len(ACCEPTANCE_STATE_COLS)]
+    preprocessor = fit_policy_feature_preprocessor(x_policy, pca_dim=3)
+    spec = PolicyPcaGridSpec(n_samples=x_fixed.shape[0], seeds=(1,), t_steps=2)
+
+    condition = build_policy_pca_condition(
+        spec=spec,
+        policy_class="softmax_quadratic",
+        pca_dim=3,
+        seed=1,
+        x_fixed=x_fixed,
+        row_indices=np.arange(x_fixed.shape[0]),
+        acceptance_model=_AcceptanceModel(),
+        loss_model=_LossModel(),
+        u_coef=0.0,
+        policy_preprocessor=preprocessor,
+    )
+
+    policy = condition.config.objective.policy
+    assert isinstance(policy, SoftmaxPolicy)
+    assert isinstance(policy.feature_map, QuadraticFeatureMap)
+    assert condition.config.theta0 is not None
+    assert condition.config.theta0.size == condition.config.objective.policy_theta_dim()
+    assert np.all(condition.config.theta0 == 0.0)
+
+
 def test_build_condition_supports_constrained_grid() -> None:
     rng = np.random.default_rng(123)
     x_fixed = rng.normal(size=(8, 12))
@@ -122,6 +152,8 @@ def test_write_policy_pca_outputs_creates_csvs_and_plots(tmp_path: Path) -> None
     assert (tmp_path / "policy_pca_summary.md").exists()
     assert (tmp_path / "policy_pca_final_objective.png").exists()
     assert (tmp_path / "policy_pca_richness_gap.png").exists()
+    assert (tmp_path / "policy_pca_u_spread.png").exists()
+    assert (tmp_path / "policy_pca_acceptance_spread.png").exists()
 
 
 def _final_row(policy_class: str, pca_dim: int, seed: int, final_value: float) -> dict[str, object]:
@@ -142,6 +174,16 @@ def _final_row(policy_class: str, pca_dim: int, seed: int, final_value: float) -
         "final_objective_sum": 10 * final_value,
         "runtime_sec": 0.1,
         "mean_acceptance": 0.8,
+        "final_u_std": 0.05,
+        "final_u_p05": -0.1,
+        "final_u_p50": 0.0,
+        "final_u_p95": 0.1,
+        "final_u_iqr90": 0.2,
+        "final_acceptance_std": 0.04,
+        "final_acceptance_p05": 0.7,
+        "final_acceptance_p50": 0.8,
+        "final_acceptance_p95": 0.9,
+        "final_acceptance_iqr90": 0.2,
         "constraint_violation": "",
         "acceptance_multiplier": "",
         "constraint_penalty": "",

@@ -31,10 +31,16 @@ from objective.policy import (
     MLPPolicy,
     QuadraticFeatureMap,
     QuarticFeatureMap,
+    SoftmaxPolicy,
     mlp_init_theta,
 )
 from objective.policy_preprocessing import PolicyFeaturePreprocessor, fit_policy_feature_preprocessor
-from reporting.visualization import plot_policy_pca_final_objective, plot_policy_pca_richness_gap
+from reporting.visualization import (
+    plot_policy_pca_acceptance_spread,
+    plot_policy_pca_final_objective,
+    plot_policy_pca_richness_gap,
+    plot_policy_pca_u_spread,
+)
 
 
 PCA_DIMS: tuple[int | None, ...] = (2, 6, None)
@@ -44,6 +50,10 @@ POLICY_CLASSES: tuple[str, ...] = (
     "quadratic",
     "third_order",
     "fourth_order",
+    "softmax_linear",
+    "softmax_quadratic",
+    "softmax_third_order",
+    "softmax_fourth_order",
     "mlp",
 )
 
@@ -258,6 +268,8 @@ def write_policy_pca_outputs(
     _write_summary_markdown(output_dir / "policy_pca_summary.md", final_rows)
     plot_policy_pca_final_objective(final_rows, str(output_dir))
     plot_policy_pca_richness_gap(final_rows, str(output_dir))
+    plot_policy_pca_u_spread(final_rows, str(output_dir))
+    plot_policy_pca_acceptance_spread(final_rows, str(output_dir))
 
 
 def _policy_from_class(policy_class: str) -> object:
@@ -271,6 +283,14 @@ def _policy_from_class(policy_class: str) -> object:
         return LinearPolicy(feature_map=CubicFeatureMap())
     if policy_class == "fourth_order":
         return LinearPolicy(feature_map=QuarticFeatureMap())
+    if policy_class == "softmax_linear":
+        return SoftmaxPolicy(feature_map=IdentityFeatureMap())
+    if policy_class == "softmax_quadratic":
+        return SoftmaxPolicy(feature_map=QuadraticFeatureMap())
+    if policy_class == "softmax_third_order":
+        return SoftmaxPolicy(feature_map=CubicFeatureMap())
+    if policy_class == "softmax_fourth_order":
+        return SoftmaxPolicy(feature_map=QuarticFeatureMap())
     if policy_class == "mlp":
         return MLPPolicy(feature_map=IdentityFeatureMap())
     raise ValueError(f"Unknown policy_class '{policy_class}'.")
@@ -279,6 +299,8 @@ def _policy_from_class(policy_class: str) -> object:
 def _theta0_for_policy(policy: object, input_dim: int, seed: int) -> np.ndarray | None:
     if isinstance(policy, ConstantPolicy):
         return np.zeros(1, dtype=float)
+    if isinstance(policy, SoftmaxPolicy):
+        return np.zeros(policy.theta_dim(input_dim), dtype=float)
     if isinstance(policy, MLPPolicy):
         return mlp_init_theta(np.random.default_rng(seed), d_in=input_dim, hidden=policy.hidden)
     return None
@@ -333,6 +355,11 @@ def _final_rows(
     for estimator, estimator_result in result.results.items():
         trace = result.traces.get(estimator)
         theta_delta = estimator_result.theta - np.asarray(result.config.theta0, dtype=float)
+        spread_stats = _final_policy_spread_stats(
+            result.config.objective,
+            estimator_result.theta,
+            result.x_samples,
+        )
         rows.append(
             {
                 **metadata,
@@ -342,6 +369,7 @@ def _final_rows(
                 "final_objective_sum": float(estimator_result.value) * int(result.x_samples.shape[0]),
                 "runtime_sec": float(estimator_result.time),
                 "mean_acceptance": _optional_float(estimator_result.mean_acceptance),
+                **spread_stats,
                 "constraint_violation": _optional_float(estimator_result.constraint_violation),
                 "acceptance_multiplier": _optional_float(estimator_result.acceptance_multiplier),
                 "constraint_penalty": _optional_float(estimator_result.constraint_penalty),
@@ -357,6 +385,63 @@ def _final_rows(
             }
         )
     return rows
+
+
+def _final_policy_spread_stats(
+    objective: object,
+    theta: np.ndarray,
+    x_samples: np.ndarray,
+) -> dict[str, object]:
+    policy_value = getattr(objective, "policy_value", None)
+    acceptance_proba = getattr(objective, "_acceptance_proba", None)
+    if not callable(policy_value) or not callable(acceptance_proba):
+        return _blank_spread_stats()
+
+    x_arr = np.asarray(x_samples, dtype=float)
+    theta_arr = np.asarray(theta, dtype=float)
+    u_values = np.asarray(policy_value(theta_arr, x_arr), dtype=float).reshape(-1)
+    clip_fn = getattr(objective, "_clip_u", None)
+    if callable(clip_fn):
+        u_values = np.asarray(clip_fn(u_values), dtype=float).reshape(-1)
+    if u_values.shape != (x_arr.shape[0],):
+        return _blank_spread_stats()
+
+    acceptance_values = np.asarray(acceptance_proba(x_arr, u_values), dtype=float).reshape(-1)
+    if acceptance_values.shape != (x_arr.shape[0],):
+        return _blank_spread_stats()
+
+    u_p05, u_p50, u_p95 = np.quantile(u_values, [0.05, 0.50, 0.95])
+    acceptance_p05, acceptance_p50, acceptance_p95 = np.quantile(
+        acceptance_values,
+        [0.05, 0.50, 0.95],
+    )
+    return {
+        "final_u_std": float(np.std(u_values, ddof=0)),
+        "final_u_p05": float(u_p05),
+        "final_u_p50": float(u_p50),
+        "final_u_p95": float(u_p95),
+        "final_u_iqr90": float(u_p95 - u_p05),
+        "final_acceptance_std": float(np.std(acceptance_values, ddof=0)),
+        "final_acceptance_p05": float(acceptance_p05),
+        "final_acceptance_p50": float(acceptance_p50),
+        "final_acceptance_p95": float(acceptance_p95),
+        "final_acceptance_iqr90": float(acceptance_p95 - acceptance_p05),
+    }
+
+
+def _blank_spread_stats() -> dict[str, object]:
+    return {
+        "final_u_std": "",
+        "final_u_p05": "",
+        "final_u_p50": "",
+        "final_u_p95": "",
+        "final_u_iqr90": "",
+        "final_acceptance_std": "",
+        "final_acceptance_p05": "",
+        "final_acceptance_p50": "",
+        "final_acceptance_p95": "",
+        "final_acceptance_iqr90": "",
+    }
 
 
 def _trace_rows(
@@ -391,6 +476,7 @@ def _failure_row(condition: PolicyPcaCondition, spec: PolicyPcaGridSpec, exc: Ex
         "final_objective_sum": "",
         "runtime_sec": "",
         "mean_acceptance": "",
+        **_blank_spread_stats(),
         "constraint_violation": "",
         "acceptance_multiplier": "",
         "constraint_penalty": "",
@@ -488,6 +574,16 @@ _FINAL_FIELDNAMES = [
     "final_objective_sum",
     "runtime_sec",
     "mean_acceptance",
+    "final_u_std",
+    "final_u_p05",
+    "final_u_p50",
+    "final_u_p95",
+    "final_u_iqr90",
+    "final_acceptance_std",
+    "final_acceptance_p05",
+    "final_acceptance_p50",
+    "final_acceptance_p95",
+    "final_acceptance_iqr90",
     "constraint_violation",
     "acceptance_multiplier",
     "constraint_penalty",

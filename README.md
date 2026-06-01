@@ -95,6 +95,7 @@ Several preset configs are available, selected by config preset:
 | `real_data_glm_softmax_policy_quadratic_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, quadratic softmax policy, analytical grad) |
 | `real_data_glm_softmax_policy_cubic_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, cubic softmax policy, analytical grad) |
 | `real_data_glm_softmax_policy_quartic_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, quartic softmax policy, analytical grad) |
+| `real_data_glm_softmax_policy_quartic_no_pca` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, quartic softmax policy, full sphered policy features, analytical grad) |
 | `real_data_glm_mlp_policy_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, 2-layer MLP policy, hidden=16, analytical grad) |
 | `real_data_glm_softmax_policy_trust_region_constr` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, softmax policy + trust-constr acceptance floor) |
 | `real_data_glm_linear_policy_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, linear-policy diagnostic) |
@@ -125,6 +126,10 @@ still receive raw `x` and apply their saved artifact preprocessing internally.
 Real-data configs sample `TRAINING["n_samples"]` rows from the acceptance CSV
 with the experiment seed and store the sampled row indices so observed-`U`
 diagnostics use the same source rows.
+When plotting is enabled, real-data runs also write a final customer-level
+diagnostic `policy_u_acceptance_histograms.png`: for each estimator it shows the
+histogram of final policy actions across sampled customers plus binned mean
+acceptance, alongside the per-customer acceptance-vs-`u` scatter.
 
 `ExperimentConfig` supports two acceptance-floor paths for objectives exposing
 `mean_acceptance(theta, x_batch)`:

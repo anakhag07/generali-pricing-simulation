@@ -1069,6 +1069,104 @@ def _plot_policy_acceptance_histograms(
     plt.close(fig)
 
 
+def _plot_policy_u_acceptance_histograms(
+    x_samples: np.ndarray,
+    objective: Objective,
+    theta_by_estimator: Mapping[str, np.ndarray],
+    plot_dir: str,
+    filename: str = "policy_u_acceptance_histograms.png",
+) -> None:
+    x_arr = np.asarray(x_samples, dtype=float)
+    if x_arr.ndim != 2:
+        raise ValueError("x_samples must be a 2D array.")
+    if not theta_by_estimator:
+        return
+    if not callable(getattr(objective, "_acceptance_proba", None)):
+        return
+
+    path = _ensure_plot_dir(plot_dir)
+    ordered_names = [name for name in _TRACE_ORDER if name in theta_by_estimator]
+    ordered_names.extend(sorted(name for name in theta_by_estimator if name not in _TRACE_ORDER))
+    fig, axes = plt.subplots(
+        len(ordered_names),
+        2,
+        figsize=(12.0, max(4.0, 3.4 * len(ordered_names))),
+        squeeze=False,
+    )
+
+    for row_idx, name in enumerate(ordered_names):
+        style = _estimator_style(name)
+        policy_u = _policy_outputs_for_theta(objective, theta_by_estimator[name], x_arr)
+        acceptance_values = _row_acceptance_values(objective, x_arr, policy_u)
+        bins = _policy_output_histogram_bins([policy_u])
+        centers, mean_acceptance = _binned_mean_line(policy_u, acceptance_values, bins)
+        hist_ax = axes[row_idx, 0]
+        scatter_ax = axes[row_idx, 1]
+
+        hist_ax.hist(
+            policy_u,
+            bins=bins,
+            density=False,
+            label="customers",
+            color=style["color"],
+            edgecolor="#252525",
+            alpha=0.35,
+            linewidth=0.6,
+        )
+        if centers.size > 0:
+            mean_ax = hist_ax.twinx()
+            mean_ax.plot(
+                centers,
+                mean_acceptance,
+                color="#111111",
+                linewidth=_LINE_WIDTH,
+                marker="o",
+                markersize=3.2,
+                alpha=0.85,
+                label="bin mean acceptance",
+            )
+            mean_ax.set_ylabel("Mean acceptance")
+            mean_ax.set_ylim(0.0, 1.0)
+            mean_ax.legend(loc="upper right", fontsize="small")
+
+        hist_ax.set_title(f"{style['label']}: final u distribution")
+        hist_ax.set_xlabel("Final policy u")
+        hist_ax.set_ylabel("Customer count")
+        hist_ax.grid(True, alpha=0.3)
+        hist_ax.legend(loc="upper left", fontsize="small")
+
+        scatter_ax.scatter(
+            policy_u,
+            acceptance_values,
+            color=style["color"],
+            marker=style["marker"],
+            alpha=_SCATTER_ALPHA,
+            s=_style_scatter_size(style),
+            linewidths=0.0,
+        )
+        if centers.size > 0:
+            scatter_ax.plot(
+                centers,
+                mean_acceptance,
+                color="#111111",
+                linewidth=_LINE_WIDTH,
+                marker="o",
+                markersize=3.2,
+                alpha=0.85,
+                label="bin mean acceptance",
+            )
+        scatter_ax.set_title(f"{style['label']}: customer acceptance vs final u")
+        scatter_ax.set_xlabel("Final policy u")
+        scatter_ax.set_ylabel("Acceptance probability")
+        scatter_ax.set_ylim(0.0, 1.0)
+        scatter_ax.grid(True, alpha=0.3)
+        scatter_ax.legend(fontsize="small")
+
+    fig.tight_layout()
+    fig.savefig(path / filename, dpi=200)
+    plt.close(fig)
+
+
 def _plot_policy_u_vs_acceptance_spread(
     observed_u: np.ndarray,
     x_samples: np.ndarray,

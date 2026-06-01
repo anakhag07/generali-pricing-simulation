@@ -10,6 +10,7 @@ from reporting.visualization import (
     _LINE_WIDTH,
     _SCATTER_ALPHA,
     _plot_policy_acceptance_histograms,
+    _plot_policy_u_acceptance_histograms,
     _plot_policy_u_histograms,
     _plot_policy_u_vs_acceptance_spread,
     _plot_policy_u_vs_objective,
@@ -22,6 +23,7 @@ class DummyAxis:
         self.fill_between_calls: list[dict[str, object]] = []
         self.scatter_calls: list[dict[str, object]] = []
         self.plot_calls: list[dict[str, object]] = []
+        self.twin_axes: list[DummyAxis] = []
 
     def hist(self, *args, **kwargs) -> None:
         self.hist_calls.append({"args": args, "kwargs": kwargs})
@@ -35,10 +37,21 @@ class DummyAxis:
     def plot(self, *args, **kwargs) -> None:
         self.plot_calls.append({"args": args, "kwargs": kwargs})
 
+    def twinx(self) -> "DummyAxis":
+        axis = DummyAxis()
+        self.twin_axes.append(axis)
+        return axis
+
     def set_xlabel(self, *_args, **_kwargs) -> None:
         return None
 
     def set_ylabel(self, *_args, **_kwargs) -> None:
+        return None
+
+    def set_title(self, *_args, **_kwargs) -> None:
+        return None
+
+    def set_ylim(self, *_args, **_kwargs) -> None:
         return None
 
     def legend(self, *_args, **_kwargs) -> None:
@@ -240,6 +253,50 @@ def test_plot_policy_acceptance_histograms_draws_observed_and_estimator_series(m
     assert dummy_ax.hist_calls[0]["kwargs"]["label"] == "observed U"
     assert dummy_ax.hist_calls[1]["kwargs"]["label"] == ESTIMATOR_STYLES["first_order"]["label"]
     assert dummy_ax.hist_calls[2]["kwargs"]["label"] == ESTIMATOR_STYLES["spsa"]["label"]
+
+
+def test_plot_policy_u_acceptance_histograms_draws_customer_histogram_and_acceptance(monkeypatch, tmp_path) -> None:
+    hist_ax = DummyAxis()
+    scatter_ax = DummyAxis()
+    dummy_fig = DummyFigure()
+
+    monkeypatch.setattr(
+        "reporting.visualization.plt.subplots",
+        lambda *_args, **_kwargs: (dummy_fig, np.asarray([[hist_ax, scatter_ax]], dtype=object)),
+    )
+    monkeypatch.setattr(
+        "reporting.visualization._ensure_plot_dir",
+        lambda _plot_dir: tmp_path,
+    )
+    monkeypatch.setattr(
+        "reporting.visualization.plt.close",
+        lambda *_args, **_kwargs: None,
+    )
+
+    objective = DummyAcceptanceObjective.from_parameters(
+        policy=LinearPolicy(),
+        beta_1=[0.2],
+        beta_2=-0.8,
+        beta_3=[0.1],
+        beta_4=0.3,
+    )
+    x_samples = np.linspace(-1.0, 1.0, 120, dtype=float).reshape(-1, 1)
+    theta_by_estimator = {"first_order": np.asarray([0.1, 0.2], dtype=float)}
+
+    _plot_policy_u_acceptance_histograms(
+        x_samples,
+        objective,
+        theta_by_estimator,
+        plot_dir="unused",
+    )
+
+    assert len(hist_ax.hist_calls) == 1
+    assert hist_ax.hist_calls[0]["kwargs"]["label"] == "customers"
+    assert len(hist_ax.twin_axes) == 1
+    assert hist_ax.twin_axes[0].plot_calls[0]["kwargs"]["label"] == "bin mean acceptance"
+    assert len(scatter_ax.scatter_calls) == 1
+    assert len(scatter_ax.plot_calls) == 1
+    assert scatter_ax.plot_calls[0]["kwargs"]["label"] == "bin mean acceptance"
 
 
 def test_plot_policy_u_vs_acceptance_spread_draws_quantile_bands_and_points(monkeypatch, tmp_path) -> None:

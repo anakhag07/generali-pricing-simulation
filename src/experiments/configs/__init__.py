@@ -23,6 +23,7 @@ _CONFIG_MODULES = {
     "real_data_glm_softmax_policy_lagrangian_small": "experiments.configs.real_data_glm_softmax_policy_lagrangian_small",
     "real_data_glm_softmax_policy_quadratic_base": "experiments.configs.real_data_glm_softmax_policy_quadratic_base",
     "real_data_glm_softmax_policy_quartic_base": "experiments.configs.real_data_glm_softmax_policy_quartic_base",
+    "real_data_glm_softmax_policy_quartic_no_pca": "experiments.configs.real_data_glm_softmax_policy_quartic_no_pca",
     "real_data_glm_softmax_policy_trust_region_constr": "experiments.configs.real_data_glm_softmax_policy_trust_region_constr",
     "real_data_xgb_base": "experiments.configs.real_data_xgb_base",
     "real_data_xgb_linear_acceptance_floor_base": "experiments.configs.real_data_xgb_linear_acceptance_floor_base",

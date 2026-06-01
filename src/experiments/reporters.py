@@ -22,7 +22,9 @@ from experiments.config import ExperimentConfig
 from reporting.logging import log_step, log_summary
 from experiments.results import ExperimentResult
 from reporting.visualization import (
+    _plot_policy_acceptance_histograms,
     _plot_policy_u_histograms,
+    _plot_policy_u_vs_acceptance_spread,
     _plot_policy_u_vs_objective,
     plot_gradient_norms,
     plot_loss_curves,
@@ -373,6 +375,20 @@ class PlotReporter:
                 plot_dir,
             )
             _plot_policy_u_vs_objective(
+                observed_u,
+                result.x_samples,
+                objective,
+                theta_by_estimator,
+                plot_dir,
+            )
+            _plot_policy_u_vs_acceptance_spread(
+                observed_u,
+                result.x_samples,
+                objective,
+                theta_by_estimator,
+                plot_dir,
+            )
+            _plot_policy_acceptance_histograms(
                 observed_u,
                 result.x_samples,
                 objective,

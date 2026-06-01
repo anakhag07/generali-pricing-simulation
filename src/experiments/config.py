@@ -14,6 +14,7 @@ from objective.objectives import (
     PlantedLogisticObjective,
 )
 from objective.policy import ConstantPolicy, LinearPolicy, MLPPolicy, SoftmaxPolicy, policy_theta_dim
+from objective.policy_preprocessing import PolicyFeaturePreprocessor
 from optimization.steps import STEP_RULES, STEP_RULE_TRUST_CONSTR
 
 
@@ -438,6 +439,14 @@ def _objective_to_dict(objective: Objective) -> dict[str, Any]:
             "lagrangian_lambda": float(objective.lagrangian_lambda)
             if objective.lagrangian_lambda is not None
             else None,
+            "policy_preprocessor": (
+                objective.policy_preprocessor.to_dict()
+                if objective.policy_preprocessor is not None
+                else None
+            ),
+            "policy_feature_cols": list(objective.policy_feature_cols)
+            if objective.policy_feature_cols is not None
+            else None,
         }
     return {"type": type(objective).__name__}
 
@@ -546,6 +555,8 @@ def make_model_based_objective(
     acceptance_penalty_weight: float | None = None,
     acceptance_penalty_temperature: float = 0.01,
     lagrangian_lambda: float | None = None,
+    policy_preprocessor: PolicyFeaturePreprocessor | None = None,
+    policy_feature_cols: tuple[str, ...] | None = None,
 ) -> ModelBasedObjective:
     """Create a ModelBasedObjective wrapping trained sklearn/XGBoost models."""
     return ModelBasedObjective(
@@ -561,6 +572,8 @@ def make_model_based_objective(
         acceptance_penalty_weight=acceptance_penalty_weight,
         acceptance_penalty_temperature=acceptance_penalty_temperature,
         lagrangian_lambda=lagrangian_lambda,
+        policy_preprocessor=policy_preprocessor,
+        policy_feature_cols=policy_feature_cols,
     )
 
 

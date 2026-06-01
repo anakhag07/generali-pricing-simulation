@@ -39,6 +39,11 @@ from objective.policy import (
     policy_from_kind,
     policy_theta_dim,
 )
+from objective.policy_preprocessing import (
+    PolicyFeaturePreprocessor,
+    fit_policy_feature_preprocessor,
+    make_policy_features,
+)
 from objective.utils import mean_acceptance_at_constant_u, optimal_u, value_at_constant_u, value_for_reporting
 
 __all__ = [
@@ -62,6 +67,9 @@ __all__ = [
     "mlp_init_theta",
     "policy_from_kind",
     "policy_theta_dim",
+    "PolicyFeaturePreprocessor",
+    "fit_policy_feature_preprocessor",
+    "make_policy_features",
     # Concrete objectives
     "FixedRegressionObjective",
     "ModelBasedObjective",

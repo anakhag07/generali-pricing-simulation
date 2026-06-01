@@ -350,6 +350,195 @@ def plot_comparison_final_metric(
     plt.close(fig)
 
 
+def plot_policy_pca_final_objective(
+    final_rows: Sequence[Mapping[str, object]],
+    plot_dir: str,
+    *,
+    filename: str = "policy_pca_final_objective.png",
+) -> None:
+    """Plot mean final objective vs policy PCA dimension with seed bands."""
+    _plot_policy_pca_metric(
+        final_rows,
+        plot_dir,
+        value_key="final_value",
+        y_label="Final objective value",
+        filename=filename,
+    )
+
+
+def plot_policy_pca_richness_gap(
+    final_rows: Sequence[Mapping[str, object]],
+    plot_dir: str,
+    *,
+    filename: str = "policy_pca_richness_gap.png",
+) -> None:
+    """Plot J(constant) - J(policy class) vs policy PCA dimension."""
+    gap_rows = _policy_pca_gap_rows(final_rows)
+    _plot_policy_pca_metric(
+        gap_rows,
+        plot_dir,
+        value_key="richness_gap",
+        y_label="J(constant) - J(policy)",
+        filename=filename,
+        skip_policy="constant",
+    )
+
+
+def plot_policy_pca_u_spread(
+    final_rows: Sequence[Mapping[str, object]],
+    plot_dir: str,
+    *,
+    filename: str = "policy_pca_u_spread.png",
+) -> None:
+    """Plot final 90% action spread vs policy PCA dimension."""
+    _plot_policy_pca_metric(
+        final_rows,
+        plot_dir,
+        value_key="final_u_iqr90",
+        y_label="Final u 5-95% spread",
+        filename=filename,
+    )
+
+
+def plot_policy_pca_acceptance_spread(
+    final_rows: Sequence[Mapping[str, object]],
+    plot_dir: str,
+    *,
+    filename: str = "policy_pca_acceptance_spread.png",
+) -> None:
+    """Plot final 90% acceptance spread vs policy PCA dimension."""
+    _plot_policy_pca_metric(
+        final_rows,
+        plot_dir,
+        value_key="final_acceptance_iqr90",
+        y_label="Final acceptance 5-95% spread",
+        filename=filename,
+    )
+
+
+def _plot_policy_pca_metric(
+    rows: Sequence[Mapping[str, object]],
+    plot_dir: str,
+    *,
+    value_key: str,
+    y_label: str,
+    filename: str,
+    skip_policy: str | None = None,
+) -> None:
+    valid_rows = [row for row in rows if _row_float(row.get(value_key)) is not None]
+    if skip_policy is not None:
+        valid_rows = [row for row in valid_rows if str(row.get("policy_class")) != skip_policy]
+    if not valid_rows:
+        return
+
+    labels = _policy_pca_labels(valid_rows)
+    x_positions = np.arange(len(labels), dtype=float)
+    label_to_x = {label: idx for idx, label in enumerate(labels)}
+    policies = _ordered_labels(valid_rows, "policy_class")
+
+    path = Path(plot_dir)
+    path.mkdir(parents=True, exist_ok=True)
+    fig, ax = plt.subplots(1, 1, figsize=(max(7.5, 1.2 * len(labels)), 5.5))
+
+    for policy_idx, policy_class in enumerate(policies):
+        if policy_class == skip_policy:
+            continue
+        means: list[float] = []
+        stds: list[float] = []
+        xs: list[float] = []
+        for label in labels:
+            values = [
+                float(cast(float, _row_float(row.get(value_key))))
+                for row in valid_rows
+                if str(row.get("policy_class")) == policy_class
+                and _pca_label(row.get("pca_dim")) == label
+            ]
+            if not values:
+                continue
+            xs.append(float(label_to_x[label]))
+            means.append(float(np.mean(values)))
+            stds.append(float(np.std(values, ddof=0)))
+        if not xs:
+            continue
+        color = plt.cm.tab10(policy_idx % 10)
+        mean_arr = np.asarray(means, dtype=float)
+        std_arr = np.asarray(stds, dtype=float)
+        x_arr = np.asarray(xs, dtype=float)
+        ax.plot(x_arr, mean_arr, marker="o", linewidth=2.0, label=policy_class, color=color)
+        ax.fill_between(x_arr, mean_arr - std_arr, mean_arr + std_arr, color=color, alpha=0.16)
+
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels(labels)
+    ax.set_xlabel("Policy PCA dimension")
+    ax.set_ylabel(y_label)
+    ax.grid(True, alpha=0.3)
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(path / filename, dpi=200)
+    plt.close(fig)
+
+
+def _policy_pca_gap_rows(rows: Sequence[Mapping[str, object]]) -> list[dict[str, object]]:
+    constant_by_key: dict[tuple[str, str, str], float] = {}
+    for row in rows:
+        if str(row.get("policy_class")) != "constant":
+            continue
+        value = _row_float(row.get("final_value"))
+        if value is None:
+            continue
+        key = (str(row.get("estimator")), str(row.get("seed")), _pca_label(row.get("pca_dim")))
+        constant_by_key[key] = float(value)
+
+    gap_rows: list[dict[str, object]] = []
+    for row in rows:
+        value = _row_float(row.get("final_value"))
+        if value is None:
+            continue
+        key = (str(row.get("estimator")), str(row.get("seed")), _pca_label(row.get("pca_dim")))
+        constant_value = constant_by_key.get(key)
+        if constant_value is None:
+            continue
+        gap_row = dict(row)
+        gap_row["richness_gap"] = constant_value - float(value)
+        gap_rows.append(gap_row)
+    return gap_rows
+
+
+def _policy_pca_labels(rows: Sequence[Mapping[str, object]]) -> list[str]:
+    labels = {_pca_label(row.get("pca_dim")) for row in rows}
+    return sorted(labels, key=_pca_label_sort_key)
+
+
+def _pca_label(value: object) -> str:
+    if value is None:
+        return "none"
+    text = str(value)
+    if text == "" or text.lower() == "none":
+        return "none"
+    return text
+
+
+def _pca_label_sort_key(label: str) -> tuple[int, float | str]:
+    if label == "none":
+        return (1, float("inf"))
+    try:
+        return (0, float(label))
+    except ValueError:
+        return (0, label)
+
+
+def _row_float(value: object) -> float | None:
+    if value is None or value == "":
+        return None
+    try:
+        out = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not np.isfinite(out):
+        return None
+    return out
+
+
 def _ordered_traces(
     traces: Mapping[str, OptimizationTrace],
 ) -> list[tuple[str, OptimizationTrace]]:
@@ -606,6 +795,38 @@ def _row_objective_values(
     )
 
 
+def _row_acceptance_values(
+    objective: Objective,
+    x_samples: np.ndarray,
+    u_values: np.ndarray,
+) -> np.ndarray:
+    x_arr = np.asarray(x_samples, dtype=float)
+    if x_arr.ndim != 2:
+        raise ValueError("x_samples must be a 2D array.")
+    u_arr = np.asarray(u_values, dtype=float).reshape(-1)
+    if u_arr.shape != (x_arr.shape[0],):
+        raise ValueError("u_values must match the number of x_samples rows.")
+
+    acceptance_fn = getattr(objective, "_acceptance_proba", None)
+    if not callable(acceptance_fn):
+        raise ValueError("Acceptance diagnostics require objective._acceptance_proba(x_array, u_array).")
+    values = np.asarray(acceptance_fn(x_arr, u_arr), dtype=float).reshape(-1)
+    if values.shape != (x_arr.shape[0],):
+        raise ValueError("objective._acceptance_proba(x_array, u_array) must return shape (n_samples,).")
+    return values
+
+
+def _u_grid_from_series(series_list: Sequence[np.ndarray], grid_size: int = 60) -> np.ndarray:
+    combined = np.concatenate([np.asarray(series, dtype=float).reshape(-1) for series in series_list])
+    min_val = float(np.min(combined))
+    max_val = float(np.max(combined))
+    if np.isclose(min_val, max_val):
+        pad = 0.1 if min_val == 0.0 else abs(min_val) * 0.1
+    else:
+        pad = 0.08 * (max_val - min_val)
+    return np.linspace(min_val - pad, max_val + pad, int(grid_size))
+
+
 def _binned_mean_line(
     x_values: np.ndarray,
     y_values: np.ndarray,
@@ -778,6 +999,187 @@ def _plot_policy_u_vs_objective(
     ax.set_xlabel("u")
     ax.set_ylabel("M(x, u)")
     ax.legend()
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(path / filename, dpi=200)
+    plt.close(fig)
+
+
+def _plot_policy_acceptance_histograms(
+    observed_u: np.ndarray,
+    x_samples: np.ndarray,
+    objective: Objective,
+    theta_by_estimator: Mapping[str, np.ndarray],
+    plot_dir: str,
+    filename: str = "policy_acceptance_histograms.png",
+) -> None:
+    x_arr = np.asarray(x_samples, dtype=float)
+    if x_arr.ndim != 2:
+        raise ValueError("x_samples must be a 2D array.")
+    observed_u_arr = np.asarray(observed_u, dtype=float).reshape(-1)
+    if observed_u_arr.shape != (x_arr.shape[0],):
+        raise ValueError("observed_u must match the number of x_samples rows.")
+    if not theta_by_estimator:
+        return
+
+    path = _ensure_plot_dir(plot_dir)
+    ordered_names = [name for name in _TRACE_ORDER if name in theta_by_estimator]
+    ordered_names.extend(sorted(name for name in theta_by_estimator if name not in _TRACE_ORDER))
+    observed_acceptance = _row_acceptance_values(objective, x_arr, observed_u_arr)
+    policy_acceptance = {
+        name: _row_acceptance_values(
+            objective,
+            x_arr,
+            _policy_outputs_for_theta(objective, theta_by_estimator[name], x_arr),
+        )
+        for name in ordered_names
+    }
+    bins = _policy_output_histogram_bins([observed_acceptance, *policy_acceptance.values()])
+
+    fig, ax = plt.subplots(1, 1, figsize=(8, 4.75))
+    ax.hist(
+        observed_acceptance,
+        bins=bins,
+        density=True,
+        label="observed U",
+        color="#bdbdbd",
+        edgecolor="#969696",
+        alpha=_SCATTER_ALPHA,
+        linewidth=0.8,
+    )
+    for name in ordered_names:
+        style = _estimator_style(name)
+        ax.hist(
+            policy_acceptance[name],
+            bins=bins,
+            density=True,
+            label=style["label"],
+            color=style["color"],
+            histtype="step",
+            alpha=_LINE_ALPHA,
+            linewidth=_LINE_WIDTH,
+        )
+
+    ax.set_xlabel("Acceptance probability")
+    ax.set_ylabel("Density")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(path / filename, dpi=200)
+    plt.close(fig)
+
+
+def _plot_policy_u_vs_acceptance_spread(
+    observed_u: np.ndarray,
+    x_samples: np.ndarray,
+    objective: Objective,
+    theta_by_estimator: Mapping[str, np.ndarray],
+    plot_dir: str,
+    filename: str = "policy_u_vs_acceptance_spread.png",
+) -> None:
+    x_arr = np.asarray(x_samples, dtype=float)
+    if x_arr.ndim != 2:
+        raise ValueError("x_samples must be a 2D array.")
+    observed_u_arr = np.asarray(observed_u, dtype=float).reshape(-1)
+    if observed_u_arr.shape != (x_arr.shape[0],):
+        raise ValueError("observed_u must match the number of x_samples rows.")
+    if not theta_by_estimator:
+        return
+
+    path = _ensure_plot_dir(plot_dir)
+    ordered_names = [name for name in _TRACE_ORDER if name in theta_by_estimator]
+    ordered_names.extend(sorted(name for name in theta_by_estimator if name not in _TRACE_ORDER))
+    policy_outputs = {
+        name: _policy_outputs_for_theta(objective, theta_by_estimator[name], x_arr)
+        for name in ordered_names
+    }
+    bins = _policy_output_histogram_bins([observed_u_arr, *policy_outputs.values()])
+    u_grid = _u_grid_from_series([observed_u_arr, *policy_outputs.values()])
+
+    quantiles = np.asarray(
+        [
+            np.quantile(
+                _row_acceptance_values(objective, x_arr, np.full(x_arr.shape[0], float(u), dtype=float)),
+                [0.05, 0.25, 0.50, 0.75, 0.95],
+            )
+            for u in u_grid
+        ],
+        dtype=float,
+    )
+    observed_acceptance = _row_acceptance_values(objective, x_arr, observed_u_arr)
+
+    fig, ax = plt.subplots(1, 1, figsize=(8.75, 5.25))
+    ax.fill_between(
+        u_grid,
+        quantiles[:, 0],
+        quantiles[:, 4],
+        color="#9ecae1",
+        alpha=0.25,
+        label="fixed-u 5-95% across X",
+    )
+    ax.fill_between(
+        u_grid,
+        quantiles[:, 1],
+        quantiles[:, 3],
+        color="#3182bd",
+        alpha=0.20,
+        label="fixed-u 25-75% across X",
+    )
+    ax.plot(
+        u_grid,
+        quantiles[:, 2],
+        color="#08519c",
+        linewidth=_LINE_WIDTH,
+        alpha=0.8,
+        label="fixed-u median across X",
+    )
+
+    ax.scatter(
+        observed_u_arr,
+        observed_acceptance,
+        color="#969696",
+        alpha=_SCATTER_ALPHA,
+        s=_SCATTER_SIZE,
+        linewidths=0.0,
+    )
+    observed_centers, observed_means = _binned_mean_line(observed_u_arr, observed_acceptance, bins)
+    if observed_centers.size > 0:
+        ax.plot(
+            observed_centers,
+            observed_means,
+            color="#636363",
+            linewidth=_LINE_WIDTH,
+            alpha=_LINE_ALPHA,
+            label="observed U",
+        )
+
+    for name in ordered_names:
+        style = _estimator_style(name)
+        policy_u = policy_outputs[name]
+        acceptance_values = _row_acceptance_values(objective, x_arr, policy_u)
+        ax.scatter(
+            policy_u,
+            acceptance_values,
+            color=style["color"],
+            marker=style["marker"],
+            alpha=_SCATTER_ALPHA,
+            s=_style_scatter_size(style),
+            linewidths=0.0,
+        )
+        centers, means = _binned_mean_line(policy_u, acceptance_values, bins)
+        if centers.size > 0:
+            ax.plot(
+                centers,
+                means,
+                color=style["color"],
+                linewidth=_LINE_WIDTH,
+                alpha=_LINE_ALPHA,
+                label=style["label"],
+            )
+
+    ax.set_xlabel("u")
+    ax.set_ylabel("Acceptance probability")
+    ax.legend(fontsize="small")
     ax.grid(True, alpha=0.3)
     fig.tight_layout()
     fig.savefig(path / filename, dpi=200)

@@ -44,6 +44,20 @@ def test_value_returns_scalar():
     assert np.isfinite(val)
 
 
+def test_value_records_eval_counts() -> None:
+    obj, x, theta_dim = _make_glm_objective()
+    theta = np.zeros(theta_dim, dtype=float)
+
+    obj.reset_eval_counts()
+    obj.value(theta, x)
+    counts = obj.eval_counts()
+
+    assert counts["objective_value_calls"] == 1
+    assert counts["objective_value_calls_rows"] == x.shape[0]
+    assert counts["acceptance_predict_calls"] >= 1
+    assert counts["loss_predict_calls"] >= 1
+
+
 def test_grad_shape():
     obj, x, theta_dim = _make_glm_objective()
     theta = np.zeros(theta_dim, dtype=float)
@@ -186,6 +200,48 @@ def test_policy_hooks_use_acceptance_preprocessor() -> None:
     assert processed.shape[1] == obj.acceptance_model.policy_feature_dim()
     assert np.allclose(hook_u, direct_u)
     assert np.allclose(hook_grad, direct_grad)
+
+
+def test_policy_hooks_can_use_independent_policy_preprocessor() -> None:
+    from data.loader import ACCEPTANCE_STATE_COLS
+    from objective.policy_preprocessing import fit_policy_feature_preprocessor
+
+    obj, x, _ = _make_glm_objective(n_rows=20)
+    x_policy = x[:, : len(ACCEPTANCE_STATE_COLS)]
+    policy_preprocessor = fit_policy_feature_preprocessor(x_policy, pca_dim=4)
+    obj = replace(
+        obj,
+        policy_preprocessor=policy_preprocessor,
+        policy_feature_cols=tuple(ACCEPTANCE_STATE_COLS),
+    )
+    theta = np.zeros(obj.policy_theta_dim(), dtype=float)
+
+    processed = obj._policy_features(x)
+    direct_u = obj.policy.value(theta, processed)
+
+    assert processed.shape == (x.shape[0], 4)
+    assert obj.policy_input_dim() == 4
+    np.testing.assert_allclose(processed, policy_preprocessor.transform(x_policy))
+    np.testing.assert_allclose(obj.policy_value(theta, x), direct_u)
+
+
+def test_policy_preprocessor_does_not_change_black_box_acceptance_path() -> None:
+    from data.loader import ACCEPTANCE_STATE_COLS
+    from objective.policy_preprocessing import fit_policy_feature_preprocessor
+
+    obj, x, _ = _make_glm_objective(n_rows=20)
+    x_policy = x[:, : len(ACCEPTANCE_STATE_COLS)]
+    policy_preprocessor = fit_policy_feature_preprocessor(x_policy, pca_dim=4)
+    obj_with_policy_preprocessing = replace(
+        obj,
+        policy_preprocessor=policy_preprocessor,
+        policy_feature_cols=tuple(ACCEPTANCE_STATE_COLS),
+    )
+
+    np.testing.assert_allclose(
+        obj.mean_acceptance_at_u(x, 0.0),
+        obj_with_policy_preprocessing.mean_acceptance_at_u(x, 0.0),
+    )
 
 
 def test_policy_hooks_support_quadratic_feature_map() -> None:

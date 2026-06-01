@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
@@ -10,6 +10,7 @@ import pandas as pd
 
 from objective.base import Objective, Policy
 from objective.policy import policy_theta_dim
+from objective.policy_preprocessing import PolicyFeaturePreprocessor
 from objective.utils import _theta_grad_from_u_grad
 
 
@@ -54,7 +55,10 @@ class ModelBasedObjective(Objective):
     acceptance_penalty_weight: float | None = None
     acceptance_penalty_temperature: float = 0.01
     lagrangian_lambda: float | None = None
+    policy_preprocessor: PolicyFeaturePreprocessor | None = None
+    policy_feature_cols: tuple[str, ...] | None = None
     _fd_eps: float = 1e-4
+    _eval_counts: dict[str, int] = field(default_factory=dict, compare=False, repr=False)
 
     def _clip_u(self, u: np.ndarray) -> np.ndarray:
         """Clip u to bounds if set."""
@@ -62,11 +66,26 @@ class ModelBasedObjective(Objective):
             return np.clip(u, *self.u_bounds)
         return u
 
+    def reset_eval_counts(self) -> None:
+        """Reset mutable diagnostic counters for model/objective evaluations."""
+        self._eval_counts.clear()
+
+    def eval_counts(self) -> dict[str, int]:
+        """Return diagnostic counts for objective and model prediction calls."""
+        return dict(self._eval_counts)
+
+    def _record_eval(self, key: str, rows: int | None = None) -> None:
+        self._eval_counts[key] = self._eval_counts.get(key, 0) + 1
+        if rows is not None:
+            row_key = f"{key}_rows"
+            self._eval_counts[row_key] = self._eval_counts.get(row_key, 0) + int(rows)
+
     def value(self, theta: np.ndarray, x_batch: np.ndarray) -> float:
         """Compute mean objective value across batch."""
         x_arr = np.asarray(x_batch, dtype=float)
         if x_arr.ndim != 2:
             raise ValueError("x_batch must be 2D.")
+        self._record_eval("objective_value_calls", x_arr.shape[0])
         theta_arr = np.asarray(theta, dtype=float)
         u_batch = self._clip_u(self.policy_value(theta_arr, x_arr))
         acceptance = self._acceptance_proba(x_arr, u_batch)
@@ -121,6 +140,11 @@ class ModelBasedObjective(Objective):
 
     def policy_input_dim(self) -> int:
         """Return the processed state dimension seen by the policy."""
+        if self.policy_preprocessor is not None:
+            output_dim = getattr(self.policy_preprocessor, "output_dim_", None)
+            if output_dim is None:
+                raise ValueError("policy_preprocessor must be fitted before theta sizing.")
+            return int(output_dim)
         feature_dim_fn = getattr(self.acceptance_model, "policy_feature_dim", None)
         if callable(feature_dim_fn):
             return int(feature_dim_fn())
@@ -226,6 +250,14 @@ class ModelBasedObjective(Objective):
         """Return the acceptance-side processed features used by the policy."""
         x_state = x_batch[:, : len(self.acceptance_state_cols)]
         raw_df = pd.DataFrame(x_state, columns=list(self.acceptance_state_cols))
+        if self.policy_preprocessor is not None:
+            policy_cols = self.policy_feature_cols or self.acceptance_state_cols
+            missing = [col for col in policy_cols if col not in raw_df.columns]
+            if missing:
+                raise ValueError(f"Missing policy feature columns: {missing}")
+            return self.policy_preprocessor.transform(
+                raw_df.loc[:, list(policy_cols)].to_numpy(dtype=float)
+            )
         x_feature_cols = self._artifact_x_feature_cols(self.acceptance_model, self.acceptance_state_cols)
         state_df = raw_df.loc[:, list(x_feature_cols)].copy()
         preprocessor = self._artifact_preprocessor(self.acceptance_model)
@@ -243,6 +275,7 @@ class ModelBasedObjective(Objective):
         )
         model_df = self._artifact_frame(self.acceptance_model, raw_df)
         model = self._artifact_model(self.acceptance_model)
+        self._record_eval("acceptance_predict_calls", x_batch.shape[0])
         return np.asarray(model.predict_proba(model_df)[:, 1], dtype=float)
 
     def _acceptance_proba(self, x_batch: np.ndarray, u_arr: np.ndarray) -> np.ndarray:
@@ -255,6 +288,7 @@ class ModelBasedObjective(Objective):
         raw_df = pd.DataFrame(x_loss, columns=list(self.loss_cols))
         model_df = self._artifact_frame(self.loss_model, raw_df)
         model = self._artifact_model(self.loss_model)
+        self._record_eval("loss_predict_calls", x_batch.shape[0])
         return np.asarray(model.predict(model_df), dtype=float)
 
     def _value_batch(self, x_batch: np.ndarray, u_arr: np.ndarray) -> np.ndarray:

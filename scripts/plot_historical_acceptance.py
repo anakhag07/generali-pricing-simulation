@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from data.loader import dataset_csv_path
 from reporting.visualization import (
     _LINE_WIDTH,
     _SCATTER_ALPHA,
@@ -21,12 +22,9 @@ from reporting.visualization import (
     _policy_output_histogram_bins,
 )
 
-_REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CSV_PATHS: dict[Literal["glm", "xgb"], Path] = {
-    "glm": _REPO_ROOT
-    / "src/data/dataset_bbox_optim_linear_models_feat_processor/df_acceptance_linear_model_black_box_feat_processor.csv",
-    "xgb": _REPO_ROOT
-    / "src/data/dataset_bbox_optim_xgb_models_feat_processor/df_acceptance_xgb_black_box_feat_processor.csv",
+    "glm": dataset_csv_path(),
+    "xgb": dataset_csv_path(),
 }
 DEFAULT_OUTPUT_ROOT = Path("outputs") / "historical_acceptance"
 DEFAULT_U_MAX = 0.14

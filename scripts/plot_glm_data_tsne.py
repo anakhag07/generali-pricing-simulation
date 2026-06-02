@@ -22,7 +22,7 @@ from data.loader import (
     ACCEPTANCE_STATE_COLS,
     FEATURE_COLS_GLM,
     LOSS_FEATURE_COLS,
-    _ACCEPTANCE_CSV_PATHS,
+    dataset_csv_path,
     load_observed_u_array,
     load_x_array,
     sample_csv_row_indices,
@@ -130,9 +130,8 @@ def compute_tsne_embedding(
 
 def load_glm_prediction_frame(row_indices: np.ndarray) -> pd.DataFrame:
     """Load saved GLM out-of-fold churn and acceptance predictions for sampled rows."""
-    csv_path = _ACCEPTANCE_CSV_PATHS["glm"]
     predictions = pd.read_csv(
-        csv_path,
+        dataset_csv_path(),
         sep=";",
         usecols=["churn_prediction", "prob_acceptance"],
     )

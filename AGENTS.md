@@ -167,6 +167,23 @@ Guidelines:
 
 #### Data Layer (`src/data/`)
 
+- **`src/data/dataset.csv`**
+  - Canonical real-data source CSV used by all real-data loaders; the current file is the GLM acceptance export and both GLM/XGB loaders sample from it
+
+- **`src/data/dataset_metadata.py`**
+  - Tracked source of truth for dataset schema, column groups, canonical CSV path, model artifact paths, and artifact/preprocessor notes
+  - Update this file whenever `src/data/dataset.csv`, model artifacts, model paths, column semantics, or dataset schema changes
+  - When updating any `src/data` artifact or schema, confirm `dataset_metadata.py` matches the current CSV columns and model artifact paths, then run data-loader and model-artifact inference tests
+
+- **`src/data/models/linear/`**
+  - GLM/linear model artifact pickles: churn classifier and expected-loss regressor, each bundled with its saved `FeatureProcessor`
+
+- **`src/data/models/xgb/`**
+  - XGBoost model artifact pickles: churn classifier and expected-loss regressor, each bundled with its saved `FeatureProcessor`
+
+- **`src/data/unused/`**
+  - Legacy CSV/notebook exports not used by the current loader; retained only as temporary archive material before deletion
+
 - **`src/data/feature_processor.py`**
   - `FeatureProcessor`: notebook-extracted whitening/PCA preprocessor used by the bundled real-data artifacts
 
@@ -175,10 +192,11 @@ Guidelines:
   - `FEATURE_COLS_XGB`: 10-column state feature list for XGB configs (9 base + premium)
   - `ACCEPTANCE_STATE_COLS`: 10 cols passed to acceptance model (base + premium, no U)
   - `LOSS_FEATURE_COLS`: 9 base cols passed to loss model
-  - `sample_csv_row_indices(model_type, n_rows, seed)`: samples acceptance CSV row positions without replacement for real-data configs
-  - `load_x_array(model_type, n_rows=5000, row_indices=None, seed=None)`: loads a random `n_rows` sample of raw acceptance-state features from the current `*_feat_processor.csv` exports, or the exact `row_indices` when provided; string columns are replay-encoded to match the notebook's numeric training inputs
-  - `load_observed_u_array(model_type, n_rows=5000, row_indices=None, seed=None)`: loads observed pricing multipliers from sampled acceptance CSV rows for diagnostics and plots
-  - `load_model_artifacts(model_type)`: loads `(acceptance_artifact, loss_artifact)` bundles from `src/data/artifacts_preproc_pipeline/`
+  - `dataset_csv_path()`: returns the canonical real-data source CSV path
+  - `sample_csv_row_indices(model_type, n_rows, seed)`: samples canonical dataset CSV row positions without replacement for real-data configs
+  - `load_x_array(model_type, n_rows=5000, row_indices=None, seed=None)`: loads a random `n_rows` sample of raw state features from `dataset.csv`, or the exact `row_indices` when provided; string columns are replay-encoded to numeric values when needed
+  - `load_observed_u_array(model_type, n_rows=5000, row_indices=None, seed=None)`: loads observed pricing multipliers from sampled canonical dataset rows for diagnostics and plots
+  - `load_model_artifacts(model_type)`: loads `(acceptance_artifact, loss_artifact)` bundles from `src/data/models/linear/` or `src/data/models/xgb/`
   - `ModelArtifactBundle.model_frame(raw_frame)`: converts raw notebook-space columns into the exact model-input frame expected by the bundled estimator
   - `extract_glm_u_coef(glm_pipeline)`: extracts effective d_logit/dU = w_U / std_U from the inner fitted GLM Pipeline for analytical gradient computation
 
@@ -390,7 +408,9 @@ when appropriate.
 | Test File | Area |
 |---|---|
 | `test_data_loader.py` | `load_x_array` shape/dtype, model artifact types, U normalization, CSV column sets |
+| `test_dataset_metadata.py` | Canonical dataset metadata matches CSV schema and artifact metadata |
 | `test_feature_processor.py` | Centering, sphering, PCA whitening, inverse transform, categorical encoding |
+| `test_model_artifact_inference.py` | GLM/XGB artifact inference and model-based objective smoke tests on canonical rows |
 
 #### `tests/experiments/`
 | Test File | Area |

@@ -56,6 +56,43 @@ def test_value_records_eval_counts() -> None:
     assert counts["objective_value_calls_rows"] == x.shape[0]
     assert counts["acceptance_predict_calls"] >= 1
     assert counts["loss_predict_calls"] >= 1
+    assert counts["objective_value_seconds"] >= 0.0
+    assert counts["acceptance_predict_seconds"] >= 0.0
+    assert counts["loss_predict_seconds"] >= 0.0
+
+
+def test_repeated_value_reuses_loss_prediction_cache() -> None:
+    obj, x, theta_dim = _make_glm_objective()
+    theta = np.zeros(theta_dim, dtype=float)
+
+    obj.reset_eval_counts()
+    val_first = obj.value(theta, x)
+    counts_first = obj.eval_counts()
+    val_second = obj.value(theta, x)
+    counts_second = obj.eval_counts()
+
+    assert val_second == pytest.approx(val_first)
+    assert counts_first["loss_predict_calls"] == 1
+    assert counts_second["loss_predict_calls"] == 1
+    assert counts_second["loss_prediction_cache_hits"] >= 1
+    assert counts_second["loss_prediction_cache_hits_rows"] >= x.shape[0]
+
+
+def test_repeated_policy_hooks_reuse_policy_feature_cache() -> None:
+    obj, x, theta_dim = _make_glm_objective(n_rows=10)
+    theta = np.zeros(theta_dim, dtype=float)
+
+    obj.reset_eval_counts()
+    first = obj.policy_value(theta, x)
+    counts_first = obj.eval_counts()
+    second = obj.policy_grad(theta, x)
+    counts_second = obj.eval_counts()
+
+    assert first.shape == (x.shape[0],)
+    assert second.shape[0] == x.shape[0]
+    assert counts_first["policy_features_cache_misses"] == 1
+    assert counts_second["policy_features_cache_misses"] == 1
+    assert counts_second["policy_features_cache_hits"] == 1
 
 
 def test_grad_shape():

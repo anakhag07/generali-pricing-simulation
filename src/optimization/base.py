@@ -232,6 +232,7 @@ class Optimization:
             value = objective_value_on_indices(self.objective, self.x_array, self.n_total, theta_arr, indices)
             if last_optimizer_grad_key == theta_key(theta_arr) and last_optimizer_grad is not None:
                 grad_theta = last_optimizer_grad.copy()
+                self.gradient.advance_rng(self, theta_arr)
             else:
                 grad_theta = np.asarray(self.gradient.theta_grad(self, theta_arr, indices), dtype=float)
             theta_grad_norm = float(np.linalg.norm(grad_theta))

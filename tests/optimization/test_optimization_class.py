@@ -10,6 +10,7 @@ from optimization import (
     FiniteDifferenceGradient,
     FirstOrderGradient,
     GaussSteinGradient,
+    GradientMethod,
     Optimization,
     SteinDifferenceGradient,
 )
@@ -188,3 +189,47 @@ def test_scipy_callback_reuses_last_optimizer_gradient_for_recording() -> None:
     optimizer.solve(theta_start)
 
     assert gradient.calls == 2
+
+
+def test_cached_stochastic_diagnostic_gradient_advances_rng() -> None:
+    class CountingStochasticGradient(GradientMethod):
+        def __init__(self) -> None:
+            self.calls = 0
+            self.advance_calls = 0
+
+        def theta_grad(self, optimizer: Optimization, theta: np.ndarray, indices: np.ndarray) -> np.ndarray:
+            del indices
+            self.calls += 1
+            optimizer.rng.normal(0.0, 1.0, size=3)
+            return np.zeros_like(theta, dtype=float)
+
+        def advance_rng(self, optimizer: Optimization, theta: np.ndarray) -> None:
+            del theta
+            self.advance_calls += 1
+            optimizer.rng.normal(0.0, 1.0, size=3)
+
+    def fake_minimize(fun, *, x0, jac, callback, **_kwargs):
+        fun(x0)
+        jac(x0)
+        callback(x0)
+        return SimpleNamespace(x=x0, status=0, success=True, message="ok")
+
+    theta_start = np.asarray([0.2, 0.3], dtype=float)
+    objective = _build_theta_objective()
+    gradient = CountingStochasticGradient()
+    optimizer = Optimization(
+        objective,
+        np.array([[1.0], [-0.5]], dtype=float),
+        gradient,
+        algorithm="l-bfgs-b",
+        t_steps=5,
+        n_grad_samples=1,
+        sigma=0.1,
+        rng=np.random.default_rng(123),
+        minimize_fn=fake_minimize,
+    )
+
+    optimizer.solve(theta_start)
+
+    assert gradient.calls == 2
+    assert gradient.advance_calls == 1

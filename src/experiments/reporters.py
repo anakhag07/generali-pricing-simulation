@@ -28,7 +28,6 @@ from reporting.visualization import (
     _plot_policy_u_histograms,
     plot_gradient_norms,
     plot_loss_curves,
-    plot_objective_u_slice,
     plot_step_sizes,
     plot_theta_objective_contours,
     select_theta_axes_max_variance,
@@ -356,9 +355,8 @@ class PlotReporter:
         optimization_dir.mkdir(parents=True, exist_ok=True)
         plot_dir = str(optimization_dir)
         objective = config.objective
-        action_objective = objective
         traces = result.traces
-        u_star_plot = _u_star_for_plot(action_objective, result.u_star)
+        u_star_plot = _u_star_for_plot(objective, result.u_star)
         plot_loss_curves(
             traces,
             plot_dir,
@@ -399,14 +397,6 @@ class PlotReporter:
                 str(policy_dir / "u_acceptance"),
                 acceptance_floor=config.acceptance_floor,
             )
-        plot_objective_u_slice(
-            result.x_samples,
-            action_objective,
-            traces,
-            plot_dir,
-            u_star=u_star_plot,
-            constant_u_baselines=result.constant_u_baselines,
-        )
         if any(trace.step_sizes is not None for trace in traces.values()):
             plot_step_sizes(traces, plot_dir)
         if config.theta0.size >= 2:

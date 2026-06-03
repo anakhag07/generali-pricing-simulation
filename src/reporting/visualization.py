@@ -597,7 +597,7 @@ def plot_loss_curves(
 
     if ax_dist is not None and u_star is not None:
         for name, trace in trace_items:
-            style = ESTIMATOR_STYLES[name]
+            style = _estimator_style(name)
             dist_values = [abs(u - u_star) for u in trace.u_values]
             ax_dist.plot(
                 trace.steps,
@@ -781,6 +781,12 @@ def _policy_outputs_for_estimator(
     return u_values.reshape(-1)
 
 
+def _ordered_policy_estimator_names(theta_by_estimator: Mapping[str, np.ndarray]) -> list[str]:
+    ordered_names = [name for name in _TRACE_ORDER if name in theta_by_estimator]
+    ordered_names.extend(sorted(name for name in theta_by_estimator if name not in _TRACE_ORDER))
+    return ordered_names
+
+
 def _row_objective_values(
     objective: Objective,
     x_samples: np.ndarray,
@@ -835,17 +841,6 @@ def _row_acceptance_values(
     return values
 
 
-def _u_grid_from_series(series_list: Sequence[np.ndarray], grid_size: int = 60) -> np.ndarray:
-    combined = np.concatenate([np.asarray(series, dtype=float).reshape(-1) for series in series_list])
-    min_val = float(np.min(combined))
-    max_val = float(np.max(combined))
-    if np.isclose(min_val, max_val):
-        pad = 0.1 if min_val == 0.0 else abs(min_val) * 0.1
-    else:
-        pad = 0.08 * (max_val - min_val)
-    return np.linspace(min_val - pad, max_val + pad, int(grid_size))
-
-
 def _binned_mean_line(
     x_values: np.ndarray,
     y_values: np.ndarray,
@@ -888,7 +883,7 @@ def _plot_policy_u_histograms(
     objective: Objective,
     theta_by_estimator: Mapping[str, np.ndarray],
     plot_dir: str,
-    filename: str = "policy_u_histograms.png",
+    filename: str = "u_histogram.png",
 ) -> None:
     x_arr = np.asarray(x_samples, dtype=float)
     if x_arr.ndim != 2:
@@ -900,9 +895,7 @@ def _plot_policy_u_histograms(
         return
 
     path = _ensure_plot_dir(plot_dir)
-    ordered_names = [name for name in _TRACE_ORDER if name in theta_by_estimator]
-    extra_names = sorted(name for name in theta_by_estimator if name not in _TRACE_ORDER)
-    ordered_names.extend(extra_names)
+    ordered_names = _ordered_policy_estimator_names(theta_by_estimator)
     policy_outputs = {
         name: _policy_outputs_for_estimator(objective, name, theta_by_estimator[name], x_arr)
         for name in ordered_names
@@ -921,7 +914,7 @@ def _plot_policy_u_histograms(
         linewidth=0.8,
     )
     for name in ordered_names:
-        style = ESTIMATOR_STYLES[name]
+        style = _estimator_style(name)
         ax.hist(
             policy_outputs[name],
             bins=bins,
@@ -942,95 +935,13 @@ def _plot_policy_u_histograms(
     plt.close(fig)
 
 
-def _plot_policy_u_vs_objective(
-    observed_u: np.ndarray,
-    x_samples: np.ndarray,
-    objective: Objective,
-    theta_by_estimator: Mapping[str, np.ndarray],
-    plot_dir: str,
-    filename: str = "policy_u_vs_objective.png",
-) -> None:
-    x_arr = np.asarray(x_samples, dtype=float)
-    if x_arr.ndim != 2:
-        raise ValueError("x_samples must be a 2D array.")
-    observed_u_arr = np.asarray(observed_u, dtype=float).reshape(-1)
-    if observed_u_arr.shape != (x_arr.shape[0],):
-        raise ValueError("observed_u must match the number of x_samples rows.")
-    if not theta_by_estimator:
-        return
-
-    path = _ensure_plot_dir(plot_dir)
-    ordered_names = [name for name in _TRACE_ORDER if name in theta_by_estimator]
-    extra_names = sorted(name for name in theta_by_estimator if name not in _TRACE_ORDER)
-    ordered_names.extend(extra_names)
-    policy_outputs = {
-        name: _policy_outputs_for_estimator(objective, name, theta_by_estimator[name], x_arr)
-        for name in ordered_names
-    }
-    bins = _policy_output_histogram_bins([observed_u_arr, *policy_outputs.values()])
-    observed_values = _row_objective_values(objective, x_arr, observed_u_arr)
-
-    fig, ax = plt.subplots(1, 1, figsize=(8.25, 5.0))
-    ax.scatter(
-        observed_u_arr,
-        observed_values,
-        color="#969696",
-        alpha=_SCATTER_ALPHA,
-        s=_SCATTER_SIZE,
-        linewidths=0.0,
-    )
-    observed_centers, observed_means = _binned_mean_line(observed_u_arr, observed_values, bins)
-    if observed_centers.size > 0:
-        ax.plot(
-            observed_centers,
-            observed_means,
-            color="#636363",
-            linewidth=_LINE_WIDTH,
-            alpha=_LINE_ALPHA,
-            label="observed U",
-        )
-
-    for name in ordered_names:
-        style = ESTIMATOR_STYLES[name]
-        policy_u = policy_outputs[name]
-        objective_values = _row_objective_values(objective, x_arr, policy_u)
-        ax.scatter(
-            policy_u,
-            objective_values,
-            color=style["color"],
-            marker=style["marker"],
-            alpha=_SCATTER_ALPHA,
-            s=_style_scatter_size(style),
-            linewidths=0.0,
-        )
-        centers, means = _binned_mean_line(policy_u, objective_values, bins)
-        if centers.size == 0:
-            continue
-        ax.plot(
-            centers,
-            means,
-            color=style["color"],
-            linewidth=_LINE_WIDTH,
-            alpha=_LINE_ALPHA,
-            label=style["label"],
-        )
-
-    ax.set_xlabel("u")
-    ax.set_ylabel("M(x, u)")
-    ax.legend()
-    ax.grid(True, alpha=0.3)
-    fig.tight_layout()
-    fig.savefig(path / filename, dpi=200)
-    plt.close(fig)
-
-
 def _plot_policy_acceptance_histograms(
     observed_u: np.ndarray,
     x_samples: np.ndarray,
     objective: Objective,
     theta_by_estimator: Mapping[str, np.ndarray],
     plot_dir: str,
-    filename: str = "policy_acceptance_histograms.png",
+    filename: str = "acceptance_histograms.png",
 ) -> None:
     x_arr = np.asarray(x_samples, dtype=float)
     if x_arr.ndim != 2:
@@ -1042,8 +953,7 @@ def _plot_policy_acceptance_histograms(
         return
 
     path = _ensure_plot_dir(plot_dir)
-    ordered_names = [name for name in _TRACE_ORDER if name in theta_by_estimator]
-    ordered_names.extend(sorted(name for name in theta_by_estimator if name not in _TRACE_ORDER))
+    ordered_names = _ordered_policy_estimator_names(theta_by_estimator)
     observed_acceptance = _row_acceptance_values(objective, x_arr, observed_u_arr)
     policy_acceptance = {
         name: _row_acceptance_values(
@@ -1088,12 +998,130 @@ def _plot_policy_acceptance_histograms(
     plt.close(fig)
 
 
+def _metric_summary(values: np.ndarray) -> tuple[float, float, float]:
+    values_arr = np.asarray(values, dtype=float).reshape(-1)
+    finite_values = values_arr[np.isfinite(values_arr)]
+    if finite_values.size == 0:
+        return np.nan, np.nan, np.nan
+    q25, q75 = np.quantile(finite_values, [0.25, 0.75])
+    return float(np.mean(finite_values)), float(q25), float(q75)
+
+
+def _plot_summary_metric_axis(
+    ax: matplotlib.axes.Axes,
+    names: Sequence[str],
+    summaries: Mapping[str, tuple[float, float, float]],
+    *,
+    title: str,
+    ylabel: str,
+    show_interval: bool,
+) -> None:
+    x_positions = np.arange(len(names), dtype=float)
+    means = np.asarray([summaries[name][0] for name in names], dtype=float)
+    colors = [str(_estimator_style(name)["color"]) for name in names]
+    labels = [str(_estimator_style(name)["label"]) for name in names]
+    ax.bar(x_positions, means, color=colors, alpha=0.85, edgecolor="#252525", linewidth=0.7)
+    if show_interval:
+        q25 = np.asarray([summaries[name][1] for name in names], dtype=float)
+        q75 = np.asarray([summaries[name][2] for name in names], dtype=float)
+        yerr = np.vstack([np.maximum(means - q25, 0.0), np.maximum(q75 - means, 0.0)])
+        ax.errorbar(
+            x_positions,
+            means,
+            yerr=yerr,
+            fmt="none",
+            ecolor="#111111",
+            elinewidth=1.2,
+            capsize=4.0,
+            alpha=0.45,
+        )
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels(labels, rotation=25, ha="right")
+    ax.set_title(title)
+    ax.set_ylabel(ylabel)
+    ax.grid(True, axis="y", alpha=0.3)
+
+
+def _plot_policy_final_summary_metrics(
+    x_samples: np.ndarray,
+    objective: Objective,
+    theta_by_estimator: Mapping[str, np.ndarray],
+    runtime_by_estimator: Mapping[str, float],
+    plot_dir: str,
+    filename: str = "final_summary_metrics.png",
+) -> None:
+    x_arr = np.asarray(x_samples, dtype=float)
+    if x_arr.ndim != 2:
+        raise ValueError("x_samples must be a 2D array.")
+    if not theta_by_estimator:
+        return
+    if not callable(getattr(objective, "_acceptance_proba", None)):
+        return
+
+    ordered_names = _ordered_policy_estimator_names(theta_by_estimator)
+    u_summaries: dict[str, tuple[float, float, float]] = {}
+    objective_summaries: dict[str, tuple[float, float, float]] = {}
+    acceptance_summaries: dict[str, tuple[float, float, float]] = {}
+    runtime_summaries: dict[str, tuple[float, float, float]] = {}
+
+    for name in ordered_names:
+        policy_u = _policy_outputs_for_estimator(objective, name, theta_by_estimator[name], x_arr)
+        objective_values = _row_objective_values(objective, x_arr, policy_u)
+        acceptance_values = _row_acceptance_values(objective, x_arr, policy_u)
+        runtime = float(runtime_by_estimator.get(name, np.nan))
+        u_summaries[name] = _metric_summary(policy_u)
+        objective_summaries[name] = _metric_summary(objective_values)
+        acceptance_summaries[name] = _metric_summary(acceptance_values)
+        runtime_summaries[name] = (runtime, runtime, runtime)
+
+    path = _ensure_plot_dir(plot_dir)
+    fig, axes = plt.subplots(2, 2, figsize=(11.5, 8.0))
+    flat_axes = axes.reshape(-1)
+    _plot_summary_metric_axis(
+        flat_axes[0],
+        ordered_names,
+        objective_summaries,
+        title="Objective contribution",
+        ylabel="Mean M(x, u)",
+        show_interval=True,
+    )
+    _plot_summary_metric_axis(
+        flat_axes[1],
+        ordered_names,
+        u_summaries,
+        title="Final policy u",
+        ylabel="Mean u",
+        show_interval=True,
+    )
+    _plot_summary_metric_axis(
+        flat_axes[2],
+        ordered_names,
+        acceptance_summaries,
+        title="Acceptance probability",
+        ylabel="Mean acceptance",
+        show_interval=True,
+    )
+    _plot_summary_metric_axis(
+        flat_axes[3],
+        ordered_names,
+        runtime_summaries,
+        title="Runtime",
+        ylabel="Seconds",
+        show_interval=False,
+    )
+
+    fig.suptitle("Final policy summary: bars are means, whiskers are 25-75% customer ranges")
+    fig.tight_layout()
+    fig.savefig(path / filename, dpi=200)
+    plt.close(fig)
+
+
 def _plot_policy_u_acceptance_histograms(
     x_samples: np.ndarray,
     objective: Objective,
     theta_by_estimator: Mapping[str, np.ndarray],
     plot_dir: str,
-    filename: str = "policy_u_acceptance_histograms.png",
+    acceptance_floor: float | None = None,
 ) -> None:
     x_arr = np.asarray(x_samples, dtype=float)
     if x_arr.ndim != 2:
@@ -1104,23 +1132,17 @@ def _plot_policy_u_acceptance_histograms(
         return
 
     path = _ensure_plot_dir(plot_dir)
-    ordered_names = [name for name in _TRACE_ORDER if name in theta_by_estimator]
-    ordered_names.extend(sorted(name for name in theta_by_estimator if name not in _TRACE_ORDER))
-    fig, axes = plt.subplots(
-        len(ordered_names),
-        2,
-        figsize=(12.0, max(4.0, 3.4 * len(ordered_names))),
-        squeeze=False,
-    )
+    ordered_names = _ordered_policy_estimator_names(theta_by_estimator)
 
-    for row_idx, name in enumerate(ordered_names):
+    for name in ordered_names:
         style = _estimator_style(name)
         policy_u = _policy_outputs_for_estimator(objective, name, theta_by_estimator[name], x_arr)
         acceptance_values = _row_acceptance_values(objective, x_arr, policy_u)
         bins = _policy_output_histogram_bins([policy_u])
         centers, mean_acceptance = _binned_mean_line(policy_u, acceptance_values, bins)
-        hist_ax = axes[row_idx, 0]
-        scatter_ax = axes[row_idx, 1]
+        fig, axes = plt.subplots(1, 2, figsize=(12.0, 4.0))
+        hist_ax = axes[0]
+        scatter_ax = axes[1]
 
         hist_ax.hist(
             policy_u,
@@ -1146,6 +1168,15 @@ def _plot_policy_u_acceptance_histograms(
             )
             mean_ax.set_ylabel("Mean acceptance")
             mean_ax.set_ylim(0.0, 1.0)
+            if acceptance_floor is not None:
+                mean_ax.axhline(
+                    float(acceptance_floor),
+                    color="#7f7f7f",
+                    linestyle="--",
+                    linewidth=1.0,
+                    alpha=0.75,
+                    label="acceptance floor",
+                )
             mean_ax.legend(loc="upper right", fontsize="small")
 
         hist_ax.set_title(f"{style['label']}: final u distribution")
@@ -1174,6 +1205,15 @@ def _plot_policy_u_acceptance_histograms(
                 alpha=0.85,
                 label="bin mean acceptance",
             )
+        if acceptance_floor is not None:
+            scatter_ax.axhline(
+                float(acceptance_floor),
+                color="#7f7f7f",
+                linestyle="--",
+                linewidth=1.0,
+                alpha=0.75,
+                label="acceptance floor",
+            )
         scatter_ax.set_title(f"{style['label']}: customer acceptance vs final u")
         scatter_ax.set_xlabel("Final policy u")
         scatter_ax.set_ylabel("Acceptance probability")
@@ -1181,126 +1221,9 @@ def _plot_policy_u_acceptance_histograms(
         scatter_ax.grid(True, alpha=0.3)
         scatter_ax.legend(fontsize="small")
 
-    fig.tight_layout()
-    fig.savefig(path / filename, dpi=200)
-    plt.close(fig)
-
-
-def _plot_policy_u_vs_acceptance_spread(
-    observed_u: np.ndarray,
-    x_samples: np.ndarray,
-    objective: Objective,
-    theta_by_estimator: Mapping[str, np.ndarray],
-    plot_dir: str,
-    filename: str = "policy_u_vs_acceptance_spread.png",
-) -> None:
-    x_arr = np.asarray(x_samples, dtype=float)
-    if x_arr.ndim != 2:
-        raise ValueError("x_samples must be a 2D array.")
-    observed_u_arr = np.asarray(observed_u, dtype=float).reshape(-1)
-    if observed_u_arr.shape != (x_arr.shape[0],):
-        raise ValueError("observed_u must match the number of x_samples rows.")
-    if not theta_by_estimator:
-        return
-
-    path = _ensure_plot_dir(plot_dir)
-    ordered_names = [name for name in _TRACE_ORDER if name in theta_by_estimator]
-    ordered_names.extend(sorted(name for name in theta_by_estimator if name not in _TRACE_ORDER))
-    policy_outputs = {
-        name: _policy_outputs_for_estimator(objective, name, theta_by_estimator[name], x_arr)
-        for name in ordered_names
-    }
-    bins = _policy_output_histogram_bins([observed_u_arr, *policy_outputs.values()])
-    u_grid = _u_grid_from_series([observed_u_arr, *policy_outputs.values()])
-
-    quantiles = np.asarray(
-        [
-            np.quantile(
-                _row_acceptance_values(objective, x_arr, np.full(x_arr.shape[0], float(u), dtype=float)),
-                [0.05, 0.25, 0.50, 0.75, 0.95],
-            )
-            for u in u_grid
-        ],
-        dtype=float,
-    )
-    observed_acceptance = _row_acceptance_values(objective, x_arr, observed_u_arr)
-
-    fig, ax = plt.subplots(1, 1, figsize=(8.75, 5.25))
-    ax.fill_between(
-        u_grid,
-        quantiles[:, 0],
-        quantiles[:, 4],
-        color="#9ecae1",
-        alpha=0.25,
-        label="fixed-u 5-95% across X",
-    )
-    ax.fill_between(
-        u_grid,
-        quantiles[:, 1],
-        quantiles[:, 3],
-        color="#3182bd",
-        alpha=0.20,
-        label="fixed-u 25-75% across X",
-    )
-    ax.plot(
-        u_grid,
-        quantiles[:, 2],
-        color="#08519c",
-        linewidth=_LINE_WIDTH,
-        alpha=0.8,
-        label="fixed-u median across X",
-    )
-
-    ax.scatter(
-        observed_u_arr,
-        observed_acceptance,
-        color="#969696",
-        alpha=_SCATTER_ALPHA,
-        s=_SCATTER_SIZE,
-        linewidths=0.0,
-    )
-    observed_centers, observed_means = _binned_mean_line(observed_u_arr, observed_acceptance, bins)
-    if observed_centers.size > 0:
-        ax.plot(
-            observed_centers,
-            observed_means,
-            color="#636363",
-            linewidth=_LINE_WIDTH,
-            alpha=_LINE_ALPHA,
-            label="observed U",
-        )
-
-    for name in ordered_names:
-        style = _estimator_style(name)
-        policy_u = policy_outputs[name]
-        acceptance_values = _row_acceptance_values(objective, x_arr, policy_u)
-        ax.scatter(
-            policy_u,
-            acceptance_values,
-            color=style["color"],
-            marker=style["marker"],
-            alpha=_SCATTER_ALPHA,
-            s=_style_scatter_size(style),
-            linewidths=0.0,
-        )
-        centers, means = _binned_mean_line(policy_u, acceptance_values, bins)
-        if centers.size > 0:
-            ax.plot(
-                centers,
-                means,
-                color=style["color"],
-                linewidth=_LINE_WIDTH,
-                alpha=_LINE_ALPHA,
-                label=style["label"],
-            )
-
-    ax.set_xlabel("u")
-    ax.set_ylabel("Acceptance probability")
-    ax.legend(fontsize="small")
-    ax.grid(True, alpha=0.3)
-    fig.tight_layout()
-    fig.savefig(path / filename, dpi=200)
-    plt.close(fig)
+        fig.tight_layout()
+        fig.savefig(path / f"{name}.png", dpi=200)
+        plt.close(fig)
 
 
 def plot_objective_u_slice(
@@ -1453,8 +1376,8 @@ def theta_objective_contour_grid(
     axis_indices: tuple[int, int] = (0, 1),
     theta_refs: Optional[Sequence[np.ndarray]] = None,
     grid_size: int = 60,
-    pad_ratio: float = 0.2,
-    min_pad: float = 0.05,
+    pad_ratio: float = 0.08,
+    min_pad: float = 0.02,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Compute contour grid for theta-level objective."""
     x_arr = np.asarray(x_samples, dtype=float)
@@ -1485,6 +1408,42 @@ def theta_objective_contour_grid(
     return grid_x, grid_y, objective_grid
 
 
+def _adaptive_contour_norm(values: np.ndarray) -> matplotlib.colors.Normalize | None:
+    finite_values = np.asarray(values, dtype=float).reshape(-1)
+    finite_values = finite_values[np.isfinite(finite_values)]
+    if finite_values.size == 0:
+        return None
+    min_val = float(np.min(finite_values))
+    max_val = float(np.max(finite_values))
+    if np.isclose(min_val, max_val):
+        return None
+
+    positive_values = finite_values[finite_values > 0.0]
+    if positive_values.size == finite_values.size:
+        positive_min = float(np.min(positive_values))
+        ratio = max_val / positive_min if positive_min > 0.0 else np.inf
+        if ratio >= 100.0:
+            return matplotlib.colors.LogNorm(vmin=positive_min, vmax=max_val)
+        return None
+
+    abs_values = np.abs(finite_values)
+    nonzero_abs = abs_values[abs_values > 0.0]
+    if nonzero_abs.size == 0:
+        return None
+    max_abs = float(np.max(nonzero_abs))
+    min_abs = float(np.min(nonzero_abs))
+    if max_abs / min_abs < 100.0:
+        return None
+    linthresh = max(min_abs, max_abs / 1000.0)
+    return matplotlib.colors.SymLogNorm(
+        linthresh=linthresh,
+        linscale=1.0,
+        vmin=min_val,
+        vmax=max_val,
+        base=10.0,
+    )
+
+
 def plot_theta_objective_contours(
     x_samples: np.ndarray,
     objective: Objective,
@@ -1513,7 +1472,8 @@ def plot_theta_objective_contours(
     )
 
     fig, ax = plt.subplots(1, 1, figsize=(7.5, 6))
-    contour = ax.contourf(grid_x, grid_y, objective_grid, levels=levels, cmap="viridis")
+    norm = _adaptive_contour_norm(objective_grid)
+    contour = ax.contourf(grid_x, grid_y, objective_grid, levels=levels, cmap="viridis", norm=norm)
     ax.contour(grid_x, grid_y, objective_grid, levels=levels, colors="black", linewidths=0.4, alpha=0.3)
     colorbar = fig.colorbar(contour, ax=ax)
     colorbar.set_label("Objective value")

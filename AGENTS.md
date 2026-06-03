@@ -299,7 +299,7 @@ Guidelines:
   - `ConsoleReporter`: prints to terminal; per-step output controlled by `verbose`
   - `FileStepLogger`: writes per-step metrics to `steps.csv` in the run directory
   - `JsonReporter`: writes `summary.json` on end
-  - `PlotReporter`: generates all matplotlib plots on end; step-size plots are emitted whenever traces include `step_sizes`
+  - `PlotReporter`: generates all matplotlib plots on end; optimization plots go under `plots/optimization/`, policy diagnostics under `plots/policy/`, and step-size plots are emitted whenever traces include `step_sizes`
 
 #### Reporting Layer (`src/reporting/`)
 
@@ -313,9 +313,9 @@ Guidelines:
   - `plot_gradient_norms(...)`: true theta gradient norms; optional error subplot
   - `plot_step_sizes(...)`: per-step step sizes (log scale y-axis)
   - `plot_objective_u_slice(...)`: objective vs u grid (no gradient subplot)
-  - `plot_theta_objective_contours(...)`: 2D contour plot with optimization paths
+  - `plot_theta_objective_contours(...)`: 2D contour plot with optimization paths; use adaptive linear/log/symlog color scaling when objective ranges make a single linear scale unreadable
   - `plot_comparison_objective_curves(...)`, `plot_comparison_u_curves(...)`, `plot_comparison_final_metric(...)`: aggregate policy-comparison plots; final metrics render as grouped bars by policy with estimator colors and policy hatching
-  - Model-based real-data run plots include final per-customer policy-`u` histograms with binned mean acceptance and customer-level acceptance-vs-`u` scatter (`policy_u_acceptance_histograms.png`)
+  - Model-based real-data run plots under `plots/policy/` include `final_summary_metrics.png`, `u_histogram.png`, `acceptance_histograms.png`, and per-estimator `u_acceptance/<estimator>.png` files with binned mean acceptance and customer-level acceptance-vs-`u` scatter
   - Private sweep helpers power both lambda and trust-constrained acceptance-floor frontier plots
   - `select_theta_axes_max_variance(...)`: picks the two theta axes with highest variance for contour plots
 

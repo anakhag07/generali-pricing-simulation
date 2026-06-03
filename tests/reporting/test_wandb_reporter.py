@@ -200,17 +200,20 @@ def test_wandb_reporter_logs_plot_images(tmp_path: Path, monkeypatch) -> None:
 
     config = _build_config(wandb_log_plots=True)
     run_context = _build_run_context(tmp_path)
-    run_context.plots_dir.mkdir(parents=True, exist_ok=True)
-    plot_path = run_context.plots_dir / "loss_curves.png"
+    optimization_dir = run_context.plots_dir / "optimization"
+    optimization_dir.mkdir(parents=True, exist_ok=True)
+    plot_path = optimization_dir / "loss_curves.png"
     plot_path.write_bytes(b"png")
 
     reporter = WandbReporter()
     reporter.on_start(run_context, config)
     reporter.on_end(run_context, _build_result(config))
 
-    plot_payloads = [payload for payload, _ in fake_wandb.log_calls if "plots/loss_curves" in payload]
+    plot_payloads = [
+        payload for payload, _ in fake_wandb.log_calls if "plots/optimization/loss_curves" in payload
+    ]
     assert len(plot_payloads) == 1
-    image = plot_payloads[0]["plots/loss_curves"]
+    image = plot_payloads[0]["plots/optimization/loss_curves"]
     assert isinstance(image, _FakeImage)
     assert image.path.endswith("loss_curves.png")
 

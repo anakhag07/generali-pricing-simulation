@@ -62,6 +62,26 @@ def test_generate_sweep_runs_from_grid() -> None:
     assert override_2["seed"] == 8
 
 
+def test_generate_sweep_runs_accepts_real_data_factory_overrides() -> None:
+    runs = generate_sweep_runs(
+        base_preset="real_data_glm_base",
+        override_list=[
+            {
+                "policy_kind": "linear",
+                "feature_order": "quadratic",
+                "n_samples": 20,
+                "plot": False,
+                "wandb_enabled": False,
+            }
+        ],
+        display_keys=("policy_kind", "feature_order"),
+    )
+    run_name, config, override = runs[0]
+    assert run_name == "policy_kind-linear__feature_order-quadratic"
+    assert config.n_samples == 20
+    assert override["policy_kind"] == "linear"
+
+
 def test_make_sweep_name_is_deterministic() -> None:
     name = make_sweep_name("fixed_regression_base", 3, {"sigma": 0.05, "seed": 7})
     assert name == "fixed_regression_base__sweep_003__seed-7__sigma-0.05"

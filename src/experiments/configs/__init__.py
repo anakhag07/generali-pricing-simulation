@@ -20,145 +20,11 @@ _REAL_DATA_BASES: dict[str, dict[str, Any]] = {
     "real_data_xgb_base": {"model_type": "xgb"},
 }
 
-_LEGACY_REAL_DATA_ALIASES: dict[str, dict[str, Any]] = {
-    "real_data_glm_constant_policy_base": {"model_type": "glm", "policy_kind": "constant", "seed": 8},
-    "real_data_glm_constant_policy_trust_region_constr": {
-        "model_type": "glm",
-        "policy_kind": "constant",
-        "constraint_mode": "trust_constr",
-        "seed": 8,
-    },
-    "real_data_glm_linear_policy_base": {"model_type": "glm", "policy_kind": "linear", "seed": 8},
-    "real_data_glm_linear_policy_quadratic_base": {
-        "model_type": "glm",
-        "policy_kind": "linear",
-        "feature_order": "quadratic",
-        "seed": 8,
-    },
-    "real_data_glm_linear_policy_cubic_base": {
-        "model_type": "glm",
-        "policy_kind": "linear",
-        "feature_order": "cubic",
-        "seed": 8,
-    },
-    "real_data_glm_linear_policy_quartic_base": {
-        "model_type": "glm",
-        "policy_kind": "linear",
-        "feature_order": "quartic",
-        "seed": 8,
-    },
-    "real_data_glm_linear_policy_trust_region_constr": {
-        "model_type": "glm",
-        "policy_kind": "linear",
-        "constraint_mode": "trust_constr",
-        "seed": 8,
-        "initial_u": 0.0,
-    },
-    "real_data_glm_mlp_policy_base": {"model_type": "glm", "policy_kind": "mlp"},
-    "real_data_glm_softmax_policy_base": {
-        "model_type": "glm",
-        "policy_kind": "softmax",
-        "n_samples": 194373,
-        "enabled_estimators": ("first_order", "finite_difference", "spsa", "stein_difference"),
-    },
-    "real_data_glm_softmax_policy_quadratic_base": {
-        "model_type": "glm",
-        "policy_kind": "softmax",
-        "feature_order": "quadratic",
-    },
-    "real_data_glm_softmax_policy_cubic_base": {
-        "model_type": "glm",
-        "policy_kind": "softmax",
-        "feature_order": "cubic",
-    },
-    "real_data_glm_softmax_policy_quartic_base": {
-        "model_type": "glm",
-        "policy_kind": "softmax",
-        "feature_order": "quartic",
-    },
-    "real_data_glm_softmax_policy_quartic_no_pca": {
-        "model_type": "glm",
-        "policy_kind": "softmax",
-        "feature_order": "quartic",
-        "policy_preprocessing": "no_pca",
-    },
-    "real_data_glm_softmax_policy_trust_region_constr": {
-        "model_type": "glm",
-        "policy_kind": "softmax",
-        "constraint_mode": "trust_constr",
-        "enabled_estimators": ("first_order", "finite_difference", "spsa", "stein_difference"),
-        "constant_u_baselines": (0.0853,),
-    },
-    "real_data_glm_softmax_policy_lagrangian_small": {
-        "model_type": "glm",
-        "policy_kind": "softmax",
-        "constraint_mode": "lagrangian",
-        "n_samples": 250,
-        "t_steps": 50,
-        "n_grad_samples": 8,
-        "lagrangian_lambda": 250.0,
-    },
-    "real_data_glm_softmax_policy_linear_no_pca_trust_region_constr": {
-        "model_type": "glm",
-        "policy_kind": "softmax",
-        "policy_preprocessing": "no_pca",
-        "constraint_mode": "trust_constr",
-        "t_steps": 500,
-        "enabled_estimators": ("first_order", "finite_difference", "stein_difference"),
-    },
-    "real_data_glm_softmax_policy_quadratic_no_pca_trust_region_constr": {
-        "model_type": "glm",
-        "policy_kind": "softmax",
-        "feature_order": "quadratic",
-        "policy_preprocessing": "no_pca",
-        "constraint_mode": "trust_constr",
-        "t_steps": 500,
-        "enabled_estimators": ("first_order",),
-    },
-    "real_data_glm_linear_policy_quartic_no_pca_trust_region_constr": {
-        "model_type": "glm",
-        "policy_kind": "linear",
-        "feature_order": "quartic",
-        "policy_preprocessing": "no_pca",
-        "constraint_mode": "trust_constr",
-        "t_steps": 500,
-        "enabled_estimators": ("first_order",),
-    },
-    "real_data_glm_mlp_policy_no_pca_trust_region_constr": {
-        "model_type": "glm",
-        "policy_kind": "mlp",
-        "policy_preprocessing": "no_pca",
-        "constraint_mode": "trust_constr",
-        "t_steps": 500,
-        "enabled_estimators": ("first_order",),
-    },
-    "real_data_xgb_linear_policy_base": {
-        "model_type": "xgb",
-        "policy_kind": "linear",
-        "seed": 8,
-        "initial_u": 0.0,
-    },
-    "real_data_xgb_softmax_policy_base": {"model_type": "xgb", "policy_kind": "softmax"},
-    "real_data_xgb_softmax_policy_trust_region_constr": {
-        "model_type": "xgb",
-        "policy_kind": "softmax",
-        "constraint_mode": "trust_constr",
-    },
-    "real_data_xgb_linear_acceptance_floor_base": {
-        "model_type": "xgb",
-        "policy_kind": "linear",
-        "constraint_mode": "penalty",
-        "seed": 8,
-        "initial_u": 0.2,
-        "n_grad_samples": 10,
-    },
-}
-
 _CONFIG_CACHE: dict[str, ExperimentConfig] = {}
 
 
 def list_configs() -> tuple[str, ...]:
-    return tuple([*_CONFIG_MODULES.keys(), *_REAL_DATA_BASES.keys(), *_LEGACY_REAL_DATA_ALIASES.keys()])
+    return tuple([*_CONFIG_MODULES.keys(), *_REAL_DATA_BASES.keys()])
 
 
 def get_config(name: str, overrides: Mapping[str, Any] | None = None) -> ExperimentConfig:
@@ -194,8 +60,6 @@ def get_config(name: str, overrides: Mapping[str, Any] | None = None) -> Experim
 def _real_data_payload(name: str) -> dict[str, Any] | None:
     if name in _REAL_DATA_BASES:
         return dict(_REAL_DATA_BASES[name])
-    if name in _LEGACY_REAL_DATA_ALIASES:
-        return dict(_LEGACY_REAL_DATA_ALIASES[name])
     return None
 
 

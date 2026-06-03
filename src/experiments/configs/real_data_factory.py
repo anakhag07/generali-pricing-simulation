@@ -288,6 +288,8 @@ def _resolve_theta0(
 ) -> np.ndarray | None:
     if not isinstance(theta0, str):
         return np.asarray(theta0, dtype=float) if theta0 is not None else None
+    if theta0 != "auto":
+        raise ValueError("theta0 must be an array, None, or 'auto'.")
     if isinstance(policy, ConstantPolicy):
         return np.asarray([0.0 if initial_u is None else float(initial_u)], dtype=float)
     if isinstance(policy, SoftmaxPolicy):

@@ -73,6 +73,13 @@ def test_model_type_maps_to_default_preset() -> None:
     assert model_type == "xgb"
 
 
+def test_default_model_type_uses_glm_base() -> None:
+    preset, model_type = _resolve_preset_and_model_type(None, None)
+
+    assert preset == "real_data_glm_base"
+    assert model_type is None
+
+
 def test_main_writes_optional_csv(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path,
@@ -83,7 +90,7 @@ def test_main_writes_optional_csv(
     monkeypatch.setattr(
         query_acceptance_at_u,
         "load_observed_u_array",
-        lambda model_type, n_rows: np.asarray([0.1, 0.2], dtype=float),
+        lambda model_type, n_rows, **kwargs: np.asarray([0.1, 0.2], dtype=float),
     )
     csv_path = tmp_path / "acceptance.csv"
     output_root = tmp_path / "plots"
@@ -121,7 +128,7 @@ def test_main_uses_custom_output_subdir(monkeypatch: pytest.MonkeyPatch, tmp_pat
     monkeypatch.setattr(
         query_acceptance_at_u,
         "load_observed_u_array",
-        lambda model_type, n_rows: np.asarray([0.1, 0.2], dtype=float),
+        lambda model_type, n_rows, **kwargs: np.asarray([0.1, 0.2], dtype=float),
     )
     output_root = tmp_path / "acceptance_queries"
 

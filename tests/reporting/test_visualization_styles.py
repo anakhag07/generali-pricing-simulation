@@ -35,7 +35,7 @@ class DummyFigure:
 
 
 def test_estimator_styles_use_distinct_markers() -> None:
-    ordered_names = ("first_order", "finite_difference", "gauss_stein", "stein_difference", "spsa")
+    ordered_names = ("constant", "first_order", "finite_difference", "gauss_stein", "stein_difference", "spsa")
     markers = [ESTIMATOR_STYLES[name]["marker"] for name in ordered_names]
     assert len(markers) == len(set(markers))
 

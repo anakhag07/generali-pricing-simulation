@@ -225,7 +225,7 @@ def test_acceptance_floor_requires_supporting_objective() -> None:
 def test_acceptance_floor_requires_positive_penalty_weight() -> None:
     from experiments.configs import get_config
 
-    cfg = get_config("real_data_glm_linear_policy_base")
+    cfg = get_config("real_data_glm_base", overrides={"policy_kind": "linear", "n_samples": 25, "plot": False, "wandb_enabled": False})
     with pytest.raises(ValueError, match="acceptance_penalty_weight"):
         ExperimentConfig(
             **{
@@ -288,7 +288,7 @@ def test_lagrangian_lambda_requires_mean_acceptance_grad() -> None:
 def test_lagrangian_lambda_rejects_penalty_weight() -> None:
     from experiments.configs import get_config
 
-    cfg = get_config("real_data_glm_linear_policy_base")
+    cfg = get_config("real_data_glm_base", overrides={"policy_kind": "linear", "n_samples": 25, "plot": False, "wandb_enabled": False})
     with pytest.raises(ValueError, match="mutually exclusive"):
         ExperimentConfig(
             **{
@@ -303,7 +303,7 @@ def test_lagrangian_lambda_rejects_penalty_weight() -> None:
 def test_lagrangian_lambda_rejected_for_trust_constr() -> None:
     from experiments.configs import get_config
 
-    cfg = get_config("real_data_glm_linear_policy_base")
+    cfg = get_config("real_data_glm_base", overrides={"policy_kind": "linear", "n_samples": 25, "plot": False, "wandb_enabled": False})
     with pytest.raises(ValueError, match="only supported for unconstrained step rules"):
         ExperimentConfig(
             **{
@@ -361,7 +361,7 @@ def test_trust_constr_requires_mean_acceptance_grad() -> None:
 def test_trust_constr_rejects_penalty_weight() -> None:
     from experiments.configs import get_config
 
-    cfg = get_config("real_data_glm_linear_policy_base")
+    cfg = get_config("real_data_glm_base", overrides={"policy_kind": "linear", "n_samples": 25, "plot": False, "wandb_enabled": False})
     with pytest.raises(ValueError, match="acceptance_penalty_weight"):
         ExperimentConfig(
             **{
@@ -376,14 +376,14 @@ def test_trust_constr_rejects_penalty_weight() -> None:
 def test_trust_constr_requires_full_batch() -> None:
     from experiments.configs import get_config
 
-    cfg = get_config("real_data_glm_linear_policy_base")
+    cfg = get_config("real_data_glm_base", overrides={"policy_kind": "linear", "n_samples": 25, "plot": False, "wandb_enabled": False})
     with pytest.raises(ValueError, match="batch_size=None"):
         ExperimentConfig(
             **{
                 **{k: getattr(cfg, k) for k in cfg.__dataclass_fields__},
                 "step_rule": "trust-constr",
                 "acceptance_floor": 0.5,
-                "batch_size": 32,
+                "batch_size": 2,
             }
         )
 
@@ -391,7 +391,7 @@ def test_trust_constr_requires_full_batch() -> None:
 def test_trust_constr_rejects_ftol() -> None:
     from experiments.configs import get_config
 
-    cfg = get_config("real_data_glm_linear_policy_base")
+    cfg = get_config("real_data_glm_base", overrides={"policy_kind": "linear", "n_samples": 25, "plot": False, "wandb_enabled": False})
     with pytest.raises(ValueError, match="ftol"):
         ExperimentConfig(
             **{
@@ -406,7 +406,7 @@ def test_trust_constr_rejects_ftol() -> None:
 def test_trust_constr_accepts_initial_constr_penalty() -> None:
     from experiments.configs import get_config
 
-    cfg = get_config("real_data_glm_linear_policy_base")
+    cfg = get_config("real_data_glm_base", overrides={"policy_kind": "linear", "n_samples": 25, "plot": False, "wandb_enabled": False})
     trust_config = ExperimentConfig(
         **{
             **{k: getattr(cfg, k) for k in cfg.__dataclass_fields__},
@@ -423,7 +423,7 @@ def test_trust_constr_accepts_initial_constr_penalty() -> None:
 def test_initial_constr_penalty_must_be_positive() -> None:
     from experiments.configs import get_config
 
-    cfg = get_config("real_data_glm_linear_policy_base")
+    cfg = get_config("real_data_glm_base", overrides={"policy_kind": "linear", "n_samples": 25, "plot": False, "wandb_enabled": False})
     with pytest.raises(ValueError, match="initial_constr_penalty must be positive"):
         ExperimentConfig(
             **{
@@ -639,7 +639,7 @@ def test_step_rule_validation() -> None:
 
     from experiments.configs import get_config
 
-    glm_cfg = get_config("real_data_glm_linear_policy_base")
+    glm_cfg = get_config("real_data_glm_base", overrides={"policy_kind": "linear", "n_samples": 25, "plot": False, "wandb_enabled": False})
     trust_config = ExperimentConfig(
         **{
             **{k: getattr(glm_cfg, k) for k in glm_cfg.__dataclass_fields__},

@@ -541,8 +541,10 @@ def _build_summary_payload(run_context: RunContext, result: ExperimentResult) ->
     for name, estimator_result in result.results.items():
         trace = result.traces.get(name)
         theta_l2_norm = float(np.linalg.norm(estimator_result.theta))
-        theta_delta_l2_norm = float(
-            np.linalg.norm(estimator_result.theta - result.config.theta0)
+        theta_delta_l2_norm = (
+            float(np.linalg.norm(estimator_result.theta - result.config.theta0))
+            if estimator_result.theta.size == result.config.theta0.size
+            else None
         )
         estimator_payload = {
             "final_u": float(estimator_result.u),
@@ -649,6 +651,8 @@ def _final_lagrangian_diagnostics(result: ExperimentResult, theta: np.ndarray, t
         return {}
     mean_acceptance_grad_fn = getattr(result.config.objective, "mean_acceptance_grad", None)
     if not callable(mean_acceptance_grad_fn):
+        return {}
+    if theta.size != result.config.theta0.size:
         return {}
     objective_grad = np.asarray(result.config.objective.grad(theta, result.x_samples), dtype=float)
     constraint_grad = np.asarray(mean_acceptance_grad_fn(theta, result.x_samples), dtype=float)

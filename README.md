@@ -41,7 +41,7 @@ $$
 Pluggable components:
 - **Objectives**: `FixedRegressionObjective`, `PlantedLogisticObjective`, `ModelBasedObjective`
 - **Policies**: `ConstantPolicy`, `LinearPolicy`, `SoftmaxPolicy`, `MLPPolicy` (2-layer, default hidden=16)
-- **Gradient estimators**: `first_order`, `finite_difference`, `gauss_stein`, `stein_difference`, `spsa`
+- **Gradient estimators**: `constant`, `first_order`, `finite_difference`, `gauss_stein`, `stein_difference`, `spsa`
 
 The default bounded policy is `SoftmaxPolicy`, which maps
 `u = 0.5 - sigma(theta^T phi(x))`, so its action range is `(-0.5, 0.5)`.
@@ -71,9 +71,11 @@ Optimization step rules:
 - `constant` uses the repo's manual gradient loop with fixed `step_size`.
 - `armijo` uses the same manual loop with Armijo backtracking seeded by `step_size`.
 
-`ExperimentConfig.constant_u_baselines` can be used to evaluate fixed-action
-baselines such as `(-0.3, 0.0, 0.2)` on the same batch used for training and
-show them in `summary.json`, the console summary, `loss_curves.png`, and
+`enabled_estimators=("constant", ...)` optimizes a one-parameter
+`ConstantPolicy` on the same objective/data as the configured policy. This is
+separate from `ExperimentConfig.constant_u_baselines`, which only evaluates
+fixed-action reference points such as `(-0.3, 0.0, 0.2)` and shows them in
+`summary.json`, the console summary, `loss_curves.png`, and
 `objective_u_slice.png`.
 
 ## Documentation
@@ -85,31 +87,34 @@ module layer.
 
 ## Data Sources
 
-Several preset configs are available, selected by config preset:
+Real-data experiments use a small set of base presets plus overrides:
 
 | Preset | State source | Objective |
 |---|---|---|
 | `fixed_regression_base` | Synthetic N(0, I) | `FixedRegressionObjective` |
-| `real_data_glm_softmax_policy_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, linear-feature softmax policy, analytical grad) |
-| `real_data_glm_softmax_policy_lagrangian_small` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, softmax policy, analytical grad, lagrangian floor scalarization) |
-| `real_data_glm_softmax_policy_quadratic_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, quadratic softmax policy, analytical grad) |
-| `real_data_glm_softmax_policy_cubic_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, cubic softmax policy, analytical grad) |
-| `real_data_glm_softmax_policy_quartic_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, quartic softmax policy, analytical grad) |
-| `real_data_glm_softmax_policy_quartic_no_pca` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, quartic softmax policy, full sphered policy features, analytical grad) |
-| `real_data_glm_mlp_policy_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, 2-layer MLP policy, hidden=16, analytical grad) |
-| `real_data_glm_softmax_policy_trust_region_constr` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, softmax policy + trust-constr acceptance floor) |
-| `real_data_glm_linear_policy_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, linear-policy diagnostic) |
-| `real_data_glm_linear_policy_quadratic_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, quadratic-feature linear policy) |
-| `real_data_glm_linear_policy_cubic_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, cubic-feature linear policy) |
-| `real_data_glm_linear_policy_quartic_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, quartic-feature linear policy) |
-| `real_data_glm_linear_policy_trust_region_constr` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, linear policy + trust-constr acceptance floor) |
-| `real_data_glm_constant_policy_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, constant-policy diagnostic) |
-| `real_data_glm_constant_policy_trust_region_constr` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, constant policy + trust-constr acceptance floor) |
-| `real_data_xgb_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, FD grad) |
-| `real_data_xgb_softmax_policy_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, softmax policy, FD grad) |
-| `real_data_xgb_linear_policy_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, linear policy, FD grad) |
-| `real_data_xgb_linear_acceptance_floor_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, linear policy + penalty acceptance floor) |
-| `real_data_xgb_softmax_policy_trust_region_constr` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, softmax policy + trust-constr acceptance floor) |
+| `real_data_glm_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, analytical grad when supported) |
+| `real_data_xgb_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, FD acceptance gradient) |
+
+Real-data overrides can select policy, feature order, preprocessing, constraint
+mode, and runtime knobs without adding a new preset module. Example:
+
+```python
+config = get_config(
+    "real_data_glm_base",
+    overrides={
+        "policy_kind": "softmax",
+        "feature_order": "quartic",
+        "policy_preprocessing": "no_pca",
+        "constraint_mode": "trust_constr",
+        "enabled_estimators": ("first_order", "constant"),
+    },
+)
+```
+
+Supported policy axes are `policy_kind in {"constant", "linear", "softmax",
+"mlp"}`, `feature_order in {"linear", "quadratic", "cubic", "quartic"}`,
+`policy_preprocessing in {"artifact", "no_pca"}`, and `constraint_mode in
+{"none", "trust_constr", "penalty", "lagrangian"}`.
 
 The objective for real-data configs is $$f(u; x) = a(x,u)(\hat{Y}(x) - (u + 1) \cdot p(x))$$
 where $$a$$ is acceptance probability, $$\hat{Y}$$ is expected financial loss, and $$p$$ is policy premium.
@@ -226,7 +231,8 @@ acceptance, loss, and action variation, use a saved run `summary.json`:
 
 ```bash
 python scripts/plot_pc_outcome_diagnostics.py \
-  --preset real_data_glm_mlp_policy_base \
+  --preset real_data_glm_base \
+  --policy-kind mlp \
   --summary-json outputs/glm-policy-comparison/mlp/<run_id>/summary.json \
   --estimator first_order
 ```
@@ -237,10 +243,10 @@ run summary by default.
 
 ## Creating Config Presets
 
-Use `src/experiments/configs/config_template.py` as a scaffold when creating a
-new preset. Fill in the `None` placeholders, save it as a new module under
-`src/experiments/configs/`, and register that module in
-`src/experiments/configs/__init__.py`.
+Prefer adding real-data variants through `get_config(..., overrides={...})`
+rather than creating one-off preset files. Use
+`src/experiments/configs/config_template.py` only for genuinely new synthetic or
+non-real-data experiment families.
 
 ## Outputs
 

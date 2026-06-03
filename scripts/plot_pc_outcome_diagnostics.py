@@ -311,6 +311,13 @@ def build_parser() -> argparse.ArgumentParser:
         description="Plot final-policy processed-component diagnostics against f_acc, loss, and u."
     )
     parser.add_argument("--preset", required=True, help="Config preset used to rebuild the objective.")
+    parser.add_argument("--policy-kind", default=None, help="Optional real-data config policy_kind override.")
+    parser.add_argument("--feature-order", default=None, help="Optional real-data config feature_order override.")
+    parser.add_argument(
+        "--policy-preprocessing",
+        default=None,
+        help="Optional real-data config policy_preprocessing override.",
+    )
     parser.add_argument(
         "--summary-json",
         type=Path,
@@ -345,7 +352,16 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: Sequence[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
-    config = get_config(args.preset)
+    overrides = {
+        key: value
+        for key, value in {
+            "policy_kind": args.policy_kind,
+            "feature_order": args.feature_order,
+            "policy_preprocessing": args.policy_preprocessing,
+        }.items()
+        if value is not None
+    }
+    config = get_config(args.preset, overrides=overrides)
     theta = _load_summary_theta(args.summary_json, args.estimator)
     x_batch = _resolve_x_array(
         config,

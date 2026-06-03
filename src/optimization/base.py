@@ -145,6 +145,12 @@ class Optimization:
         constraint_penalty: float | None = None
         optimizer_optimality: float | None = None
         optimizer_lagrangian_grad: np.ndarray | None = None
+        last_optimizer_grad_key: tuple[tuple[int, ...], bytes] | None = None
+        last_optimizer_grad: np.ndarray | None = None
+
+        def theta_key(theta_vec: np.ndarray) -> tuple[tuple[int, ...], bytes]:
+            theta_arr = np.ascontiguousarray(np.asarray(theta_vec, dtype=float))
+            return tuple(theta_arr.shape), theta_arr.tobytes()
 
         def value_fn(theta_vec: np.ndarray) -> float:
             theta_arr = np.asarray(theta_vec, dtype=float)
@@ -152,9 +158,13 @@ class Optimization:
             return objective_value_on_indices(self.objective, self.x_array, self.n_total, theta_arr, indices)
 
         def grad_fn(theta_vec: np.ndarray) -> np.ndarray:
+            nonlocal last_optimizer_grad_key, last_optimizer_grad
             theta_arr = np.asarray(theta_vec, dtype=float)
             indices = sample_indices(self.rng, self.batch_size_eff, self.n_total, self._full_indices)
-            return np.asarray(self.gradient.theta_grad(self, theta_arr, indices), dtype=float)
+            grad_theta = np.asarray(self.gradient.theta_grad(self, theta_arr, indices), dtype=float)
+            last_optimizer_grad_key = theta_key(theta_arr)
+            last_optimizer_grad = grad_theta.copy()
+            return grad_theta
 
         def acceptance_floor() -> float | None:
             floor = getattr(self.objective, "acceptance_floor", None)
@@ -220,7 +230,10 @@ class Optimization:
             indices = sample_indices(self.rng, self.batch_size_eff, self.n_total, self._full_indices)
             x_batch_arr = x_batch(self.x_array, indices, self.n_total)
             value = objective_value_on_indices(self.objective, self.x_array, self.n_total, theta_arr, indices)
-            grad_theta = np.asarray(self.gradient.theta_grad(self, theta_arr, indices), dtype=float)
+            if last_optimizer_grad_key == theta_key(theta_arr) and last_optimizer_grad is not None:
+                grad_theta = last_optimizer_grad.copy()
+            else:
+                grad_theta = np.asarray(self.gradient.theta_grad(self, theta_arr, indices), dtype=float)
             theta_grad_norm = float(np.linalg.norm(grad_theta))
 
             true_theta_grad_norm = None

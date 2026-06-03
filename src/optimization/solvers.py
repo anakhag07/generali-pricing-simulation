@@ -62,6 +62,45 @@ def run_first_order_minimize(
     return optimizer.solve(theta_start)
 
 
+def run_constant_minimize(
+    theta_start: np.ndarray,
+    x_samples: np.ndarray,
+    objective: Objective,
+    t_steps: int,
+    n_grad_samples: int,
+    sigma: float,
+    perturbation_space: str = "theta",
+    algorithm: str = STEP_RULE_LBFGSB,
+    step_size: float = 0.01,
+    batch_size: int | None = None,
+    true_grad_theta_fn: TrueThetaGradFn | None = None,
+    grad_norm_tol: float | None = None,
+    ftol: float | None = None,
+    initial_constr_penalty: float | None = None,
+    step_reporter: StepReporter | None = None,
+) -> tuple[np.ndarray, OptimizationTrace]:
+    optimizer = Optimization(
+        objective,
+        x_samples,
+        FirstOrderGradient(),
+        algorithm=algorithm,
+        t_steps=t_steps,
+        n_grad_samples=n_grad_samples,
+        sigma=sigma,
+        perturbation_space=perturbation_space,
+        step_size=step_size,
+        batch_size=batch_size,
+        true_grad_theta_fn=true_grad_theta_fn,
+        grad_norm_tol=grad_norm_tol,
+        ftol=ftol,
+        initial_constr_penalty=initial_constr_penalty,
+        step_reporter=step_reporter,
+        method_label="constant",
+        minimize_fn=minimize,
+    )
+    return optimizer.solve(theta_start)
+
+
 def run_finite_difference_minimize(
     theta_start: np.ndarray,
     x_samples: np.ndarray,
@@ -225,6 +264,7 @@ def run_stein_difference_minimize(
 
 
 __all__ = [
+    "run_constant_minimize",
     "run_first_order_minimize",
     "run_finite_difference_minimize",
     "run_gauss_stein_minimize",

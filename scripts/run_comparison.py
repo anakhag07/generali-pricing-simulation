@@ -14,43 +14,53 @@ _row_indices = sample_csv_row_indices("glm", n_rows=5000, seed=SEED)
 COMPARISON_SPECS = (
     ComparisonSpec(
         name="constant",
-        preset="real_data_glm_constant_policy_base",
+        preset="real_data_glm_base",
+        overrides={"policy_kind": "constant", "seed": 8},
     ),
     ComparisonSpec(
         name="linear",
-        preset="real_data_glm_linear_policy_base",
+        preset="real_data_glm_base",
+        overrides={"policy_kind": "linear", "seed": 8},
     ),
     ComparisonSpec(
         name="quadratic",
-        preset="real_data_glm_linear_policy_quadratic_base",
+        preset="real_data_glm_base",
+        overrides={"policy_kind": "linear", "feature_order": "quadratic", "seed": 8},
     ),
     ComparisonSpec(
         name="third-order",
-        preset="real_data_glm_linear_policy_cubic_base",
+        preset="real_data_glm_base",
+        overrides={"policy_kind": "linear", "feature_order": "cubic", "seed": 8},
     ),
     ComparisonSpec(
         name="fourth-order",
-        preset="real_data_glm_linear_policy_quartic_base",
+        preset="real_data_glm_base",
+        overrides={"policy_kind": "linear", "feature_order": "quartic", "seed": 8},
     ),
     ComparisonSpec(
         name="softmax-linear",
-        preset="real_data_glm_softmax_policy_base",
+        preset="real_data_glm_base",
+        overrides={"policy_kind": "softmax"},
     ),
     ComparisonSpec(
         name="softmax-quadratic",
-        preset="real_data_glm_softmax_policy_quadratic_base",
+        preset="real_data_glm_base",
+        overrides={"policy_kind": "softmax", "feature_order": "quadratic"},
     ),
     ComparisonSpec(
         name="softmax-third-order",
-        preset="real_data_glm_softmax_policy_cubic_base",
+        preset="real_data_glm_base",
+        overrides={"policy_kind": "softmax", "feature_order": "cubic"},
     ),
     ComparisonSpec(
         name="softmax-fourth-order",
-        preset="real_data_glm_softmax_policy_quartic_base",
+        preset="real_data_glm_base",
+        overrides={"policy_kind": "softmax", "feature_order": "quartic"},
     ),
     ComparisonSpec(
         name="mlp",
-        preset="real_data_glm_mlp_policy_base",
+        preset="real_data_glm_base",
+        overrides={"policy_kind": "mlp"},
     ),
 )
 

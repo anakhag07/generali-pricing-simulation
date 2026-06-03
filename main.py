@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from experiments.configs import get_config
 from experiments.reporters import (
     ConsoleReporter,
@@ -14,11 +16,29 @@ from experiments.reporters import (
 )
 from experiments.run import run_experiment
 
-RUN_CONFIGS = ["real_data_glm_softmax_policy_no_pca_trust_region_constr"]  # List of config names to run, must be defined as a variable in the corresponding config module and included in the
+RUN_CONFIGS: list[str | tuple[str, dict[str, Any]]] = [
+    (
+        "real_data_glm_base",
+        {
+            "policy_kind": "softmax",
+            "policy_preprocessing": "no_pca",
+            "feature_order": "linear", 
+            "constraint_mode": "trust_constr",
+            "n_samples": 5000,
+            "t_steps": 1000,
+            "enabled_estimators": ("first_order", "finite_difference", "stein_difference"),
+            "wandb_enabled": False,
+        },
+    )
+]
 
 def main() -> None:
-    for config_name in RUN_CONFIGS:
-        config = get_config(config_name)
+    for run_spec in RUN_CONFIGS:
+        if isinstance(run_spec, tuple):
+            config_name, overrides = run_spec
+        else:
+            config_name, overrides = run_spec, {}
+        config = get_config(config_name, overrides=overrides)
         run_context = create_run_context(config_name, runs_root="outputs")
         reporter_list = [
             ConsoleReporter(verbose=config.verbose),

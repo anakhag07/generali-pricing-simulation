@@ -223,7 +223,7 @@ Guidelines:
   - `SPSAGradient`: two-sided SPSA theta-gradient estimator
 
 - **`src/optimization/solvers.py`**
-  - `run_first_order_minimize(...)`, `run_finite_difference_minimize(...)`, `run_gauss_stein_minimize(...)`, `run_stein_difference_minimize(...)`, `run_spsa_minimize(...)`: compatibility wrappers that instantiate `Optimization` with the corresponding gradient object and call `solve(...)`
+  - `run_constant_minimize(...)`, `run_first_order_minimize(...)`, `run_finite_difference_minimize(...)`, `run_gauss_stein_minimize(...)`, `run_stein_difference_minimize(...)`, `run_spsa_minimize(...)`: compatibility wrappers that instantiate `Optimization` with the corresponding gradient object and call `solve(...)`
 
 - **`src/optimization/steps.py`**
   - `STEP_RULE_LBFGSB`, `STEP_RULE_TRUST_CONSTR`, `STEP_RULE_CONSTANT`, `STEP_RULE_ARMIJO`, `STEP_RULES`
@@ -247,30 +247,13 @@ Guidelines:
     `canonical_training_block`, `canonical_runtime_block`, and `build_experiment_config`
 
 - **`src/experiments/configs/`** (preset registry)
-  - `__init__.py`: `get_config(name)` and `list_configs()` registry
+  - `__init__.py`: `get_config(name, overrides=None)` and `list_configs()` registry; real-data configs are exposed only as base presets plus overrides
+  - `real_data_factory.py`: `build_real_data_config(...)` centralizes GLM/XGB artifact loading, row sampling, policy construction, feature-order overrides, policy-side no-PCA preprocessing, acceptance-floor modes, estimator defaults, and theta initialization
   - `first_order_runs_diff_starts.py`: planted-logistic preset configured for comparison runs across different initial starts
   - `fixed_regression_base.py`: base fixed-regression config (4D, L-BFGS-B step rule, W&B enabled)
   - `planted_logistic_base.py`: planted logistic base config (3D, L-BFGS-B step rule, 5000 steps, u*=1.1)
-  - `real_data_glm_softmax_policy_base.py`: GLM pickle-based softmax-policy base config; state_dim=12; uses `IdentityFeatureMap`; unconstrained `l-bfgs-b`; first-order, finite-difference, SPSA, and stein-difference estimators; analytical first-order gradient via u_coef
-  - `real_data_glm_softmax_policy_lagrangian_small.py`: small GLM softmax-policy lagrangian preset; first 250 raw rows; unconstrained `l-bfgs-b`; first-order, finite-difference, SPSA, and stein-difference enabled; observed-acceptance floor with `lagrangian_lambda=250.0`
-  - `real_data_glm_softmax_policy_quadratic_base.py`: registered GLM softmax-policy quadratic-feature config for policy comparison runs
-  - `real_data_glm_softmax_policy_cubic_base.py`: registered GLM softmax-policy cubic-feature config for policy comparison runs
-  - `real_data_glm_softmax_policy_quartic_base.py`: registered GLM softmax-policy quartic-feature config for policy comparison runs
-  - `real_data_glm_softmax_policy_quartic_no_pca.py`: GLM softmax quartic preset that keeps raw black-box preprocessing sealed but feeds the policy all 10 acceptance-state columns after policy-side standardization and full sphering/whitening with no PCA truncation; theta dim is 726
-  - `real_data_glm_mlp_policy_base.py`: GLM-backed config with a 2-layer `MLPPolicy` (hidden=16, tanh, identity feature map); enables `first_order`, `spsa`, `stein_difference` (FD omitted because `2*theta_dim` evals/grad is intractable); analytical first-order via `u_coef`
-  - `real_data_glm_softmax_policy_trust_region_constr.py`: constrained GLM softmax-policy config with a trust-constr mean-acceptance floor set to the observed CSV acceptance level; otherwise mirrors the softmax base preset
-  - `real_data_glm_linear_policy_base.py`: GLM pickle-based linear-policy diagnostic config; same data/models as `real_data_glm_softmax_policy_base` but with `LinearPolicy` and runtime-resolved random initialization to inspect behavior without softmax saturation
-  - `real_data_glm_linear_policy_quadratic_base.py`: registered GLM linear-policy quadratic-feature config for policy comparison runs
-  - `real_data_glm_linear_policy_cubic_base.py`: registered GLM linear-policy cubic-feature config for policy comparison runs
-  - `real_data_glm_linear_policy_quartic_base.py`: registered GLM linear-policy quartic-feature config for policy comparison runs
-  - `real_data_glm_linear_policy_trust_region_constr.py`: constrained GLM linear-policy config with `LinearPolicy` and a trust-constr mean-acceptance floor set to the observed CSV acceptance level; enables first-order, finite-difference, SPSA, and stein-difference for constrained comparison
-  - `real_data_glm_constant_policy_base.py`: unconstrained GLM constant-policy diagnostic config with `ConstantPolicy`, a zero-action initialization, L-BFGS-B, and first-order, finite-difference, SPSA, and stein-difference estimators
-  - `real_data_glm_constant_policy_trust_region_constr.py`: constrained GLM constant-policy config with `ConstantPolicy`, a zero-action initialization, and a trust-constr mean-acceptance floor set to the observed CSV acceptance level; enables first-order, finite-difference, SPSA, and stein-difference for constrained comparison
-  - `real_data_xgb_base.py`: XGBoost pickle-based config; state_dim=10; 4 estimators (no first_order); FD for d_acceptance/du
-  - `real_data_xgb_softmax_policy_base.py`: unconstrained XGBoost softmax-policy config; state_dim=10; zero initialization; uses finite_difference, SPSA, and stein_difference
-  - `real_data_xgb_linear_policy_base.py`: unconstrained XGBoost linear-policy config; state_dim=10; constant `u=0.0` initialization; uses finite_difference, SPSA, and stein_difference
-  - `real_data_xgb_linear_acceptance_floor_base.py`: constrained XGBoost diagnostic config with `LinearPolicy`, constant `u=0.2` initialization inside XGB `u_bounds`, and a smooth mean-acceptance floor set to the observed CSV acceptance level; uses finite_difference, SPSA, and stein_difference
-  - `real_data_xgb_softmax_policy_trust_region_constr.py`: constrained XGBoost softmax-policy config with a trust-constr mean-acceptance floor set to the observed CSV acceptance level; uses finite_difference, SPSA, and stein_difference
+  - `real_data_glm_base`: registry-only base built by `real_data_factory.py`; supports `policy_kind`, `feature_order`, `policy_preprocessing`, `constraint_mode`, runtime, and estimator overrides
+  - `real_data_xgb_base`: registry-only base built by `real_data_factory.py`; supports the same override axes, with XGB defaults excluding `first_order`
   - `config_template.py`: copy-first scaffold with `None` placeholders for all `ExperimentConfig` fields plus objective/correctness parameter blocks; not registered as a runnable preset
 
 - **`src/experiments/defaults.py`**
@@ -279,6 +262,7 @@ Guidelines:
 
 - **`src/experiments/helpers.py`** (largest file; orchestration + wrappers)
   - `resolve_true_grad_theta_fn(objective, correctness)`: resolves the "true" theta-gradient function from correctness spec
+  - `run_constant(...)`: optimized `ConstantPolicy` baseline wrapper delegating to `optimization.solvers.run_constant_minimize`
   - `run_first_order(...)`: wrapper delegating to `optimization.solvers.run_first_order_minimize`
   - `run_finite_difference(...)`: wrapper delegating to `optimization.solvers.run_finite_difference_minimize`
   - `run_gauss_stein(...)`: wrapper delegating to `optimization.solvers.run_gauss_stein_minimize`
@@ -288,11 +272,12 @@ Guidelines:
 
 - **`src/experiments/run.py`**
   - `run_experiment(config, step_reporter)`: main runner; uses `config.x_fixed` as state array when set, otherwise samples from N(0, I); runs enabled estimators; returns `ExperimentResult` (pure computation, no I/O)
+  - `enabled_estimators` may include `"constant"`, which optimizes a one-scalar `ConstantPolicy` copy of the configured objective; `constant_u_baselines` remains fixed-action evaluation only
 
 - **`src/experiments/sweep_utils.py`**
   - `expand_override_grid(...)`: cartesian product of override values
   - `apply_config_overrides(...)`: validates and applies top-level `ExperimentConfig` overrides
-  - `generate_sweep_runs(...)`: expands a base preset into named sweep variants
+  - `generate_sweep_runs(...)`: expands a base preset into named sweep variants; real-data override grids may include factory axes such as `policy_kind` and `constraint_mode`
   - `run_preset_sweep(...)`: executes sweep variants through the standard reporter pipeline
 
 - **`src/experiments/policy_pca_grid.py`**
@@ -336,15 +321,15 @@ Guidelines:
 
 ### Entry Point (`main.py`)
 
-- Reads `RUN_CONFIGS` list (currently `["fixed_regression_base"]`)
-- For each config name: loads via `get_config()`, creates `RunContext`, assembles `ReporterStack`, calls `run_experiment()`, finalizes with `reporters.on_end()`
+- Reads `RUN_CONFIGS` list; entries may be a config name or `(config_name, overrides)` tuple passed to `get_config(config_name, overrides=overrides)`
+- For each config spec: creates `RunContext`, assembles `ReporterStack`, calls `run_experiment()`, finalizes with `reporters.on_end()`
 - All I/O is handled by reporters, not by the runner
-- `scripts/run_sweep.py` provides optional preset-based sweep execution using top-level overrides
+- `scripts/run_sweep.py` provides optional preset-based sweep execution using top-level and real-data factory overrides
 - `scripts/run_lagrangian_sweep.py` runs a lagrangian-lambda sweep and writes aggregate frontier plots under `outputs/<project>/lagrangian_frontier_<timestamp>/`
 - `scripts/run_acceptance_floor_sweep.py` runs the trust-constrained softmax GLM preset over a dense acceptance-floor grid `c` and writes aggregate frontier plots under `outputs/<project>/acceptance_floor_frontier_<timestamp>/`
 - `scripts/plot_saved_acceptance_floor_frontier.py` re-plots acceptance-floor Pareto frontiers from a saved `acceptance_floor_sweep.csv` (or the latest matching frontier directory) without rerunning optimization; defaults to `first_order` and writes estimator-suffixed Pareto PNGs
 - `scripts/query_acceptance_at_u.py` loads a config preset or default GLM/XGB model type and reports mean acceptance for supplied or evenly sampled constant `u` values without running optimization; writes acceptance-curve and historical-`U` rug plots under `outputs/acceptance_queries/` by default and optionally writes `u,n,mean_acceptance` CSV output
-- `scripts/plot_pc_outcome_diagnostics.py` reads a saved run `summary.json`, rebuilds a real-data preset objective, and writes processed-policy-component scatter diagnostics against final `f_acc`, loss, and `u`; defaults beside the summary under `pc_outcome_diagnostics/<estimator>/`
+- `scripts/plot_pc_outcome_diagnostics.py` reads a saved run `summary.json`, rebuilds a real-data base preset objective with optional policy/preprocessing override flags, and writes processed-policy-component scatter diagnostics against final `f_acc`, loss, and `u`; defaults beside the summary under `pc_outcome_diagnostics/<estimator>/`
 - `scripts/plot_glm_data_tsne.py` samples rows from the GLM real-data CSV, runs a standardized t-SNE/KMeans feature diagnostic, and writes embedding CSV plus color-by-feature plots under `outputs/data-tsne/`; default colors include saved out-of-fold `F_acc = prob_acceptance`
 - `scripts/run_policy_pca_grid.py` runs the GLM policy PCA-dimensionality grid over configured PCA dimensions and policy classes `(constant, linear, quadratic, third_order, fourth_order, softmax_linear, softmax_quadratic, softmax_third_order, softmax_fourth_order, mlp)`; unconstrained is default, `--constrained` uses `trust-constr` with the observed GLM acceptance floor and a 500-step default cap; outputs aggregate CSVs, summary markdown, and headline/spread plots under `outputs/policy-pca-grid/`; prints per-condition progress by default and supports `--quiet`
 

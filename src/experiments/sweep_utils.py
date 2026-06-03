@@ -86,10 +86,9 @@ def generate_sweep_runs(
     else:
         overrides = [{}]
 
-    base_config = get_config(base_preset)
     runs: list[tuple[str, ExperimentConfig, dict[str, Any]]] = []
     for index, override in enumerate(overrides, start=1):
-        config = apply_config_overrides(base_config, override)
+        config = get_config(base_preset, overrides=override)
         run_name = make_display_name(
             base_preset,
             index=index,

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from experiments.sweep_utils import run_preset_sweep
 
-BASE_PRESET = "real_data_glm_softmax_policy_trust_region_constr"
+BASE_PRESET = "real_data_glm_base"
 PROJECT_NAME = "glm-softmax-policy-trust-region-constr-initial-penalty-sweep"
 DISPLAY_KEYS = ("initial_constr_penalty",)
 
@@ -14,6 +14,8 @@ OVERRIDE_GRID = {
     # "n_samples": [100], # [100, 500, 1000],
     # "t_steps": [10000],
     "seed": [8],
+    "policy_kind": ["softmax"],
+    "constraint_mode": ["trust_constr"],
     "plot": [True],
     "initial_constr_penalty": [0.1, 0.5, 1.0, 1.5, 2.0, 5.0],
     "wandb_enabled": [True],

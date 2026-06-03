@@ -137,8 +137,9 @@ def log_summary(result: ExperimentResult) -> None:
         print(f"Constant-u baselines: {baseline_text}")
     print("=== Results ===")
 
-    order = ("first_order", "finite_difference", "gauss_stein", "stein_difference", "spsa")
+    order = ("constant", "first_order", "finite_difference", "gauss_stein", "stein_difference", "spsa")
     labels = {
+        "constant": "constant",
         "first_order": "first-order",
         "finite_difference": "finite-difference",
         "gauss_stein": "gauss-stein",
@@ -209,12 +210,15 @@ def log_summary(result: ExperimentResult) -> None:
         for name in ordered:
             theta = result.results[name].theta
             theta_l2 = float(np.linalg.norm(theta))
-            theta_delta_l2 = float(np.linalg.norm(theta - config.theta0))
             print(f"Final theta ({labels[name]}): {format_array(theta)}")
-            print(
-                f"Final theta norms ({labels[name]}): "
-                f"||theta||_2={theta_l2:.4f}, ||theta-theta0||_2={theta_delta_l2:.4f}"
-            )
+            if theta.size == config.theta0.size:
+                theta_delta_l2 = float(np.linalg.norm(theta - config.theta0))
+                print(
+                    f"Final theta norms ({labels[name]}): "
+                    f"||theta||_2={theta_l2:.4f}, ||theta-theta0||_2={theta_delta_l2:.4f}"
+                )
+            else:
+                print(f"Final theta norms ({labels[name]}): ||theta||_2={theta_l2:.4f}")
         print("=== Runtime (s) ===")
         for name in ordered:
             runtime = float(result.results[name].time)

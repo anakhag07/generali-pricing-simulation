@@ -418,7 +418,9 @@ class PlotReporter:
             theta_path_points = [config.theta0]
             for trace in traces.values():
                 if trace.theta_values:
-                    theta_path_points.extend(trace.theta_values)
+                    theta_path_points.extend(
+                        theta for theta in trace.theta_values if theta.size == config.theta0.size
+                    )
             if config.theta0.size > 2 and theta_path_points:
                 axis_indices = select_theta_axes_max_variance(theta_path_points)
                 axis_labels = (
@@ -433,7 +435,8 @@ class PlotReporter:
             theta_refs = [config.theta0]
             theta_points = [(config.theta0, "initial")]
             for name, estimator_result in ordered_results:
-                theta_refs.append(estimator_result.theta)
+                if estimator_result.theta.size == config.theta0.size:
+                    theta_refs.append(estimator_result.theta)
             first_order_result = result.results.get("first_order")
             if first_order_result is not None:
                 theta_points.append((first_order_result.theta, "first-order final point"))
@@ -538,8 +541,10 @@ def _build_summary_payload(run_context: RunContext, result: ExperimentResult) ->
     for name, estimator_result in result.results.items():
         trace = result.traces.get(name)
         theta_l2_norm = float(np.linalg.norm(estimator_result.theta))
-        theta_delta_l2_norm = float(
-            np.linalg.norm(estimator_result.theta - result.config.theta0)
+        theta_delta_l2_norm = (
+            float(np.linalg.norm(estimator_result.theta - result.config.theta0))
+            if estimator_result.theta.size == result.config.theta0.size
+            else None
         )
         estimator_payload = {
             "final_u": float(estimator_result.u),
@@ -646,6 +651,8 @@ def _final_lagrangian_diagnostics(result: ExperimentResult, theta: np.ndarray, t
         return {}
     mean_acceptance_grad_fn = getattr(result.config.objective, "mean_acceptance_grad", None)
     if not callable(mean_acceptance_grad_fn):
+        return {}
+    if theta.size != result.config.theta0.size:
         return {}
     objective_grad = np.asarray(result.config.objective.grad(theta, result.x_samples), dtype=float)
     constraint_grad = np.asarray(mean_acceptance_grad_fn(theta, result.x_samples), dtype=float)

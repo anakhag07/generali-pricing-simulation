@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import cast
 
 from experiments.results import OptimizationTrace
-from reporting.visualization import plot_step_sizes
+from reporting.visualization import ESTIMATOR_STYLES, plot_step_sizes
 
 
 class DummyAxis:
@@ -72,5 +72,5 @@ def test_plot_step_sizes_uses_log_scale(monkeypatch, tmp_path) -> None:
     assert len(dummy_ax.plot_calls) == 1
     kwargs = dummy_ax.plot_calls[0]
     alpha = cast(float, kwargs["alpha"])
-    assert kwargs["marker"] == "o"
+    assert kwargs["marker"] == ESTIMATOR_STYLES["first_order"]["marker"]
     assert alpha == 0.5

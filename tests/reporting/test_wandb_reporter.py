@@ -31,7 +31,7 @@ class _FakeWandb:
 
     def init(self, **kwargs: object) -> object:
         self.init_calls.append(dict(kwargs))
-        return object()
+        return _FakeRun(self)
 
     def log(self, payload: dict, step: int | None = None) -> None:
         self.log_calls.append((dict(payload), step))
@@ -44,6 +44,17 @@ class _FakeWandb:
 
     def Image(self, path: str) -> _FakeImage:  # noqa: N802
         return _FakeImage(path=path)
+
+
+class _FakeRun:
+    def __init__(self, wandb: _FakeWandb) -> None:
+        self._wandb = wandb
+
+    def log(self, payload: dict, step: int | None = None) -> None:
+        self._wandb.log(payload, step=step)
+
+    def finish(self) -> None:
+        self._wandb.finish()
 
 
 def _build_config(**overrides: object) -> ExperimentConfig:
@@ -135,33 +146,25 @@ def test_wandb_reporter_streams_and_summarizes(tmp_path: Path, monkeypatch) -> N
     reporter.log_step("first_order", 1, 0.52, -0.09, grad_norm=0.1, step_size=0.01)
     reporter.on_end(run_context, result)
 
-    assert len(fake_wandb.init_calls) == 1
+    assert len(fake_wandb.init_calls) == 2
     init_payload = fake_wandb.init_calls[0]
     assert init_payload["project"] == "unit-tests"
     assert init_payload["config"]["n_grad_samples"] == 64
+    assert init_payload["job_type"] == "first_order"
+    assert fake_wandb.init_calls[1]["job_type"] == "summary"
 
-    defined = {name: kwargs for name, kwargs in fake_wandb.define_metric_calls}
-    assert "curve/first_order/step" in defined
-    assert defined["curve/first_order/step"]["hidden"] is True
-    assert defined["curve/first_order/step"]["summary"] == "none"
-    assert defined["curve/first_order/objective"]["step_metric"] == "curve/first_order/step"
-    assert defined["curve/first_order/u"]["step_metric"] == "curve/first_order/step"
-    assert defined["curve/first_order/mean_acceptance"]["step_metric"] == "curve/first_order/step"
-    assert defined["curve/first_order/projected_loss"]["step_metric"] == "curve/first_order/step"
-    assert defined["curve/first_order/projected_revenue"]["step_metric"] == "curve/first_order/step"
-
-    curve_payloads = [payload for payload, _ in fake_wandb.log_calls if "curve/first_order/objective" in payload]
+    curve_payloads = [payload for payload, _ in fake_wandb.log_calls if "objective" in payload]
     assert len(curve_payloads) == 2
-    assert "curve/first_order/theta_grad_norm" in curve_payloads[0]
-    assert curve_payloads[0]["curve/first_order/mean_acceptance"] == 0.81
-    assert curve_payloads[0]["curve/first_order/projected_loss"] == 120.0
-    assert curve_payloads[0]["curve/first_order/projected_revenue"] == 0.04
-    assert "curve/first_order/step_size" in curve_payloads[1]
+    assert "theta_grad_norm" in curve_payloads[0]
+    assert curve_payloads[0]["mean_acceptance"] == 0.81
+    assert curve_payloads[0]["projected_loss"] == 120.0
+    assert curve_payloads[0]["projected_revenue"] == 0.04
+    assert "step_size" in curve_payloads[1]
 
     final_payloads = [payload for payload, _ in fake_wandb.log_calls if "final/first_order/value" in payload]
     assert len(final_payloads) == 1
     assert "final/spsa/value" in final_payloads[0]
-    assert fake_wandb.finish_calls == 1
+    assert fake_wandb.finish_calls == 2
 
 
 def test_wandb_reporter_allowlist_filters_metrics(tmp_path: Path, monkeypatch) -> None:
@@ -183,11 +186,10 @@ def test_wandb_reporter_allowlist_filters_metrics(tmp_path: Path, monkeypatch) -
         for payload, _ in fake_wandb.log_calls
         for key in payload.keys()
     }
-    defined_metrics = {name for name, _ in fake_wandb.define_metric_calls}
-    assert "curve/first_order/step" not in defined_metrics
-    assert "curve/spsa/step" in defined_metrics
-    assert "curve/first_order/objective" not in flattened_keys
-    assert "curve/spsa/objective" in flattened_keys
+    job_types = [payload["job_type"] for payload in fake_wandb.init_calls]
+    assert "first_order" not in job_types
+    assert "spsa" in job_types
+    assert "objective" in flattened_keys
     assert "final/first_order/value" not in flattened_keys
     assert "final/spsa/value" in flattened_keys
 
@@ -238,9 +240,9 @@ def test_wandb_reporter_accepts_stein_difference_alias_allowlist(
         for payload, _ in fake_wandb.log_calls
         for key in payload.keys()
     }
-    defined_metrics = {name for name, _ in fake_wandb.define_metric_calls}
-    assert "curve/stein_difference/step" in defined_metrics
-    assert "curve/stein_difference/objective" in flattened_keys
+    job_types = [payload["job_type"] for payload in fake_wandb.init_calls]
+    assert "stein_difference" in job_types
+    assert "objective" in flattened_keys
     assert "final/stein_difference/value" in flattened_keys
 
 
@@ -267,15 +269,7 @@ def test_wandb_reporter_runtime_logs_use_canonical_estimator_keys(
     result = run_experiment(config, step_reporter=reporter)
     reporter.on_end(run_context, result)
 
-    curve_steps: dict[str, list[int]] = {}
-    for payload, _ in fake_wandb.log_calls:
-        for key, value in payload.items():
-            if not key.startswith("curve/") or not key.endswith("/step"):
-                continue
-            method = key.removeprefix("curve/").removesuffix("/step")
-            curve_steps.setdefault(method, []).append(int(value))
-
-    assert set(curve_steps) == set(config.enabled_estimators)
-    assert all("-" not in method for method in curve_steps)
-    for method in config.enabled_estimators:
-        assert curve_steps[method][0] == 0
+    job_types = [payload["job_type"] for payload in fake_wandb.init_calls if payload["job_type"] != "summary"]
+    assert set(job_types) == set(config.enabled_estimators)
+    assert all("-" not in method for method in job_types)
+    assert any(step == 0 for _payload, step in fake_wandb.log_calls)

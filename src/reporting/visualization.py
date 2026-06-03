@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
 
 ESTIMATOR_STYLES = {
+    "constant": {"label": "constant", "color": "#9467bd", "marker": "o"},
     "first_order": {
         "label": "first-order",
         "color": "#1f77b4",
@@ -31,7 +32,7 @@ ESTIMATOR_STYLES = {
     "stein_difference": {"label": "stein-difference", "color": "#2ca02c", "marker": "^"},
     "spsa": {"label": "SPSA", "color": "#d62728", "marker": "D"},
 }
-_TRACE_ORDER = ("first_order", "finite_difference", "gauss_stein", "stein_difference", "spsa")
+_TRACE_ORDER = ("constant", "first_order", "finite_difference", "gauss_stein", "stein_difference", "spsa")
 _LINE_ALPHA = 0.5
 _LINE_WIDTH = 1.8
 _MARKER_SIZE = 4.2
@@ -762,6 +763,24 @@ def _policy_outputs_for_theta(
     return u_values.reshape(-1)
 
 
+def _policy_outputs_for_estimator(
+    objective: Objective,
+    estimator_name: str,
+    theta: np.ndarray,
+    x_samples: np.ndarray,
+) -> np.ndarray:
+    if estimator_name != "constant":
+        return _policy_outputs_for_theta(objective, theta, x_samples)
+    theta_arr = np.asarray(theta, dtype=float).reshape(-1)
+    if theta_arr.size != 1:
+        raise ValueError("constant estimator theta must contain one scalar.")
+    u_values = np.full(np.asarray(x_samples, dtype=float).shape[0], float(theta_arr[0]), dtype=float)
+    clip_fn = getattr(objective, "_clip_u", None)
+    if callable(clip_fn):
+        u_values = np.asarray(clip_fn(u_values), dtype=float)
+    return u_values.reshape(-1)
+
+
 def _row_objective_values(
     objective: Objective,
     x_samples: np.ndarray,
@@ -885,7 +904,7 @@ def _plot_policy_u_histograms(
     extra_names = sorted(name for name in theta_by_estimator if name not in _TRACE_ORDER)
     ordered_names.extend(extra_names)
     policy_outputs = {
-        name: _policy_outputs_for_theta(objective, theta_by_estimator[name], x_arr)
+        name: _policy_outputs_for_estimator(objective, name, theta_by_estimator[name], x_arr)
         for name in ordered_names
     }
     bins = _policy_output_histogram_bins([observed_u_arr, *policy_outputs.values()])
@@ -945,7 +964,7 @@ def _plot_policy_u_vs_objective(
     extra_names = sorted(name for name in theta_by_estimator if name not in _TRACE_ORDER)
     ordered_names.extend(extra_names)
     policy_outputs = {
-        name: _policy_outputs_for_theta(objective, theta_by_estimator[name], x_arr)
+        name: _policy_outputs_for_estimator(objective, name, theta_by_estimator[name], x_arr)
         for name in ordered_names
     }
     bins = _policy_output_histogram_bins([observed_u_arr, *policy_outputs.values()])
@@ -1030,7 +1049,7 @@ def _plot_policy_acceptance_histograms(
         name: _row_acceptance_values(
             objective,
             x_arr,
-            _policy_outputs_for_theta(objective, theta_by_estimator[name], x_arr),
+            _policy_outputs_for_estimator(objective, name, theta_by_estimator[name], x_arr),
         )
         for name in ordered_names
     }
@@ -1096,7 +1115,7 @@ def _plot_policy_u_acceptance_histograms(
 
     for row_idx, name in enumerate(ordered_names):
         style = _estimator_style(name)
-        policy_u = _policy_outputs_for_theta(objective, theta_by_estimator[name], x_arr)
+        policy_u = _policy_outputs_for_estimator(objective, name, theta_by_estimator[name], x_arr)
         acceptance_values = _row_acceptance_values(objective, x_arr, policy_u)
         bins = _policy_output_histogram_bins([policy_u])
         centers, mean_acceptance = _binned_mean_line(policy_u, acceptance_values, bins)
@@ -1188,7 +1207,7 @@ def _plot_policy_u_vs_acceptance_spread(
     ordered_names = [name for name in _TRACE_ORDER if name in theta_by_estimator]
     ordered_names.extend(sorted(name for name in theta_by_estimator if name not in _TRACE_ORDER))
     policy_outputs = {
-        name: _policy_outputs_for_theta(objective, theta_by_estimator[name], x_arr)
+        name: _policy_outputs_for_estimator(objective, name, theta_by_estimator[name], x_arr)
         for name in ordered_names
     }
     bins = _policy_output_histogram_bins([observed_u_arr, *policy_outputs.values()])
@@ -1514,6 +1533,8 @@ def plot_theta_objective_contours(
                 continue
             style = ESTIMATOR_STYLES[name]
             theta_path = np.asarray(trace.theta_values, dtype=float)
+            if theta_path.ndim != 2 or max(axis_indices) >= theta_path.shape[1]:
+                continue
             ax.plot(
                 theta_path[:, axis_indices[0]],
                 theta_path[:, axis_indices[1]],

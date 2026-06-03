@@ -13,13 +13,14 @@ from reporting.visualization import (
     plot_lagrangian_pareto_frontier,
 )
 
-BASE_PRESET = "real_data_glm_softmax_policy_base"
+BASE_PRESET = "real_data_glm_base"
 PROJECT_NAME = "glm-softmax-lagrangian-sweep"
 DISPLAY_KEYS = ("lagrangian_lambda",)
 LAMBDA_VALUES = (0.0, 10.0, 50.0, 100.0, 250.0, 300.0,  325.0, 350.0, 375.0, 400.0, 425.0, 450.0, 475.0, 500.0)
 
 OVERRIDE_GRID = {
     "acceptance_floor": [load_mean_observed_acceptance("glm")],
+    "policy_kind": ["softmax"],
     "lagrangian_lambda": list(LAMBDA_VALUES),
     "enabled_estimators": [
         (

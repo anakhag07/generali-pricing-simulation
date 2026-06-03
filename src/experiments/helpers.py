@@ -12,6 +12,7 @@ from experiments.reporters import StepReporter
 from experiments.results import OptimizationTrace
 from optimization.helpers import finite_difference_theta_grad
 from optimization.solvers import (
+    run_constant_minimize,
     run_finite_difference_minimize,
     run_first_order_minimize,
     run_gauss_stein_minimize,
@@ -63,6 +64,45 @@ def run_first_order(
     """Run first-order optimization."""
     del rng  # Not used by first-order minimize
     return run_first_order_minimize(
+        theta_start=theta_start,
+        x_samples=x_samples,
+        objective=objective,
+        t_steps=t_steps,
+        n_grad_samples=n_grad_samples,
+        sigma=sigma,
+        perturbation_space=perturbation_space,
+        algorithm=step_rule,
+        step_size=step_size,
+        batch_size=batch_size,
+        true_grad_theta_fn=true_grad_theta_fn,
+        grad_norm_tol=grad_norm_tol,
+        ftol=ftol,
+        initial_constr_penalty=initial_constr_penalty,
+        step_reporter=step_reporter,
+    )
+
+
+def run_constant(
+    theta_start: np.ndarray,
+    x_samples: np.ndarray,
+    objective: Objective,
+    rng: np.random.Generator,
+    t_steps: int,
+    step_rule: str,
+    step_size: float,
+    n_grad_samples: int,
+    sigma: float,
+    batch_size: int | None,
+    perturbation_space: str = "theta",
+    true_grad_theta_fn: TrueThetaGradFn | None = None,
+    grad_norm_tol: float | None = None,
+    ftol: float | None = None,
+    initial_constr_penalty: float | None = None,
+    step_reporter: StepReporter | None = None,
+) -> tuple[np.ndarray, OptimizationTrace]:
+    """Run optimized constant-policy baseline."""
+    del rng  # Not used by first-order minimize
+    return run_constant_minimize(
         theta_start=theta_start,
         x_samples=x_samples,
         objective=objective,
@@ -235,4 +275,3 @@ def run_stein_difference(
         initial_constr_penalty=initial_constr_penalty,
         step_reporter=step_reporter,
     )
-

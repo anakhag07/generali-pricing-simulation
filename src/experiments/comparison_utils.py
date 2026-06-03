@@ -23,7 +23,6 @@ from experiments.reporters import (
 )
 from experiments.results import ExperimentResult
 from experiments.run import run_experiment
-from experiments.sweep_utils import apply_config_overrides
 from reporting.visualization import (
     plot_comparison_final_metric,
     plot_comparison_objective_curves,
@@ -75,7 +74,7 @@ def generate_comparison_runs(
         if not spec.name:
             raise ValueError("Comparison spec names must be non-empty.")
         overrides = {**common, **dict(spec.overrides)}
-        config = apply_config_overrides(get_config(spec.preset), overrides)
+        config = get_config(spec.preset, overrides=overrides)
         runs.append(
             ComparisonRun(
                 name=spec.name,

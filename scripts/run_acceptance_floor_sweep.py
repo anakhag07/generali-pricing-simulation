@@ -9,7 +9,7 @@ from pathlib import Path
 from experiments.sweep_utils import run_preset_sweep
 from reporting.visualization import _plot_sweep_pareto_frontier, _plot_sweep_tradeoffs
 
-BASE_PRESET = "real_data_glm_softmax_policy_trust_region_constr"
+BASE_PRESET = "real_data_glm_base"
 PROJECT_NAME = "glm-softmax-acceptance-floor-sweep"
 DISPLAY_KEYS = ("acceptance_floor",)
 C_VALUES = (
@@ -38,6 +38,8 @@ C_VALUES = (
 
 OVERRIDE_GRID = {
     "acceptance_floor": list(C_VALUES),
+    "policy_kind": ["softmax"],
+    "constraint_mode": ["trust_constr"],
     "enabled_estimators": [
         (
             "first_order",

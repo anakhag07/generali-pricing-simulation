@@ -20,7 +20,7 @@ from experiments.configs import get_config
 from objective import default_rng, mean_acceptance_at_constant_u, sample_states
 
 DEFAULT_MODEL_PRESETS: dict[str, str] = {
-    "glm": "real_data_glm_softmax_policy_base",
+    "glm": "real_data_glm_base",
     "xgb": "real_data_xgb_base",
 }
 DEFAULT_OUTPUT_ROOT = Path("outputs") / "acceptance_queries"
@@ -230,7 +230,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--preset",
         default=None,
-        help="Config preset to load. Defaults to real_data_glm_softmax_policy_base.",
+        help="Config preset to load. Defaults to real_data_glm_base.",
     )
     parser.add_argument(
         "--model-type",

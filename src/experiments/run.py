@@ -10,6 +10,7 @@ from numpy.random import SeedSequence
 
 from objective.base import default_rng, sample_states
 from experiments.defaults import random_theta0
+from objective.policy import ConstantPolicy
 from objective.utils import (
     mean_acceptance_at_constant_u,
     _mean_action,
@@ -20,6 +21,7 @@ from objective.utils import (
 from experiments.config import ExperimentConfig
 from experiments.helpers import (
     resolve_true_grad_theta_fn,
+    run_constant,
     run_finite_difference,
     run_first_order,
     run_gauss_stein,
@@ -53,6 +55,25 @@ def _maybe_apply_acceptance_controls(config: ExperimentConfig) -> ExperimentConf
         ),
     )
     return replace(config, objective=objective_with_floor)
+
+
+def _constant_policy_objective(objective: object) -> object:
+    """Return an objective copy with a one-parameter constant policy."""
+    if not hasattr(objective, "policy"):
+        raise ValueError("enabled estimator 'constant' requires an objective with a policy.")
+    return replace(objective, policy=ConstantPolicy())
+
+
+def _constant_theta_start(objective: object, theta_initial: np.ndarray, x_samples: np.ndarray) -> np.ndarray:
+    """Initialize the constant baseline at the configured policy's mean action."""
+    try:
+        start_u = _mean_action(objective, theta_initial, x_samples)
+    except Exception:  # noqa: BLE001 - fall back for objectives with unusual policy hooks.
+        start_u = 0.0
+    clip_fn = getattr(objective, "_clip_u", None)
+    if callable(clip_fn):
+        start_u = float(np.asarray(clip_fn(np.asarray([start_u], dtype=float)), dtype=float)[0])
+    return np.asarray([start_u], dtype=float)
 
 
 def run_experiment(
@@ -120,6 +141,53 @@ def run_experiment(
 
     results: dict[str, EstimatorResult] = {}
     traces = {}
+
+    if "constant" in enabled_estimators:
+        constant_objective = _constant_policy_objective(objective)
+        theta_constant_initial = _constant_theta_start(objective, theta_initial, x_samples)
+        true_grad_constant_fn = resolve_true_grad_theta_fn(
+            constant_objective,
+            effective_config.correctness,
+        )
+        mean_acceptance_constant_fn = getattr(constant_objective, "mean_acceptance", None)
+        start_constant = time.perf_counter()
+        theta_constant, trace_constant = run_constant(
+            theta_constant_initial,
+            x_samples,
+            constant_objective,
+            rng,
+            effective_config.t_steps,
+            effective_config.step_rule,
+            effective_config.step_size,
+            effective_config.n_grad_samples,
+            effective_config.sigma,
+            effective_config.batch_size,
+            perturbation_space=effective_config.perturbation_space,
+            true_grad_theta_fn=true_grad_constant_fn,
+            grad_norm_tol=effective_config.grad_norm_tol,
+            ftol=effective_config.ftol,
+            initial_constr_penalty=effective_config.initial_constr_penalty,
+            step_reporter=step_reporter,
+        )
+        time_constant = time.perf_counter() - start_constant
+        u_constant = _mean_action(constant_objective, theta_constant, x_samples)
+        value_constant = value_for_reporting(constant_objective, theta_constant, x_samples)
+        acceptance_constant = (
+            float(mean_acceptance_constant_fn(theta_constant, x_samples))
+            if callable(mean_acceptance_constant_fn)
+            else None
+        )
+        results["constant"] = EstimatorResult(
+            theta=theta_constant,
+            u=u_constant,
+            value=value_constant,
+            time=time_constant,
+            mean_acceptance=acceptance_constant,
+            constraint_violation=trace_constant.constraint_violation,
+            acceptance_multiplier=trace_constant.acceptance_multiplier,
+            constraint_penalty=trace_constant.constraint_penalty,
+        )
+        traces["constant"] = trace_constant
 
     if "first_order" in enabled_estimators:
         start_first = time.perf_counter()

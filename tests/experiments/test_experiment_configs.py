@@ -21,18 +21,22 @@ def test_list_configs_includes_defaults() -> None:
     assert "first_order_runs_diff_starts" in configs
     assert "fixed_regression_base" in configs
     assert "planted_logistic_base" in configs
-    assert "real_data_glm_constant_policy_base" in configs
-    assert "real_data_glm_constant_policy_trust_region_constr" in configs
-    assert "real_data_glm_mlp_policy_base" in configs
-    assert "real_data_glm_linear_policy_cubic_base" in configs
-    assert "real_data_glm_linear_policy_quadratic_base" in configs
-    assert "real_data_glm_linear_policy_quartic_base" in configs
-    assert "real_data_glm_softmax_policy_base" in configs
-    assert "real_data_glm_softmax_policy_cubic_base" in configs
-    assert "real_data_glm_softmax_policy_lagrangian_small" in configs
-    assert "real_data_glm_softmax_policy_quadratic_base" in configs
-    assert "real_data_glm_softmax_policy_quartic_base" in configs
-    assert "real_data_glm_linear_policy_trust_region_constr" in configs
-    assert "real_data_xgb_linear_acceptance_floor_base" in configs
-    assert "real_data_xgb_linear_policy_base" in configs
-    assert "real_data_xgb_softmax_policy_base" in configs
+    assert "real_data_glm_base" in configs
+    assert "real_data_xgb_base" in configs
+    assert "real_data_glm_softmax_policy_base" not in configs
+
+
+def test_get_config_accepts_real_data_builder_overrides() -> None:
+    config = get_config(
+        "real_data_glm_base",
+        overrides={
+            "policy_kind": "linear",
+            "feature_order": "quadratic",
+            "n_samples": 20,
+            "plot": False,
+            "wandb_enabled": False,
+        },
+    )
+    assert isinstance(config, ExperimentConfig)
+    assert config.n_samples == 20
+    assert config.plot is False

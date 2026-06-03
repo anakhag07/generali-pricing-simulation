@@ -36,6 +36,38 @@ def test_run_experiment_single_estimator() -> None:
     assert "lbfgs" not in result.results
 
 
+def test_run_experiment_constant_only() -> None:
+    objective = FixedRegressionObjective.from_parameters(
+        policy=default_policy(1),
+        beta_1=[0.1],
+        beta_2=-0.5,
+        beta_3=[0.2],
+        beta_4=0.4,
+    )
+    config = ExperimentConfig(
+        seed=3,
+        state_dim=1,
+        objective=objective,
+        theta0=default_theta0(1),
+        n_samples=4,
+        step_rule="l-bfgs-b",
+        perturbation_space="theta",
+        t_steps=5,
+        step_size=0.01,
+        n_grad_samples=1,
+        plot=False,
+        enabled_estimators=("constant",),
+    )
+
+    result = run_experiment(config)
+
+    assert set(result.results) == {"constant"}
+    assert set(result.traces) == {"constant"}
+    assert result.results["constant"].theta.shape == (1,)
+    assert isinstance(result.results["constant"].u, float)
+    assert result.traces["constant"].theta_values[0].shape == (1,)
+
+
 def test_run_experiment_finite_difference_only() -> None:
     objective = FixedRegressionObjective.from_parameters(
         policy=default_policy(1),

@@ -3,7 +3,10 @@ __pycache__/
 **/*__pycache__*/
 *.pyc
 *.egg-info/
-src/data/
+src/data/**/*.csv
+src/data/**/*.pkl
+src/data/**/*.ipynb
+src/data/unused/
 build/
 dist/
 plots/

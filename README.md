@@ -114,9 +114,13 @@ Several preset configs are available, selected by config preset:
 The objective for real-data configs is $$f(u; x) = a(x,u)(\hat{Y}(x) - (u + 1) \cdot p(x))$$
 where $$a$$ is acceptance probability, $$\hat{Y}$$ is expected financial loss, and $$p$$ is policy premium.
 
-Real-data artifacts now live under `src/data/artifacts_preproc_pipeline/` and each
-pickle bundles the fitted estimator with its saved `FeatureProcessor`. The
-objective keeps raw CSV rows at the optimization boundary and reuses the
+Real-data source rows now live in the canonical `src/data/dataset.csv` file,
+with schema/path metadata tracked in `src/data/dataset_metadata.py`. The current
+canonical CSV is the GLM acceptance export; both GLM and XGB real-data loaders
+sample rows from it.
+Model artifacts live under `src/data/models/linear/` and `src/data/models/xgb/`,
+and each pickle bundles the fitted estimator with its saved `FeatureProcessor`.
+The objective keeps raw CSV rows at the optimization boundary and reuses the
 acceptance bundle's saved preprocessing internally for both `u(theta, x)` and
 `du/dtheta`.
 For policy-feature experiments, `ModelBasedObjective` can instead take a

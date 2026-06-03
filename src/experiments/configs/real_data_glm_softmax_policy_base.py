@@ -54,7 +54,6 @@ TRAINING = canonical_training_block(
     enabled_estimators=(
         "first_order",
         "finite_difference",
-        "spsa",
         "stein_difference",
     ),
     perturbation_space="u",

@@ -75,8 +75,7 @@ Optimization step rules:
 `ConstantPolicy` on the same objective/data as the configured policy. This is
 separate from `ExperimentConfig.constant_u_baselines`, which only evaluates
 fixed-action reference points such as `(-0.3, 0.0, 0.2)` and shows them in
-`summary.json`, the console summary, `plots/optimization/loss_curves.png`, and
-`plots/optimization/objective_u_slice.png`.
+`summary.json`, the console summary, and `plots/optimization/loss_curves.png`.
 
 ## Documentation
 
@@ -260,7 +259,7 @@ Each run writes artifacts to `outputs/<experiment_name>/<timestamp>/`:
   include both the mean objective `final_value` and summed objective
   `final_objective_sum`
 - `steps.csv` -- per-step metrics for every estimator
-- `plots/optimization/` -- loss curves, gradient norms, objective slices, step sizes, and theta contour plots
+- `plots/optimization/` -- loss curves, gradient norms, step sizes, and theta contour plots
 - `plots/policy/` -- real-data final policy diagnostics, including summary metric bars, `u` and acceptance distributions, and per-estimator `u_acceptance/` plots
 
 Weights & Biases integration is available for experiment tracking. See the

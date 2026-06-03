@@ -25,6 +25,7 @@ RUN_CONFIGS: list[str | tuple[str, dict[str, Any]]] = [
             "feature_order": "linear", 
             "constraint_mode": "trust_constr",
             "n_samples": 5000,
+            "n_grad_samples": 8,
             "t_steps": 20,
             "enabled_estimators": ("first_order", "finite_difference", "stein_difference"),
             "wandb_enabled": False,

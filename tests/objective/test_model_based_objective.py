@@ -3,6 +3,7 @@
 from dataclasses import replace
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from objective.utils import _mean_action
@@ -54,11 +55,13 @@ def test_value_records_eval_counts() -> None:
 
     assert counts["objective_value_calls"] == 1
     assert counts["objective_value_calls_rows"] == x.shape[0]
-    assert counts["acceptance_predict_calls"] >= 1
-    assert counts["loss_predict_calls"] >= 1
+    assert counts["acceptance_analytic_calls"] >= 1
+    assert counts["loss_analytic_calls"] >= 1
     assert counts["objective_value_seconds"] >= 0.0
-    assert counts["acceptance_predict_seconds"] >= 0.0
-    assert counts["loss_predict_seconds"] >= 0.0
+    assert counts["acceptance_analytic_seconds"] >= 0.0
+    assert counts["loss_analytic_seconds"] >= 0.0
+    assert counts.get("acceptance_predict_calls", 0) == 0
+    assert counts.get("loss_predict_calls", 0) == 0
 
 
 def test_repeated_value_reuses_loss_prediction_cache() -> None:
@@ -72,10 +75,90 @@ def test_repeated_value_reuses_loss_prediction_cache() -> None:
     counts_second = obj.eval_counts()
 
     assert val_second == pytest.approx(val_first)
-    assert counts_first["loss_predict_calls"] == 1
-    assert counts_second["loss_predict_calls"] == 1
+    assert counts_first["loss_analytic_calls"] == 1
+    assert counts_first.get("loss_predict_calls", 0) == 0
+    assert counts_second["loss_analytic_calls"] == 1
+    assert counts_second.get("loss_predict_calls", 0) == 0
     assert counts_second["loss_prediction_cache_hits"] >= 1
     assert counts_second["loss_prediction_cache_hits_rows"] >= x.shape[0]
+
+
+def test_glm_analytical_acceptance_matches_sklearn_predict_proba() -> None:
+    obj, x, _ = _make_glm_objective(n_rows=25)
+    u_arr = np.linspace(-0.25, 0.25, x.shape[0], dtype=float)
+
+    fast_acceptance = obj._acceptance_proba(x, u_arr)
+    slow_acceptance = 1.0 - obj._churn_proba(x, u_arr)
+
+    np.testing.assert_allclose(fast_acceptance, slow_acceptance, rtol=1e-10, atol=1e-10)
+
+
+def test_glm_analytical_loss_matches_sklearn_predict() -> None:
+    obj, x, _ = _make_glm_objective(n_rows=25)
+
+    fast_loss = obj._loss_prediction(x)
+    x_loss = x[:, : len(obj.loss_cols)]
+    raw_df = pd.DataFrame(x_loss, columns=list(obj.loss_cols))
+    model_df = obj._artifact_frame(obj.loss_model, raw_df)
+    model = obj._artifact_model(obj.loss_model)
+    slow_loss = np.asarray(model.predict(model_df), dtype=float)
+
+    np.testing.assert_allclose(fast_loss, slow_loss, rtol=1e-10, atol=1e-10)
+
+
+def test_stein_difference_glm_uses_analytical_acceptance_without_predict_calls() -> None:
+    from optimization import Optimization, SteinDifferenceGradient
+
+    obj, x, theta_dim = _make_glm_objective(n_rows=30)
+    theta = np.zeros(theta_dim, dtype=float)
+    optimizer = Optimization(
+        obj,
+        x,
+        SteinDifferenceGradient(),
+        algorithm="constant",
+        t_steps=1,
+        n_grad_samples=4,
+        sigma=0.05,
+        perturbation_space="u",
+        rng=np.random.default_rng(123),
+    )
+    optimizer.gradient.setup(optimizer, theta)
+
+    obj.reset_eval_counts()
+    grad = optimizer.gradient.theta_grad(optimizer, theta, np.arange(x.shape[0], dtype=int))
+    counts = obj.eval_counts()
+
+    assert grad.shape == theta.shape
+    assert counts.get("acceptance_predict_calls", 0) == 0
+    assert counts.get("loss_predict_calls", 0) == 0
+    assert counts["acceptance_analytic_calls"] >= 2 * optimizer.n_grad_samples
+    assert counts["loss_analytic_calls"] == 1
+
+
+def test_xgb_acceptance_falls_back_to_predict_proba() -> None:
+    from data.loader import ACCEPTANCE_STATE_COLS, LOSS_FEATURE_COLS, load_model_artifacts, load_x_array
+    from objective.objectives.model_based import ModelBasedObjective
+    from objective.policy import LinearPolicy
+
+    acc_model, loss_model = load_model_artifacts("xgb")
+    x = load_x_array("xgb", n_rows=10, seed=123)
+    obj = ModelBasedObjective(
+        policy=LinearPolicy(),
+        acceptance_model=acc_model,
+        loss_model=loss_model,
+        acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),
+        loss_cols=tuple(LOSS_FEATURE_COLS),
+        premium_col=9,
+        u_coef=None,
+    )
+
+    obj.reset_eval_counts()
+    acceptance = obj.mean_acceptance_at_u(x, 0.0)
+    counts = obj.eval_counts()
+
+    assert np.isfinite(acceptance)
+    assert counts["acceptance_predict_calls"] >= 1
+    assert counts.get("acceptance_analytic_calls", 0) == 0
 
 
 def test_repeated_policy_hooks_reuse_policy_feature_cache() -> None:

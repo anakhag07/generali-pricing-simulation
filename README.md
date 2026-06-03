@@ -75,8 +75,8 @@ Optimization step rules:
 `ConstantPolicy` on the same objective/data as the configured policy. This is
 separate from `ExperimentConfig.constant_u_baselines`, which only evaluates
 fixed-action reference points such as `(-0.3, 0.0, 0.2)` and shows them in
-`summary.json`, the console summary, `loss_curves.png`, and
-`objective_u_slice.png`.
+`summary.json`, the console summary, `plots/optimization/loss_curves.png`, and
+`plots/optimization/objective_u_slice.png`.
 
 ## Documentation
 
@@ -135,10 +135,12 @@ still receive raw `x` and apply their saved artifact preprocessing internally.
 Real-data configs sample `TRAINING["n_samples"]` rows from the acceptance CSV
 with the experiment seed and store the sampled row indices so observed-`U`
 diagnostics use the same source rows.
-When plotting is enabled, real-data runs also write a final customer-level
-diagnostic `policy_u_acceptance_histograms.png`: for each estimator it shows the
-histogram of final policy actions across sampled customers plus binned mean
-acceptance, alongside the per-customer acceptance-vs-`u` scatter.
+When plotting is enabled, real-data runs write optimization plots under
+`plots/optimization/` and final customer-level policy diagnostics under
+`plots/policy/`. Policy diagnostics include final metric bars with 25-75%
+customer ranges, observed-vs-policy `u` and acceptance histograms, and one
+`u_acceptance/<estimator>.png` file per estimator showing the final action
+histogram plus customer acceptance-vs-`u` scatter.
 
 `ExperimentConfig` supports two acceptance-floor paths for objectives exposing
 `mean_acceptance(theta, x_batch)`:
@@ -258,7 +260,8 @@ Each run writes artifacts to `outputs/<experiment_name>/<timestamp>/`:
   include both the mean objective `final_value` and summed objective
   `final_objective_sum`
 - `steps.csv` -- per-step metrics for every estimator
-- `plots/` -- loss curves, gradient norms, objective slices, contour plots, and real-data diagnostics for observed-vs-policy `u` histograms plus `u` vs `M(x, u)` trend plots
+- `plots/optimization/` -- loss curves, gradient norms, objective slices, step sizes, and theta contour plots
+- `plots/policy/` -- real-data final policy diagnostics, including summary metric bars, `u` and acceptance distributions, and per-estimator `u_acceptance/` plots
 
 Weights & Biases integration is available for experiment tracking. See the
 docstrings in `src/experiments/config.py` for W&B configuration fields.

@@ -23,10 +23,9 @@ from reporting.logging import log_step, log_summary
 from experiments.results import ExperimentResult
 from reporting.visualization import (
     _plot_policy_acceptance_histograms,
+    _plot_policy_final_summary_metrics,
     _plot_policy_u_acceptance_histograms,
     _plot_policy_u_histograms,
-    _plot_policy_u_vs_acceptance_spread,
-    _plot_policy_u_vs_objective,
     plot_gradient_norms,
     plot_loss_curves,
     plot_objective_u_slice,
@@ -302,8 +301,9 @@ class WandbReporter:
 
         if self._plots_enabled and self._plots_dir is not None and self._plots_dir.exists():
             plot_payload = {}
-            for plot_path in sorted(self._plots_dir.glob("*.png")):
-                plot_payload[f"plots/{plot_path.stem}"] = self._wandb.Image(str(plot_path))
+            for plot_path in sorted(self._plots_dir.rglob("*.png")):
+                relative_key = plot_path.relative_to(self._plots_dir).with_suffix("").as_posix()
+                plot_payload[f"plots/{relative_key}"] = self._wandb.Image(str(plot_path))
             if plot_payload:
                 summary_run.log(plot_payload)
         summary_run.finish()
@@ -351,7 +351,10 @@ class PlotReporter:
         if not config.plot or not result.traces:
             return
         run_context.plots_dir.mkdir(parents=True, exist_ok=True)
-        plot_dir = str(run_context.plots_dir)
+        optimization_dir = run_context.plots_dir / "optimization"
+        policy_dir = run_context.plots_dir / "policy"
+        optimization_dir.mkdir(parents=True, exist_ok=True)
+        plot_dir = str(optimization_dir)
         objective = config.objective
         action_objective = objective
         traces = result.traces
@@ -373,34 +376,28 @@ class PlotReporter:
                 result.x_samples,
                 objective,
                 theta_by_estimator,
-                plot_dir,
-            )
-            _plot_policy_u_vs_objective(
-                observed_u,
-                result.x_samples,
-                objective,
-                theta_by_estimator,
-                plot_dir,
-            )
-            _plot_policy_u_vs_acceptance_spread(
-                observed_u,
-                result.x_samples,
-                objective,
-                theta_by_estimator,
-                plot_dir,
+                str(policy_dir),
             )
             _plot_policy_acceptance_histograms(
                 observed_u,
                 result.x_samples,
                 objective,
                 theta_by_estimator,
-                plot_dir,
+                str(policy_dir),
+            )
+            _plot_policy_final_summary_metrics(
+                result.x_samples,
+                objective,
+                theta_by_estimator,
+                {name: estimator_result.time for name, estimator_result in result.results.items()},
+                str(policy_dir),
             )
             _plot_policy_u_acceptance_histograms(
                 result.x_samples,
                 objective,
                 theta_by_estimator,
-                plot_dir,
+                str(policy_dir / "u_acceptance"),
+                acceptance_floor=config.acceptance_floor,
             )
         plot_objective_u_slice(
             result.x_samples,
@@ -432,7 +429,7 @@ class PlotReporter:
                 for name in config.enabled_estimators
                 if name in result.results
             ]
-            theta_refs = [config.theta0]
+            theta_refs = list(theta_path_points)
             theta_points = [(config.theta0, "initial")]
             for name, estimator_result in ordered_results:
                 if estimator_result.theta.size == config.theta0.size:

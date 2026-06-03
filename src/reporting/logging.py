@@ -137,8 +137,9 @@ def log_summary(result: ExperimentResult) -> None:
         print(f"Constant-u baselines: {baseline_text}")
     print("=== Results ===")
 
-    order = ("first_order", "finite_difference", "gauss_stein", "stein_difference", "spsa")
+    order = ("constant", "first_order", "finite_difference", "gauss_stein", "stein_difference", "spsa")
     labels = {
+        "constant": "constant",
         "first_order": "first-order",
         "finite_difference": "finite-difference",
         "gauss_stein": "gauss-stein",

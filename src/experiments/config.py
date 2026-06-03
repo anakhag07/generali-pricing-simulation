@@ -110,6 +110,7 @@ class ExperimentConfig:
         if len(set(enabled_estimators)) != len(enabled_estimators):
             raise ValueError("enabled_estimators must not contain duplicates.")
         allowed_estimators = {
+            "constant",
             "first_order",
             "finite_difference",
             "gauss_stein",

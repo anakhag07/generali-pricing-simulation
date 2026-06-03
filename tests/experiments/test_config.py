@@ -111,6 +111,30 @@ def test_constant_u_baselines_are_serialized() -> None:
     assert config.to_dict()["constant_u_baselines"] == [-0.3, 0.0, 0.2]
 
 
+def test_constant_enabled_estimator_is_accepted() -> None:
+    policy = SoftmaxPolicy()
+    objective = FixedRegressionObjective.from_parameters(
+        policy=policy,
+        beta_1=[0.1],
+        beta_2=-0.5,
+        beta_3=[0.2],
+        beta_4=0.4,
+    )
+    config = ExperimentConfig(
+        state_dim=1,
+        objective=objective,
+        theta0=default_theta0(1),
+        n_samples=5,
+        step_rule="constant",
+        perturbation_space="theta",
+        enabled_estimators=("constant",),
+        wandb_estimator_allowlist=("constant",),
+    )
+
+    assert config.enabled_estimators == ("constant",)
+    assert config.wandb_estimator_allowlist == ("constant",)
+
+
 def test_config_accepts_quadratic_policy_theta_dim() -> None:
     state_dim = 2
     policy = SoftmaxPolicy(feature_map=QuadraticFeatureMap())

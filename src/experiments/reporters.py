@@ -418,7 +418,9 @@ class PlotReporter:
             theta_path_points = [config.theta0]
             for trace in traces.values():
                 if trace.theta_values:
-                    theta_path_points.extend(trace.theta_values)
+                    theta_path_points.extend(
+                        theta for theta in trace.theta_values if theta.size == config.theta0.size
+                    )
             if config.theta0.size > 2 and theta_path_points:
                 axis_indices = select_theta_axes_max_variance(theta_path_points)
                 axis_labels = (
@@ -433,7 +435,8 @@ class PlotReporter:
             theta_refs = [config.theta0]
             theta_points = [(config.theta0, "initial")]
             for name, estimator_result in ordered_results:
-                theta_refs.append(estimator_result.theta)
+                if estimator_result.theta.size == config.theta0.size:
+                    theta_refs.append(estimator_result.theta)
             first_order_result = result.results.get("first_order")
             if first_order_result is not None:
                 theta_points.append((first_order_result.theta, "first-order final point"))

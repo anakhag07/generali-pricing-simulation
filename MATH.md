@@ -150,6 +150,17 @@ where:
 - $p(x)$ — policy premium extracted from state column `premium_col`
 - $(u + 1)\, p(x)$ — revenue (centered: $u = 0$ is baseline multiplier)
 
+For GLM/linear artifacts with extractable coefficients, the implementation uses
+the equivalent array formulas:
+
+$$p_{\text{churn}}(x, u) = \sigma\bigl(\beta_0 + \beta_x^\top z_{\text{acc}}(x) + \beta_u u\bigr)$$
+
+$$\hat{Y}(x) = \gamma_0 + \gamma_x^\top z_{\text{loss}}(x)$$
+
+where $$z_{\text{acc}}$$ and $$z_{\text{loss}}$$ are the artifact-preprocessed model
+features. If coefficients cannot be extracted, the objective falls back to the
+bundled estimator's `predict_proba` / `predict` methods.
+
 **Gradient w.r.t. $u$:**
 
 $$\frac{\partial f}{\partial u} = \frac{\partial a}{\partial u}\,(\hat{Y} - (u+1)\,p) - a\, p$$
@@ -169,6 +180,7 @@ $$\frac{\partial\,\text{penalty}}{\partial\,\bar{a}} = -2w\,\text{softplus}(g/\t
 
 - **Source:** `src/objective/objectives/model_based.py` :: `ModelBasedObjective`
   - `_value_batch()` — per-sample values
+  - `_glm_acceptance_proba()` — coefficient-backed GLM acceptance probability when available
   - `_grad_u_batch()` — per-sample $\partial f/\partial u$
   - `_d_acceptance_du_batch()` — analytical or FD acceptance derivative
   - `_acceptance_penalty()` — penalty value and gradient scale

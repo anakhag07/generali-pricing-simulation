@@ -1,4 +1,4 @@
-"""Benchmark real-data objective caching and contour subsampling speed."""
+"""Benchmark real-data GLM analytical prediction and diagnostic speed."""
 
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ from data.loader import (
 from experiments.reporters import _contour_grid_size, _contour_x_samples
 from objective.objectives.model_based import ModelBasedObjective
 from objective.policy import SoftmaxPolicy
+from optimization import Optimization, SteinDifferenceGradient
 from reporting.visualization import theta_objective_contour_grid
 
 
@@ -61,10 +62,70 @@ def benchmark_repeated_value(x: np.ndarray) -> dict[str, object]:
         "first_sec": first_sec,
         "second_sec": second_sec,
         "speedup_second_over_first": _speedup(first_sec, second_sec),
+        "acceptance_analytic_calls_after_second": counts_after_second.get("acceptance_analytic_calls", 0),
+        "acceptance_predict_calls_after_second": counts_after_second.get("acceptance_predict_calls", 0),
+        "loss_analytic_calls_after_first": counts_after_first.get("loss_analytic_calls", 0),
+        "loss_analytic_calls_after_second": counts_after_second.get("loss_analytic_calls", 0),
         "loss_predict_calls_after_first": counts_after_first.get("loss_predict_calls", 0),
         "loss_predict_calls_after_second": counts_after_second.get("loss_predict_calls", 0),
         "loss_prediction_cache_hits_after_second": counts_after_second.get("loss_prediction_cache_hits", 0),
         "policy_features_cache_hits_after_second": counts_after_second.get("policy_features_cache_hits", 0),
+    }
+
+
+def benchmark_acceptance_prediction(x: np.ndarray) -> dict[str, object]:
+    objective = _make_glm_objective()
+    u_arr = np.linspace(-0.25, 0.25, x.shape[0], dtype=float)
+
+    slow_acceptance, predict_sec = _timed(lambda: 1.0 - objective._churn_proba(x, u_arr))
+    fast_acceptance, analytic_cold_sec = _timed(lambda: objective._acceptance_proba(x, u_arr))
+    _, analytic_warm_sec = _timed(lambda: objective._acceptance_proba(x, u_arr + 0.01))
+
+    return {
+        "predict_proba_sec": predict_sec,
+        "analytical_cold_sec": analytic_cold_sec,
+        "analytical_warm_sec": analytic_warm_sec,
+        "speedup_predict_over_analytical_cold": _speedup(predict_sec, analytic_cold_sec),
+        "speedup_predict_over_analytical_warm": _speedup(predict_sec, analytic_warm_sec),
+        "max_abs_diff": float(np.max(np.abs(slow_acceptance - fast_acceptance))),
+    }
+
+
+def benchmark_stein_difference(x: np.ndarray, n_grad_samples: int, sigma: float) -> dict[str, object]:
+    objective = _make_glm_objective()
+    theta = np.zeros(objective.policy_theta_dim(), dtype=float)
+    optimizer = Optimization(
+        objective,
+        x,
+        SteinDifferenceGradient(),
+        algorithm="constant",
+        t_steps=1,
+        n_grad_samples=n_grad_samples,
+        sigma=sigma,
+        perturbation_space="u",
+        rng=np.random.default_rng(123),
+    )
+    optimizer.gradient.setup(optimizer, theta)
+
+    objective.reset_eval_counts()
+    grad, elapsed = _timed(
+        lambda: optimizer.gradient.theta_grad(
+            optimizer,
+            theta,
+            np.arange(x.shape[0], dtype=int),
+        )
+    )
+    counts = objective.eval_counts()
+    return {
+        "sec": elapsed,
+        "n_grad_samples": int(n_grad_samples),
+        "sigma": float(sigma),
+        "grad_norm": float(np.linalg.norm(grad)),
+        "acceptance_analytic_calls": counts.get("acceptance_analytic_calls", 0),
+        "acceptance_predict_calls": counts.get("acceptance_predict_calls", 0),
+        "loss_analytic_calls": counts.get("loss_analytic_calls", 0),
+        "loss_predict_calls": counts.get("loss_predict_calls", 0),
+        "loss_prediction_cache_hits": counts.get("loss_prediction_cache_hits", 0),
     }
 
 
@@ -113,12 +174,20 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--grid-size", type=int, default=10)
     parser.add_argument("--sampled-grid-size", type=int, default=None)
+    parser.add_argument("--n-grad-samples", type=int, default=50)
+    parser.add_argument("--sigma", type=float, default=0.05)
     args = parser.parse_args()
 
     x = load_x_array("glm", n_rows=args.n_rows, seed=args.seed)
     payload = {
         "n_rows": int(x.shape[0]),
+        "acceptance_prediction": benchmark_acceptance_prediction(x),
         "repeated_value": benchmark_repeated_value(x),
+        "stein_difference_gradient": benchmark_stein_difference(
+            x,
+            n_grad_samples=int(args.n_grad_samples),
+            sigma=float(args.sigma),
+        ),
         "contours": benchmark_contours(
             x,
             grid_size=int(args.grid_size),

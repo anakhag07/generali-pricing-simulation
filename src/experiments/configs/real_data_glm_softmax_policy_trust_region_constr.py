@@ -48,14 +48,13 @@ TRAINING = canonical_training_block(
     enabled_estimators=(
         "first_order",
         "finite_difference",
-        "spsa",
         "stein_difference",
     ),
     perturbation_space="u", 
     grad_norm_tol=1e-6,
     acceptance_floor=_acceptance_floor,
     initial_constr_penalty=1.0,
-    constant_u_baselines=[-0.5, -0.3, -0.2, -0.15, -0.1, -0.05, 0.0, 0.05, 0.1],
+    constant_u_baselines=[0.0853],
 )
 
 RUNTIME = canonical_runtime_block(

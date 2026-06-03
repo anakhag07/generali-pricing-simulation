@@ -14,7 +14,7 @@ from experiments.reporters import (
 )
 from experiments.run import run_experiment
 
-RUN_CONFIGS = ["real_data_glm_softmax_policy_quartic_no_pca"]  # List of config names to run, must be defined as a variable in the corresponding config module and included in the
+RUN_CONFIGS = ["real_data_glm_softmax_policy_no_pca_trust_region_constr"]  # List of config names to run, must be defined as a variable in the corresponding config module and included in the
 
 def main() -> None:
     for config_name in RUN_CONFIGS:

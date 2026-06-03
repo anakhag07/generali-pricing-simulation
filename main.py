@@ -22,10 +22,11 @@ RUN_CONFIGS: list[str | tuple[str, dict[str, Any]]] = [
         {
             "policy_kind": "softmax",
             "policy_preprocessing": "no_pca",
+            "feature_order": "linear", 
             "constraint_mode": "trust_constr",
-            "n_samples": 250,
-            "t_steps": 20,
-            "enabled_estimators": ("first_order", "constant"),
+            "n_samples": 5000,
+            "t_steps": 1000,
+            "enabled_estimators": ("first_order", "finite_difference", "stein_difference"),
             "wandb_enabled": False,
         },
     )

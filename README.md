@@ -140,6 +140,11 @@ When plotting is enabled, real-data runs write optimization plots under
 customer ranges, observed-vs-policy `u` and acceptance histograms, and one
 `u_acceptance/<estimator>.png` file per estimator showing the final action
 histogram plus customer acceptance-vs-`u` scatter.
+Plot generation writes per-plot wall-clock diagnostics to `plots/plot_timings.json`.
+For model-based objectives, theta contour plots are evaluated on a deterministic
+subsample of at most 200 rows so large real-data experiments do not spend most
+of their time rendering diagnostics; their contour grid is also capped at 20x20
+instead of the default 60x60 used for cheaper synthetic objectives.
 
 `ExperimentConfig` supports two acceptance-floor paths for objectives exposing
 `mean_acceptance(theta, x_batch)`:
@@ -226,6 +231,13 @@ historical-`U` histogram with sampled constant-`u` rug marks under
 `outputs/acceptance_queries/<model_type>/` by default. Use `--output-subdir`
 to choose a subdirectory under `outputs/acceptance_queries/`, or pass explicit
 values with `--u -0.3 0.0 0.2` instead of `--u-count`.
+
+To benchmark objective-cache and contour-subsampling speed on the bundled GLM
+real-data objective, use:
+
+```bash
+python scripts/benchmark_experiment_speed.py --n-rows 1000 --grid-size 10
+```
 
 To diagnose how final real-data policies relate processed policy components to
 acceptance, loss, and action variation, use a saved run `summary.json`:

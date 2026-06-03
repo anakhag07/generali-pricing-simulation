@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from experiments.config import ExperimentConfig
-from experiments.reporters import PlotReporter, RunContext, _contour_x_samples
+from experiments.reporters import PlotReporter, RunContext, _contour_grid_size, _contour_x_samples
 from experiments.results import EstimatorResult, ExperimentResult
 from experiments.results import OptimizationTrace
 from objective import FixedRegressionObjective, LinearPolicy
@@ -161,6 +161,11 @@ def test_non_model_based_contour_samples_use_full_data() -> None:
     assert sampled is x_samples
 
 
+def test_model_based_contour_grid_size_is_lowered() -> None:
+    assert _contour_grid_size(DummyModelBasedObjective()) == 20
+    assert _contour_grid_size(_build_theta_objective()) == 60
+
+
 def _trace(theta_values: list[np.ndarray]) -> OptimizationTrace:
     return OptimizationTrace(
         steps=[0, 1],
@@ -179,8 +184,9 @@ def test_plot_reporter_subsamples_model_based_contours_and_writes_timings(
     def no_op(*_args, **_kwargs) -> None:
         return None
 
-    def capture_contour(x_samples, *_args, **_kwargs) -> None:
+    def capture_contour(x_samples, *_args, **kwargs) -> None:
         captured["x_samples"] = np.asarray(x_samples, dtype=float)
+        captured["grid_size"] = kwargs["grid_size"]
 
     monkeypatch.setattr("experiments.reporters.plot_loss_curves", no_op)
     monkeypatch.setattr("experiments.reporters.plot_gradient_norms", no_op)
@@ -227,6 +233,7 @@ def test_plot_reporter_subsamples_model_based_contours_and_writes_timings(
     PlotReporter().on_end(run_context, result)
 
     assert captured["x_samples"].shape == (200, 3)
+    assert captured["grid_size"] == 20
     timings = json.loads((run_context.plots_dir / "plot_timings.json").read_text(encoding="utf-8"))
     assert timings["loss_curves"] >= 0.0
     assert timings["gradient_norms"] >= 0.0

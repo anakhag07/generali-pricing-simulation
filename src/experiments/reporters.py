@@ -460,6 +460,7 @@ class PlotReporter:
                 theta_refs=theta_refs,
                 theta_points=theta_points,
                 traces=traces,
+                grid_size=_contour_grid_size(objective),
             )
         with (run_context.plots_dir / "plot_timings.json").open("w", encoding="utf-8") as handle:
             json.dump({key: float(value) for key, value in timings.items()}, handle, indent=2, sort_keys=True)
@@ -475,6 +476,12 @@ def _contour_x_samples(x_samples: np.ndarray, objective: object, max_rows: int =
         return x_arr
     indices = np.linspace(0, x_arr.shape[0] - 1, max_rows, dtype=int)
     return x_arr[indices]
+
+
+def _contour_grid_size(objective: object, default_grid_size: int = 60, model_based_grid_size: int = 20) -> int:
+    """Return contour grid resolution, lowering only costly model-based diagnostics."""
+    is_model_based = hasattr(objective, "acceptance_model") and hasattr(objective, "loss_model")
+    return model_based_grid_size if is_model_based else default_grid_size
 
 
 class FileStepLogger:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import time
 from typing import Any
 
 import numpy as np
@@ -58,7 +59,12 @@ class ModelBasedObjective(Objective):
     policy_preprocessor: PolicyFeaturePreprocessor | None = None
     policy_feature_cols: tuple[str, ...] | None = None
     _fd_eps: float = 1e-4
-    _eval_counts: dict[str, int] = field(default_factory=dict, compare=False, repr=False)
+    _eval_counts: dict[str, float] = field(default_factory=dict, compare=False, repr=False)
+    _cache: dict[tuple[str, tuple[int, tuple[int, ...], tuple[int, ...], str]], Any] = field(
+        default_factory=dict,
+        compare=False,
+        repr=False,
+    )
 
     def _clip_u(self, u: np.ndarray) -> np.ndarray:
         """Clip u to bounds if set."""
@@ -70,7 +76,7 @@ class ModelBasedObjective(Objective):
         """Reset mutable diagnostic counters for model/objective evaluations."""
         self._eval_counts.clear()
 
-    def eval_counts(self) -> dict[str, int]:
+    def eval_counts(self) -> dict[str, float]:
         """Return diagnostic counts for objective and model prediction calls."""
         return dict(self._eval_counts)
 
@@ -80,19 +86,30 @@ class ModelBasedObjective(Objective):
             row_key = f"{key}_rows"
             self._eval_counts[row_key] = self._eval_counts.get(row_key, 0) + int(rows)
 
+    def _record_time(self, key: str, elapsed: float) -> None:
+        self._eval_counts[key] = self._eval_counts.get(key, 0.0) + float(elapsed)
+
+    def _cache_key(self, name: str, x_batch: np.ndarray) -> tuple[str, tuple[int, tuple[int, ...], tuple[int, ...], str]]:
+        x_arr = np.asarray(x_batch)
+        return (name, (id(x_arr), tuple(x_arr.shape), tuple(x_arr.strides), str(x_arr.dtype)))
+
     def value(self, theta: np.ndarray, x_batch: np.ndarray) -> float:
         """Compute mean objective value across batch."""
+        start = time.perf_counter()
         x_arr = np.asarray(x_batch, dtype=float)
         if x_arr.ndim != 2:
             raise ValueError("x_batch must be 2D.")
-        self._record_eval("objective_value_calls", x_arr.shape[0])
-        theta_arr = np.asarray(theta, dtype=float)
-        u_batch = self._clip_u(self.policy_value(theta_arr, x_arr))
-        acceptance = self._acceptance_proba(x_arr, u_batch)
-        base_value = self._mean_base_value(x_arr, u_batch)
-        penalty_value, _ = self._acceptance_penalty(acceptance)
-        lagrangian_value, _ = self._lagrangian_adjustment(acceptance)
-        return base_value + penalty_value + lagrangian_value
+        try:
+            self._record_eval("objective_value_calls", x_arr.shape[0])
+            theta_arr = np.asarray(theta, dtype=float)
+            u_batch = self._clip_u(self.policy_value(theta_arr, x_arr))
+            acceptance = self._acceptance_proba(x_arr, u_batch)
+            base_value = self._mean_base_value(x_arr, u_batch)
+            penalty_value, _ = self._acceptance_penalty(acceptance)
+            lagrangian_value, _ = self._lagrangian_adjustment(acceptance)
+            return base_value + penalty_value + lagrangian_value
+        finally:
+            self._record_time("objective_value_seconds", time.perf_counter() - start)
 
     def base_value(self, theta: np.ndarray, x_batch: np.ndarray) -> float:
         """Return the raw pricing objective without penalties or Lagrangian terms."""
@@ -248,6 +265,12 @@ class ModelBasedObjective(Objective):
 
     def _policy_features(self, x_batch: np.ndarray) -> np.ndarray:
         """Return the acceptance-side processed features used by the policy."""
+        key = self._cache_key("policy_features", x_batch)
+        cached = self._cache.get(key)
+        if cached is not None:
+            self._record_eval("policy_features_cache_hits", x_batch.shape[0])
+            return np.asarray(cached, dtype=float)
+        self._record_eval("policy_features_cache_misses", x_batch.shape[0])
         x_state = x_batch[:, : len(self.acceptance_state_cols)]
         raw_df = pd.DataFrame(x_state, columns=list(self.acceptance_state_cols))
         if self.policy_preprocessor is not None:
@@ -255,16 +278,21 @@ class ModelBasedObjective(Objective):
             missing = [col for col in policy_cols if col not in raw_df.columns]
             if missing:
                 raise ValueError(f"Missing policy feature columns: {missing}")
-            return self.policy_preprocessor.transform(
+            features = self.policy_preprocessor.transform(
                 raw_df.loc[:, list(policy_cols)].to_numpy(dtype=float)
             )
-        x_feature_cols = self._artifact_x_feature_cols(self.acceptance_model, self.acceptance_state_cols)
-        state_df = raw_df.loc[:, list(x_feature_cols)].copy()
-        preprocessor = self._artifact_preprocessor(self.acceptance_model)
-        if preprocessor is None:
-            return state_df.to_numpy(dtype=float)
-        processed = preprocessor.transform(state_df)
-        return np.asarray(processed, dtype=float)
+        else:
+            x_feature_cols = self._artifact_x_feature_cols(self.acceptance_model, self.acceptance_state_cols)
+            state_df = raw_df.loc[:, list(x_feature_cols)].copy()
+            preprocessor = self._artifact_preprocessor(self.acceptance_model)
+            if preprocessor is None:
+                features = state_df.to_numpy(dtype=float)
+            else:
+                processed = preprocessor.transform(state_df)
+                features = np.asarray(processed, dtype=float)
+        features_arr = np.asarray(features, dtype=float)
+        self._cache[key] = features_arr
+        return features_arr
 
     def _churn_proba(self, x_batch: np.ndarray, u_arr: np.ndarray) -> np.ndarray:
         """Call classifier and return class-1 churn probability, shape (n,)."""
@@ -276,7 +304,11 @@ class ModelBasedObjective(Objective):
         model_df = self._artifact_frame(self.acceptance_model, raw_df)
         model = self._artifact_model(self.acceptance_model)
         self._record_eval("acceptance_predict_calls", x_batch.shape[0])
-        return np.asarray(model.predict_proba(model_df)[:, 1], dtype=float)
+        start = time.perf_counter()
+        try:
+            return np.asarray(model.predict_proba(model_df)[:, 1], dtype=float)
+        finally:
+            self._record_time("acceptance_predict_seconds", time.perf_counter() - start)
 
     def _acceptance_proba(self, x_batch: np.ndarray, u_arr: np.ndarray) -> np.ndarray:
         """Return acceptance probability by flipping the bundled churn classifier output."""
@@ -284,12 +316,24 @@ class ModelBasedObjective(Objective):
 
     def _loss_prediction(self, x_batch: np.ndarray) -> np.ndarray:
         """Call loss model on loss_cols subset of x_batch. Returns shape (n,)."""
+        key = self._cache_key("loss_prediction", x_batch)
+        cached = self._cache.get(key)
+        if cached is not None:
+            self._record_eval("loss_prediction_cache_hits", x_batch.shape[0])
+            return np.asarray(cached, dtype=float)
+        self._record_eval("loss_prediction_cache_misses", x_batch.shape[0])
         x_loss = x_batch[:, : len(self.loss_cols)]
         raw_df = pd.DataFrame(x_loss, columns=list(self.loss_cols))
         model_df = self._artifact_frame(self.loss_model, raw_df)
         model = self._artifact_model(self.loss_model)
         self._record_eval("loss_predict_calls", x_batch.shape[0])
-        return np.asarray(model.predict(model_df), dtype=float)
+        start = time.perf_counter()
+        try:
+            prediction = np.asarray(model.predict(model_df), dtype=float)
+        finally:
+            self._record_time("loss_predict_seconds", time.perf_counter() - start)
+        self._cache[key] = prediction
+        return prediction
 
     def _value_batch(self, x_batch: np.ndarray, u_arr: np.ndarray) -> np.ndarray:
         """Compute per-sample objective values."""

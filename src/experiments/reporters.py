@@ -7,6 +7,7 @@ from datetime import datetime
 import json
 from pathlib import Path
 import re
+import time
 from typing import IO, Protocol, runtime_checkable, Sequence
 
 import numpy as np
@@ -356,41 +357,60 @@ class PlotReporter:
         plot_dir = str(optimization_dir)
         objective = config.objective
         traces = result.traces
+        timings: dict[str, float] = {}
+
+        def timed(name: str, fn: object, *args: object, **kwargs: object) -> None:
+            start = time.perf_counter()
+            try:
+                fn(*args, **kwargs)  # type: ignore[misc]
+            finally:
+                timings[name] = time.perf_counter() - start
+
         u_star_plot = _u_star_for_plot(objective, result.u_star)
-        plot_loss_curves(
+        timed(
+            "loss_curves",
+            plot_loss_curves,
             traces,
             plot_dir,
             u_star=u_star_plot,
             constant_u_baselines=result.constant_u_baselines,
         )
-        plot_gradient_norms(traces, plot_dir)
+        timed("gradient_norms", plot_gradient_norms, traces, plot_dir)
         observed_u = _observed_u_reference(result)
         if observed_u is not None:
             theta_by_estimator = {
                 name: estimator_result.theta for name, estimator_result in result.results.items()
             }
-            _plot_policy_u_histograms(
+            timed(
+                "policy_u_histograms",
+                _plot_policy_u_histograms,
                 observed_u,
                 result.x_samples,
                 objective,
                 theta_by_estimator,
                 str(policy_dir),
             )
-            _plot_policy_acceptance_histograms(
+            timed(
+                "policy_acceptance_histograms",
+                _plot_policy_acceptance_histograms,
                 observed_u,
                 result.x_samples,
                 objective,
                 theta_by_estimator,
                 str(policy_dir),
             )
-            _plot_policy_final_summary_metrics(
+            timed(
+                "policy_final_summary_metrics",
+                _plot_policy_final_summary_metrics,
                 result.x_samples,
                 objective,
                 theta_by_estimator,
                 {name: estimator_result.time for name, estimator_result in result.results.items()},
                 str(policy_dir),
             )
-            _plot_policy_u_acceptance_histograms(
+            timed(
+                "policy_u_acceptance_histograms",
+                _plot_policy_u_acceptance_histograms,
                 result.x_samples,
                 objective,
                 theta_by_estimator,
@@ -398,7 +418,7 @@ class PlotReporter:
                 acceptance_floor=config.acceptance_floor,
             )
         if any(trace.step_sizes is not None for trace in traces.values()):
-            plot_step_sizes(traces, plot_dir)
+            timed("step_sizes", plot_step_sizes, traces, plot_dir)
         if config.theta0.size >= 2:
             axis_indices = (0, 1)
             axis_labels = None
@@ -427,8 +447,11 @@ class PlotReporter:
             first_order_result = result.results.get("first_order")
             if first_order_result is not None:
                 theta_points.append((first_order_result.theta, "first-order final point"))
-            plot_theta_objective_contours(
-                result.x_samples,
+            contour_x = _contour_x_samples(result.x_samples, objective)
+            timed(
+                "theta_objective_contours",
+                plot_theta_objective_contours,
+                contour_x,
                 objective,
                 config.theta0,
                 plot_dir,
@@ -437,7 +460,28 @@ class PlotReporter:
                 theta_refs=theta_refs,
                 theta_points=theta_points,
                 traces=traces,
+                grid_size=_contour_grid_size(objective),
             )
+        with (run_context.plots_dir / "plot_timings.json").open("w", encoding="utf-8") as handle:
+            json.dump({key: float(value) for key, value in timings.items()}, handle, indent=2, sort_keys=True)
+
+
+def _contour_x_samples(x_samples: np.ndarray, objective: object, max_rows: int = 200) -> np.ndarray:
+    """Return deterministic contour-evaluation rows, subsampling costly model objectives."""
+    x_arr = np.asarray(x_samples, dtype=float)
+    if x_arr.ndim != 2:
+        raise ValueError("x_samples must be a 2D array.")
+    is_model_based = hasattr(objective, "acceptance_model") and hasattr(objective, "loss_model")
+    if not is_model_based or x_arr.shape[0] <= max_rows:
+        return x_arr
+    indices = np.linspace(0, x_arr.shape[0] - 1, max_rows, dtype=int)
+    return x_arr[indices]
+
+
+def _contour_grid_size(objective: object, default_grid_size: int = 60, model_based_grid_size: int = 20) -> int:
+    """Return contour grid resolution, lowering only costly model-based diagnostics."""
+    is_model_based = hasattr(objective, "acceptance_model") and hasattr(objective, "loss_model")
+    return model_based_grid_size if is_model_based else default_grid_size
 
 
 class FileStepLogger:

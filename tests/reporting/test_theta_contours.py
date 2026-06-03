@@ -1,8 +1,14 @@
 from __future__ import annotations
 
+from datetime import datetime
+import json
+
 import numpy as np
 import pytest
 
+from experiments.config import ExperimentConfig
+from experiments.reporters import PlotReporter, RunContext, _contour_grid_size, _contour_x_samples
+from experiments.results import EstimatorResult, ExperimentResult
 from experiments.results import OptimizationTrace
 from objective import FixedRegressionObjective, LinearPolicy
 from reporting.visualization import (
@@ -126,6 +132,40 @@ def test_select_theta_axes_max_variance_orders_by_variance() -> None:
     assert axis_indices == (1, 0)
 
 
+class DummyModelBasedObjective:
+    acceptance_model = object()
+    loss_model = object()
+
+    def value(self, theta: np.ndarray, x_batch: np.ndarray) -> float:
+        del theta
+        return float(np.mean(x_batch))
+
+    def grad(self, theta: np.ndarray, x_batch: np.ndarray) -> np.ndarray:
+        del x_batch
+        return np.zeros_like(theta, dtype=float)
+
+
+def test_model_based_contour_samples_are_deterministic_and_capped() -> None:
+    x_samples = np.arange(1000 * 3, dtype=float).reshape(1000, 3)
+    sampled = _contour_x_samples(x_samples, DummyModelBasedObjective(), max_rows=200)
+
+    assert sampled.shape == (200, 3)
+    np.testing.assert_allclose(sampled[0], x_samples[0])
+    np.testing.assert_allclose(sampled[-1], x_samples[-1])
+
+
+def test_non_model_based_contour_samples_use_full_data() -> None:
+    x_samples = np.arange(1000 * 2, dtype=float).reshape(1000, 2)
+    sampled = _contour_x_samples(x_samples, _build_theta_objective(), max_rows=200)
+
+    assert sampled is x_samples
+
+
+def test_model_based_contour_grid_size_is_lowered() -> None:
+    assert _contour_grid_size(DummyModelBasedObjective()) == 20
+    assert _contour_grid_size(_build_theta_objective()) == 60
+
+
 def _trace(theta_values: list[np.ndarray]) -> OptimizationTrace:
     return OptimizationTrace(
         steps=[0, 1],
@@ -134,6 +174,70 @@ def _trace(theta_values: list[np.ndarray]) -> OptimizationTrace:
         u_grad_estimates=[0.1, 0.1],
         theta_values=theta_values,
     )
+
+
+def test_plot_reporter_subsamples_model_based_contours_and_writes_timings(
+    monkeypatch, tmp_path
+) -> None:
+    captured: dict[str, np.ndarray] = {}
+
+    def no_op(*_args, **_kwargs) -> None:
+        return None
+
+    def capture_contour(x_samples, *_args, **kwargs) -> None:
+        captured["x_samples"] = np.asarray(x_samples, dtype=float)
+        captured["grid_size"] = kwargs["grid_size"]
+
+    monkeypatch.setattr("experiments.reporters.plot_loss_curves", no_op)
+    monkeypatch.setattr("experiments.reporters.plot_gradient_norms", no_op)
+    monkeypatch.setattr("experiments.reporters.plot_step_sizes", no_op)
+    monkeypatch.setattr("experiments.reporters.plot_theta_objective_contours", capture_contour)
+
+    x_samples = np.arange(1000 * 3, dtype=float).reshape(1000, 3)
+    theta0 = np.asarray([0.0, 0.0], dtype=float)
+    config = ExperimentConfig(
+        state_dim=3,
+        objective=DummyModelBasedObjective(),
+        theta0=theta0,
+        n_samples=x_samples.shape[0],
+        x_fixed=x_samples,
+        step_rule="constant",
+        perturbation_space="theta",
+        t_steps=1,
+        plot=True,
+        enabled_estimators=("first_order",),
+    )
+    trace = _trace([theta0, np.asarray([0.1, -0.1], dtype=float)])
+    result = ExperimentResult(
+        config=config,
+        x_samples=x_samples,
+        initial_value=0.0,
+        results={
+            "first_order": EstimatorResult(
+                theta=np.asarray([0.1, -0.1], dtype=float),
+                u=0.0,
+                value=0.0,
+                time=0.0,
+            )
+        },
+        traces={"first_order": trace},
+    )
+    run_context = RunContext(
+        experiment_name="test",
+        run_id="run",
+        run_dir=tmp_path,
+        plots_dir=tmp_path / "plots",
+        started_at=datetime(2026, 1, 1),
+    )
+
+    PlotReporter().on_end(run_context, result)
+
+    assert captured["x_samples"].shape == (200, 3)
+    assert captured["grid_size"] == 20
+    timings = json.loads((run_context.plots_dir / "plot_timings.json").read_text(encoding="utf-8"))
+    assert timings["loss_curves"] >= 0.0
+    assert timings["gradient_norms"] >= 0.0
+    assert timings["theta_objective_contours"] >= 0.0
 
 
 def test_plot_theta_objective_contours_keeps_path_markers_and_special_overlays(

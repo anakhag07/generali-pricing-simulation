@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import numpy as np
 
 from objective import FixedRegressionObjective
@@ -8,6 +10,7 @@ from optimization import (
     FiniteDifferenceGradient,
     FirstOrderGradient,
     GaussSteinGradient,
+    GradientMethod,
     Optimization,
     SteinDifferenceGradient,
 )
@@ -151,3 +154,82 @@ def test_optimization_stein_difference_is_seed_deterministic() -> None:
 
     assert np.allclose(theta_a, theta_b)
     assert np.allclose(trace_a.objective_values, trace_b.objective_values)
+
+
+def test_scipy_callback_reuses_last_optimizer_gradient_for_recording() -> None:
+    class CountingGradient(FirstOrderGradient):
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def theta_grad(self, optimizer: Optimization, theta: np.ndarray, indices: np.ndarray) -> np.ndarray:
+            self.calls += 1
+            return super().theta_grad(optimizer, theta, indices)
+
+    def fake_minimize(fun, *, x0, jac, callback, **_kwargs):
+        fun(x0)
+        jac(x0)
+        callback(x0)
+        return SimpleNamespace(x=x0, status=0, success=True, message="ok")
+
+    theta_start = np.asarray([0.2, 0.3], dtype=float)
+    x_samples = np.array([[1.0], [-0.5]], dtype=float)
+    objective = _build_theta_objective()
+    gradient = CountingGradient()
+
+    optimizer = Optimization(
+        objective,
+        x_samples,
+        gradient,
+        algorithm="l-bfgs-b",
+        t_steps=5,
+        n_grad_samples=1,
+        sigma=0.1,
+        minimize_fn=fake_minimize,
+    )
+    optimizer.solve(theta_start)
+
+    assert gradient.calls == 2
+
+
+def test_cached_stochastic_diagnostic_gradient_advances_rng() -> None:
+    class CountingStochasticGradient(GradientMethod):
+        def __init__(self) -> None:
+            self.calls = 0
+            self.advance_calls = 0
+
+        def theta_grad(self, optimizer: Optimization, theta: np.ndarray, indices: np.ndarray) -> np.ndarray:
+            del indices
+            self.calls += 1
+            optimizer.rng.normal(0.0, 1.0, size=3)
+            return np.zeros_like(theta, dtype=float)
+
+        def advance_rng(self, optimizer: Optimization, theta: np.ndarray) -> None:
+            del theta
+            self.advance_calls += 1
+            optimizer.rng.normal(0.0, 1.0, size=3)
+
+    def fake_minimize(fun, *, x0, jac, callback, **_kwargs):
+        fun(x0)
+        jac(x0)
+        callback(x0)
+        return SimpleNamespace(x=x0, status=0, success=True, message="ok")
+
+    theta_start = np.asarray([0.2, 0.3], dtype=float)
+    objective = _build_theta_objective()
+    gradient = CountingStochasticGradient()
+    optimizer = Optimization(
+        objective,
+        np.array([[1.0], [-0.5]], dtype=float),
+        gradient,
+        algorithm="l-bfgs-b",
+        t_steps=5,
+        n_grad_samples=1,
+        sigma=0.1,
+        rng=np.random.default_rng(123),
+        minimize_fn=fake_minimize,
+    )
+
+    optimizer.solve(theta_start)
+
+    assert gradient.calls == 2
+    assert gradient.advance_calls == 1

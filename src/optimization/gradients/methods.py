@@ -87,6 +87,9 @@ class GradientMethod:
     def setup(self, optimizer: "Optimization", theta0: np.ndarray) -> None:
         del optimizer, theta0
 
+    def advance_rng(self, optimizer: "Optimization", theta: np.ndarray) -> None:
+        del optimizer, theta
+
     def theta_grad(
         self,
         optimizer: "Optimization",
@@ -207,6 +210,12 @@ class GaussSteinGradient(GradientMethod):
             return self._u_grad(optimizer, theta, indices)
         return self._theta_grad(optimizer, theta, indices)
 
+    def advance_rng(self, optimizer: "Optimization", theta: np.ndarray) -> None:
+        if optimizer.perturbation_space == "u":
+            optimizer.rng.normal(0.0, 1.0, size=optimizer.n_grad_samples)
+            return
+        optimizer.rng.normal(0.0, 1.0, size=(optimizer.n_grad_samples, theta.size))
+
     def _theta_grad(
         self,
         optimizer: "Optimization",
@@ -270,6 +279,13 @@ class SPSAGradient(GradientMethod):
         if optimizer.perturbation_space == "u":
             return self._u_grad(optimizer, theta, indices)
         return self._theta_grad(optimizer, theta, indices)
+
+    def advance_rng(self, optimizer: "Optimization", theta: np.ndarray) -> None:
+        choices = np.asarray([-1.0, 1.0], dtype=float)
+        if optimizer.perturbation_space == "u":
+            optimizer.rng.choice(choices, size=optimizer.n_grad_samples)
+            return
+        optimizer.rng.choice(choices, size=(optimizer.n_grad_samples, theta.size))
 
     def _theta_grad(
         self,
@@ -346,6 +362,12 @@ class SteinDifferenceGradient(GradientMethod):
         if optimizer.perturbation_space == "u":
             return self._u_grad(optimizer, theta, indices)
         return self._theta_grad(optimizer, theta, indices)
+
+    def advance_rng(self, optimizer: "Optimization", theta: np.ndarray) -> None:
+        if optimizer.perturbation_space == "u":
+            optimizer.rng.normal(0.0, 1.0, size=optimizer.n_grad_samples)
+            return
+        optimizer.rng.normal(0.0, 1.0, size=(optimizer.n_grad_samples, theta.size))
 
     def _theta_grad(
         self,

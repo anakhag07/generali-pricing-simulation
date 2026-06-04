@@ -127,6 +127,10 @@ and each pickle bundles the fitted estimator with its saved `FeatureProcessor`.
 The objective keeps raw CSV rows at the optimization boundary and reuses the
 acceptance bundle's saved preprocessing internally for both `u(theta, x)` and
 `du/dtheta`.
+For GLM/linear artifacts, extractable coefficients are used for array-native
+acceptance and loss predictions, avoiding repeated sklearn prediction calls in
+value-query gradient estimators. XGBoost and unsupported artifacts fall back to
+their bundled estimator prediction methods.
 For policy-feature experiments, `ModelBasedObjective` can instead take a
 separate fitted policy-side preprocessor. In that mode the policy sees the
 configured policy features, while the sealed acceptance and loss model paths
@@ -232,8 +236,9 @@ historical-`U` histogram with sampled constant-`u` rug marks under
 to choose a subdirectory under `outputs/acceptance_queries/`, or pass explicit
 values with `--u -0.3 0.0 0.2` instead of `--u-count`.
 
-To benchmark objective-cache and contour-subsampling speed on the bundled GLM
-real-data objective, use:
+To benchmark GLM analytical acceptance speed, Stein-difference call counts,
+objective-cache behavior, and contour-subsampling speed on the bundled real-data
+objective, use:
 
 ```bash
 python scripts/benchmark_experiment_speed.py --n-rows 1000 --grid-size 10

@@ -140,7 +140,8 @@ Guidelines:
   - Policy output `u` remains centered at 0 for the acceptance model; only the revenue term shifts to multiplier `u + 1`
   - Optional config-driven mean-acceptance floor is implemented either as a smooth penalty on the objective or directly as a SciPy `trust-constr` nonlinear constraint, depending on `step_rule`
   - Mutable diagnostic counters (`eval_counts()`, `reset_eval_counts()`) record objective value calls and acceptance/loss prediction rows for aggregate reporting
-  - Caches policy features and loss predictions for repeated fixed `x_batch` arrays; acceptance predictions are not cached because they depend on `u`
+  - Uses extracted GLM/linear coefficients for array-native acceptance and loss predictions when available; XGB and unsupported artifacts fall back to estimator prediction calls
+  - Caches policy features, GLM base logits, and loss predictions for repeated fixed `x_batch` arrays; final acceptance probabilities are not cached because they depend on `u`
   - `eval_counts()` also reports prediction/objective timing counters and cache hit/miss counters for performance diagnostics
   - `u_coef` enables analytical gradient for GLM; `None` triggers central FD for XGBoost
   - `value()`, `grad()`, `value_at_u()`
@@ -334,7 +335,7 @@ Guidelines:
 - `scripts/plot_pc_outcome_diagnostics.py` reads a saved run `summary.json`, rebuilds a real-data base preset objective with optional policy/preprocessing override flags, and writes processed-policy-component scatter diagnostics against final `f_acc`, loss, and `u`; defaults beside the summary under `pc_outcome_diagnostics/<estimator>/`
 - `scripts/plot_glm_data_tsne.py` samples rows from the GLM real-data CSV, runs a standardized t-SNE/KMeans feature diagnostic, and writes embedding CSV plus color-by-feature plots under `outputs/data-tsne/`; default colors include saved out-of-fold `F_acc = prob_acceptance`
 - `scripts/run_policy_pca_grid.py` runs the GLM policy PCA-dimensionality grid over configured PCA dimensions and policy classes `(constant, linear, quadratic, third_order, fourth_order, softmax_linear, softmax_quadratic, softmax_third_order, softmax_fourth_order, mlp)`; unconstrained is default, `--constrained` uses `trust-constr` with the observed GLM acceptance floor and a 500-step default cap; outputs aggregate CSVs, summary markdown, and headline/spread plots under `outputs/policy-pca-grid/`; prints per-condition progress by default and supports `--quiet`
-- `scripts/benchmark_experiment_speed.py` benchmarks repeated GLM objective evaluation cache behavior and full-vs-subsampled contour grid timing; use it to quantify whether performance changes speed up real-data diagnostics without relying on flaky pytest time thresholds
+- `scripts/benchmark_experiment_speed.py` benchmarks GLM analytical acceptance vs sklearn `predict_proba`, Stein-difference gradient timing/call counts, repeated objective-cache behavior, and full-vs-subsampled contour grid timing; use it to quantify whether performance changes speed up real-data diagnostics without relying on flaky pytest time thresholds
 
 ## Known Issues and Dead Code
 

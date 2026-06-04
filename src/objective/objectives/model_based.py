@@ -9,6 +9,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from objective._math import _sigmoid
 from objective.base import Objective, Policy
 from objective.policy import policy_theta_dim
 from objective.policy_preprocessing import PolicyFeaturePreprocessor
@@ -29,7 +30,9 @@ class ModelBasedObjective(Objective):
 
     ``acceptance_model`` expects a DataFrame with ``acceptance_state_cols + ["U"]`` and
     returns churn probability in class 1, which this objective maps to acceptance via
-    ``1 - p_churn``. ``loss_model`` expects a DataFrame with ``loss_cols``.
+    ``1 - p_churn``. ``loss_model`` expects a DataFrame with ``loss_cols``. When GLM
+    coefficients can be extracted from the artifacts, value/acceptance calls use the
+    equivalent array formula instead of repeated sklearn predictions.
 
     If ``u_coef`` is provided, it is interpreted as $$d\,\text{logit}(p_{churn}) / dU$$,
     so the analytical acceptance gradient uses the opposite sign.
@@ -60,7 +63,7 @@ class ModelBasedObjective(Objective):
     policy_feature_cols: tuple[str, ...] | None = None
     _fd_eps: float = 1e-4
     _eval_counts: dict[str, float] = field(default_factory=dict, compare=False, repr=False)
-    _cache: dict[tuple[str, tuple[int, tuple[int, ...], tuple[int, ...], str]], Any] = field(
+    _cache: dict[object, Any] = field(
         default_factory=dict,
         compare=False,
         repr=False,
@@ -263,6 +266,96 @@ class ModelBasedObjective(Objective):
             return model_frame(raw_frame)
         return raw_frame
 
+    def _glm_churn_coefficients(self) -> dict[str, Any] | None:
+        key = ("glm_churn_coefficients",)
+        if key not in self._cache:
+            try:
+                from data.loader import extract_glm_churn_coefficients
+
+                coeffs = extract_glm_churn_coefficients(self.acceptance_model)
+            except (AttributeError, KeyError, TypeError, ValueError):
+                coeffs = None
+            self._cache[key] = coeffs
+        return self._cache[key]
+
+    def _linear_loss_coefficients(self) -> dict[str, Any] | None:
+        key = ("linear_loss_coefficients",)
+        if key not in self._cache:
+            try:
+                from data.loader import extract_linear_loss_coefficients
+
+                coeffs = extract_linear_loss_coefficients(self.loss_model)
+            except (AttributeError, KeyError, TypeError, ValueError):
+                coeffs = None
+            self._cache[key] = coeffs
+        return self._cache[key]
+
+    def _glm_churn_base_logit(self, x_batch: np.ndarray) -> np.ndarray | None:
+        coeffs = self._glm_churn_coefficients()
+        if coeffs is None:
+            return None
+        key = self._cache_key("glm_churn_base_logit", x_batch)
+        if key in self._cache:
+            self._record_eval("glm_churn_base_logit_cache_hits", x_batch.shape[0])
+            cached = self._cache[key]
+            return None if cached is None else np.asarray(cached, dtype=float)
+
+        self._record_eval("glm_churn_base_logit_cache_misses", x_batch.shape[0])
+        x_state = x_batch[:, : len(self.acceptance_state_cols)]
+        raw_df = pd.DataFrame(
+            np.column_stack([x_state, np.zeros(x_batch.shape[0], dtype=float)]),
+            columns=list(self.acceptance_state_cols) + ["U"],
+        )
+        model_df = self._artifact_frame(self.acceptance_model, raw_df)
+        feature_names = list(coeffs["x_feature_names"])
+        if any(name not in model_df.columns for name in feature_names):
+            self._cache[key] = None
+            return None
+        x_matrix = model_df.loc[:, feature_names].to_numpy(dtype=float)
+        coef = np.asarray(coeffs["x_coef"], dtype=float)
+        if x_matrix.shape[1] != coef.shape[0]:
+            self._cache[key] = None
+            return None
+        base_logit = float(coeffs["intercept"]) + x_matrix @ coef
+        self._cache[key] = base_logit
+        return base_logit
+
+    def _glm_acceptance_proba(self, x_batch: np.ndarray, u_arr: np.ndarray) -> np.ndarray | None:
+        coeffs = self._glm_churn_coefficients()
+        if coeffs is None:
+            return None
+        base_logit = self._glm_churn_base_logit(x_batch)
+        if base_logit is None:
+            return None
+        self._record_eval("acceptance_analytic_calls", x_batch.shape[0])
+        start = time.perf_counter()
+        try:
+            churn = _sigmoid(base_logit + float(coeffs["u_coef"]) * u_arr)
+            return 1.0 - churn
+        finally:
+            self._record_time("acceptance_analytic_seconds", time.perf_counter() - start)
+
+    def _linear_loss_prediction_from_coefficients(self, x_batch: np.ndarray) -> np.ndarray | None:
+        coeffs = self._linear_loss_coefficients()
+        if coeffs is None:
+            return None
+        x_loss = x_batch[:, : len(self.loss_cols)]
+        raw_df = pd.DataFrame(x_loss, columns=list(self.loss_cols))
+        model_df = self._artifact_frame(self.loss_model, raw_df)
+        feature_names = list(coeffs["x_feature_names"])
+        if any(name not in model_df.columns for name in feature_names):
+            return None
+        x_matrix = model_df.loc[:, feature_names].to_numpy(dtype=float)
+        coef = np.asarray(coeffs["x_coef"], dtype=float)
+        if x_matrix.shape[1] != coef.shape[0]:
+            return None
+        self._record_eval("loss_analytic_calls", x_batch.shape[0])
+        start = time.perf_counter()
+        try:
+            return float(coeffs["intercept"]) + x_matrix @ coef
+        finally:
+            self._record_time("loss_analytic_seconds", time.perf_counter() - start)
+
     def _policy_features(self, x_batch: np.ndarray) -> np.ndarray:
         """Return the acceptance-side processed features used by the policy."""
         key = self._cache_key("policy_features", x_batch)
@@ -312,6 +405,9 @@ class ModelBasedObjective(Objective):
 
     def _acceptance_proba(self, x_batch: np.ndarray, u_arr: np.ndarray) -> np.ndarray:
         """Return acceptance probability by flipping the bundled churn classifier output."""
+        analytical = self._glm_acceptance_proba(x_batch, u_arr)
+        if analytical is not None:
+            return analytical
         return 1.0 - self._churn_proba(x_batch, u_arr)
 
     def _loss_prediction(self, x_batch: np.ndarray) -> np.ndarray:
@@ -322,6 +418,10 @@ class ModelBasedObjective(Objective):
             self._record_eval("loss_prediction_cache_hits", x_batch.shape[0])
             return np.asarray(cached, dtype=float)
         self._record_eval("loss_prediction_cache_misses", x_batch.shape[0])
+        analytical = self._linear_loss_prediction_from_coefficients(x_batch)
+        if analytical is not None:
+            self._cache[key] = analytical
+            return analytical
         x_loss = x_batch[:, : len(self.loss_cols)]
         raw_df = pd.DataFrame(x_loss, columns=list(self.loss_cols))
         model_df = self._artifact_frame(self.loss_model, raw_df)
@@ -346,8 +446,13 @@ class ModelBasedObjective(Objective):
     def _d_acceptance_du_batch(self, x_batch: np.ndarray, u_arr: np.ndarray) -> np.ndarray:
         """Compute d acceptance / du for each sample."""
         acceptance = self._acceptance_proba(x_batch, u_arr)
-        if self.u_coef is not None:
-            return -acceptance * (1.0 - acceptance) * self.u_coef
+        u_coef = self.u_coef
+        if u_coef is None:
+            coeffs = self._glm_churn_coefficients()
+            if coeffs is not None:
+                u_coef = float(coeffs["u_coef"])
+        if u_coef is not None:
+            return -acceptance * (1.0 - acceptance) * u_coef
         eps = self._fd_eps
         a_plus = self._acceptance_proba(x_batch, u_arr + eps)
         a_minus = self._acceptance_proba(x_batch, u_arr - eps)

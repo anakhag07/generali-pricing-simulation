@@ -71,9 +71,10 @@ def _build_model_based_result() -> ExperimentResult:
     from data.loader import (
         ACCEPTANCE_STATE_COLS,
         LOSS_FEATURE_COLS,
+        PREMIUM_COL,
         extract_glm_u_coef,
         load_model_artifacts,
-        load_x_array,
+        load_x_frame,
     )
 
     acceptance_model, loss_model = load_model_artifacts("glm")
@@ -83,16 +84,16 @@ def _build_model_based_result() -> ExperimentResult:
         loss_model=loss_model,
         acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),
         loss_cols=tuple(LOSS_FEATURE_COLS),
-        premium_col=9,
+        premium_col=PREMIUM_COL,
         u_coef=extract_glm_u_coef(acceptance_model),
     )
     theta0 = np.zeros(objective.policy_theta_dim(), dtype=float)
     config = ExperimentConfig(
-        state_dim=12,
+        state_dim=len(ACCEPTANCE_STATE_COLS),
         objective=objective,
         theta0=theta0,
         n_samples=5,
-        x_fixed=load_x_array("glm", n_rows=5, seed=123),
+        x_fixed=load_x_frame("glm", n_rows=5, seed=123),
         step_rule="constant",
         perturbation_space="u",
         t_steps=3,
@@ -172,8 +173,7 @@ def test_log_summary_prints_model_coefficients(capsys) -> None:
     log_summary(result)
     captured = capsys.readouterr().out
     assert "Objective: f(u; x) = p_acc(x, u) * (loss_hat(x) - (u + 1) * premium(x))" in captured
-    assert "p_churn(x, u) = sigmoid(beta_0 + beta_x^T x_acc + beta_u * u)" in captured
-    assert "p_acc(x, u) = 1 - p_churn(x, u)" in captured
+    assert "p_acc(x, u) = sigmoid(beta_0 + beta_x^T x_acc + beta_u * u)" in captured
     assert "loss_hat(x) = gamma_0 + gamma_x^T x_loss" in captured
     assert "beta_x =" in captured
     assert "beta_u =" in captured
@@ -193,9 +193,9 @@ def test_summary_payload_contains_model_coefficients(tmp_path: Path) -> None:
 
     payload = _build_summary_payload(run_context, result)
     coeffs = payload["model_coefficients"]
-    assert payload["model_formulas"]["acceptance"] == "p_acc(x, u) = 1 - p_churn(x, u)"
-    assert set(coeffs) == {"churn", "loss"}
-    assert len(coeffs["churn"]["x_feature_names"]) == len(coeffs["churn"]["x_coef"])
+    assert payload["model_formulas"]["acceptance"] == "p_acc(x, u) = sigmoid(beta_0 + beta_x^T x_acc + beta_u * u)"
+    assert set(coeffs) == {"acceptance", "loss"}
+    assert len(coeffs["acceptance"]["x_feature_names"]) == len(coeffs["acceptance"]["x_coef"])
     assert len(coeffs["loss"]["x_feature_names"]) == len(coeffs["loss"]["x_coef"])
-    assert "u_coef" in coeffs["churn"]
+    assert "u_coef" in coeffs["acceptance"]
     assert "u_coef" not in coeffs["loss"]

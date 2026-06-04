@@ -31,7 +31,7 @@ def test_policy_pca_grid_default_seed_is_single_42() -> None:
 
 def test_build_condition_uses_policy_preprocessor_dimension() -> None:
     rng = np.random.default_rng(123)
-    x_fixed = rng.normal(size=(8, 12))
+    x_fixed = rng.normal(size=(8, len(ACCEPTANCE_STATE_COLS)))
     x_policy = x_fixed[:, : len(ACCEPTANCE_STATE_COLS)]
     preprocessor = fit_policy_feature_preprocessor(x_policy, pca_dim=4)
     spec = PolicyPcaGridSpec(n_samples=x_fixed.shape[0], seeds=(1,), t_steps=2)
@@ -50,7 +50,7 @@ def test_build_condition_uses_policy_preprocessor_dimension() -> None:
     )
 
     assert condition.config.objective.policy_input_dim() == 4
-    assert condition.config.objective.policy_feature_cols == tuple(ACCEPTANCE_STATE_COLS)
+    assert condition.config.objective.policy_feature_cols is None
     assert condition.config.theta0 is None
     assert condition.config.objective.policy_theta_dim() == 15
 
@@ -59,7 +59,7 @@ def test_build_condition_supports_softmax_feature_policy() -> None:
     from objective.policy import QuadraticFeatureMap, SoftmaxPolicy
 
     rng = np.random.default_rng(123)
-    x_fixed = rng.normal(size=(8, 12))
+    x_fixed = rng.normal(size=(8, len(ACCEPTANCE_STATE_COLS)))
     x_policy = x_fixed[:, : len(ACCEPTANCE_STATE_COLS)]
     preprocessor = fit_policy_feature_preprocessor(x_policy, pca_dim=3)
     spec = PolicyPcaGridSpec(n_samples=x_fixed.shape[0], seeds=(1,), t_steps=2)
@@ -87,7 +87,7 @@ def test_build_condition_supports_softmax_feature_policy() -> None:
 
 def test_build_condition_supports_constrained_grid() -> None:
     rng = np.random.default_rng(123)
-    x_fixed = rng.normal(size=(8, 12))
+    x_fixed = rng.normal(size=(8, len(ACCEPTANCE_STATE_COLS)))
     x_policy = x_fixed[:, : len(ACCEPTANCE_STATE_COLS)]
     preprocessor = fit_policy_feature_preprocessor(x_policy, pca_dim=2)
     spec = PolicyPcaGridSpec(

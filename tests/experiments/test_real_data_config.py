@@ -43,16 +43,16 @@ def test_old_real_data_preset_names_are_removed() -> None:
 def test_glm_base_default_shape_and_first_order():
     cfg = _cfg("real_data_glm_base")
     assert cfg.x_fixed is not None
-    assert cfg.x_fixed.shape == (cfg.n_samples, 12)
-    assert cfg.state_dim == 12
+    assert cfg.x_fixed.shape == (cfg.n_samples, 19)
+    assert cfg.state_dim == 19
     assert "first_order" in cfg.enabled_estimators
 
 
 def test_xgb_base_default_shape_and_no_first_order():
     cfg = _cfg("real_data_xgb_base")
     assert cfg.x_fixed is not None
-    assert cfg.x_fixed.shape == (cfg.n_samples, 10)
-    assert cfg.state_dim == 10
+    assert cfg.x_fixed.shape == (cfg.n_samples, 19)
+    assert cfg.state_dim == 19
     assert "first_order" not in cfg.enabled_estimators
 
 
@@ -129,8 +129,6 @@ def test_glm_mlp_policy_override_has_mlp_policy_and_first_order():
 
 
 def test_glm_no_pca_policy_preprocessing_override() -> None:
-    from data.loader import ACCEPTANCE_STATE_COLS
-
     cfg = _cfg(
         "real_data_glm_base",
         policy_kind="softmax",
@@ -139,11 +137,10 @@ def test_glm_no_pca_policy_preprocessing_override() -> None:
     )
 
     assert cfg.objective.policy_preprocessor is not None
-    assert cfg.objective.policy_feature_cols == tuple(ACCEPTANCE_STATE_COLS)
-    assert cfg.objective.policy_input_dim() == len(ACCEPTANCE_STATE_COLS)
+    assert cfg.objective.policy_feature_cols is None
+    assert cfg.objective.policy_input_dim() == cfg.objective.policy_preprocessor.output_dim_
     assert cfg.theta0 is not None
-    assert cfg.theta0.size == 726
-    assert cfg.objective.policy_theta_dim() == 726
+    assert cfg.theta0.size == cfg.objective.policy_theta_dim()
 
 
 def test_glm_trust_constraint_override_sets_acceptance_floor():

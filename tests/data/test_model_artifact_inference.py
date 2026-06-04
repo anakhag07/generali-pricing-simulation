@@ -5,19 +5,13 @@ import pandas as pd
 
 
 def _artifact_prediction_inputs(model_type: str, n_rows: int = 5):
-    from data.loader import ACCEPTANCE_STATE_COLS, LOSS_FEATURE_COLS, load_model_artifacts, load_x_array
+    from data.loader import ACCEPTANCE_STATE_COLS, LOSS_FEATURE_COLS, load_model_artifacts, load_x_frame
 
     acceptance_model, loss_model = load_model_artifacts(model_type)
-    x = load_x_array(model_type, n_rows=n_rows, seed=123)
-    u = np.zeros(x.shape[0], dtype=float)
-    acceptance_frame = pd.DataFrame(
-        np.column_stack([x[:, : len(ACCEPTANCE_STATE_COLS)], u]),
-        columns=[*ACCEPTANCE_STATE_COLS, "U"],
-    )
-    loss_frame = pd.DataFrame(
-        x[:, : len(LOSS_FEATURE_COLS)],
-        columns=LOSS_FEATURE_COLS,
-    )
+    x = load_x_frame(model_type, n_rows=n_rows, seed=123)
+    acceptance_frame = x.loc[:, list(ACCEPTANCE_STATE_COLS)].copy()
+    acceptance_frame["U"] = np.zeros(x.shape[0], dtype=float)
+    loss_frame = x.loc[:, list(LOSS_FEATURE_COLS)].copy()
     return acceptance_model, loss_model, acceptance_frame, loss_frame
 
 
@@ -30,7 +24,7 @@ def test_xgb_artifacts_predict_on_canonical_dataset_rows():
 
 
 def test_model_based_objective_runs_on_canonical_dataset_rows():
-    from data.loader import ACCEPTANCE_STATE_COLS, LOSS_FEATURE_COLS, extract_glm_u_coef, load_model_artifacts, load_x_array
+    from data.loader import ACCEPTANCE_STATE_COLS, LOSS_FEATURE_COLS, PREMIUM_COL, extract_glm_u_coef, load_model_artifacts, load_x_frame
     from objective.objectives import ModelBasedObjective
     from objective.policy import ConstantPolicy
 
@@ -44,9 +38,10 @@ def test_model_based_objective_runs_on_canonical_dataset_rows():
             loss_model=loss_model,
             acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),
             loss_cols=tuple(LOSS_FEATURE_COLS),
+            premium_col=PREMIUM_COL,
             u_coef=u_coef,
         )
-        x = load_x_array(model_type, n_rows=5, seed=123)
+        x = load_x_frame(model_type, n_rows=5, seed=123)
 
         value = objective.value(theta, x)
         value_at_u = objective.value_at_u(x, 0.0)

@@ -751,10 +751,32 @@ def _policy_output_histogram_bins(series_list: Sequence[np.ndarray]) -> np.ndarr
     return np.histogram_bin_edges(combined, bins="auto")
 
 
+def _as_2d_x_samples(x_samples: object) -> object:
+    if hasattr(x_samples, "iloc") and hasattr(x_samples, "columns"):
+        x_frame = x_samples.reset_index(drop=True)
+        if x_frame.ndim != 2:
+            raise ValueError("x_samples must be a 2D array/DataFrame.")
+        return x_frame
+    x_arr = np.asarray(x_samples, dtype=float)
+    if x_arr.ndim != 2:
+        raise ValueError("x_samples must be a 2D array/DataFrame.")
+    return x_arr
+
+
+def _x_sample_count(x_samples: object) -> int:
+    return int(x_samples.shape[0])  # type: ignore[attr-defined]
+
+
+def _x_sample_slice(x_samples: object, start: int, stop: int) -> object:
+    if hasattr(x_samples, "iloc"):
+        return x_samples.iloc[start:stop].reset_index(drop=True)
+    return x_samples[start:stop]  # type: ignore[index]
+
+
 def _policy_outputs_for_theta(
     objective: Objective,
     theta: np.ndarray,
-    x_samples: np.ndarray,
+    x_samples: object,
 ) -> np.ndarray:
     u_values = np.asarray(_policy_value(objective, np.asarray(theta, dtype=float), x_samples), dtype=float)
     clip_fn = getattr(objective, "_clip_u", None)
@@ -767,14 +789,14 @@ def _policy_outputs_for_estimator(
     objective: Objective,
     estimator_name: str,
     theta: np.ndarray,
-    x_samples: np.ndarray,
+    x_samples: object,
 ) -> np.ndarray:
     if estimator_name != "constant":
         return _policy_outputs_for_theta(objective, theta, x_samples)
     theta_arr = np.asarray(theta, dtype=float).reshape(-1)
     if theta_arr.size != 1:
         raise ValueError("constant estimator theta must contain one scalar.")
-    u_values = np.full(np.asarray(x_samples, dtype=float).shape[0], float(theta_arr[0]), dtype=float)
+    u_values = np.full(_x_sample_count(x_samples), float(theta_arr[0]), dtype=float)
     clip_fn = getattr(objective, "_clip_u", None)
     if callable(clip_fn):
         u_values = np.asarray(clip_fn(u_values), dtype=float)
@@ -789,29 +811,28 @@ def _ordered_policy_estimator_names(theta_by_estimator: Mapping[str, np.ndarray]
 
 def _row_objective_values(
     objective: Objective,
-    x_samples: np.ndarray,
+    x_samples: object,
     u_values: np.ndarray,
 ) -> np.ndarray:
-    x_arr = np.asarray(x_samples, dtype=float)
-    if x_arr.ndim != 2:
-        raise ValueError("x_samples must be a 2D array.")
+    x_data = _as_2d_x_samples(x_samples)
+    n_samples = _x_sample_count(x_data)
     u_arr = np.asarray(u_values, dtype=float).reshape(-1)
-    if u_arr.shape != (x_arr.shape[0],):
+    if u_arr.shape != (n_samples,):
         raise ValueError("u_values must match the number of x_samples rows.")
 
     value_batch_fn = getattr(objective, "_value_batch", None)
     if callable(value_batch_fn):
-        values = np.asarray(value_batch_fn(x_arr, u_arr), dtype=float)
-        if values.shape != (x_arr.shape[0],):
+        values = np.asarray(value_batch_fn(x_data, u_arr), dtype=float)
+        if values.shape != (n_samples,):
             raise ValueError("objective._value_batch(x_array, u_array) must return shape (n_samples,).")
         return values
 
     value_at_u_fn = getattr(objective, "value_at_u", None)
     if callable(value_at_u_fn):
-        value_at_u_typed = cast(Callable[[np.ndarray, float], float], value_at_u_fn)
-        values = np.empty(x_arr.shape[0], dtype=float)
+        value_at_u_typed = cast(Callable[[object, float], float], value_at_u_fn)
+        values = np.empty(n_samples, dtype=float)
         for idx, u_val in enumerate(u_arr):
-            values[idx] = float(value_at_u_typed(x_arr[idx : idx + 1], float(u_val)))
+            values[idx] = float(value_at_u_typed(_x_sample_slice(x_data, idx, idx + 1), float(u_val)))
         return values
 
     raise ValueError(
@@ -822,21 +843,20 @@ def _row_objective_values(
 
 def _row_acceptance_values(
     objective: Objective,
-    x_samples: np.ndarray,
+    x_samples: object,
     u_values: np.ndarray,
 ) -> np.ndarray:
-    x_arr = np.asarray(x_samples, dtype=float)
-    if x_arr.ndim != 2:
-        raise ValueError("x_samples must be a 2D array.")
+    x_data = _as_2d_x_samples(x_samples)
+    n_samples = _x_sample_count(x_data)
     u_arr = np.asarray(u_values, dtype=float).reshape(-1)
-    if u_arr.shape != (x_arr.shape[0],):
+    if u_arr.shape != (n_samples,):
         raise ValueError("u_values must match the number of x_samples rows.")
 
     acceptance_fn = getattr(objective, "_acceptance_proba", None)
     if not callable(acceptance_fn):
         raise ValueError("Acceptance diagnostics require objective._acceptance_proba(x_array, u_array).")
-    values = np.asarray(acceptance_fn(x_arr, u_arr), dtype=float).reshape(-1)
-    if values.shape != (x_arr.shape[0],):
+    values = np.asarray(acceptance_fn(x_data, u_arr), dtype=float).reshape(-1)
+    if values.shape != (n_samples,):
         raise ValueError("objective._acceptance_proba(x_array, u_array) must return shape (n_samples,).")
     return values
 
@@ -885,11 +905,9 @@ def _plot_policy_u_histograms(
     plot_dir: str,
     filename: str = "u_histogram.png",
 ) -> None:
-    x_arr = np.asarray(x_samples, dtype=float)
-    if x_arr.ndim != 2:
-        raise ValueError("x_samples must be a 2D array.")
+    x_data = _as_2d_x_samples(x_samples)
     observed_u_arr = np.asarray(observed_u, dtype=float).reshape(-1)
-    if observed_u_arr.shape != (x_arr.shape[0],):
+    if observed_u_arr.shape != (_x_sample_count(x_data),):
         raise ValueError("observed_u must match the number of x_samples rows.")
     if not theta_by_estimator:
         return
@@ -897,7 +915,7 @@ def _plot_policy_u_histograms(
     path = _ensure_plot_dir(plot_dir)
     ordered_names = _ordered_policy_estimator_names(theta_by_estimator)
     policy_outputs = {
-        name: _policy_outputs_for_estimator(objective, name, theta_by_estimator[name], x_arr)
+        name: _policy_outputs_for_estimator(objective, name, theta_by_estimator[name], x_data)
         for name in ordered_names
     }
     bins = _policy_output_histogram_bins([observed_u_arr, *policy_outputs.values()])
@@ -943,23 +961,21 @@ def _plot_policy_acceptance_histograms(
     plot_dir: str,
     filename: str = "acceptance_histograms.png",
 ) -> None:
-    x_arr = np.asarray(x_samples, dtype=float)
-    if x_arr.ndim != 2:
-        raise ValueError("x_samples must be a 2D array.")
+    x_data = _as_2d_x_samples(x_samples)
     observed_u_arr = np.asarray(observed_u, dtype=float).reshape(-1)
-    if observed_u_arr.shape != (x_arr.shape[0],):
+    if observed_u_arr.shape != (_x_sample_count(x_data),):
         raise ValueError("observed_u must match the number of x_samples rows.")
     if not theta_by_estimator:
         return
 
     path = _ensure_plot_dir(plot_dir)
     ordered_names = _ordered_policy_estimator_names(theta_by_estimator)
-    observed_acceptance = _row_acceptance_values(objective, x_arr, observed_u_arr)
+    observed_acceptance = _row_acceptance_values(objective, x_data, observed_u_arr)
     policy_acceptance = {
         name: _row_acceptance_values(
             objective,
-            x_arr,
-            _policy_outputs_for_estimator(objective, name, theta_by_estimator[name], x_arr),
+            x_data,
+            _policy_outputs_for_estimator(objective, name, theta_by_estimator[name], x_data),
         )
         for name in ordered_names
     }
@@ -1050,9 +1066,7 @@ def _plot_policy_final_summary_metrics(
     plot_dir: str,
     filename: str = "final_summary_metrics.png",
 ) -> None:
-    x_arr = np.asarray(x_samples, dtype=float)
-    if x_arr.ndim != 2:
-        raise ValueError("x_samples must be a 2D array.")
+    x_data = _as_2d_x_samples(x_samples)
     if not theta_by_estimator:
         return
     if not callable(getattr(objective, "_acceptance_proba", None)):
@@ -1065,9 +1079,9 @@ def _plot_policy_final_summary_metrics(
     runtime_summaries: dict[str, tuple[float, float, float]] = {}
 
     for name in ordered_names:
-        policy_u = _policy_outputs_for_estimator(objective, name, theta_by_estimator[name], x_arr)
-        objective_values = _row_objective_values(objective, x_arr, policy_u)
-        acceptance_values = _row_acceptance_values(objective, x_arr, policy_u)
+        policy_u = _policy_outputs_for_estimator(objective, name, theta_by_estimator[name], x_data)
+        objective_values = _row_objective_values(objective, x_data, policy_u)
+        acceptance_values = _row_acceptance_values(objective, x_data, policy_u)
         runtime = float(runtime_by_estimator.get(name, np.nan))
         u_summaries[name] = _metric_summary(policy_u)
         objective_summaries[name] = _metric_summary(objective_values)
@@ -1123,9 +1137,7 @@ def _plot_policy_u_acceptance_histograms(
     plot_dir: str,
     acceptance_floor: float | None = None,
 ) -> None:
-    x_arr = np.asarray(x_samples, dtype=float)
-    if x_arr.ndim != 2:
-        raise ValueError("x_samples must be a 2D array.")
+    x_data = _as_2d_x_samples(x_samples)
     if not theta_by_estimator:
         return
     if not callable(getattr(objective, "_acceptance_proba", None)):
@@ -1136,8 +1148,8 @@ def _plot_policy_u_acceptance_histograms(
 
     for name in ordered_names:
         style = _estimator_style(name)
-        policy_u = _policy_outputs_for_estimator(objective, name, theta_by_estimator[name], x_arr)
-        acceptance_values = _row_acceptance_values(objective, x_arr, policy_u)
+        policy_u = _policy_outputs_for_estimator(objective, name, theta_by_estimator[name], x_data)
+        acceptance_values = _row_acceptance_values(objective, x_data, policy_u)
         bins = _policy_output_histogram_bins([policy_u])
         centers, mean_acceptance = _binned_mean_line(policy_u, acceptance_values, bins)
         fig, axes = plt.subplots(1, 2, figsize=(12.0, 4.0))
@@ -1242,9 +1254,7 @@ def plot_objective_u_slice(
     if not trace_items:
         return
     path = _ensure_plot_dir(plot_dir)
-    x_arr = np.asarray(x_samples, dtype=float)
-    if x_arr.ndim != 2:
-        raise ValueError("x_samples must be a 2D array.")
+    x_data = _as_2d_x_samples(x_samples)
 
     u_values: list[float] = []
     for _, trace in trace_items:
@@ -1268,10 +1278,10 @@ def plot_objective_u_slice(
     value_at_u_fn = getattr(objective, "value_at_u", None)
     if not callable(value_at_u_fn):
         return
-    value_at_u_typed = cast(Callable[[np.ndarray, float], float], value_at_u_fn)
+    value_at_u_typed = cast(Callable[[object, float], float], value_at_u_fn)
 
     def value_at_u_scalar(u: float) -> float:
-        return float(value_at_u_typed(x_arr, float(u)))
+        return float(value_at_u_typed(x_data, float(u)))
 
     obj_grid = [value_at_u_scalar(float(u)) for u in u_grid]
 
@@ -1370,7 +1380,7 @@ def select_theta_axes_max_variance(theta_points: Sequence[np.ndarray]) -> tuple[
 
 
 def theta_objective_contour_grid(
-    x_samples: np.ndarray,
+    x_samples: object,
     objective: Objective,
     theta_base: np.ndarray,
     axis_indices: tuple[int, int] = (0, 1),
@@ -1380,9 +1390,7 @@ def theta_objective_contour_grid(
     min_pad: float = 0.02,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Compute contour grid for theta-level objective."""
-    x_arr = np.asarray(x_samples, dtype=float)
-    if x_arr.ndim != 2:
-        raise ValueError("x_samples must be a 2D array.")
+    x_data = _as_2d_x_samples(x_samples)
     theta_arr = np.asarray(theta_base, dtype=float)
     if len(axis_indices) != 2:
         raise ValueError("axis_indices must contain exactly two indices.")
@@ -1403,7 +1411,7 @@ def theta_objective_contour_grid(
             theta = theta_arr.copy()
             theta[axis_indices[0]] = grid_x[i, j]
             theta[axis_indices[1]] = grid_y[i, j]
-            objective_grid[i, j] = float(objective.value(theta, x_arr))
+            objective_grid[i, j] = float(objective.value(theta, x_data))
 
     return grid_x, grid_y, objective_grid
 
@@ -1445,7 +1453,7 @@ def _adaptive_contour_norm(values: np.ndarray) -> matplotlib.colors.Normalize | 
 
 
 def plot_theta_objective_contours(
-    x_samples: np.ndarray,
+    x_samples: object,
     objective: Objective,
     theta_base: np.ndarray,
     plot_dir: str,
@@ -1458,12 +1466,10 @@ def plot_theta_objective_contours(
     levels: int = 15,
     filename: str = "theta_objective_contours.png",
 ) -> None:
-    x_arr = np.asarray(x_samples, dtype=float)
-    if x_arr.ndim != 2:
-        raise ValueError("x_samples must be a 2D array.")
+    x_data = _as_2d_x_samples(x_samples)
     path = _ensure_plot_dir(plot_dir)
     grid_x, grid_y, objective_grid = theta_objective_contour_grid(
-        x_arr,
+        x_data,
         objective,
         theta_base,
         axis_indices=axis_indices,

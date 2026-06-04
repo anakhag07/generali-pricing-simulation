@@ -106,6 +106,9 @@
             <li>
                     <a class="function" href="#dataset_csv_path">dataset_csv_path</a>
             </li>
+            <li>
+                    <a class="function" href="#load_x_frame">load_x_frame</a>
+            </li>
     </ul>
 
 
@@ -133,9 +136,9 @@ data    </h1>
 </span><span id="L-2"><a href="#L-2"><span class="linenos">2</span></a>
 </span><span id="L-3"><a href="#L-3"><span class="linenos">3</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">data</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataset_metadata</span>
 </span><span id="L-4"><a href="#L-4"><span class="linenos">4</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">data.feature_processor</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeatureProcessor</span>
-</span><span id="L-5"><a href="#L-5"><span class="linenos">5</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">data.loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataset_csv_path</span>
+</span><span id="L-5"><a href="#L-5"><span class="linenos">5</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">data.loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataset_csv_path</span><span class="p">,</span> <span class="n">load_x_frame</span>
 </span><span id="L-6"><a href="#L-6"><span class="linenos">6</span></a>
-</span><span id="L-7"><a href="#L-7"><span class="linenos">7</span></a><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;FeatureProcessor&quot;</span><span class="p">,</span> <span class="s2">&quot;dataset_csv_path&quot;</span><span class="p">,</span> <span class="s2">&quot;dataset_metadata&quot;</span><span class="p">]</span>
+</span><span id="L-7"><a href="#L-7"><span class="linenos">7</span></a><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;FeatureProcessor&quot;</span><span class="p">,</span> <span class="s2">&quot;dataset_csv_path&quot;</span><span class="p">,</span> <span class="s2">&quot;dataset_metadata&quot;</span><span class="p">,</span> <span class="s2">&quot;load_x_frame&quot;</span><span class="p">]</span>
 </span></pre></div>
 
 
@@ -143,7 +146,7 @@ data    </h1>
                 <section id="FeatureProcessor">
                             <input id="FeatureProcessor-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr class">
-            
+
     <span class="def">class</span>
     <span class="name">FeatureProcessor</span>:
 
@@ -317,7 +320,7 @@ data    </h1>
                             <div id="FeatureProcessor.__init__" class="classattr">
                                         <input id="FeatureProcessor.__init__-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="name">FeatureProcessor</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">numeric_cols</span><span class="o">=</span><span class="kc">None</span>,</span><span class="param">	<span class="n">categorical_cols</span><span class="o">=</span><span class="kc">None</span>,</span><span class="param">	<span class="n">regularization</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-06</span>,</span><span class="param">	<span class="n">missing_category</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;__MISSING__&#39;</span>,</span><span class="param">	<span class="n">use_pca</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>,</span><span class="param">	<span class="n">n_components</span><span class="o">=</span><span class="kc">None</span>,</span><span class="param">	<span class="n">explained_variance_threshold</span><span class="o">=</span><span class="kc">None</span></span>)</span>
 
                 <label class="view-source-button" for="FeatureProcessor.__init__-view-source"><span>View Source</span></label>
@@ -344,90 +347,90 @@ data    </h1>
 </span></pre></div>
 
 
-    
+
 
                             </div>
                             <div id="FeatureProcessor.numeric_cols" class="classattr">
                                 <div class="attr variable">
             <span class="name">numeric_cols</span>
 
-        
+
     </div>
     <a class="headerlink" href="#FeatureProcessor.numeric_cols"></a>
-    
-    
+
+
 
                             </div>
                             <div id="FeatureProcessor.categorical_cols" class="classattr">
                                 <div class="attr variable">
             <span class="name">categorical_cols</span>
 
-        
+
     </div>
     <a class="headerlink" href="#FeatureProcessor.categorical_cols"></a>
-    
-    
+
+
 
                             </div>
                             <div id="FeatureProcessor.regularization" class="classattr">
                                 <div class="attr variable">
             <span class="name">regularization</span>
 
-        
+
     </div>
     <a class="headerlink" href="#FeatureProcessor.regularization"></a>
-    
-    
+
+
 
                             </div>
                             <div id="FeatureProcessor.missing_category" class="classattr">
                                 <div class="attr variable">
             <span class="name">missing_category</span>
 
-        
+
     </div>
     <a class="headerlink" href="#FeatureProcessor.missing_category"></a>
-    
-    
+
+
 
                             </div>
                             <div id="FeatureProcessor.use_pca" class="classattr">
                                 <div class="attr variable">
             <span class="name">use_pca</span>
 
-        
+
     </div>
     <a class="headerlink" href="#FeatureProcessor.use_pca"></a>
-    
-    
+
+
 
                             </div>
                             <div id="FeatureProcessor.n_components" class="classattr">
                                 <div class="attr variable">
             <span class="name">n_components</span>
 
-        
+
     </div>
     <a class="headerlink" href="#FeatureProcessor.n_components"></a>
-    
-    
+
+
 
                             </div>
                             <div id="FeatureProcessor.explained_variance_threshold" class="classattr">
                                 <div class="attr variable">
             <span class="name">explained_variance_threshold</span>
 
-        
+
     </div>
     <a class="headerlink" href="#FeatureProcessor.explained_variance_threshold"></a>
-    
-    
+
+
 
                             </div>
                             <div id="FeatureProcessor.fit" class="classattr">
                                         <input id="FeatureProcessor.fit-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">fit</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">X</span><span class="p">:</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span></span><span class="return-annotation">) -> <span class="n"><a href="#FeatureProcessor">FeatureProcessor</a></span>:</span></span>
 
@@ -525,13 +528,13 @@ data    </h1>
 </span></pre></div>
 
 
-    
+
 
                             </div>
                             <div id="FeatureProcessor.transform" class="classattr">
                                         <input id="FeatureProcessor.transform-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">transform</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">X</span><span class="p">:</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span></span><span class="return-annotation">) -> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span>:</span></span>
 
@@ -568,13 +571,13 @@ data    </h1>
 </span></pre></div>
 
 
-    
+
 
                             </div>
                             <div id="FeatureProcessor.fit_transform" class="classattr">
                                         <input id="FeatureProcessor.fit_transform-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">fit_transform</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">X</span><span class="p">:</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span></span><span class="return-annotation">) -> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span>:</span></span>
 
@@ -587,13 +590,13 @@ data    </h1>
 </span></pre></div>
 
 
-    
+
 
                             </div>
                             <div id="FeatureProcessor.get_explained_variance_info" class="classattr">
                                         <input id="FeatureProcessor.get_explained_variance_info-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">get_explained_variance_info</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span></span><span class="return-annotation">) -> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]</span>:</span></span>
 
@@ -613,13 +616,13 @@ data    </h1>
 </span></pre></div>
 
 
-    
+
 
                             </div>
                             <div id="FeatureProcessor.inverse_transform_numeric" class="classattr">
                                         <input id="FeatureProcessor.inverse_transform_numeric-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">inverse_transform_numeric</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">X_transformed</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span><span class="return-annotation">) -> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>:</span></span>
 
@@ -637,14 +640,14 @@ data    </h1>
 </span></pre></div>
 
 
-    
+
 
                             </div>
                 </section>
                 <section id="dataset_csv_path">
                             <input id="dataset_csv_path-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">dataset_csv_path</span><span class="signature pdoc-code condensed">(<span class="return-annotation">) -> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span>:</span></span>
 
@@ -652,13 +655,51 @@ data    </h1>
 
     </div>
     <a class="headerlink" href="#dataset_csv_path"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="dataset_csv_path-130"><a href="#dataset_csv_path-130"><span class="linenos">130</span></a><span class="k">def</span><span class="w"> </span><span class="nf">dataset_csv_path</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-</span><span id="dataset_csv_path-131"><a href="#dataset_csv_path-131"><span class="linenos">131</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the canonical real-data source CSV path.&quot;&quot;&quot;</span>
-</span><span id="dataset_csv_path-132"><a href="#dataset_csv_path-132"><span class="linenos">132</span></a>    <span class="k">return</span> <span class="n">_DATASET_CSV_PATH</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="dataset_csv_path-136"><a href="#dataset_csv_path-136"><span class="linenos">136</span></a><span class="k">def</span><span class="w"> </span><span class="nf">dataset_csv_path</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+</span><span id="dataset_csv_path-137"><a href="#dataset_csv_path-137"><span class="linenos">137</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the canonical 052726 real-data source CSV path.&quot;&quot;&quot;</span>
+</span><span id="dataset_csv_path-138"><a href="#dataset_csv_path-138"><span class="linenos">138</span></a>    <span class="k">return</span> <span class="n">_DATASET_CSV_PATH</span>
 </span></pre></div>
 
 
-            <div class="docstring"><p>Return the canonical real-data source CSV path.</p>
+            <div class="docstring"><p>Return the canonical 052726 real-data source CSV path.</p>
+</div>
+
+
+                </section>
+                <section id="load_x_frame">
+                            <input id="load_x_frame-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+
+        <span class="def">def</span>
+        <span class="name">load_x_frame</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">model_type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;glm&#39;</span><span class="p">,</span> <span class="s1">&#39;xgb&#39;</span><span class="p">]</span>,</span><span class="param">	<span class="n">n_rows</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5000</span>,</span><span class="param">	<span class="o">*</span>,</span><span class="param">	<span class="n">row_indices</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span>:</span></span>
+
+                <label class="view-source-button" for="load_x_frame-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#load_x_frame"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="load_x_frame-340"><a href="#load_x_frame-340"><span class="linenos">340</span></a><span class="k">def</span><span class="w"> </span><span class="nf">load_x_frame</span><span class="p">(</span>
+</span><span id="load_x_frame-341"><a href="#load_x_frame-341"><span class="linenos">341</span></a>    <span class="n">model_type</span><span class="p">:</span> <span class="n">ModelType</span><span class="p">,</span>
+</span><span id="load_x_frame-342"><a href="#load_x_frame-342"><span class="linenos">342</span></a>    <span class="n">n_rows</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5000</span><span class="p">,</span>
+</span><span id="load_x_frame-343"><a href="#load_x_frame-343"><span class="linenos">343</span></a>    <span class="o">*</span><span class="p">,</span>
+</span><span id="load_x_frame-344"><a href="#load_x_frame-344"><span class="linenos">344</span></a>    <span class="n">row_indices</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="load_x_frame-345"><a href="#load_x_frame-345"><span class="linenos">345</span></a>    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="load_x_frame-346"><a href="#load_x_frame-346"><span class="linenos">346</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+</span><span id="load_x_frame-347"><a href="#load_x_frame-347"><span class="linenos">347</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Load raw 052726 X covariates for optimization, preserving categoricals.&quot;&quot;&quot;</span>
+</span><span id="load_x_frame-348"><a href="#load_x_frame-348"><span class="linenos">348</span></a>    <span class="n">model_type</span> <span class="o">=</span> <span class="n">_validate_model_type</span><span class="p">(</span><span class="n">model_type</span><span class="p">)</span>
+</span><span id="load_x_frame-349"><a href="#load_x_frame-349"><span class="linenos">349</span></a>    <span class="n">csv_path</span> <span class="o">=</span> <span class="n">_acceptance_csv_path</span><span class="p">(</span><span class="n">model_type</span><span class="p">)</span>
+</span><span id="load_x_frame-350"><a href="#load_x_frame-350"><span class="linenos">350</span></a>    <span class="n">feature_cols</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">MODEL_FEATURE_COLS</span><span class="p">[</span><span class="n">model_type</span><span class="p">])</span>
+</span><span id="load_x_frame-351"><a href="#load_x_frame-351"><span class="linenos">351</span></a>    <span class="k">if</span> <span class="n">row_indices</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="load_x_frame-352"><a href="#load_x_frame-352"><span class="linenos">352</span></a>        <span class="n">row_indices</span> <span class="o">=</span> <span class="n">sample_csv_row_indices</span><span class="p">(</span><span class="n">model_type</span><span class="p">,</span> <span class="n">n_rows</span><span class="o">=</span><span class="n">n_rows</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
+</span><span id="load_x_frame-353"><a href="#load_x_frame-353"><span class="linenos">353</span></a>    <span class="k">else</span><span class="p">:</span>
+</span><span id="load_x_frame-354"><a href="#load_x_frame-354"><span class="linenos">354</span></a>        <span class="n">row_indices</span> <span class="o">=</span> <span class="n">_validate_row_indices</span><span class="p">(</span><span class="n">row_indices</span><span class="p">,</span> <span class="n">_csv_row_count</span><span class="p">(</span><span class="n">csv_path</span><span class="p">))</span>
+</span><span id="load_x_frame-355"><a href="#load_x_frame-355"><span class="linenos">355</span></a>    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">csv_path</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;;&quot;</span><span class="p">,</span> <span class="n">usecols</span><span class="o">=</span><span class="n">feature_cols</span><span class="p">)</span>
+</span><span id="load_x_frame-356"><a href="#load_x_frame-356"><span class="linenos">356</span></a>    <span class="n">df</span> <span class="o">=</span> <span class="n">_select_csv_rows</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">row_indices</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">))</span>
+</span><span id="load_x_frame-357"><a href="#load_x_frame-357"><span class="linenos">357</span></a>    <span class="n">_validate_no_missing_required</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">feature_cols</span><span class="p">)</span>
+</span><span id="load_x_frame-358"><a href="#load_x_frame-358"><span class="linenos">358</span></a>    <span class="k">return</span> <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">feature_cols</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Load raw 052726 X covariates for optimization, preserving categoricals.</p>
 </div>
 
 

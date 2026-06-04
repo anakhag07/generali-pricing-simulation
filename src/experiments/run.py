@@ -106,7 +106,10 @@ def run_experiment(
         theta_initial = np.asarray(effective_config.theta0, dtype=float)
 
     if effective_config.x_fixed is not None:
-        x_samples = np.asarray(effective_config.x_fixed, dtype=float)
+        if hasattr(effective_config.x_fixed, "iloc") and hasattr(effective_config.x_fixed, "columns"):
+            x_samples = effective_config.x_fixed.reset_index(drop=True).copy()
+        else:
+            x_samples = np.asarray(effective_config.x_fixed, dtype=float)
     else:
         x_samples = sample_states(rng, effective_config.n_samples, effective_config.state_dim)
     true_grad_theta_fn = resolve_true_grad_theta_fn(objective, effective_config.correctness)

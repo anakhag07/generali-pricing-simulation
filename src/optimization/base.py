@@ -38,7 +38,7 @@ class Optimization:
     def __init__(
         self,
         objective: Objective,
-        x_samples: np.ndarray,
+        x_samples: Any,
         gradient: Any,
         *,
         algorithm: str = STEP_RULE_LBFGSB,
@@ -102,9 +102,14 @@ class Optimization:
         self.rng = rng if rng is not None else np.random.default_rng(0)
         self._minimize_fn = minimize_fn
 
-        x_arr = np.asarray(x_samples, dtype=float)
-        if x_arr.ndim != 2:
-            raise ValueError("x_samples must be a 2D array.")
+        if hasattr(x_samples, "iloc") and hasattr(x_samples, "columns"):
+            x_arr = x_samples.reset_index(drop=True).copy()
+            if x_arr.ndim != 2:
+                raise ValueError("x_samples must be a 2D array/DataFrame.")
+        else:
+            x_arr = np.asarray(x_samples, dtype=float)
+            if x_arr.ndim != 2:
+                raise ValueError("x_samples must be a 2D array/DataFrame.")
         if x_arr.shape[0] < 1:
             raise ValueError("x_samples must contain at least one sample.")
         self.x_array = x_arr

@@ -95,7 +95,7 @@ class ExperimentConfig:
     wandb_log_plots: bool = True
     wandb_estimator_allowlist: tuple[str, ...] | None = None
     correctness: CorrectnessSpec = field(default_factory=CorrectnessSpec)
-    x_fixed: np.ndarray | None = None  # real data rows; replaces sample_states when set
+    x_fixed: Any | None = None  # real data rows; replaces sample_states when set
     x_fixed_row_indices: np.ndarray | None = None  # source CSV row positions for x_fixed
 
     def __post_init__(self) -> None:
@@ -171,14 +171,24 @@ class ExperimentConfig:
             object.__setattr__(self, "theta0", theta0_arr)
 
         if self.x_fixed is not None:
-            x_fixed_arr = np.asarray(self.x_fixed, dtype=float)
-            if x_fixed_arr.ndim != 2:
-                raise ValueError("x_fixed must be a 2D array of shape (n_rows, state_dim).")
-            if x_fixed_arr.shape[1] != self.state_dim:
-                raise ValueError(
-                    f"x_fixed has {x_fixed_arr.shape[1]} columns but state_dim={self.state_dim}."
-                )
-            object.__setattr__(self, "x_fixed", x_fixed_arr)
+            if hasattr(self.x_fixed, "iloc") and hasattr(self.x_fixed, "columns"):
+                x_fixed_frame = self.x_fixed.reset_index(drop=True).copy()
+                if x_fixed_frame.ndim != 2:
+                    raise ValueError("x_fixed must be a 2D array/DataFrame of shape (n_rows, state_dim).")
+                if x_fixed_frame.shape[1] != self.state_dim:
+                    raise ValueError(
+                        f"x_fixed has {x_fixed_frame.shape[1]} columns but state_dim={self.state_dim}."
+                    )
+                object.__setattr__(self, "x_fixed", x_fixed_frame)
+            else:
+                x_fixed_arr = np.asarray(self.x_fixed, dtype=float)
+                if x_fixed_arr.ndim != 2:
+                    raise ValueError("x_fixed must be a 2D array/DataFrame of shape (n_rows, state_dim).")
+                if x_fixed_arr.shape[1] != self.state_dim:
+                    raise ValueError(
+                        f"x_fixed has {x_fixed_arr.shape[1]} columns but state_dim={self.state_dim}."
+                    )
+                object.__setattr__(self, "x_fixed", x_fixed_arr)
 
         if self.x_fixed_row_indices is not None:
             row_indices = np.asarray(self.x_fixed_row_indices)
@@ -427,7 +437,7 @@ def _objective_to_dict(objective: Objective) -> dict[str, Any]:
             "policy": _policy_to_dict(objective.policy),
             "acceptance_state_cols": list(objective.acceptance_state_cols),
             "loss_cols": list(objective.loss_cols),
-            "premium_col": int(objective.premium_col),
+            "premium_col": objective.premium_col,
             "u_coef": float(objective.u_coef) if objective.u_coef is not None else None,
             "u_bounds": list(objective.u_bounds) if objective.u_bounds is not None else None,
             "acceptance_floor": float(objective.acceptance_floor)
@@ -549,7 +559,7 @@ def make_model_based_objective(
     loss_model: object,
     acceptance_state_cols: tuple[str, ...],
     loss_cols: tuple[str, ...],
-    premium_col: int = 9,
+    premium_col: int | str = 9,
     u_coef: float | None = None,
     u_bounds: tuple[float, float] | None = None,
     acceptance_floor: float | None = None,
@@ -667,7 +677,7 @@ def build_experiment_config(
     training: Mapping[str, Any],
     runtime: Mapping[str, Any] | None = None,
     correctness: CorrectnessSpec | None = None,
-    x_fixed: np.ndarray | None = None,
+    x_fixed: Any | None = None,
     x_fixed_row_indices: np.ndarray | None = None,
 ) -> ExperimentConfig:
     """Build an ExperimentConfig from component blocks.
@@ -687,7 +697,7 @@ def build_experiment_config(
     if correctness is not None:
         payload["correctness"] = correctness
     if x_fixed is not None:
-        payload["x_fixed"] = np.asarray(x_fixed, dtype=float)
+        payload["x_fixed"] = x_fixed.reset_index(drop=True).copy() if hasattr(x_fixed, "iloc") else np.asarray(x_fixed, dtype=float)
     if x_fixed_row_indices is not None:
         payload["x_fixed_row_indices"] = np.asarray(x_fixed_row_indices, dtype=int)
     return ExperimentConfig(**payload)

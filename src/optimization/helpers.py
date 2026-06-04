@@ -43,16 +43,18 @@ def sample_indices(
     return rng.choice(n_total, size=batch_size_eff, replace=False)
 
 
-def x_batch(x_array: np.ndarray, indices: np.ndarray, n_total: int) -> np.ndarray:
+def x_batch(x_array: Any, indices: np.ndarray, n_total: int) -> Any:
     """Extract mini-batch from x_array."""
     if indices.size == n_total:
         return x_array
+    if hasattr(x_array, "iloc"):
+        return x_array.iloc[indices].reset_index(drop=True)
     return x_array[indices]
 
 
 def objective_value_on_indices(
     objective: Any,
-    x_array: np.ndarray,
+    x_array: Any,
     n_total: int,
     theta: np.ndarray,
     indices: np.ndarray,
@@ -63,7 +65,7 @@ def objective_value_on_indices(
 
 def objective_grad_on_indices(
     objective: Any,
-    x_array: np.ndarray,
+    x_array: Any,
     n_total: int,
     theta: np.ndarray,
     indices: np.ndarray,
@@ -125,7 +127,7 @@ def finite_difference_theta_grad(
 
 def mean_action_on_indices(
     objective: Any,
-    x_array: np.ndarray,
+    x_array: Any,
     n_total: int,
     theta: np.ndarray,
     indices: np.ndarray,

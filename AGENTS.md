@@ -135,11 +135,12 @@ Guidelines:
 - **`src/objective/objectives/model_based.py`**
   - `ModelBasedObjective`: pricing objective $$f(u;x) = a(x,u)(\hat{Y}(x) - (u + 1) \cdot p(x))$$ backed by trained sklearn/XGBoost models
   - Takes `acceptance_model` / `loss_model` artifact bundles that can apply saved external preprocessing before calling the inner sklearn/XGBoost model
-  - Owns the policy-side raw-to-processed bridge: raw `x_batch` stays at the objective boundary and, by default, the acceptance bundle's saved `FeatureProcessor` is reused internally for `u(theta, x)` and `du/dtheta`
+  - Owns the policy-side raw-to-processed bridge: raw `x_batch` may be a DataFrame and stays at the objective boundary; by default, the acceptance bundle's saved `FeatureProcessor` is reused internally for `u(theta, x)` and `du/dtheta`
   - Optional `policy_preprocessor` / `policy_feature_cols` decouple policy inputs from the sealed acceptance/loss artifact preprocessing; black-box model calls still receive raw `x` and use saved artifact preprocessors internally
   - Policy output `u` remains centered at 0 for the acceptance model; only the revenue term shifts to multiplier `u + 1`
   - Optional config-driven mean-acceptance floor is implemented either as a smooth penalty on the objective or directly as a SciPy `trust-constr` nonlinear constraint, depending on `step_rule`
   - Mutable diagnostic counters (`eval_counts()`, `reset_eval_counts()`) record objective value calls and acceptance/loss prediction rows for aggregate reporting
+  - The canonical 052726 acceptance artifacts predict direct `p_accept` in class 1; do not flip to `1 - p_churn` for these artifacts
   - Uses extracted GLM/linear coefficients for array-native acceptance and loss predictions when available; XGB and unsupported artifacts fall back to estimator prediction calls
   - Caches policy features, GLM base logits, and loss predictions for repeated fixed `x_batch` arrays; final acceptance probabilities are not cached because they depend on `u`
   - `eval_counts()` also reports prediction/objective timing counters and cache hit/miss counters for performance diagnostics
@@ -171,18 +172,19 @@ Guidelines:
 #### Data Layer (`src/data/`)
 
 - **`src/data/dataset.csv`**
-  - Canonical real-data source CSV used by all real-data loaders; the current file is the GLM acceptance export and both GLM/XGB loaders sample from it
+  - Canonical real-data source CSV used by all real-data loaders; the current file is the 052726 raw single-year export and both GLM/XGB loaders sample complete eligible rows from it
 
 - **`src/data/dataset_metadata.py`**
-  - Tracked source of truth for dataset schema, column groups, canonical CSV path, model artifact paths, and artifact/preprocessor notes
+  - Tracked source of truth for the 052726 dataset schema, objective X column groups, excluded target/action/lookahead columns, canonical CSV path, model artifact paths, and artifact/preprocessor notes
+  - `USED_X_COLS` / `ACCEPTANCE_STATE_COLS` / `LOSS_FEATURE_COLS` are the only source covariates allowed into objective computation; `X_upcoming_premium`, historical `U`, `Y_G_Loss`, `is_churn`, IDs, and dates are excluded from objective values
   - Update this file whenever `src/data/dataset.csv`, model artifacts, model paths, column semantics, or dataset schema changes
   - When updating any `src/data` artifact or schema, confirm `dataset_metadata.py` matches the current CSV columns and model artifact paths, then run data-loader and model-artifact inference tests
 
 - **`src/data/models/linear/`**
-  - GLM/linear model artifact pickles: churn classifier and expected-loss regressor, each bundled with its saved `FeatureProcessor`
+  - 052726 GLM/linear CV artifact pickles: acceptance classifier and financial-loss regressor; loader uses first fold and the fitted `FeatureProcessor`
 
 - **`src/data/models/xgb/`**
-  - XGBoost model artifact pickles: churn classifier and expected-loss regressor, each bundled with its saved `FeatureProcessor`
+  - 052726 XGBoost CV artifact pickles: acceptance classifier and financial-loss regressor; loader uses first fold and its fitted `FeatureProcessor`
 
 - **`src/data/unused/`**
   - Legacy CSV/notebook exports not used by the current loader; retained only as temporary archive material before deletion
@@ -191,15 +193,17 @@ Guidelines:
   - `FeatureProcessor`: notebook-extracted whitening/PCA preprocessor used by the bundled real-data artifacts
 
 - **`src/data/loader.py`**
-  - `FEATURE_COLS_GLM`: 12-column state feature list for GLM configs (9 base + premium + X_prev_renewal_perc + X_year)
-  - `FEATURE_COLS_XGB`: 10-column state feature list for XGB configs (9 base + premium)
-  - `ACCEPTANCE_STATE_COLS`: 10 cols passed to acceptance model (base + premium, no U)
-  - `LOSS_FEATURE_COLS`: 9 base cols passed to loss model
+  - `FEATURE_COLS_GLM` / `FEATURE_COLS_XGB`: 19-column 052726 objective X feature list shared by GLM and XGB configs; excludes lookahead `X_upcoming_premium`
+  - `ACCEPTANCE_STATE_COLS`: 19 raw X cols passed to acceptance artifacts before fitted preprocessing; generated policy `U` is appended internally
+  - `LOSS_FEATURE_COLS`: 18 raw X cols passed to loss artifacts before fitted preprocessing; excludes `X_policy_premium`
   - `dataset_csv_path()`: returns the canonical real-data source CSV path
-  - `sample_csv_row_indices(model_type, n_rows, seed)`: samples canonical dataset CSV row positions without replacement for real-data configs
-  - `load_x_array(model_type, n_rows=5000, row_indices=None, seed=None)`: loads a random `n_rows` sample of raw state features from `dataset.csv`, or the exact `row_indices` when provided; string columns are replay-encoded to numeric values when needed
+  - `dataset_column_roles()`: reports used X cols, excluded lookahead X cols, target/action cols, and objective-excluded cols
+  - `sample_csv_row_indices(model_type, n_rows, seed)`: samples complete eligible canonical dataset CSV row positions without replacement for real-data configs
+  - `load_x_frame(model_type, n_rows=5000, row_indices=None, seed=None)`: loads raw X covariates as a DataFrame, preserving categorical strings for artifact preprocessing
+  - `load_x_array(...)`: compatibility wrapper returning the raw X frame as an object array; prefer `load_x_frame` for real-data configs
   - `load_observed_u_array(model_type, n_rows=5000, row_indices=None, seed=None)`: loads observed pricing multipliers from sampled canonical dataset rows for diagnostics and plots
-  - `load_model_artifacts(model_type)`: loads `(acceptance_artifact, loss_artifact)` bundles from `src/data/models/linear/` or `src/data/models/xgb/`
+  - `load_mean_observed_acceptance(model_type)`: computes `1 - is_churn` over complete eligible rows
+  - `load_model_artifacts(model_type)`: loads first-fold `(acceptance_artifact, loss_artifact)` bundles from the 052726 CV dictionaries under `src/data/models/linear/` or `src/data/models/xgb/`
   - `ModelArtifactBundle.model_frame(raw_frame)`: converts raw notebook-space columns into the exact model-input frame expected by the bundled estimator
   - `extract_glm_u_coef(glm_pipeline)`: extracts effective d_logit/dU = w_U / std_U from the inner fitted GLM Pipeline for analytical gradient computation
 
@@ -333,7 +337,7 @@ Guidelines:
 - `scripts/plot_saved_acceptance_floor_frontier.py` re-plots acceptance-floor Pareto frontiers from a saved `acceptance_floor_sweep.csv` (or the latest matching frontier directory) without rerunning optimization; defaults to `first_order` and writes estimator-suffixed Pareto PNGs
 - `scripts/query_acceptance_at_u.py` loads a config preset or default GLM/XGB model type and reports mean acceptance for supplied or evenly sampled constant `u` values without running optimization; writes acceptance-curve and historical-`U` rug plots under `outputs/acceptance_queries/` by default and optionally writes `u,n,mean_acceptance` CSV output
 - `scripts/plot_pc_outcome_diagnostics.py` reads a saved run `summary.json`, rebuilds a real-data base preset objective with optional policy/preprocessing override flags, and writes processed-policy-component scatter diagnostics against final `f_acc`, loss, and `u`; defaults beside the summary under `pc_outcome_diagnostics/<estimator>/`
-- `scripts/plot_glm_data_tsne.py` samples rows from the GLM real-data CSV, runs a standardized t-SNE/KMeans feature diagnostic, and writes embedding CSV plus color-by-feature plots under `outputs/data-tsne/`; default colors include saved out-of-fold `F_acc = prob_acceptance`
+- `scripts/plot_glm_data_tsne.py` samples rows from the GLM real-data CSV, runs a standardized t-SNE/KMeans feature diagnostic, and writes embedding CSV plus color-by-feature plots under `outputs/data-tsne/`
 - `scripts/run_policy_pca_grid.py` runs the GLM policy PCA-dimensionality grid over configured PCA dimensions and policy classes `(constant, linear, quadratic, third_order, fourth_order, softmax_linear, softmax_quadratic, softmax_third_order, softmax_fourth_order, mlp)`; unconstrained is default, `--constrained` uses `trust-constr` with the observed GLM acceptance floor and a 500-step default cap; outputs aggregate CSVs, summary markdown, and headline/spread plots under `outputs/policy-pca-grid/`; prints per-condition progress by default and supports `--quiet`
 - `scripts/benchmark_experiment_speed.py` benchmarks GLM analytical acceptance vs sklearn `predict_proba`, Stein-difference gradient timing/call counts, repeated objective-cache behavior, and full-vs-subsampled contour grid timing; use it to quantify whether performance changes speed up real-data diagnostics without relying on flaky pytest time thresholds
 
@@ -396,7 +400,7 @@ when appropriate.
 #### `tests/data/`
 | Test File | Area |
 |---|---|
-| `test_data_loader.py` | `load_x_array` shape/dtype, model artifact types, U normalization, CSV column sets |
+| `test_data_loader.py` | `load_x_frame` shape/columns, model artifact types, U normalization, CSV column sets |
 | `test_dataset_metadata.py` | Canonical dataset metadata matches CSV schema and artifact metadata |
 | `test_feature_processor.py` | Centering, sphering, PCA whitening, inverse transform, categorical encoding |
 | `test_model_artifact_inference.py` | GLM/XGB artifact inference and model-based objective smoke tests on canonical rows |

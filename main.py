@@ -24,7 +24,7 @@ RUN_CONFIGS: list[str | tuple[str, dict[str, Any]]] = [
             "policy_preprocessing": "no_pca",
             "feature_order": "linear", 
             "constraint_mode": "trust_constr",
-            "n_samples": 190000,
+            "n_samples": 700000,
             "n_grad_samples": 8,
             "t_steps": 100,
             "enabled_estimators": ("first_order", "finite_difference", "stein_difference"),

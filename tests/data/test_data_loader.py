@@ -4,25 +4,36 @@ import numpy as np
 import pytest
 
 
-def test_load_x_array_glm_shape():
-    from data.loader import load_x_array, FEATURE_COLS_GLM
-    x = load_x_array("glm", n_rows=50, seed=123)
+def test_load_x_frame_glm_shape_and_columns():
+    from data.loader import FEATURE_COLS_GLM, load_x_frame
+    from data.dataset_metadata import LOOKAHEAD_X_COLS
+
+    x = load_x_frame("glm", n_rows=50, seed=123)
+
     assert x.shape == (50, len(FEATURE_COLS_GLM))
-    assert x.dtype == np.float64
+    assert list(x.columns) == FEATURE_COLS_GLM
+    assert not set(LOOKAHEAD_X_COLS).intersection(x.columns)
 
 
-def test_load_x_array_xgb_shape():
-    from data.loader import load_x_array, FEATURE_COLS_XGB
-    x = load_x_array("xgb", n_rows=50, seed=123)
+def test_load_x_frame_xgb_shape():
+    from data.loader import FEATURE_COLS_XGB, load_x_frame
+
+    x = load_x_frame("xgb", n_rows=50, seed=123)
+
     assert x.shape == (50, len(FEATURE_COLS_XGB))
-    assert x.dtype == np.float64
 
 
-def test_load_x_array_glm_has_more_cols_than_xgb():
-    from data.loader import load_x_array
-    glm_x = load_x_array("glm", n_rows=10, seed=123)
-    xgb_x = load_x_array("xgb", n_rows=10, seed=123)
-    assert glm_x.shape[1] > xgb_x.shape[1]
+def test_dataset_column_roles_report_used_and_unused_x():
+    from data.loader import dataset_column_roles
+
+    roles = dataset_column_roles()
+
+    assert "X_policy_premium" in roles["used_x_cols"]
+    assert "X_upcoming_premium" in roles["lookahead_x_cols"]
+    assert "X_upcoming_premium" in roles["unused_x_cols"]
+    assert "U" in roles["objective_excluded_cols"]
+    assert "Y_G_Loss" in roles["objective_excluded_cols"]
+    assert "is_churn" in roles["objective_excluded_cols"]
 
 
 def test_sample_csv_row_indices_is_deterministic():
@@ -46,13 +57,13 @@ def test_sample_csv_row_indices_changes_with_seed():
 
 
 def test_load_x_array_row_indices_are_ordered_and_reusable():
-    from data.loader import load_x_array, sample_csv_row_indices
+    from data.loader import load_x_frame, sample_csv_row_indices
 
     row_indices = sample_csv_row_indices("glm", n_rows=20, seed=123)
-    x_1 = load_x_array("glm", row_indices=row_indices)
-    x_2 = load_x_array("glm", row_indices=row_indices)
+    x_1 = load_x_frame("glm", row_indices=row_indices)
+    x_2 = load_x_frame("glm", row_indices=row_indices)
 
-    assert np.array_equal(x_1, x_2)
+    assert x_1.equals(x_2)
 
 
 def test_load_observed_u_array_matches_requested_rows():
@@ -79,7 +90,7 @@ def test_load_observed_u_array_uses_row_indices():
 
 
 def test_load_model_artifacts_types():
-    import sklearn.pipeline
+    import sklearn.linear_model
     import xgboost
 
     from data.loader import ModelArtifactBundle, load_model_artifacts, unwrap_model_artifact
@@ -89,7 +100,9 @@ def test_load_model_artifacts_types():
     assert isinstance(glm_loss, ModelArtifactBundle)
     assert glm_acc.preprocessor is not None
     assert glm_loss.preprocessor is not None
-    assert isinstance(unwrap_model_artifact(glm_acc), sklearn.pipeline.Pipeline)
+    assert glm_acc.source_format == "cv_first_fold"
+    assert glm_acc.probability_target == "acceptance"
+    assert isinstance(unwrap_model_artifact(glm_acc), sklearn.linear_model.LogisticRegression)
     assert hasattr(unwrap_model_artifact(glm_loss), "predict")
 
     xgb_acc, xgb_loss = load_model_artifacts("xgb")
@@ -118,6 +131,7 @@ def test_extract_glm_churn_coefficients_matches_u_coef():
     assert coeffs["x_feature_names"]
     assert all(name != "U" for name in coeffs["x_feature_names"])
     assert np.isfinite(coeffs["intercept"])
+    assert coeffs["probability_target"] == "acceptance"
     assert coeffs["u_coef"] == pytest.approx(extract_glm_u_coef(glm_acc))
 
 
@@ -138,7 +152,7 @@ def test_extract_model_based_coefficients_glm_and_xgb_support():
     glm_acc, glm_loss = load_model_artifacts("glm")
     coeffs = extract_model_based_coefficients(glm_acc, glm_loss)
     assert coeffs is not None
-    assert set(coeffs) == {"churn", "loss"}
+    assert set(coeffs) == {"acceptance", "loss"}
 
     xgb_acc, xgb_loss = load_model_artifacts("xgb")
     assert extract_model_based_coefficients(xgb_acc, xgb_loss) is None

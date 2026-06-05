@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Mapping, Optional, Sequence
+from typing import Any, Mapping, Optional, Sequence
 
 import numpy as np
 
@@ -64,7 +64,7 @@ class ExperimentResult:
     """Full experiment result: config, samples, traces, and final values per estimator."""
 
     config: ExperimentConfig
-    x_samples: np.ndarray  # Shape (n_samples, state_dim)
+    x_samples: Any  # Shape (n_samples, state_dim); real data may be a DataFrame
     initial_value: float
     results: Mapping[str, EstimatorResult]
     traces: Mapping[str, OptimizationTrace]

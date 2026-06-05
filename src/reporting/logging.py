@@ -79,15 +79,14 @@ def log_summary(result: ExperimentResult) -> None:
             objective.loss_model,
         )
         if coeffs is not None:
-            churn = coeffs["churn"]
+            acceptance = coeffs["acceptance"]
             loss = coeffs["loss"]
-            print("p_churn(x, u) = sigmoid(beta_0 + beta_x^T x_acc + beta_u * u)")
-            print("p_acc(x, u) = 1 - p_churn(x, u)")
+            print("p_acc(x, u) = sigmoid(beta_0 + beta_x^T x_acc + beta_u * u)")
             print("loss_hat(x) = gamma_0 + gamma_x^T x_loss")
-            print(f"x_acc = {churn['x_feature_names']}")
-            print(f"beta_x = {format_array(churn['x_coef'])}")
-            print(f"beta_u = {float(churn['u_coef']):.6f}")
-            print(f"beta_0 = {float(churn['intercept']):.6f}")
+            print(f"x_acc = {acceptance['x_feature_names']}")
+            print(f"beta_x = {format_array(acceptance['x_coef'])}")
+            print(f"beta_u = {float(acceptance['u_coef']):.6f}")
+            print(f"beta_0 = {float(acceptance['intercept']):.6f}")
             print(f"x_loss = {loss['x_feature_names']}")
             print(f"gamma_x = {format_array(loss['x_coef'])}")
             print(f"gamma_0 = {float(loss['intercept']):.6f}")

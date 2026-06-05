@@ -120,17 +120,23 @@ where $$a$$ is acceptance probability, $$\hat{Y}$$ is expected financial loss, a
 
 Real-data source rows now live in the canonical `src/data/dataset.csv` file,
 with schema/path metadata tracked in `src/data/dataset_metadata.py`. The current
-canonical CSV is the GLM acceptance export; both GLM and XGB real-data loaders
-sample rows from it.
-Model artifacts live under `src/data/models/linear/` and `src/data/models/xgb/`,
-and each pickle bundles the fitted estimator with its saved `FeatureProcessor`.
-The objective keeps raw CSV rows at the optimization boundary and reuses the
-acceptance bundle's saved preprocessing internally for both `u(theta, x)` and
-`du/dtheta`.
-For GLM/linear artifacts, extractable coefficients are used for array-native
-acceptance and loss predictions, avoiding repeated sklearn prediction calls in
-value-query gradient estimators. XGBoost and unsupported artifacts fall back to
-their bundled estimator prediction methods.
+canonical CSV is the 052726 raw single-year export; both GLM/linear and XGB
+real-data loaders sample complete eligible rows from it.
+Model artifacts live under `src/data/models/linear/` and `src/data/models/xgb/`.
+The loader uses the separate acceptance and financial-loss artifacts, selecting
+the first CV fold from each copied artifact. It does not use the combined
+blackbox wrapper pickle.
+The objective keeps raw CSV X rows at the optimization boundary and reuses each
+artifact's saved `FeatureProcessor` internally. The 052726 classifiers expose
+class-1 probability as direct `p_accept(x, u)`, not churn probability.
+Only the model artifact X covariates are passed into the objective. Historical
+`U`, `Y_G_Loss`, `is_churn`, IDs/dates, and the lookahead `X_upcoming_premium`
+column are excluded from objective values; observed `U`/churn are retained only
+for diagnostics and acceptance-floor summaries.
+For GLM/linear artifacts, extractable first-fold coefficients are used for
+array-native acceptance and loss predictions, avoiding repeated sklearn
+prediction calls in value-query gradient estimators. XGBoost and unsupported
+artifacts fall back to their bundled estimator prediction methods.
 For policy-feature experiments, `ModelBasedObjective` can instead take a
 separate fitted policy-side preprocessor. In that mode the policy sees the
 configured policy features, while the sealed acceptance and loss model paths
@@ -211,7 +217,7 @@ python scripts/run_policy_pca_grid.py --n-samples 5000
 ```
 
 This keeps the GLM black-box preprocessing sealed, fits configurable policy-side
-preprocessors on the 10 acceptance-state columns, and writes aggregate finals,
+preprocessors on the 19 acceptance-state columns, and writes aggregate finals,
 traces, summary markdown, headline PCA/richness-gap plots, and final `u` /
 acceptance-spread plots under `outputs/policy-pca-grid/`. The grid includes
 linear-feature policies, matching softmax-wrapped feature policies, constant,

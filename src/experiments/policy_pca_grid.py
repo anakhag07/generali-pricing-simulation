@@ -15,9 +15,10 @@ from data.loader import (
     ACCEPTANCE_STATE_COLS,
     FEATURE_COLS_GLM,
     LOSS_FEATURE_COLS,
+    PREMIUM_COL,
     extract_glm_u_coef,
     load_model_artifacts,
-    load_x_array,
+    load_x_frame,
     sample_csv_row_indices,
 )
 from experiments.config import CorrectnessSpec, ExperimentConfig, make_model_based_objective
@@ -113,8 +114,8 @@ def run_policy_pca_grid(spec: PolicyPcaGridSpec | None = None) -> PolicyPcaGridO
     acceptance_model, loss_model = load_model_artifacts("glm")
     u_coef = extract_glm_u_coef(acceptance_model)
     row_indices = sample_csv_row_indices("glm", n_rows=spec.n_samples, seed=spec.data_seed)
-    x_fixed = load_x_array("glm", row_indices=row_indices)
-    x_policy = _policy_raw_x(x_fixed)
+    x_fixed = load_x_frame("glm", row_indices=row_indices)
+    x_policy = _policy_raw_x(x_fixed, acceptance_model)
     preprocessors = {
         pca_dim: fit_policy_feature_preprocessor(
             x_policy,
@@ -202,7 +203,7 @@ def build_policy_pca_condition(
     policy_class: str,
     pca_dim: int | None,
     seed: int,
-    x_fixed: np.ndarray,
+    x_fixed: Any,
     row_indices: np.ndarray,
     acceptance_model: object,
     loss_model: object,
@@ -218,10 +219,10 @@ def build_policy_pca_condition(
         loss_model=loss_model,
         acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),
         loss_cols=tuple(LOSS_FEATURE_COLS),
-        premium_col=9,
+        premium_col=PREMIUM_COL,
         u_coef=u_coef,
         policy_preprocessor=policy_preprocessor,
-        policy_feature_cols=tuple(ACCEPTANCE_STATE_COLS),
+        policy_feature_cols=None,
     )
     config = ExperimentConfig(
         state_dim=len(FEATURE_COLS_GLM),
@@ -306,8 +307,18 @@ def _theta0_for_policy(policy: object, input_dim: int, seed: int) -> np.ndarray 
     return None
 
 
-def _policy_raw_x(x_fixed: np.ndarray) -> np.ndarray:
-    return np.asarray(x_fixed, dtype=float)[:, : len(ACCEPTANCE_STATE_COLS)]
+def _policy_raw_x(x_fixed: Any, acceptance_model: object) -> np.ndarray:
+    x_feature_cols = tuple(getattr(acceptance_model, "x_feature_cols", ACCEPTANCE_STATE_COLS))
+    preprocessor = getattr(acceptance_model, "preprocessor", None)
+    if hasattr(x_fixed, "loc"):
+        raw_features = x_fixed.loc[:, list(x_feature_cols)].copy()
+        if preprocessor is None:
+            return raw_features.to_numpy(dtype=float)
+        return np.asarray(preprocessor.transform(raw_features), dtype=float)
+    x_arr = np.asarray(x_fixed, dtype=object)
+    if preprocessor is not None:
+        raise ValueError("Policy PCA grid requires DataFrame x_fixed for 052726 artifact preprocessing.")
+    return x_arr[:, : len(x_feature_cols)].astype(float)
 
 
 def _reset_eval_counts(objective: object) -> None:

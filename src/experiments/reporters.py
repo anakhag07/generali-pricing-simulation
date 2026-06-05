@@ -466,15 +466,20 @@ class PlotReporter:
             json.dump({key: float(value) for key, value in timings.items()}, handle, indent=2, sort_keys=True)
 
 
-def _contour_x_samples(x_samples: np.ndarray, objective: object, max_rows: int = 200) -> np.ndarray:
+def _contour_x_samples(x_samples: object, objective: object, max_rows: int = 200) -> object:
     """Return deterministic contour-evaluation rows, subsampling costly model objectives."""
-    x_arr = np.asarray(x_samples, dtype=float)
+    if hasattr(x_samples, "iloc"):
+        x_arr = x_samples.reset_index(drop=True)
+    else:
+        x_arr = np.asarray(x_samples, dtype=float)
     if x_arr.ndim != 2:
-        raise ValueError("x_samples must be a 2D array.")
+        raise ValueError("x_samples must be a 2D array/DataFrame.")
     is_model_based = hasattr(objective, "acceptance_model") and hasattr(objective, "loss_model")
     if not is_model_based or x_arr.shape[0] <= max_rows:
         return x_arr
     indices = np.linspace(0, x_arr.shape[0] - 1, max_rows, dtype=int)
+    if hasattr(x_arr, "iloc"):
+        return x_arr.iloc[indices].reset_index(drop=True)
     return x_arr[indices]
 
 
@@ -663,8 +668,7 @@ def _build_summary_payload(run_context: RunContext, result: ExperimentResult) ->
     if coeffs is not None:
         payload["model_formulas"] = {
             "objective": "f(u; x) = p_acc(x, u) * (loss_hat(x) - (u + 1) * premium(x))",
-            "churn": "p_churn(x, u) = sigmoid(beta_0 + beta_x^T x_acc + beta_u * u)",
-            "acceptance": "p_acc(x, u) = 1 - p_churn(x, u)",
+            "acceptance": "p_acc(x, u) = sigmoid(beta_0 + beta_x^T x_acc + beta_u * u)",
             "loss": "loss_hat(x) = gamma_0 + gamma_x^T x_loss",
         }
         payload["model_coefficients"] = coeffs

@@ -3,7 +3,6 @@
 from dataclasses import replace
 
 import numpy as np
-import pandas as pd
 import pytest
 
 from objective.utils import _mean_action
@@ -15,23 +14,24 @@ def _make_glm_objective(n_rows=20):
     from data.loader import (
         ACCEPTANCE_STATE_COLS,
         LOSS_FEATURE_COLS,
+        PREMIUM_COL,
         extract_glm_u_coef,
         load_model_artifacts,
-        load_x_array,
+        load_x_frame,
     )
     from objective.objectives.model_based import ModelBasedObjective
     from objective.policy import SoftmaxPolicy
 
     acc_model, loss_model = load_model_artifacts("glm")
     u_coef = extract_glm_u_coef(acc_model)
-    x = load_x_array("glm", n_rows=n_rows, seed=123)
+    x = load_x_frame("glm", n_rows=n_rows, seed=123)
     obj = ModelBasedObjective(
         policy=SoftmaxPolicy(),
         acceptance_model=acc_model,
         loss_model=loss_model,
         acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),
         loss_cols=tuple(LOSS_FEATURE_COLS),
-        premium_col=9,
+        premium_col=PREMIUM_COL,
         u_coef=u_coef,
     )
     return obj, x, obj.policy_theta_dim()
@@ -88,7 +88,7 @@ def test_glm_analytical_acceptance_matches_sklearn_predict_proba() -> None:
     u_arr = np.linspace(-0.25, 0.25, x.shape[0], dtype=float)
 
     fast_acceptance = obj._acceptance_proba(x, u_arr)
-    slow_acceptance = 1.0 - obj._churn_proba(x, u_arr)
+    slow_acceptance = obj._churn_proba(x, u_arr)
 
     np.testing.assert_allclose(fast_acceptance, slow_acceptance, rtol=1e-10, atol=1e-10)
 
@@ -97,8 +97,7 @@ def test_glm_analytical_loss_matches_sklearn_predict() -> None:
     obj, x, _ = _make_glm_objective(n_rows=25)
 
     fast_loss = obj._loss_prediction(x)
-    x_loss = x[:, : len(obj.loss_cols)]
-    raw_df = pd.DataFrame(x_loss, columns=list(obj.loss_cols))
+    raw_df = x.loc[:, list(obj.loss_cols)].copy()
     model_df = obj._artifact_frame(obj.loss_model, raw_df)
     model = obj._artifact_model(obj.loss_model)
     slow_loss = np.asarray(model.predict(model_df), dtype=float)
@@ -136,19 +135,19 @@ def test_stein_difference_glm_uses_analytical_acceptance_without_predict_calls()
 
 
 def test_xgb_acceptance_falls_back_to_predict_proba() -> None:
-    from data.loader import ACCEPTANCE_STATE_COLS, LOSS_FEATURE_COLS, load_model_artifacts, load_x_array
+    from data.loader import ACCEPTANCE_STATE_COLS, LOSS_FEATURE_COLS, PREMIUM_COL, load_model_artifacts, load_x_frame
     from objective.objectives.model_based import ModelBasedObjective
     from objective.policy import LinearPolicy
 
     acc_model, loss_model = load_model_artifacts("xgb")
-    x = load_x_array("xgb", n_rows=10, seed=123)
+    x = load_x_frame("xgb", n_rows=10, seed=123)
     obj = ModelBasedObjective(
         policy=LinearPolicy(),
         acceptance_model=acc_model,
         loss_model=loss_model,
         acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),
         loss_cols=tuple(LOSS_FEATURE_COLS),
-        premium_col=9,
+        premium_col=PREMIUM_COL,
         u_coef=None,
     )
 
@@ -199,15 +198,16 @@ def test_value_at_u_consistent_with_value():
     from data.loader import (
         ACCEPTANCE_STATE_COLS,
         LOSS_FEATURE_COLS,
+        PREMIUM_COL,
         extract_glm_u_coef,
         load_model_artifacts,
-        load_x_array,
+        load_x_frame,
     )
     from objective.objectives.model_based import ModelBasedObjective
 
     acc_model, loss_model = load_model_artifacts("glm")
     u_coef = extract_glm_u_coef(acc_model)
-    x = load_x_array("glm", n_rows=20, seed=123)
+    x = load_x_frame("glm", n_rows=20, seed=123)
 
     obj = ModelBasedObjective(
         policy=ConstantPolicy(),
@@ -215,7 +215,7 @@ def test_value_at_u_consistent_with_value():
         loss_model=loss_model,
         acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),
         loss_cols=tuple(LOSS_FEATURE_COLS),
-        premium_col=9,
+        premium_col=PREMIUM_COL,
         u_coef=u_coef,
     )
     u_val = 0.0
@@ -262,16 +262,17 @@ def test_analytical_vs_fd_grad_glm():
     from data.loader import (
         ACCEPTANCE_STATE_COLS,
         LOSS_FEATURE_COLS,
+        PREMIUM_COL,
         extract_glm_u_coef,
         load_model_artifacts,
-        load_x_array,
+        load_x_frame,
     )
     from objective.objectives.model_based import ModelBasedObjective
     from objective.policy import SoftmaxPolicy
 
     acc_model, loss_model = load_model_artifacts("glm")
     u_coef = extract_glm_u_coef(acc_model)
-    x = load_x_array("glm", n_rows=30, seed=123)
+    x = load_x_frame("glm", n_rows=30, seed=123)
     policy = SoftmaxPolicy()
     theta = np.zeros(policy.theta_dim(acc_model.policy_feature_dim()), dtype=float)
 
@@ -281,7 +282,7 @@ def test_analytical_vs_fd_grad_glm():
         loss_model=loss_model,
         acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),
         loss_cols=tuple(LOSS_FEATURE_COLS),
-        premium_col=9,
+        premium_col=PREMIUM_COL,
         u_coef=u_coef,
     )
     obj_fd = ModelBasedObjective(
@@ -290,7 +291,7 @@ def test_analytical_vs_fd_grad_glm():
         loss_model=loss_model,
         acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),
         loss_cols=tuple(LOSS_FEATURE_COLS),
-        premium_col=9,
+        premium_col=PREMIUM_COL,
         u_coef=None,  # numerical FD
     )
 
@@ -323,16 +324,20 @@ def test_policy_hooks_use_acceptance_preprocessor() -> None:
 
 
 def test_policy_hooks_can_use_independent_policy_preprocessor() -> None:
-    from data.loader import ACCEPTANCE_STATE_COLS
     from objective.policy_preprocessing import fit_policy_feature_preprocessor
 
     obj, x, _ = _make_glm_objective(n_rows=20)
-    x_policy = x[:, : len(ACCEPTANCE_STATE_COLS)]
+    x_policy = np.asarray(
+        obj.acceptance_model.preprocessor.transform(
+            x.loc[:, list(obj.acceptance_model.x_feature_cols)].copy()
+        ),
+        dtype=float,
+    )
     policy_preprocessor = fit_policy_feature_preprocessor(x_policy, pca_dim=4)
     obj = replace(
         obj,
         policy_preprocessor=policy_preprocessor,
-        policy_feature_cols=tuple(ACCEPTANCE_STATE_COLS),
+        policy_feature_cols=None,
     )
     theta = np.zeros(obj.policy_theta_dim(), dtype=float)
 
@@ -346,16 +351,20 @@ def test_policy_hooks_can_use_independent_policy_preprocessor() -> None:
 
 
 def test_policy_preprocessor_does_not_change_black_box_acceptance_path() -> None:
-    from data.loader import ACCEPTANCE_STATE_COLS
     from objective.policy_preprocessing import fit_policy_feature_preprocessor
 
     obj, x, _ = _make_glm_objective(n_rows=20)
-    x_policy = x[:, : len(ACCEPTANCE_STATE_COLS)]
+    x_policy = np.asarray(
+        obj.acceptance_model.preprocessor.transform(
+            x.loc[:, list(obj.acceptance_model.x_feature_cols)].copy()
+        ),
+        dtype=float,
+    )
     policy_preprocessor = fit_policy_feature_preprocessor(x_policy, pca_dim=4)
     obj_with_policy_preprocessing = replace(
         obj,
         policy_preprocessor=policy_preprocessor,
-        policy_feature_cols=tuple(ACCEPTANCE_STATE_COLS),
+        policy_feature_cols=None,
     )
 
     np.testing.assert_allclose(
@@ -403,7 +412,7 @@ def test_step_metrics_match_objective_components() -> None:
 
     metrics = obj._step_metrics(theta, x)
     u_batch = obj._clip_u(obj.policy_value(theta, x))
-    premium = x[:, obj.premium_col]
+    premium = x[obj.premium_col].to_numpy(dtype=float)
 
     assert metrics["mean_acceptance"] == pytest.approx(obj.mean_acceptance(theta, x))
     assert metrics["projected_loss"] == pytest.approx(float(np.mean(obj._loss_prediction(x))))
@@ -411,19 +420,19 @@ def test_step_metrics_match_objective_components() -> None:
 
 
 def test_mean_action_uses_clipped_u_when_bounds_present() -> None:
-    from data.loader import ACCEPTANCE_STATE_COLS, LOSS_FEATURE_COLS, load_model_artifacts, load_x_array
+    from data.loader import ACCEPTANCE_STATE_COLS, LOSS_FEATURE_COLS, PREMIUM_COL, load_model_artifacts, load_x_frame
     from objective.objectives.model_based import ModelBasedObjective
     from objective.policy import LinearPolicy
 
     acc_model, loss_model = load_model_artifacts("xgb")
-    x = load_x_array("xgb", n_rows=30, seed=123)
+    x = load_x_frame("xgb", n_rows=30, seed=123)
     obj = ModelBasedObjective(
         policy=LinearPolicy(),
         acceptance_model=acc_model,
         loss_model=loss_model,
         acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),
         loss_cols=tuple(LOSS_FEATURE_COLS),
-        premium_col=9,
+        premium_col=PREMIUM_COL,
         u_coef=None,
         u_bounds=(-0.05, 0.5),
     )

@@ -11,10 +11,11 @@ from data.loader import (
     FEATURE_COLS_GLM,
     FEATURE_COLS_XGB,
     LOSS_FEATURE_COLS,
+    PREMIUM_COL,
     extract_glm_u_coef,
     load_mean_observed_acceptance,
     load_model_artifacts,
-    load_x_array,
+    load_x_frame,
     sample_csv_row_indices,
 )
 from experiments.config import (
@@ -56,7 +57,7 @@ def build_real_data_config(
     seed: int = 42,
     n_samples: int = 5000,
     row_indices: np.ndarray | None = None,
-    x_fixed: np.ndarray | None = None,
+    x_fixed: object | None = None,
     x_fixed_row_indices: np.ndarray | None = None,
     t_steps: int | None = None,
     step_rule: str | None = None,
@@ -99,10 +100,10 @@ def build_real_data_config(
     if x_fixed is None:
         if row_indices is None:
             row_indices = sample_csv_row_indices(model_type, n_rows=int(n_samples), seed=int(seed))
-        x_fixed_arr = load_x_array(model_type, row_indices=row_indices)
+        x_fixed_arr = load_x_frame(model_type, row_indices=row_indices)
         x_fixed_row_indices_arr = np.asarray(row_indices, dtype=int)
     else:
-        x_fixed_arr = np.asarray(x_fixed, dtype=float)
+        x_fixed_arr = x_fixed.reset_index(drop=True).copy() if hasattr(x_fixed, "iloc") else np.asarray(x_fixed, dtype=object)
         x_fixed_row_indices_arr = (
             np.asarray(x_fixed_row_indices, dtype=int)
             if x_fixed_row_indices is not None
@@ -112,14 +113,13 @@ def build_real_data_config(
     policy_preprocessor = None
     policy_feature_cols = None
     if policy_preprocessing == "no_pca":
-        x_policy = x_fixed_arr[:, : len(ACCEPTANCE_STATE_COLS)]
+        x_policy = _artifact_policy_features(acceptance_model, x_fixed_arr)
         policy_preprocessor = fit_policy_feature_preprocessor(
             x_policy,
             standardize=True,
             sphere=True,
             pca_dim=None,
         )
-        policy_feature_cols = tuple(ACCEPTANCE_STATE_COLS)
         policy_input_dim = int(policy_preprocessor.output_dim_)
     elif policy_preprocessing == "artifact":
         policy_input_dim = _artifact_policy_input_dim(acceptance_model)
@@ -170,7 +170,7 @@ def build_real_data_config(
         loss_model=loss_model,
         acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),
         loss_cols=tuple(LOSS_FEATURE_COLS),
-        premium_col=9,
+        premium_col=PREMIUM_COL,
         u_coef=u_coef,
         u_bounds=resolved_u_bounds,
         policy_preprocessor=policy_preprocessor,
@@ -276,6 +276,30 @@ def _artifact_policy_input_dim(acceptance_model: object) -> int:
     if callable(policy_feature_dim):
         return int(policy_feature_dim())
     return len(ACCEPTANCE_STATE_COLS)
+
+
+def _artifact_policy_features(acceptance_model: object, x_fixed: object) -> np.ndarray:
+    """Return numeric acceptance-preprocessed features for policy-side preprocessing."""
+    if hasattr(x_fixed, "iloc"):
+        x_frame = x_fixed.reset_index(drop=True)
+    else:
+        x_frame = np.asarray(x_fixed, dtype=object)
+    x_feature_cols = tuple(getattr(acceptance_model, "x_feature_cols", ACCEPTANCE_STATE_COLS))
+    preprocessor = getattr(acceptance_model, "preprocessor", None)
+    if hasattr(x_frame, "loc"):
+        raw_features = x_frame.loc[:, list(x_feature_cols)].copy()
+        if preprocessor is None:
+            return raw_features.to_numpy(dtype=float)
+        return np.asarray(preprocessor.transform(raw_features), dtype=float)
+    x_arr = np.asarray(x_frame, dtype=object)
+    if x_arr.shape[1] != len(ACCEPTANCE_STATE_COLS):
+        raise ValueError("Array x_fixed must use the configured acceptance-state column order.")
+    raw_features = x_arr[:, : len(x_feature_cols)]
+    if preprocessor is None:
+        return raw_features.astype(float)
+    # Raw categorical arrays cannot be safely mapped without column names; real-data
+    # no-PCA preprocessing should use DataFrame batches.
+    raise ValueError("policy_preprocessing='no_pca' requires DataFrame x_fixed for 052726 artifacts.")
 
 
 def _resolve_theta0(

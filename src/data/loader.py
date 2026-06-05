@@ -1,8 +1,9 @@
-"""Data loading utilities for real insurance pricing datasets."""
+"""Data loading utilities for the canonical Generali real-data dataset."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 import pickle
 from pathlib import Path
 from typing import Any, Literal, Sequence
@@ -12,73 +13,78 @@ import pandas as pd
 
 from data.feature_processor import FeatureProcessor
 from data.dataset_metadata import (
-    ACCEPTANCE_PROBABILITY_COL,
     ACCEPTANCE_STATE_COLS as _ACCEPTANCE_STATE_COLS,
-    BASE_COLS as _BASE_COLS_TUPLE,
     DATA_DIR,
     DATASET_PATH,
     FEATURE_COLS as _FEATURE_COLS,
     FEATURE_COLS_GLM as _FEATURE_COLS_GLM,
     FEATURE_COLS_XGB as _FEATURE_COLS_XGB,
+    LOOKAHEAD_X_COLS,
+    LOSS_TARGET_COL,
     LOSS_FEATURE_COLS as _LOSS_FEATURE_COLS,
     MODEL_ARTIFACTS,
     MODEL_FEATURE_COLS,
+    OBJECTIVE_EXCLUDED_COLS,
+    OBSERVED_CHURN_COL,
     OBSERVED_U_COL,
+    PREMIUM_COL,
     PREMIUM_COL_INDEX,
+    REQUIRED_DATASET_COLUMNS,
+    UNUSED_X_COLS,
+    USED_X_COLS,
 )
+
+ModelType = Literal["glm", "xgb"]
+ProbabilityTarget = Literal["acceptance", "churn", "none"]
 
 # Directory containing model artifacts and CSV datasets
 _DATA_DIR = DATA_DIR
 _DATASET_CSV_PATH = DATASET_PATH
 
-# Base 9 feature cols shared by both models (no premium, no U, no extra)
-_BASE_COLS: list[str] = list(_BASE_COLS_TUPLE)
-
-# GLM state features: 12 raw cols used by the policy state distribution.
+# 052726 raw model covariates. These exclude lookahead columns such as
+# X_upcoming_premium and exclude observed targets/actions.
 FEATURE_COLS_GLM: list[str] = list(_FEATURE_COLS_GLM)
-
-# XGB state features: 10 raw cols used by the policy state distribution.
 FEATURE_COLS_XGB: list[str] = list(_FEATURE_COLS_XGB)
-
-# Default alias — use when you don't need model-specific differences
 FEATURE_COLS = list(_FEATURE_COLS)
-
-# Columns consumed by the loss model before external preprocessing.
 LOSS_FEATURE_COLS: list[str] = list(_LOSS_FEATURE_COLS)
-
-# Columns consumed by acceptance model state part before external preprocessing.
 ACCEPTANCE_STATE_COLS: list[str] = list(_ACCEPTANCE_STATE_COLS)
-
-_PREMIUM_COL_INDEX: int = PREMIUM_COL_INDEX  # index of X_policy_premium in both FEATURE_COLS variants
+_PREMIUM_COL_INDEX: int = PREMIUM_COL_INDEX
 
 
 @dataclass(frozen=True)
 class ModelArtifactBundle:
-    """A saved model together with its external feature processor."""
+    """A fitted first-fold model together with its fitted feature processor."""
 
     model: Any
     preprocessor: FeatureProcessor | None
     u_cols: tuple[str, ...]
     x_feature_cols: tuple[str, ...]
+    probability_target: ProbabilityTarget = "none"
+    source_format: str = "single_model"
 
     def model_frame(self, raw_frame: pd.DataFrame) -> pd.DataFrame:
-        """Build the exact model-input frame from raw notebook-space columns."""
+        """Build the exact model-input frame from raw source-space columns."""
         missing = [
             col
-            for col in (*self.u_cols, *self.x_feature_cols)
+            for col in (*self.x_feature_cols, *self.u_cols)
             if col not in raw_frame.columns
         ]
         if missing:
             raise ValueError(f"Missing required artifact columns: {missing}")
 
         if self.preprocessor is None:
-            columns = [*self.u_cols, *self.x_feature_cols]
+            columns = [*self.x_feature_cols, *self.u_cols]
             model_frame = raw_frame.loc[:, columns].copy()
         else:
-            transformed = self.preprocessor.transform(raw_frame.loc[:, list(self.x_feature_cols)].copy())
+            transformed = self.preprocessor.transform(
+                raw_frame.loc[:, list(self.x_feature_cols)].copy()
+            )
             if self.u_cols:
                 u_frame = raw_frame.loc[:, list(self.u_cols)].reset_index(drop=True)
-                model_frame = pd.concat([u_frame, transformed.reset_index(drop=True)], axis=1)
+                model_frame = pd.concat(
+                    [transformed.reset_index(drop=True), u_frame],
+                    axis=1,
+                )
             else:
                 model_frame = transformed
 
@@ -88,7 +94,7 @@ class ModelArtifactBundle:
         return model_frame
 
     def policy_feature_dim(self) -> int:
-        """Return the state dimension seen by a policy over processed features."""
+        """Return the processed state dimension seen by an artifact-preprocessed policy."""
         if self.preprocessor is None:
             return len(self.x_feature_cols)
         return len(getattr(self.preprocessor, "output_feature_names_", ()))
@@ -98,12 +104,12 @@ class _ArtifactUnpickler(pickle.Unpickler):
     """Map notebook-local classes onto importable repo modules."""
 
     def find_class(self, module: str, name: str) -> Any:
-        if module == "__main__" and name == "FeatureProcessor":
+        if name == "FeatureProcessor" and module in {"__main__", "preprocessing"}:
             return FeatureProcessor
         return super().find_class(module, name)
 
 
-_ARTIFACT_PATHS: dict[str, dict[str, Path]] = {
+_ARTIFACT_PATHS: dict[ModelType, dict[str, Path]] = {
     "glm": {
         "acceptance": MODEL_ARTIFACTS["glm"]["acceptance"]["path"],
         "loss": MODEL_ARTIFACTS["glm"]["loss"]["path"],
@@ -114,26 +120,46 @@ _ARTIFACT_PATHS: dict[str, dict[str, Path]] = {
     },
 }
 
-_ACCEPTANCE_CSV_PATHS: dict[str, Path] = {
+_ACCEPTANCE_CSV_PATHS: dict[ModelType, Path] = {
     "glm": _DATASET_CSV_PATH,
     "xgb": _DATASET_CSV_PATH,
 }
 
 
-def _acceptance_csv_path(model_type: Literal["glm", "xgb"]) -> Path:
+def _acceptance_csv_path(model_type: ModelType) -> Path:
     if model_type not in _ACCEPTANCE_CSV_PATHS:
         raise ValueError(f"model_type must be 'glm' or 'xgb', got '{model_type}'.")
     return _ACCEPTANCE_CSV_PATHS[model_type]
 
 
 def dataset_csv_path() -> Path:
-    """Return the canonical real-data source CSV path."""
+    """Return the canonical 052726 real-data source CSV path."""
     return _DATASET_CSV_PATH
+
+
+def dataset_column_roles() -> dict[str, tuple[str, ...]]:
+    """Return column groups used by and excluded from objective construction."""
+    return {
+        "used_x_cols": tuple(USED_X_COLS),
+        "acceptance_x_cols": tuple(ACCEPTANCE_STATE_COLS),
+        "loss_x_cols": tuple(LOSS_FEATURE_COLS),
+        "unused_x_cols": tuple(UNUSED_X_COLS),
+        "lookahead_x_cols": tuple(LOOKAHEAD_X_COLS),
+        "objective_excluded_cols": tuple(OBJECTIVE_EXCLUDED_COLS),
+        "action_cols": (OBSERVED_U_COL,),
+        "target_cols": (LOSS_TARGET_COL, OBSERVED_CHURN_COL),
+    }
 
 
 def _csv_row_count(csv_path: Path) -> int:
     with open(csv_path, encoding="utf-8") as f:
         return max(sum(1 for _ in f) - 1, 0)
+
+
+def _validate_model_type(model_type: str) -> ModelType:
+    if model_type not in {"glm", "xgb"}:
+        raise ValueError(f"model_type must be 'glm' or 'xgb', got '{model_type}'.")
+    return model_type  # type: ignore[return-value]
 
 
 def _validate_row_indices(row_indices: np.ndarray | Sequence[int], total_rows: int) -> np.ndarray:
@@ -154,46 +180,50 @@ def _validate_row_indices(row_indices: np.ndarray | Sequence[int], total_rows: i
     return indices
 
 
-def sample_csv_row_indices(
-    model_type: Literal["glm", "xgb"],
-    n_rows: int,
-    seed: int | None = None,
-) -> np.ndarray:
-    """Sample acceptance CSV row positions without replacement."""
-    n_rows = int(n_rows)
-    if n_rows <= 0:
-        raise ValueError("n_rows must be positive.")
-    csv_path = _acceptance_csv_path(model_type)
-    total_rows = _csv_row_count(csv_path)
-    if n_rows > total_rows:
-        raise ValueError(
-            f"Cannot sample {n_rows} rows from {csv_path.name}; CSV has {total_rows} rows."
-        )
-    rng = np.random.default_rng(seed)
-    return rng.choice(total_rows, size=n_rows, replace=False).astype(int)
+@lru_cache(maxsize=4)
+def _eligible_row_indices(csv_path: Path) -> np.ndarray:
+    """Return CSV row positions with complete objective X and observed diagnostics."""
+    df = pd.read_csv(csv_path, sep=";", usecols=list(REQUIRED_DATASET_COLUMNS))
+    complete = df.notna().all(axis=1).to_numpy(dtype=bool)
+    return np.flatnonzero(complete).astype(int)
 
 
 def _select_csv_rows(df: pd.DataFrame, row_indices: np.ndarray) -> pd.DataFrame:
     return df.iloc[row_indices].reset_index(drop=True)
 
 
-def _encode_non_numeric_state_columns(df: pd.DataFrame, csv_path: Path, feature_cols: list[str]) -> pd.DataFrame:
-    """Apply notebook-style label encoding to any string state columns."""
-    df_encoded = df.copy()
-    for col in feature_cols:
-        if pd.api.types.is_numeric_dtype(df_encoded[col]):
-            continue
-        full_col = pd.read_csv(csv_path, sep=";", usecols=[col])[col].fillna("__MISSING__").astype(str)
-        classes = sorted(full_col.unique().tolist())
-        mapping = {label: idx for idx, label in enumerate(classes)}
-        df_encoded[col] = (
-            df_encoded[col]
-            .fillna("__MISSING__")
-            .astype(str)
-            .map(mapping)
-            .astype(float)
+def _validate_no_missing_required(df: pd.DataFrame, columns: Sequence[str]) -> None:
+    missing_columns = [col for col in columns if col not in df.columns]
+    if missing_columns:
+        raise ValueError(f"Missing required dataset columns: {missing_columns}")
+    missing_values = df.loc[:, list(columns)].isna().sum()
+    missing_values = missing_values[missing_values > 0]
+    if not missing_values.empty:
+        raise ValueError(
+            "Selected rows contain missing required values: "
+            f"{missing_values.astype(int).to_dict()}"
         )
-    return df_encoded
+
+
+def sample_csv_row_indices(
+    model_type: ModelType,
+    n_rows: int,
+    seed: int | None = None,
+) -> np.ndarray:
+    """Sample complete 052726 CSV row positions without replacement."""
+    model_type = _validate_model_type(model_type)
+    n_rows = int(n_rows)
+    if n_rows <= 0:
+        raise ValueError("n_rows must be positive.")
+    csv_path = _acceptance_csv_path(model_type)
+    eligible = _eligible_row_indices(csv_path)
+    if n_rows > eligible.size:
+        raise ValueError(
+            f"Cannot sample {n_rows} eligible rows from {csv_path.name}; "
+            f"CSV has {eligible.size} complete eligible rows."
+        )
+    rng = np.random.default_rng(seed)
+    return rng.choice(eligible, size=n_rows, replace=False).astype(int)
 
 
 def _load_pickle(path: Path) -> Any:
@@ -201,15 +231,76 @@ def _load_pickle(path: Path) -> Any:
         return _ArtifactUnpickler(f).load()
 
 
-def _normalize_artifact(raw_artifact: Any) -> ModelArtifactBundle:
+def _artifact_probability_target(raw_artifact: Any, fallback: ProbabilityTarget) -> ProbabilityTarget:
+    if isinstance(raw_artifact, dict):
+        target = raw_artifact.get("target")
+        if target == "acceptance":
+            return "acceptance"
+    return fallback
+
+
+def _first_fold_artifact(
+    raw_artifact: dict[str, Any],
+    *,
+    probability_target: ProbabilityTarget,
+) -> ModelArtifactBundle:
+    models = raw_artifact.get("trained_models")
+    if not isinstance(models, Sequence) or len(models) == 0:
+        raise ValueError("CV artifact must contain a non-empty trained_models sequence.")
+    model = models[0]
+
+    preprocessor = raw_artifact.get("preprocessor")
+    x_feature_cols = raw_artifact.get("x_feature_cols")
+    u_cols: Sequence[str] = ()
+
+    trained_preprocessors = raw_artifact.get("trained_preprocessors")
+    if preprocessor is None and isinstance(trained_preprocessors, Sequence) and trained_preprocessors:
+        first_preprocessor = trained_preprocessors[0]
+        if isinstance(first_preprocessor, dict):
+            preprocessor = first_preprocessor.get("preprocessor")
+            x_feature_cols = (
+                first_preprocessor.get("x_feature_cols")
+                or first_preprocessor.get("feature_cols")
+                or x_feature_cols
+            )
+            u_cols = tuple(first_preprocessor.get("u_cols", ()))
+
+    model_features = tuple(raw_artifact.get("model_features", ()))
+    if not u_cols and "U" in model_features:
+        u_cols = ("U",)
+    if x_feature_cols is None:
+        x_feature_cols = tuple(col for col in model_features if col not in set(u_cols))
+
+    if x_feature_cols is None:
+        raise ValueError("Could not resolve x_feature_cols from CV artifact.")
+
+    return ModelArtifactBundle(
+        model=model,
+        preprocessor=preprocessor,
+        u_cols=tuple(u_cols),
+        x_feature_cols=tuple(x_feature_cols),
+        probability_target=probability_target,
+        source_format="cv_first_fold",
+    )
+
+
+def _normalize_artifact(
+    raw_artifact: Any,
+    *,
+    probability_target: ProbabilityTarget = "none",
+) -> ModelArtifactBundle:
+    probability_target = _artifact_probability_target(raw_artifact, probability_target)
     if isinstance(raw_artifact, ModelArtifactBundle):
         return raw_artifact
+    if isinstance(raw_artifact, dict) and "trained_models" in raw_artifact:
+        return _first_fold_artifact(raw_artifact, probability_target=probability_target)
     if isinstance(raw_artifact, dict) and "model" in raw_artifact:
         return ModelArtifactBundle(
             model=raw_artifact["model"],
             preprocessor=raw_artifact.get("preprocessor"),
             u_cols=tuple(raw_artifact.get("u_cols", ())),
             x_feature_cols=tuple(raw_artifact.get("x_feature_cols", ())),
+            probability_target=probability_target,
         )
     model = raw_artifact
     feature_names = tuple(getattr(model, "feature_names_in_", ()))
@@ -218,6 +309,7 @@ def _normalize_artifact(raw_artifact: Any) -> ModelArtifactBundle:
         preprocessor=None,
         u_cols=(),
         x_feature_cols=feature_names,
+        probability_target=probability_target,
     )
 
 
@@ -228,58 +320,84 @@ def unwrap_model_artifact(artifact: Any) -> Any:
     return artifact
 
 
-def load_model_artifacts(model_type: Literal["glm", "xgb"]) -> tuple[ModelArtifactBundle, ModelArtifactBundle]:
-    """Load and return (acceptance_artifact, loss_artifact) bundles."""
-    if model_type not in _ARTIFACT_PATHS:
-        raise ValueError(f"model_type must be 'glm' or 'xgb', got '{model_type}'.")
+def load_model_artifacts(model_type: ModelType) -> tuple[ModelArtifactBundle, ModelArtifactBundle]:
+    """Load and return first-fold (acceptance_artifact, loss_artifact) bundles."""
+    model_type = _validate_model_type(model_type)
     paths = _ARTIFACT_PATHS[model_type]
-    acceptance_model = _normalize_artifact(_load_pickle(paths["acceptance"]))
-    loss_model = _normalize_artifact(_load_pickle(paths["loss"]))
+    specs = MODEL_ARTIFACTS[model_type]
+    acceptance_model = _normalize_artifact(
+        _load_pickle(paths["acceptance"]),
+        probability_target=specs["acceptance"].get("probability_target", "acceptance"),
+    )
+    loss_model = _normalize_artifact(
+        _load_pickle(paths["loss"]),
+        probability_target=specs["loss"].get("probability_target", "none"),
+    )
     return acceptance_model, loss_model
 
 
-def load_x_array(
-    model_type: Literal["glm", "xgb"],
+def load_x_frame(
+    model_type: ModelType,
     n_rows: int = 5000,
     *,
     row_indices: np.ndarray | Sequence[int] | None = None,
     seed: int | None = None,
-) -> np.ndarray:
-    """Load a random sample of raw state features from the acceptance CSV."""
+) -> pd.DataFrame:
+    """Load raw 052726 X covariates for optimization, preserving categoricals."""
+    model_type = _validate_model_type(model_type)
     csv_path = _acceptance_csv_path(model_type)
     feature_cols = list(MODEL_FEATURE_COLS[model_type])
     if row_indices is None:
         row_indices = sample_csv_row_indices(model_type, n_rows=n_rows, seed=seed)
     else:
         row_indices = _validate_row_indices(row_indices, _csv_row_count(csv_path))
-    df = pd.read_csv(csv_path, sep=";")
+    df = pd.read_csv(csv_path, sep=";", usecols=feature_cols)
     df = _select_csv_rows(df, np.asarray(row_indices, dtype=int))
-    df = _encode_non_numeric_state_columns(df, csv_path, feature_cols)
-    return df[feature_cols].to_numpy(dtype=float)
+    _validate_no_missing_required(df, feature_cols)
+    return df.loc[:, feature_cols].copy()
+
+
+def load_x_array(
+    model_type: ModelType,
+    n_rows: int = 5000,
+    *,
+    row_indices: np.ndarray | Sequence[int] | None = None,
+    seed: int | None = None,
+) -> np.ndarray:
+    """Load raw X covariates as an object array; prefer load_x_frame for real data."""
+    return load_x_frame(
+        model_type,
+        n_rows=n_rows,
+        row_indices=row_indices,
+        seed=seed,
+    ).to_numpy(dtype=object)
 
 
 def load_observed_u_array(
-    model_type: Literal["glm", "xgb"],
+    model_type: ModelType,
     n_rows: int | None = 5000,
     *,
     row_indices: np.ndarray | Sequence[int] | None = None,
     seed: int | None = None,
 ) -> np.ndarray:
-    """Load observed pricing multipliers from sampled acceptance CSV rows."""
+    """Load historical pricing actions from sampled complete 052726 rows."""
+    model_type = _validate_model_type(model_type)
     csv_path = _acceptance_csv_path(model_type)
     if row_indices is None:
         if n_rows is None:
-            n_rows = _csv_row_count(csv_path)
-        row_indices = sample_csv_row_indices(model_type, n_rows=n_rows, seed=seed)
+            row_indices = _eligible_row_indices(csv_path)
+        else:
+            row_indices = sample_csv_row_indices(model_type, n_rows=n_rows, seed=seed)
     else:
         row_indices = _validate_row_indices(row_indices, _csv_row_count(csv_path))
     df = pd.read_csv(csv_path, sep=";", usecols=[OBSERVED_U_COL])
     df = _select_csv_rows(df, np.asarray(row_indices, dtype=int))
+    _validate_no_missing_required(df, [OBSERVED_U_COL])
     return df[OBSERVED_U_COL].to_numpy(dtype=float)
 
 
 def _load_observed_u_array(
-    model_type: Literal["glm", "xgb"],
+    model_type: ModelType,
     n_rows: int | None = 5000,
     *,
     row_indices: np.ndarray | Sequence[int] | None = None,
@@ -289,20 +407,28 @@ def _load_observed_u_array(
     return load_observed_u_array(model_type, n_rows=n_rows, row_indices=row_indices, seed=seed)
 
 
-def load_mean_observed_acceptance(model_type: Literal["glm", "xgb"]) -> float:
-    """Load mean acceptance probability from the exported acceptance CSV."""
-    if model_type not in _ACCEPTANCE_CSV_PATHS:
-        raise ValueError(f"model_type must be 'glm' or 'xgb', got '{model_type}'.")
-    df = pd.read_csv(_ACCEPTANCE_CSV_PATHS[model_type], sep=";", usecols=[ACCEPTANCE_PROBABILITY_COL])
-    return float(df[ACCEPTANCE_PROBABILITY_COL].mean())
+def load_mean_observed_acceptance(model_type: ModelType) -> float:
+    """Load mean observed acceptance (1 - is_churn) on complete eligible rows."""
+    model_type = _validate_model_type(model_type)
+    csv_path = _ACCEPTANCE_CSV_PATHS[model_type]
+    row_indices = _eligible_row_indices(csv_path)
+    df = pd.read_csv(csv_path, sep=";", usecols=[OBSERVED_CHURN_COL])
+    df = _select_csv_rows(df, row_indices)
+    return float(1.0 - df[OBSERVED_CHURN_COL].to_numpy(dtype=float).mean())
 
 
 def extract_glm_u_coef(glm_pipeline: Any) -> float:
-    """Extract effective d_logit/dU = w_U / std_U from a fitted GLM Pipeline."""
-    glm_pipeline = unwrap_model_artifact(glm_pipeline)
-    preprocessor = glm_pipeline.named_steps["preprocessor"]
-    classifier = glm_pipeline.named_steps["classifier"]
+    """Extract d logit(P(accept)) / dU from the first-fold GLM artifact."""
+    model = unwrap_model_artifact(glm_pipeline)
+    if hasattr(model, "coef_") and hasattr(model, "feature_names_in_"):
+        feature_names = [str(name) for name in model.feature_names_in_.tolist()]
+        if "U" not in feature_names:
+            raise ValueError(f"Expected fitted GLM feature names to include 'U'. Got: {feature_names}")
+        return float(np.asarray(model.coef_, dtype=float)[0, feature_names.index("U")])
 
+    # Legacy sklearn Pipeline path retained for older artifacts.
+    preprocessor = model.named_steps["preprocessor"]
+    classifier = model.named_steps["classifier"]
     transformed_names = list(preprocessor.get_feature_names_out())
     u_indices = [i for i, name in enumerate(transformed_names) if name.endswith("__U") or name == "U"]
     if len(u_indices) != 1:
@@ -312,91 +438,63 @@ def extract_glm_u_coef(glm_pipeline: Any) -> float:
         )
     i_u_out = u_indices[0]
     w_u = float(classifier.coef_[0, i_u_out])
-
     for _, transformer, cols in preprocessor.transformers_:
-        if not hasattr(transformer, "named_steps"):
-            continue
-        if "scaler" not in transformer.named_steps:
+        if not hasattr(transformer, "named_steps") or "scaler" not in transformer.named_steps:
             continue
         col_list = list(cols)
         if "U" not in col_list:
             continue
-        i_u_numeric = col_list.index("U")
-        std_u = float(transformer.named_steps["scaler"].scale_[i_u_numeric])
+        std_u = float(transformer.named_steps["scaler"].scale_[col_list.index("U")])
         return w_u / std_u
-
     raise ValueError("Could not find a StandardScaler containing 'U' in the GLM pipeline preprocessor.")
 
 
 def extract_glm_churn_coefficients(glm_pipeline: Any) -> dict[str, Any]:
-    """Extract processed-space churn coefficients from a fitted GLM artifact."""
-    glm_pipeline = unwrap_model_artifact(glm_pipeline)
-    preprocessor = glm_pipeline.named_steps["preprocessor"]
-    classifier = glm_pipeline.named_steps["classifier"]
+    """Extract processed-space acceptance coefficients from a fitted GLM artifact."""
+    model = unwrap_model_artifact(glm_pipeline)
+    if hasattr(model, "coef_") and hasattr(model, "intercept_") and hasattr(model, "feature_names_in_"):
+        feature_names = [str(name) for name in model.feature_names_in_.tolist()]
+        if "U" not in feature_names:
+            raise ValueError(f"Expected fitted GLM feature names to include 'U'. Got: {feature_names}")
+        coef = np.asarray(model.coef_[0], dtype=float)
+        u_index = feature_names.index("U")
+        return {
+            "formula": "logit(p_accept(z, u)) = intercept + beta_z^T z + beta_u * u",
+            "x_feature_names": [name for name in feature_names if name != "U"],
+            "x_coef": [float(val) for val in np.delete(coef, u_index).tolist()],
+            "u_coef": float(coef[u_index]),
+            "intercept": float(np.asarray(model.intercept_, dtype=float).reshape(-1)[0]),
+            "probability_target": "acceptance",
+        }
+
+    # Legacy pipeline path retained for older artifacts.
+    preprocessor = model.named_steps["preprocessor"]
+    classifier = model.named_steps["classifier"]
     transformed_names = list(preprocessor.get_feature_names_out())
-
-    numeric_transformer = None
-    numeric_cols: list[str] | None = None
-    for _, transformer, cols in preprocessor.transformers_:
-        if not hasattr(transformer, "named_steps"):
-            continue
-        if "scaler" not in transformer.named_steps:
-            continue
-        numeric_transformer = transformer
-        numeric_cols = list(cols)
-        break
-
-    if numeric_transformer is None or numeric_cols is None:
-        raise ValueError("Could not find a scaled numeric transformer in the GLM pipeline preprocessor.")
-
-    if len(transformed_names) != len(numeric_cols):
-        raise ValueError(
-            "GLM coefficient extraction only supports one-to-one preprocessing. "
-            f"Found {len(transformed_names)} transformed features for {len(numeric_cols)} raw numeric columns."
-        )
-
-    for out_name, raw_name in zip(transformed_names, numeric_cols):
-        if not (out_name.endswith(f"__{raw_name}") or out_name == raw_name):
-            raise ValueError(
-                "GLM coefficient extraction requires transformed feature names to align "
-                f"with raw numeric columns. Got transformed name '{out_name}' for raw column '{raw_name}'."
-            )
-
-    scaler = numeric_transformer.named_steps["scaler"]
-    coef_scaled = np.asarray(classifier.coef_[0], dtype=float)
-    intercept_scaled = float(classifier.intercept_[0])
-    mean = np.asarray(scaler.mean_, dtype=float)
-    scale = np.asarray(scaler.scale_, dtype=float)
-    coef_raw = coef_scaled / scale
-    intercept_raw = intercept_scaled - float(np.dot(coef_scaled, mean / scale))
-
-    if "U" not in numeric_cols:
-        raise ValueError(f"Expected raw numeric columns to include 'U'. Got: {numeric_cols}")
-
-    u_index = numeric_cols.index("U")
-    x_feature_names = [name for name in numeric_cols if name != "U"]
-    x_coef = np.delete(coef_raw, u_index)
-    u_coef = float(coef_raw[u_index])
-
+    if "U" not in transformed_names:
+        raise ValueError(f"Expected transformed feature names to include 'U'. Got: {transformed_names}")
+    coef = np.asarray(classifier.coef_[0], dtype=float)
+    u_index = transformed_names.index("U")
     return {
         "formula": "logit(p_churn(z, u)) = intercept + beta_z^T z + beta_u * u",
-        "x_feature_names": x_feature_names,
-        "x_coef": [float(val) for val in x_coef.tolist()],
-        "u_coef": u_coef,
-        "intercept": intercept_raw,
+        "x_feature_names": [name for name in transformed_names if name != "U"],
+        "x_coef": [float(val) for val in np.delete(coef, u_index).tolist()],
+        "u_coef": float(coef[u_index]),
+        "intercept": float(classifier.intercept_[0]),
+        "probability_target": "churn",
     }
 
 
 def extract_linear_loss_coefficients(linear_model: Any) -> dict[str, Any]:
-    """Extract coefficients from a fitted linear-regression loss artifact."""
-    linear_model = unwrap_model_artifact(linear_model)
-    if not hasattr(linear_model, "coef_") or not hasattr(linear_model, "intercept_"):
+    """Extract coefficients from a fitted linear/ridge loss artifact."""
+    model = unwrap_model_artifact(linear_model)
+    if not hasattr(model, "coef_") or not hasattr(model, "intercept_"):
         raise ValueError("Expected a fitted linear model with coef_ and intercept_.")
-    if not hasattr(linear_model, "feature_names_in_"):
+    if not hasattr(model, "feature_names_in_"):
         raise ValueError("Expected the fitted linear model to expose feature_names_in_.")
 
-    coef = np.asarray(linear_model.coef_, dtype=float)
-    feature_names = [str(name) for name in linear_model.feature_names_in_.tolist()]
+    coef = np.asarray(model.coef_, dtype=float)
+    feature_names = [str(name) for name in model.feature_names_in_.tolist()]
     if coef.shape != (len(feature_names),):
         raise ValueError(
             "Expected one coefficient per model input feature. "
@@ -407,18 +505,18 @@ def extract_linear_loss_coefficients(linear_model: Any) -> dict[str, Any]:
         "formula": "loss_hat(z) = intercept + gamma_z^T z",
         "x_feature_names": feature_names,
         "x_coef": [float(val) for val in coef.tolist()],
-        "intercept": float(linear_model.intercept_),
+        "intercept": float(np.asarray(model.intercept_, dtype=float).reshape(-1)[0]),
     }
 
 
 def extract_model_based_coefficients(acceptance_model: Any, loss_model: Any) -> dict[str, dict[str, Any]] | None:
     """Extract printable coefficient summaries for supported model-based artifacts."""
     try:
-        churn = extract_glm_churn_coefficients(acceptance_model)
+        acceptance = extract_glm_churn_coefficients(acceptance_model)
         loss = extract_linear_loss_coefficients(loss_model)
     except (AttributeError, KeyError, TypeError, ValueError):
         return None
-    return {"churn": churn, "loss": loss}
+    return {"acceptance": acceptance, "loss": loss}
 
 
 __all__ = [
@@ -428,9 +526,11 @@ __all__ = [
     "LOSS_FEATURE_COLS",
     "ACCEPTANCE_STATE_COLS",
     "ModelArtifactBundle",
+    "dataset_column_roles",
     "dataset_csv_path",
     "sample_csv_row_indices",
     "load_model_artifacts",
+    "load_x_frame",
     "load_x_array",
     "load_observed_u_array",
     "load_mean_observed_acceptance",

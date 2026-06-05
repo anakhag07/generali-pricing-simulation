@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import matplotlib
 import numpy as np
+import pandas as pd
 
 from objective import FixedRegressionObjective, LinearPolicy
 from reporting.visualization import (
@@ -10,6 +11,7 @@ from reporting.visualization import (
     _plot_policy_final_summary_metrics,
     _plot_policy_u_acceptance_histograms,
     _plot_policy_u_histograms,
+    plot_theta_objective_contours,
 )
 
 
@@ -31,8 +33,49 @@ def _objective() -> DummyAcceptanceObjective:
     )
 
 
+class DummyCategoricalDataFrameObjective:
+    def _signal(self, x_batch: object) -> np.ndarray:
+        if hasattr(x_batch, "loc"):
+            values = x_batch.loc[:, "X_vehicle_power"].astype(str)
+            return values.map(lambda val: 0.0 if val == "." else float(val)).to_numpy(dtype=float)
+        return np.asarray(x_batch, dtype=float)[:, 0]
+
+    def _clip_u(self, u_values: np.ndarray) -> np.ndarray:
+        return np.asarray(u_values, dtype=float)
+
+    def policy_value(self, theta: np.ndarray, x_batch: object) -> np.ndarray:
+        theta_arr = np.asarray(theta, dtype=float)
+        return theta_arr[0] + theta_arr[1] * self._signal(x_batch) / 100.0
+
+    def _acceptance_proba(self, x_batch: object, u_arr: np.ndarray) -> np.ndarray:
+        logits = 0.01 * self._signal(x_batch) - 0.5 * np.asarray(u_arr, dtype=float)
+        return 1.0 / (1.0 + np.exp(-logits))
+
+    def _value_batch(self, x_batch: object, u_arr: np.ndarray) -> np.ndarray:
+        signal = self._signal(x_batch)
+        u_values = np.asarray(u_arr, dtype=float)
+        return self._acceptance_proba(x_batch, u_values) * (signal - 10.0 * (u_values + 1.0))
+
+    def value_at_u(self, x_batch: object, u: float) -> float:
+        u_values = np.full(self._signal(x_batch).shape[0], float(u), dtype=float)
+        return float(np.mean(self._value_batch(x_batch, u_values)))
+
+    def value(self, theta: np.ndarray, x_batch: object) -> float:
+        u_values = self.policy_value(theta, x_batch)
+        return float(np.mean(self._value_batch(x_batch, u_values)))
+
+
 def _x_samples() -> np.ndarray:
     return np.linspace(-1.0, 1.0, 120, dtype=float).reshape(-1, 1)
+
+
+def _categorical_x_samples() -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "X_vehicle_power": [".", "105", "112", "68"],
+            "X_vehicle_weight": [".", "1240", "1390", "1430"],
+        }
+    )
 
 
 def _observed_u() -> np.ndarray:
@@ -98,6 +141,54 @@ def test_plot_policy_u_acceptance_histograms_writes_one_file_per_estimator(tmp_p
     assert not (tmp_path / "policy_u_acceptance_histograms.png").exists()
     assert not (tmp_path / "policy_u_vs_acceptance_spread.png").exists()
     assert not (tmp_path / "policy_u_vs_objective.png").exists()
+
+
+def test_policy_diagnostic_plots_preserve_categorical_dataframes(tmp_path) -> None:
+    x_samples = _categorical_x_samples()
+    observed_u = np.asarray([-0.1, 0.0, 0.1, 0.2], dtype=float)
+    theta_by_estimator = {"first_order": np.asarray([0.05, 0.1], dtype=float)}
+    objective = DummyCategoricalDataFrameObjective()
+
+    _plot_policy_u_histograms(
+        observed_u,
+        x_samples,
+        objective,  # type: ignore[arg-type]
+        theta_by_estimator,
+        plot_dir=str(tmp_path),
+    )
+    _plot_policy_acceptance_histograms(
+        observed_u,
+        x_samples,
+        objective,  # type: ignore[arg-type]
+        theta_by_estimator,
+        plot_dir=str(tmp_path),
+    )
+    _plot_policy_final_summary_metrics(
+        x_samples,
+        objective,  # type: ignore[arg-type]
+        theta_by_estimator,
+        {"first_order": 0.01},
+        plot_dir=str(tmp_path),
+    )
+    _plot_policy_u_acceptance_histograms(
+        x_samples,
+        objective,  # type: ignore[arg-type]
+        theta_by_estimator,
+        plot_dir=str(tmp_path / "u_acceptance"),
+    )
+    plot_theta_objective_contours(
+        x_samples,
+        objective,  # type: ignore[arg-type]
+        np.asarray([0.05, 0.1], dtype=float),
+        plot_dir=str(tmp_path),
+        grid_size=3,
+    )
+
+    assert (tmp_path / "u_histogram.png").is_file()
+    assert (tmp_path / "acceptance_histograms.png").is_file()
+    assert (tmp_path / "final_summary_metrics.png").is_file()
+    assert (tmp_path / "u_acceptance" / "first_order.png").is_file()
+    assert (tmp_path / "theta_objective_contours.png").is_file()
 
 
 def test_adaptive_contour_norm_uses_linear_log_or_symlog_scales() -> None:

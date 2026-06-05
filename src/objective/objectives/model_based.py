@@ -34,9 +34,10 @@ class ModelBasedObjective(Objective):
     can be extracted from the artifacts, value/acceptance calls use the equivalent
     array formula instead of repeated sklearn predictions.
 
-    If ``u_coef`` is provided, it is interpreted as $$d\,\text{logit}(p_{accept}) / dU$$
-    for direct-acceptance artifacts. Otherwise numerical central finite differences
-    are used (XGBoost path).
+    If ``u_coef`` is provided for GLM artifacts, it overrides the artifact's
+    $$d\,\text{logit}(p_{accept}) / dU$$ coefficient in both acceptance values and
+    analytical gradients. Otherwise the extracted artifact coefficient is used;
+    unsupported artifacts fall back to numerical central finite differences.
 
     When ``acceptance_floor`` and ``acceptance_penalty_weight`` are both set,
     ``value()`` adds a smooth mean-acceptance penalty. When ``lagrangian_lambda``
@@ -340,12 +341,19 @@ class ModelBasedObjective(Objective):
         self._record_eval("acceptance_analytic_calls", self._row_count(x_batch))
         start = time.perf_counter()
         try:
-            class1 = _sigmoid(base_logit + float(coeffs["u_coef"]) * u_arr)
+            u_coef = self._effective_glm_u_coef(coeffs)
+            class1 = _sigmoid(base_logit + u_coef * u_arr)
             if coeffs.get("probability_target", getattr(self.acceptance_model, "probability_target", "churn")) == "acceptance":
                 return class1
             return 1.0 - class1
         finally:
             self._record_time("acceptance_analytic_seconds", time.perf_counter() - start)
+
+    def _effective_glm_u_coef(self, coeffs: dict[str, Any]) -> float:
+        """Return configured GLM beta_u, falling back to the artifact value."""
+        if self.u_coef is not None:
+            return float(self.u_coef)
+        return float(coeffs["u_coef"])
 
     def _linear_loss_prediction_from_coefficients(self, x_batch: Any) -> np.ndarray | None:
         coeffs = self._linear_loss_coefficients()
@@ -465,7 +473,7 @@ class ModelBasedObjective(Objective):
         if u_coef is None:
             coeffs = self._glm_churn_coefficients()
             if coeffs is not None:
-                u_coef = float(coeffs["u_coef"])
+                u_coef = self._effective_glm_u_coef(coeffs)
                 probability_target = coeffs.get("probability_target", probability_target)
         if u_coef is not None:
             sign = 1.0 if probability_target == "acceptance" else -1.0

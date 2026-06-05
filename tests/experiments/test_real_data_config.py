@@ -115,6 +115,16 @@ def test_glm_constant_policy_override():
     assert cfg.theta0.shape == (1,)
 
 
+def test_glm_u_coef_override_sets_acceptance_coefficient() -> None:
+    cfg = _cfg("real_data_glm_base", u_coef=-5.0)
+    assert cfg.objective.u_coef == pytest.approx(-5.0)
+
+
+def test_xgb_u_coef_override_is_rejected() -> None:
+    with pytest.raises(ValueError, match="GLM acceptance"):
+        _cfg("real_data_xgb_base", u_coef=-5.0)
+
+
 def test_glm_mlp_policy_override_has_mlp_policy_and_first_order():
     from objective.policy import IdentityFeatureMap, MLPPolicy
 

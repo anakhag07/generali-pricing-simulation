@@ -196,11 +196,12 @@ same three aggregate plots under
   `c`
 - `pareto_u_acceptance.png` -- final `u` vs acceptance, colored by `c`
 
-`scripts/run_glm_u_coef_sweep.py` runs the current full-data softmax GLM setup
-over direct acceptance coefficients `u_coef in {-4, -5, -8, -10, -20}` with
-per-run policy distribution plots enabled. It writes per-run outputs under
-`outputs/glm-u-coef-sweep/<u_coef-run>/` plus aggregate `glm_u_coef_sweep.csv`
-and frontier plots under `outputs/glm-u-coef-sweep/u_coef_frontier_<timestamp>/`.
+`scripts/run_glm_u_coef_sweep.py` runs the softmax/no-PCA/trust-constr GLM setup
+over `200000` sampled rows and direct acceptance coefficients
+`u_coef in {-4, -5, -8, -10, -20}` with per-run policy distribution plots
+enabled. It writes per-run outputs under `outputs/glm-u-coef-sweep/<u_coef-run>/`
+plus aggregate `glm_u_coef_sweep.csv` and frontier plots under
+`outputs/glm-u-coef-sweep/u_coef_frontier_<timestamp>/`.
 
 If you already have saved acceptance-floor sweep outputs and only want the
 Pareto frontier for one estimator without rerunning optimization, use

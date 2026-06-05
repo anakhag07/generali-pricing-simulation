@@ -1,4 +1,4 @@
-"""Run a GLM acceptance beta_u sweep matching the main.py real-data setup."""
+"""Run a GLM acceptance beta_u sweep for the trust-constrained GLM setup."""
 
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ BASE_PRESET = "real_data_glm_base"
 PROJECT_NAME = "glm-u-coef-sweep"
 DISPLAY_KEYS = ("u_coef",)
 U_COEFS = (-4.0, -5.0, -8.0, -10.0, -20.0)
+N_SAMPLES = 200000
 
 OVERRIDE_GRID = {
     "u_coef": list(U_COEFS),
@@ -25,7 +26,7 @@ OVERRIDE_GRID = {
     "policy_preprocessing": ["no_pca"],
     "feature_order": ["linear"],
     "constraint_mode": ["trust_constr"],
-    "n_samples": [700000],
+    "n_samples": [N_SAMPLES],
     "n_grad_samples": [8],
     "t_steps": [100],
     "enabled_estimators": [("first_order", "finite_difference", "stein_difference")],

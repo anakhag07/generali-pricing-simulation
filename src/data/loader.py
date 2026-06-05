@@ -226,6 +226,12 @@ def sample_csv_row_indices(
     return rng.choice(eligible, size=n_rows, replace=False).astype(int)
 
 
+def eligible_csv_row_indices(model_type: ModelType) -> np.ndarray:
+    """Return complete eligible canonical CSV row positions for a model family."""
+    model_type = _validate_model_type(model_type)
+    return _eligible_row_indices(_acceptance_csv_path(model_type)).copy()
+
+
 def _load_pickle(path: Path) -> Any:
     with open(path, "rb") as f:
         return _ArtifactUnpickler(f).load()
@@ -528,6 +534,7 @@ __all__ = [
     "ModelArtifactBundle",
     "dataset_column_roles",
     "dataset_csv_path",
+    "eligible_csv_row_indices",
     "sample_csv_row_indices",
     "load_model_artifacts",
     "load_x_frame",

@@ -203,6 +203,14 @@ enabled. It writes per-run outputs under `outputs/glm-u-coef-sweep/<u_coef-run>/
 plus aggregate `glm_u_coef_sweep.csv` and frontier plots under
 `outputs/glm-u-coef-sweep/u_coef_frontier_<timestamp>/`.
 
+`scripts/run_glm_sensitivity_bucket_experiment.py` buckets all complete GLM rows
+into low/medium/high local price-sensitivity tertiles using
+`|d p_accept(x, u_ref) / du|` at the median observed historical `U`, then runs
+the same softmax/no-PCA/trust-constr GLM setup on all rows in each bucket. It
+writes per-bucket policy distribution plots under `outputs/glm-sensitivity-buckets/`
+and an aggregate `glm_sensitivity_bucket_experiment.csv` plus comparison plots
+under `sensitivity_bucket_summary_<timestamp>/`.
+
 If you already have saved acceptance-floor sweep outputs and only want the
 Pareto frontier for one estimator without rerunning optimization, use
 `scripts/plot_saved_acceptance_floor_frontier.py`:

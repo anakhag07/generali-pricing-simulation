@@ -172,6 +172,17 @@ Acceptance derivative:
 - **Legacy churn artifacts (analytical):** $\frac{\partial a}{\partial u} = -a(1-a)\;\beta_u^{\text{eff}}$
 - **XGBoost (numerical):** central FD with $\epsilon = 10^{-4}$
 
+**Local price-sensitivity bucket score:**
+
+For GLM sensitivity-bucket experiments, customers are ranked by local acceptance
+sensitivity at the median observed historical action $$u_{ref}$$:
+
+$$s_i = \left|\frac{\partial a(x_i, u_{ref})}{\partial u}\right| = |\beta_u^{\text{eff}}|\,a_i(1-a_i), \quad a_i = a(x_i, u_{ref})$$
+
+Rows are split into low/medium/high tertiles by $$s_i$$. With no explicit
+interaction terms between `U` and `X`, heterogeneity in this score comes from
+where each customer sits on the logistic acceptance curve.
+
 **Acceptance penalty** (smooth floor enforcement):
 
 $$\text{penalty} = w \cdot \bigl[\tau\,\log(1 + e^{g/\tau})\bigr]^2$$
@@ -186,6 +197,7 @@ $$\frac{\partial\,\text{penalty}}{\partial\,\bar{a}} = -2w\,\text{softplus}(g/\t
   - `_grad_u_batch()` — per-sample $\partial f/\partial u$
   - `_d_acceptance_du_batch()` — analytical or FD acceptance derivative
   - `_acceptance_penalty()` — penalty value and gradient scale
+- **Source:** `src/experiments/sensitivity_buckets.py` :: `glm_price_sensitivity_scores()`, `split_sensitivity_tertiles()`
 
 **Lagrangian scalarization** (lambda sweep path):
 

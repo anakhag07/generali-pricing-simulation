@@ -442,6 +442,39 @@
                     <a class="function" href="#run_experiment">run_experiment</a>
             </li>
             <li>
+                    <a class="variable" href="#SENSITIVITY_BUCKETS">SENSITIVITY_BUCKETS</a>
+            </li>
+            <li>
+                    <a class="class" href="#SensitivityBucket">SensitivityBucket</a>
+                            <ul class="memberlist">
+                        <li>
+                                <a class="function" href="#SensitivityBucket.__init__">SensitivityBucket</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#SensitivityBucket.name">name</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#SensitivityBucket.row_indices">row_indices</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#SensitivityBucket.scores">scores</a>
+                        </li>
+                </ul>
+
+            </li>
+            <li>
+                    <a class="function" href="#build_glm_sensitivity_buckets">build_glm_sensitivity_buckets</a>
+            </li>
+            <li>
+                    <a class="function" href="#glm_price_sensitivity_scores">glm_price_sensitivity_scores</a>
+            </li>
+            <li>
+                    <a class="function" href="#median_observed_u">median_observed_u</a>
+            </li>
+            <li>
+                    <a class="function" href="#split_sensitivity_tertiles">split_sensitivity_tertiles</a>
+            </li>
+            <li>
                     <a class="function" href="#expand_override_grid">expand_override_grid</a>
             </li>
             <li>
@@ -496,38 +529,52 @@ experiments    </h1>
 </span><span id="L-15"><a href="#L-15"><span class="linenos">15</span></a><span class="p">)</span>
 </span><span id="L-16"><a href="#L-16"><span class="linenos">16</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.results</span><span class="w"> </span><span class="kn">import</span> <span class="n">EstimatorResult</span><span class="p">,</span> <span class="n">ExperimentResult</span><span class="p">,</span> <span class="n">OptimizationTrace</span>
 </span><span id="L-17"><a href="#L-17"><span class="linenos">17</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.run</span><span class="w"> </span><span class="kn">import</span> <span class="n">run_experiment</span>
-</span><span id="L-18"><a href="#L-18"><span class="linenos">18</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.sweep_utils</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-</span><span id="L-19"><a href="#L-19"><span class="linenos">19</span></a>    <span class="n">apply_config_overrides</span><span class="p">,</span>
-</span><span id="L-20"><a href="#L-20"><span class="linenos">20</span></a>    <span class="n">expand_override_grid</span><span class="p">,</span>
-</span><span id="L-21"><a href="#L-21"><span class="linenos">21</span></a>    <span class="n">generate_sweep_runs</span><span class="p">,</span>
-</span><span id="L-22"><a href="#L-22"><span class="linenos">22</span></a>    <span class="n">make_sweep_name</span><span class="p">,</span>
-</span><span id="L-23"><a href="#L-23"><span class="linenos">23</span></a>    <span class="n">run_preset_sweep</span><span class="p">,</span>
-</span><span id="L-24"><a href="#L-24"><span class="linenos">24</span></a><span class="p">)</span>
-</span><span id="L-25"><a href="#L-25"><span class="linenos">25</span></a>
-</span><span id="L-26"><a href="#L-26"><span class="linenos">26</span></a><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
-</span><span id="L-27"><a href="#L-27"><span class="linenos">27</span></a>    <span class="s2">&quot;ExperimentConfig&quot;</span><span class="p">,</span>
-</span><span id="L-28"><a href="#L-28"><span class="linenos">28</span></a>    <span class="s2">&quot;get_config&quot;</span><span class="p">,</span>
-</span><span id="L-29"><a href="#L-29"><span class="linenos">29</span></a>    <span class="s2">&quot;list_configs&quot;</span><span class="p">,</span>
-</span><span id="L-30"><a href="#L-30"><span class="linenos">30</span></a>    <span class="s2">&quot;default_theta0&quot;</span><span class="p">,</span>
-</span><span id="L-31"><a href="#L-31"><span class="linenos">31</span></a>    <span class="s2">&quot;default_policy&quot;</span><span class="p">,</span>
-</span><span id="L-32"><a href="#L-32"><span class="linenos">32</span></a>    <span class="s2">&quot;EstimatorResult&quot;</span><span class="p">,</span>
-</span><span id="L-33"><a href="#L-33"><span class="linenos">33</span></a>    <span class="s2">&quot;ExperimentResult&quot;</span><span class="p">,</span>
-</span><span id="L-34"><a href="#L-34"><span class="linenos">34</span></a>    <span class="s2">&quot;OptimizationTrace&quot;</span><span class="p">,</span>
-</span><span id="L-35"><a href="#L-35"><span class="linenos">35</span></a>    <span class="s2">&quot;ConsoleReporter&quot;</span><span class="p">,</span>
-</span><span id="L-36"><a href="#L-36"><span class="linenos">36</span></a>    <span class="s2">&quot;FileStepLogger&quot;</span><span class="p">,</span>
-</span><span id="L-37"><a href="#L-37"><span class="linenos">37</span></a>    <span class="s2">&quot;JsonReporter&quot;</span><span class="p">,</span>
-</span><span id="L-38"><a href="#L-38"><span class="linenos">38</span></a>    <span class="s2">&quot;PlotReporter&quot;</span><span class="p">,</span>
-</span><span id="L-39"><a href="#L-39"><span class="linenos">39</span></a>    <span class="s2">&quot;ReporterStack&quot;</span><span class="p">,</span>
-</span><span id="L-40"><a href="#L-40"><span class="linenos">40</span></a>    <span class="s2">&quot;RunContext&quot;</span><span class="p">,</span>
-</span><span id="L-41"><a href="#L-41"><span class="linenos">41</span></a>    <span class="s2">&quot;StepReporter&quot;</span><span class="p">,</span>
-</span><span id="L-42"><a href="#L-42"><span class="linenos">42</span></a>    <span class="s2">&quot;create_run_context&quot;</span><span class="p">,</span>
-</span><span id="L-43"><a href="#L-43"><span class="linenos">43</span></a>    <span class="s2">&quot;run_experiment&quot;</span><span class="p">,</span>
-</span><span id="L-44"><a href="#L-44"><span class="linenos">44</span></a>    <span class="s2">&quot;expand_override_grid&quot;</span><span class="p">,</span>
-</span><span id="L-45"><a href="#L-45"><span class="linenos">45</span></a>    <span class="s2">&quot;apply_config_overrides&quot;</span><span class="p">,</span>
-</span><span id="L-46"><a href="#L-46"><span class="linenos">46</span></a>    <span class="s2">&quot;make_sweep_name&quot;</span><span class="p">,</span>
-</span><span id="L-47"><a href="#L-47"><span class="linenos">47</span></a>    <span class="s2">&quot;generate_sweep_runs&quot;</span><span class="p">,</span>
-</span><span id="L-48"><a href="#L-48"><span class="linenos">48</span></a>    <span class="s2">&quot;run_preset_sweep&quot;</span><span class="p">,</span>
-</span><span id="L-49"><a href="#L-49"><span class="linenos">49</span></a><span class="p">]</span>
+</span><span id="L-18"><a href="#L-18"><span class="linenos">18</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.sensitivity_buckets</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+</span><span id="L-19"><a href="#L-19"><span class="linenos">19</span></a>    <span class="n">SENSITIVITY_BUCKETS</span><span class="p">,</span>
+</span><span id="L-20"><a href="#L-20"><span class="linenos">20</span></a>    <span class="n">SensitivityBucket</span><span class="p">,</span>
+</span><span id="L-21"><a href="#L-21"><span class="linenos">21</span></a>    <span class="n">build_glm_sensitivity_buckets</span><span class="p">,</span>
+</span><span id="L-22"><a href="#L-22"><span class="linenos">22</span></a>    <span class="n">glm_price_sensitivity_scores</span><span class="p">,</span>
+</span><span id="L-23"><a href="#L-23"><span class="linenos">23</span></a>    <span class="n">median_observed_u</span><span class="p">,</span>
+</span><span id="L-24"><a href="#L-24"><span class="linenos">24</span></a>    <span class="n">split_sensitivity_tertiles</span><span class="p">,</span>
+</span><span id="L-25"><a href="#L-25"><span class="linenos">25</span></a><span class="p">)</span>
+</span><span id="L-26"><a href="#L-26"><span class="linenos">26</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.sweep_utils</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+</span><span id="L-27"><a href="#L-27"><span class="linenos">27</span></a>    <span class="n">apply_config_overrides</span><span class="p">,</span>
+</span><span id="L-28"><a href="#L-28"><span class="linenos">28</span></a>    <span class="n">expand_override_grid</span><span class="p">,</span>
+</span><span id="L-29"><a href="#L-29"><span class="linenos">29</span></a>    <span class="n">generate_sweep_runs</span><span class="p">,</span>
+</span><span id="L-30"><a href="#L-30"><span class="linenos">30</span></a>    <span class="n">make_sweep_name</span><span class="p">,</span>
+</span><span id="L-31"><a href="#L-31"><span class="linenos">31</span></a>    <span class="n">run_preset_sweep</span><span class="p">,</span>
+</span><span id="L-32"><a href="#L-32"><span class="linenos">32</span></a><span class="p">)</span>
+</span><span id="L-33"><a href="#L-33"><span class="linenos">33</span></a>
+</span><span id="L-34"><a href="#L-34"><span class="linenos">34</span></a><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="L-35"><a href="#L-35"><span class="linenos">35</span></a>    <span class="s2">&quot;ExperimentConfig&quot;</span><span class="p">,</span>
+</span><span id="L-36"><a href="#L-36"><span class="linenos">36</span></a>    <span class="s2">&quot;get_config&quot;</span><span class="p">,</span>
+</span><span id="L-37"><a href="#L-37"><span class="linenos">37</span></a>    <span class="s2">&quot;list_configs&quot;</span><span class="p">,</span>
+</span><span id="L-38"><a href="#L-38"><span class="linenos">38</span></a>    <span class="s2">&quot;default_theta0&quot;</span><span class="p">,</span>
+</span><span id="L-39"><a href="#L-39"><span class="linenos">39</span></a>    <span class="s2">&quot;default_policy&quot;</span><span class="p">,</span>
+</span><span id="L-40"><a href="#L-40"><span class="linenos">40</span></a>    <span class="s2">&quot;EstimatorResult&quot;</span><span class="p">,</span>
+</span><span id="L-41"><a href="#L-41"><span class="linenos">41</span></a>    <span class="s2">&quot;ExperimentResult&quot;</span><span class="p">,</span>
+</span><span id="L-42"><a href="#L-42"><span class="linenos">42</span></a>    <span class="s2">&quot;OptimizationTrace&quot;</span><span class="p">,</span>
+</span><span id="L-43"><a href="#L-43"><span class="linenos">43</span></a>    <span class="s2">&quot;ConsoleReporter&quot;</span><span class="p">,</span>
+</span><span id="L-44"><a href="#L-44"><span class="linenos">44</span></a>    <span class="s2">&quot;FileStepLogger&quot;</span><span class="p">,</span>
+</span><span id="L-45"><a href="#L-45"><span class="linenos">45</span></a>    <span class="s2">&quot;JsonReporter&quot;</span><span class="p">,</span>
+</span><span id="L-46"><a href="#L-46"><span class="linenos">46</span></a>    <span class="s2">&quot;PlotReporter&quot;</span><span class="p">,</span>
+</span><span id="L-47"><a href="#L-47"><span class="linenos">47</span></a>    <span class="s2">&quot;ReporterStack&quot;</span><span class="p">,</span>
+</span><span id="L-48"><a href="#L-48"><span class="linenos">48</span></a>    <span class="s2">&quot;RunContext&quot;</span><span class="p">,</span>
+</span><span id="L-49"><a href="#L-49"><span class="linenos">49</span></a>    <span class="s2">&quot;StepReporter&quot;</span><span class="p">,</span>
+</span><span id="L-50"><a href="#L-50"><span class="linenos">50</span></a>    <span class="s2">&quot;create_run_context&quot;</span><span class="p">,</span>
+</span><span id="L-51"><a href="#L-51"><span class="linenos">51</span></a>    <span class="s2">&quot;run_experiment&quot;</span><span class="p">,</span>
+</span><span id="L-52"><a href="#L-52"><span class="linenos">52</span></a>    <span class="s2">&quot;SENSITIVITY_BUCKETS&quot;</span><span class="p">,</span>
+</span><span id="L-53"><a href="#L-53"><span class="linenos">53</span></a>    <span class="s2">&quot;SensitivityBucket&quot;</span><span class="p">,</span>
+</span><span id="L-54"><a href="#L-54"><span class="linenos">54</span></a>    <span class="s2">&quot;build_glm_sensitivity_buckets&quot;</span><span class="p">,</span>
+</span><span id="L-55"><a href="#L-55"><span class="linenos">55</span></a>    <span class="s2">&quot;glm_price_sensitivity_scores&quot;</span><span class="p">,</span>
+</span><span id="L-56"><a href="#L-56"><span class="linenos">56</span></a>    <span class="s2">&quot;median_observed_u&quot;</span><span class="p">,</span>
+</span><span id="L-57"><a href="#L-57"><span class="linenos">57</span></a>    <span class="s2">&quot;split_sensitivity_tertiles&quot;</span><span class="p">,</span>
+</span><span id="L-58"><a href="#L-58"><span class="linenos">58</span></a>    <span class="s2">&quot;expand_override_grid&quot;</span><span class="p">,</span>
+</span><span id="L-59"><a href="#L-59"><span class="linenos">59</span></a>    <span class="s2">&quot;apply_config_overrides&quot;</span><span class="p">,</span>
+</span><span id="L-60"><a href="#L-60"><span class="linenos">60</span></a>    <span class="s2">&quot;make_sweep_name&quot;</span><span class="p">,</span>
+</span><span id="L-61"><a href="#L-61"><span class="linenos">61</span></a>    <span class="s2">&quot;generate_sweep_runs&quot;</span><span class="p">,</span>
+</span><span id="L-62"><a href="#L-62"><span class="linenos">62</span></a>    <span class="s2">&quot;run_preset_sweep&quot;</span><span class="p">,</span>
+</span><span id="L-63"><a href="#L-63"><span class="linenos">63</span></a><span class="p">]</span>
 </span></pre></div>
 
 
@@ -3481,6 +3528,240 @@ experiments    </h1>
 
 
             <div class="docstring"><p>Run optimization with all enabled estimators; returns traces and final values.</p>
+</div>
+
+
+                </section>
+                <section id="SENSITIVITY_BUCKETS">
+                    <div class="attr variable">
+            <span class="name">SENSITIVITY_BUCKETS</span>        =
+<span class="default_value">(&#39;low&#39;, &#39;medium&#39;, &#39;high&#39;)</span>
+
+        
+    </div>
+    <a class="headerlink" href="#SENSITIVITY_BUCKETS"></a>
+    
+    
+
+                </section>
+                <section id="SensitivityBucket">
+                            <input id="SensitivityBucket-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr class">
+                    <div class="decorator decorator-dataclass">@dataclass(frozen=True)</div>
+
+    <span class="def">class</span>
+    <span class="name">SensitivityBucket</span>:
+
+                <label class="view-source-button" for="SensitivityBucket-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#SensitivityBucket"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="SensitivityBucket-25"><a href="#SensitivityBucket-25"><span class="linenos">25</span></a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="SensitivityBucket-26"><a href="#SensitivityBucket-26"><span class="linenos">26</span></a><span class="k">class</span><span class="w"> </span><span class="nc">SensitivityBucket</span><span class="p">:</span>
+</span><span id="SensitivityBucket-27"><a href="#SensitivityBucket-27"><span class="linenos">27</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;One tertile of customers ranked by local GLM price sensitivity.&quot;&quot;&quot;</span>
+</span><span id="SensitivityBucket-28"><a href="#SensitivityBucket-28"><span class="linenos">28</span></a>
+</span><span id="SensitivityBucket-29"><a href="#SensitivityBucket-29"><span class="linenos">29</span></a>    <span class="n">name</span><span class="p">:</span> <span class="n">SensitivityBucketName</span>
+</span><span id="SensitivityBucket-30"><a href="#SensitivityBucket-30"><span class="linenos">30</span></a>    <span class="n">row_indices</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+</span><span id="SensitivityBucket-31"><a href="#SensitivityBucket-31"><span class="linenos">31</span></a>    <span class="n">scores</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>One tertile of customers ranked by local GLM price sensitivity.</p>
+</div>
+
+
+                            <div id="SensitivityBucket.__init__" class="classattr">
+                                <div class="attr function">
+            
+        <span class="name">SensitivityBucket</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">name</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;low&#39;</span><span class="p">,</span> <span class="s1">&#39;medium&#39;</span><span class="p">,</span> <span class="s1">&#39;high&#39;</span><span class="p">]</span>,</span><span class="param">	<span class="n">row_indices</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>,</span><span class="param">	<span class="n">scores</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span>)</span>
+
+        
+    </div>
+    <a class="headerlink" href="#SensitivityBucket.__init__"></a>
+    
+    
+
+                            </div>
+                            <div id="SensitivityBucket.name" class="classattr">
+                                <div class="attr variable">
+            <span class="name">name</span><span class="annotation">: Literal[&#39;low&#39;, &#39;medium&#39;, &#39;high&#39;]</span>
+
+        
+    </div>
+    <a class="headerlink" href="#SensitivityBucket.name"></a>
+    
+    
+
+                            </div>
+                            <div id="SensitivityBucket.row_indices" class="classattr">
+                                <div class="attr variable">
+            <span class="name">row_indices</span><span class="annotation">: numpy.ndarray</span>
+
+        
+    </div>
+    <a class="headerlink" href="#SensitivityBucket.row_indices"></a>
+    
+    
+
+                            </div>
+                            <div id="SensitivityBucket.scores" class="classattr">
+                                <div class="attr variable">
+            <span class="name">scores</span><span class="annotation">: numpy.ndarray</span>
+
+        
+    </div>
+    <a class="headerlink" href="#SensitivityBucket.scores"></a>
+    
+    
+
+                            </div>
+                </section>
+                <section id="build_glm_sensitivity_buckets">
+                            <input id="build_glm_sensitivity_buckets-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">build_glm_sensitivity_buckets</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="o">*</span>,</span><span class="param">	<span class="n">u_ref</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">row_indices</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="nb">tuple</span><span class="p">[</span><span class="n"><a href="#SensitivityBucket">SensitivityBucket</a></span><span class="p">,</span> <span class="n"><a href="#SensitivityBucket">SensitivityBucket</a></span><span class="p">,</span> <span class="n"><a href="#SensitivityBucket">SensitivityBucket</a></span><span class="p">]</span>:</span></span>
+
+                <label class="view-source-button" for="build_glm_sensitivity_buckets-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#build_glm_sensitivity_buckets"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="build_glm_sensitivity_buckets-96"><a href="#build_glm_sensitivity_buckets-96"><span class="linenos"> 96</span></a><span class="k">def</span><span class="w"> </span><span class="nf">build_glm_sensitivity_buckets</span><span class="p">(</span>
+</span><span id="build_glm_sensitivity_buckets-97"><a href="#build_glm_sensitivity_buckets-97"><span class="linenos"> 97</span></a>    <span class="o">*</span><span class="p">,</span>
+</span><span id="build_glm_sensitivity_buckets-98"><a href="#build_glm_sensitivity_buckets-98"><span class="linenos"> 98</span></a>    <span class="n">u_ref</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="build_glm_sensitivity_buckets-99"><a href="#build_glm_sensitivity_buckets-99"><span class="linenos"> 99</span></a>    <span class="n">row_indices</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="build_glm_sensitivity_buckets-100"><a href="#build_glm_sensitivity_buckets-100"><span class="linenos">100</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">SensitivityBucket</span><span class="p">,</span> <span class="n">SensitivityBucket</span><span class="p">,</span> <span class="n">SensitivityBucket</span><span class="p">]:</span>
+</span><span id="build_glm_sensitivity_buckets-101"><a href="#build_glm_sensitivity_buckets-101"><span class="linenos">101</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Load GLM rows, score local price sensitivity, and return tertile buckets.&quot;&quot;&quot;</span>
+</span><span id="build_glm_sensitivity_buckets-102"><a href="#build_glm_sensitivity_buckets-102"><span class="linenos">102</span></a>    <span class="n">resolved_row_indices</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="build_glm_sensitivity_buckets-103"><a href="#build_glm_sensitivity_buckets-103"><span class="linenos">103</span></a>        <span class="n">eligible_csv_row_indices</span><span class="p">(</span><span class="s2">&quot;glm&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">row_indices</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">row_indices</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+</span><span id="build_glm_sensitivity_buckets-104"><a href="#build_glm_sensitivity_buckets-104"><span class="linenos">104</span></a>    <span class="p">)</span>
+</span><span id="build_glm_sensitivity_buckets-105"><a href="#build_glm_sensitivity_buckets-105"><span class="linenos">105</span></a>    <span class="n">resolved_u_ref</span> <span class="o">=</span> <span class="n">median_observed_u</span><span class="p">(</span><span class="s2">&quot;glm&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">u_ref</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">u_ref</span><span class="p">)</span>
+</span><span id="build_glm_sensitivity_buckets-106"><a href="#build_glm_sensitivity_buckets-106"><span class="linenos">106</span></a>    <span class="n">acceptance_model</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">load_model_artifacts</span><span class="p">(</span><span class="s2">&quot;glm&quot;</span><span class="p">)</span>
+</span><span id="build_glm_sensitivity_buckets-107"><a href="#build_glm_sensitivity_buckets-107"><span class="linenos">107</span></a>    <span class="n">x_frame</span> <span class="o">=</span> <span class="n">load_x_frame</span><span class="p">(</span><span class="s2">&quot;glm&quot;</span><span class="p">,</span> <span class="n">row_indices</span><span class="o">=</span><span class="n">resolved_row_indices</span><span class="p">)</span>
+</span><span id="build_glm_sensitivity_buckets-108"><a href="#build_glm_sensitivity_buckets-108"><span class="linenos">108</span></a>    <span class="n">scores</span> <span class="o">=</span> <span class="n">glm_price_sensitivity_scores</span><span class="p">(</span>
+</span><span id="build_glm_sensitivity_buckets-109"><a href="#build_glm_sensitivity_buckets-109"><span class="linenos">109</span></a>        <span class="n">acceptance_model</span><span class="p">,</span>
+</span><span id="build_glm_sensitivity_buckets-110"><a href="#build_glm_sensitivity_buckets-110"><span class="linenos">110</span></a>        <span class="n">x_frame</span><span class="p">,</span>
+</span><span id="build_glm_sensitivity_buckets-111"><a href="#build_glm_sensitivity_buckets-111"><span class="linenos">111</span></a>        <span class="n">u_ref</span><span class="o">=</span><span class="n">resolved_u_ref</span><span class="p">,</span>
+</span><span id="build_glm_sensitivity_buckets-112"><a href="#build_glm_sensitivity_buckets-112"><span class="linenos">112</span></a>    <span class="p">)</span>
+</span><span id="build_glm_sensitivity_buckets-113"><a href="#build_glm_sensitivity_buckets-113"><span class="linenos">113</span></a>    <span class="k">return</span> <span class="n">split_sensitivity_tertiles</span><span class="p">(</span><span class="n">resolved_row_indices</span><span class="p">,</span> <span class="n">scores</span><span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Load GLM rows, score local price sensitivity, and return tertile buckets.</p>
+</div>
+
+
+                </section>
+                <section id="glm_price_sensitivity_scores">
+                            <input id="glm_price_sensitivity_scores-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">glm_price_sensitivity_scores</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">acceptance_model</span><span class="p">:</span> <span class="n">Any</span>,</span><span class="param">	<span class="n">x_frame</span><span class="p">:</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span>,</span><span class="param">	<span class="o">*</span>,</span><span class="param">	<span class="n">u_ref</span><span class="p">:</span> <span class="nb">float</span>,</span><span class="param">	<span class="n">u_coef</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>:</span></span>
+
+                <label class="view-source-button" for="glm_price_sensitivity_scores-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#glm_price_sensitivity_scores"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="glm_price_sensitivity_scores-40"><a href="#glm_price_sensitivity_scores-40"><span class="linenos">40</span></a><span class="k">def</span><span class="w"> </span><span class="nf">glm_price_sensitivity_scores</span><span class="p">(</span>
+</span><span id="glm_price_sensitivity_scores-41"><a href="#glm_price_sensitivity_scores-41"><span class="linenos">41</span></a>    <span class="n">acceptance_model</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+</span><span id="glm_price_sensitivity_scores-42"><a href="#glm_price_sensitivity_scores-42"><span class="linenos">42</span></a>    <span class="n">x_frame</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+</span><span id="glm_price_sensitivity_scores-43"><a href="#glm_price_sensitivity_scores-43"><span class="linenos">43</span></a>    <span class="o">*</span><span class="p">,</span>
+</span><span id="glm_price_sensitivity_scores-44"><a href="#glm_price_sensitivity_scores-44"><span class="linenos">44</span></a>    <span class="n">u_ref</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+</span><span id="glm_price_sensitivity_scores-45"><a href="#glm_price_sensitivity_scores-45"><span class="linenos">45</span></a>    <span class="n">u_coef</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="glm_price_sensitivity_scores-46"><a href="#glm_price_sensitivity_scores-46"><span class="linenos">46</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+</span><span id="glm_price_sensitivity_scores-47"><a href="#glm_price_sensitivity_scores-47"><span class="linenos">47</span></a><span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Return $$|d p_{accept}(x, u_ref) / du|$$ for GLM acceptance rows.&quot;&quot;&quot;</span>
+</span><span id="glm_price_sensitivity_scores-48"><a href="#glm_price_sensitivity_scores-48"><span class="linenos">48</span></a>    <span class="n">coeffs</span> <span class="o">=</span> <span class="n">extract_glm_churn_coefficients</span><span class="p">(</span><span class="n">acceptance_model</span><span class="p">)</span>
+</span><span id="glm_price_sensitivity_scores-49"><a href="#glm_price_sensitivity_scores-49"><span class="linenos">49</span></a>    <span class="n">x_feature_cols</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">acceptance_model</span><span class="p">,</span> <span class="s2">&quot;x_feature_cols&quot;</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">x_frame</span><span class="o">.</span><span class="n">columns</span><span class="p">)))</span>
+</span><span id="glm_price_sensitivity_scores-50"><a href="#glm_price_sensitivity_scores-50"><span class="linenos">50</span></a>    <span class="n">raw_frame</span> <span class="o">=</span> <span class="n">x_frame</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">list</span><span class="p">(</span><span class="n">x_feature_cols</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+</span><span id="glm_price_sensitivity_scores-51"><a href="#glm_price_sensitivity_scores-51"><span class="linenos">51</span></a>    <span class="n">raw_frame</span><span class="p">[</span><span class="s2">&quot;U&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">u_ref</span><span class="p">)</span>
+</span><span id="glm_price_sensitivity_scores-52"><a href="#glm_price_sensitivity_scores-52"><span class="linenos">52</span></a>
+</span><span id="glm_price_sensitivity_scores-53"><a href="#glm_price_sensitivity_scores-53"><span class="linenos">53</span></a>    <span class="n">model_frame_fn</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">acceptance_model</span><span class="p">,</span> <span class="s2">&quot;model_frame&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+</span><span id="glm_price_sensitivity_scores-54"><a href="#glm_price_sensitivity_scores-54"><span class="linenos">54</span></a>    <span class="n">model_frame</span> <span class="o">=</span> <span class="n">model_frame_fn</span><span class="p">(</span><span class="n">raw_frame</span><span class="p">)</span> <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">model_frame_fn</span><span class="p">)</span> <span class="k">else</span> <span class="n">raw_frame</span>
+</span><span id="glm_price_sensitivity_scores-55"><a href="#glm_price_sensitivity_scores-55"><span class="linenos">55</span></a>    <span class="n">feature_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">coeffs</span><span class="p">[</span><span class="s2">&quot;x_feature_names&quot;</span><span class="p">])</span>
+</span><span id="glm_price_sensitivity_scores-56"><a href="#glm_price_sensitivity_scores-56"><span class="linenos">56</span></a>    <span class="n">x_matrix</span> <span class="o">=</span> <span class="n">model_frame</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">feature_names</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="glm_price_sensitivity_scores-57"><a href="#glm_price_sensitivity_scores-57"><span class="linenos">57</span></a>    <span class="n">beta_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">coeffs</span><span class="p">[</span><span class="s2">&quot;x_coef&quot;</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="glm_price_sensitivity_scores-58"><a href="#glm_price_sensitivity_scores-58"><span class="linenos">58</span></a>    <span class="n">beta_u</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">u_coef</span><span class="p">)</span> <span class="k">if</span> <span class="n">u_coef</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">coeffs</span><span class="p">[</span><span class="s2">&quot;u_coef&quot;</span><span class="p">])</span>
+</span><span id="glm_price_sensitivity_scores-59"><a href="#glm_price_sensitivity_scores-59"><span class="linenos">59</span></a>    <span class="n">logit</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">coeffs</span><span class="p">[</span><span class="s2">&quot;intercept&quot;</span><span class="p">])</span> <span class="o">+</span> <span class="n">x_matrix</span> <span class="o">@</span> <span class="n">beta_x</span> <span class="o">+</span> <span class="n">beta_u</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">u_ref</span><span class="p">)</span>
+</span><span id="glm_price_sensitivity_scores-60"><a href="#glm_price_sensitivity_scores-60"><span class="linenos">60</span></a>    <span class="n">class1</span> <span class="o">=</span> <span class="n">_sigmoid</span><span class="p">(</span><span class="n">logit</span><span class="p">)</span>
+</span><span id="glm_price_sensitivity_scores-61"><a href="#glm_price_sensitivity_scores-61"><span class="linenos">61</span></a>    <span class="k">if</span> <span class="n">coeffs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;probability_target&quot;</span><span class="p">,</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">acceptance_model</span><span class="p">,</span> <span class="s2">&quot;probability_target&quot;</span><span class="p">,</span> <span class="s2">&quot;acceptance&quot;</span><span class="p">))</span> <span class="o">==</span> <span class="s2">&quot;acceptance&quot;</span><span class="p">:</span>
+</span><span id="glm_price_sensitivity_scores-62"><a href="#glm_price_sensitivity_scores-62"><span class="linenos">62</span></a>        <span class="n">acceptance</span> <span class="o">=</span> <span class="n">class1</span>
+</span><span id="glm_price_sensitivity_scores-63"><a href="#glm_price_sensitivity_scores-63"><span class="linenos">63</span></a>    <span class="k">else</span><span class="p">:</span>
+</span><span id="glm_price_sensitivity_scores-64"><a href="#glm_price_sensitivity_scores-64"><span class="linenos">64</span></a>        <span class="n">acceptance</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">class1</span>
+</span><span id="glm_price_sensitivity_scores-65"><a href="#glm_price_sensitivity_scores-65"><span class="linenos">65</span></a>    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">beta_u</span><span class="p">)</span> <span class="o">*</span> <span class="n">acceptance</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">acceptance</span><span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Return $$|d p_{accept}(x, u_ref) / du|$$ for GLM acceptance rows.</p>
+</div>
+
+
+                </section>
+                <section id="median_observed_u">
+                            <input id="median_observed_u-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">median_observed_u</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">model_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;glm&#39;</span></span><span class="return-annotation">) -> <span class="nb">float</span>:</span></span>
+
+                <label class="view-source-button" for="median_observed_u-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#median_observed_u"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="median_observed_u-34"><a href="#median_observed_u-34"><span class="linenos">34</span></a><span class="k">def</span><span class="w"> </span><span class="nf">median_observed_u</span><span class="p">(</span><span class="n">model_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;glm&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+</span><span id="median_observed_u-35"><a href="#median_observed_u-35"><span class="linenos">35</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return median observed historical pricing action over complete rows.&quot;&quot;&quot;</span>
+</span><span id="median_observed_u-36"><a href="#median_observed_u-36"><span class="linenos">36</span></a>    <span class="n">observed_u</span> <span class="o">=</span> <span class="n">load_observed_u_array</span><span class="p">(</span><span class="n">model_type</span><span class="p">,</span> <span class="n">n_rows</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</span><span id="median_observed_u-37"><a href="#median_observed_u-37"><span class="linenos">37</span></a>    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">observed_u</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)))</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Return median observed historical pricing action over complete rows.</p>
+</div>
+
+
+                </section>
+                <section id="split_sensitivity_tertiles">
+                            <input id="split_sensitivity_tertiles-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">split_sensitivity_tertiles</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">row_indices</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>,</span><span class="param">	<span class="n">scores</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span><span class="return-annotation">) -> <span class="nb">tuple</span><span class="p">[</span><span class="n"><a href="#SensitivityBucket">SensitivityBucket</a></span><span class="p">,</span> <span class="n"><a href="#SensitivityBucket">SensitivityBucket</a></span><span class="p">,</span> <span class="n"><a href="#SensitivityBucket">SensitivityBucket</a></span><span class="p">]</span>:</span></span>
+
+                <label class="view-source-button" for="split_sensitivity_tertiles-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#split_sensitivity_tertiles"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="split_sensitivity_tertiles-68"><a href="#split_sensitivity_tertiles-68"><span class="linenos">68</span></a><span class="k">def</span><span class="w"> </span><span class="nf">split_sensitivity_tertiles</span><span class="p">(</span>
+</span><span id="split_sensitivity_tertiles-69"><a href="#split_sensitivity_tertiles-69"><span class="linenos">69</span></a>    <span class="n">row_indices</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+</span><span id="split_sensitivity_tertiles-70"><a href="#split_sensitivity_tertiles-70"><span class="linenos">70</span></a>    <span class="n">scores</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+</span><span id="split_sensitivity_tertiles-71"><a href="#split_sensitivity_tertiles-71"><span class="linenos">71</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">SensitivityBucket</span><span class="p">,</span> <span class="n">SensitivityBucket</span><span class="p">,</span> <span class="n">SensitivityBucket</span><span class="p">]:</span>
+</span><span id="split_sensitivity_tertiles-72"><a href="#split_sensitivity_tertiles-72"><span class="linenos">72</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Split row indices into low/medium/high score tertiles deterministically.&quot;&quot;&quot;</span>
+</span><span id="split_sensitivity_tertiles-73"><a href="#split_sensitivity_tertiles-73"><span class="linenos">73</span></a>    <span class="n">row_indices_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">row_indices</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+</span><span id="split_sensitivity_tertiles-74"><a href="#split_sensitivity_tertiles-74"><span class="linenos">74</span></a>    <span class="n">scores_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">scores</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="split_sensitivity_tertiles-75"><a href="#split_sensitivity_tertiles-75"><span class="linenos">75</span></a>    <span class="k">if</span> <span class="n">row_indices_arr</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">1</span> <span class="ow">or</span> <span class="n">scores_arr</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+</span><span id="split_sensitivity_tertiles-76"><a href="#split_sensitivity_tertiles-76"><span class="linenos">76</span></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;row_indices and scores must be 1D arrays.&quot;</span><span class="p">)</span>
+</span><span id="split_sensitivity_tertiles-77"><a href="#split_sensitivity_tertiles-77"><span class="linenos">77</span></a>    <span class="k">if</span> <span class="n">row_indices_arr</span><span class="o">.</span><span class="n">size</span> <span class="o">!=</span> <span class="n">scores_arr</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+</span><span id="split_sensitivity_tertiles-78"><a href="#split_sensitivity_tertiles-78"><span class="linenos">78</span></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;row_indices and scores must have the same length.&quot;</span><span class="p">)</span>
+</span><span id="split_sensitivity_tertiles-79"><a href="#split_sensitivity_tertiles-79"><span class="linenos">79</span></a>    <span class="k">if</span> <span class="n">row_indices_arr</span><span class="o">.</span><span class="n">size</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">SENSITIVITY_BUCKETS</span><span class="p">):</span>
+</span><span id="split_sensitivity_tertiles-80"><a href="#split_sensitivity_tertiles-80"><span class="linenos">80</span></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Need at least three rows to form sensitivity tertiles.&quot;</span><span class="p">)</span>
+</span><span id="split_sensitivity_tertiles-81"><a href="#split_sensitivity_tertiles-81"><span class="linenos">81</span></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">scores_arr</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+</span><span id="split_sensitivity_tertiles-82"><a href="#split_sensitivity_tertiles-82"><span class="linenos">82</span></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;scores must be finite.&quot;</span><span class="p">)</span>
+</span><span id="split_sensitivity_tertiles-83"><a href="#split_sensitivity_tertiles-83"><span class="linenos">83</span></a>
+</span><span id="split_sensitivity_tertiles-84"><a href="#split_sensitivity_tertiles-84"><span class="linenos">84</span></a>    <span class="n">order</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">scores_arr</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;mergesort&quot;</span><span class="p">)</span>
+</span><span id="split_sensitivity_tertiles-85"><a href="#split_sensitivity_tertiles-85"><span class="linenos">85</span></a>    <span class="n">groups</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array_split</span><span class="p">(</span><span class="n">order</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">SENSITIVITY_BUCKETS</span><span class="p">))</span>
+</span><span id="split_sensitivity_tertiles-86"><a href="#split_sensitivity_tertiles-86"><span class="linenos">86</span></a>    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span>
+</span><span id="split_sensitivity_tertiles-87"><a href="#split_sensitivity_tertiles-87"><span class="linenos">87</span></a>        <span class="n">SensitivityBucket</span><span class="p">(</span>
+</span><span id="split_sensitivity_tertiles-88"><a href="#split_sensitivity_tertiles-88"><span class="linenos">88</span></a>            <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+</span><span id="split_sensitivity_tertiles-89"><a href="#split_sensitivity_tertiles-89"><span class="linenos">89</span></a>            <span class="n">row_indices</span><span class="o">=</span><span class="n">row_indices_arr</span><span class="p">[</span><span class="n">group</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+</span><span id="split_sensitivity_tertiles-90"><a href="#split_sensitivity_tertiles-90"><span class="linenos">90</span></a>            <span class="n">scores</span><span class="o">=</span><span class="n">scores_arr</span><span class="p">[</span><span class="n">group</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+</span><span id="split_sensitivity_tertiles-91"><a href="#split_sensitivity_tertiles-91"><span class="linenos">91</span></a>        <span class="p">)</span>
+</span><span id="split_sensitivity_tertiles-92"><a href="#split_sensitivity_tertiles-92"><span class="linenos">92</span></a>        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">group</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">SENSITIVITY_BUCKETS</span><span class="p">,</span> <span class="n">groups</span><span class="p">)</span>
+</span><span id="split_sensitivity_tertiles-93"><a href="#split_sensitivity_tertiles-93"><span class="linenos">93</span></a>    <span class="p">)</span>  <span class="c1"># type: ignore[return-value]</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Split row indices into low/medium/high score tertiles deterministically.</p>
 </div>
 
 

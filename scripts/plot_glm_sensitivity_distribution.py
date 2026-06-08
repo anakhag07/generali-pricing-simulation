@@ -1,4 +1,4 @@
-"""Plot GLM customer price-sensitivity distributions across action values."""
+"""Plot GLM customer elasticity distributions across action values."""
 
 from __future__ import annotations
 
@@ -17,13 +17,13 @@ import numpy as np
 
 from data.loader import (
     eligible_csv_row_indices,
+    extract_glm_churn_coefficients,
     load_model_artifacts,
     load_x_frame,
     sample_csv_row_indices,
 )
 from experiments.sensitivity_buckets import (
     glm_price_derivative_matrix,
-    glm_price_sensitivity_matrix,
 )
 
 DEFAULT_OUTPUT_ROOT = Path("outputs") / "glm-sensitivity-distribution"
@@ -51,16 +51,16 @@ def _resolve_row_indices(n_rows: int | None, seed: int | None) -> np.ndarray:
 
 def _summary_rows(
     u_values: Sequence[float],
-    sensitivity_matrix: np.ndarray,
+    value_matrix: np.ndarray,
 ) -> list[dict[str, float | int]]:
     u_arr = np.asarray(u_values, dtype=float).reshape(-1)
-    values = np.asarray(sensitivity_matrix, dtype=float)
+    values = np.asarray(value_matrix, dtype=float)
     if values.ndim != 2:
-        raise ValueError("sensitivity_matrix must be 2D.")
+        raise ValueError("value_matrix must be 2D.")
     if values.shape[1] != u_arr.size:
-        raise ValueError("u_values length must match sensitivity_matrix columns.")
+        raise ValueError("u_values length must match value_matrix columns.")
     if values.shape[0] == 0:
-        raise ValueError("sensitivity_matrix must contain at least one customer row.")
+        raise ValueError("value_matrix must contain at least one customer row.")
 
     quantiles = np.quantile(values, _QUANTILES, axis=0)
     return [
@@ -101,12 +101,25 @@ def _write_summary_csv(rows: Sequence[Mapping[str, float | int]], path: Path) ->
             writer.writerow(row)
 
 
-def _plot_mean_sensitivity_by_u(
+def _theoretical_derivative_bound(acceptance_model: object, u_coef: float | None) -> float:
+    coeffs = extract_glm_churn_coefficients(acceptance_model)
+    beta_u = float(u_coef) if u_coef is not None else float(coeffs["u_coef"])
+    probability_target = coeffs.get(
+        "probability_target",
+        getattr(acceptance_model, "probability_target", "acceptance"),
+    )
+    sign = 1.0 if probability_target == "acceptance" else -1.0
+    return sign * beta_u * 0.25
+
+
+def _plot_mean_elasticity_by_u(
     rows: Sequence[Mapping[str, float | int]],
     output_dir: Path,
+    *,
+    derivative_bound: float | None,
 ) -> Path:
     if not rows:
-        raise ValueError("At least one summary row is required to plot sensitivity by u.")
+        raise ValueError("At least one summary row is required to plot elasticity by u.")
     output_dir.mkdir(parents=True, exist_ok=True)
     u_values = np.asarray([float(row["u"]) for row in rows], dtype=float)
     mean = np.asarray([float(row["mean"]) for row in rows], dtype=float)
@@ -133,15 +146,40 @@ def _plot_mean_sensitivity_by_u(
         alpha=0.28,
         label="25-75% customers",
     )
+    ax.axhline(0.0, color="#636363", linewidth=1.0, alpha=0.7, label="zero")
+    if derivative_bound is not None:
+        ax.axhline(
+            derivative_bound,
+            color="#54278f",
+            linewidth=1.2,
+            linestyle=":",
+            label=f"theoretical bound ({derivative_bound:.3f})",
+        )
     ax.plot(u_values, mean, color="#08519c", linewidth=2.0, label="mean")
-    ax.plot(u_values, median, color="#f16913", linewidth=1.8, linestyle="--", label="median")
+    ax.plot(
+        u_values,
+        median,
+        color="#f16913",
+        linewidth=1.8,
+        linestyle="--",
+        label="median",
+    )
     ax.set_xlabel("u")
-    ax.set_ylabel("Customer sensitivity |d p_accept / du|")
-    ax.set_title("GLM customer price sensitivity by action value")
+    ax.set_ylabel("Elasticity (d p_accept / du)")
+    ax.set_title("GLM customer elasticity by action value")
+    ax.text(
+        0.01,
+        0.01,
+        "Bands show customer quantiles; no y clipping",
+        transform=ax.transAxes,
+        fontsize=8,
+        color="#525252",
+        va="bottom",
+    )
     ax.grid(True, alpha=0.3)
     ax.legend()
     fig.tight_layout()
-    path = output_dir / "mean_sensitivity_by_u.png"
+    path = output_dir / "mean_elasticity_by_u.png"
     fig.savefig(path, dpi=200)
     plt.close(fig)
     return path
@@ -153,6 +191,9 @@ def _plot_selected_u_histograms(
     output_dir: Path,
     *,
     bins: int,
+    clip_low: float | None,
+    clip_high: float | None,
+    derivative_bound: float | None,
 ) -> Path:
     u_arr = np.asarray(hist_u_values, dtype=float).reshape(-1)
     values = np.asarray(selected_derivatives, dtype=float)
@@ -164,6 +205,11 @@ def _plot_selected_u_histograms(
         raise ValueError("selected_derivatives must be non-empty.")
     if bins <= 0:
         raise ValueError("bins must be positive.")
+    if (clip_low is None) != (clip_high is None):
+        raise ValueError("clip_low and clip_high must be provided together.")
+    if clip_low is not None and clip_high is not None:
+        if not 0.0 <= clip_low < clip_high <= 100.0:
+            raise ValueError("clip percentiles must satisfy 0 <= low < high <= 100.")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     n_cols = min(4, u_arr.size)
@@ -178,6 +224,11 @@ def _plot_selected_u_histograms(
     axes_arr = np.asarray(axes, dtype=object).reshape(-1)
     min_value = float(np.min(values))
     max_value = float(np.max(values))
+    clipped = clip_low is not None and clip_high is not None
+    if clipped:
+        plot_min, plot_max = np.percentile(values, [float(clip_low), float(clip_high)])
+        min_value = float(plot_min)
+        max_value = float(plot_max)
     hist_bins: int | np.ndarray = bins
     if min_value < max_value:
         hist_bins = np.linspace(min_value, max_value, bins + 1)
@@ -185,8 +236,38 @@ def _plot_selected_u_histograms(
     for ax, u_val, column in zip(axes_arr, u_arr, values.T):
         mean = float(np.mean(column))
         median = float(np.median(column))
-        ax.hist(column, bins=hist_bins, color="#9ecae1", edgecolor="#6baed6", alpha=0.82)
+        ax.hist(
+            column,
+            bins=hist_bins,
+            color="#9ecae1",
+            edgecolor="#6baed6",
+            alpha=0.82,
+        )
         ax.axvline(0.0, color="#636363", linewidth=1.0, alpha=0.65, label="zero")
+        if derivative_bound is not None:
+            ax.axvline(
+                derivative_bound,
+                color="#54278f",
+                linewidth=1.2,
+                linestyle=":",
+                label="theoretical bound",
+            )
+        if clipped:
+            ax.axvline(
+                min_value,
+                color="#cb181d",
+                linewidth=1.0,
+                linestyle=":",
+                label=f"{clip_low:g}% clip",
+            )
+            ax.axvline(
+                max_value,
+                color="#cb181d",
+                linewidth=1.0,
+                linestyle="--",
+                label=f"{clip_high:g}% clip",
+            )
+            ax.set_xlim(min_value, max_value)
         ax.axvline(mean, color="#08519c", linewidth=1.5, label="mean")
         ax.axvline(
             median,
@@ -201,12 +282,15 @@ def _plot_selected_u_histograms(
     for ax in axes_arr[u_arr.size :]:
         ax.set_visible(False)
     for ax in axes_arr[: u_arr.size]:
-        ax.set_xlabel("d p_accept / du")
+        ax.set_xlabel("Elasticity (d p_accept / du)")
         ax.set_ylabel("Customers")
     axes_arr[0].legend()
-    fig.suptitle("Customer acceptance-derivative distributions at selected u values", y=1.02)
+    title = "Customer elasticity distributions at selected u values"
+    if clipped:
+        title += f" (x-axis clipped to {clip_low:g}-{clip_high:g}%)"
+    fig.suptitle(title, y=1.02)
     fig.tight_layout()
-    path = output_dir / "derivative_histograms_by_u.png"
+    path = output_dir / "elasticity_histograms_by_u.png"
     fig.savefig(path, dpi=200, bbox_inches="tight")
     plt.close(fig)
     return path
@@ -214,7 +298,7 @@ def _plot_selected_u_histograms(
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Plot GLM customer sensitivity by u and selected-u sensitivity histograms."
+        description="Plot GLM customer elasticity by u and selected-u elasticity histograms."
     )
     parser.add_argument(
         "--u-min",
@@ -239,9 +323,14 @@ def _build_parser() -> argparse.ArgumentParser:
         type=float,
         nargs="+",
         default=list(DEFAULT_HIST_U_VALUES),
-        help="Selected u values for customer sensitivity histograms.",
+        help="Selected u values for customer elasticity histograms.",
     )
-    parser.add_argument("--n-rows", type=int, default=None, help="Optional sampled row count.")
+    parser.add_argument(
+        "--n-rows",
+        type=int,
+        default=None,
+        help="Optional sampled row count.",
+    )
     parser.add_argument(
         "--seed",
         type=int,
@@ -249,7 +338,29 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Seed used when --n-rows samples rows.",
     )
     parser.add_argument("--bins", type=int, default=60, help="Histogram bin count.")
-    parser.add_argument("--u-coef", type=float, default=None, help="Optional GLM u coefficient override.")
+    parser.add_argument(
+        "--u-coef",
+        type=float,
+        default=None,
+        help="Optional GLM u coefficient override.",
+    )
+    parser.add_argument(
+        "--hist-clip-low",
+        type=float,
+        default=0.5,
+        help="Lower percentile for histogram x-axis clipping. Defaults to 0.5.",
+    )
+    parser.add_argument(
+        "--hist-clip-high",
+        type=float,
+        default=99.5,
+        help="Upper percentile for histogram x-axis clipping. Defaults to 99.5.",
+    )
+    parser.add_argument(
+        "--no-hist-clip",
+        action="store_true",
+        help="Disable histogram x-axis percentile clipping.",
+    )
     parser.add_argument(
         "--output-root",
         type=Path,
@@ -259,7 +370,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--output-subdir",
         default=None,
-        help="Subdirectory under --output-root. Defaults to sensitivity_distribution_<timestamp>.",
+        help="Subdirectory under --output-root. Defaults to elasticity_distribution_<timestamp>.",
     )
     return parser
 
@@ -274,7 +385,8 @@ def main(argv: Sequence[str] | None = None) -> None:
     row_indices = _resolve_row_indices(args.n_rows, args.seed)
     acceptance_model, _ = load_model_artifacts("glm")
     x_frame = load_x_frame("glm", row_indices=row_indices)
-    sensitivity_matrix = glm_price_sensitivity_matrix(
+    derivative_bound = _theoretical_derivative_bound(acceptance_model, args.u_coef)
+    elasticity_matrix = glm_price_derivative_matrix(
         acceptance_model,
         x_frame,
         u_values=u_values,
@@ -287,40 +399,52 @@ def main(argv: Sequence[str] | None = None) -> None:
         u_coef=args.u_coef,
     )
 
-    summary_rows = _summary_rows(u_values, sensitivity_matrix)
+    summary_rows = _summary_rows(u_values, elasticity_matrix)
     selected_rows = _summary_rows(hist_u_values, selected_derivatives)
     output_subdir = args.output_subdir or (
-        f"sensitivity_distribution_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        f"elasticity_distribution_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     )
     output_dir = args.output_root / output_subdir
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    dense_csv = output_dir / "glm_sensitivity_by_u.csv"
-    selected_csv = output_dir / "glm_selected_u_derivative_summary.csv"
+    dense_csv = output_dir / "glm_elasticity_by_u.csv"
+    selected_csv = output_dir / "glm_selected_u_elasticity_summary.csv"
     _write_summary_csv(summary_rows, dense_csv)
     _write_summary_csv(selected_rows, selected_csv)
-    curve_path = _plot_mean_sensitivity_by_u(summary_rows, output_dir)
+    curve_path = _plot_mean_elasticity_by_u(
+        summary_rows,
+        output_dir,
+        derivative_bound=derivative_bound,
+    )
+    clip_low = None if args.no_hist_clip else float(args.hist_clip_low)
+    clip_high = None if args.no_hist_clip else float(args.hist_clip_high)
     hist_path = _plot_selected_u_histograms(
         hist_u_values,
         selected_derivatives,
         output_dir,
         bins=int(args.bins),
+        clip_low=clip_low,
+        clip_high=clip_high,
+        derivative_bound=derivative_bound,
     )
 
     mean_values = np.asarray([float(row["mean"]) for row in summary_rows], dtype=float)
-    peak_idx = int(np.argmax(mean_values))
-    print(
-        f"Computed GLM sensitivities for {sensitivity_matrix.shape[0]} rows "
-        f"and {sensitivity_matrix.shape[1]} u values."
+    peak_idx = int(
+        np.argmin(mean_values) if derivative_bound < 0.0 else np.argmax(mean_values)
     )
     print(
-        f"Peak average sensitivity at u={float(u_values[peak_idx]):.6f}: "
+        f"Computed GLM elasticities for {elasticity_matrix.shape[0]} rows "
+        f"and {elasticity_matrix.shape[1]} u values."
+    )
+    print(
+        f"Most negative average elasticity at u={float(u_values[peak_idx]):.6f}: "
         f"{mean_values[peak_idx]:.6f}."
     )
-    print(f"Wrote sensitivity curve summary to {dense_csv}.")
-    print(f"Wrote selected-u derivative summary to {selected_csv}.")
-    print(f"Wrote sensitivity curve to {curve_path}.")
-    print(f"Wrote selected-u derivative histograms to {hist_path}.")
+    print(f"Theoretical signed derivative bound is {derivative_bound:.6f}.")
+    print(f"Wrote elasticity curve summary to {dense_csv}.")
+    print(f"Wrote selected-u elasticity summary to {selected_csv}.")
+    print(f"Wrote elasticity curve to {curve_path}.")
+    print(f"Wrote selected-u elasticity histograms to {hist_path}.")
 
 
 if __name__ == "__main__":

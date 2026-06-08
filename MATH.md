@@ -183,10 +183,11 @@ Rows are split into low/medium/high tertiles by $$s_i$$. With no explicit
 interaction terms between `U` and `X`, heterogeneity in this score comes from
 where each customer sits on the logistic acceptance curve.
 
-**Sensitivity distribution over action values:**
+**Elasticity distribution over action values:**
 
-For GLM sensitivity-distribution diagnostics, the signed customer-by-action
-derivative matrix is
+For GLM elasticity-distribution diagnostics, elasticity is the signed local
+acceptance derivative with respect to the centered action. The customer-by-action
+matrix is
 
 $$D_{ij} = \frac{\partial a(x_i, u_j)}{\partial u}$$
 
@@ -199,17 +200,19 @@ $$a = 1 - p_{churn}$$:
 
 $$D_{ij} = -\beta_u^{\text{eff}}\,a_{ij}(1-a_{ij})$$
 
-The absolute sensitivity score matrix is
+For bucket construction only, the absolute sensitivity score matrix is
 
 $$S_{ij} = \left|\frac{\partial a(x_i, u_j)}{\partial u}\right| = |\beta_u^{\text{eff}}|\,a_{ij}(1-a_{ij}), \quad a_{ij} = a(x_i, u_j)$$
 
-The plotted average sensitivity curve summarizes customers within each action
-bin:
+The plotted average elasticity curve summarizes customers within each action
+bin using signed derivatives:
 
-$$\bar{s}(u_j) = \frac{1}{n}\sum_{i=1}^n S_{ij}$$
+$$\bar{D}(u_j) = \frac{1}{n}\sum_{i=1}^n D_{ij}$$
 
 Selected fixed actions show the empirical cross-customer distribution of signed
-$$D_{ij}$$ as histograms.
+$$D_{ij}$$ as histograms. Histogram x-axes are clipped for display by default at
+the `0.5` and `99.5` percentiles and those clipping thresholds are marked on the
+chart; CSV summaries retain the unclipped values.
 
 **Acceptance penalty** (smooth floor enforcement):
 

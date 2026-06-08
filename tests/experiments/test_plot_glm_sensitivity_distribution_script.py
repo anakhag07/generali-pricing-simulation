@@ -1,4 +1,4 @@
-"""Tests for the GLM sensitivity distribution plotting script."""
+"""Tests for the GLM elasticity distribution plotting script."""
 
 from __future__ import annotations
 
@@ -47,11 +47,6 @@ def test_main_writes_summary_csvs_and_plots(
     tmp_path,
     capsys,
 ) -> None:
-    def fake_sensitivity_matrix(acceptance_model, x_frame, *, u_values, u_coef=None):
-        u_arr = np.asarray(u_values, dtype=float).reshape(-1)
-        customer_scale = np.array([0.1, 0.2, 0.3], dtype=float).reshape(-1, 1)
-        return customer_scale + np.square(u_arr).reshape(1, -1)
-
     def fake_derivative_matrix(acceptance_model, x_frame, *, u_values, u_coef=None):
         u_arr = np.asarray(u_values, dtype=float).reshape(-1)
         customer_scale = np.array([-0.3, -0.2, -0.1], dtype=float).reshape(-1, 1)
@@ -68,8 +63,8 @@ def test_main_writes_summary_csvs_and_plots(
         lambda model_type: (object(), object()),
     )
     monkeypatch.setattr(script, "load_x_frame", lambda model_type, row_indices: object())
-    monkeypatch.setattr(script, "glm_price_sensitivity_matrix", fake_sensitivity_matrix)
     monkeypatch.setattr(script, "glm_price_derivative_matrix", fake_derivative_matrix)
+    monkeypatch.setattr(script, "_theoretical_derivative_bound", lambda model, u_coef: -0.5)
 
     script.main(
         [
@@ -94,14 +89,29 @@ def test_main_writes_summary_csvs_and_plots(
 
     output = capsys.readouterr().out
     output_dir = tmp_path / "run"
-    assert "Peak average sensitivity" in output
-    assert (output_dir / "glm_sensitivity_by_u.csv").exists()
-    assert (output_dir / "glm_selected_u_derivative_summary.csv").exists()
-    assert (output_dir / "mean_sensitivity_by_u.png").exists()
-    assert (output_dir / "derivative_histograms_by_u.png").exists()
+    assert "Most negative average elasticity" in output
+    assert (output_dir / "glm_elasticity_by_u.csv").exists()
+    assert (output_dir / "glm_selected_u_elasticity_summary.csv").exists()
+    assert (output_dir / "mean_elasticity_by_u.png").exists()
+    assert (output_dir / "elasticity_histograms_by_u.png").exists()
     header = (
-        output_dir.joinpath("glm_sensitivity_by_u.csv")
+        output_dir.joinpath("glm_elasticity_by_u.csv")
         .read_text(encoding="utf-8")
         .splitlines()[0]
     )
     assert header == "u,n_rows,mean,median,q05,q25,q75,q95,min,max"
+
+
+def test_histogram_clip_percentiles_are_validated(tmp_path) -> None:
+    values = np.array([[-0.3, -0.2], [-0.2, -0.1], [-0.1, 0.0]], dtype=float)
+
+    with pytest.raises(ValueError, match="clip percentiles"):
+        script._plot_selected_u_histograms(
+            [-0.1, 0.1],
+            values,
+            tmp_path,
+            bins=5,
+            clip_low=99.5,
+            clip_high=0.5,
+            derivative_bound=-0.5,
+        )

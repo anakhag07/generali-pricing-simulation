@@ -44,10 +44,34 @@ def glm_price_sensitivity_scores(
     u_coef: float | None = None,
 ) -> np.ndarray:
     r"""Return $$|d p_{accept}(x, u_ref) / du|$$ for GLM acceptance rows."""
+    return glm_price_sensitivity_matrix(
+        acceptance_model,
+        x_frame,
+        u_values=(float(u_ref),),
+        u_coef=u_coef,
+    )[:, 0]
+
+
+def glm_price_sensitivity_matrix(
+    acceptance_model: Any,
+    x_frame: pd.DataFrame,
+    *,
+    u_values: Sequence[float] | np.ndarray,
+    u_coef: float | None = None,
+) -> np.ndarray:
+    r"""Return customer-by-action $$|d p_{accept}(x_i, u_j) / du|$$ scores."""
+    u_arr = np.asarray(u_values, dtype=float).reshape(-1)
+    if u_arr.size == 0:
+        raise ValueError("u_values must contain at least one value.")
+    if not np.isfinite(u_arr).all():
+        raise ValueError("u_values must be finite.")
+
     coeffs = extract_glm_churn_coefficients(acceptance_model)
-    x_feature_cols = tuple(getattr(acceptance_model, "x_feature_cols", tuple(x_frame.columns)))
+    x_feature_cols = tuple(
+        getattr(acceptance_model, "x_feature_cols", tuple(x_frame.columns))
+    )
     raw_frame = x_frame.loc[:, list(x_feature_cols)].copy()
-    raw_frame["U"] = float(u_ref)
+    raw_frame["U"] = 0.0
 
     model_frame_fn = getattr(acceptance_model, "model_frame", None)
     model_frame = model_frame_fn(raw_frame) if callable(model_frame_fn) else raw_frame
@@ -55,9 +79,14 @@ def glm_price_sensitivity_scores(
     x_matrix = model_frame.loc[:, feature_names].to_numpy(dtype=float)
     beta_x = np.asarray(coeffs["x_coef"], dtype=float)
     beta_u = float(u_coef) if u_coef is not None else float(coeffs["u_coef"])
-    logit = float(coeffs["intercept"]) + x_matrix @ beta_x + beta_u * float(u_ref)
+    base_logit = float(coeffs["intercept"]) + x_matrix @ beta_x
+    logit = base_logit[:, None] + beta_u * u_arr[None, :]
     class1 = _sigmoid(logit)
-    if coeffs.get("probability_target", getattr(acceptance_model, "probability_target", "acceptance")) == "acceptance":
+    probability_target = coeffs.get(
+        "probability_target",
+        getattr(acceptance_model, "probability_target", "acceptance"),
+    )
+    if probability_target == "acceptance":
         acceptance = class1
     else:
         acceptance = 1.0 - class1
@@ -116,6 +145,7 @@ __all__ = [
     "SENSITIVITY_BUCKETS",
     "SensitivityBucket",
     "build_glm_sensitivity_buckets",
+    "glm_price_sensitivity_matrix",
     "glm_price_sensitivity_scores",
     "median_observed_u",
     "split_sensitivity_tertiles",

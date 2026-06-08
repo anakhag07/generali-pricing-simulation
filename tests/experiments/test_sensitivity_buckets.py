@@ -50,6 +50,46 @@ def test_glm_price_sensitivity_scores_are_finite() -> None:
     assert np.all(scores >= 0.0)
 
 
+def test_glm_price_sensitivity_matrix_matches_point_scores() -> None:
+    from data.loader import load_model_artifacts, load_x_frame, sample_csv_row_indices
+    from experiments.sensitivity_buckets import (
+        glm_price_sensitivity_matrix,
+        glm_price_sensitivity_scores,
+    )
+
+    row_indices = sample_csv_row_indices("glm", n_rows=20, seed=456)
+    x_frame = load_x_frame("glm", row_indices=row_indices)
+    acceptance_model, _ = load_model_artifacts("glm")
+    u_values = np.array([-0.3, 0.0, 0.3], dtype=float)
+
+    matrix = glm_price_sensitivity_matrix(acceptance_model, x_frame, u_values=u_values)
+
+    assert matrix.shape == (20, 3)
+    assert np.isfinite(matrix).all()
+    assert np.all(matrix >= 0.0)
+    for idx, u_ref in enumerate(u_values):
+        point_scores = glm_price_sensitivity_scores(
+            acceptance_model,
+            x_frame,
+            u_ref=float(u_ref),
+        )
+        np.testing.assert_allclose(matrix[:, idx], point_scores)
+
+
+def test_glm_price_sensitivity_matrix_rejects_bad_u_values() -> None:
+    from data.loader import load_model_artifacts, load_x_frame, sample_csv_row_indices
+    from experiments.sensitivity_buckets import glm_price_sensitivity_matrix
+
+    row_indices = sample_csv_row_indices("glm", n_rows=3, seed=789)
+    x_frame = load_x_frame("glm", row_indices=row_indices)
+    acceptance_model, _ = load_model_artifacts("glm")
+
+    with pytest.raises(ValueError, match="at least one"):
+        glm_price_sensitivity_matrix(acceptance_model, x_frame, u_values=[])
+    with pytest.raises(ValueError, match="finite"):
+        glm_price_sensitivity_matrix(acceptance_model, x_frame, u_values=[0.0, np.nan])
+
+
 def test_build_glm_sensitivity_buckets_covers_rows() -> None:
     from data.loader import sample_csv_row_indices
     from experiments.sensitivity_buckets import build_glm_sensitivity_buckets

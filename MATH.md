@@ -183,6 +183,21 @@ Rows are split into low/medium/high tertiles by $$s_i$$. With no explicit
 interaction terms between `U` and `X`, heterogeneity in this score comes from
 where each customer sits on the logistic acceptance curve.
 
+**Sensitivity distribution over action values:**
+
+For GLM sensitivity-distribution diagnostics, the customer-by-action score
+matrix is
+
+$$S_{ij} = \left|\frac{\partial a(x_i, u_j)}{\partial u}\right| = |\beta_u^{\text{eff}}|\,a_{ij}(1-a_{ij}), \quad a_{ij} = a(x_i, u_j)$$
+
+The plotted average sensitivity curve summarizes customers within each action
+bin:
+
+$$\bar{s}(u_j) = \frac{1}{n}\sum_{i=1}^n S_{ij}$$
+
+Selected fixed actions also show the empirical cross-customer distribution of
+$$S_{ij}$$ as histograms.
+
 **Acceptance penalty** (smooth floor enforcement):
 
 $$\text{penalty} = w \cdot \bigl[\tau\,\log(1 + e^{g/\tau})\bigr]^2$$
@@ -197,7 +212,7 @@ $$\frac{\partial\,\text{penalty}}{\partial\,\bar{a}} = -2w\,\text{softplus}(g/\t
   - `_grad_u_batch()` — per-sample $\partial f/\partial u$
   - `_d_acceptance_du_batch()` — analytical or FD acceptance derivative
   - `_acceptance_penalty()` — penalty value and gradient scale
-- **Source:** `src/experiments/sensitivity_buckets.py` :: `glm_price_sensitivity_scores()`, `split_sensitivity_tertiles()`
+- **Source:** `src/experiments/sensitivity_buckets.py` :: `glm_price_sensitivity_scores()`, `glm_price_sensitivity_matrix()`, `split_sensitivity_tertiles()`
 
 **Lagrangian scalarization** (lambda sweep path):
 

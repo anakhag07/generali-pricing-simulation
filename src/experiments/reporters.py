@@ -666,6 +666,21 @@ def _build_summary_payload(run_context: RunContext, result: ExperimentResult) ->
         result.config.objective.loss_model,
     ) if hasattr(result.config.objective, "acceptance_model") and hasattr(result.config.objective, "loss_model") else None
     if coeffs is not None:
+        coeffs = {
+            "acceptance": dict(coeffs["acceptance"]),
+            "loss": dict(coeffs["loss"]),
+        }
+        objective = result.config.objective
+        effective_u_coef = getattr(objective, "u_coef", None)
+        if effective_u_coef is not None:
+            artifact_u_coef = float(coeffs["acceptance"]["u_coef"])
+            effective_u_coef = float(effective_u_coef)
+            coeffs["acceptance"]["artifact_u_coef"] = artifact_u_coef
+            coeffs["acceptance"]["effective_u_coef"] = effective_u_coef
+            coeffs["acceptance"]["u_coef"] = effective_u_coef
+            coeffs["acceptance"]["u_coef_is_overridden"] = bool(
+                not np.isclose(effective_u_coef, artifact_u_coef)
+            )
         payload["model_formulas"] = {
             "objective": "f(u; x) = p_acc(x, u) * (loss_hat(x) - (u + 1) * premium(x))",
             "acceptance": "p_acc(x, u) = sigmoid(beta_0 + beta_x^T x_acc + beta_u * u)",

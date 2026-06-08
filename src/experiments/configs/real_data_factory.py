@@ -75,6 +75,7 @@ def build_real_data_config(
     acceptance_penalty_temperature: float | None = None,
     lagrangian_lambda: float | None = None,
     u_bounds: tuple[float, float] | None = None,
+    u_coef: float | None = None,
     initial_u: float | None = None,
     theta0: np.ndarray | None | Literal["auto"] = "auto",
     constant_u_baselines: Sequence[float] = (),
@@ -95,7 +96,10 @@ def build_real_data_config(
     constraint_mode = _normalize_constraint_mode(constraint_mode)
     state_dim = len(_feature_cols(model_type))
     acceptance_model, loss_model = load_model_artifacts(model_type)
-    u_coef = extract_glm_u_coef(acceptance_model) if model_type == "glm" else None
+    if u_coef is not None and model_type != "glm":
+        raise ValueError("u_coef override is supported only for GLM acceptance artifacts.")
+    artifact_u_coef = extract_glm_u_coef(acceptance_model) if model_type == "glm" else None
+    effective_u_coef = float(u_coef) if u_coef is not None else artifact_u_coef
 
     if x_fixed is None:
         if row_indices is None:
@@ -171,7 +175,7 @@ def build_real_data_config(
         acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),
         loss_cols=tuple(LOSS_FEATURE_COLS),
         premium_col=PREMIUM_COL,
-        u_coef=u_coef,
+        u_coef=effective_u_coef,
         u_bounds=resolved_u_bounds,
         policy_preprocessor=policy_preprocessor,
         policy_feature_cols=policy_feature_cols,

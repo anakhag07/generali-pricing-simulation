@@ -301,6 +301,32 @@ def test_analytical_vs_fd_grad_glm():
     np.testing.assert_allclose(grad_a, grad_fd, rtol=0.05, atol=1e-3)
 
 
+def test_glm_u_coef_override_changes_acceptance_not_loss() -> None:
+    obj, x, _ = _make_glm_objective(n_rows=30)
+    overridden = replace(obj, u_coef=-10.0)
+
+    assert overridden.mean_acceptance_at_u(x, 0.0) == pytest.approx(
+        obj.mean_acceptance_at_u(x, 0.0)
+    )
+    assert overridden.mean_acceptance_at_u(x, 0.2) < obj.mean_acceptance_at_u(x, 0.2)
+    np.testing.assert_allclose(overridden._loss_prediction(x), obj._loss_prediction(x))
+
+
+def test_glm_u_coef_override_grad_matches_fd() -> None:
+    obj, x, theta_dim = _make_glm_objective(n_rows=30)
+    overridden = replace(obj, u_coef=-8.0)
+    theta = np.array([0.2] + [0.01] * (theta_dim - 1), dtype=float)
+
+    grad = overridden.grad(theta, x)
+    grad_fd = finite_difference_theta_grad(
+        lambda theta_eval: overridden.value(theta_eval, x),
+        theta,
+        method="central",
+        step=1e-6,
+    )
+    np.testing.assert_allclose(grad, grad_fd, rtol=1e-4, atol=1e-6)
+
+
 def test_x_batch_must_be_2d():
     obj, _, theta_dim = _make_glm_objective()
     theta = np.zeros(theta_dim, dtype=float)

@@ -85,7 +85,13 @@ def log_summary(result: ExperimentResult) -> None:
             print("loss_hat(x) = gamma_0 + gamma_x^T x_loss")
             print(f"x_acc = {acceptance['x_feature_names']}")
             print(f"beta_x = {format_array(acceptance['x_coef'])}")
-            print(f"beta_u = {float(acceptance['u_coef']):.6f}")
+            artifact_u_coef = float(acceptance["u_coef"])
+            effective_u_coef = (
+                float(objective.u_coef) if objective.u_coef is not None else artifact_u_coef
+            )
+            print(f"beta_u = {effective_u_coef:.6f}")
+            if not np.isclose(effective_u_coef, artifact_u_coef):
+                print(f"artifact_beta_u = {artifact_u_coef:.6f}")
             print(f"beta_0 = {float(acceptance['intercept']):.6f}")
             print(f"x_loss = {loss['x_feature_names']}")
             print(f"gamma_x = {format_array(loss['x_coef'])}")

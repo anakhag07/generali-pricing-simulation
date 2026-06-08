@@ -144,7 +144,7 @@ Guidelines:
   - Uses extracted GLM/linear coefficients for array-native acceptance and loss predictions when available; XGB and unsupported artifacts fall back to estimator prediction calls
   - Caches policy features, GLM base logits, and loss predictions for repeated fixed `x_batch` arrays; final acceptance probabilities are not cached because they depend on `u`
   - `eval_counts()` also reports prediction/objective timing counters and cache hit/miss counters for performance diagnostics
-  - `u_coef` enables analytical gradient for GLM; `None` triggers central FD for XGBoost
+  - `u_coef` sets the effective GLM acceptance coefficient on generated `U` for both values and analytical gradients; `None` uses the artifact coefficient or central FD for unsupported artifacts
   - `value()`, `grad()`, `value_at_u()`
 
 - **`src/objective/objectives/planted_logistic.py`**
@@ -205,7 +205,7 @@ Guidelines:
   - `load_mean_observed_acceptance(model_type)`: computes `1 - is_churn` over complete eligible rows
   - `load_model_artifacts(model_type)`: loads first-fold `(acceptance_artifact, loss_artifact)` bundles from the 052726 CV dictionaries under `src/data/models/linear/` or `src/data/models/xgb/`
   - `ModelArtifactBundle.model_frame(raw_frame)`: converts raw notebook-space columns into the exact model-input frame expected by the bundled estimator
-  - `extract_glm_u_coef(glm_pipeline)`: extracts effective d_logit/dU = w_U / std_U from the inner fitted GLM Pipeline for analytical gradient computation
+  - `extract_glm_u_coef(glm_pipeline)`: extracts effective d_logit(p_accept)/dU from the inner fitted GLM artifact for analytical gradient computation
 
 #### Optimization Layer (`src/optimization/`)
 
@@ -255,11 +255,11 @@ Guidelines:
 
 - **`src/experiments/configs/`** (preset registry)
   - `__init__.py`: `get_config(name, overrides=None)` and `list_configs()` registry; real-data configs are exposed only as base presets plus overrides
-  - `real_data_factory.py`: `build_real_data_config(...)` centralizes GLM/XGB artifact loading, row sampling, policy construction, feature-order overrides, policy-side no-PCA preprocessing, acceptance-floor modes, estimator defaults, and theta initialization
+  - `real_data_factory.py`: `build_real_data_config(...)` centralizes GLM/XGB artifact loading, row sampling, policy construction, feature-order overrides, policy-side no-PCA preprocessing, GLM-only `u_coef` acceptance overrides, acceptance-floor modes, estimator defaults, and theta initialization
   - `first_order_runs_diff_starts.py`: planted-logistic preset configured for comparison runs across different initial starts
   - `fixed_regression_base.py`: base fixed-regression config (4D, L-BFGS-B step rule, W&B enabled)
   - `planted_logistic_base.py`: planted logistic base config (3D, L-BFGS-B step rule, 5000 steps, u*=1.1)
-  - `real_data_glm_base`: registry-only base built by `real_data_factory.py`; supports `policy_kind`, `feature_order`, `policy_preprocessing`, `constraint_mode`, runtime, and estimator overrides
+  - `real_data_glm_base`: registry-only base built by `real_data_factory.py`; supports `policy_kind`, `feature_order`, `policy_preprocessing`, `constraint_mode`, GLM acceptance `u_coef`, runtime, and estimator overrides
   - `real_data_xgb_base`: registry-only base built by `real_data_factory.py`; supports the same override axes, with XGB defaults excluding `first_order`
   - `config_template.py`: copy-first scaffold with `None` placeholders for all `ExperimentConfig` fields plus objective/correctness parameter blocks; not registered as a runnable preset
 
@@ -334,6 +334,7 @@ Guidelines:
 - `scripts/run_sweep.py` provides optional preset-based sweep execution using top-level and real-data factory overrides
 - `scripts/run_lagrangian_sweep.py` runs a lagrangian-lambda sweep and writes aggregate frontier plots under `outputs/<project>/lagrangian_frontier_<timestamp>/`
 - `scripts/run_acceptance_floor_sweep.py` runs the trust-constrained softmax GLM preset over a dense acceptance-floor grid `c` and writes aggregate frontier plots under `outputs/<project>/acceptance_floor_frontier_<timestamp>/`
+- `scripts/run_glm_u_coef_sweep.py` runs the softmax/no-PCA/trust-constr GLM setup over 200000 sampled rows and `u_coef in {-4, -5, -8, -10, -20}`, keeps per-run distribution plots enabled, and writes aggregate `glm_u_coef_sweep.csv` plus frontier plots under `outputs/glm-u-coef-sweep/u_coef_frontier_<timestamp>/`
 - `scripts/plot_saved_acceptance_floor_frontier.py` re-plots acceptance-floor Pareto frontiers from a saved `acceptance_floor_sweep.csv` (or the latest matching frontier directory) without rerunning optimization; defaults to `first_order` and writes estimator-suffixed Pareto PNGs
 - `scripts/query_acceptance_at_u.py` loads a config preset or default GLM/XGB model type and reports mean acceptance for supplied or evenly sampled constant `u` values without running optimization; writes acceptance-curve and historical-`U` rug plots under `outputs/acceptance_queries/` by default and optionally writes `u,n,mean_acceptance` CSV output
 - `scripts/plot_pc_outcome_diagnostics.py` reads a saved run `summary.json`, rebuilds a real-data base preset objective with optional policy/preprocessing override flags, and writes processed-policy-component scatter diagnostics against final `f_acc`, loss, and `u`; defaults beside the summary under `pc_outcome_diagnostics/<estimator>/`

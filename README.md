@@ -113,7 +113,10 @@ config = get_config(
 Supported policy axes are `policy_kind in {"constant", "linear", "softmax",
 "mlp"}`, `feature_order in {"linear", "quadratic", "cubic", "quartic"}`,
 `policy_preprocessing in {"artifact", "no_pca"}`, and `constraint_mode in
-{"none", "trust_constr", "penalty", "lagrangian"}`.
+{"none", "trust_constr", "penalty", "lagrangian"}`. GLM real-data runs also
+accept a `u_coef` override for counterfactual acceptance sensitivity sweeps; it
+changes only the logistic acceptance coefficient on generated policy `u`, not
+the linear loss model.
 
 The objective for real-data configs is $$f(u; x) = a(x,u)(\hat{Y}(x) - (u + 1) \cdot p(x))$$
 where $$a$$ is acceptance probability, $$\hat{Y}$$ is expected financial loss, and $$p$$ is policy premium.
@@ -192,6 +195,13 @@ same three aggregate plots under
 - `pareto_objective_acceptance.png` -- final objective vs acceptance, colored by
   `c`
 - `pareto_u_acceptance.png` -- final `u` vs acceptance, colored by `c`
+
+`scripts/run_glm_u_coef_sweep.py` runs the softmax/no-PCA/trust-constr GLM setup
+over `200000` sampled rows and direct acceptance coefficients
+`u_coef in {-4, -5, -8, -10, -20}` with per-run policy distribution plots
+enabled. It writes per-run outputs under `outputs/glm-u-coef-sweep/<u_coef-run>/`
+plus aggregate `glm_u_coef_sweep.csv` and frontier plots under
+`outputs/glm-u-coef-sweep/u_coef_frontier_<timestamp>/`.
 
 If you already have saved acceptance-floor sweep outputs and only want the
 Pareto frontier for one estimator without rerunning optimization, use

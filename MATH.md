@@ -145,7 +145,7 @@ $$\frac{\partial L}{\partial u} = \alpha\,\bigl(\sigma(z) - p^*(x)\bigr)$$
 $$f(u;\, x) = a(x, u)\,\bigl(\hat{Y}(x) - (u + 1)\, p(x)\bigr)$$
 
 where:
-- $a(x, u) = 1 - p_{\text{churn}}(x, u)$ — acceptance from trained classifier
+- $a(x, u) = p_{\text{accept}}(x, u)$ — acceptance from trained classifier
 - $\hat{Y}(x)$ — expected financial loss (LinearRegression or XGBRegressor)
 - $p(x)$ — policy premium extracted from state column `premium_col`
 - $(u + 1)\, p(x)$ — revenue (centered: $u = 0$ is baseline multiplier)
@@ -153,21 +153,23 @@ where:
 For GLM/linear artifacts with extractable coefficients, the implementation uses
 the equivalent array formulas:
 
-$$p_{\text{churn}}(x, u) = \sigma\bigl(\beta_0 + \beta_x^\top z_{\text{acc}}(x) + \beta_u u\bigr)$$
+$$p_{\text{accept}}(x, u) = \sigma\bigl(\beta_0 + \beta_x^\top z_{\text{acc}}(x) + \beta_u^{\text{eff}} u\bigr)$$
 
 $$\hat{Y}(x) = \gamma_0 + \gamma_x^\top z_{\text{loss}}(x)$$
 
 where $$z_{\text{acc}}$$ and $$z_{\text{loss}}$$ are the artifact-preprocessed model
-features. If coefficients cannot be extracted, the objective falls back to the
-bundled estimator's `predict_proba` / `predict` methods.
+features. By default $$\beta_u^{\text{eff}}$$ is the extracted artifact coefficient;
+GLM real-data configs may override it with `u_coef` for counterfactual acceptance
+sensitivity sweeps. If coefficients cannot be extracted, the objective falls back
+to the bundled estimator's `predict_proba` / `predict` methods.
 
 **Gradient w.r.t. $u$:**
 
 $$\frac{\partial f}{\partial u} = \frac{\partial a}{\partial u}\,(\hat{Y} - (u+1)\,p) - a\, p$$
 
 Acceptance derivative:
-- **GLM (analytical):** $\frac{\partial a}{\partial u} = -a(1-a)\;\texttt{u}\_coef$
-  where `u_coef` $= \frac{w_U}{\text{std}_U}$
+- **GLM direct acceptance (analytical):** $\frac{\partial a}{\partial u} = a(1-a)\;\beta_u^{\text{eff}}$
+- **Legacy churn artifacts (analytical):** $\frac{\partial a}{\partial u} = -a(1-a)\;\beta_u^{\text{eff}}$
 - **XGBoost (numerical):** central FD with $\epsilon = 10^{-4}$
 
 **Acceptance penalty** (smooth floor enforcement):
@@ -419,22 +421,26 @@ $|\text{categories}_j|$.
 
 ### 9.1 Effective U Coefficient
 
-$$\frac{d\,\text{logit}(p_{\text{churn}})}{dU} = \frac{w_U}{\text{std}_U}$$
+$$\beta_u = \frac{d\,\text{logit}(p_{\text{accept}})}{dU}$$
 
-where $w_U$ is the scaled GLM coefficient for `U` and $\text{std}_U$ comes
-from the pipeline's `StandardScaler`.
+For current direct-acceptance GLM artifacts, this is the fitted logistic
+coefficient whose feature label is `U`. Legacy pipeline artifacts may compute the
+same effective coefficient as $w_U / \text{std}_U$ when `U` was standardized.
+`build_real_data_config(u_coef=...)` can override this value for GLM-only
+counterfactual acceptance sweeps.
 
 - **Source:** `src/data/loader.py` :: `extract_glm_u_coef()`
 
-### 9.2 Unscaled Churn Coefficients
+### 9.2 Processed-Space Acceptance Coefficients
 
-$$\beta_{\text{raw}} = \frac{\beta_{\text{scaled}}}{\text{scale}}, \qquad \beta_{0,\text{raw}} = \beta_{0,\text{scaled}} - \beta_{\text{scaled}}^\top \frac{\mu}{\text{scale}}$$
+$$\text{logit}(p_{\text{accept}}) = \beta_0 + \beta_x^\top z_{\text{acc}}(x) + \beta_u\,u$$
 
-Maps the pipeline's scaled logistic-regression coefficients back to raw feature
-space.
+Returns the processed model-feature coefficients used by the GLM acceptance
+artifact, excluding the generated `U` column from `x_feature_names` and reporting
+the `U` coefficient separately.
 
 - **Source:** `src/data/loader.py` :: `extract_glm_churn_coefficients()`
-- **Notes:** Formula: $\text{logit}(p_{\text{churn}}) = \beta_{0,\text{raw}} + \beta_{x,\text{raw}}^\top x + \beta_{u,\text{raw}}\, u$
+- **Notes:** Legacy pipeline artifacts may report churn coefficients instead.
 
 ### 9.3 Linear Loss Coefficients
 

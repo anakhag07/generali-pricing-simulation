@@ -52,6 +52,11 @@ def test_main_writes_summary_csvs_and_plots(
         customer_scale = np.array([0.1, 0.2, 0.3], dtype=float).reshape(-1, 1)
         return customer_scale + np.square(u_arr).reshape(1, -1)
 
+    def fake_derivative_matrix(acceptance_model, x_frame, *, u_values, u_coef=None):
+        u_arr = np.asarray(u_values, dtype=float).reshape(-1)
+        customer_scale = np.array([-0.3, -0.2, -0.1], dtype=float).reshape(-1, 1)
+        return customer_scale + u_arr.reshape(1, -1)
+
     monkeypatch.setattr(
         script,
         "_resolve_row_indices",
@@ -64,6 +69,7 @@ def test_main_writes_summary_csvs_and_plots(
     )
     monkeypatch.setattr(script, "load_x_frame", lambda model_type, row_indices: object())
     monkeypatch.setattr(script, "glm_price_sensitivity_matrix", fake_sensitivity_matrix)
+    monkeypatch.setattr(script, "glm_price_derivative_matrix", fake_derivative_matrix)
 
     script.main(
         [
@@ -90,9 +96,9 @@ def test_main_writes_summary_csvs_and_plots(
     output_dir = tmp_path / "run"
     assert "Peak average sensitivity" in output
     assert (output_dir / "glm_sensitivity_by_u.csv").exists()
-    assert (output_dir / "glm_selected_u_sensitivity_summary.csv").exists()
+    assert (output_dir / "glm_selected_u_derivative_summary.csv").exists()
     assert (output_dir / "mean_sensitivity_by_u.png").exists()
-    assert (output_dir / "sensitivity_histograms_by_u.png").exists()
+    assert (output_dir / "derivative_histograms_by_u.png").exists()
     header = (
         output_dir.joinpath("glm_sensitivity_by_u.csv")
         .read_text(encoding="utf-8")

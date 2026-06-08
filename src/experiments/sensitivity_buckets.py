@@ -60,6 +60,24 @@ def glm_price_sensitivity_matrix(
     u_coef: float | None = None,
 ) -> np.ndarray:
     r"""Return customer-by-action $$|d p_{accept}(x_i, u_j) / du|$$ scores."""
+    return np.abs(
+        glm_price_derivative_matrix(
+            acceptance_model,
+            x_frame,
+            u_values=u_values,
+            u_coef=u_coef,
+        )
+    )
+
+
+def glm_price_derivative_matrix(
+    acceptance_model: Any,
+    x_frame: pd.DataFrame,
+    *,
+    u_values: Sequence[float] | np.ndarray,
+    u_coef: float | None = None,
+) -> np.ndarray:
+    r"""Return customer-by-action $$d p_{accept}(x_i, u_j) / du$$ values."""
     u_arr = np.asarray(u_values, dtype=float).reshape(-1)
     if u_arr.size == 0:
         raise ValueError("u_values must contain at least one value.")
@@ -88,9 +106,11 @@ def glm_price_sensitivity_matrix(
     )
     if probability_target == "acceptance":
         acceptance = class1
+        derivative_sign = 1.0
     else:
         acceptance = 1.0 - class1
-    return np.abs(beta_u) * acceptance * (1.0 - acceptance)
+        derivative_sign = -1.0
+    return derivative_sign * beta_u * acceptance * (1.0 - acceptance)
 
 
 def split_sensitivity_tertiles(
@@ -145,6 +165,7 @@ __all__ = [
     "SENSITIVITY_BUCKETS",
     "SensitivityBucket",
     "build_glm_sensitivity_buckets",
+    "glm_price_derivative_matrix",
     "glm_price_sensitivity_matrix",
     "glm_price_sensitivity_scores",
     "median_observed_u",

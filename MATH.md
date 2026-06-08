@@ -185,8 +185,21 @@ where each customer sits on the logistic acceptance curve.
 
 **Sensitivity distribution over action values:**
 
-For GLM sensitivity-distribution diagnostics, the customer-by-action score
-matrix is
+For GLM sensitivity-distribution diagnostics, the signed customer-by-action
+derivative matrix is
+
+$$D_{ij} = \frac{\partial a(x_i, u_j)}{\partial u}$$
+
+For direct-acceptance GLM artifacts,
+
+$$D_{ij} = \beta_u^{\text{eff}}\,a_{ij}(1-a_{ij}), \quad a_{ij} = a(x_i, u_j)$$
+
+For legacy churn-probability artifacts, the sign flips because
+$$a = 1 - p_{churn}$$:
+
+$$D_{ij} = -\beta_u^{\text{eff}}\,a_{ij}(1-a_{ij})$$
+
+The absolute sensitivity score matrix is
 
 $$S_{ij} = \left|\frac{\partial a(x_i, u_j)}{\partial u}\right| = |\beta_u^{\text{eff}}|\,a_{ij}(1-a_{ij}), \quad a_{ij} = a(x_i, u_j)$$
 
@@ -195,8 +208,8 @@ bin:
 
 $$\bar{s}(u_j) = \frac{1}{n}\sum_{i=1}^n S_{ij}$$
 
-Selected fixed actions also show the empirical cross-customer distribution of
-$$S_{ij}$$ as histograms.
+Selected fixed actions show the empirical cross-customer distribution of signed
+$$D_{ij}$$ as histograms.
 
 **Acceptance penalty** (smooth floor enforcement):
 
@@ -212,7 +225,7 @@ $$\frac{\partial\,\text{penalty}}{\partial\,\bar{a}} = -2w\,\text{softplus}(g/\t
   - `_grad_u_batch()` — per-sample $\partial f/\partial u$
   - `_d_acceptance_du_batch()` — analytical or FD acceptance derivative
   - `_acceptance_penalty()` — penalty value and gradient scale
-- **Source:** `src/experiments/sensitivity_buckets.py` :: `glm_price_sensitivity_scores()`, `glm_price_sensitivity_matrix()`, `split_sensitivity_tertiles()`
+- **Source:** `src/experiments/sensitivity_buckets.py` :: `glm_price_derivative_matrix()`, `glm_price_sensitivity_scores()`, `glm_price_sensitivity_matrix()`, `split_sensitivity_tertiles()`
 
 **Lagrangian scalarization** (lambda sweep path):
 

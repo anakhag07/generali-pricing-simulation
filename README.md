@@ -213,8 +213,9 @@ under `sensitivity_bucket_summary_<timestamp>/`.
 
 `scripts/plot_glm_sensitivity_distribution.py` computes GLM customer
 sensitivities across a default `u in [-0.3, 0.3]` grid. It writes a mean/quantile
-sensitivity-by-`u` curve, selected-`u` customer sensitivity histograms, and CSV
-summaries under `outputs/glm-sensitivity-distribution/`.
+sensitivity-by-`u` curve, selected-`u` customer histograms of signed
+`d p_accept / du`, and CSV summaries under
+`outputs/glm-sensitivity-distribution/`.
 
 If you already have saved acceptance-floor sweep outputs and only want the
 Pareto frontier for one estimator without rerunning optimization, use

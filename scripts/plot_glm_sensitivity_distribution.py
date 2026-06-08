@@ -21,7 +21,10 @@ from data.loader import (
     load_x_frame,
     sample_csv_row_indices,
 )
-from experiments.sensitivity_buckets import glm_price_sensitivity_matrix
+from experiments.sensitivity_buckets import (
+    glm_price_derivative_matrix,
+    glm_price_sensitivity_matrix,
+)
 
 DEFAULT_OUTPUT_ROOT = Path("outputs") / "glm-sensitivity-distribution"
 DEFAULT_HIST_U_VALUES = (-0.3, -0.2, -0.1, 0.0, 0.1, 0.2, 0.3)
@@ -146,19 +149,19 @@ def _plot_mean_sensitivity_by_u(
 
 def _plot_selected_u_histograms(
     hist_u_values: Sequence[float],
-    selected_sensitivities: np.ndarray,
+    selected_derivatives: np.ndarray,
     output_dir: Path,
     *,
     bins: int,
 ) -> Path:
     u_arr = np.asarray(hist_u_values, dtype=float).reshape(-1)
-    values = np.asarray(selected_sensitivities, dtype=float)
+    values = np.asarray(selected_derivatives, dtype=float)
     if values.ndim != 2:
-        raise ValueError("selected_sensitivities must be 2D.")
+        raise ValueError("selected_derivatives must be 2D.")
     if values.shape[1] != u_arr.size:
-        raise ValueError("hist_u_values length must match selected_sensitivities columns.")
+        raise ValueError("hist_u_values length must match selected_derivatives columns.")
     if values.shape[0] == 0 or values.shape[1] == 0:
-        raise ValueError("selected_sensitivities must be non-empty.")
+        raise ValueError("selected_derivatives must be non-empty.")
     if bins <= 0:
         raise ValueError("bins must be positive.")
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -173,15 +176,17 @@ def _plot_selected_u_histograms(
         sharey=True,
     )
     axes_arr = np.asarray(axes, dtype=object).reshape(-1)
+    min_value = float(np.min(values))
     max_value = float(np.max(values))
-    hist_bins: int | np.ndarray = (
-        bins if max_value <= 0.0 else np.linspace(0.0, max_value, bins + 1)
-    )
+    hist_bins: int | np.ndarray = bins
+    if min_value < max_value:
+        hist_bins = np.linspace(min_value, max_value, bins + 1)
 
     for ax, u_val, column in zip(axes_arr, u_arr, values.T):
         mean = float(np.mean(column))
         median = float(np.median(column))
         ax.hist(column, bins=hist_bins, color="#9ecae1", edgecolor="#6baed6", alpha=0.82)
+        ax.axvline(0.0, color="#636363", linewidth=1.0, alpha=0.65, label="zero")
         ax.axvline(mean, color="#08519c", linewidth=1.5, label="mean")
         ax.axvline(
             median,
@@ -196,12 +201,12 @@ def _plot_selected_u_histograms(
     for ax in axes_arr[u_arr.size :]:
         ax.set_visible(False)
     for ax in axes_arr[: u_arr.size]:
-        ax.set_xlabel("|d p_accept / du|")
+        ax.set_xlabel("d p_accept / du")
         ax.set_ylabel("Customers")
     axes_arr[0].legend()
-    fig.suptitle("Customer sensitivity distributions at selected u values", y=1.02)
+    fig.suptitle("Customer acceptance-derivative distributions at selected u values", y=1.02)
     fig.tight_layout()
-    path = output_dir / "sensitivity_histograms_by_u.png"
+    path = output_dir / "derivative_histograms_by_u.png"
     fig.savefig(path, dpi=200, bbox_inches="tight")
     plt.close(fig)
     return path
@@ -275,7 +280,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         u_values=u_values,
         u_coef=args.u_coef,
     )
-    selected_sensitivities = glm_price_sensitivity_matrix(
+    selected_derivatives = glm_price_derivative_matrix(
         acceptance_model,
         x_frame,
         u_values=hist_u_values,
@@ -283,7 +288,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     )
 
     summary_rows = _summary_rows(u_values, sensitivity_matrix)
-    selected_rows = _summary_rows(hist_u_values, selected_sensitivities)
+    selected_rows = _summary_rows(hist_u_values, selected_derivatives)
     output_subdir = args.output_subdir or (
         f"sensitivity_distribution_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     )
@@ -291,13 +296,13 @@ def main(argv: Sequence[str] | None = None) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     dense_csv = output_dir / "glm_sensitivity_by_u.csv"
-    selected_csv = output_dir / "glm_selected_u_sensitivity_summary.csv"
+    selected_csv = output_dir / "glm_selected_u_derivative_summary.csv"
     _write_summary_csv(summary_rows, dense_csv)
     _write_summary_csv(selected_rows, selected_csv)
     curve_path = _plot_mean_sensitivity_by_u(summary_rows, output_dir)
     hist_path = _plot_selected_u_histograms(
         hist_u_values,
-        selected_sensitivities,
+        selected_derivatives,
         output_dir,
         bins=int(args.bins),
     )
@@ -312,9 +317,10 @@ def main(argv: Sequence[str] | None = None) -> None:
         f"Peak average sensitivity at u={float(u_values[peak_idx]):.6f}: "
         f"{mean_values[peak_idx]:.6f}."
     )
-    print(f"Wrote sensitivity summaries to {dense_csv} and {selected_csv}.")
+    print(f"Wrote sensitivity curve summary to {dense_csv}.")
+    print(f"Wrote selected-u derivative summary to {selected_csv}.")
     print(f"Wrote sensitivity curve to {curve_path}.")
-    print(f"Wrote selected-u histograms to {hist_path}.")
+    print(f"Wrote selected-u derivative histograms to {hist_path}.")
 
 
 if __name__ == "__main__":

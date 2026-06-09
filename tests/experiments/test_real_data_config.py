@@ -120,6 +120,25 @@ def test_glm_u_coef_override_sets_acceptance_coefficient() -> None:
     assert cfg.objective.u_coef == pytest.approx(-5.0)
 
 
+def test_glm_observed_loss_source_override_adds_y_g_loss() -> None:
+    from data.loader import LOSS_TARGET_COL
+
+    cfg = _cfg("real_data_glm_base", loss_source="observed")
+
+    assert cfg.objective.loss_source == "observed"
+    assert cfg.objective.observed_loss_col == LOSS_TARGET_COL
+    assert cfg.x_fixed is not None
+    assert cfg.state_dim == 19
+    assert cfg.x_fixed.shape == (cfg.n_samples, cfg.state_dim + 1)
+    assert LOSS_TARGET_COL in cfg.x_fixed.columns
+    assert cfg.to_dict()["objective"]["loss_source"] == "observed"
+
+
+def test_invalid_real_data_loss_source_is_rejected() -> None:
+    with pytest.raises(ValueError, match="loss_source"):
+        _cfg("real_data_glm_base", loss_source="historical")
+
+
 def test_xgb_u_coef_override_is_rejected() -> None:
     with pytest.raises(ValueError, match="GLM acceptance"):
         _cfg("real_data_xgb_base", u_coef=-5.0)

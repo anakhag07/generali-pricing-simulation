@@ -89,6 +89,18 @@ def test_load_observed_u_array_uses_row_indices():
     assert u_1.shape == (25,)
 
 
+def test_load_observed_loss_array_uses_row_indices():
+    from data.loader import load_observed_loss_array, sample_csv_row_indices
+
+    row_indices = sample_csv_row_indices("glm", n_rows=25, seed=123)
+    loss_1 = load_observed_loss_array("glm", row_indices=row_indices)
+    loss_2 = load_observed_loss_array("glm", row_indices=row_indices)
+
+    assert np.array_equal(loss_1, loss_2)
+    assert loss_1.shape == (25,)
+    assert np.all(np.isfinite(loss_1))
+
+
 def test_load_model_artifacts_types():
     import sklearn.linear_model
     import xgboost

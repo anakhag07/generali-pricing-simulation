@@ -10,11 +10,13 @@ from data.loader import (
     ACCEPTANCE_STATE_COLS,
     FEATURE_COLS_GLM,
     FEATURE_COLS_XGB,
+    LOSS_TARGET_COL,
     LOSS_FEATURE_COLS,
     PREMIUM_COL,
     extract_glm_u_coef,
     load_mean_observed_acceptance,
     load_model_artifacts,
+    load_observed_loss_array,
     load_x_frame,
     sample_csv_row_indices,
 )
@@ -45,6 +47,7 @@ PolicyKind = Literal["constant", "linear", "softmax", "mlp"]
 FeatureOrder = Literal["linear", "identity", "quadratic", "cubic", "third_order", "quartic", "fourth_order"]
 PolicyPreprocessing = Literal["artifact", "no_pca"]
 ConstraintMode = Literal["none", "trust_constr", "trust-constr", "penalty", "lagrangian"]
+LossSource = Literal["predicted", "observed"]
 
 
 def build_real_data_config(
@@ -54,6 +57,7 @@ def build_real_data_config(
     feature_order: FeatureOrder = "linear",
     policy_preprocessing: PolicyPreprocessing = "artifact",
     constraint_mode: ConstraintMode = "none",
+    loss_source: LossSource = "predicted",
     seed: int = 42,
     n_samples: int = 5000,
     row_indices: np.ndarray | None = None,
@@ -94,6 +98,7 @@ def build_real_data_config(
     """Build a real-data config from model, policy, preprocessing, and constraint axes."""
     model_type = _normalize_model_type(model_type)
     constraint_mode = _normalize_constraint_mode(constraint_mode)
+    loss_source = _normalize_loss_source(loss_source)
     state_dim = len(_feature_cols(model_type))
     acceptance_model, loss_model = load_model_artifacts(model_type)
     if u_coef is not None and model_type != "glm":
@@ -106,6 +111,12 @@ def build_real_data_config(
             row_indices = sample_csv_row_indices(model_type, n_rows=int(n_samples), seed=int(seed))
         x_fixed_arr = load_x_frame(model_type, row_indices=row_indices)
         x_fixed_row_indices_arr = np.asarray(row_indices, dtype=int)
+        if loss_source == "observed":
+            x_fixed_arr = x_fixed_arr.copy()
+            x_fixed_arr[LOSS_TARGET_COL] = load_observed_loss_array(
+                model_type,
+                row_indices=x_fixed_row_indices_arr,
+            )
     else:
         x_fixed_arr = x_fixed.reset_index(drop=True).copy() if hasattr(x_fixed, "iloc") else np.asarray(x_fixed, dtype=object)
         x_fixed_row_indices_arr = (
@@ -113,6 +124,19 @@ def build_real_data_config(
             if x_fixed_row_indices is not None
             else None
         )
+        if loss_source == "observed":
+            if not hasattr(x_fixed_arr, "columns"):
+                raise ValueError("loss_source='observed' requires DataFrame x_fixed or generated real-data rows.")
+            if LOSS_TARGET_COL not in x_fixed_arr.columns:
+                if x_fixed_row_indices_arr is None:
+                    raise ValueError(
+                        "loss_source='observed' requires Y_G_Loss in x_fixed or x_fixed_row_indices to load it."
+                    )
+                x_fixed_arr = x_fixed_arr.copy()
+                x_fixed_arr[LOSS_TARGET_COL] = load_observed_loss_array(
+                    model_type,
+                    row_indices=x_fixed_row_indices_arr,
+                )
 
     policy_preprocessor = None
     policy_feature_cols = None
@@ -175,6 +199,8 @@ def build_real_data_config(
         acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),
         loss_cols=tuple(LOSS_FEATURE_COLS),
         premium_col=PREMIUM_COL,
+        loss_source=loss_source,
+        observed_loss_col=LOSS_TARGET_COL,
         u_coef=effective_u_coef,
         u_bounds=resolved_u_bounds,
         policy_preprocessor=policy_preprocessor,
@@ -244,6 +270,12 @@ def _normalize_constraint_mode(mode: str) -> Literal["none", "trust_constr", "pe
     if mode not in {"none", "trust_constr", "penalty", "lagrangian"}:
         raise ValueError("constraint_mode must be none, trust_constr, penalty, or lagrangian.")
     return mode  # type: ignore[return-value]
+
+
+def _normalize_loss_source(loss_source: str) -> LossSource:
+    if loss_source not in {"predicted", "observed"}:
+        raise ValueError("loss_source must be 'predicted' or 'observed'.")
+    return loss_source  # type: ignore[return-value]
 
 
 def _feature_cols(model_type: ModelType) -> tuple[str, ...]:

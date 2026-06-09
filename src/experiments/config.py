@@ -29,6 +29,23 @@ def _policy_theta_dim_for_objective(objective: object, state_dim: int) -> int | 
     return policy_theta_dim(policy, state_dim)
 
 
+def _x_fixed_frame_matches_state_dim(objective: object, x_fixed_frame: Any, state_dim: int) -> bool:
+    if getattr(objective, "loss_source", "predicted") != "observed":
+        return x_fixed_frame.shape[1] == state_dim
+    if x_fixed_frame.shape[1] == state_dim:
+        return False
+    state_cols = tuple(getattr(objective, "acceptance_state_cols", ()))
+    observed_loss_col = getattr(objective, "observed_loss_col", None)
+    if not state_cols or observed_loss_col is None:
+        return False
+    expected_cols = set(state_cols) | {str(observed_loss_col)}
+    return (
+        len(state_cols) == state_dim
+        and set(x_fixed_frame.columns) == expected_cols
+        and x_fixed_frame.shape[1] == state_dim + 1
+    )
+
+
 @dataclass(frozen=True)
 class CorrectnessSpec:
     """Controls how "true" gradients are computed: exact, numdiff, or none."""
@@ -175,7 +192,7 @@ class ExperimentConfig:
                 x_fixed_frame = self.x_fixed.reset_index(drop=True).copy()
                 if x_fixed_frame.ndim != 2:
                     raise ValueError("x_fixed must be a 2D array/DataFrame of shape (n_rows, state_dim).")
-                if x_fixed_frame.shape[1] != self.state_dim:
+                if not _x_fixed_frame_matches_state_dim(self.objective, x_fixed_frame, self.state_dim):
                     raise ValueError(
                         f"x_fixed has {x_fixed_frame.shape[1]} columns but state_dim={self.state_dim}."
                     )
@@ -438,6 +455,8 @@ def _objective_to_dict(objective: Objective) -> dict[str, Any]:
             "acceptance_state_cols": list(objective.acceptance_state_cols),
             "loss_cols": list(objective.loss_cols),
             "premium_col": objective.premium_col,
+            "loss_source": objective.loss_source,
+            "observed_loss_col": objective.observed_loss_col,
             "u_coef": float(objective.u_coef) if objective.u_coef is not None else None,
             "u_bounds": list(objective.u_bounds) if objective.u_bounds is not None else None,
             "acceptance_floor": float(objective.acceptance_floor)
@@ -560,6 +579,8 @@ def make_model_based_objective(
     acceptance_state_cols: tuple[str, ...],
     loss_cols: tuple[str, ...],
     premium_col: int | str = 9,
+    loss_source: Literal["predicted", "observed"] = "predicted",
+    observed_loss_col: str = "Y_G_Loss",
     u_coef: float | None = None,
     u_bounds: tuple[float, float] | None = None,
     acceptance_floor: float | None = None,
@@ -577,6 +598,8 @@ def make_model_based_objective(
         acceptance_state_cols=acceptance_state_cols,
         loss_cols=loss_cols,
         premium_col=premium_col,
+        loss_source=loss_source,
+        observed_loss_col=observed_loss_col,
         u_coef=u_coef,
         u_bounds=u_bounds,
         acceptance_floor=acceptance_floor,

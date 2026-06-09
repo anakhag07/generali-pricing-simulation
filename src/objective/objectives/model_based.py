@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import time
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
@@ -20,11 +20,12 @@ from objective.utils import _theta_grad_from_u_grad
 class ModelBasedObjective(Objective):
     r"""Pricing objective backed by trained ML models.
 
-    $$f(u; x) = a(x,u) \cdot (\hat{Y}(x) - (u + 1) \cdot p(x))$$
+    $$f(u; x) = a(x,u) \cdot (L(x) - (u + 1) \cdot p(x))$$
 
     where $$a(x,u)$$ is acceptance derived from the bundled acceptance classifier,
-    $$\hat{Y}(x)$$ is the expected financial loss (LinearRegression or XGBRegressor),
-    and $$p(x)$$ is the policy premium extracted from column ``premium_col`` of x.
+    $$L(x)$$ is the loss term (LinearRegression/XGBRegressor prediction,
+    or observed ``Y_G_Loss`` when ``loss_source="observed"``), and $$p(x)$$ is
+    the policy premium extracted from column ``premium_col`` of x.
     The policy output ``u`` stays centered at 0, so ``u = 0`` means the baseline
     premium multiplier and revenue uses ``(u + 1) * p(x)``.
 
@@ -54,6 +55,8 @@ class ModelBasedObjective(Objective):
     acceptance_state_cols: tuple[str, ...]
     loss_cols: tuple[str, ...]
     premium_col: int | str = "X_policy_premium"
+    loss_source: Literal["predicted", "observed"] = "predicted"
+    observed_loss_col: str = "Y_G_Loss"
     u_coef: float | None = None
     u_bounds: tuple[float, float] | None = None
     acceptance_floor: float | None = None
@@ -69,6 +72,11 @@ class ModelBasedObjective(Objective):
         compare=False,
         repr=False,
     )
+
+    def __post_init__(self) -> None:
+        if self.loss_source not in {"predicted", "observed"}:
+            raise ValueError("loss_source must be 'predicted' or 'observed'.")
+        object.__setattr__(self, "observed_loss_col", str(self.observed_loss_col))
 
     def _clip_u(self, u: np.ndarray) -> np.ndarray:
         """Clip u to bounds if set."""
@@ -125,6 +133,19 @@ class ModelBasedObjective(Objective):
                 raise ValueError(f"Missing premium column '{self.premium_col}' in x_batch.")
             return frame[self.premium_col].to_numpy(dtype=float)
         return frame.iloc[:, int(self.premium_col)].to_numpy(dtype=float)
+
+    def _observed_loss_values(self, x_batch: Any) -> np.ndarray:
+        frame = self._x_frame(x_batch)
+        if self.observed_loss_col not in frame.columns:
+            raise ValueError(
+                f"loss_source='observed' requires column '{self.observed_loss_col}' in x_batch."
+            )
+        loss = frame[self.observed_loss_col].to_numpy(dtype=float)
+        if loss.shape != (self._row_count(x_batch),):
+            raise ValueError("Observed loss values must have one value per x_batch row.")
+        if not np.isfinite(loss).all():
+            raise ValueError("Observed loss values must be finite.")
+        return loss
 
     def value(self, theta: np.ndarray, x_batch: np.ndarray) -> float:
         """Compute mean objective value across batch."""
@@ -434,7 +455,10 @@ class ModelBasedObjective(Objective):
         return 1.0 - class1
 
     def _loss_prediction(self, x_batch: Any) -> np.ndarray:
-        """Call loss model on loss_cols subset of x_batch. Returns shape (n,)."""
+        """Return loss-model predictions or observed losses. Returns shape (n,)."""
+        if self.loss_source == "observed":
+            self._record_eval("observed_loss_calls", self._row_count(x_batch))
+            return self._observed_loss_values(x_batch)
         key = self._cache_key("loss_prediction", x_batch)
         cached = self._cache.get(key)
         if cached is not None:

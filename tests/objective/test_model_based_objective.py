@@ -93,6 +93,29 @@ def test_glm_analytical_acceptance_matches_sklearn_predict_proba() -> None:
     np.testing.assert_allclose(fast_acceptance, slow_acceptance, rtol=1e-10, atol=1e-10)
 
 
+def test_observed_loss_source_uses_y_g_loss_column() -> None:
+    from data.loader import LOSS_TARGET_COL, PREMIUM_COL
+
+    obj, x, _ = _make_glm_objective(n_rows=5)
+    observed_loss = np.linspace(100.0, 500.0, num=x.shape[0], dtype=float)
+    x_observed = x.copy()
+    x_observed[LOSS_TARGET_COL] = observed_loss
+    observed_obj = replace(
+        obj,
+        loss_source="observed",
+        observed_loss_col=LOSS_TARGET_COL,
+    )
+    u_values = np.zeros(x_observed.shape[0], dtype=float)
+
+    np.testing.assert_allclose(observed_obj._loss_prediction(x_observed), observed_loss)
+    expected = np.mean(
+        observed_obj._acceptance_proba(x_observed, u_values)
+        * (observed_loss - x_observed[PREMIUM_COL].to_numpy(dtype=float))
+    )
+
+    assert observed_obj.value_at_u(x_observed, 0.0) == pytest.approx(float(expected))
+
+
 def test_glm_analytical_loss_matches_sklearn_predict() -> None:
     obj, x, _ = _make_glm_objective(n_rows=25)
 

@@ -29,6 +29,7 @@ RUN_CONFIGS: list[str | tuple[str, dict[str, Any]]] = [
             "t_steps": 100,
             "enabled_estimators": ("first_order", "finite_difference", "stein_difference"),
             "wandb_enabled": False,
+            # "loss_source": "observed",
         },
     )
 ]

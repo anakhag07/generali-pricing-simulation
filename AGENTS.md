@@ -198,6 +198,7 @@ Guidelines:
   - `LOSS_FEATURE_COLS`: 18 raw X cols passed to loss artifacts before fitted preprocessing; excludes `X_policy_premium`
   - `dataset_csv_path()`: returns the canonical real-data source CSV path
   - `dataset_column_roles()`: reports used X cols, excluded lookahead X cols, target/action cols, and objective-excluded cols
+  - `eligible_csv_row_indices(model_type)`: returns all complete eligible canonical dataset CSV row positions for full-row real-data bucket experiments
   - `sample_csv_row_indices(model_type, n_rows, seed)`: samples complete eligible canonical dataset CSV row positions without replacement for real-data configs
   - `load_x_frame(model_type, n_rows=5000, row_indices=None, seed=None)`: loads raw X covariates as a DataFrame, preserving categorical strings for artifact preprocessing
   - `load_x_array(...)`: compatibility wrapper returning the raw X frame as an object array; prefer `load_x_frame` for real-data configs
@@ -287,6 +288,13 @@ Guidelines:
   - `generate_sweep_runs(...)`: expands a base preset into named sweep variants; real-data override grids may include factory axes such as `policy_kind` and `constraint_mode`
   - `run_preset_sweep(...)`: executes sweep variants through the standard reporter pipeline
 
+- **`src/experiments/sensitivity_buckets.py`**
+  - `median_observed_u(...)`: computes the median historical `U` over complete eligible rows
+  - `glm_price_sensitivity_scores(...)`: scores rows by local GLM acceptance sensitivity $$|d p_{accept}(x, u_{ref}) / du|$$
+  - `glm_price_derivative_matrix(...)`: vectorized customer-by-`u` signed GLM derivative matrix $$d p_{accept}(x, u) / du$$
+  - `glm_price_sensitivity_matrix(...)`: vectorized customer-by-`u` GLM sensitivity matrix for action-grid diagnostics
+  - `split_sensitivity_tertiles(...)`, `build_glm_sensitivity_buckets(...)`: split eligible rows into low/medium/high sensitivity buckets for bucketed real-data experiments
+
 - **`src/experiments/policy_pca_grid.py`**
   - `PolicyPcaGridSpec`: configuration for the unconstrained GLM policy PCA-dimensionality grid
   - `run_policy_pca_grid(...)`: runs `pca_dim x policy_class x seed` conditions with configurable policy-side preprocessing while preserving raw-`x` black-box calls; policy classes include constant, linear/quadratic/third/fourth-order `LinearPolicy`, matching `SoftmaxPolicy` variants, and MLP
@@ -335,6 +343,9 @@ Guidelines:
 - `scripts/run_lagrangian_sweep.py` runs a lagrangian-lambda sweep and writes aggregate frontier plots under `outputs/<project>/lagrangian_frontier_<timestamp>/`
 - `scripts/run_acceptance_floor_sweep.py` runs the trust-constrained softmax GLM preset over a dense acceptance-floor grid `c` and writes aggregate frontier plots under `outputs/<project>/acceptance_floor_frontier_<timestamp>/`
 - `scripts/run_glm_u_coef_sweep.py` runs the softmax/no-PCA/trust-constr GLM setup over 200000 sampled rows and `u_coef in {-4, -5, -8, -10, -20}`, keeps per-run distribution plots enabled, and writes aggregate `glm_u_coef_sweep.csv` plus frontier plots under `outputs/glm-u-coef-sweep/u_coef_frontier_<timestamp>/`
+- `scripts/run_glm_sensitivity_bucket_experiment.py` buckets all complete eligible GLM rows into low/medium/high local price-sensitivity tertiles at median observed `U`, runs the softmax/no-PCA/trust-constr GLM setup on every row in each bucket, keeps per-run distribution plots enabled, and writes aggregate `glm_sensitivity_bucket_experiment.csv` plus comparison plots under `outputs/glm-sensitivity-buckets/sensitivity_bucket_summary_<timestamp>/`
+- `scripts/run_glm_reference_elasticity_bucket_experiment.py` repeats the GLM bucket experiment for reference actions `u_ref in {-0.1, 0.1, 0.2, 0.3}`, ranks rows by elasticity magnitude at each reference action, runs only `first_order`, annotates summary charts with average bucket elasticity magnitude, and writes per-reference summaries under `outputs/glm-reference-elasticity-buckets/`
+- `scripts/plot_glm_sensitivity_distribution.py` computes GLM customer elasticities $$d p_{accept}(x, u) / du$$ over a default `u in [-0.3, 0.3]` grid, writes a mean/quantile elasticity-by-`u` curve, selected-`u` elasticity histograms for `{-0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3}` with default `0.5-99.5%` x-axis clipping marked, and CSV summaries under `outputs/glm-sensitivity-distribution/`
 - `scripts/plot_saved_acceptance_floor_frontier.py` re-plots acceptance-floor Pareto frontiers from a saved `acceptance_floor_sweep.csv` (or the latest matching frontier directory) without rerunning optimization; defaults to `first_order` and writes estimator-suffixed Pareto PNGs
 - `scripts/query_acceptance_at_u.py` loads a config preset or default GLM/XGB model type and reports mean acceptance for supplied or evenly sampled constant `u` values without running optimization; writes acceptance-curve and historical-`U` rug plots under `outputs/acceptance_queries/` by default and optionally writes `u,n,mean_acceptance` CSV output
 - `scripts/plot_pc_outcome_diagnostics.py` reads a saved run `summary.json`, rebuilds a real-data base preset objective with optional policy/preprocessing override flags, and writes processed-policy-component scatter diagnostics against final `f_acc`, loss, and `u`; defaults beside the summary under `pc_outcome_diagnostics/<estimator>/`
@@ -419,6 +430,10 @@ when appropriate.
 | `test_baseline_test.py` | End-to-end smoke test with fixed_regression_base overrides |
 | `test_run_context.py` | default output directory and run context paths |
 | `test_sweep_utils.py` | Override-grid expansion and preset sweep config generation |
+| `test_sensitivity_buckets.py` | GLM local price-sensitivity scoring and tertile construction |
+| `test_sensitivity_bucket_script.py` | Sensitivity bucket experiment script constants and summaries |
+| `test_plot_glm_sensitivity_distribution_script.py` | GLM elasticity distribution script summaries and plot outputs |
+| `test_reference_elasticity_bucket_script.py` | Reference-u GLM elasticity bucket script constants and plot outputs |
 | `test_policy_pca_grid.py` | Policy PCA grid condition construction and aggregate output writing |
 
 #### `tests/reporting/`

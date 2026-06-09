@@ -15,6 +15,16 @@ from experiments.reporters import (
 )
 from experiments.results import EstimatorResult, ExperimentResult, OptimizationTrace
 from experiments.run import run_experiment
+from experiments.sensitivity_buckets import (
+    SENSITIVITY_BUCKETS,
+    SensitivityBucket,
+    build_glm_sensitivity_buckets,
+    glm_price_derivative_matrix,
+    glm_price_sensitivity_matrix,
+    glm_price_sensitivity_scores,
+    median_observed_u,
+    split_sensitivity_tertiles,
+)
 from experiments.sweep_utils import (
     apply_config_overrides,
     expand_override_grid,
@@ -41,6 +51,14 @@ __all__ = [
     "StepReporter",
     "create_run_context",
     "run_experiment",
+    "SENSITIVITY_BUCKETS",
+    "SensitivityBucket",
+    "build_glm_sensitivity_buckets",
+    "glm_price_derivative_matrix",
+    "glm_price_sensitivity_matrix",
+    "glm_price_sensitivity_scores",
+    "median_observed_u",
+    "split_sensitivity_tertiles",
     "expand_override_grid",
     "apply_config_overrides",
     "make_sweep_name",

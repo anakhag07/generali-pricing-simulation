@@ -172,6 +172,48 @@ Acceptance derivative:
 - **Legacy churn artifacts (analytical):** $\frac{\partial a}{\partial u} = -a(1-a)\;\beta_u^{\text{eff}}$
 - **XGBoost (numerical):** central FD with $\epsilon = 10^{-4}$
 
+**Local price-sensitivity bucket score:**
+
+For GLM sensitivity-bucket experiments, customers are ranked by local acceptance
+sensitivity at the median observed historical action $$u_{ref}$$:
+
+$$s_i = \left|\frac{\partial a(x_i, u_{ref})}{\partial u}\right| = |\beta_u^{\text{eff}}|\,a_i(1-a_i), \quad a_i = a(x_i, u_{ref})$$
+
+Rows are split into low/medium/high tertiles by $$s_i$$. With no explicit
+interaction terms between `U` and `X`, heterogeneity in this score comes from
+where each customer sits on the logistic acceptance curve.
+
+**Elasticity distribution over action values:**
+
+For GLM elasticity-distribution diagnostics, elasticity is the signed local
+acceptance derivative with respect to the centered action. The customer-by-action
+matrix is
+
+$$D_{ij} = \frac{\partial a(x_i, u_j)}{\partial u}$$
+
+For direct-acceptance GLM artifacts,
+
+$$D_{ij} = \beta_u^{\text{eff}}\,a_{ij}(1-a_{ij}), \quad a_{ij} = a(x_i, u_j)$$
+
+For legacy churn-probability artifacts, the sign flips because
+$$a = 1 - p_{churn}$$:
+
+$$D_{ij} = -\beta_u^{\text{eff}}\,a_{ij}(1-a_{ij})$$
+
+For bucket construction only, the absolute sensitivity score matrix is
+
+$$S_{ij} = \left|\frac{\partial a(x_i, u_j)}{\partial u}\right| = |\beta_u^{\text{eff}}|\,a_{ij}(1-a_{ij}), \quad a_{ij} = a(x_i, u_j)$$
+
+The plotted average elasticity curve summarizes customers within each action
+bin using signed derivatives:
+
+$$\bar{D}(u_j) = \frac{1}{n}\sum_{i=1}^n D_{ij}$$
+
+Selected fixed actions show the empirical cross-customer distribution of signed
+$$D_{ij}$$ as histograms. Histogram x-axes are clipped for display by default at
+the `0.5` and `99.5` percentiles and those clipping thresholds are marked on the
+chart; CSV summaries retain the unclipped values.
+
 **Acceptance penalty** (smooth floor enforcement):
 
 $$\text{penalty} = w \cdot \bigl[\tau\,\log(1 + e^{g/\tau})\bigr]^2$$
@@ -186,6 +228,7 @@ $$\frac{\partial\,\text{penalty}}{\partial\,\bar{a}} = -2w\,\text{softplus}(g/\t
   - `_grad_u_batch()` — per-sample $\partial f/\partial u$
   - `_d_acceptance_du_batch()` — analytical or FD acceptance derivative
   - `_acceptance_penalty()` — penalty value and gradient scale
+- **Source:** `src/experiments/sensitivity_buckets.py` :: `glm_price_derivative_matrix()`, `glm_price_sensitivity_scores()`, `glm_price_sensitivity_matrix()`, `split_sensitivity_tertiles()`
 
 **Lagrangian scalarization** (lambda sweep path):
 

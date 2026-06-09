@@ -142,11 +142,12 @@ $$\frac{\partial L}{\partial u} = \alpha\,\bigl(\sigma(z) - p^*(x)\bigr)$$
 
 ### 3.3 Model-Based Objective
 
-$$f(u;\, x) = a(x, u)\,\bigl(\hat{Y}(x) - (u + 1)\, p(x)\bigr)$$
+$$f(u;\, x) = a(x, u)\,\bigl(L(x) - (u + 1)\, p(x)\bigr)$$
 
 where:
 - $a(x, u) = p_{\text{accept}}(x, u)$ — acceptance from trained classifier
-- $\hat{Y}(x)$ — expected financial loss (LinearRegression or XGBRegressor)
+- $L(x)$ — loss term; by default $L(x)=\hat{Y}(x)$ from the loss model, while
+  real-data configs with `loss_source="observed"` use $L(x)=Y_G_Loss$
 - $p(x)$ — policy premium extracted from state column `premium_col`
 - $(u + 1)\, p(x)$ — revenue (centered: $u = 0$ is baseline multiplier)
 
@@ -161,11 +162,13 @@ where $$z_{\text{acc}}$$ and $$z_{\text{loss}}$$ are the artifact-preprocessed m
 features. By default $$\beta_u^{\text{eff}}$$ is the extracted artifact coefficient;
 GLM real-data configs may override it with `u_coef` for counterfactual acceptance
 sensitivity sweeps. If coefficients cannot be extracted, the objective falls back
-to the bundled estimator's `predict_proba` / `predict` methods.
+to the bundled estimator's `predict_proba` / `predict` methods. In observed-loss
+mode the loss-model path is bypassed and `Y_G_Loss` must be present in the
+real-data batch.
 
 **Gradient w.r.t. $u$:**
 
-$$\frac{\partial f}{\partial u} = \frac{\partial a}{\partial u}\,(\hat{Y} - (u+1)\,p) - a\, p$$
+$$\frac{\partial f}{\partial u} = \frac{\partial a}{\partial u}\,(L - (u+1)\,p) - a\, p$$
 
 Acceptance derivative:
 - **GLM direct acceptance (analytical):** $\frac{\partial a}{\partial u} = a(1-a)\;\beta_u^{\text{eff}}$

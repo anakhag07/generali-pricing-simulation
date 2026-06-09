@@ -94,8 +94,8 @@ Real-data experiments use a small set of base presets plus overrides:
 | `real_data_glm_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, analytical grad when supported) |
 | `real_data_xgb_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, FD acceptance gradient) |
 
-Real-data overrides can select policy, feature order, preprocessing, constraint
-mode, and runtime knobs without adding a new preset module. Example:
+Real-data overrides can select policy, feature order, preprocessing, loss source,
+constraint mode, and runtime knobs without adding a new preset module. Example:
 
 ```python
 config = get_config(
@@ -104,6 +104,7 @@ config = get_config(
         "policy_kind": "softmax",
         "feature_order": "quartic",
         "policy_preprocessing": "no_pca",
+        "loss_source": "observed",
         "constraint_mode": "trust_constr",
         "enabled_estimators": ("first_order", "constant"),
     },
@@ -113,13 +114,16 @@ config = get_config(
 Supported policy axes are `policy_kind in {"constant", "linear", "softmax",
 "mlp"}`, `feature_order in {"linear", "quadratic", "cubic", "quartic"}`,
 `policy_preprocessing in {"artifact", "no_pca"}`, and `constraint_mode in
-{"none", "trust_constr", "penalty", "lagrangian"}`. GLM real-data runs also
-accept a `u_coef` override for counterfactual acceptance sensitivity sweeps; it
-changes only the logistic acceptance coefficient on generated policy `u`, not
-the linear loss model.
+{"none", "trust_constr", "penalty", "lagrangian"}`. `loss_source` defaults to
+`"predicted"`; setting `loss_source="observed"` keeps model-predicted acceptance
+but uses row-aligned historical `Y_G_Loss` as the loss term. GLM real-data runs
+also accept a `u_coef` override for counterfactual acceptance sensitivity sweeps;
+it changes only the logistic acceptance coefficient on generated policy `u`, not
+the loss term.
 
-The objective for real-data configs is $$f(u; x) = a(x,u)(\hat{Y}(x) - (u + 1) \cdot p(x))$$
-where $$a$$ is acceptance probability, $$\hat{Y}$$ is expected financial loss, and $$p$$ is policy premium.
+The objective for real-data configs is $$f(u; x) = a(x,u)(L(x) - (u + 1) \cdot p(x))$$
+where $$a$$ is acceptance probability, $$L$$ is either expected financial loss
+$$\hat{Y}$$ or observed `Y_G_Loss`, and $$p$$ is policy premium.
 
 Real-data source rows now live in the canonical `src/data/dataset.csv` file,
 with schema/path metadata tracked in `src/data/dataset_metadata.py`. The current

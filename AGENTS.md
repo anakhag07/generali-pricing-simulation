@@ -145,6 +145,7 @@ Guidelines:
   - Caches policy features, GLM base logits, and loss predictions for repeated fixed `x_batch` arrays; final acceptance probabilities are not cached because they depend on `u`
   - `eval_counts()` also reports prediction/objective timing counters and cache hit/miss counters for performance diagnostics
   - `u_coef` sets the effective GLM acceptance coefficient on generated `U` for both values and analytical gradients; `None` uses the artifact coefficient or central FD for unsupported artifacts
+  - `loss_source="observed"` keeps model-predicted acceptance but replaces the loss-model prediction with row-aligned historical `Y_G_Loss` carried on the real-data `x_fixed` DataFrame
   - `value()`, `grad()`, `value_at_u()`
 
 - **`src/objective/objectives/planted_logistic.py`**
@@ -203,6 +204,7 @@ Guidelines:
   - `load_x_frame(model_type, n_rows=5000, row_indices=None, seed=None)`: loads raw X covariates as a DataFrame, preserving categorical strings for artifact preprocessing
   - `load_x_array(...)`: compatibility wrapper returning the raw X frame as an object array; prefer `load_x_frame` for real-data configs
   - `load_observed_u_array(model_type, n_rows=5000, row_indices=None, seed=None)`: loads observed pricing multipliers from sampled canonical dataset rows for diagnostics and plots
+  - `load_observed_loss_array(model_type, n_rows=5000, row_indices=None, seed=None)`: loads observed historical `Y_G_Loss` from sampled canonical dataset rows for observed-loss real-data objectives
   - `load_mean_observed_acceptance(model_type)`: computes `1 - is_churn` over complete eligible rows
   - `load_model_artifacts(model_type)`: loads first-fold `(acceptance_artifact, loss_artifact)` bundles from the 052726 CV dictionaries under `src/data/models/linear/` or `src/data/models/xgb/`
   - `ModelArtifactBundle.model_frame(raw_frame)`: converts raw notebook-space columns into the exact model-input frame expected by the bundled estimator
@@ -257,6 +259,7 @@ Guidelines:
 - **`src/experiments/configs/`** (preset registry)
   - `__init__.py`: `get_config(name, overrides=None)` and `list_configs()` registry; real-data configs are exposed only as base presets plus overrides
   - `real_data_factory.py`: `build_real_data_config(...)` centralizes GLM/XGB artifact loading, row sampling, policy construction, feature-order overrides, policy-side no-PCA preprocessing, GLM-only `u_coef` acceptance overrides, acceptance-floor modes, estimator defaults, and theta initialization
+    - `loss_source="observed"` is an override axis that appends `Y_G_Loss` to the fixed real-data frame and configures `ModelBasedObjective` to use it as the loss term; default `"predicted"` keeps the artifact loss model
   - `first_order_runs_diff_starts.py`: planted-logistic preset configured for comparison runs across different initial starts
   - `fixed_regression_base.py`: base fixed-regression config (4D, L-BFGS-B step rule, W&B enabled)
   - `planted_logistic_base.py`: planted logistic base config (3D, L-BFGS-B step rule, 5000 steps, u*=1.1)

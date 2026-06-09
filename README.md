@@ -211,6 +211,13 @@ writes per-bucket policy distribution plots under `outputs/glm-sensitivity-bucke
 and an aggregate `glm_sensitivity_bucket_experiment.csv` plus comparison plots
 under `sensitivity_bucket_summary_<timestamp>/`.
 
+`scripts/run_glm_reference_elasticity_bucket_experiment.py` repeats the bucketed
+GLM experiment for reference actions `u_ref in {-0.1, 0.1, 0.2, 0.3}`, ranking
+customers into low/medium/high buckets by elasticity magnitude at each reference
+action. It runs only `first_order`, annotates summary charts with average bucket
+elasticity magnitude, and writes per-reference summaries under
+`outputs/glm-reference-elasticity-buckets/`.
+
 `scripts/plot_glm_sensitivity_distribution.py` computes GLM customer
 elasticities `d p_accept / du` across a default `u in [-0.3, 0.3]` grid. It
 writes a mean/quantile elasticity-by-`u` curve, selected-`u` customer elasticity

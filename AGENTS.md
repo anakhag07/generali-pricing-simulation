@@ -344,6 +344,7 @@ Guidelines:
 - `scripts/run_acceptance_floor_sweep.py` runs the trust-constrained softmax GLM preset over a dense acceptance-floor grid `c` and writes aggregate frontier plots under `outputs/<project>/acceptance_floor_frontier_<timestamp>/`
 - `scripts/run_glm_u_coef_sweep.py` runs the softmax/no-PCA/trust-constr GLM setup over 200000 sampled rows and `u_coef in {-4, -5, -8, -10, -20}`, keeps per-run distribution plots enabled, and writes aggregate `glm_u_coef_sweep.csv` plus frontier plots under `outputs/glm-u-coef-sweep/u_coef_frontier_<timestamp>/`
 - `scripts/run_glm_sensitivity_bucket_experiment.py` buckets all complete eligible GLM rows into low/medium/high local price-sensitivity tertiles at median observed `U`, runs the softmax/no-PCA/trust-constr GLM setup on every row in each bucket, keeps per-run distribution plots enabled, and writes aggregate `glm_sensitivity_bucket_experiment.csv` plus comparison plots under `outputs/glm-sensitivity-buckets/sensitivity_bucket_summary_<timestamp>/`
+- `scripts/run_glm_reference_elasticity_bucket_experiment.py` repeats the GLM bucket experiment for reference actions `u_ref in {-0.1, 0.1, 0.2, 0.3}`, ranks rows by elasticity magnitude at each reference action, runs only `first_order`, annotates summary charts with average bucket elasticity magnitude, and writes per-reference summaries under `outputs/glm-reference-elasticity-buckets/`
 - `scripts/plot_glm_sensitivity_distribution.py` computes GLM customer elasticities $$d p_{accept}(x, u) / du$$ over a default `u in [-0.3, 0.3]` grid, writes a mean/quantile elasticity-by-`u` curve, selected-`u` elasticity histograms for `{-0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3}` with default `0.5-99.5%` x-axis clipping marked, and CSV summaries under `outputs/glm-sensitivity-distribution/`
 - `scripts/plot_saved_acceptance_floor_frontier.py` re-plots acceptance-floor Pareto frontiers from a saved `acceptance_floor_sweep.csv` (or the latest matching frontier directory) without rerunning optimization; defaults to `first_order` and writes estimator-suffixed Pareto PNGs
 - `scripts/query_acceptance_at_u.py` loads a config preset or default GLM/XGB model type and reports mean acceptance for supplied or evenly sampled constant `u` values without running optimization; writes acceptance-curve and historical-`U` rug plots under `outputs/acceptance_queries/` by default and optionally writes `u,n,mean_acceptance` CSV output
@@ -432,6 +433,7 @@ when appropriate.
 | `test_sensitivity_buckets.py` | GLM local price-sensitivity scoring and tertile construction |
 | `test_sensitivity_bucket_script.py` | Sensitivity bucket experiment script constants and summaries |
 | `test_plot_glm_sensitivity_distribution_script.py` | GLM elasticity distribution script summaries and plot outputs |
+| `test_reference_elasticity_bucket_script.py` | Reference-u GLM elasticity bucket script constants and plot outputs |
 | `test_policy_pca_grid.py` | Policy PCA grid condition construction and aggregate output writing |
 
 #### `tests/reporting/`

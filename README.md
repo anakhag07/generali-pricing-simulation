@@ -300,6 +300,22 @@ This writes scatter grids for processed components vs `f_acc`, loss, and final
 `u`, plus `u_vs_acceptance.png` and `pc_diagnostic_correlations.csv` beside the
 run summary by default.
 
+To evaluate a saved final policy under actual historical acceptance and observed
+loss, use:
+
+```bash
+python scripts/evaluate_historical_policy_objective.py \
+  --summary-json outputs/real_data_glm_base/<run_id>/summary.json \
+  --estimator first_order
+```
+
+The script reconstructs the saved real-data row sample from the run seed and
+`n_samples`, computes final policy prices from the saved theta, and evaluates
+`(1 - is_churn) * (Y_G_Loss - (u_policy + 1) * X_policy_premium)`. It prints the
+theta used for manual verification and writes aggregate `summary.json` plus
+row-level `per_row.csv` under `historical_policy_objective/<estimator>/` beside
+the input summary by default.
+
 ## Creating Config Presets
 
 Prefer adding real-data variants through `get_config(..., overrides={...})`

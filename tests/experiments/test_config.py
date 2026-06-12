@@ -157,6 +157,29 @@ def test_config_accepts_quadratic_policy_theta_dim() -> None:
     assert config.theta0.shape == (policy.theta_dim(state_dim),)
 
 
+def test_softmax_policy_action_bounds_are_serialized() -> None:
+    policy = SoftmaxPolicy(action_low=-0.1, action_high=0.2)
+    objective = FixedRegressionObjective.from_parameters(
+        policy=policy,
+        beta_1=[0.1],
+        beta_2=-0.5,
+        beta_3=[0.2],
+        beta_4=0.4,
+    )
+    config = ExperimentConfig(
+        state_dim=1,
+        objective=objective,
+        theta0=default_theta0(1, policy),
+        n_samples=5,
+        step_rule="constant",
+        perturbation_space="theta",
+    )
+
+    payload = config.to_dict()["objective"]["policy"]
+    assert payload["action_low"] == -0.1
+    assert payload["action_high"] == 0.2
+
+
 def test_config_rejects_old_theta_dim_for_quadratic_policy() -> None:
     policy = SoftmaxPolicy(feature_map=QuadraticFeatureMap())
     objective = FixedRegressionObjective.from_parameters(

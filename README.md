@@ -44,7 +44,10 @@ Pluggable components:
 - **Gradient estimators**: `constant`, `first_order`, `finite_difference`, `gauss_stein`, `stein_difference`, `spsa`
 
 The default bounded policy is `SoftmaxPolicy`, which maps
-`u = 0.5 - sigma(theta^T phi(x))`, so its action range is `(-0.5, 0.5)`.
+`u = action_low + (action_high - action_low) * sigma(theta^T phi(x))`.
+The default action range is `(-0.5, 0.5)`; pass custom bounds such as
+`SoftmaxPolicy(action_low=-0.1, action_high=0.2)` or the real-data override
+`softmax_action_bounds=(-0.1, 0.2)` to restrict proposed actions.
 `LinearPolicy` and `SoftmaxPolicy` support configurable state feature maps
 `varphi(x)`. The policy prepends the intercept internally, so
 `phi(x) = [1, varphi(x)]` and custom feature maps should not include the
@@ -102,6 +105,8 @@ config = get_config(
     "real_data_glm_base",
     overrides={
         "policy_kind": "softmax",
+        "softmax_action_bounds": (-0.1, 0.2),
+        "initial_u": 0.0,
         "feature_order": "quartic",
         "policy_preprocessing": "no_pca",
         "loss_source": "observed",
@@ -114,7 +119,8 @@ config = get_config(
 Supported policy axes are `policy_kind in {"constant", "linear", "softmax",
 "mlp"}`, `feature_order in {"linear", "quadratic", "cubic", "quartic"}`,
 `policy_preprocessing in {"artifact", "no_pca"}`, and `constraint_mode in
-{"none", "trust_constr", "penalty", "lagrangian"}`. `loss_source` defaults to
+{"none", "trust_constr", "penalty", "lagrangian"}`. Softmax real-data runs also
+accept `softmax_action_bounds=(low, high)`. `loss_source` defaults to
 `"predicted"`; setting `loss_source="observed"` keeps model-predicted acceptance
 but uses row-aligned historical `Y_G_Loss` as the loss term. GLM real-data runs
 also accept a `u_coef` override for counterfactual acceptance sensitivity sweeps;
@@ -227,6 +233,13 @@ elasticities `d p_accept / du` across a default `u in [-0.3, 0.3]` grid. It
 writes a mean/quantile elasticity-by-`u` curve, selected-`u` customer elasticity
 histograms with default `0.5-99.5%` x-axis clipping marked on the chart, and CSV
 summaries under `outputs/glm-sensitivity-distribution/`.
+
+`scripts/diagnose_low_sensitivity_policy_acceptance.py` rebuilds the GLM
+sensitivity buckets, applies a saved softmax theta to selected bucket rows, and
+writes row-level policy-score / acceptance-logit diagnostics plus processed
+policy-feature and GLM acceptance-feature columns. Use `--bucket low medium high`
+or `--bucket all` to compare buckets; outputs go under
+`outputs/low-sensitivity-policy-acceptance-diagnostics/` by default.
 
 If you already have saved acceptance-floor sweep outputs and only want the
 Pareto frontier for one estimator without rerunning optimization, use

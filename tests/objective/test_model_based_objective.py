@@ -88,7 +88,7 @@ def test_glm_analytical_acceptance_matches_sklearn_predict_proba() -> None:
     u_arr = np.linspace(-0.25, 0.25, x.shape[0], dtype=float)
 
     fast_acceptance = obj._acceptance_proba(x, u_arr)
-    slow_acceptance = obj._churn_proba(x, u_arr)
+    slow_acceptance = obj._acceptance_model_class1_proba(x, u_arr)
 
     np.testing.assert_allclose(fast_acceptance, slow_acceptance, rtol=1e-10, atol=1e-10)
 

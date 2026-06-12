@@ -478,7 +478,7 @@ def extract_glm_u_coef(glm_pipeline: Any) -> float:
     raise ValueError("Could not find a StandardScaler containing 'U' in the GLM pipeline preprocessor.")
 
 
-def extract_glm_churn_coefficients(glm_pipeline: Any) -> dict[str, Any]:
+def extract_glm_acceptance_coefficients(glm_pipeline: Any) -> dict[str, Any]:
     """Extract processed-space acceptance coefficients from a fitted GLM artifact."""
     model = unwrap_model_artifact(glm_pipeline)
     if hasattr(model, "coef_") and hasattr(model, "intercept_") and hasattr(model, "feature_names_in_"):
@@ -541,7 +541,7 @@ def extract_linear_loss_coefficients(linear_model: Any) -> dict[str, Any]:
 def extract_model_based_coefficients(acceptance_model: Any, loss_model: Any) -> dict[str, dict[str, Any]] | None:
     """Extract printable coefficient summaries for supported model-based artifacts."""
     try:
-        acceptance = extract_glm_churn_coefficients(acceptance_model)
+        acceptance = extract_glm_acceptance_coefficients(acceptance_model)
         loss = extract_linear_loss_coefficients(loss_model)
     except (AttributeError, KeyError, TypeError, ValueError):
         return None
@@ -567,7 +567,7 @@ __all__ = [
     "load_mean_observed_acceptance",
     "unwrap_model_artifact",
     "extract_glm_u_coef",
-    "extract_glm_churn_coefficients",
+    "extract_glm_acceptance_coefficients",
     "extract_linear_loss_coefficients",
     "extract_model_based_coefficients",
 ]

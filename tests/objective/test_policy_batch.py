@@ -45,6 +45,29 @@ def test_softmax_policy_value_range() -> None:
     assert np.all(result < 0.5)
 
 
+def test_softmax_policy_custom_action_bounds() -> None:
+    """Test that SoftmaxPolicy supports custom open action bounds."""
+    x_array = np.random.default_rng(20).normal(size=(10, 3))
+    theta = np.array([0.1, -0.3, 0.5, -0.2], dtype=float)
+    policy = SoftmaxPolicy(action_low=-0.1, action_high=0.2)
+
+    result = policy.value(theta, x_array)
+    midpoint = policy.value(np.zeros_like(theta), x_array)
+
+    assert result.shape == (10,)
+    assert np.all(result > -0.1)
+    assert np.all(result < 0.2)
+    np.testing.assert_allclose(midpoint, 0.05)
+
+
+def test_softmax_policy_rejects_invalid_action_bounds() -> None:
+    with pytest.raises(ValueError, match="action_low < action_high"):
+        SoftmaxPolicy(action_low=0.2, action_high=-0.1)
+
+    with pytest.raises(ValueError, match="finite"):
+        SoftmaxPolicy(action_low=-0.1, action_high=np.inf)
+
+
 def test_constant_policy_grad_shape() -> None:
     """Test that ConstantPolicy.grad returns correct shape."""
     x_array = np.random.default_rng(3).normal(size=(5, 3))
@@ -79,7 +102,7 @@ def test_softmax_policy_grad_matches_closed_form() -> None:
     theta = np.zeros(3, dtype=float)
 
     result = SoftmaxPolicy().grad(theta, x_array)
-    expected = np.array([[-0.25, -0.25, 0.5]], dtype=float)
+    expected = np.array([[0.25, 0.25, -0.5]], dtype=float)
 
     assert np.allclose(result, expected)
 
@@ -113,7 +136,7 @@ def test_softmax_policy_with_quadratic_feature_map_grad_matches_closed_form() ->
     features = np.array([[1.0, 2.0, -1.0, 4.0, -2.0, 1.0]], dtype=float)
     z = float((features @ theta)[0])
     sigma = 1.0 / (1.0 + np.exp(-z))
-    expected = -sigma * (1.0 - sigma) * features
+    expected = sigma * (1.0 - sigma) * features
 
     result = policy.grad(theta, x_array)
 
@@ -123,6 +146,28 @@ def test_softmax_policy_with_quadratic_feature_map_grad_matches_closed_form() ->
 def test_softmax_policy_with_quadratic_feature_map_grad_matches_fd() -> None:
     x_array = np.array([[0.4, -0.7]], dtype=float)
     policy = SoftmaxPolicy(feature_map=QuadraticFeatureMap())
+    theta = np.array([0.1, -0.2, 0.3, 0.05, -0.04, 0.02], dtype=float)
+    step = 1e-6
+
+    analytical = policy.grad(theta, x_array)[0]
+    fd = np.zeros_like(theta)
+    for idx in range(theta.size):
+        direction = np.zeros_like(theta)
+        direction[idx] = 1.0
+        upper = policy.value(theta + step * direction, x_array)[0]
+        lower = policy.value(theta - step * direction, x_array)[0]
+        fd[idx] = (upper - lower) / (2.0 * step)
+
+    np.testing.assert_allclose(analytical, fd, atol=1e-8)
+
+
+def test_softmax_policy_custom_bounds_grad_matches_fd() -> None:
+    x_array = np.array([[0.4, -0.7]], dtype=float)
+    policy = SoftmaxPolicy(
+        feature_map=QuadraticFeatureMap(),
+        action_low=-0.1,
+        action_high=0.2,
+    )
     theta = np.array([0.1, -0.2, 0.3, 0.05, -0.04, 0.02], dtype=float)
     step = 1e-6
 

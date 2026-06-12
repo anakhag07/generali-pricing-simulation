@@ -133,11 +133,11 @@ def test_extract_glm_u_coef_is_finite():
     assert coef != 0.0
 
 
-def test_extract_glm_churn_coefficients_matches_u_coef():
-    from data.loader import extract_glm_churn_coefficients, extract_glm_u_coef, load_model_artifacts
+def test_extract_glm_acceptance_coefficients_matches_u_coef():
+    from data.loader import extract_glm_acceptance_coefficients, extract_glm_u_coef, load_model_artifacts
 
     glm_acc, _ = load_model_artifacts("glm")
-    coeffs = extract_glm_churn_coefficients(glm_acc)
+    coeffs = extract_glm_acceptance_coefficients(glm_acc)
 
     assert len(coeffs["x_feature_names"]) == len(coeffs["x_coef"])
     assert coeffs["x_feature_names"]

@@ -66,16 +66,19 @@ $$u = \theta^\top \phi(x)$$
 
 ### 2.4 Softmax (Bounded) Policy
 
-$$u = 0.5 - \sigma(\theta^\top \phi(x)) \;\in\; (-0.5,\; 0.5)$$
+With lower action bound $$l$$ and upper action bound $$h$$:
 
-- **Gradient:** $\frac{\partial u}{\partial \theta} = -\sigma(z)(1 - \sigma(z))\;\phi(x)$
+$$u = l + (h-l)\,\sigma(\theta^\top \phi(x)) \;\in\; (l,\; h)$$
+
+The default is $$l=-0.5$$ and $$h=0.5$$.
+
+- **Gradient:** $\frac{\partial u}{\partial \theta} = (h-l)\,\sigma(z)(1 - \sigma(z))\;\phi(x)$
   where $z = \theta^\top \phi(x)$
 - **Source:** `src/objective/policy.py` :: `SoftmaxPolicy.value()`, `SoftmaxPolicy.grad()`
 
 ### 2.5 MLP (Two-Layer) Policy
 
-A two-layer MLP with $\tanh$ activations and the same bounded sigmoid head as
-the softmax policy:
+A two-layer MLP with $\tanh$ activations and a bounded sigmoid head:
 
 $$h_1 = \tanh(W_1\,\varphi(x) + b_1),\quad
 h_2 = \tanh(W_2\,h_1 + b_2),\quad
@@ -485,7 +488,7 @@ Returns the processed model-feature coefficients used by the GLM acceptance
 artifact, excluding the generated `U` column from `x_feature_names` and reporting
 the `U` coefficient separately.
 
-- **Source:** `src/data/loader.py` :: `extract_glm_churn_coefficients()`
+- **Source:** `src/data/loader.py` :: `extract_glm_acceptance_coefficients()`
 - **Notes:** Legacy pipeline artifacts may report churn coefficients instead.
 
 ### 9.3 Linear Loss Coefficients

@@ -77,7 +77,13 @@ def benchmark_acceptance_prediction(x: np.ndarray) -> dict[str, object]:
     objective = _make_glm_objective()
     u_arr = np.linspace(-0.25, 0.25, x.shape[0], dtype=float)
 
-    slow_acceptance, predict_sec = _timed(lambda: 1.0 - objective._churn_proba(x, u_arr))
+    def predict_acceptance() -> np.ndarray:
+        class1 = objective._acceptance_model_class1_proba(x, u_arr)
+        if getattr(objective.acceptance_model, "probability_target", "churn") == "acceptance":
+            return class1
+        return 1.0 - class1
+
+    slow_acceptance, predict_sec = _timed(predict_acceptance)
     fast_acceptance, analytic_cold_sec = _timed(lambda: objective._acceptance_proba(x, u_arr))
     _, analytic_warm_sec = _timed(lambda: objective._acceptance_proba(x, u_arr + 0.01))
 

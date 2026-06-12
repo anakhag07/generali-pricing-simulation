@@ -498,7 +498,12 @@ def _policy_to_dict(policy: object) -> dict[str, Any]:
     if isinstance(policy, LinearPolicy):
         return {"type": "LinearPolicy", "feature_map": feature_map_dict}
     if isinstance(policy, SoftmaxPolicy):
-        return {"type": "SoftmaxPolicy", "feature_map": feature_map_dict}
+        return {
+            "type": "SoftmaxPolicy",
+            "feature_map": feature_map_dict,
+            "action_low": float(policy.action_low),
+            "action_high": float(policy.action_high),
+        }
     if isinstance(policy, MLPPolicy):
         return {
             "type": "MLPPolicy",
@@ -566,9 +571,12 @@ def make_planted_logistic_objective(
     )
 
 
-def make_softmax_policy() -> SoftmaxPolicy:
-    """Create a SoftmaxPolicy instance."""
-    return SoftmaxPolicy()
+def make_softmax_policy(
+    action_low: float = -0.5,
+    action_high: float = 0.5,
+) -> SoftmaxPolicy:
+    """Create a bounded sigmoid SoftmaxPolicy instance."""
+    return SoftmaxPolicy(action_low=action_low, action_high=action_high)
 
 
 def make_model_based_objective(

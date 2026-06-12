@@ -10,7 +10,7 @@ import pandas as pd
 
 from data.loader import (
     eligible_csv_row_indices,
-    extract_glm_churn_coefficients,
+    extract_glm_acceptance_coefficients,
     load_model_artifacts,
     load_observed_u_array,
     load_x_frame,
@@ -84,7 +84,7 @@ def glm_price_derivative_matrix(
     if not np.isfinite(u_arr).all():
         raise ValueError("u_values must be finite.")
 
-    coeffs = extract_glm_churn_coefficients(acceptance_model)
+    coeffs = extract_glm_acceptance_coefficients(acceptance_model)
     x_feature_cols = tuple(
         getattr(acceptance_model, "x_feature_cols", tuple(x_frame.columns))
     )

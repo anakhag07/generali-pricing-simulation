@@ -58,6 +58,7 @@ def build_real_data_config(
     policy_preprocessing: PolicyPreprocessing = "artifact",
     constraint_mode: ConstraintMode = "none",
     loss_source: LossSource = "predicted",
+    softmax_action_bounds: tuple[float, float] | None = None,
     seed: int = 42,
     n_samples: int = 5000,
     row_indices: np.ndarray | None = None,
@@ -100,9 +101,11 @@ def build_real_data_config(
     constraint_mode = _normalize_constraint_mode(constraint_mode)
     loss_source = _normalize_loss_source(loss_source)
     state_dim = len(_feature_cols(model_type))
-    acceptance_model, loss_model = load_model_artifacts(model_type)
     if u_coef is not None and model_type != "glm":
         raise ValueError("u_coef override is supported only for GLM acceptance artifacts.")
+    if softmax_action_bounds is not None and policy_kind != "softmax":
+        raise ValueError("softmax_action_bounds is supported only when policy_kind='softmax'.")
+    acceptance_model, loss_model = load_model_artifacts(model_type)
     artifact_u_coef = extract_glm_u_coef(acceptance_model) if model_type == "glm" else None
     effective_u_coef = float(u_coef) if u_coef is not None else artifact_u_coef
 
@@ -154,7 +157,7 @@ def build_real_data_config(
     else:
         raise ValueError("policy_preprocessing must be 'artifact' or 'no_pca'.")
 
-    policy = _make_policy(policy_kind, feature_order)
+    policy = _make_policy(policy_kind, feature_order, softmax_action_bounds)
     theta0_arr = _resolve_theta0(
         theta0=theta0,
         policy=policy,
@@ -294,14 +297,25 @@ def _feature_map(feature_order: FeatureOrder) -> FeatureMap:
     raise ValueError(f"Unknown feature_order '{feature_order}'.")
 
 
-def _make_policy(policy_kind: PolicyKind, feature_order: FeatureOrder) -> object:
+def _make_policy(
+    policy_kind: PolicyKind,
+    feature_order: FeatureOrder,
+    softmax_action_bounds: tuple[float, float] | None = None,
+) -> object:
     feature_map = _feature_map(feature_order)
     if policy_kind == "constant":
         return ConstantPolicy()
     if policy_kind == "linear":
         return LinearPolicy(feature_map=feature_map)
     if policy_kind == "softmax":
-        return SoftmaxPolicy(feature_map=feature_map)
+        if softmax_action_bounds is None:
+            return SoftmaxPolicy(feature_map=feature_map)
+        low, high = softmax_action_bounds
+        return SoftmaxPolicy(
+            feature_map=feature_map,
+            action_low=float(low),
+            action_high=float(high),
+        )
     if policy_kind == "mlp":
         return MLPPolicy(feature_map=feature_map)
     raise ValueError(f"Unknown policy_kind '{policy_kind}'.")
@@ -361,8 +375,20 @@ def _resolve_theta0(
     else:
         return None
     if initial_u is not None:
-        theta[0] = float(initial_u)
+        if isinstance(policy, SoftmaxPolicy):
+            theta[0] = _softmax_intercept_for_u(policy, float(initial_u))
+        else:
+            theta[0] = float(initial_u)
     return theta
+
+
+def _softmax_intercept_for_u(policy: SoftmaxPolicy, initial_u: float) -> float:
+    low = float(policy.action_low)
+    high = float(policy.action_high)
+    if not low < float(initial_u) < high:
+        raise ValueError("initial_u must lie strictly inside SoftmaxPolicy action bounds.")
+    p = (float(initial_u) - low) / (high - low)
+    return float(np.log(p / (1.0 - p)))
 
 
 def _default_step_rule(constraint_mode: str) -> str:

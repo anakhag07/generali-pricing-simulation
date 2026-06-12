@@ -115,6 +115,58 @@ def test_glm_constant_policy_override():
     assert cfg.theta0.shape == (1,)
 
 
+def test_glm_softmax_action_bounds_override_sets_policy_bounds() -> None:
+    from objective.policy import SoftmaxPolicy
+
+    cfg = _cfg(
+        "real_data_glm_base",
+        policy_kind="softmax",
+        softmax_action_bounds=(-0.1, 0.2),
+    )
+
+    policy = cfg.objective.policy
+    assert isinstance(policy, SoftmaxPolicy)
+    assert policy.action_low == pytest.approx(-0.1)
+    assert policy.action_high == pytest.approx(0.2)
+    assert cfg.theta0 is not None
+    u_batch = cfg.objective.policy_value(cfg.theta0, cfg.x_fixed)
+    assert np.all(u_batch > -0.1)
+    assert np.all(u_batch < 0.2)
+    np.testing.assert_allclose(u_batch, 0.05)
+
+
+def test_glm_softmax_initial_u_uses_action_scale() -> None:
+    cfg = _cfg(
+        "real_data_glm_base",
+        policy_kind="softmax",
+        softmax_action_bounds=(-0.1, 0.2),
+        initial_u=0.0,
+    )
+
+    assert cfg.theta0 is not None
+    u_batch = cfg.objective.policy_value(cfg.theta0, cfg.x_fixed)
+    np.testing.assert_allclose(u_batch, 0.0, atol=1e-12)
+
+
+def test_glm_softmax_initial_u_must_be_inside_bounds() -> None:
+    with pytest.raises(ValueError, match="initial_u"):
+        _cfg(
+            "real_data_glm_base",
+            policy_kind="softmax",
+            softmax_action_bounds=(-0.1, 0.2),
+            initial_u=0.2,
+        )
+
+
+def test_softmax_action_bounds_rejected_for_non_softmax_policy() -> None:
+    with pytest.raises(ValueError, match="softmax_action_bounds"):
+        _cfg(
+            "real_data_glm_base",
+            policy_kind="linear",
+            softmax_action_bounds=(-0.1, 0.2),
+        )
+
+
 def test_glm_u_coef_override_sets_acceptance_coefficient() -> None:
     cfg = _cfg("real_data_glm_base", u_coef=-5.0)
     assert cfg.objective.u_coef == pytest.approx(-5.0)

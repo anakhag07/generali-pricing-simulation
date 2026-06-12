@@ -962,69 +962,69 @@ experiments    </h1>
 
                             <div id="ExperimentConfig.__init__" class="classattr">
                                 <div class="attr function">
-
+            
         <span class="name">ExperimentConfig</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">state_dim</span><span class="p">:</span> <span class="nb">int</span>,</span><span class="param">	<span class="n">n_samples</span><span class="p">:</span> <span class="nb">int</span>,</span><span class="param">	<span class="n">step_rule</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">objective</span><span class="p">:</span> <span class="n"><a href="objective.html#Objective">objective.Objective</a></span>,</span><span class="param">	<span class="n">perturbation_space</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;theta&#39;</span><span class="p">,</span> <span class="s1">&#39;u&#39;</span><span class="p">]</span>,</span><span class="param">	<span class="n">theta0</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">7</span>,</span><span class="param">	<span class="n">t_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span>,</span><span class="param">	<span class="n">step_size</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.01</span>,</span><span class="param">	<span class="n">grad_norm_tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">ftol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">initial_constr_penalty</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">acceptance_floor</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">acceptance_penalty_weight</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">acceptance_penalty_temperature</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.01</span>,</span><span class="param">	<span class="n">lagrangian_lambda</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span>,</span><span class="param">	<span class="n">n_grad_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">64</span>,</span><span class="param">	<span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>,</span><span class="param">	<span class="n">plot</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>,</span><span class="param">	<span class="n">plot_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;plots&#39;</span>,</span><span class="param">	<span class="n">enabled_estimators</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;first_order&#39;</span><span class="p">,</span> <span class="s1">&#39;gauss_stein&#39;</span><span class="p">)</span>,</span><span class="param">	<span class="n">constant_u_baselines</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>,</span><span class="param">	<span class="n">wandb_enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>,</span><span class="param">	<span class="n">wandb_project</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">wandb_entity</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">wandb_group</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">wandb_job_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;experiment&#39;</span>,</span><span class="param">	<span class="n">wandb_tags</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>,</span><span class="param">	<span class="n">wandb_mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;online&#39;</span><span class="p">,</span> <span class="s1">&#39;offline&#39;</span><span class="p">,</span> <span class="s1">&#39;disabled&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;online&#39;</span>,</span><span class="param">	<span class="n">wandb_log_plots</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>,</span><span class="param">	<span class="n">wandb_estimator_allowlist</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">correctness</span><span class="p">:</span> <span class="n">experiments</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">CorrectnessSpec</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">factory</span><span class="o">&gt;</span>,</span><span class="param">	<span class="n">x_fixed</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">x_fixed_row_indices</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span>)</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.__init__"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.state_dim" class="classattr">
                                 <div class="attr variable">
             <span class="name">state_dim</span><span class="annotation">: int</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.state_dim"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.n_samples" class="classattr">
                                 <div class="attr variable">
             <span class="name">n_samples</span><span class="annotation">: int</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.n_samples"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.step_rule" class="classattr">
                                 <div class="attr variable">
             <span class="name">step_rule</span><span class="annotation">: str</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.step_rule"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.objective" class="classattr">
                                 <div class="attr variable">
             <span class="name">objective</span><span class="annotation">: <a href="objective.html#Objective">objective.Objective</a></span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.objective"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.perturbation_space" class="classattr">
                                 <div class="attr variable">
             <span class="name">perturbation_space</span><span class="annotation">: Literal[&#39;theta&#39;, &#39;u&#39;]</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.perturbation_space"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.theta0" class="classattr">
@@ -1032,11 +1032,11 @@ experiments    </h1>
             <span class="name">theta0</span><span class="annotation">: numpy.ndarray | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.theta0"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.batch_size" class="classattr">
@@ -1044,11 +1044,11 @@ experiments    </h1>
             <span class="name">batch_size</span><span class="annotation">: int | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.batch_size"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.seed" class="classattr">
@@ -1056,11 +1056,11 @@ experiments    </h1>
             <span class="name">seed</span><span class="annotation">: int</span>        =
 <span class="default_value">7</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.seed"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.t_steps" class="classattr">
@@ -1068,11 +1068,11 @@ experiments    </h1>
             <span class="name">t_steps</span><span class="annotation">: int</span>        =
 <span class="default_value">100</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.t_steps"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.step_size" class="classattr">
@@ -1080,11 +1080,11 @@ experiments    </h1>
             <span class="name">step_size</span><span class="annotation">: float</span>        =
 <span class="default_value">0.01</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.step_size"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.grad_norm_tol" class="classattr">
@@ -1092,11 +1092,11 @@ experiments    </h1>
             <span class="name">grad_norm_tol</span><span class="annotation">: float | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.grad_norm_tol"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.ftol" class="classattr">
@@ -1104,11 +1104,11 @@ experiments    </h1>
             <span class="name">ftol</span><span class="annotation">: float | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.ftol"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.initial_constr_penalty" class="classattr">
@@ -1116,11 +1116,11 @@ experiments    </h1>
             <span class="name">initial_constr_penalty</span><span class="annotation">: float | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.initial_constr_penalty"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.acceptance_floor" class="classattr">
@@ -1128,11 +1128,11 @@ experiments    </h1>
             <span class="name">acceptance_floor</span><span class="annotation">: float | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.acceptance_floor"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.acceptance_penalty_weight" class="classattr">
@@ -1140,11 +1140,11 @@ experiments    </h1>
             <span class="name">acceptance_penalty_weight</span><span class="annotation">: float | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.acceptance_penalty_weight"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.acceptance_penalty_temperature" class="classattr">
@@ -1152,11 +1152,11 @@ experiments    </h1>
             <span class="name">acceptance_penalty_temperature</span><span class="annotation">: float</span>        =
 <span class="default_value">0.01</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.acceptance_penalty_temperature"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.lagrangian_lambda" class="classattr">
@@ -1164,11 +1164,11 @@ experiments    </h1>
             <span class="name">lagrangian_lambda</span><span class="annotation">: float | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.lagrangian_lambda"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.sigma" class="classattr">
@@ -1176,11 +1176,11 @@ experiments    </h1>
             <span class="name">sigma</span><span class="annotation">: float</span>        =
 <span class="default_value">0.1</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.sigma"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.n_grad_samples" class="classattr">
@@ -1188,11 +1188,11 @@ experiments    </h1>
             <span class="name">n_grad_samples</span><span class="annotation">: int</span>        =
 <span class="default_value">64</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.n_grad_samples"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.verbose" class="classattr">
@@ -1200,11 +1200,11 @@ experiments    </h1>
             <span class="name">verbose</span><span class="annotation">: bool</span>        =
 <span class="default_value">False</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.verbose"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.plot" class="classattr">
@@ -1212,11 +1212,11 @@ experiments    </h1>
             <span class="name">plot</span><span class="annotation">: bool</span>        =
 <span class="default_value">True</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.plot"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.plot_dir" class="classattr">
@@ -1224,11 +1224,11 @@ experiments    </h1>
             <span class="name">plot_dir</span><span class="annotation">: str</span>        =
 <span class="default_value">&#39;plots&#39;</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.plot_dir"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.enabled_estimators" class="classattr">
@@ -1236,11 +1236,11 @@ experiments    </h1>
             <span class="name">enabled_estimators</span><span class="annotation">: tuple[str, ...]</span>        =
 <span class="default_value">(&#39;first_order&#39;, &#39;gauss_stein&#39;)</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.enabled_estimators"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.constant_u_baselines" class="classattr">
@@ -1248,11 +1248,11 @@ experiments    </h1>
             <span class="name">constant_u_baselines</span><span class="annotation">: tuple[float, ...]</span>        =
 <span class="default_value">()</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.constant_u_baselines"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.wandb_enabled" class="classattr">
@@ -1260,11 +1260,11 @@ experiments    </h1>
             <span class="name">wandb_enabled</span><span class="annotation">: bool</span>        =
 <span class="default_value">False</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.wandb_enabled"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.wandb_project" class="classattr">
@@ -1272,11 +1272,11 @@ experiments    </h1>
             <span class="name">wandb_project</span><span class="annotation">: str | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.wandb_project"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.wandb_entity" class="classattr">
@@ -1284,11 +1284,11 @@ experiments    </h1>
             <span class="name">wandb_entity</span><span class="annotation">: str | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.wandb_entity"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.wandb_group" class="classattr">
@@ -1296,11 +1296,11 @@ experiments    </h1>
             <span class="name">wandb_group</span><span class="annotation">: str | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.wandb_group"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.wandb_job_type" class="classattr">
@@ -1308,11 +1308,11 @@ experiments    </h1>
             <span class="name">wandb_job_type</span><span class="annotation">: str</span>        =
 <span class="default_value">&#39;experiment&#39;</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.wandb_job_type"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.wandb_tags" class="classattr">
@@ -1320,11 +1320,11 @@ experiments    </h1>
             <span class="name">wandb_tags</span><span class="annotation">: tuple[str, ...]</span>        =
 <span class="default_value">()</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.wandb_tags"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.wandb_mode" class="classattr">
@@ -1332,11 +1332,11 @@ experiments    </h1>
             <span class="name">wandb_mode</span><span class="annotation">: Literal[&#39;online&#39;, &#39;offline&#39;, &#39;disabled&#39;]</span>        =
 <span class="default_value">&#39;online&#39;</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.wandb_mode"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.wandb_log_plots" class="classattr">
@@ -1344,11 +1344,11 @@ experiments    </h1>
             <span class="name">wandb_log_plots</span><span class="annotation">: bool</span>        =
 <span class="default_value">True</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.wandb_log_plots"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.wandb_estimator_allowlist" class="classattr">
@@ -1356,22 +1356,22 @@ experiments    </h1>
             <span class="name">wandb_estimator_allowlist</span><span class="annotation">: tuple[str, ...] | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.wandb_estimator_allowlist"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.correctness" class="classattr">
                                 <div class="attr variable">
             <span class="name">correctness</span><span class="annotation">: experiments.config.CorrectnessSpec</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.correctness"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.x_fixed" class="classattr">
@@ -1379,11 +1379,11 @@ experiments    </h1>
             <span class="name">x_fixed</span><span class="annotation">: Any | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.x_fixed"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.x_fixed_row_indices" class="classattr">
@@ -1391,17 +1391,17 @@ experiments    </h1>
             <span class="name">x_fixed_row_indices</span><span class="annotation">: numpy.ndarray | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentConfig.x_fixed_row_indices"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentConfig.to_dict" class="classattr">
                                         <input id="ExperimentConfig.to_dict-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">to_dict</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span></span><span class="return-annotation">) -> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">]</span>:</span></span>
 
@@ -1486,7 +1486,7 @@ experiments    </h1>
                 <section id="get_config">
                             <input id="get_config-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">get_config</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">name</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">overrides</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="n"><a href="#ExperimentConfig">ExperimentConfig</a></span>:</span></span>
 
@@ -1525,13 +1525,13 @@ experiments    </h1>
 </span></pre></div>
 
 
-
+    
 
                 </section>
                 <section id="list_configs">
                             <input id="list_configs-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">list_configs</span><span class="signature pdoc-code condensed">(<span class="return-annotation">) -> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>:</span></span>
 
@@ -1544,13 +1544,13 @@ experiments    </h1>
 </span></pre></div>
 
 
-
+    
 
                 </section>
                 <section id="default_theta0">
                             <input id="default_theta0-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">default_theta0</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">state_dim</span><span class="p">:</span> <span class="nb">int</span>,</span><span class="param">	<span class="n">policy</span><span class="p">:</span> <span class="n"><a href="objective.html#Policy">objective.Policy</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>:</span></span>
 
@@ -1573,7 +1573,7 @@ experiments    </h1>
                 <section id="default_policy">
                             <input id="default_policy-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">default_policy</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">state_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span></span><span class="return-annotation">) -> <span class="n"><a href="objective.html#SoftmaxPolicy">objective.SoftmaxPolicy</a></span>:</span></span>
 
@@ -1625,58 +1625,58 @@ experiments    </h1>
 
                             <div id="EstimatorResult.__init__" class="classattr">
                                 <div class="attr function">
-
+            
         <span class="name">EstimatorResult</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">theta</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>,</span><span class="param">	<span class="n">u</span><span class="p">:</span> <span class="nb">float</span>,</span><span class="param">	<span class="n">value</span><span class="p">:</span> <span class="nb">float</span>,</span><span class="param">	<span class="n">time</span><span class="p">:</span> <span class="nb">float</span>,</span><span class="param">	<span class="n">mean_acceptance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">constraint_violation</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">acceptance_multiplier</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">constraint_penalty</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span>)</span>
 
-
+        
     </div>
     <a class="headerlink" href="#EstimatorResult.__init__"></a>
-
-
+    
+    
 
                             </div>
                             <div id="EstimatorResult.theta" class="classattr">
                                 <div class="attr variable">
             <span class="name">theta</span><span class="annotation">: numpy.ndarray</span>
 
-
+        
     </div>
     <a class="headerlink" href="#EstimatorResult.theta"></a>
-
-
+    
+    
 
                             </div>
                             <div id="EstimatorResult.u" class="classattr">
                                 <div class="attr variable">
             <span class="name">u</span><span class="annotation">: float</span>
 
-
+        
     </div>
     <a class="headerlink" href="#EstimatorResult.u"></a>
-
-
+    
+    
 
                             </div>
                             <div id="EstimatorResult.value" class="classattr">
                                 <div class="attr variable">
             <span class="name">value</span><span class="annotation">: float</span>
 
-
+        
     </div>
     <a class="headerlink" href="#EstimatorResult.value"></a>
-
-
+    
+    
 
                             </div>
                             <div id="EstimatorResult.time" class="classattr">
                                 <div class="attr variable">
             <span class="name">time</span><span class="annotation">: float</span>
 
-
+        
     </div>
     <a class="headerlink" href="#EstimatorResult.time"></a>
-
-
+    
+    
 
                             </div>
                             <div id="EstimatorResult.mean_acceptance" class="classattr">
@@ -1684,11 +1684,11 @@ experiments    </h1>
             <span class="name">mean_acceptance</span><span class="annotation">: float | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#EstimatorResult.mean_acceptance"></a>
-
-
+    
+    
 
                             </div>
                             <div id="EstimatorResult.constraint_violation" class="classattr">
@@ -1696,11 +1696,11 @@ experiments    </h1>
             <span class="name">constraint_violation</span><span class="annotation">: float | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#EstimatorResult.constraint_violation"></a>
-
-
+    
+    
 
                             </div>
                             <div id="EstimatorResult.acceptance_multiplier" class="classattr">
@@ -1708,11 +1708,11 @@ experiments    </h1>
             <span class="name">acceptance_multiplier</span><span class="annotation">: float | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#EstimatorResult.acceptance_multiplier"></a>
-
-
+    
+    
 
                             </div>
                             <div id="EstimatorResult.constraint_penalty" class="classattr">
@@ -1720,11 +1720,11 @@ experiments    </h1>
             <span class="name">constraint_penalty</span><span class="annotation">: float | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#EstimatorResult.constraint_penalty"></a>
-
-
+    
+    
 
                             </div>
                 </section>
@@ -1762,69 +1762,69 @@ experiments    </h1>
 
                             <div id="ExperimentResult.__init__" class="classattr">
                                 <div class="attr function">
-
+            
         <span class="name">ExperimentResult</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">config</span><span class="p">:</span> <span class="n"><a href="#ExperimentConfig">ExperimentConfig</a></span>,</span><span class="param">	<span class="n">x_samples</span><span class="p">:</span> <span class="n">Any</span>,</span><span class="param">	<span class="n">initial_value</span><span class="p">:</span> <span class="nb">float</span>,</span><span class="param">	<span class="n">results</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n"><a href="#EstimatorResult">EstimatorResult</a></span><span class="p">]</span>,</span><span class="param">	<span class="n">traces</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n"><a href="#OptimizationTrace">OptimizationTrace</a></span><span class="p">]</span>,</span><span class="param">	<span class="n">u_star</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">value_at_u_star</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">initial_mean_acceptance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">constant_u_baselines</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">experiments</span><span class="o">.</span><span class="n">results</span><span class="o">.</span><span class="n">ConstantBaselineResult</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span></span>)</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentResult.__init__"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentResult.config" class="classattr">
                                 <div class="attr variable">
             <span class="name">config</span><span class="annotation">: <a href="#ExperimentConfig">ExperimentConfig</a></span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentResult.config"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentResult.x_samples" class="classattr">
                                 <div class="attr variable">
             <span class="name">x_samples</span><span class="annotation">: Any</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentResult.x_samples"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentResult.initial_value" class="classattr">
                                 <div class="attr variable">
             <span class="name">initial_value</span><span class="annotation">: float</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentResult.initial_value"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentResult.results" class="classattr">
                                 <div class="attr variable">
             <span class="name">results</span><span class="annotation">: Mapping[str, <a href="#EstimatorResult">EstimatorResult</a>]</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentResult.results"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentResult.traces" class="classattr">
                                 <div class="attr variable">
             <span class="name">traces</span><span class="annotation">: Mapping[str, <a href="#OptimizationTrace">OptimizationTrace</a>]</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentResult.traces"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentResult.u_star" class="classattr">
@@ -1832,11 +1832,11 @@ experiments    </h1>
             <span class="name">u_star</span><span class="annotation">: float | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentResult.u_star"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentResult.value_at_u_star" class="classattr">
@@ -1844,11 +1844,11 @@ experiments    </h1>
             <span class="name">value_at_u_star</span><span class="annotation">: float | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentResult.value_at_u_star"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentResult.initial_mean_acceptance" class="classattr">
@@ -1856,11 +1856,11 @@ experiments    </h1>
             <span class="name">initial_mean_acceptance</span><span class="annotation">: float | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentResult.initial_mean_acceptance"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ExperimentResult.constant_u_baselines" class="classattr">
@@ -1868,11 +1868,11 @@ experiments    </h1>
             <span class="name">constant_u_baselines</span><span class="annotation">: Sequence[experiments.results.ConstantBaselineResult]</span>        =
 <span class="default_value">()</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ExperimentResult.constant_u_baselines"></a>
-
-
+    
+    
 
                             </div>
                 </section>
@@ -1921,58 +1921,58 @@ experiments    </h1>
 
                             <div id="OptimizationTrace.__init__" class="classattr">
                                 <div class="attr function">
-
+            
         <span class="name">OptimizationTrace</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">steps</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>,</span><span class="param">	<span class="n">u_values</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>,</span><span class="param">	<span class="n">objective_values</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>,</span><span class="param">	<span class="n">u_grad_estimates</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>,</span><span class="param">	<span class="n">u_true_gradients</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">theta_grad_norms</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">true_theta_grad_norms</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">step_sizes</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">mean_acceptance_values</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">projected_loss_values</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">projected_revenue_values</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">theta_values</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">optimizer_success</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">optimizer_optimality</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">optimizer_lagrangian_grad</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">optimizer_status</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">optimizer_message</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">constraint_violation</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">acceptance_multiplier</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">constraint_penalty</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span>)</span>
 
-
+        
     </div>
     <a class="headerlink" href="#OptimizationTrace.__init__"></a>
-
-
+    
+    
 
                             </div>
                             <div id="OptimizationTrace.steps" class="classattr">
                                 <div class="attr variable">
             <span class="name">steps</span><span class="annotation">: Sequence[int]</span>
 
-
+        
     </div>
     <a class="headerlink" href="#OptimizationTrace.steps"></a>
-
-
+    
+    
 
                             </div>
                             <div id="OptimizationTrace.u_values" class="classattr">
                                 <div class="attr variable">
             <span class="name">u_values</span><span class="annotation">: Sequence[float]</span>
 
-
+        
     </div>
     <a class="headerlink" href="#OptimizationTrace.u_values"></a>
-
-
+    
+    
 
                             </div>
                             <div id="OptimizationTrace.objective_values" class="classattr">
                                 <div class="attr variable">
             <span class="name">objective_values</span><span class="annotation">: Sequence[float]</span>
 
-
+        
     </div>
     <a class="headerlink" href="#OptimizationTrace.objective_values"></a>
-
-
+    
+    
 
                             </div>
                             <div id="OptimizationTrace.u_grad_estimates" class="classattr">
                                 <div class="attr variable">
             <span class="name">u_grad_estimates</span><span class="annotation">: Sequence[float]</span>
 
-
+        
     </div>
     <a class="headerlink" href="#OptimizationTrace.u_grad_estimates"></a>
-
-
+    
+    
 
                             </div>
                             <div id="OptimizationTrace.u_true_gradients" class="classattr">
@@ -1980,11 +1980,11 @@ experiments    </h1>
             <span class="name">u_true_gradients</span><span class="annotation">: Sequence[float] | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#OptimizationTrace.u_true_gradients"></a>
-
-
+    
+    
 
                             </div>
                             <div id="OptimizationTrace.theta_grad_norms" class="classattr">
@@ -1992,11 +1992,11 @@ experiments    </h1>
             <span class="name">theta_grad_norms</span><span class="annotation">: Sequence[float] | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#OptimizationTrace.theta_grad_norms"></a>
-
-
+    
+    
 
                             </div>
                             <div id="OptimizationTrace.true_theta_grad_norms" class="classattr">
@@ -2004,11 +2004,11 @@ experiments    </h1>
             <span class="name">true_theta_grad_norms</span><span class="annotation">: Sequence[float] | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#OptimizationTrace.true_theta_grad_norms"></a>
-
-
+    
+    
 
                             </div>
                             <div id="OptimizationTrace.step_sizes" class="classattr">
@@ -2016,11 +2016,11 @@ experiments    </h1>
             <span class="name">step_sizes</span><span class="annotation">: Sequence[float] | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#OptimizationTrace.step_sizes"></a>
-
-
+    
+    
 
                             </div>
                             <div id="OptimizationTrace.mean_acceptance_values" class="classattr">
@@ -2028,11 +2028,11 @@ experiments    </h1>
             <span class="name">mean_acceptance_values</span><span class="annotation">: Sequence[float] | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#OptimizationTrace.mean_acceptance_values"></a>
-
-
+    
+    
 
                             </div>
                             <div id="OptimizationTrace.projected_loss_values" class="classattr">
@@ -2040,11 +2040,11 @@ experiments    </h1>
             <span class="name">projected_loss_values</span><span class="annotation">: Sequence[float] | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#OptimizationTrace.projected_loss_values"></a>
-
-
+    
+    
 
                             </div>
                             <div id="OptimizationTrace.projected_revenue_values" class="classattr">
@@ -2052,11 +2052,11 @@ experiments    </h1>
             <span class="name">projected_revenue_values</span><span class="annotation">: Sequence[float] | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#OptimizationTrace.projected_revenue_values"></a>
-
-
+    
+    
 
                             </div>
                             <div id="OptimizationTrace.theta_values" class="classattr">
@@ -2064,11 +2064,11 @@ experiments    </h1>
             <span class="name">theta_values</span><span class="annotation">: Sequence[numpy.ndarray] | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#OptimizationTrace.theta_values"></a>
-
-
+    
+    
 
                             </div>
                             <div id="OptimizationTrace.optimizer_success" class="classattr">
@@ -2076,11 +2076,11 @@ experiments    </h1>
             <span class="name">optimizer_success</span><span class="annotation">: bool | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#OptimizationTrace.optimizer_success"></a>
-
-
+    
+    
 
                             </div>
                             <div id="OptimizationTrace.optimizer_optimality" class="classattr">
@@ -2088,11 +2088,11 @@ experiments    </h1>
             <span class="name">optimizer_optimality</span><span class="annotation">: float | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#OptimizationTrace.optimizer_optimality"></a>
-
-
+    
+    
 
                             </div>
                             <div id="OptimizationTrace.optimizer_lagrangian_grad" class="classattr">
@@ -2100,11 +2100,11 @@ experiments    </h1>
             <span class="name">optimizer_lagrangian_grad</span><span class="annotation">: Sequence[float] | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#OptimizationTrace.optimizer_lagrangian_grad"></a>
-
-
+    
+    
 
                             </div>
                             <div id="OptimizationTrace.optimizer_status" class="classattr">
@@ -2112,11 +2112,11 @@ experiments    </h1>
             <span class="name">optimizer_status</span><span class="annotation">: int | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#OptimizationTrace.optimizer_status"></a>
-
-
+    
+    
 
                             </div>
                             <div id="OptimizationTrace.optimizer_message" class="classattr">
@@ -2124,11 +2124,11 @@ experiments    </h1>
             <span class="name">optimizer_message</span><span class="annotation">: str | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#OptimizationTrace.optimizer_message"></a>
-
-
+    
+    
 
                             </div>
                             <div id="OptimizationTrace.constraint_violation" class="classattr">
@@ -2136,11 +2136,11 @@ experiments    </h1>
             <span class="name">constraint_violation</span><span class="annotation">: float | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#OptimizationTrace.constraint_violation"></a>
-
-
+    
+    
 
                             </div>
                             <div id="OptimizationTrace.acceptance_multiplier" class="classattr">
@@ -2148,11 +2148,11 @@ experiments    </h1>
             <span class="name">acceptance_multiplier</span><span class="annotation">: float | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#OptimizationTrace.acceptance_multiplier"></a>
-
-
+    
+    
 
                             </div>
                             <div id="OptimizationTrace.constraint_penalty" class="classattr">
@@ -2160,18 +2160,18 @@ experiments    </h1>
             <span class="name">constraint_penalty</span><span class="annotation">: float | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#OptimizationTrace.constraint_penalty"></a>
-
-
+    
+    
 
                             </div>
                 </section>
                 <section id="ConsoleReporter">
                             <input id="ConsoleReporter-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr class">
-
+            
     <span class="def">class</span>
     <span class="name">ConsoleReporter</span>:
 
@@ -2225,7 +2225,7 @@ experiments    </h1>
                             <div id="ConsoleReporter.__init__" class="classattr">
                                         <input id="ConsoleReporter.__init__-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="name">ConsoleReporter</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span></span>)</span>
 
                 <label class="view-source-button" for="ConsoleReporter.__init__-view-source"><span>View Source</span></label>
@@ -2237,13 +2237,13 @@ experiments    </h1>
 </span></pre></div>
 
 
-
+    
 
                             </div>
                             <div id="ConsoleReporter.on_start" class="classattr">
                                         <input id="ConsoleReporter.on_start-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">on_start</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">run_context</span><span class="p">:</span> <span class="n"><a href="#RunContext">RunContext</a></span>,</span><span class="param">	<span class="n">config</span><span class="p">:</span> <span class="n"><a href="#ExperimentConfig">ExperimentConfig</a></span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
 
@@ -2256,13 +2256,13 @@ experiments    </h1>
 </span></pre></div>
 
 
-
+    
 
                             </div>
                             <div id="ConsoleReporter.on_end" class="classattr">
                                         <input id="ConsoleReporter.on_end-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">on_end</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">run_context</span><span class="p">:</span> <span class="n"><a href="#RunContext">RunContext</a></span>,</span><span class="param">	<span class="n">result</span><span class="p">:</span> <span class="n"><a href="#ExperimentResult">ExperimentResult</a></span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
 
@@ -2275,13 +2275,13 @@ experiments    </h1>
 </span></pre></div>
 
 
-
+    
 
                             </div>
                             <div id="ConsoleReporter.log_step" class="classattr">
                                         <input id="ConsoleReporter.log_step-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">log_step</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">method</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">step</span><span class="p">:</span> <span class="nb">int</span>,</span><span class="param">	<span class="n">u</span><span class="p">:</span> <span class="nb">float</span>,</span><span class="param">	<span class="n">value</span><span class="p">:</span> <span class="nb">float</span>,</span><span class="param">	<span class="n">grad_norm</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">step_size</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">mean_acceptance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">projected_loss</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">projected_revenue</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
 
@@ -2316,14 +2316,14 @@ experiments    </h1>
 </span></pre></div>
 
 
-
+    
 
                             </div>
                 </section>
                 <section id="FileStepLogger">
                             <input id="FileStepLogger-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr class">
-
+            
     <span class="def">class</span>
     <span class="name">FileStepLogger</span>:
 
@@ -2383,7 +2383,7 @@ experiments    </h1>
                             <div id="FileStepLogger.on_start" class="classattr">
                                         <input id="FileStepLogger.on_start-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">on_start</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">run_context</span><span class="p">:</span> <span class="n"><a href="#RunContext">RunContext</a></span>,</span><span class="param">	<span class="n">config</span><span class="p">:</span> <span class="n"><a href="#ExperimentConfig">ExperimentConfig</a></span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
 
@@ -2400,13 +2400,13 @@ experiments    </h1>
 </span></pre></div>
 
 
-
+    
 
                             </div>
                             <div id="FileStepLogger.on_end" class="classattr">
                                         <input id="FileStepLogger.on_end-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">on_end</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">run_context</span><span class="p">:</span> <span class="n"><a href="#RunContext">RunContext</a></span>,</span><span class="param">	<span class="n">result</span><span class="p">:</span> <span class="n"><a href="#ExperimentResult">ExperimentResult</a></span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
 
@@ -2421,13 +2421,13 @@ experiments    </h1>
 </span></pre></div>
 
 
-
+    
 
                             </div>
                             <div id="FileStepLogger.log_step" class="classattr">
                                         <input id="FileStepLogger.log_step-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">log_step</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">method</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">step</span><span class="p">:</span> <span class="nb">int</span>,</span><span class="param">	<span class="n">u</span><span class="p">:</span> <span class="nb">float</span>,</span><span class="param">	<span class="n">value</span><span class="p">:</span> <span class="nb">float</span>,</span><span class="param">	<span class="n">grad_norm</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">step_size</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">mean_acceptance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">projected_loss</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">projected_revenue</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
 
@@ -2461,14 +2461,14 @@ experiments    </h1>
 </span></pre></div>
 
 
-
+    
 
                             </div>
                 </section>
                 <section id="JsonReporter">
                             <input id="JsonReporter-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr class">
-
+            
     <span class="def">class</span>
     <span class="name">JsonReporter</span>:
 
@@ -2488,12 +2488,12 @@ experiments    </h1>
 </span></pre></div>
 
 
-
+    
 
                             <div id="JsonReporter.on_start" class="classattr">
                                         <input id="JsonReporter.on_start-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">on_start</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">run_context</span><span class="p">:</span> <span class="n"><a href="#RunContext">RunContext</a></span>,</span><span class="param">	<span class="n">config</span><span class="p">:</span> <span class="n"><a href="#ExperimentConfig">ExperimentConfig</a></span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
 
@@ -2506,13 +2506,13 @@ experiments    </h1>
 </span></pre></div>
 
 
-
+    
 
                             </div>
                             <div id="JsonReporter.on_end" class="classattr">
                                         <input id="JsonReporter.on_end-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">on_end</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">run_context</span><span class="p">:</span> <span class="n"><a href="#RunContext">RunContext</a></span>,</span><span class="param">	<span class="n">result</span><span class="p">:</span> <span class="n"><a href="#ExperimentResult">ExperimentResult</a></span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
 
@@ -2528,14 +2528,14 @@ experiments    </h1>
 </span></pre></div>
 
 
-
+    
 
                             </div>
                 </section>
                 <section id="PlotReporter">
                             <input id="PlotReporter-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr class">
-
+            
     <span class="def">class</span>
     <span class="name">PlotReporter</span>:
 
@@ -2668,12 +2668,12 @@ experiments    </h1>
 </span></pre></div>
 
 
-
+    
 
                             <div id="PlotReporter.on_start" class="classattr">
                                         <input id="PlotReporter.on_start-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">on_start</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">run_context</span><span class="p">:</span> <span class="n"><a href="#RunContext">RunContext</a></span>,</span><span class="param">	<span class="n">config</span><span class="p">:</span> <span class="n"><a href="#ExperimentConfig">ExperimentConfig</a></span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
 
@@ -2686,13 +2686,13 @@ experiments    </h1>
 </span></pre></div>
 
 
-
+    
 
                             </div>
                             <div id="PlotReporter.on_end" class="classattr">
                                         <input id="PlotReporter.on_end-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">on_end</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">run_context</span><span class="p">:</span> <span class="n"><a href="#RunContext">RunContext</a></span>,</span><span class="param">	<span class="n">result</span><span class="p">:</span> <span class="n"><a href="#ExperimentResult">ExperimentResult</a></span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
 
@@ -2821,14 +2821,14 @@ experiments    </h1>
 </span></pre></div>
 
 
-
+    
 
                             </div>
                 </section>
                 <section id="ReporterStack">
                             <input id="ReporterStack-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr class">
-
+            
     <span class="def">class</span>
     <span class="name">ReporterStack</span>:
 
@@ -2876,12 +2876,12 @@ experiments    </h1>
 </span></pre></div>
 
 
-
+    
 
                             <div id="ReporterStack.__init__" class="classattr">
                                         <input id="ReporterStack.__init__-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="name">ReporterStack</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">reporters</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">experiments</span><span class="o">.</span><span class="n">reporters</span><span class="o">.</span><span class="n">Reporter</span><span class="p">]</span></span>)</span>
 
                 <label class="view-source-button" for="ReporterStack.__init__-view-source"><span>View Source</span></label>
@@ -2893,13 +2893,13 @@ experiments    </h1>
 </span></pre></div>
 
 
-
+    
 
                             </div>
                             <div id="ReporterStack.on_start" class="classattr">
                                         <input id="ReporterStack.on_start-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">on_start</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">run_context</span><span class="p">:</span> <span class="n"><a href="#RunContext">RunContext</a></span>,</span><span class="param">	<span class="n">config</span><span class="p">:</span> <span class="n"><a href="#ExperimentConfig">ExperimentConfig</a></span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
 
@@ -2913,13 +2913,13 @@ experiments    </h1>
 </span></pre></div>
 
 
-
+    
 
                             </div>
                             <div id="ReporterStack.on_end" class="classattr">
                                         <input id="ReporterStack.on_end-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">on_end</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">run_context</span><span class="p">:</span> <span class="n"><a href="#RunContext">RunContext</a></span>,</span><span class="param">	<span class="n">result</span><span class="p">:</span> <span class="n"><a href="#ExperimentResult">ExperimentResult</a></span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
 
@@ -2933,13 +2933,13 @@ experiments    </h1>
 </span></pre></div>
 
 
-
+    
 
                             </div>
                             <div id="ReporterStack.log_step" class="classattr">
                                         <input id="ReporterStack.log_step-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">log_step</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">method</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">step</span><span class="p">:</span> <span class="nb">int</span>,</span><span class="param">	<span class="n">u</span><span class="p">:</span> <span class="nb">float</span>,</span><span class="param">	<span class="n">value</span><span class="p">:</span> <span class="nb">float</span>,</span><span class="param">	<span class="n">grad_norm</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">step_size</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">mean_acceptance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">projected_loss</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">projected_revenue</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
 
@@ -2975,7 +2975,7 @@ experiments    </h1>
 </span></pre></div>
 
 
-
+    
 
                             </div>
                 </section>
@@ -3001,73 +3001,73 @@ experiments    </h1>
 </span></pre></div>
 
 
-
+    
 
                             <div id="RunContext.__init__" class="classattr">
                                 <div class="attr function">
-
+            
         <span class="name">RunContext</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">experiment_name</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">run_id</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">run_dir</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span>,</span><span class="param">	<span class="n">plots_dir</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span>,</span><span class="param">	<span class="n">started_at</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span></span>)</span>
 
-
+        
     </div>
     <a class="headerlink" href="#RunContext.__init__"></a>
-
-
+    
+    
 
                             </div>
                             <div id="RunContext.experiment_name" class="classattr">
                                 <div class="attr variable">
             <span class="name">experiment_name</span><span class="annotation">: str</span>
 
-
+        
     </div>
     <a class="headerlink" href="#RunContext.experiment_name"></a>
-
-
+    
+    
 
                             </div>
                             <div id="RunContext.run_id" class="classattr">
                                 <div class="attr variable">
             <span class="name">run_id</span><span class="annotation">: str</span>
 
-
+        
     </div>
     <a class="headerlink" href="#RunContext.run_id"></a>
-
-
+    
+    
 
                             </div>
                             <div id="RunContext.run_dir" class="classattr">
                                 <div class="attr variable">
             <span class="name">run_dir</span><span class="annotation">: pathlib.Path</span>
 
-
+        
     </div>
     <a class="headerlink" href="#RunContext.run_dir"></a>
-
-
+    
+    
 
                             </div>
                             <div id="RunContext.plots_dir" class="classattr">
                                 <div class="attr variable">
             <span class="name">plots_dir</span><span class="annotation">: pathlib.Path</span>
 
-
+        
     </div>
     <a class="headerlink" href="#RunContext.plots_dir"></a>
-
-
+    
+    
 
                             </div>
                             <div id="RunContext.started_at" class="classattr">
                                 <div class="attr variable">
             <span class="name">started_at</span><span class="annotation">: datetime.datetime</span>
 
-
+        
     </div>
     <a class="headerlink" href="#RunContext.started_at"></a>
-
-
+    
+    
 
                             </div>
                 </section>
@@ -3110,7 +3110,7 @@ experiments    </h1>
                             <div id="StepReporter.__init__" class="classattr">
                                         <input id="StepReporter.__init__-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="name">StepReporter</span><span class="signature pdoc-code condensed">(<span class="param"><span class="o">*</span><span class="n">args</span>, </span><span class="param"><span class="o">**</span><span class="n">kwargs</span></span>)</span>
 
                 <label class="view-source-button" for="StepReporter.__init__-view-source"><span>View Source</span></label>
@@ -3147,13 +3147,13 @@ experiments    </h1>
 </span></pre></div>
 
 
-
+    
 
                             </div>
                             <div id="StepReporter.log_step" class="classattr">
                                         <input id="StepReporter.log_step-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">log_step</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">method</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">step</span><span class="p">:</span> <span class="nb">int</span>,</span><span class="param">	<span class="n">u</span><span class="p">:</span> <span class="nb">float</span>,</span><span class="param">	<span class="n">value</span><span class="p">:</span> <span class="nb">float</span>,</span><span class="param">	<span class="n">grad_norm</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">step_size</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">mean_acceptance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">projected_loss</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">projected_revenue</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
 
@@ -3177,14 +3177,14 @@ experiments    </h1>
 </span></pre></div>
 
 
-
+    
 
                             </div>
                 </section>
                 <section id="create_run_context">
                             <input id="create_run_context-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">create_run_context</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">experiment_name</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">runs_root</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;outputs&#39;</span>,</span><span class="param">	<span class="n">started_at</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="n"><a href="#RunContext">RunContext</a></span>:</span></span>
 
@@ -3213,13 +3213,13 @@ experiments    </h1>
 </span></pre></div>
 
 
-
+    
 
                 </section>
                 <section id="run_experiment">
                             <input id="run_experiment-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">run_experiment</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">config</span><span class="p">:</span> <span class="n"><a href="#ExperimentConfig">ExperimentConfig</a></span>,</span><span class="param">	<span class="n">step_reporter</span><span class="p">:</span> <span class="n"><a href="#StepReporter">StepReporter</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="n"><a href="#ExperimentResult">ExperimentResult</a></span>:</span></span>
 
@@ -3547,11 +3547,11 @@ experiments    </h1>
             <span class="name">SENSITIVITY_BUCKETS</span>        =
 <span class="default_value">(&#39;low&#39;, &#39;medium&#39;, &#39;high&#39;)</span>
 
-
+        
     </div>
     <a class="headerlink" href="#SENSITIVITY_BUCKETS"></a>
-
-
+    
+    
 
                 </section>
                 <section id="SensitivityBucket">
@@ -3582,54 +3582,54 @@ experiments    </h1>
 
                             <div id="SensitivityBucket.__init__" class="classattr">
                                 <div class="attr function">
-
+            
         <span class="name">SensitivityBucket</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">name</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;low&#39;</span><span class="p">,</span> <span class="s1">&#39;medium&#39;</span><span class="p">,</span> <span class="s1">&#39;high&#39;</span><span class="p">]</span>,</span><span class="param">	<span class="n">row_indices</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>,</span><span class="param">	<span class="n">scores</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span>)</span>
 
-
+        
     </div>
     <a class="headerlink" href="#SensitivityBucket.__init__"></a>
-
-
+    
+    
 
                             </div>
                             <div id="SensitivityBucket.name" class="classattr">
                                 <div class="attr variable">
             <span class="name">name</span><span class="annotation">: Literal[&#39;low&#39;, &#39;medium&#39;, &#39;high&#39;]</span>
 
-
+        
     </div>
     <a class="headerlink" href="#SensitivityBucket.name"></a>
-
-
+    
+    
 
                             </div>
                             <div id="SensitivityBucket.row_indices" class="classattr">
                                 <div class="attr variable">
             <span class="name">row_indices</span><span class="annotation">: numpy.ndarray</span>
 
-
+        
     </div>
     <a class="headerlink" href="#SensitivityBucket.row_indices"></a>
-
-
+    
+    
 
                             </div>
                             <div id="SensitivityBucket.scores" class="classattr">
                                 <div class="attr variable">
             <span class="name">scores</span><span class="annotation">: numpy.ndarray</span>
 
-
+        
     </div>
     <a class="headerlink" href="#SensitivityBucket.scores"></a>
-
-
+    
+    
 
                             </div>
                 </section>
                 <section id="build_glm_sensitivity_buckets">
                             <input id="build_glm_sensitivity_buckets-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">build_glm_sensitivity_buckets</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="o">*</span>,</span><span class="param">	<span class="n">u_ref</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">row_indices</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="nb">tuple</span><span class="p">[</span><span class="n"><a href="#SensitivityBucket">SensitivityBucket</a></span><span class="p">,</span> <span class="n"><a href="#SensitivityBucket">SensitivityBucket</a></span><span class="p">,</span> <span class="n"><a href="#SensitivityBucket">SensitivityBucket</a></span><span class="p">]</span>:</span></span>
 
@@ -3666,7 +3666,7 @@ experiments    </h1>
                 <section id="glm_price_derivative_matrix">
                             <input id="glm_price_derivative_matrix-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">glm_price_derivative_matrix</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">acceptance_model</span><span class="p">:</span> <span class="n">Any</span>,</span><span class="param">	<span class="n">x_frame</span><span class="p">:</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span>,</span><span class="param">	<span class="o">*</span>,</span><span class="param">	<span class="n">u_values</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>,</span><span class="param">	<span class="n">u_coef</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>:</span></span>
 
@@ -3688,7 +3688,7 @@ experiments    </h1>
 </span><span id="glm_price_derivative_matrix-85"><a href="#glm_price_derivative_matrix-85"><span class="linenos"> 85</span></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">u_arr</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
 </span><span id="glm_price_derivative_matrix-86"><a href="#glm_price_derivative_matrix-86"><span class="linenos"> 86</span></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;u_values must be finite.&quot;</span><span class="p">)</span>
 </span><span id="glm_price_derivative_matrix-87"><a href="#glm_price_derivative_matrix-87"><span class="linenos"> 87</span></a>
-</span><span id="glm_price_derivative_matrix-88"><a href="#glm_price_derivative_matrix-88"><span class="linenos"> 88</span></a>    <span class="n">coeffs</span> <span class="o">=</span> <span class="n">extract_glm_churn_coefficients</span><span class="p">(</span><span class="n">acceptance_model</span><span class="p">)</span>
+</span><span id="glm_price_derivative_matrix-88"><a href="#glm_price_derivative_matrix-88"><span class="linenos"> 88</span></a>    <span class="n">coeffs</span> <span class="o">=</span> <span class="n">extract_glm_acceptance_coefficients</span><span class="p">(</span><span class="n">acceptance_model</span><span class="p">)</span>
 </span><span id="glm_price_derivative_matrix-89"><a href="#glm_price_derivative_matrix-89"><span class="linenos"> 89</span></a>    <span class="n">x_feature_cols</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
 </span><span id="glm_price_derivative_matrix-90"><a href="#glm_price_derivative_matrix-90"><span class="linenos"> 90</span></a>        <span class="nb">getattr</span><span class="p">(</span><span class="n">acceptance_model</span><span class="p">,</span> <span class="s2">&quot;x_feature_cols&quot;</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">x_frame</span><span class="o">.</span><span class="n">columns</span><span class="p">))</span>
 </span><span id="glm_price_derivative_matrix-91"><a href="#glm_price_derivative_matrix-91"><span class="linenos"> 91</span></a>    <span class="p">)</span>
@@ -3726,7 +3726,7 @@ experiments    </h1>
                 <section id="glm_price_sensitivity_matrix">
                             <input id="glm_price_sensitivity_matrix-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">glm_price_sensitivity_matrix</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">acceptance_model</span><span class="p">:</span> <span class="n">Any</span>,</span><span class="param">	<span class="n">x_frame</span><span class="p">:</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span>,</span><span class="param">	<span class="o">*</span>,</span><span class="param">	<span class="n">u_values</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>,</span><span class="param">	<span class="n">u_coef</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>:</span></span>
 
@@ -3761,7 +3761,7 @@ experiments    </h1>
                 <section id="glm_price_sensitivity_scores">
                             <input id="glm_price_sensitivity_scores-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">glm_price_sensitivity_scores</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">acceptance_model</span><span class="p">:</span> <span class="n">Any</span>,</span><span class="param">	<span class="n">x_frame</span><span class="p">:</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span>,</span><span class="param">	<span class="o">*</span>,</span><span class="param">	<span class="n">u_ref</span><span class="p">:</span> <span class="nb">float</span>,</span><span class="param">	<span class="n">u_coef</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>:</span></span>
 
@@ -3794,7 +3794,7 @@ experiments    </h1>
                 <section id="median_observed_u">
                             <input id="median_observed_u-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">median_observed_u</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">model_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;glm&#39;</span></span><span class="return-annotation">) -> <span class="nb">float</span>:</span></span>
 
@@ -3817,7 +3817,7 @@ experiments    </h1>
                 <section id="split_sensitivity_tertiles">
                             <input id="split_sensitivity_tertiles-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">split_sensitivity_tertiles</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">row_indices</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>,</span><span class="param">	<span class="n">scores</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span><span class="return-annotation">) -> <span class="nb">tuple</span><span class="p">[</span><span class="n"><a href="#SensitivityBucket">SensitivityBucket</a></span><span class="p">,</span> <span class="n"><a href="#SensitivityBucket">SensitivityBucket</a></span><span class="p">,</span> <span class="n"><a href="#SensitivityBucket">SensitivityBucket</a></span><span class="p">]</span>:</span></span>
 
@@ -3862,7 +3862,7 @@ experiments    </h1>
                 <section id="expand_override_grid">
                             <input id="expand_override_grid-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">expand_override_grid</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">grid</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Any</span><span class="p">]]</span></span><span class="return-annotation">) -> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">]]</span>:</span></span>
 
@@ -3888,7 +3888,7 @@ experiments    </h1>
                 <section id="apply_config_overrides">
                             <input id="apply_config_overrides-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">apply_config_overrides</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">config</span><span class="p">:</span> <span class="n"><a href="#ExperimentConfig">ExperimentConfig</a></span>,</span><span class="param">	<span class="n">overrides</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span></span><span class="return-annotation">) -> <span class="n"><a href="#ExperimentConfig">ExperimentConfig</a></span>:</span></span>
 
@@ -3915,7 +3915,7 @@ experiments    </h1>
                 <section id="make_sweep_name">
                             <input id="make_sweep_name-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">make_sweep_name</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">base_name</span><span class="p">:</span> <span class="nb">str</span>, </span><span class="param"><span class="n">index</span><span class="p">:</span> <span class="nb">int</span>, </span><span class="param"><span class="n">overrides</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span></span><span class="return-annotation">) -> <span class="nb">str</span>:</span></span>
 
@@ -3941,7 +3941,7 @@ experiments    </h1>
                 <section id="generate_sweep_runs">
                             <input id="generate_sweep_runs-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">generate_sweep_runs</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="o">*</span>,</span><span class="param">	<span class="n">base_preset</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">override_grid</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Any</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">override_list</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">display_keys</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n"><a href="#ExperimentConfig">ExperimentConfig</a></span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">]]]</span>:</span></span>
 
@@ -3989,7 +3989,7 @@ experiments    </h1>
                 <section id="run_preset_sweep">
                             <input id="run_preset_sweep-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">run_preset_sweep</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="o">*</span>,</span><span class="param">	<span class="n">base_preset</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">override_grid</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Any</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">override_list</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">runs_root</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;outputs&#39;</span>,</span><span class="param">	<span class="n">project_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">display_keys</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n"><a href="#ExperimentResult">ExperimentResult</a></span><span class="p">]]</span>:</span></span>
 

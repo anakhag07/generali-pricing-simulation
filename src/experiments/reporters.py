@@ -550,7 +550,7 @@ def _observed_u_reference(result: ExperimentResult) -> np.ndarray | None:
         return None
     if not hasattr(objective, "acceptance_model") or not hasattr(objective, "loss_model"):
         return None
-    state_dim = int(result.x_samples.shape[1])
+    state_dim = int(result.config.state_dim)
     if state_dim == len(FEATURE_COLS_GLM):
         model_type = "glm"
     elif state_dim == len(FEATURE_COLS_XGB):

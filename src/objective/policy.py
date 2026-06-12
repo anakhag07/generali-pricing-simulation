@@ -305,10 +305,22 @@ class LinearPolicy(Policy):
 
 @dataclass(frozen=True)
 class SoftmaxPolicy(Policy):
-    """Softmax policy: $$u = 0.5 - \\sigma(\\theta^\\top \\phi(x)) \\in (-0.5, 0.5)$$."""
+    """Bounded sigmoid policy: $$u = l + (h-l)\\sigma(\\theta^\\top \\phi(x))$$."""
 
     feature_map: FeatureMap = field(default_factory=IdentityFeatureMap)
+    action_low: float = -0.5
+    action_high: float = 0.5
     kind: str = _POLICY_SOFTMAX
+
+    def __post_init__(self) -> None:
+        low = float(self.action_low)
+        high = float(self.action_high)
+        if not np.isfinite(low) or not np.isfinite(high):
+            raise ValueError("SoftmaxPolicy action bounds must be finite.")
+        if low >= high:
+            raise ValueError("SoftmaxPolicy requires action_low < action_high.")
+        object.__setattr__(self, "action_low", low)
+        object.__setattr__(self, "action_high", high)
 
     def theta_dim(self, state_dim: int) -> int:
         """Return ``1 + dim(varphi(x))`` for this policy's feature map."""
@@ -319,16 +331,21 @@ class SoftmaxPolicy(Policy):
         features = _phi(x_batch, self.feature_map)
         theta_arr = _validate_theta(theta, expected_dim=features.shape[1])
         z = features @ theta_arr
-        return (0.5 - _sigmoid(z)).astype(float)
+        return (self.action_low + self.action_span * _sigmoid(z)).astype(float)
 
     def grad(self, theta: np.ndarray, x_batch: np.ndarray) -> np.ndarray:
-        """Return gradient ``-sigma'(z) * phi(x)`` for all samples, shape ``(n_samples, theta_dim)``."""
+        """Return ``du/dtheta`` for all samples, shape ``(n_samples, theta_dim)``."""
         features = _phi(x_batch, self.feature_map)
         theta_arr = _validate_theta(theta, expected_dim=features.shape[1])
         z = features @ theta_arr
         sigma = _sigmoid(z)
-        du_dz = -sigma * (1.0 - sigma)
+        du_dz = self.action_span * sigma * (1.0 - sigma)
         return du_dz[:, None] * features
+
+    @property
+    def action_span(self) -> float:
+        """Return ``action_high - action_low``."""
+        return float(self.action_high - self.action_low)
 
 
 @dataclass(frozen=True)

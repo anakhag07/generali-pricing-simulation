@@ -10,11 +10,13 @@ from data.loader import (
     ACCEPTANCE_STATE_COLS,
     FEATURE_COLS_GLM,
     FEATURE_COLS_XGB,
+    LOSS_TARGET_COL,
     LOSS_FEATURE_COLS,
     PREMIUM_COL,
     extract_glm_u_coef,
     load_mean_observed_acceptance,
     load_model_artifacts,
+    load_observed_loss_array,
     load_x_frame,
     sample_csv_row_indices,
 )
@@ -45,6 +47,7 @@ PolicyKind = Literal["constant", "linear", "softmax", "mlp"]
 FeatureOrder = Literal["linear", "identity", "quadratic", "cubic", "third_order", "quartic", "fourth_order"]
 PolicyPreprocessing = Literal["artifact", "no_pca"]
 ConstraintMode = Literal["none", "trust_constr", "trust-constr", "penalty", "lagrangian"]
+LossSource = Literal["predicted", "observed"]
 
 
 def build_real_data_config(
@@ -54,6 +57,8 @@ def build_real_data_config(
     feature_order: FeatureOrder = "linear",
     policy_preprocessing: PolicyPreprocessing = "artifact",
     constraint_mode: ConstraintMode = "none",
+    loss_source: LossSource = "predicted",
+    softmax_action_bounds: tuple[float, float] | None = None,
     seed: int = 42,
     n_samples: int = 5000,
     row_indices: np.ndarray | None = None,
@@ -94,10 +99,13 @@ def build_real_data_config(
     """Build a real-data config from model, policy, preprocessing, and constraint axes."""
     model_type = _normalize_model_type(model_type)
     constraint_mode = _normalize_constraint_mode(constraint_mode)
+    loss_source = _normalize_loss_source(loss_source)
     state_dim = len(_feature_cols(model_type))
-    acceptance_model, loss_model = load_model_artifacts(model_type)
     if u_coef is not None and model_type != "glm":
         raise ValueError("u_coef override is supported only for GLM acceptance artifacts.")
+    if softmax_action_bounds is not None and policy_kind != "softmax":
+        raise ValueError("softmax_action_bounds is supported only when policy_kind='softmax'.")
+    acceptance_model, loss_model = load_model_artifacts(model_type)
     artifact_u_coef = extract_glm_u_coef(acceptance_model) if model_type == "glm" else None
     effective_u_coef = float(u_coef) if u_coef is not None else artifact_u_coef
 
@@ -106,6 +114,12 @@ def build_real_data_config(
             row_indices = sample_csv_row_indices(model_type, n_rows=int(n_samples), seed=int(seed))
         x_fixed_arr = load_x_frame(model_type, row_indices=row_indices)
         x_fixed_row_indices_arr = np.asarray(row_indices, dtype=int)
+        if loss_source == "observed":
+            x_fixed_arr = x_fixed_arr.copy()
+            x_fixed_arr[LOSS_TARGET_COL] = load_observed_loss_array(
+                model_type,
+                row_indices=x_fixed_row_indices_arr,
+            )
     else:
         x_fixed_arr = x_fixed.reset_index(drop=True).copy() if hasattr(x_fixed, "iloc") else np.asarray(x_fixed, dtype=object)
         x_fixed_row_indices_arr = (
@@ -113,6 +127,19 @@ def build_real_data_config(
             if x_fixed_row_indices is not None
             else None
         )
+        if loss_source == "observed":
+            if not hasattr(x_fixed_arr, "columns"):
+                raise ValueError("loss_source='observed' requires DataFrame x_fixed or generated real-data rows.")
+            if LOSS_TARGET_COL not in x_fixed_arr.columns:
+                if x_fixed_row_indices_arr is None:
+                    raise ValueError(
+                        "loss_source='observed' requires Y_G_Loss in x_fixed or x_fixed_row_indices to load it."
+                    )
+                x_fixed_arr = x_fixed_arr.copy()
+                x_fixed_arr[LOSS_TARGET_COL] = load_observed_loss_array(
+                    model_type,
+                    row_indices=x_fixed_row_indices_arr,
+                )
 
     policy_preprocessor = None
     policy_feature_cols = None
@@ -130,7 +157,7 @@ def build_real_data_config(
     else:
         raise ValueError("policy_preprocessing must be 'artifact' or 'no_pca'.")
 
-    policy = _make_policy(policy_kind, feature_order)
+    policy = _make_policy(policy_kind, feature_order, softmax_action_bounds)
     theta0_arr = _resolve_theta0(
         theta0=theta0,
         policy=policy,
@@ -175,6 +202,8 @@ def build_real_data_config(
         acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),
         loss_cols=tuple(LOSS_FEATURE_COLS),
         premium_col=PREMIUM_COL,
+        loss_source=loss_source,
+        observed_loss_col=LOSS_TARGET_COL,
         u_coef=effective_u_coef,
         u_bounds=resolved_u_bounds,
         policy_preprocessor=policy_preprocessor,
@@ -246,6 +275,12 @@ def _normalize_constraint_mode(mode: str) -> Literal["none", "trust_constr", "pe
     return mode  # type: ignore[return-value]
 
 
+def _normalize_loss_source(loss_source: str) -> LossSource:
+    if loss_source not in {"predicted", "observed"}:
+        raise ValueError("loss_source must be 'predicted' or 'observed'.")
+    return loss_source  # type: ignore[return-value]
+
+
 def _feature_cols(model_type: ModelType) -> tuple[str, ...]:
     return tuple(FEATURE_COLS_GLM if model_type == "glm" else FEATURE_COLS_XGB)
 
@@ -262,14 +297,25 @@ def _feature_map(feature_order: FeatureOrder) -> FeatureMap:
     raise ValueError(f"Unknown feature_order '{feature_order}'.")
 
 
-def _make_policy(policy_kind: PolicyKind, feature_order: FeatureOrder) -> object:
+def _make_policy(
+    policy_kind: PolicyKind,
+    feature_order: FeatureOrder,
+    softmax_action_bounds: tuple[float, float] | None = None,
+) -> object:
     feature_map = _feature_map(feature_order)
     if policy_kind == "constant":
         return ConstantPolicy()
     if policy_kind == "linear":
         return LinearPolicy(feature_map=feature_map)
     if policy_kind == "softmax":
-        return SoftmaxPolicy(feature_map=feature_map)
+        if softmax_action_bounds is None:
+            return SoftmaxPolicy(feature_map=feature_map)
+        low, high = softmax_action_bounds
+        return SoftmaxPolicy(
+            feature_map=feature_map,
+            action_low=float(low),
+            action_high=float(high),
+        )
     if policy_kind == "mlp":
         return MLPPolicy(feature_map=feature_map)
     raise ValueError(f"Unknown policy_kind '{policy_kind}'.")
@@ -329,8 +375,20 @@ def _resolve_theta0(
     else:
         return None
     if initial_u is not None:
-        theta[0] = float(initial_u)
+        if isinstance(policy, SoftmaxPolicy):
+            theta[0] = _softmax_intercept_for_u(policy, float(initial_u))
+        else:
+            theta[0] = float(initial_u)
     return theta
+
+
+def _softmax_intercept_for_u(policy: SoftmaxPolicy, initial_u: float) -> float:
+    low = float(policy.action_low)
+    high = float(policy.action_high)
+    if not low < float(initial_u) < high:
+        raise ValueError("initial_u must lie strictly inside SoftmaxPolicy action bounds.")
+    p = (float(initial_u) - low) / (high - low)
+    return float(np.log(p / (1.0 - p)))
 
 
 def _default_step_rule(constraint_mode: str) -> str:

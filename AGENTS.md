@@ -145,6 +145,7 @@ Guidelines:
   - Caches policy features, GLM base logits, and loss predictions for repeated fixed `x_batch` arrays; final acceptance probabilities are not cached because they depend on `u`
   - `eval_counts()` also reports prediction/objective timing counters and cache hit/miss counters for performance diagnostics
   - `u_coef` sets the effective GLM acceptance coefficient on generated `U` for both values and analytical gradients; `None` uses the artifact coefficient or central FD for unsupported artifacts
+  - `loss_source="observed"` keeps model-predicted acceptance but replaces the loss-model prediction with row-aligned historical `Y_G_Loss` carried on the real-data `x_fixed` DataFrame
   - `value()`, `grad()`, `value_at_u()`
 
 - **`src/objective/objectives/planted_logistic.py`**
@@ -156,7 +157,8 @@ Guidelines:
   - Feature-map classes: `IdentityFeatureMap`, `QuadraticFeatureMap`, `CubicFeatureMap`, `QuarticFeatureMap`, `CallableFeatureMap`; policies prepend the intercept internally, so custom maps return `varphi(x)`, not `[1, varphi(x)]`
   - `policy_theta_dim(policy, state_dim)`: helper for resolving theta dimension from the policy feature map
   - Concrete policies: `ConstantPolicy`, `LinearPolicy`, `SoftmaxPolicy`, `MLPPolicy`, `FeatureProcessedPolicy`
-  - `MLPPolicy`: two-layer MLP with `tanh` activations and the same bounded `0.5 - sigmoid(z)` head as `SoftmaxPolicy`; default hidden width 16; flat theta layout `[W1, b1, W2, b2, W3, b3]`
+  - `SoftmaxPolicy`: bounded canonical sigmoid policy `action_low + (action_high - action_low) * sigmoid(theta^T phi(x))`; defaults to action range `(-0.5, 0.5)` and supports custom bounds such as `(-0.1, 0.2)`
+  - `MLPPolicy`: two-layer MLP with `tanh` activations and bounded `0.5 - sigmoid(z)` head; default hidden width 16; flat theta layout `[W1, b1, W2, b2, W3, b3]`
   - `mlp_init_theta(rng, *, d_in, hidden)`: Glorot-uniform random init for `MLPPolicy.theta_dim`-sized theta (zero-init breaks because hidden units stay symmetric)
   - `policy_from_kind(kind)`: factory function (kinds: `constant`, `linear`, `softmax`, `mlp`)
 
@@ -203,6 +205,7 @@ Guidelines:
   - `load_x_frame(model_type, n_rows=5000, row_indices=None, seed=None)`: loads raw X covariates as a DataFrame, preserving categorical strings for artifact preprocessing
   - `load_x_array(...)`: compatibility wrapper returning the raw X frame as an object array; prefer `load_x_frame` for real-data configs
   - `load_observed_u_array(model_type, n_rows=5000, row_indices=None, seed=None)`: loads observed pricing multipliers from sampled canonical dataset rows for diagnostics and plots
+  - `load_observed_loss_array(model_type, n_rows=5000, row_indices=None, seed=None)`: loads observed historical `Y_G_Loss` from sampled canonical dataset rows for observed-loss real-data objectives
   - `load_mean_observed_acceptance(model_type)`: computes `1 - is_churn` over complete eligible rows
   - `load_model_artifacts(model_type)`: loads first-fold `(acceptance_artifact, loss_artifact)` bundles from the 052726 CV dictionaries under `src/data/models/linear/` or `src/data/models/xgb/`
   - `ModelArtifactBundle.model_frame(raw_frame)`: converts raw notebook-space columns into the exact model-input frame expected by the bundled estimator
@@ -256,7 +259,8 @@ Guidelines:
 
 - **`src/experiments/configs/`** (preset registry)
   - `__init__.py`: `get_config(name, overrides=None)` and `list_configs()` registry; real-data configs are exposed only as base presets plus overrides
-  - `real_data_factory.py`: `build_real_data_config(...)` centralizes GLM/XGB artifact loading, row sampling, policy construction, feature-order overrides, policy-side no-PCA preprocessing, GLM-only `u_coef` acceptance overrides, acceptance-floor modes, estimator defaults, and theta initialization
+  - `real_data_factory.py`: `build_real_data_config(...)` centralizes GLM/XGB artifact loading, row sampling, policy construction, feature-order overrides, softmax action-bound overrides, policy-side no-PCA preprocessing, GLM-only `u_coef` acceptance overrides, acceptance-floor modes, estimator defaults, and theta initialization
+    - `loss_source="observed"` is an override axis that appends `Y_G_Loss` to the fixed real-data frame and configures `ModelBasedObjective` to use it as the loss term; default `"predicted"` keeps the artifact loss model
   - `first_order_runs_diff_starts.py`: planted-logistic preset configured for comparison runs across different initial starts
   - `fixed_regression_base.py`: base fixed-regression config (4D, L-BFGS-B step rule, W&B enabled)
   - `planted_logistic_base.py`: planted logistic base config (3D, L-BFGS-B step rule, 5000 steps, u*=1.1)
@@ -346,9 +350,11 @@ Guidelines:
 - `scripts/run_glm_sensitivity_bucket_experiment.py` buckets all complete eligible GLM rows into low/medium/high local price-sensitivity tertiles at median observed `U`, runs the softmax/no-PCA/trust-constr GLM setup on every row in each bucket, keeps per-run distribution plots enabled, and writes aggregate `glm_sensitivity_bucket_experiment.csv` plus comparison plots under `outputs/glm-sensitivity-buckets/sensitivity_bucket_summary_<timestamp>/`
 - `scripts/run_glm_reference_elasticity_bucket_experiment.py` repeats the GLM bucket experiment for reference actions `u_ref in {-0.1, 0.1, 0.2, 0.3}`, ranks rows by elasticity magnitude at each reference action, runs only `first_order`, annotates summary charts with average bucket elasticity magnitude, and writes per-reference summaries under `outputs/glm-reference-elasticity-buckets/`
 - `scripts/plot_glm_sensitivity_distribution.py` computes GLM customer elasticities $$d p_{accept}(x, u) / du$$ over a default `u in [-0.3, 0.3]` grid, writes a mean/quantile elasticity-by-`u` curve, selected-`u` elasticity histograms for `{-0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3}` with default `0.5-99.5%` x-axis clipping marked, and CSV summaries under `outputs/glm-sensitivity-distribution/`
+- `scripts/diagnose_low_sensitivity_policy_acceptance.py` rebuilds GLM sensitivity buckets, applies a saved softmax theta to selected buckets using the full-data no-PCA policy preprocessor by default, and writes row-level `row_index`, processed policy-feature, GLM acceptance-feature, policy-score, and acceptance-logit diagnostics plus histograms under `outputs/low-sensitivity-policy-acceptance-diagnostics/`; use `--bucket all` for low/medium/high
 - `scripts/plot_saved_acceptance_floor_frontier.py` re-plots acceptance-floor Pareto frontiers from a saved `acceptance_floor_sweep.csv` (or the latest matching frontier directory) without rerunning optimization; defaults to `first_order` and writes estimator-suffixed Pareto PNGs
 - `scripts/query_acceptance_at_u.py` loads a config preset or default GLM/XGB model type and reports mean acceptance for supplied or evenly sampled constant `u` values without running optimization; writes acceptance-curve and historical-`U` rug plots under `outputs/acceptance_queries/` by default and optionally writes `u,n,mean_acceptance` CSV output
 - `scripts/plot_pc_outcome_diagnostics.py` reads a saved run `summary.json`, rebuilds a real-data base preset objective with optional policy/preprocessing override flags, and writes processed-policy-component scatter diagnostics against final `f_acc`, loss, and `u`; defaults beside the summary under `pc_outcome_diagnostics/<estimator>/`
+- `scripts/evaluate_historical_policy_objective.py` reads a saved run `summary.json`, reconstructs the sampled CSV row positions from seed/`n_samples`, prints the estimator theta used, and evaluates final policy prices under historical acceptance `1 - is_churn` and observed `Y_G_Loss`; writes aggregate `summary.json` and row-level `per_row.csv` under `historical_policy_objective/<estimator>/`
 - `scripts/plot_glm_data_tsne.py` samples rows from the GLM real-data CSV, runs a standardized t-SNE/KMeans feature diagnostic, and writes embedding CSV plus color-by-feature plots under `outputs/data-tsne/`
 - `scripts/run_policy_pca_grid.py` runs the GLM policy PCA-dimensionality grid over configured PCA dimensions and policy classes `(constant, linear, quadratic, third_order, fourth_order, softmax_linear, softmax_quadratic, softmax_third_order, softmax_fourth_order, mlp)`; unconstrained is default, `--constrained` uses `trust-constr` with the observed GLM acceptance floor and a 500-step default cap; outputs aggregate CSVs, summary markdown, and headline/spread plots under `outputs/policy-pca-grid/`; prints per-condition progress by default and supports `--quiet`
 - `scripts/benchmark_experiment_speed.py` benchmarks GLM analytical acceptance vs sklearn `predict_proba`, Stein-difference gradient timing/call counts, repeated objective-cache behavior, and full-vs-subsampled contour grid timing; use it to quantify whether performance changes speed up real-data diagnostics without relying on flaky pytest time thresholds

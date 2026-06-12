@@ -44,7 +44,10 @@ Pluggable components:
 - **Gradient estimators**: `constant`, `first_order`, `finite_difference`, `gauss_stein`, `stein_difference`, `spsa`
 
 The default bounded policy is `SoftmaxPolicy`, which maps
-`u = 0.5 - sigma(theta^T phi(x))`, so its action range is `(-0.5, 0.5)`.
+`u = action_low + (action_high - action_low) * sigma(theta^T phi(x))`.
+The default action range is `(-0.5, 0.5)`; pass custom bounds such as
+`SoftmaxPolicy(action_low=-0.1, action_high=0.2)` or the real-data override
+`softmax_action_bounds=(-0.1, 0.2)` to restrict proposed actions.
 `LinearPolicy` and `SoftmaxPolicy` support configurable state feature maps
 `varphi(x)`. The policy prepends the intercept internally, so
 `phi(x) = [1, varphi(x)]` and custom feature maps should not include the
@@ -94,16 +97,19 @@ Real-data experiments use a small set of base presets plus overrides:
 | `real_data_glm_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, analytical grad when supported) |
 | `real_data_xgb_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, FD acceptance gradient) |
 
-Real-data overrides can select policy, feature order, preprocessing, constraint
-mode, and runtime knobs without adding a new preset module. Example:
+Real-data overrides can select policy, feature order, preprocessing, loss source,
+constraint mode, and runtime knobs without adding a new preset module. Example:
 
 ```python
 config = get_config(
     "real_data_glm_base",
     overrides={
         "policy_kind": "softmax",
+        "softmax_action_bounds": (-0.1, 0.2),
+        "initial_u": 0.0,
         "feature_order": "quartic",
         "policy_preprocessing": "no_pca",
+        "loss_source": "observed",
         "constraint_mode": "trust_constr",
         "enabled_estimators": ("first_order", "constant"),
     },
@@ -113,13 +119,17 @@ config = get_config(
 Supported policy axes are `policy_kind in {"constant", "linear", "softmax",
 "mlp"}`, `feature_order in {"linear", "quadratic", "cubic", "quartic"}`,
 `policy_preprocessing in {"artifact", "no_pca"}`, and `constraint_mode in
-{"none", "trust_constr", "penalty", "lagrangian"}`. GLM real-data runs also
-accept a `u_coef` override for counterfactual acceptance sensitivity sweeps; it
-changes only the logistic acceptance coefficient on generated policy `u`, not
-the linear loss model.
+{"none", "trust_constr", "penalty", "lagrangian"}`. Softmax real-data runs also
+accept `softmax_action_bounds=(low, high)`. `loss_source` defaults to
+`"predicted"`; setting `loss_source="observed"` keeps model-predicted acceptance
+but uses row-aligned historical `Y_G_Loss` as the loss term. GLM real-data runs
+also accept a `u_coef` override for counterfactual acceptance sensitivity sweeps;
+it changes only the logistic acceptance coefficient on generated policy `u`, not
+the loss term.
 
-The objective for real-data configs is $$f(u; x) = a(x,u)(\hat{Y}(x) - (u + 1) \cdot p(x))$$
-where $$a$$ is acceptance probability, $$\hat{Y}$$ is expected financial loss, and $$p$$ is policy premium.
+The objective for real-data configs is $$f(u; x) = a(x,u)(L(x) - (u + 1) \cdot p(x))$$
+where $$a$$ is acceptance probability, $$L$$ is either expected financial loss
+$$\hat{Y}$$ or observed `Y_G_Loss`, and $$p$$ is policy premium.
 
 Real-data source rows now live in the canonical `src/data/dataset.csv` file,
 with schema/path metadata tracked in `src/data/dataset_metadata.py`. The current
@@ -224,6 +234,13 @@ writes a mean/quantile elasticity-by-`u` curve, selected-`u` customer elasticity
 histograms with default `0.5-99.5%` x-axis clipping marked on the chart, and CSV
 summaries under `outputs/glm-sensitivity-distribution/`.
 
+`scripts/diagnose_low_sensitivity_policy_acceptance.py` rebuilds the GLM
+sensitivity buckets, applies a saved softmax theta to selected bucket rows, and
+writes row-level policy-score / acceptance-logit diagnostics plus processed
+policy-feature and GLM acceptance-feature columns. Use `--bucket low medium high`
+or `--bucket all` to compare buckets; outputs go under
+`outputs/low-sensitivity-policy-acceptance-diagnostics/` by default.
+
 If you already have saved acceptance-floor sweep outputs and only want the
 Pareto frontier for one estimator without rerunning optimization, use
 `scripts/plot_saved_acceptance_floor_frontier.py`:
@@ -295,6 +312,22 @@ python scripts/plot_pc_outcome_diagnostics.py \
 This writes scatter grids for processed components vs `f_acc`, loss, and final
 `u`, plus `u_vs_acceptance.png` and `pc_diagnostic_correlations.csv` beside the
 run summary by default.
+
+To evaluate a saved final policy under actual historical acceptance and observed
+loss, use:
+
+```bash
+python scripts/evaluate_historical_policy_objective.py \
+  --summary-json outputs/real_data_glm_base/<run_id>/summary.json \
+  --estimator first_order
+```
+
+The script reconstructs the saved real-data row sample from the run seed and
+`n_samples`, computes final policy prices from the saved theta, and evaluates
+`(1 - is_churn) * (Y_G_Loss - (u_policy + 1) * X_policy_premium)`. It prints the
+theta used for manual verification and writes aggregate `summary.json` plus
+row-level `per_row.csv` under `historical_policy_objective/<estimator>/` beside
+the input summary by default.
 
 ## Creating Config Presets
 

@@ -17,7 +17,7 @@ import numpy as np
 
 from data.loader import (
     eligible_csv_row_indices,
-    extract_glm_churn_coefficients,
+    extract_glm_acceptance_coefficients,
     load_model_artifacts,
     load_x_frame,
     sample_csv_row_indices,
@@ -102,7 +102,7 @@ def _write_summary_csv(rows: Sequence[Mapping[str, float | int]], path: Path) ->
 
 
 def _theoretical_derivative_bound(acceptance_model: object, u_coef: float | None) -> float:
-    coeffs = extract_glm_churn_coefficients(acceptance_model)
+    coeffs = extract_glm_acceptance_coefficients(acceptance_model)
     beta_u = float(u_coef) if u_coef is not None else float(coeffs["u_coef"])
     probability_target = coeffs.get(
         "probability_target",

@@ -89,6 +89,18 @@ def test_load_observed_u_array_uses_row_indices():
     assert u_1.shape == (25,)
 
 
+def test_load_observed_loss_array_uses_row_indices():
+    from data.loader import load_observed_loss_array, sample_csv_row_indices
+
+    row_indices = sample_csv_row_indices("glm", n_rows=25, seed=123)
+    loss_1 = load_observed_loss_array("glm", row_indices=row_indices)
+    loss_2 = load_observed_loss_array("glm", row_indices=row_indices)
+
+    assert np.array_equal(loss_1, loss_2)
+    assert loss_1.shape == (25,)
+    assert np.all(np.isfinite(loss_1))
+
+
 def test_load_model_artifacts_types():
     import sklearn.linear_model
     import xgboost
@@ -121,11 +133,11 @@ def test_extract_glm_u_coef_is_finite():
     assert coef != 0.0
 
 
-def test_extract_glm_churn_coefficients_matches_u_coef():
-    from data.loader import extract_glm_churn_coefficients, extract_glm_u_coef, load_model_artifacts
+def test_extract_glm_acceptance_coefficients_matches_u_coef():
+    from data.loader import extract_glm_acceptance_coefficients, extract_glm_u_coef, load_model_artifacts
 
     glm_acc, _ = load_model_artifacts("glm")
-    coeffs = extract_glm_churn_coefficients(glm_acc)
+    coeffs = extract_glm_acceptance_coefficients(glm_acc)
 
     assert len(coeffs["x_feature_names"]) == len(coeffs["x_coef"])
     assert coeffs["x_feature_names"]

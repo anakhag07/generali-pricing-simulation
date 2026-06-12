@@ -21,8 +21,10 @@ RUN_CONFIGS: list[str | tuple[str, dict[str, Any]]] = [
         "real_data_glm_base",
         {
             "policy_kind": "softmax",
+            "softmax_action_bounds": (-0.4, 0.4),
+            "initial_u": 0.0,
             "policy_preprocessing": "no_pca",
-            "feature_order": "linear", 
+            "feature_order": "linear",
             "constraint_mode": "trust_constr",
             "n_samples": 700000,
             "n_grad_samples": 8,

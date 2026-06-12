@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import time
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
@@ -20,11 +20,12 @@ from objective.utils import _theta_grad_from_u_grad
 class ModelBasedObjective(Objective):
     r"""Pricing objective backed by trained ML models.
 
-    $$f(u; x) = a(x,u) \cdot (\hat{Y}(x) - (u + 1) \cdot p(x))$$
+    $$f(u; x) = a(x,u) \cdot (L(x) - (u + 1) \cdot p(x))$$
 
     where $$a(x,u)$$ is acceptance derived from the bundled acceptance classifier,
-    $$\hat{Y}(x)$$ is the expected financial loss (LinearRegression or XGBRegressor),
-    and $$p(x)$$ is the policy premium extracted from column ``premium_col`` of x.
+    $$L(x)$$ is the loss term (LinearRegression/XGBRegressor prediction,
+    or observed ``Y_G_Loss`` when ``loss_source="observed"``), and $$p(x)$$ is
+    the policy premium extracted from column ``premium_col`` of x.
     The policy output ``u`` stays centered at 0, so ``u = 0`` means the baseline
     premium multiplier and revenue uses ``(u + 1) * p(x)``.
 
@@ -54,6 +55,8 @@ class ModelBasedObjective(Objective):
     acceptance_state_cols: tuple[str, ...]
     loss_cols: tuple[str, ...]
     premium_col: int | str = "X_policy_premium"
+    loss_source: Literal["predicted", "observed"] = "predicted"
+    observed_loss_col: str = "Y_G_Loss"
     u_coef: float | None = None
     u_bounds: tuple[float, float] | None = None
     acceptance_floor: float | None = None
@@ -69,6 +72,11 @@ class ModelBasedObjective(Objective):
         compare=False,
         repr=False,
     )
+
+    def __post_init__(self) -> None:
+        if self.loss_source not in {"predicted", "observed"}:
+            raise ValueError("loss_source must be 'predicted' or 'observed'.")
+        object.__setattr__(self, "observed_loss_col", str(self.observed_loss_col))
 
     def _clip_u(self, u: np.ndarray) -> np.ndarray:
         """Clip u to bounds if set."""
@@ -125,6 +133,19 @@ class ModelBasedObjective(Objective):
                 raise ValueError(f"Missing premium column '{self.premium_col}' in x_batch.")
             return frame[self.premium_col].to_numpy(dtype=float)
         return frame.iloc[:, int(self.premium_col)].to_numpy(dtype=float)
+
+    def _observed_loss_values(self, x_batch: Any) -> np.ndarray:
+        frame = self._x_frame(x_batch)
+        if self.observed_loss_col not in frame.columns:
+            raise ValueError(
+                f"loss_source='observed' requires column '{self.observed_loss_col}' in x_batch."
+            )
+        loss = frame[self.observed_loss_col].to_numpy(dtype=float)
+        if loss.shape != (self._row_count(x_batch),):
+            raise ValueError("Observed loss values must have one value per x_batch row.")
+        if not np.isfinite(loss).all():
+            raise ValueError("Observed loss values must be finite.")
+        return loss
 
     def value(self, theta: np.ndarray, x_batch: np.ndarray) -> float:
         """Compute mean objective value across batch."""
@@ -279,13 +300,13 @@ class ModelBasedObjective(Objective):
             return model_frame(raw_frame)
         return raw_frame
 
-    def _glm_churn_coefficients(self) -> dict[str, Any] | None:
-        key = ("glm_churn_coefficients",)
+    def _glm_acceptance_coefficients(self) -> dict[str, Any] | None:
+        key = ("glm_acceptance_coefficients",)
         if key not in self._cache:
             try:
-                from data.loader import extract_glm_churn_coefficients
+                from data.loader import extract_glm_acceptance_coefficients
 
-                coeffs = extract_glm_churn_coefficients(self.acceptance_model)
+                coeffs = extract_glm_acceptance_coefficients(self.acceptance_model)
             except (AttributeError, KeyError, TypeError, ValueError):
                 coeffs = None
             self._cache[key] = coeffs
@@ -303,18 +324,18 @@ class ModelBasedObjective(Objective):
             self._cache[key] = coeffs
         return self._cache[key]
 
-    def _glm_churn_base_logit(self, x_batch: Any) -> np.ndarray | None:
-        coeffs = self._glm_churn_coefficients()
+    def _glm_acceptance_base_logit(self, x_batch: Any) -> np.ndarray | None:
+        coeffs = self._glm_acceptance_coefficients()
         if coeffs is None:
             return None
-        key = self._cache_key("glm_churn_base_logit", x_batch)
+        key = self._cache_key("glm_acceptance_base_logit", x_batch)
         if key in self._cache:
-            self._record_eval("glm_churn_base_logit_cache_hits", self._row_count(x_batch))
+            self._record_eval("glm_acceptance_base_logit_cache_hits", self._row_count(x_batch))
             cached = self._cache[key]
             return None if cached is None else np.asarray(cached, dtype=float)
 
         n_rows = self._row_count(x_batch)
-        self._record_eval("glm_churn_base_logit_cache_misses", n_rows)
+        self._record_eval("glm_acceptance_base_logit_cache_misses", n_rows)
         raw_df = self._x_frame(x_batch).loc[:, list(self.acceptance_state_cols)].copy()
         raw_df["U"] = np.zeros(n_rows, dtype=float)
         model_df = self._artifact_frame(self.acceptance_model, raw_df)
@@ -332,10 +353,10 @@ class ModelBasedObjective(Objective):
         return base_logit
 
     def _glm_acceptance_proba(self, x_batch: Any, u_arr: np.ndarray) -> np.ndarray | None:
-        coeffs = self._glm_churn_coefficients()
+        coeffs = self._glm_acceptance_coefficients()
         if coeffs is None:
             return None
-        base_logit = self._glm_churn_base_logit(x_batch)
+        base_logit = self._glm_acceptance_base_logit(x_batch)
         if base_logit is None:
             return None
         self._record_eval("acceptance_analytic_calls", self._row_count(x_batch))
@@ -410,7 +431,7 @@ class ModelBasedObjective(Objective):
         self._cache[key] = features_arr
         return features_arr
 
-    def _churn_proba(self, x_batch: Any, u_arr: np.ndarray) -> np.ndarray:
+    def _acceptance_model_class1_proba(self, x_batch: Any, u_arr: np.ndarray) -> np.ndarray:
         """Call classifier and return class-1 probability, shape (n,)."""
         raw_df = self._x_frame(x_batch).loc[:, list(self.acceptance_state_cols)].copy()
         raw_df["U"] = np.asarray(u_arr, dtype=float)
@@ -428,13 +449,16 @@ class ModelBasedObjective(Objective):
         analytical = self._glm_acceptance_proba(x_batch, u_arr)
         if analytical is not None:
             return analytical
-        class1 = self._churn_proba(x_batch, u_arr)
+        class1 = self._acceptance_model_class1_proba(x_batch, u_arr)
         if getattr(self.acceptance_model, "probability_target", "churn") == "acceptance":
             return class1
         return 1.0 - class1
 
     def _loss_prediction(self, x_batch: Any) -> np.ndarray:
-        """Call loss model on loss_cols subset of x_batch. Returns shape (n,)."""
+        """Return loss-model predictions or observed losses. Returns shape (n,)."""
+        if self.loss_source == "observed":
+            self._record_eval("observed_loss_calls", self._row_count(x_batch))
+            return self._observed_loss_values(x_batch)
         key = self._cache_key("loss_prediction", x_batch)
         cached = self._cache.get(key)
         if cached is not None:
@@ -471,7 +495,7 @@ class ModelBasedObjective(Objective):
         u_coef = self.u_coef
         probability_target = getattr(self.acceptance_model, "probability_target", "acceptance")
         if u_coef is None:
-            coeffs = self._glm_churn_coefficients()
+            coeffs = self._glm_acceptance_coefficients()
             if coeffs is not None:
                 u_coef = self._effective_glm_u_coef(coeffs)
                 probability_target = coeffs.get("probability_target", probability_target)

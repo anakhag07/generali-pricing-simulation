@@ -402,6 +402,29 @@ def load_observed_u_array(
     return df[OBSERVED_U_COL].to_numpy(dtype=float)
 
 
+def load_observed_loss_array(
+    model_type: ModelType,
+    n_rows: int | None = 5000,
+    *,
+    row_indices: np.ndarray | Sequence[int] | None = None,
+    seed: int | None = None,
+) -> np.ndarray:
+    """Load observed historical financial loss from sampled complete 052726 rows."""
+    model_type = _validate_model_type(model_type)
+    csv_path = _acceptance_csv_path(model_type)
+    if row_indices is None:
+        if n_rows is None:
+            row_indices = _eligible_row_indices(csv_path)
+        else:
+            row_indices = sample_csv_row_indices(model_type, n_rows=n_rows, seed=seed)
+    else:
+        row_indices = _validate_row_indices(row_indices, _csv_row_count(csv_path))
+    df = pd.read_csv(csv_path, sep=";", usecols=[LOSS_TARGET_COL])
+    df = _select_csv_rows(df, np.asarray(row_indices, dtype=int))
+    _validate_no_missing_required(df, [LOSS_TARGET_COL])
+    return df[LOSS_TARGET_COL].to_numpy(dtype=float)
+
+
 def _load_observed_u_array(
     model_type: ModelType,
     n_rows: int | None = 5000,
@@ -455,7 +478,7 @@ def extract_glm_u_coef(glm_pipeline: Any) -> float:
     raise ValueError("Could not find a StandardScaler containing 'U' in the GLM pipeline preprocessor.")
 
 
-def extract_glm_churn_coefficients(glm_pipeline: Any) -> dict[str, Any]:
+def extract_glm_acceptance_coefficients(glm_pipeline: Any) -> dict[str, Any]:
     """Extract processed-space acceptance coefficients from a fitted GLM artifact."""
     model = unwrap_model_artifact(glm_pipeline)
     if hasattr(model, "coef_") and hasattr(model, "intercept_") and hasattr(model, "feature_names_in_"):
@@ -518,7 +541,7 @@ def extract_linear_loss_coefficients(linear_model: Any) -> dict[str, Any]:
 def extract_model_based_coefficients(acceptance_model: Any, loss_model: Any) -> dict[str, dict[str, Any]] | None:
     """Extract printable coefficient summaries for supported model-based artifacts."""
     try:
-        acceptance = extract_glm_churn_coefficients(acceptance_model)
+        acceptance = extract_glm_acceptance_coefficients(acceptance_model)
         loss = extract_linear_loss_coefficients(loss_model)
     except (AttributeError, KeyError, TypeError, ValueError):
         return None
@@ -540,10 +563,11 @@ __all__ = [
     "load_x_frame",
     "load_x_array",
     "load_observed_u_array",
+    "load_observed_loss_array",
     "load_mean_observed_acceptance",
     "unwrap_model_artifact",
     "extract_glm_u_coef",
-    "extract_glm_churn_coefficients",
+    "extract_glm_acceptance_coefficients",
     "extract_linear_loss_coefficients",
     "extract_model_based_coefficients",
 ]

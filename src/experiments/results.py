@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Mapping, Optional, Sequence
 
 import numpy as np
@@ -60,11 +60,26 @@ class EstimatorResult:
 
 
 @dataclass(frozen=True)
+class PolicyEvaluation:
+    """Final policy metrics evaluated on one data split."""
+
+    n_samples: int
+    objective_value: float
+    objective_sum: float
+    mean_u: float
+    u_q25: float
+    u_q75: float
+    mean_acceptance: float | None = None
+    projected_loss: float | None = None
+    projected_revenue: float | None = None
+
+
+@dataclass(frozen=True)
 class ExperimentResult:
     """Full experiment result: config, samples, traces, and final values per estimator."""
 
     config: ExperimentConfig
-    x_samples: Any  # Shape (n_samples, state_dim); real data may be a DataFrame
+    x_samples: Any  # Training samples; real data may be a DataFrame
     initial_value: float
     results: Mapping[str, EstimatorResult]
     traces: Mapping[str, OptimizationTrace]
@@ -72,6 +87,13 @@ class ExperimentResult:
     value_at_u_star: Optional[float] = None
     initial_mean_acceptance: Optional[float] = None
     constant_u_baselines: Sequence[ConstantBaselineResult] = ()
+    x_test: Any | None = None
+    train_indices: Optional[np.ndarray] = None
+    test_indices: Optional[np.ndarray] = None
+    train_row_indices: Optional[np.ndarray] = None
+    test_row_indices: Optional[np.ndarray] = None
+    train_metrics: Mapping[str, PolicyEvaluation] = field(default_factory=dict)
+    test_metrics: Mapping[str, PolicyEvaluation] = field(default_factory=dict)
 
 
 __all__ = [
@@ -79,4 +101,5 @@ __all__ = [
     "EstimatorResult",
     "ExperimentResult",
     "OptimizationTrace",
+    "PolicyEvaluation",
 ]

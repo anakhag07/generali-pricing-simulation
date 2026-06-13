@@ -14,6 +14,7 @@ from objective.policy import ConstantPolicy
 from objective.utils import (
     mean_acceptance_at_constant_u,
     _mean_action,
+    _policy_value,
     optimal_u,
     value_at_constant_u,
     value_for_reporting,
@@ -29,7 +30,7 @@ from experiments.helpers import (
     run_stein_difference,
 )
 from experiments.reporters import StepReporter
-from experiments.results import ConstantBaselineResult, EstimatorResult, ExperimentResult
+from experiments.results import ConstantBaselineResult, EstimatorResult, ExperimentResult, PolicyEvaluation
 
 
 def _maybe_apply_acceptance_controls(config: ExperimentConfig) -> ExperimentConfig:
@@ -76,6 +77,90 @@ def _constant_theta_start(objective: object, theta_initial: np.ndarray, x_sample
     return np.asarray([start_u], dtype=float)
 
 
+def _row_count(x_samples: object) -> int:
+    return int(x_samples.shape[0])
+
+
+def _take_rows(x_samples: object, indices: np.ndarray) -> object:
+    if indices.size == _row_count(x_samples) and np.array_equal(indices, np.arange(indices.size, dtype=int)):
+        return x_samples
+    if hasattr(x_samples, "iloc"):
+        return x_samples.iloc[indices].reset_index(drop=True)
+    return np.asarray(x_samples, dtype=float)[indices]
+
+
+def _split_samples(config: ExperimentConfig, x_samples: object) -> tuple[object, object | None, np.ndarray, np.ndarray]:
+    n_total = _row_count(x_samples)
+    full_indices = np.arange(n_total, dtype=int)
+    if config.test_fraction == 0.0:
+        return x_samples, None, full_indices, np.asarray([], dtype=int)
+    if n_total < 2:
+        raise ValueError("train/test split requires at least two samples.")
+    rng = np.random.default_rng(int(config.seed))
+    shuffled = rng.permutation(n_total).astype(int)
+    n_test = int(round(float(config.test_fraction) * n_total))
+    n_test = min(max(n_test, 1), n_total - 1)
+    test_indices = shuffled[:n_test]
+    train_indices = shuffled[n_test:]
+    return (
+        _take_rows(x_samples, train_indices),
+        _take_rows(x_samples, test_indices),
+        train_indices,
+        test_indices,
+    )
+
+
+def _source_row_indices(config: ExperimentConfig, indices: np.ndarray) -> np.ndarray | None:
+    if config.x_fixed_row_indices is None:
+        return None
+    row_indices = np.asarray(config.x_fixed_row_indices, dtype=int)
+    return row_indices[indices].copy()
+
+
+def _policy_u_values(objective: object, theta: np.ndarray, x_samples: object) -> np.ndarray:
+    u_values = np.asarray(_policy_value(objective, theta, x_samples), dtype=float).reshape(-1)
+    clip_fn = getattr(objective, "_clip_u", None)
+    if callable(clip_fn):
+        u_values = np.asarray(clip_fn(u_values), dtype=float).reshape(-1)
+    if u_values.shape != (_row_count(x_samples),):
+        raise ValueError("policy.value(theta, x_batch) must return one value per row.")
+    return u_values
+
+
+def _evaluate_final_policy(objective: object, theta: np.ndarray, x_samples: object) -> PolicyEvaluation:
+    theta_arr = np.asarray(theta, dtype=float)
+    n_samples = _row_count(x_samples)
+    objective_value = value_for_reporting(objective, theta_arr, x_samples)
+    u_values = _policy_u_values(objective, theta_arr, x_samples)
+    mean_acceptance_fn = getattr(objective, "mean_acceptance", None)
+    mean_acceptance = (
+        float(mean_acceptance_fn(theta_arr, x_samples)) if callable(mean_acceptance_fn) else None
+    )
+    projected_loss = None
+    projected_revenue = None
+    step_metrics_fn = getattr(objective, "_step_metrics", None)
+    if callable(step_metrics_fn):
+        step_metrics = step_metrics_fn(theta_arr, x_samples)
+        if "projected_loss" in step_metrics:
+            projected_loss = float(step_metrics["projected_loss"])
+        if "projected_revenue" in step_metrics:
+            projected_revenue = float(step_metrics["projected_revenue"])
+        if mean_acceptance is None and "mean_acceptance" in step_metrics:
+            mean_acceptance = float(step_metrics["mean_acceptance"])
+    q25, q75 = np.quantile(u_values, [0.25, 0.75])
+    return PolicyEvaluation(
+        n_samples=n_samples,
+        objective_value=objective_value,
+        objective_sum=n_samples * objective_value,
+        mean_u=float(np.mean(u_values)),
+        u_q25=float(q25),
+        u_q75=float(q75),
+        mean_acceptance=mean_acceptance,
+        projected_loss=projected_loss,
+        projected_revenue=projected_revenue,
+    )
+
+
 def run_experiment(
     config: ExperimentConfig,
     step_reporter: StepReporter | None = None,
@@ -107,11 +192,14 @@ def run_experiment(
 
     if effective_config.x_fixed is not None:
         if hasattr(effective_config.x_fixed, "iloc") and hasattr(effective_config.x_fixed, "columns"):
-            x_samples = effective_config.x_fixed.reset_index(drop=True).copy()
+            x_all = effective_config.x_fixed.reset_index(drop=True).copy()
         else:
-            x_samples = np.asarray(effective_config.x_fixed, dtype=float)
+            x_all = np.asarray(effective_config.x_fixed, dtype=float)
     else:
-        x_samples = sample_states(rng, effective_config.n_samples, effective_config.state_dim)
+        x_all = sample_states(rng, effective_config.n_samples, effective_config.state_dim)
+    x_samples, x_test, train_indices, test_indices = _split_samples(effective_config, x_all)
+    train_row_indices = _source_row_indices(effective_config, train_indices)
+    test_row_indices = _source_row_indices(effective_config, test_indices)
     true_grad_theta_fn = resolve_true_grad_theta_fn(objective, effective_config.correctness)
     initial_value = value_for_reporting(objective, theta_initial, x_samples)
     mean_acceptance_fn = getattr(objective, "mean_acceptance", None)
@@ -372,6 +460,14 @@ def run_experiment(
         )
         traces["stein_difference"] = trace_stein
 
+    train_metrics: dict[str, PolicyEvaluation] = {}
+    test_metrics: dict[str, PolicyEvaluation] = {}
+    for name, estimator_result in results.items():
+        eval_objective = _constant_policy_objective(objective) if name == "constant" else objective
+        train_metrics[name] = _evaluate_final_policy(eval_objective, estimator_result.theta, x_samples)
+        if x_test is not None:
+            test_metrics[name] = _evaluate_final_policy(eval_objective, estimator_result.theta, x_test)
+
     return ExperimentResult(
         config=effective_config,
         x_samples=x_samples,
@@ -382,4 +478,11 @@ def run_experiment(
         value_at_u_star=value_at_u_star,
         initial_mean_acceptance=initial_mean_acceptance,
         constant_u_baselines=constant_u_baselines,
+        x_test=x_test,
+        train_indices=train_indices,
+        test_indices=test_indices,
+        train_row_indices=train_row_indices,
+        test_row_indices=test_row_indices,
+        train_metrics=train_metrics,
+        test_metrics=test_metrics,
     )

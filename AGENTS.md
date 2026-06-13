@@ -248,6 +248,7 @@ Guidelines:
   - Primary fields: `objective` (theta objective) and `theta0` (initial theta)
   - `x_fixed: np.ndarray | None = None`: when set, runner uses this 2D array as state batch instead of sampling from N(0, I)
   - `x_fixed_row_indices: np.ndarray | None = None`: source acceptance-CSV row positions for `x_fixed`; real-data configs pass this so observed-`U` reporting uses the same selected rows
+  - `train_fraction` / `test_fraction`: deterministic run-level split fractions over selected rows; they must sum to `1.0`, `train_fraction` must be positive, and optimizers fit on train rows only
   - Objective/policy wiring is explicit; configs pass a concrete theta-level objective instance
   - `batch_size: int | None = None` enables stochastic mini-batch optimization when set
   - `acceptance_floor` can be enforced directly with `step_rule="trust-constr"` or via the smooth penalty path using `acceptance_penalty_weight` / `acceptance_penalty_temperature`
@@ -283,7 +284,7 @@ Guidelines:
   - Uses `optimization.helpers.finite_difference_theta_grad(...)` for correctness-mode numerical theta gradients
 
 - **`src/experiments/run.py`**
-  - `run_experiment(config, step_reporter)`: main runner; uses `config.x_fixed` as state array when set, otherwise samples from N(0, I); runs enabled estimators; returns `ExperimentResult` (pure computation, no I/O)
+  - `run_experiment(config, step_reporter)`: main runner; uses `config.x_fixed` as state array when set, otherwise samples from N(0, I); applies the train/test split after row selection/sampling; runs enabled estimators on train rows; evaluates final policies on train and optional test rows; returns `ExperimentResult` (pure computation, no I/O)
   - `enabled_estimators` may include `"constant"`, which optimizes a one-scalar `ConstantPolicy` copy of the configured objective; `constant_u_baselines` remains fixed-action evaluation only
 
 - **`src/experiments/sweep_utils.py`**
@@ -307,7 +308,8 @@ Guidelines:
 - **`src/experiments/results.py`**
   - `OptimizationTrace`: per-step trace with u values, objective values, gradient estimates, optional theta values, step sizes, and model-based mean-acceptance diagnostics
   - `EstimatorResult`: final theta, u, value, wall-clock time, and optional acceptance-constraint diagnostics
-  - `ExperimentResult`: full result including config, traces, and optional u_star
+  - `PolicyEvaluation`: final policy metrics on a split (`objective_value`, `objective_sum`, mean/quantile `u`, and optional acceptance/loss/revenue diagnostics)
+  - `ExperimentResult`: full result including config, train samples in `x_samples`, optional `x_test`, split row/index metadata, traces, final train/test policy metrics, and optional u_star
 
 - **`src/experiments/reporters.py`**
   - `RunContext`: frozen dataclass with experiment name, run directory paths, timestamp
@@ -316,9 +318,9 @@ Guidelines:
   - `Reporter`: protocol with `on_start` and `on_end` hooks
   - `ReporterStack`: composite that delegates to a list of reporters; also implements `StepReporter`
   - `ConsoleReporter`: prints to terminal; per-step output controlled by `verbose`
-  - `FileStepLogger`: writes per-step metrics to `steps.csv` in the run directory
-  - `JsonReporter`: writes `summary.json` on end
-  - `PlotReporter`: generates all matplotlib plots on end; optimization plots go under `plots/optimization/`, policy diagnostics under `plots/policy/`, and step-size plots are emitted whenever traces include `step_sizes`; writes per-plot timings to `plots/plot_timings.json`; theta contours for model-based objectives use a deterministic subsample capped at 200 rows and a 20x20 grid cap
+  - `FileStepLogger`: writes per-step metrics to `plots/optimization/steps.csv`
+  - `JsonReporter`: writes `summary.json` on end, including estimator-level `train` and optional `test` policy metric blocks
+  - `PlotReporter`: generates all matplotlib plots on end; optimization plots go under `plots/optimization/`, policy diagnostics go under `plots/policy_train/` and `plots/policy_test/`, and step-size plots are emitted whenever traces include `step_sizes`; writes per-plot timings to `plots/plot_timings.json`; theta contours for model-based objectives use a deterministic train-subsample capped at 200 rows and a 20x20 grid cap
 
 #### Reporting Layer (`src/reporting/`)
 
@@ -334,7 +336,7 @@ Guidelines:
   - `plot_objective_u_slice(...)`: objective vs u grid (no gradient subplot)
   - `plot_theta_objective_contours(...)`: 2D contour plot with optimization paths; use adaptive linear/log/symlog color scaling when objective ranges make a single linear scale unreadable
   - `plot_comparison_objective_curves(...)`, `plot_comparison_u_curves(...)`, `plot_comparison_final_metric(...)`: aggregate policy-comparison plots; final metrics render as grouped bars by policy with estimator colors and policy hatching
-  - Model-based real-data run plots under `plots/policy/` include `final_summary_metrics.png`, `u_histogram.png`, `acceptance_histograms.png`, and per-estimator `u_acceptance/<estimator>.png` files with binned mean acceptance and customer-level acceptance-vs-`u` scatter
+  - Model-based real-data run plots under `plots/policy_train/` and `plots/policy_test/` include `final_summary_metrics.png`, `u_histogram.png`, `acceptance_histograms.png`, and per-estimator `u_acceptance/<estimator>.png` files with binned mean acceptance and customer-level acceptance-vs-`u` scatter
   - Private sweep helpers power both lambda and trust-constrained acceptance-floor frontier plots
   - `select_theta_axes_max_variance(...)`: picks the two theta axes with highest variance for contour plots
 
@@ -435,6 +437,7 @@ when appropriate.
 | `test_verbose_config.py` | verbose flag defaults and serialization |
 | `test_baseline_test.py` | End-to-end smoke test with fixed_regression_base overrides |
 | `test_run_context.py` | default output directory and run context paths |
+| `test_train_test_split.py` | Runner train/test split, held-out policy metrics, and summary payloads |
 | `test_sweep_utils.py` | Override-grid expansion and preset sweep config generation |
 | `test_sensitivity_buckets.py` | GLM local price-sensitivity scoring and tertile construction |
 | `test_sensitivity_bucket_script.py` | Sensitivity bucket experiment script constants and summaries |
@@ -447,6 +450,7 @@ when appropriate.
 |---|---|
 | `test_logging.py` | Step logging output format |
 | `test_file_step_logger.py` | FileStepLogger CSV output |
+| `test_split_plot_folders.py` | Split policy plot folder creation |
 | `test_wandb_reporter.py` | W&B reporter integration |
 | `test_reporting_theta_norms.py` | Theta norm visualization |
 | `test_plot_u_star.py` | u_star selection for plotting |

@@ -158,12 +158,16 @@ Real-data configs use all complete eligible acceptance CSV rows when `n_samples`
 is omitted or set to `None`. Setting an integer `n_samples` samples that many
 complete eligible rows with the experiment seed. The selected row indices are
 stored so observed-`U` diagnostics use the same source rows.
+Set `train_fraction` and `test_fraction` to split the selected rows for a run;
+they must sum to `1.0`, with `train_fraction > 0`. Optimizers fit only on the
+training rows, while final policies are evaluated on both train and test rows in
+`summary.json` and the policy diagnostic folders.
 When plotting is enabled, real-data runs write optimization plots under
 `plots/optimization/` and final customer-level policy diagnostics under
-`plots/policy/`. Policy diagnostics include final metric bars with 25-75%
-customer ranges, observed-vs-policy `u` and acceptance histograms, and one
-`u_acceptance/<estimator>.png` file per estimator showing the final action
-histogram plus customer acceptance-vs-`u` scatter.
+`plots/policy_train/` and `plots/policy_test/`. Policy diagnostics include final
+metric bars with 25-75% customer ranges, observed-vs-policy `u` and acceptance
+histograms, and one `u_acceptance/<estimator>.png` file per estimator showing
+the final action histogram plus customer acceptance-vs-`u` scatter.
 Plot generation writes per-plot wall-clock diagnostics to `plots/plot_timings.json`.
 For model-based objectives, theta contour plots are evaluated on a deterministic
 subsample of at most 200 rows so large real-data experiments do not spend most
@@ -345,10 +349,11 @@ Each run writes artifacts to `outputs/<experiment_name>/<timestamp>/`:
   including final trust-constr diagnostics such as `constraint_penalty`
   and any configured constant-`u` baseline evaluations; estimator results
   include both the mean objective `final_value` and summed objective
-  `final_objective_sum`
-- `steps.csv` -- per-step metrics for every estimator
+  `final_objective_sum`, plus `train` and optional `test` metric blocks
+- `plots/optimization/steps.csv` -- per-step metrics for every estimator
 - `plots/optimization/` -- loss curves, gradient norms, step sizes, and theta contour plots
-- `plots/policy/` -- real-data final policy diagnostics, including summary metric bars, `u` and acceptance distributions, and per-estimator `u_acceptance/` plots
+- `plots/policy_train/` -- real-data final policy diagnostics on optimization rows
+- `plots/policy_test/` -- real-data final policy diagnostics on held-out rows when configured
 
 Weights & Biases integration is available for experiment tracking. See the
 docstrings in `src/experiments/config.py` for W&B configuration fields.

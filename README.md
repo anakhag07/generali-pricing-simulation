@@ -94,8 +94,8 @@ Real-data experiments use a small set of base presets plus overrides:
 | Preset | State source | Objective |
 |---|---|---|
 | `fixed_regression_base` | Synthetic N(0, I) | `FixedRegressionObjective` |
-| `real_data_glm_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (GLM bundle, analytical grad when supported) |
-| `real_data_xgb_base` | Seeded `n_samples` draw from raw acceptance CSV | `ModelBasedObjective` (XGBoost bundle, FD acceptance gradient) |
+| `real_data_glm_base` | All complete eligible raw acceptance CSV rows by default; seeded `n_samples` draw when set | `ModelBasedObjective` (GLM bundle, analytical grad when supported) |
+| `real_data_xgb_base` | All complete eligible raw acceptance CSV rows by default; seeded `n_samples` draw when set | `ModelBasedObjective` (XGBoost bundle, FD acceptance gradient) |
 
 Real-data overrides can select policy, feature order, preprocessing, loss source,
 constraint mode, and runtime knobs without adding a new preset module. Example:
@@ -154,9 +154,10 @@ For policy-feature experiments, `ModelBasedObjective` can instead take a
 separate fitted policy-side preprocessor. In that mode the policy sees the
 configured policy features, while the sealed acceptance and loss model paths
 still receive raw `x` and apply their saved artifact preprocessing internally.
-Real-data configs sample `TRAINING["n_samples"]` rows from the acceptance CSV
-with the experiment seed and store the sampled row indices so observed-`U`
-diagnostics use the same source rows.
+Real-data configs use all complete eligible acceptance CSV rows when `n_samples`
+is omitted or set to `None`. Setting an integer `n_samples` samples that many
+complete eligible rows with the experiment seed. The selected row indices are
+stored so observed-`U` diagnostics use the same source rows.
 When plotting is enabled, real-data runs write optimization plots under
 `plots/optimization/` and final customer-level policy diagnostics under
 `plots/policy/`. Policy diagnostics include final metric bars with 25-75%

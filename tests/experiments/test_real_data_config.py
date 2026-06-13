@@ -21,6 +21,50 @@ def _cfg(name: str, **overrides):
     )
 
 
+@pytest.mark.parametrize("kwargs", [{}, {"n_samples": None}])
+def test_real_data_config_uses_all_eligible_rows_when_n_samples_omitted_or_none(
+    monkeypatch: pytest.MonkeyPatch,
+    kwargs: dict[str, object],
+) -> None:
+    import pandas as pd
+
+    import experiments.configs.real_data_factory as factory
+    from data.loader import FEATURE_COLS_GLM
+
+    eligible = np.asarray([4, 1, 8], dtype=int)
+
+    def fail_sample(*args, **kwargs):
+        raise AssertionError("n_samples=None should not call sampled row selection")
+
+    def fake_load_x_frame(model_type, n_rows=5000, *, row_indices=None, seed=None):
+        del n_rows, seed
+        assert model_type == "glm"
+        np.testing.assert_array_equal(row_indices, eligible)
+        return pd.DataFrame(
+            np.zeros((eligible.size, len(FEATURE_COLS_GLM)), dtype=float),
+            columns=FEATURE_COLS_GLM,
+        )
+
+    monkeypatch.setattr(factory, "eligible_csv_row_indices", lambda model_type: eligible.copy())
+    monkeypatch.setattr(factory, "sample_csv_row_indices", fail_sample)
+    monkeypatch.setattr(factory, "load_x_frame", fake_load_x_frame)
+    monkeypatch.setattr(factory, "load_model_artifacts", lambda model_type: (object(), object()))
+    monkeypatch.setattr(factory, "extract_glm_u_coef", lambda acceptance_model: -1.0)
+
+    cfg = factory.build_real_data_config(
+        model_type="glm",
+        plot=False,
+        verbose=False,
+        wandb_enabled=False,
+        **kwargs,
+    )
+
+    assert cfg.n_samples == eligible.size
+    assert cfg.x_fixed is not None
+    assert cfg.x_fixed.shape == (eligible.size, len(FEATURE_COLS_GLM))
+    np.testing.assert_array_equal(cfg.x_fixed_row_indices, eligible)
+
+
 @pytest.mark.parametrize("name", ["real_data_glm_base", "real_data_xgb_base"])
 def test_real_data_base_configs_load(name):
     cfg = _cfg(name)

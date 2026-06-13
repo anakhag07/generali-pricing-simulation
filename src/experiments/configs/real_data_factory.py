@@ -8,6 +8,7 @@ import numpy as np
 
 from data.loader import (
     ACCEPTANCE_STATE_COLS,
+    eligible_csv_row_indices,
     FEATURE_COLS_GLM,
     FEATURE_COLS_XGB,
     LOSS_TARGET_COL,
@@ -60,7 +61,7 @@ def build_real_data_config(
     loss_source: LossSource = "predicted",
     softmax_action_bounds: tuple[float, float] | None = None,
     seed: int = 42,
-    n_samples: int = 5000,
+    n_samples: int | None = None,
     row_indices: np.ndarray | None = None,
     x_fixed: object | None = None,
     x_fixed_row_indices: np.ndarray | None = None,
@@ -96,10 +97,11 @@ def build_real_data_config(
     wandb_log_plots: bool = True,
     wandb_estimator_allowlist: tuple[str, ...] | None = None,
 ) -> ExperimentConfig:
-    """Build a real-data config from model, policy, preprocessing, and constraint axes."""
+    """Build a real-data config; omitted ``n_samples`` uses all complete rows."""
     model_type = _normalize_model_type(model_type)
     constraint_mode = _normalize_constraint_mode(constraint_mode)
     loss_source = _normalize_loss_source(loss_source)
+    requested_n_samples = _normalize_n_samples(n_samples)
     state_dim = len(_feature_cols(model_type))
     if u_coef is not None and model_type != "glm":
         raise ValueError("u_coef override is supported only for GLM acceptance artifacts.")
@@ -111,7 +113,10 @@ def build_real_data_config(
 
     if x_fixed is None:
         if row_indices is None:
-            row_indices = sample_csv_row_indices(model_type, n_rows=int(n_samples), seed=int(seed))
+            if requested_n_samples is None:
+                row_indices = eligible_csv_row_indices(model_type)
+            else:
+                row_indices = sample_csv_row_indices(model_type, n_rows=requested_n_samples, seed=int(seed))
         x_fixed_arr = load_x_frame(model_type, row_indices=row_indices)
         x_fixed_row_indices_arr = np.asarray(row_indices, dtype=int)
         if loss_source == "observed":
@@ -140,6 +145,12 @@ def build_real_data_config(
                     model_type,
                     row_indices=x_fixed_row_indices_arr,
                 )
+
+    resolved_n_samples = (
+        requested_n_samples
+        if requested_n_samples is not None
+        else int(x_fixed_arr.shape[0])
+    )
 
     policy_preprocessor = None
     policy_feature_cols = None
@@ -211,7 +222,7 @@ def build_real_data_config(
     )
 
     training = canonical_training_block(
-        n_samples=int(n_samples),
+        n_samples=resolved_n_samples,
         step_rule=resolved_step_rule,
         t_steps=resolved_t_steps,
         step_size=float(step_size),
@@ -279,6 +290,15 @@ def _normalize_loss_source(loss_source: str) -> LossSource:
     if loss_source not in {"predicted", "observed"}:
         raise ValueError("loss_source must be 'predicted' or 'observed'.")
     return loss_source  # type: ignore[return-value]
+
+
+def _normalize_n_samples(n_samples: int | None) -> int | None:
+    if n_samples is None:
+        return None
+    n_samples_int = int(n_samples)
+    if n_samples_int <= 0:
+        raise ValueError("n_samples must be positive when provided.")
+    return n_samples_int
 
 
 def _feature_cols(model_type: ModelType) -> tuple[str, ...]:

@@ -30,7 +30,7 @@ def test_file_logger_writes_header(run_context: RunContext) -> None:
     logger.on_start(run_context, config=None)  # type: ignore[arg-type]
     logger.on_end(run_context, result=None)  # type: ignore[arg-type]
 
-    csv_path = run_context.run_dir / "steps.csv"
+    csv_path = run_context.plots_dir / "optimization" / "steps.csv"
     assert csv_path.exists()
     content = csv_path.read_text()
     assert content.startswith(
@@ -59,7 +59,7 @@ def test_file_logger_writes_rows(run_context: RunContext) -> None:
 
     logger.on_end(run_context, result=None)  # type: ignore[arg-type]
 
-    csv_path = run_context.run_dir / "steps.csv"
+    csv_path = run_context.plots_dir / "optimization" / "steps.csv"
     lines = csv_path.read_text().strip().split("\n")
 
     assert len(lines) == 4  # header + 3 rows
@@ -80,7 +80,7 @@ def test_file_logger_handles_none_grad_norm(run_context: RunContext) -> None:
 
     logger.on_end(run_context, result=None)  # type: ignore[arg-type]
 
-    csv_path = run_context.run_dir / "steps.csv"
+    csv_path = run_context.plots_dir / "optimization" / "steps.csv"
     lines = csv_path.read_text().strip().split("\n")
 
     assert len(lines) == 2
@@ -101,6 +101,6 @@ def test_file_logger_on_end_closes_file(run_context: RunContext) -> None:
     logger.log_step("test", 2, 0.6, 0.25, 0.008, 0.001, 0.7, 121.0, 0.06)
 
     # File content should still only have 1 data row
-    csv_path = run_context.run_dir / "steps.csv"
+    csv_path = run_context.plots_dir / "optimization" / "steps.csv"
     lines = csv_path.read_text().strip().split("\n")
     assert len(lines) == 2

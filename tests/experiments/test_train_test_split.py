@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 import numpy as np
 import pytest
 
 from experiments.config import ExperimentConfig
 from experiments.defaults import default_theta0, default_policy
+from experiments.reporters import RunContext, _build_summary_payload
 from experiments.run import run_experiment
 from objective import FixedRegressionObjective
 from objective.utils import value_for_reporting
@@ -96,3 +99,28 @@ def test_train_test_split_preserves_source_row_indices() -> None:
     assert result.test_row_indices is not None
     np.testing.assert_array_equal(result.train_row_indices, source_row_indices[result.train_indices])
     np.testing.assert_array_equal(result.test_row_indices, source_row_indices[result.test_indices])
+
+
+def test_summary_payload_includes_train_and_test_metrics(tmp_path) -> None:
+    result = run_experiment(_config(train_fraction=0.6, test_fraction=0.4))
+    run_context = RunContext(
+        experiment_name="split-test",
+        run_id="20260613_000000",
+        run_dir=tmp_path / "run",
+        plots_dir=tmp_path / "run" / "plots",
+        started_at=datetime(2026, 6, 13, 0, 0, 0),
+    )
+
+    payload = _build_summary_payload(run_context, result)
+    estimator_payload = payload["estimators"]["first_order"]
+
+    assert payload["split"]["train_fraction"] == pytest.approx(0.6)
+    assert payload["split"]["test_fraction"] == pytest.approx(0.4)
+    assert estimator_payload["train"]["objective_value"] == pytest.approx(
+        result.train_metrics["first_order"].objective_value
+    )
+    assert estimator_payload["test"]["objective_value"] == pytest.approx(
+        result.test_metrics["first_order"].objective_value
+    )
+    assert estimator_payload["train"]["n_samples"] == 6
+    assert estimator_payload["test"]["n_samples"] == 4

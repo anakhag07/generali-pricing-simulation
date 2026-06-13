@@ -11,6 +11,8 @@ from __future__ import annotations
 # --- Core ExperimentConfig fields ---
 STATE_DIM = None  # REQUIRED
 N_SAMPLES = None  # REQUIRED
+TRAIN_FRACTION = None  # OPTIONAL
+TEST_FRACTION = None  # OPTIONAL
 STEP_RULE = None  # REQUIRED
 OBJECTIVE = None  # REQUIRED
 THETA0 = None  # REQUIRED
@@ -92,6 +94,8 @@ CORRECTNESS_NUMDIFF_BOUNDS = None  # OPTIONAL
 #
 # TRAINING = canonical_training_block(
 #     n_samples=N_SAMPLES,
+#     train_fraction=TRAIN_FRACTION,
+#     test_fraction=TEST_FRACTION,
 #     step_rule=STEP_RULE,
 #     t_steps=T_STEPS,
 #     step_size=STEP_SIZE,

@@ -11,6 +11,8 @@ def test_config_template_core_placeholders_exist_and_default_to_none() -> None:
     expected = {
         "STATE_DIM",
         "N_SAMPLES",
+        "TRAIN_FRACTION",
+        "TEST_FRACTION",
         "STEP_RULE",
         "OBJECTIVE",
         "THETA0",

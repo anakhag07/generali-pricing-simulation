@@ -78,6 +78,56 @@ def test_load_estimator_theta_reports_available_estimators() -> None:
         script.load_estimator_theta(payload, "missing")
 
 
+def test_reconstruct_run_row_indices_uses_full_eligible_rows(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    eligible = np.asarray([2, 5, 9], dtype=int)
+    payload = {
+        "config": {
+            "n_samples": eligible.size,
+            "seed": 7,
+            "x_fixed_row_indices_shape": [eligible.size],
+            "x_fixed_row_indices_head": eligible.tolist(),
+            "x_fixed_row_indices_min": int(eligible.min()),
+            "x_fixed_row_indices_max": int(eligible.max()),
+        }
+    }
+
+    def fail_sample(*args, **kwargs):
+        raise AssertionError("full eligible rows should not be reconstructed as a sample")
+
+    monkeypatch.setattr(script, "eligible_csv_row_indices", lambda model_type: eligible.copy())
+    monkeypatch.setattr(script, "sample_csv_row_indices", fail_sample)
+
+    row_indices = script.reconstruct_run_row_indices(payload, "glm")
+
+    np.testing.assert_array_equal(row_indices, eligible)
+
+
+def test_reconstruct_run_row_indices_falls_back_to_seeded_sample(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    eligible = np.asarray([2, 5, 9], dtype=int)
+    sampled = np.asarray([5, 2, 9], dtype=int)
+    payload = {
+        "config": {
+            "n_samples": eligible.size,
+            "seed": 7,
+            "x_fixed_row_indices_shape": [sampled.size],
+            "x_fixed_row_indices_head": sampled.tolist(),
+            "x_fixed_row_indices_min": int(sampled.min()),
+            "x_fixed_row_indices_max": int(sampled.max()),
+        }
+    }
+
+    monkeypatch.setattr(script, "eligible_csv_row_indices", lambda model_type: eligible.copy())
+    monkeypatch.setattr(script, "sample_csv_row_indices", lambda model_type, n_rows, seed: sampled.copy())
+
+    row_indices = script.reconstruct_run_row_indices(payload, "glm")
+
+    np.testing.assert_array_equal(row_indices, sampled)
+
+
 def test_main_prints_theta_used(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path,

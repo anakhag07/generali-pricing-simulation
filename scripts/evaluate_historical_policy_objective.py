@@ -23,6 +23,7 @@ from data.loader import (
     FEATURE_COLS_GLM,
     FEATURE_COLS_XGB,
     dataset_csv_path,
+    eligible_csv_row_indices,
     sample_csv_row_indices,
 )
 from experiments.configs import get_config
@@ -85,6 +86,13 @@ def reconstruct_run_row_indices(payload: Mapping[str, Any], model_type: str) -> 
     config = payload["config"]
     n_samples = int(config["n_samples"])
     seed = int(config["seed"])
+    eligible = eligible_csv_row_indices(model_type)
+    if n_samples == eligible.size:
+        try:
+            _validate_reconstructed_indices(eligible, config)
+            return eligible
+        except ValueError:
+            pass
     row_indices = sample_csv_row_indices(model_type, n_rows=n_samples, seed=seed)
     _validate_reconstructed_indices(row_indices, config)
     return row_indices

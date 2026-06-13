@@ -83,6 +83,8 @@ class ExperimentConfig:
     step_rule: str
     objective: Objective
     perturbation_space: Literal["theta", "u"]
+    train_fraction: float = 1.0
+    test_fraction: float = 0.0
     theta0: np.ndarray | None = None
     batch_size: int | None = None
     seed: int = 7
@@ -180,6 +182,20 @@ class ExperimentConfig:
             raise ValueError("state_dim must be positive.")
         if self.n_samples <= 0:
             raise ValueError("n_samples must be positive.")
+        train_fraction = float(self.train_fraction)
+        test_fraction = float(self.test_fraction)
+        if not np.isfinite(train_fraction) or not np.isfinite(test_fraction):
+            raise ValueError("train_fraction and test_fraction must be finite.")
+        if not 0.0 <= train_fraction <= 1.0:
+            raise ValueError("train_fraction must be in [0, 1].")
+        if not 0.0 <= test_fraction <= 1.0:
+            raise ValueError("test_fraction must be in [0, 1].")
+        if train_fraction <= 0.0:
+            raise ValueError("train_fraction must be positive.")
+        if not np.isclose(train_fraction + test_fraction, 1.0, rtol=0.0, atol=1e-12):
+            raise ValueError("train_fraction and test_fraction must sum to 1.0.")
+        object.__setattr__(self, "train_fraction", train_fraction)
+        object.__setattr__(self, "test_fraction", test_fraction)
 
         if self.theta0 is not None:
             theta0_arr = np.asarray(self.theta0, dtype=float)
@@ -366,6 +382,8 @@ class ExperimentConfig:
         return {
             "state_dim": int(self.state_dim),
             "n_samples": int(self.n_samples),
+            "train_fraction": float(self.train_fraction),
+            "test_fraction": float(self.test_fraction),
             "batch_size": int(self.batch_size) if self.batch_size is not None else None,
             "step_rule": self.step_rule,
             "seed": int(self.seed),
@@ -622,6 +640,8 @@ def make_model_based_objective(
 def canonical_training_block(
     *,
     n_samples: int,
+    train_fraction: float = 1.0,
+    test_fraction: float = 0.0,
     step_rule: str,
     t_steps: int,
     step_size: float,
@@ -642,6 +662,8 @@ def canonical_training_block(
     """Create a canonical training configuration block."""
     return {
         "n_samples": int(n_samples),
+        "train_fraction": float(train_fraction),
+        "test_fraction": float(test_fraction),
         "step_rule": step_rule,
         "t_steps": int(t_steps),
         "step_size": float(step_size),

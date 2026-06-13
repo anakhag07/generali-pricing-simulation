@@ -21,7 +21,7 @@ from data.loader import (
 from objective.objectives import FixedRegressionObjective
 from experiments.config import ExperimentConfig
 from reporting.logging import log_step, log_summary
-from experiments.results import ExperimentResult
+from experiments.results import ExperimentResult, PolicyEvaluation
 from reporting.visualization import (
     _plot_policy_acceptance_histograms,
     _plot_policy_final_summary_metrics,
@@ -352,8 +352,11 @@ class PlotReporter:
             return
         run_context.plots_dir.mkdir(parents=True, exist_ok=True)
         optimization_dir = run_context.plots_dir / "optimization"
-        policy_dir = run_context.plots_dir / "policy"
+        policy_train_dir = run_context.plots_dir / "policy_train"
+        policy_test_dir = run_context.plots_dir / "policy_test"
         optimization_dir.mkdir(parents=True, exist_ok=True)
+        policy_train_dir.mkdir(parents=True, exist_ok=True)
+        policy_test_dir.mkdir(parents=True, exist_ok=True)
         plot_dir = str(optimization_dir)
         objective = config.objective
         traces = result.traces
@@ -376,46 +379,32 @@ class PlotReporter:
             constant_u_baselines=result.constant_u_baselines,
         )
         timed("gradient_norms", plot_gradient_norms, traces, plot_dir)
-        observed_u = _observed_u_reference(result)
-        if observed_u is not None:
-            theta_by_estimator = {
-                name: estimator_result.theta for name, estimator_result in result.results.items()
-            }
-            timed(
-                "policy_u_histograms",
-                _plot_policy_u_histograms,
-                observed_u,
-                result.x_samples,
-                objective,
+        theta_by_estimator = {
+            name: estimator_result.theta for name, estimator_result in result.results.items()
+        }
+        runtime_by_estimator = {
+            name: estimator_result.time for name, estimator_result in result.results.items()
+        }
+        _plot_policy_diagnostics(
+            result,
+            result.x_samples,
+            result.train_row_indices,
+            str(policy_train_dir),
+            "policy_train",
+            theta_by_estimator,
+            runtime_by_estimator,
+            timed,
+        )
+        if result.x_test is not None:
+            _plot_policy_diagnostics(
+                result,
+                result.x_test,
+                result.test_row_indices,
+                str(policy_test_dir),
+                "policy_test",
                 theta_by_estimator,
-                str(policy_dir),
-            )
-            timed(
-                "policy_acceptance_histograms",
-                _plot_policy_acceptance_histograms,
-                observed_u,
-                result.x_samples,
-                objective,
-                theta_by_estimator,
-                str(policy_dir),
-            )
-            timed(
-                "policy_final_summary_metrics",
-                _plot_policy_final_summary_metrics,
-                result.x_samples,
-                objective,
-                theta_by_estimator,
-                {name: estimator_result.time for name, estimator_result in result.results.items()},
-                str(policy_dir),
-            )
-            timed(
-                "policy_u_acceptance_histograms",
-                _plot_policy_u_acceptance_histograms,
-                result.x_samples,
-                objective,
-                theta_by_estimator,
-                str(policy_dir / "u_acceptance"),
-                acceptance_floor=config.acceptance_floor,
+                runtime_by_estimator,
+                timed,
             )
         if any(trace.step_sizes is not None for trace in traces.values()):
             timed("step_sizes", plot_step_sizes, traces, plot_dir)
@@ -497,7 +486,9 @@ class FileStepLogger:
         self._path: Path | None = None
 
     def on_start(self, run_context: RunContext, config: ExperimentConfig) -> None:
-        self._path = run_context.run_dir / "steps.csv"
+        optimization_dir = run_context.plots_dir / "optimization"
+        optimization_dir.mkdir(parents=True, exist_ok=True)
+        self._path = optimization_dir / "steps.csv"
         self._file = self._path.open("w", encoding="utf-8")
         self._file.write(
             "method,step,u,value,grad_norm,step_size,mean_acceptance,projected_loss,projected_revenue\n"
@@ -544,7 +535,11 @@ def _u_star_for_plot(
     return None
 
 
-def _observed_u_reference(result: ExperimentResult) -> np.ndarray | None:
+def _observed_u_reference(
+    result: ExperimentResult,
+    x_samples: object,
+    row_indices: np.ndarray | None,
+) -> np.ndarray | None:
     objective = result.config.objective
     if result.config.x_fixed is None:
         return None
@@ -557,17 +552,71 @@ def _observed_u_reference(result: ExperimentResult) -> np.ndarray | None:
         model_type = "xgb"
     else:
         return None
-    row_indices = getattr(result.config, "x_fixed_row_indices", None)
     if row_indices is not None:
         row_indices = np.asarray(row_indices, dtype=int)
-        if row_indices.shape[0] < result.x_samples.shape[0]:
+        if row_indices.shape != (_x_sample_count(x_samples),):
             return None
-        row_indices = row_indices[: result.x_samples.shape[0]]
     return _load_observed_u_array(
         model_type,
-        n_rows=result.x_samples.shape[0],
+        n_rows=_x_sample_count(x_samples),
         row_indices=row_indices,
         seed=result.config.seed,
+    )
+
+
+def _x_sample_count(x_samples: object) -> int:
+    return int(x_samples.shape[0])
+
+
+def _plot_policy_diagnostics(
+    result: ExperimentResult,
+    x_samples: object,
+    row_indices: np.ndarray | None,
+    plot_dir: str,
+    timing_prefix: str,
+    theta_by_estimator: dict[str, np.ndarray],
+    runtime_by_estimator: dict[str, float],
+    timed: object,
+) -> None:
+    observed_u = _observed_u_reference(result, x_samples, row_indices)
+    if observed_u is None:
+        return
+    objective = result.config.objective
+    timed(
+        f"{timing_prefix}_policy_u_histograms",
+        _plot_policy_u_histograms,
+        observed_u,
+        x_samples,
+        objective,
+        theta_by_estimator,
+        plot_dir,
+    )
+    timed(
+        f"{timing_prefix}_policy_acceptance_histograms",
+        _plot_policy_acceptance_histograms,
+        observed_u,
+        x_samples,
+        objective,
+        theta_by_estimator,
+        plot_dir,
+    )
+    timed(
+        f"{timing_prefix}_policy_final_summary_metrics",
+        _plot_policy_final_summary_metrics,
+        x_samples,
+        objective,
+        theta_by_estimator,
+        runtime_by_estimator,
+        plot_dir,
+    )
+    timed(
+        f"{timing_prefix}_policy_u_acceptance_histograms",
+        _plot_policy_u_acceptance_histograms,
+        x_samples,
+        objective,
+        theta_by_estimator,
+        str(Path(plot_dir) / "u_acceptance"),
+        acceptance_floor=result.config.acceptance_floor,
     )
 
 
@@ -599,6 +648,10 @@ def _build_summary_payload(run_context: RunContext, result: ExperimentResult) ->
             estimator_payload["acceptance_multiplier"] = float(estimator_result.acceptance_multiplier)
         if estimator_result.constraint_penalty is not None:
             estimator_payload["constraint_penalty"] = float(estimator_result.constraint_penalty)
+        if name in result.train_metrics:
+            estimator_payload["train"] = _policy_evaluation_to_dict(result.train_metrics[name])
+        if name in result.test_metrics:
+            estimator_payload["test"] = _policy_evaluation_to_dict(result.test_metrics[name])
         if trace is not None:
             estimator_payload["optimizer_success"] = trace.optimizer_success
             if trace.optimizer_optimality is not None:
@@ -640,6 +693,18 @@ def _build_summary_payload(run_context: RunContext, result: ExperimentResult) ->
         else None,
         "estimators": estimators,
         "trace_summary": trace_summary,
+        "split": {
+            "train_fraction": float(result.config.train_fraction),
+            "test_fraction": float(result.config.test_fraction),
+            "train_n_samples": int(result.x_samples.shape[0]),
+            "test_n_samples": int(result.x_test.shape[0]) if result.x_test is not None else 0,
+            "train_indices_head": [int(idx) for idx in result.train_indices[:10]]
+            if result.train_indices is not None
+            else None,
+            "test_indices_head": [int(idx) for idx in result.test_indices[:10]]
+            if result.test_indices is not None
+            else None,
+        },
     }
     if result.constant_u_baselines:
         constant_baselines_payload = [
@@ -693,6 +758,26 @@ def _build_summary_payload(run_context: RunContext, result: ExperimentResult) ->
 def _as_list(values: object) -> list[float]:
     arr = np.asarray(values, dtype=float)
     return [float(val) for val in arr.tolist()]
+
+
+def _policy_evaluation_to_dict(evaluation: PolicyEvaluation) -> dict[str, float | int | None]:
+    return {
+        "n_samples": int(evaluation.n_samples),
+        "objective_value": float(evaluation.objective_value),
+        "objective_sum": float(evaluation.objective_sum),
+        "mean_u": float(evaluation.mean_u),
+        "u_q25": float(evaluation.u_q25),
+        "u_q75": float(evaluation.u_q75),
+        "mean_acceptance": float(evaluation.mean_acceptance)
+        if evaluation.mean_acceptance is not None
+        else None,
+        "projected_loss": float(evaluation.projected_loss)
+        if evaluation.projected_loss is not None
+        else None,
+        "projected_revenue": float(evaluation.projected_revenue)
+        if evaluation.projected_revenue is not None
+        else None,
+    }
 
 
 def _final_lagrangian_diagnostics(result: ExperimentResult, theta: np.ndarray, trace: object) -> dict:

@@ -62,6 +62,8 @@ def build_real_data_config(
     softmax_action_bounds: tuple[float, float] | None = None,
     seed: int = 42,
     n_samples: int | None = None,
+    train_fraction: float = 1.0,
+    test_fraction: float = 0.0,
     row_indices: np.ndarray | None = None,
     x_fixed: object | None = None,
     x_fixed_row_indices: np.ndarray | None = None,
@@ -223,6 +225,8 @@ def build_real_data_config(
 
     training = canonical_training_block(
         n_samples=resolved_n_samples,
+        train_fraction=float(train_fraction),
+        test_fraction=float(test_fraction),
         step_rule=resolved_step_rule,
         t_steps=resolved_t_steps,
         step_size=float(step_size),

@@ -88,6 +88,70 @@ def test_verbose_default_and_override() -> None:
     assert config_verbose.verbose is True
 
 
+def test_train_test_fraction_defaults_and_serialization() -> None:
+    policy = SoftmaxPolicy()
+    objective = FixedRegressionObjective.from_parameters(
+        policy=policy,
+        beta_1=[0.1],
+        beta_2=-0.5,
+        beta_3=[0.2],
+        beta_4=0.4,
+    )
+    config = ExperimentConfig(
+        state_dim=1,
+        objective=objective,
+        theta0=default_theta0(1),
+        n_samples=5,
+        step_rule="constant",
+        perturbation_space="theta",
+        train_fraction=0.8,
+        test_fraction=0.2,
+    )
+
+    assert config.train_fraction == pytest.approx(0.8)
+    assert config.test_fraction == pytest.approx(0.2)
+    payload = config.to_dict()
+    assert payload["train_fraction"] == pytest.approx(0.8)
+    assert payload["test_fraction"] == pytest.approx(0.2)
+
+
+@pytest.mark.parametrize(
+    ("train_fraction", "test_fraction", "message"),
+    [
+        (-0.1, 1.1, "train_fraction must be in"),
+        (1.1, -0.1, "train_fraction must be in"),
+        (0.0, 1.0, "train_fraction must be positive"),
+        (0.8, 0.1, "sum to 1.0"),
+        (np.inf, 0.0, "must be finite"),
+    ],
+)
+def test_train_test_fraction_validation(
+    train_fraction: float,
+    test_fraction: float,
+    message: str,
+) -> None:
+    policy = SoftmaxPolicy()
+    objective = FixedRegressionObjective.from_parameters(
+        policy=policy,
+        beta_1=[0.1],
+        beta_2=-0.5,
+        beta_3=[0.2],
+        beta_4=0.4,
+    )
+
+    with pytest.raises(ValueError, match=message):
+        ExperimentConfig(
+            state_dim=1,
+            objective=objective,
+            theta0=default_theta0(1),
+            n_samples=5,
+            step_rule="constant",
+            perturbation_space="theta",
+            train_fraction=train_fraction,
+            test_fraction=test_fraction,
+        )
+
+
 def test_constant_u_baselines_are_serialized() -> None:
     policy = SoftmaxPolicy()
     objective = FixedRegressionObjective.from_parameters(

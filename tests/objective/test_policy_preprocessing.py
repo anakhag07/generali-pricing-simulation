@@ -66,3 +66,17 @@ def test_invalid_pca_dim_raises() -> None:
 def test_transform_requires_fit() -> None:
     with pytest.raises(ValueError, match="not fitted"):
         PolicyFeaturePreprocessor().transform(np.ones((2, 2)))
+
+
+def test_to_state_from_state_restores_transform_exactly() -> None:
+    x = _make_x()
+    preprocessor = fit_policy_feature_preprocessor(x, pca_dim=2)
+
+    state = preprocessor.to_state()
+    restored = PolicyFeaturePreprocessor.from_state(
+        state["metadata"],
+        state["arrays"],
+    )
+
+    np.testing.assert_allclose(restored.transform(x), preprocessor.transform(x))
+    assert restored.to_dict() == preprocessor.to_dict()

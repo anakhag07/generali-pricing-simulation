@@ -10,6 +10,7 @@ from experiments.reporters import (
     FileStepLogger,
     JsonReporter,
     PlotReporter,
+    PolicyArtifactReporter,
     ReporterStack,
     WandbReporter,
     create_run_context,
@@ -28,8 +29,8 @@ RUN_CONFIGS: list[str | tuple[str, dict[str, Any]]] = [
             "constraint_mode": "trust_constr",
             "n_samples": 700000,
             # "n_samples": None, 
-            "train_fraction": 0.8, 
-            "test_fraction": 0.2,
+            # "train_fraction": 0.8, 
+            # "test_fraction": 0.2,
             "n_grad_samples": 8,
             "t_steps": 100,
             "enabled_estimators": ("first_order", "finite_difference", "stein_difference"),
@@ -49,6 +50,7 @@ def main() -> None:
         reporter_list = [
             ConsoleReporter(verbose=config.verbose),
             FileStepLogger(),
+            PolicyArtifactReporter(),
             JsonReporter(),
             PlotReporter(),
         ]

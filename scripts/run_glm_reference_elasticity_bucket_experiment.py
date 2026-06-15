@@ -16,6 +16,7 @@ from experiments.reporters import (
     FileStepLogger,
     JsonReporter,
     PlotReporter,
+    PolicyArtifactReporter,
     ReporterStack,
     WandbReporter,
     create_run_context,
@@ -62,6 +63,7 @@ def _run_bucket(bucket: SensitivityBucket, *, u_ref: float) -> ExperimentResult:
     reporter_list = [
         ConsoleReporter(verbose=config.verbose),
         FileStepLogger(),
+        PolicyArtifactReporter(),
         JsonReporter(),
         PlotReporter(),
     ]

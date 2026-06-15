@@ -56,6 +56,16 @@ leading `1`. The default `IdentityFeatureMap` gives the previous behavior
 square, and pairwise interaction terms. `CubicFeatureMap` and
 `QuarticFeatureMap` follow the same pattern with linear terms plus exact
 degree-3 or degree-4 monomials.
+
+Policy replay separates input preprocessing from policy feature mapping:
+
+- **Policy input preprocessing** maps raw source rows to numeric policy inputs
+  `z`. For real-data objectives this may include artifact preprocessing plus
+  optional policy-side standardization, whitening/sphering, and PCA.
+- **Policy feature mapping** maps `z` to `varphi(z)` and, for linear/softmax
+  heads, the policy internally builds `phi(z) = [1, varphi(z)]`. PCA and
+  whitening are not `phi`; they are upstream preprocessing.
+
 For the real-data model-based objective, this `u` remains centered and the
 revenue term uses premium multiplier `u + 1`.
 
@@ -162,6 +172,41 @@ Set `train_fraction` and `test_fraction` to split the selected rows for a run;
 they must sum to `1.0`, with `train_fraction > 0`. Optimizers fit only on the
 training rows, while final policies are evaluated on both train and test rows in
 `summary.json` and the policy diagnostic folders.
+Normal runs also write reloadable trained-policy artifacts under
+`policies/<estimator>/policy.json` with sidecar arrays in `arrays.npz`. These
+artifacts save theta, source CSV row bindings, model/objective metadata, and the
+full fitted policy-side preprocessing state so validation can be rerun without
+retraining the optimizer:
+
+```python
+from experiments.policy_artifacts import load_policy_artifact
+
+artifact = load_policy_artifact("outputs/.../policies/first_order/policy.json")
+u_train = artifact.predict_u(split="train")
+train_metrics = artifact.evaluate(split="train")
+```
+The policy-artifact CLI can evaluate either the trained model objective or an
+observed historical diagnostic on saved run rows:
+
+```bash
+python scripts/evaluate_historical_policy_objective.py \
+  --policy-artifact outputs/.../policies/first_order/policy.json \
+  --objective model \
+  --split train
+
+python scripts/evaluate_historical_policy_objective.py \
+  --policy-artifact outputs/.../policies/first_order/policy.json \
+  --objective historical \
+  --split all
+```
+
+`--objective model` replays
+`p_accept_model(x,u) * (loss_hat_model(x) - revenue)`, matching training
+metrics for the same split. `--objective historical` uses observed outcomes
+`(1 - is_churn) * (Y_G_Loss - revenue)` with the learned policy `u`, so it is
+an observed-outcome diagnostic and need not match the training objective.
+Supported splits are `train`, `test`, and `all`, where `all` means all selected
+rows from the run before train/test splitting.
 When plotting is enabled, real-data runs write optimization plots under
 `plots/optimization/` and final customer-level policy diagnostics under
 `plots/policy_train/` and `plots/policy_test/`. Policy diagnostics include final

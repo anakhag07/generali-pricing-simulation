@@ -20,6 +20,7 @@ from data.loader import (
 )
 from objective.objectives import FixedRegressionObjective
 from experiments.config import ExperimentConfig
+from experiments.policy_artifacts import save_policy_artifacts
 from reporting.logging import log_step, log_summary
 from experiments.results import ExperimentResult, PolicyEvaluation
 from reporting.visualization import (
@@ -184,6 +185,19 @@ class JsonReporter:
         summary_path = run_context.run_dir / "summary.json"
         with summary_path.open("w", encoding="utf-8") as handle:
             json.dump(payload, handle, indent=2, sort_keys=True, ensure_ascii=True)
+
+
+class PolicyArtifactReporter:
+    """Reporter that writes reloadable trained-policy artifacts per estimator."""
+
+    def on_start(self, run_context: RunContext, config: ExperimentConfig) -> None:
+        return None
+
+    def on_end(self, run_context: RunContext, result: ExperimentResult) -> None:
+        objective = result.config.objective
+        if not hasattr(objective, "acceptance_model") or result.train_row_indices is None:
+            return None
+        save_policy_artifacts(result, run_context.run_dir / "policies")
 
 
 class WandbReporter:
@@ -752,7 +766,19 @@ def _build_summary_payload(run_context: RunContext, result: ExperimentResult) ->
             "loss": "loss_hat(x) = gamma_0 + gamma_x^T x_loss",
         }
         payload["model_coefficients"] = coeffs
+    policy_artifacts = _policy_artifact_paths(run_context, result)
+    if policy_artifacts:
+        payload["policy_artifacts"] = policy_artifacts
     return payload
+
+
+def _policy_artifact_paths(run_context: RunContext, result: ExperimentResult) -> dict[str, str]:
+    paths: dict[str, str] = {}
+    for name in result.results:
+        policy_json = run_context.run_dir / "policies" / name / "policy.json"
+        if policy_json.exists():
+            paths[name] = str(policy_json.relative_to(run_context.run_dir))
+    return paths
 
 
 def _as_list(values: object) -> list[float]:
@@ -803,6 +829,7 @@ __all__ = [
     "FileStepLogger",
     "JsonReporter",
     "PlotReporter",
+    "PolicyArtifactReporter",
     "Reporter",
     "ReporterStack",
     "RunContext",

@@ -1,4 +1,4 @@
-"""Evaluate a saved policy with historical acceptance and observed loss."""
+"""Evaluate a saved policy under model or observed historical objectives."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import csv
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, Mapping, Sequence
 
 import numpy as np
@@ -27,6 +28,7 @@ from data.loader import (
     sample_csv_row_indices,
 )
 from experiments.configs import get_config
+from experiments.policy_artifacts import PolicyArtifact, load_policy_artifact
 
 
 @dataclass(frozen=True)
@@ -34,6 +36,7 @@ class HistoricalPolicyEvaluation:
     """Historical-acceptance objective values for a saved policy."""
 
     estimator: str
+    split: str
     theta: np.ndarray
     row_indices: np.ndarray
     ids: pd.DataFrame
@@ -45,6 +48,24 @@ class HistoricalPolicyEvaluation:
     premium: np.ndarray
     policy_revenue: np.ndarray
     objective_contribution: np.ndarray
+    objective_kind: str = "historical"
+
+
+@dataclass(frozen=True)
+class ModelPolicyEvaluation:
+    """Model-objective values for a saved policy artifact."""
+
+    estimator: str
+    split: str
+    theta: np.ndarray
+    row_indices: np.ndarray
+    policy_u: np.ndarray
+    model_acceptance: np.ndarray
+    model_loss: np.ndarray
+    premium: np.ndarray
+    policy_revenue: np.ndarray
+    objective_contribution: np.ndarray
+    objective_kind: str = "model"
 
 
 def load_summary_payload(summary_json: Path) -> dict[str, Any]:
@@ -98,6 +119,33 @@ def reconstruct_run_row_indices(payload: Mapping[str, Any], model_type: str) -> 
     return row_indices
 
 
+def split_run_row_indices(
+    payload: Mapping[str, Any],
+    row_indices: np.ndarray,
+    split: str,
+) -> np.ndarray:
+    """Return selected CSV row positions for all/train/test from a summary payload."""
+    if split == "all":
+        return np.asarray(row_indices, dtype=int).copy()
+    if split not in {"train", "test"}:
+        raise ValueError("split must be 'train', 'test', or 'all'.")
+    config = payload["config"]
+    selected = np.asarray(row_indices, dtype=int)
+    test_fraction = float(config.get("test_fraction", 0.0))
+    if test_fraction == 0.0:
+        if split == "test":
+            raise ValueError("Saved run has no test split rows.")
+        return selected.copy()
+    if selected.size < 2:
+        raise ValueError("train/test split requires at least two rows.")
+    rng = np.random.default_rng(int(config["seed"]))
+    shuffled = rng.permutation(selected.size).astype(int)
+    n_test = int(round(test_fraction * selected.size))
+    n_test = min(max(n_test, 1), selected.size - 1)
+    indices = shuffled[:n_test] if split == "test" else shuffled[n_test:]
+    return selected[indices].copy()
+
+
 def _validate_reconstructed_indices(row_indices: np.ndarray, config: Mapping[str, Any]) -> None:
     shape = config.get("x_fixed_row_indices_shape")
     if shape is not None and list(row_indices.shape) != list(shape):
@@ -123,7 +171,7 @@ def build_config_for_saved_policy(payload: Mapping[str, Any], row_indices: np.nd
     preset = payload.get("run", {}).get("experiment_name") or f"real_data_{model_type}_base"
     overrides = {
         "row_indices": np.asarray(row_indices, dtype=int),
-        "n_samples": int(config_payload["n_samples"]),
+        "n_samples": int(np.asarray(row_indices, dtype=int).size),
         "policy_kind": _policy_kind(objective_payload),
         "feature_order": _feature_order(objective_payload),
         "policy_preprocessing": _policy_preprocessing(objective_payload),
@@ -137,7 +185,21 @@ def build_config_for_saved_policy(payload: Mapping[str, Any], row_indices: np.nd
     u_coef = objective_payload.get("u_coef")
     if u_coef is not None and model_type == "glm":
         overrides["u_coef"] = float(u_coef)
+    policy_payload = objective_payload.get("policy", {})
+    if policy_payload.get("type") == "SoftmaxPolicy":
+        action_low = policy_payload.get("action_low")
+        action_high = policy_payload.get("action_high")
+        if action_low is not None and action_high is not None:
+            overrides["softmax_action_bounds"] = (float(action_low), float(action_high))
     return get_config(str(preset), overrides=overrides)
+
+
+def build_config_for_policy_artifact(artifact: PolicyArtifact, split: str = "all") -> object:
+    """Build a lightweight config-like object from a reloadable policy artifact."""
+    return SimpleNamespace(
+        objective=artifact.build_objective(),
+        x_fixed=artifact.load_x(split=split),
+    )
 
 
 def _policy_kind(objective_payload: Mapping[str, Any]) -> str:
@@ -191,6 +253,7 @@ def evaluate_historical_policy_objective(
     row_indices: np.ndarray,
     historical_rows: pd.DataFrame,
     estimator: str,
+    split: str = "all",
     n_rows: int | None = None,
 ) -> HistoricalPolicyEvaluation:
     """Evaluate saved policy prices with historical acceptance and observed loss."""
@@ -233,6 +296,7 @@ def evaluate_historical_policy_objective(
 
     return HistoricalPolicyEvaluation(
         estimator=estimator,
+        split=split,
         theta=np.asarray(theta, dtype=float),
         row_indices=np.asarray(row_indices, dtype=int),
         ids=historical_rows.loc[:, list(ID_COLS)].copy(),
@@ -247,9 +311,64 @@ def evaluate_historical_policy_objective(
     )
 
 
+def evaluate_model_policy_objective(
+    *,
+    artifact: PolicyArtifact,
+    split: str = "all",
+    n_rows: int | None = None,
+) -> ModelPolicyEvaluation:
+    """Evaluate a saved policy under the model objective used for training."""
+    row_indices = artifact.row_indices(split)
+    x_eval = artifact.load_x(split=split)
+    if n_rows is not None:
+        if int(n_rows) <= 0:
+            raise ValueError("n_rows must be positive when provided.")
+        n_eval = int(n_rows)
+        row_indices = row_indices[:n_eval]
+        x_eval = x_eval.iloc[:n_eval].reset_index(drop=True) if hasattr(x_eval, "iloc") else x_eval[:n_eval]
+    objective = artifact.build_objective()
+    theta = np.asarray(artifact.theta, dtype=float)
+    policy_u = np.asarray(objective.policy_value(theta, x_eval), dtype=float).reshape(-1)
+    clip_u = getattr(objective, "_clip_u", None)
+    if callable(clip_u):
+        policy_u = np.asarray(clip_u(policy_u), dtype=float).reshape(-1)
+    model_acceptance = np.asarray(objective._acceptance_proba(x_eval, policy_u), dtype=float).reshape(-1)
+    model_loss = np.asarray(objective._loss_prediction(x_eval), dtype=float).reshape(-1)
+    premium = objective._premium_values(x_eval)
+    policy_revenue = (policy_u + 1.0) * premium
+    objective_contribution = model_acceptance * (model_loss - policy_revenue)
+
+    for name, values in {
+        "policy_u": policy_u,
+        "model_acceptance": model_acceptance,
+        "model_loss": model_loss,
+        "premium": premium,
+        "objective_contribution": objective_contribution,
+    }.items():
+        if values.shape != (row_indices.shape[0],):
+            raise ValueError(f"{name} must have one value per evaluated row.")
+        if not np.isfinite(values).all():
+            raise ValueError(f"{name} contains non-finite values.")
+
+    return ModelPolicyEvaluation(
+        estimator=artifact.estimator,
+        split=split,
+        theta=theta,
+        row_indices=np.asarray(row_indices, dtype=int),
+        policy_u=policy_u,
+        model_acceptance=model_acceptance,
+        model_loss=model_loss,
+        premium=premium,
+        policy_revenue=policy_revenue,
+        objective_contribution=objective_contribution,
+    )
+
+
 def evaluation_summary(evaluation: HistoricalPolicyEvaluation) -> dict[str, Any]:
     """Return aggregate metrics for a historical-policy evaluation."""
     return {
+        "objective_kind": evaluation.objective_kind,
+        "split": evaluation.split,
         "estimator": evaluation.estimator,
         "n_rows": int(evaluation.row_indices.size),
         "theta": [float(value) for value in evaluation.theta.tolist()],
@@ -271,6 +390,26 @@ def evaluation_summary(evaluation: HistoricalPolicyEvaluation) -> dict[str, Any]
     }
 
 
+def model_evaluation_summary(evaluation: ModelPolicyEvaluation) -> dict[str, Any]:
+    """Return aggregate metrics for a model-objective policy replay."""
+    return {
+        "objective_kind": evaluation.objective_kind,
+        "split": evaluation.split,
+        "estimator": evaluation.estimator,
+        "n_rows": int(evaluation.row_indices.size),
+        "theta": [float(value) for value in evaluation.theta.tolist()],
+        "objective_value": float(np.mean(evaluation.objective_contribution)),
+        "objective_sum": float(np.sum(evaluation.objective_contribution)),
+        "mean_u": float(np.mean(evaluation.policy_u)),
+        "mean_acceptance": float(np.mean(evaluation.model_acceptance)),
+        "projected_loss": float(np.mean(evaluation.model_loss)),
+        "projected_revenue": float(np.mean(evaluation.policy_revenue)),
+        "mean_premium": float(np.mean(evaluation.premium)),
+        "csv_row_index_min": int(np.min(evaluation.row_indices)),
+        "csv_row_index_max": int(np.max(evaluation.row_indices)),
+    }
+
+
 def write_outputs(evaluation: HistoricalPolicyEvaluation, output_dir: Path, *, write_per_row: bool = True) -> list[Path]:
     """Write aggregate JSON and optional row-level CSV outputs."""
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -282,6 +421,26 @@ def write_outputs(evaluation: HistoricalPolicyEvaluation, output_dir: Path, *, w
     if write_per_row:
         csv_path = output_dir / "per_row.csv"
         _write_per_row_csv(evaluation, csv_path)
+        outputs.append(csv_path)
+    return outputs
+
+
+def write_model_outputs(
+    evaluation: ModelPolicyEvaluation,
+    output_dir: Path,
+    *,
+    write_per_row: bool = True,
+) -> list[Path]:
+    """Write model-objective aggregate JSON and optional row-level CSV outputs."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    outputs: list[Path] = []
+    summary_path = output_dir / "summary.json"
+    with summary_path.open("w", encoding="utf-8") as handle:
+        json.dump(model_evaluation_summary(evaluation), handle, indent=2, sort_keys=True)
+    outputs.append(summary_path)
+    if write_per_row:
+        csv_path = output_dir / "per_row.csv"
+        _write_model_per_row_csv(evaluation, csv_path)
         outputs.append(csv_path)
     return outputs
 
@@ -319,6 +478,33 @@ def _write_per_row_csv(evaluation: HistoricalPolicyEvaluation, csv_path: Path) -
             writer.writerow(row)
 
 
+def _write_model_per_row_csv(evaluation: ModelPolicyEvaluation, csv_path: Path) -> None:
+    fieldnames = [
+        "csv_row_index",
+        "policy_u",
+        "model_acceptance",
+        "model_loss",
+        "X_policy_premium",
+        "policy_revenue",
+        "objective_contribution",
+    ]
+    with csv_path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        for idx in range(evaluation.row_indices.size):
+            writer.writerow(
+                {
+                    "csv_row_index": int(evaluation.row_indices[idx]),
+                    "policy_u": float(evaluation.policy_u[idx]),
+                    "model_acceptance": float(evaluation.model_acceptance[idx]),
+                    "model_loss": float(evaluation.model_loss[idx]),
+                    "X_policy_premium": float(evaluation.premium[idx]),
+                    "policy_revenue": float(evaluation.policy_revenue[idx]),
+                    "objective_contribution": float(evaluation.objective_contribution[idx]),
+                }
+            )
+
+
 def format_theta(theta: np.ndarray) -> str:
     """Format theta values for terminal verification."""
     return "[" + ", ".join(f"{float(value):.12g}" for value in theta.tolist()) + "]"
@@ -328,15 +514,41 @@ def _default_output_dir(summary_json: Path, estimator: str) -> Path:
     return summary_json.parent / "historical_policy_objective" / estimator
 
 
+def _default_artifact_output_dir(policy_artifact: Path, estimator: str) -> Path:
+    return policy_artifact.parent / "historical_policy_objective" / estimator
+
+
+def _default_artifact_model_output_dir(policy_artifact: Path, estimator: str) -> Path:
+    return policy_artifact.parent / "model_policy_objective" / estimator
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--summary-json",
         type=Path,
-        required=True,
+        default=None,
         help="Path to a run summary.json containing final estimator theta.",
     )
+    parser.add_argument(
+        "--policy-artifact",
+        type=Path,
+        default=None,
+        help="Path to a saved policies/<estimator>/policy.json artifact. Preferred over summary reconstruction.",
+    )
     parser.add_argument("--estimator", default="first_order", help="Estimator theta to evaluate.")
+    parser.add_argument(
+        "--objective",
+        choices=("historical", "model"),
+        default="historical",
+        help="Objective to evaluate: observed historical diagnostic or trained model objective.",
+    )
+    parser.add_argument(
+        "--split",
+        choices=("all", "train", "test"),
+        default="all",
+        help="Saved run rows to evaluate. 'all' means all selected rows before train/test split.",
+    )
     parser.add_argument(
         "--n-rows",
         type=int,
@@ -359,27 +571,73 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: Sequence[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
-    payload = load_summary_payload(args.summary_json)
-    theta = load_estimator_theta(payload, args.estimator)
-    model_type = infer_model_type(payload)
-    row_indices = reconstruct_run_row_indices(payload, model_type)
-    config = build_config_for_saved_policy(payload, row_indices, model_type)
+    if args.policy_artifact is None and args.summary_json is None:
+        raise SystemExit("Either --policy-artifact or --summary-json is required.")
+    if args.objective == "model" and args.policy_artifact is None:
+        raise SystemExit("--objective model requires --policy-artifact for exact replay.")
+    estimator = args.estimator
+    if args.policy_artifact is not None:
+        artifact = load_policy_artifact(args.policy_artifact)
+        estimator = artifact.estimator
+        theta = artifact.theta
+        model_type = artifact.objective.model_type
+        row_indices = artifact.row_indices(args.split)
+        config = build_config_for_policy_artifact(artifact, split=args.split)
+        source_path = args.policy_artifact
+    else:
+        payload = load_summary_payload(args.summary_json)
+        if payload.get("policy_artifacts"):
+            print("Warning: summary_json contains policy_artifacts; prefer --policy-artifact for exact policy replay.")
+        theta = load_estimator_theta(payload, estimator)
+        model_type = infer_model_type(payload)
+        selected_row_indices = reconstruct_run_row_indices(payload, model_type)
+        row_indices = split_run_row_indices(payload, selected_row_indices, args.split)
+        config = build_config_for_saved_policy(payload, row_indices, model_type)
+        source_path = args.summary_json
+    if args.objective == "model":
+        model_evaluation = evaluate_model_policy_objective(
+            artifact=artifact,
+            split=args.split,
+            n_rows=args.n_rows,
+        )
+        if args.output_dir is not None:
+            output_dir = args.output_dir
+        else:
+            output_dir = _default_artifact_model_output_dir(args.policy_artifact, estimator)
+        outputs = write_model_outputs(model_evaluation, output_dir, write_per_row=not args.skip_per_row)
+        summary = model_evaluation_summary(model_evaluation)
+        print(f"Read theta for estimator '{estimator}' from {source_path}.")
+        print(f"Theta used ({estimator}): {format_theta(theta)}")
+        print(f"Evaluated {summary['n_rows']} {args.split} rows with the trained model objective.")
+        print(f"Mean model objective: {summary['objective_value']:.6f}")
+        print(f"Total model objective: {summary['objective_sum']:.6f}")
+        print(f"Mean policy u: {summary['mean_u']:.6f}")
+        print(f"Mean model acceptance: {summary['mean_acceptance']:.6f}")
+        for path in outputs:
+            print(f"Wrote {path}")
+        return
     historical_rows = load_historical_rows(row_indices)
     evaluation = evaluate_historical_policy_objective(
         config=config,
         theta=theta,
         row_indices=row_indices,
         historical_rows=historical_rows,
-        estimator=args.estimator,
+        estimator=estimator,
+        split=args.split,
         n_rows=args.n_rows,
     )
-    output_dir = args.output_dir if args.output_dir is not None else _default_output_dir(args.summary_json, args.estimator)
+    if args.output_dir is not None:
+        output_dir = args.output_dir
+    elif args.policy_artifact is not None:
+        output_dir = _default_artifact_output_dir(args.policy_artifact, estimator)
+    else:
+        output_dir = _default_output_dir(args.summary_json, estimator)
     outputs = write_outputs(evaluation, output_dir, write_per_row=not args.skip_per_row)
     summary = evaluation_summary(evaluation)
 
-    print(f"Read theta for estimator '{args.estimator}' from {args.summary_json}.")
-    print(f"Theta used ({args.estimator}): {format_theta(theta)}")
-    print(f"Evaluated {summary['n_rows']} rows with historical_acceptance = 1 - is_churn.")
+    print(f"Read theta for estimator '{estimator}' from {source_path}.")
+    print(f"Theta used ({estimator}): {format_theta(theta)}")
+    print(f"Evaluated {summary['n_rows']} {args.split} rows with historical_acceptance = 1 - is_churn.")
     print(f"Mean historical objective: {summary['mean_objective']:.6f}")
     print(f"Total historical objective: {summary['total_objective']:.6f}")
     print(f"Mean policy u: {summary['mean_policy_u']:.6f}")

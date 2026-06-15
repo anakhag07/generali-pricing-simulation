@@ -3,11 +3,14 @@
 from experiments.config import ExperimentConfig
 from experiments.configs import get_config, list_configs
 from experiments.defaults import default_policy, default_theta0
+from experiments.policy_artifacts import PolicyArtifact, load_policy_artifact
+from experiments.policy_validation import evaluate_policy, policy_u_values
 from experiments.reporters import (
     ConsoleReporter,
     FileStepLogger,
     JsonReporter,
     PlotReporter,
+    PolicyArtifactReporter,
     ReporterStack,
     RunContext,
     StepReporter,
@@ -42,10 +45,15 @@ __all__ = [
     "EstimatorResult",
     "ExperimentResult",
     "OptimizationTrace",
+    "PolicyArtifact",
+    "load_policy_artifact",
+    "evaluate_policy",
+    "policy_u_values",
     "ConsoleReporter",
     "FileStepLogger",
     "JsonReporter",
     "PlotReporter",
+    "PolicyArtifactReporter",
     "ReporterStack",
     "RunContext",
     "StepReporter",

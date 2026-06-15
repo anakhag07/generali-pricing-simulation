@@ -347,7 +347,7 @@ Guidelines:
   - `plot_objective_u_slice(...)`: objective vs u grid (no gradient subplot)
   - `plot_theta_objective_contours(...)`: 2D contour plot with optimization paths; use adaptive linear/log/symlog color scaling when objective ranges make a single linear scale unreadable
   - `plot_comparison_objective_curves(...)`, `plot_comparison_u_curves(...)`, `plot_comparison_final_metric(...)`: aggregate policy-comparison plots; final metrics render as grouped bars by policy with estimator colors and policy hatching
-  - Model-based real-data run plots under `plots/policy_train/` and `plots/policy_test/` include `final_summary_metrics.png`, `u_histogram.png`, `acceptance_histograms.png`, `delta_u_histogram.png`, `delta_u_by_sensitivity.png`, and per-estimator `u_acceptance/<estimator>.png` files with binned mean acceptance and customer-level acceptance-vs-`u` scatter
+  - Model-based real-data run plots under `plots/policy_train/` and `plots/policy_test/` include `final_summary_metrics.png`, `u_histogram.png`, `acceptance_histograms.png`, `delta_u_histogram.png`, `delta_u_by_sensitivity.png`, `objective_contribution_summary.png`, and per-estimator `u_acceptance/<estimator>.png` files with binned mean acceptance, customer-level acceptance-vs-`u` scatter, and raw objective contribution histograms
   - Private sweep helpers power both lambda and trust-constrained acceptance-floor frontier plots
   - `select_theta_axes_max_variance(...)`: picks the two theta axes with highest variance for contour plots
 
@@ -364,6 +364,7 @@ Guidelines:
 - `scripts/run_glm_reference_elasticity_bucket_experiment.py` repeats the GLM bucket experiment for reference actions `u_ref in {-0.1, 0.1, 0.2, 0.3}`, ranks rows by elasticity magnitude at each reference action, runs only `first_order`, annotates summary charts with average bucket elasticity magnitude, and writes per-reference summaries under `outputs/glm-reference-elasticity-buckets/`
 - `scripts/plot_glm_sensitivity_distribution.py` computes GLM customer elasticities $$d p_{accept}(x, u) / du$$ over a default `u in [-0.3, 0.3]` grid, writes a mean/quantile elasticity-by-`u` curve, selected-`u` elasticity histograms for `{-0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3}` with default `0.5-99.5%` x-axis clipping marked, and CSV summaries under `outputs/glm-sensitivity-distribution/`
 - `scripts/diagnose_low_sensitivity_policy_acceptance.py` rebuilds GLM sensitivity buckets, applies either a manual softmax `--theta` or exact saved-policy replay via `--policy-artifact outputs/.../policies/<estimator>/policy.json`, and writes row-level `row_index`, policy-feature, GLM acceptance-feature, policy-score, and acceptance-logit diagnostics plus histograms under `outputs/low-sensitivity-policy-acceptance-diagnostics/`; use `--bucket all` for low/medium/high, `--bucket-u-ref` to choose the scoring action, and `--bucket-row-source artifact-all|artifact-train|artifact-test` to form buckets within saved artifact rows
+- `scripts/plot_policy_acceptance_grid.py` loads a saved policy artifact, scores artifact-bound rows by mean absolute acceptance sensitivity over a simulated `u` grid and by predicted loss, randomly samples clients from low/medium/high tertiles for each score, and writes two three-panel client-level acceptance-curve plots plus `sampled_clients.csv` under `outputs/policy-acceptance-grid/`; omit `--seed` to resample clients each run
 - `scripts/plot_saved_acceptance_floor_frontier.py` re-plots acceptance-floor Pareto frontiers from a saved `acceptance_floor_sweep.csv` (or the latest matching frontier directory) without rerunning optimization; defaults to `first_order` and writes estimator-suffixed Pareto PNGs
 - `scripts/query_acceptance_at_u.py` loads a config preset or default GLM/XGB model type and reports mean acceptance for supplied or evenly sampled constant `u` values without running optimization; writes acceptance-curve and historical-`U` rug plots under `outputs/acceptance_queries/` by default and optionally writes `u,n,mean_acceptance` CSV output
 - `scripts/plot_pc_outcome_diagnostics.py` reads a saved run `summary.json`, rebuilds a real-data base preset objective with optional policy/preprocessing override flags, and writes processed-policy-component scatter diagnostics against final `f_acc`, loss, and `u`; defaults beside the summary under `pc_outcome_diagnostics/<estimator>/`
@@ -473,6 +474,7 @@ when appropriate.
 | `test_visualization_step_sizes.py` | step_sizes plot uses log y-scale |
 | `test_visualization_styles.py` | Estimator style configuration |
 | `test_policy_delta_u_elasticity.py` | Delta-u histogram and reference sensitivity policy diagnostic plots |
+| `test_policy_objective_contribution_summary.py` | Customer objective/profit spread diagnostic plot |
 | `test_comparison_plots.py` | aggregate comparison curve plots and grouped final-metric bar charts |
 
 #### `tests/integration/`

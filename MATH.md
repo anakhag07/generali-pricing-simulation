@@ -210,6 +210,11 @@ For bucket construction only, the absolute sensitivity score matrix is
 
 $$S_{ij} = \left|\frac{\partial a(x_i, u_j)}{\partial u}\right| = |\beta_u^{\text{eff}}|\,a_{ij}(1-a_{ij}), \quad a_{ij} = a(x_i, u_j)$$
 
+For saved-policy acceptance-grid diagnostics, the representative sensitivity
+score averages absolute sensitivity over the simulated action grid:
+
+$$s_i^{grid} = \frac{1}{m}\sum_{j=1}^{m}\left|\frac{\partial a(x_i, u_j)}{\partial u}\right|$$
+
 The plotted average elasticity curve summarizes customers within each action
 bin using signed derivatives:
 
@@ -234,6 +239,18 @@ $$s_i(0.08) = \left|\frac{\partial a(x_i, u)}{\partial u}\right|_{u=0.08}$$
 One aggregate sensitivity scatter and one $$\Delta u_i$$ histogram are written
 per train/test split with all estimators overlaid.
 
+**Expected profit contribution diagnostic:**
+
+The per-customer objective contribution is $$M_i = f(\pi_\theta(x_i); x_i)$$.
+Because the optimizer minimizes $$M$$, the reporting plot uses the sign-flipped
+expected profit contribution
+
+$$P_i = -M_i$$
+
+so $$P_i > 0$$ means predicted money made on customer $$i$$ and $$P_i < 0$$
+means predicted money lost. The plot shows the cross-customer distribution of
+$$P_i$$ and a scatter of $$P_i$$ against predicted acceptance $$a(x_i,\pi_\theta(x_i))$$.
+
 **Acceptance penalty** (smooth floor enforcement):
 
 $$\text{penalty} = w \cdot \bigl[\tau\,\log(1 + e^{g/\tau})\bigr]^2$$
@@ -249,7 +266,7 @@ $$\frac{\partial\,\text{penalty}}{\partial\,\bar{a}} = -2w\,\text{softplus}(g/\t
   - `_d_acceptance_du_batch()` — analytical or FD acceptance derivative
   - `_acceptance_penalty()` — penalty value and gradient scale
 - **Source:** `src/experiments/sensitivity_buckets.py` :: `glm_price_derivative_matrix()`, `glm_price_sensitivity_scores()`, `glm_price_sensitivity_matrix()`, `split_sensitivity_tertiles()`
-- **Source:** `src/reporting/visualization.py` :: `_plot_policy_delta_u_histograms()`, `_plot_policy_delta_u_by_elasticity()`
+- **Source:** `src/reporting/visualization.py` :: `_plot_policy_delta_u_histograms()`, `_plot_policy_delta_u_by_elasticity()`, `_plot_policy_objective_contribution_summary()`
 
 **Lagrangian scalarization** (lambda sweep path):
 

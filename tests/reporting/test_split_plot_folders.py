@@ -67,6 +67,7 @@ def test_plot_reporter_creates_split_plot_folders(monkeypatch, tmp_path) -> None
     )
     delta_plot_calls = []
     delta_histogram_calls = []
+    objective_summary_calls = []
 
     monkeypatch.setattr(
         "experiments.reporters._observed_u_reference",
@@ -83,6 +84,10 @@ def test_plot_reporter_creates_split_plot_folders(monkeypatch, tmp_path) -> None
         "experiments.reporters._plot_policy_delta_u_by_elasticity",
         lambda *args, **kwargs: delta_plot_calls.append(args),
     )
+    monkeypatch.setattr(
+        "experiments.reporters._plot_policy_objective_contribution_summary",
+        lambda *args, **kwargs: objective_summary_calls.append(args),
+    )
     monkeypatch.setattr("experiments.reporters._plot_policy_u_acceptance_histograms", lambda *args, **kwargs: None)
 
     PlotReporter().on_end(run_context, result)
@@ -92,3 +97,4 @@ def test_plot_reporter_creates_split_plot_folders(monkeypatch, tmp_path) -> None
     assert (run_context.plots_dir / "policy_test").is_dir()
     assert len(delta_histogram_calls) == 2
     assert len(delta_plot_calls) == 2
+    assert len(objective_summary_calls) == 2

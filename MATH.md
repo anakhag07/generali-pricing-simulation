@@ -220,6 +220,20 @@ $$D_{ij}$$ as histograms. Histogram x-axes are clipped for display by default at
 the `0.5` and `99.5` percentiles and those clipping thresholds are marked on the
 chart; CSV summaries retain the unclipped values.
 
+**Delta-u by reference sensitivity diagnostic:**
+
+For final real-data policy diagnostics, each estimator/customer point plots
+
+$$\Delta u_i = \pi_\theta(x_i) - u_i^{\text{historical}}$$
+
+against absolute local acceptance sensitivity evaluated at reference action
+$$u_{ref}=0.08$$:
+
+$$s_i(0.08) = \left|\frac{\partial a(x_i, u)}{\partial u}\right|_{u=0.08}$$
+
+One aggregate sensitivity scatter and one $$\Delta u_i$$ histogram are written
+per train/test split with all estimators overlaid.
+
 **Acceptance penalty** (smooth floor enforcement):
 
 $$\text{penalty} = w \cdot \bigl[\tau\,\log(1 + e^{g/\tau})\bigr]^2$$
@@ -235,6 +249,7 @@ $$\frac{\partial\,\text{penalty}}{\partial\,\bar{a}} = -2w\,\text{softplus}(g/\t
   - `_d_acceptance_du_batch()` — analytical or FD acceptance derivative
   - `_acceptance_penalty()` — penalty value and gradient scale
 - **Source:** `src/experiments/sensitivity_buckets.py` :: `glm_price_derivative_matrix()`, `glm_price_sensitivity_scores()`, `glm_price_sensitivity_matrix()`, `split_sensitivity_tertiles()`
+- **Source:** `src/reporting/visualization.py` :: `_plot_policy_delta_u_histograms()`, `_plot_policy_delta_u_by_elasticity()`
 
 **Lagrangian scalarization** (lambda sweep path):
 

@@ -65,6 +65,8 @@ def test_plot_reporter_creates_split_plot_folders(monkeypatch, tmp_path) -> None
         plots_dir=tmp_path / "plots",
         started_at=datetime(2026, 6, 13, 0, 0, 0),
     )
+    delta_plot_calls = []
+    delta_histogram_calls = []
 
     monkeypatch.setattr(
         "experiments.reporters._observed_u_reference",
@@ -73,6 +75,14 @@ def test_plot_reporter_creates_split_plot_folders(monkeypatch, tmp_path) -> None
     monkeypatch.setattr("experiments.reporters._plot_policy_u_histograms", lambda *args, **kwargs: None)
     monkeypatch.setattr("experiments.reporters._plot_policy_acceptance_histograms", lambda *args, **kwargs: None)
     monkeypatch.setattr("experiments.reporters._plot_policy_final_summary_metrics", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        "experiments.reporters._plot_policy_delta_u_histograms",
+        lambda *args, **kwargs: delta_histogram_calls.append(args),
+    )
+    monkeypatch.setattr(
+        "experiments.reporters._plot_policy_delta_u_by_elasticity",
+        lambda *args, **kwargs: delta_plot_calls.append(args),
+    )
     monkeypatch.setattr("experiments.reporters._plot_policy_u_acceptance_histograms", lambda *args, **kwargs: None)
 
     PlotReporter().on_end(run_context, result)
@@ -80,3 +90,5 @@ def test_plot_reporter_creates_split_plot_folders(monkeypatch, tmp_path) -> None
     assert (run_context.plots_dir / "optimization").is_dir()
     assert (run_context.plots_dir / "policy_train").is_dir()
     assert (run_context.plots_dir / "policy_test").is_dir()
+    assert len(delta_histogram_calls) == 2
+    assert len(delta_plot_calls) == 2

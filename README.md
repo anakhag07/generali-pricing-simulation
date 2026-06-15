@@ -211,8 +211,11 @@ When plotting is enabled, real-data runs write optimization plots under
 `plots/optimization/` and final customer-level policy diagnostics under
 `plots/policy_train/` and `plots/policy_test/`. Policy diagnostics include final
 metric bars with 25-75% customer ranges, observed-vs-policy `u` and acceptance
-histograms, and one `u_acceptance/<estimator>.png` file per estimator showing
-the final action histogram plus customer acceptance-vs-`u` scatter.
+histograms, `delta_u_histogram.png` showing `Δu = optimized customer u - historical u`,
+`delta_u_by_sensitivity.png` showing the same `Δu` against absolute acceptance
+sensitivity at `u=0.08`, and one
+`u_acceptance/<estimator>.png` file per estimator showing the final action
+histogram plus customer acceptance-vs-`u` scatter.
 Plot generation writes per-plot wall-clock diagnostics to `plots/plot_timings.json`.
 For model-based objectives, theta contour plots are evaluated on a deterministic
 subsample of at most 200 rows so large real-data experiments do not spend most
@@ -285,11 +288,15 @@ histograms with default `0.5-99.5%` x-axis clipping marked on the chart, and CSV
 summaries under `outputs/glm-sensitivity-distribution/`.
 
 `scripts/diagnose_low_sensitivity_policy_acceptance.py` rebuilds the GLM
-sensitivity buckets, applies a saved softmax theta to selected bucket rows, and
-writes row-level policy-score / acceptance-logit diagnostics plus processed
-policy-feature and GLM acceptance-feature columns. Use `--bucket low medium high`
-or `--bucket all` to compare buckets; outputs go under
-`outputs/low-sensitivity-policy-acceptance-diagnostics/` by default.
+sensitivity buckets, applies either a manual softmax `--theta` or an exact
+`--policy-artifact outputs/.../policies/<estimator>/policy.json`, and writes
+row-level policy-score / acceptance-logit diagnostics plus policy-feature and
+GLM acceptance-feature columns. Use `--bucket-u-ref` to choose the reference
+action used for bucket scoring and `--bucket-row-source artifact-all` /
+`artifact-train` / `artifact-test` to form buckets within saved policy rows;
+the default bucket source remains all eligible GLM rows at median observed `U`.
+Outputs go under `outputs/low-sensitivity-policy-acceptance-diagnostics/` by
+default.
 
 If you already have saved acceptance-floor sweep outputs and only want the
 Pareto frontier for one estimator without rerunning optimization, use

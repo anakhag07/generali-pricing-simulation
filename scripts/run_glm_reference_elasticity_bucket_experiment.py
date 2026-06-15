@@ -28,7 +28,7 @@ from reporting.visualization import _estimator_style
 
 BASE_PRESET = "real_data_glm_base"
 PROJECT_NAME = "glm-reference-elasticity-buckets"
-REFERENCE_U_VALUES = (-0.1, 0.1, 0.2, 0.3)
+REFERENCE_U_VALUES = (-0.1, 0.0, 0.1, 0.2, 0.3)
 RUN_OVERRIDES = {
     "policy_kind": "softmax",
     "policy_preprocessing": "no_pca",
@@ -39,6 +39,11 @@ RUN_OVERRIDES = {
     "enabled_estimators": ("first_order",),
     "plot": True,
     "wandb_enabled": False,
+    "n_samples": None, 
+    "train_fraction": 0.8, 
+    "test_fraction": 0.2,
+    "softmax_action_bounds": (-0.1, 0.2),
+
 }
 
 _QUANTILES = (0.05, 0.25, 0.50, 0.75, 0.95)

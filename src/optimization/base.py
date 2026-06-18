@@ -54,6 +54,8 @@ class Optimization:
         initial_constr_penalty: float | None = None,
         step_reporter: "StepReporter | None" = None,
         method_label: str | None = None,
+        batch_rng: np.random.Generator | None = None,
+        gradient_rng: np.random.Generator | None = None,
         rng: np.random.Generator | None = None,
         minimize_fn: MinimizeFn = minimize,
     ) -> None:
@@ -79,7 +81,9 @@ class Optimization:
             initial_constr_penalty: Initial trust-constr penalty parameter.
             step_reporter: Optional reporter for per-step metrics.
             method_label: Label for this optimization method.
-            rng: Random number generator.
+            batch_rng: Random number generator for mini-batch sampling.
+            gradient_rng: Random number generator for stochastic gradient perturbations.
+            rng: Backward-compatible fallback RNG used when stream-specific RNGs are omitted.
             minimize_fn: SciPy minimize function (for testing).
         """
         if perturbation_space not in {"theta", "u"}:
@@ -99,7 +103,10 @@ class Optimization:
         self.initial_constr_penalty = initial_constr_penalty
         self.step_reporter = step_reporter
         self.method_label = method_label if method_label is not None else getattr(self.gradient, "name", "opt")
-        self.rng = rng if rng is not None else np.random.default_rng(0)
+        fallback_rng = rng if rng is not None else np.random.default_rng(0)
+        self.batch_rng = batch_rng if batch_rng is not None else fallback_rng
+        self.gradient_rng = gradient_rng if gradient_rng is not None else fallback_rng
+        self.rng = self.gradient_rng
         self._minimize_fn = minimize_fn
 
         if hasattr(x_samples, "iloc") and hasattr(x_samples, "columns"):
@@ -159,13 +166,13 @@ class Optimization:
 
         def value_fn(theta_vec: np.ndarray) -> float:
             theta_arr = np.asarray(theta_vec, dtype=float)
-            indices = sample_indices(self.rng, self.batch_size_eff, self.n_total, self._full_indices)
+            indices = sample_indices(self.batch_rng, self.batch_size_eff, self.n_total, self._full_indices)
             return objective_value_on_indices(self.objective, self.x_array, self.n_total, theta_arr, indices)
 
         def grad_fn(theta_vec: np.ndarray) -> np.ndarray:
             nonlocal last_optimizer_grad_key, last_optimizer_grad
             theta_arr = np.asarray(theta_vec, dtype=float)
-            indices = sample_indices(self.rng, self.batch_size_eff, self.n_total, self._full_indices)
+            indices = sample_indices(self.batch_rng, self.batch_size_eff, self.n_total, self._full_indices)
             grad_theta = np.asarray(self.gradient.theta_grad(self, theta_arr, indices), dtype=float)
             last_optimizer_grad_key = theta_key(theta_arr)
             last_optimizer_grad = grad_theta.copy()
@@ -232,7 +239,7 @@ class Optimization:
 
         def record(theta_vec: np.ndarray, step_size: float | None = None) -> None:
             theta_arr = np.asarray(theta_vec, dtype=float)
-            indices = sample_indices(self.rng, self.batch_size_eff, self.n_total, self._full_indices)
+            indices = sample_indices(self.batch_rng, self.batch_size_eff, self.n_total, self._full_indices)
             x_batch_arr = x_batch(self.x_array, indices, self.n_total)
             value = objective_value_on_indices(self.objective, self.x_array, self.n_total, theta_arr, indices)
             if last_optimizer_grad_key == theta_key(theta_arr) and last_optimizer_grad is not None:
@@ -309,7 +316,7 @@ class Optimization:
             optimizer_status = 1
             optimizer_message = "STOP: reached maximum iterations"
             for _ in range(self.t_steps):
-                indices = sample_indices(self.rng, self.batch_size_eff, self.n_total, self._full_indices)
+                indices = sample_indices(self.batch_rng, self.batch_size_eff, self.n_total, self._full_indices)
                 grad_theta = np.asarray(self.gradient.theta_grad(self, theta_final, indices), dtype=float)
                 grad_norm = float(np.linalg.norm(grad_theta))
                 if self.grad_norm_tol is not None and grad_norm <= self.grad_norm_tol:

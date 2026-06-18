@@ -461,8 +461,24 @@ under `src/experiments/configs/`.
 ## Reproducibility
 
 The demo uses a fixed RNG seed (default 7, configurable per
-`ExperimentConfig.seed`). The objective is deterministic given a fixed
-configuration and state sample batch.
+`ExperimentConfig.seed`). For new runs, `ExperimentConfig.seed_setup` can split
+that into explicit seed streams:
+
+- `data_seed`: synthetic state sampling or real-data row subsampling.
+- `split_seed`: train/test split permutation.
+- `theta_seed`: random policy initialization when `theta0=None` or MLP theta is initialized.
+- `optimizer_seed`: mini-batches and stochastic gradient-estimator perturbations.
+
+If `seed_setup` is omitted, all streams use the legacy `seed`. If a
+`SeedSetup(run_seed=...)` is provided, any omitted stream is derived
+deterministically from `run_seed`, while explicit stream seeds remain fixed.
+Per-estimator optimizer RNG streams are independent of `enabled_estimators`
+ordering.
+
+For repeated runs, use `experiments.seed_repeats.run_seed_repeats(...)`. The
+default repeat mode varies only `optimizer_seed` and fixes data, split, and
+theta initialization to the first `run_seed`; set `vary=("all",)` for full
+end-to-end seed variation.
 
 ## Contributing
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal, Sequence
+from typing import Literal, Mapping, Sequence
 
 import numpy as np
 
@@ -42,6 +42,7 @@ from objective.policy import (
     mlp_init_theta,
 )
 from objective.policy_preprocessing import fit_policy_feature_preprocessor
+from experiments.seeding import SeedSetup, resolve_seed_setup
 
 ModelType = Literal["glm", "xgb"]
 PolicyKind = Literal["constant", "linear", "softmax", "mlp"]
@@ -61,6 +62,7 @@ def build_real_data_config(
     loss_source: LossSource = "predicted",
     softmax_action_bounds: tuple[float, float] | None = None,
     seed: int = 42,
+    seed_setup: SeedSetup | Mapping[str, int | None] | None = None,
     n_samples: int | None = None,
     train_fraction: float = 1.0,
     test_fraction: float = 0.0,
@@ -103,6 +105,7 @@ def build_real_data_config(
     model_type = _normalize_model_type(model_type)
     constraint_mode = _normalize_constraint_mode(constraint_mode)
     loss_source = _normalize_loss_source(loss_source)
+    resolved_seeds = resolve_seed_setup(seed_setup, seed)
     requested_n_samples = _normalize_n_samples(n_samples)
     state_dim = len(_feature_cols(model_type))
     if u_coef is not None and model_type != "glm":
@@ -118,7 +121,11 @@ def build_real_data_config(
             if requested_n_samples is None:
                 row_indices = eligible_csv_row_indices(model_type)
             else:
-                row_indices = sample_csv_row_indices(model_type, n_rows=requested_n_samples, seed=int(seed))
+                row_indices = sample_csv_row_indices(
+                    model_type,
+                    n_rows=requested_n_samples,
+                    seed=resolved_seeds.data_seed,
+                )
         x_fixed_arr = load_x_frame(model_type, row_indices=row_indices)
         x_fixed_row_indices_arr = np.asarray(row_indices, dtype=int)
         if loss_source == "observed":
@@ -175,7 +182,7 @@ def build_real_data_config(
         theta0=theta0,
         policy=policy,
         input_dim=policy_input_dim,
-        seed=int(seed),
+        seed=resolved_seeds.theta_seed,
         initial_u=initial_u,
     )
 
@@ -264,7 +271,8 @@ def build_real_data_config(
         wandb_estimator_allowlist=wandb_estimator_allowlist,
     )
     return build_experiment_config(
-        seed=int(seed),
+        seed=resolved_seeds.run_seed,
+        seed_setup=seed_setup,
         state_dim=state_dim,
         x_fixed=x_fixed_arr,
         x_fixed_row_indices=x_fixed_row_indices_arr,

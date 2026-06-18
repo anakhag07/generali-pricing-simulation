@@ -6,9 +6,8 @@ from dataclasses import replace
 import time
 
 import numpy as np
-from numpy.random import SeedSequence
 
-from objective.base import default_rng, sample_states
+from objective.base import sample_states
 from experiments.defaults import random_theta0
 from objective.policy import ConstantPolicy
 from objective.utils import (
@@ -19,6 +18,7 @@ from objective.utils import (
     value_for_reporting,
 )
 from experiments.config import ExperimentConfig
+from experiments.seeding import optimizer_rngs, resolve_seed_setup, rng_from_seed
 from experiments.helpers import (
     resolve_true_grad_theta_fn,
     run_constant,
@@ -89,14 +89,18 @@ def _take_rows(x_samples: object, indices: np.ndarray) -> object:
     return np.asarray(x_samples, dtype=float)[indices]
 
 
-def _split_samples(config: ExperimentConfig, x_samples: object) -> tuple[object, object | None, np.ndarray, np.ndarray]:
+def _split_samples(
+    config: ExperimentConfig,
+    x_samples: object,
+    split_seed: int,
+) -> tuple[object, object | None, np.ndarray, np.ndarray]:
     n_total = _row_count(x_samples)
     full_indices = np.arange(n_total, dtype=int)
     if config.test_fraction == 0.0:
         return x_samples, None, full_indices, np.asarray([], dtype=int)
     if n_total < 2:
         raise ValueError("train/test split requires at least two samples.")
-    rng = np.random.default_rng(int(config.seed))
+    rng = np.random.default_rng(int(split_seed))
     shuffled = rng.permutation(n_total).astype(int)
     n_test = int(round(float(config.test_fraction) * n_total))
     n_test = min(max(n_test, 1), n_total - 1)
@@ -123,17 +127,13 @@ def run_experiment(
 ) -> ExperimentResult:
     """Run optimization with all enabled estimators; returns traces and final values."""
     effective_config = _maybe_apply_acceptance_controls(config)
+    resolved_seeds = resolve_seed_setup(effective_config.seed_setup, effective_config.seed)
     objective = effective_config.objective
     enabled_estimators = tuple(effective_config.enabled_estimators)
 
-    # When theta0 is None (random init), split the seed so theta0 generation
-    # doesn't alter the state-sampling RNG stream. Explicit theta0 preserves
-    # the original RNG path for backward compatibility.
+    data_rng = rng_from_seed(resolved_seeds.data_seed)
     if effective_config.theta0 is None:
-        ss = SeedSequence(effective_config.seed)
-        theta0_child, main_child = ss.spawn(2)
-        theta0_rng = default_rng(theta0_child)
-        rng = default_rng(main_child)
+        theta0_rng = rng_from_seed(resolved_seeds.theta_seed)
         policy = getattr(objective, "policy", None)
         policy_input_dim = getattr(objective, "policy_input_dim", None)
         theta_state_dim = (
@@ -143,7 +143,6 @@ def run_experiment(
         # Persist the resolved theta0 so reporters/plots can access it
         effective_config = replace(effective_config, theta0=theta_initial)
     else:
-        rng = default_rng(effective_config.seed)
         theta_initial = np.asarray(effective_config.theta0, dtype=float)
 
     if effective_config.x_fixed is not None:
@@ -152,8 +151,12 @@ def run_experiment(
         else:
             x_all = np.asarray(effective_config.x_fixed, dtype=float)
     else:
-        x_all = sample_states(rng, effective_config.n_samples, effective_config.state_dim)
-    x_samples, x_test, train_indices, test_indices = _split_samples(effective_config, x_all)
+        x_all = sample_states(data_rng, effective_config.n_samples, effective_config.state_dim)
+    x_samples, x_test, train_indices, test_indices = _split_samples(
+        effective_config,
+        x_all,
+        resolved_seeds.split_seed,
+    )
     train_row_indices = _source_row_indices(effective_config, train_indices)
     test_row_indices = _source_row_indices(effective_config, test_indices)
     true_grad_theta_fn = resolve_true_grad_theta_fn(objective, effective_config.correctness)
@@ -190,6 +193,7 @@ def run_experiment(
     traces = {}
 
     if "constant" in enabled_estimators:
+        batch_rng, gradient_rng = optimizer_rngs(resolved_seeds, "constant")
         constant_objective = _constant_policy_objective(objective)
         theta_constant_initial = _constant_theta_start(objective, theta_initial, x_samples)
         true_grad_constant_fn = resolve_true_grad_theta_fn(
@@ -202,7 +206,7 @@ def run_experiment(
             theta_constant_initial,
             x_samples,
             constant_objective,
-            rng,
+            batch_rng,
             effective_config.t_steps,
             effective_config.step_rule,
             effective_config.step_size,
@@ -215,6 +219,7 @@ def run_experiment(
             ftol=effective_config.ftol,
             initial_constr_penalty=effective_config.initial_constr_penalty,
             step_reporter=step_reporter,
+            gradient_rng=gradient_rng,
         )
         time_constant = time.perf_counter() - start_constant
         u_constant = _mean_action(constant_objective, theta_constant, x_samples)
@@ -237,12 +242,13 @@ def run_experiment(
         traces["constant"] = trace_constant
 
     if "first_order" in enabled_estimators:
+        batch_rng, gradient_rng = optimizer_rngs(resolved_seeds, "first_order")
         start_first = time.perf_counter()
         theta_first, trace_first = run_first_order(
             theta_initial,
             x_samples,
             objective,
-            rng,
+            batch_rng,
             effective_config.t_steps,
             effective_config.step_rule,
             effective_config.step_size,
@@ -255,6 +261,7 @@ def run_experiment(
             ftol=effective_config.ftol,
             initial_constr_penalty=effective_config.initial_constr_penalty,
             step_reporter=step_reporter,
+            gradient_rng=gradient_rng,
         )
         time_first = time.perf_counter() - start_first
         u_first = _mean_action(objective, theta_first, x_samples) if policy is not None else float("nan")
@@ -273,12 +280,13 @@ def run_experiment(
         traces["first_order"] = trace_first
 
     if "finite_difference" in enabled_estimators:
+        batch_rng, gradient_rng = optimizer_rngs(resolved_seeds, "finite_difference")
         start_fd = time.perf_counter()
         theta_fd, trace_fd = run_finite_difference(
             theta_initial,
             x_samples,
             objective,
-            rng,
+            batch_rng,
             effective_config.t_steps,
             effective_config.step_rule,
             effective_config.step_size,
@@ -291,6 +299,7 @@ def run_experiment(
             ftol=effective_config.ftol,
             initial_constr_penalty=effective_config.initial_constr_penalty,
             step_reporter=step_reporter,
+            gradient_rng=gradient_rng,
         )
         time_fd = time.perf_counter() - start_fd
         u_fd = _mean_action(objective, theta_fd, x_samples) if policy is not None else float("nan")
@@ -309,12 +318,13 @@ def run_experiment(
         traces["finite_difference"] = trace_fd
 
     if "gauss_stein" in enabled_estimators:
+        batch_rng, gradient_rng = optimizer_rngs(resolved_seeds, "gauss_stein")
         start_zero = time.perf_counter()
         theta_zero, trace_zero = run_gauss_stein(
             theta_initial,
             x_samples,
             objective,
-            rng,
+            batch_rng,
             effective_config.t_steps,
             effective_config.step_rule,
             effective_config.step_size,
@@ -327,6 +337,7 @@ def run_experiment(
             ftol=effective_config.ftol,
             initial_constr_penalty=effective_config.initial_constr_penalty,
             step_reporter=step_reporter,
+            gradient_rng=gradient_rng,
         )
         time_zero = time.perf_counter() - start_zero
         u_zero = _mean_action(objective, theta_zero, x_samples) if policy is not None else float("nan")
@@ -345,12 +356,13 @@ def run_experiment(
         traces["gauss_stein"] = trace_zero
 
     if "spsa" in enabled_estimators:
+        batch_rng, gradient_rng = optimizer_rngs(resolved_seeds, "spsa")
         start_spsa = time.perf_counter()
         theta_spsa, trace_spsa = run_spsa(
             theta_initial,
             x_samples,
             objective,
-            rng,
+            batch_rng,
             effective_config.t_steps,
             effective_config.step_rule,
             effective_config.step_size,
@@ -363,6 +375,7 @@ def run_experiment(
             ftol=effective_config.ftol,
             initial_constr_penalty=effective_config.initial_constr_penalty,
             step_reporter=step_reporter,
+            gradient_rng=gradient_rng,
         )
         time_spsa = time.perf_counter() - start_spsa
         u_spsa = _mean_action(objective, theta_spsa, x_samples) if policy is not None else float("nan")
@@ -381,12 +394,13 @@ def run_experiment(
         traces["spsa"] = trace_spsa
 
     if "stein_difference" in enabled_estimators:
+        batch_rng, gradient_rng = optimizer_rngs(resolved_seeds, "stein_difference")
         start_stein = time.perf_counter()
         theta_stein, trace_stein = run_stein_difference(
             theta_initial,
             x_samples,
             objective,
-            rng,
+            batch_rng,
             effective_config.t_steps,
             effective_config.step_rule,
             effective_config.step_size,
@@ -399,6 +413,7 @@ def run_experiment(
             ftol=effective_config.ftol,
             initial_constr_penalty=effective_config.initial_constr_penalty,
             step_reporter=step_reporter,
+            gradient_rng=gradient_rng,
         )
         time_stein = time.perf_counter() - start_stein
         u_stein = _mean_action(objective, theta_stein, x_samples) if policy is not None else float("nan")

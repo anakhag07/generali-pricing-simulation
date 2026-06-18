@@ -232,6 +232,53 @@ def test_reconstruct_run_row_indices_falls_back_to_seeded_sample(
     np.testing.assert_array_equal(row_indices, sampled)
 
 
+def test_reconstruct_run_row_indices_uses_resolved_data_seed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sampled = np.asarray([5, 2, 9], dtype=int)
+    captured: dict[str, int] = {}
+    payload = {
+        "config": {
+            "n_samples": sampled.size,
+            "seed": 7,
+            "resolved_seed_setup": {"data_seed": 123, "split_seed": 456},
+            "x_fixed_row_indices_shape": [sampled.size],
+            "x_fixed_row_indices_head": sampled.tolist(),
+            "x_fixed_row_indices_min": int(sampled.min()),
+            "x_fixed_row_indices_max": int(sampled.max()),
+        }
+    }
+
+    monkeypatch.setattr(script, "eligible_csv_row_indices", lambda model_type: np.asarray([0, 1], dtype=int))
+
+    def sample(model_type, n_rows, seed):
+        captured["seed"] = seed
+        return sampled.copy()
+
+    monkeypatch.setattr(script, "sample_csv_row_indices", sample)
+
+    row_indices = script.reconstruct_run_row_indices(payload, "glm")
+
+    assert captured["seed"] == 123
+    np.testing.assert_array_equal(row_indices, sampled)
+
+
+def test_split_run_row_indices_uses_resolved_split_seed() -> None:
+    row_indices = np.asarray([10, 11, 12, 13, 14], dtype=int)
+    payload = {
+        "config": {
+            "seed": 7,
+            "test_fraction": 0.4,
+            "resolved_seed_setup": {"data_seed": 123, "split_seed": 456},
+        }
+    }
+
+    expected_positions = np.random.default_rng(456).permutation(row_indices.size).astype(int)[:2]
+    test_rows = script.split_run_row_indices(payload, row_indices, "test")
+
+    np.testing.assert_array_equal(test_rows, row_indices[expected_positions])
+
+
 def test_main_prints_theta_used(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path,

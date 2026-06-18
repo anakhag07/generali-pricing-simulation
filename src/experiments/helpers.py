@@ -60,9 +60,9 @@ def run_first_order(
     ftol: float | None = None,
     initial_constr_penalty: float | None = None,
     step_reporter: StepReporter | None = None,
+    gradient_rng: np.random.Generator | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     """Run first-order optimization."""
-    del rng  # Not used by first-order minimize
     return run_first_order_minimize(
         theta_start=theta_start,
         x_samples=x_samples,
@@ -79,6 +79,8 @@ def run_first_order(
         ftol=ftol,
         initial_constr_penalty=initial_constr_penalty,
         step_reporter=step_reporter,
+        batch_rng=rng,
+        gradient_rng=gradient_rng,
     )
 
 
@@ -99,9 +101,9 @@ def run_constant(
     ftol: float | None = None,
     initial_constr_penalty: float | None = None,
     step_reporter: StepReporter | None = None,
+    gradient_rng: np.random.Generator | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     """Run optimized constant-policy baseline."""
-    del rng  # Not used by first-order minimize
     return run_constant_minimize(
         theta_start=theta_start,
         x_samples=x_samples,
@@ -118,6 +120,8 @@ def run_constant(
         ftol=ftol,
         initial_constr_penalty=initial_constr_penalty,
         step_reporter=step_reporter,
+        batch_rng=rng,
+        gradient_rng=gradient_rng,
     )
 
 
@@ -138,9 +142,9 @@ def run_finite_difference(
     ftol: float | None = None,
     initial_constr_penalty: float | None = None,
     step_reporter: StepReporter | None = None,
+    gradient_rng: np.random.Generator | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     """Run finite-difference value-query optimization."""
-    del rng  # Not used by finite-difference minimize
     return run_finite_difference_minimize(
         theta_start=theta_start,
         x_samples=x_samples,
@@ -157,6 +161,8 @@ def run_finite_difference(
         ftol=ftol,
         initial_constr_penalty=initial_constr_penalty,
         step_reporter=step_reporter,
+        batch_rng=rng,
+        gradient_rng=gradient_rng,
     )
 
 
@@ -177,6 +183,7 @@ def run_gauss_stein(
     ftol: float | None = None,
     initial_constr_penalty: float | None = None,
     step_reporter: StepReporter | None = None,
+    gradient_rng: np.random.Generator | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     """Run Gauss-Stein zeroth-order optimization."""
     return run_gauss_stein_minimize(
@@ -196,6 +203,8 @@ def run_gauss_stein(
         ftol=ftol,
         initial_constr_penalty=initial_constr_penalty,
         step_reporter=step_reporter,
+        batch_rng=rng,
+        gradient_rng=gradient_rng,
     )
 
 
@@ -216,6 +225,7 @@ def run_spsa(
     ftol: float | None = None,
     initial_constr_penalty: float | None = None,
     step_reporter: StepReporter | None = None,
+    gradient_rng: np.random.Generator | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     """Run SPSA zeroth-order optimization."""
     return run_spsa_minimize(
@@ -235,6 +245,8 @@ def run_spsa(
         ftol=ftol,
         initial_constr_penalty=initial_constr_penalty,
         step_reporter=step_reporter,
+        batch_rng=rng,
+        gradient_rng=gradient_rng,
     )
 
 
@@ -255,6 +267,7 @@ def run_stein_difference(
     ftol: float | None = None,
     initial_constr_penalty: float | None = None,
     step_reporter: StepReporter | None = None,
+    gradient_rng: np.random.Generator | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     """Run Stein-difference zeroth-order optimization."""
     return run_stein_difference_minimize(
@@ -274,4 +287,6 @@ def run_stein_difference(
         ftol=ftol,
         initial_constr_penalty=initial_constr_penalty,
         step_reporter=step_reporter,
+        batch_rng=rng,
+        gradient_rng=gradient_rng,
     )

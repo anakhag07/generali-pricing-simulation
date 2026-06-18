@@ -39,6 +39,8 @@ def run_first_order_minimize(
     ftol: float | None = None,
     initial_constr_penalty: float | None = None,
     step_reporter: StepReporter | None = None,
+    batch_rng: np.random.Generator | None = None,
+    gradient_rng: np.random.Generator | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     optimizer = Optimization(
         objective,
@@ -57,6 +59,8 @@ def run_first_order_minimize(
         initial_constr_penalty=initial_constr_penalty,
         step_reporter=step_reporter,
         method_label="first_order",
+        batch_rng=batch_rng,
+        gradient_rng=gradient_rng,
         minimize_fn=minimize,
     )
     return optimizer.solve(theta_start)
@@ -78,6 +82,8 @@ def run_constant_minimize(
     ftol: float | None = None,
     initial_constr_penalty: float | None = None,
     step_reporter: StepReporter | None = None,
+    batch_rng: np.random.Generator | None = None,
+    gradient_rng: np.random.Generator | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     optimizer = Optimization(
         objective,
@@ -96,6 +102,8 @@ def run_constant_minimize(
         initial_constr_penalty=initial_constr_penalty,
         step_reporter=step_reporter,
         method_label="constant",
+        batch_rng=batch_rng,
+        gradient_rng=gradient_rng,
         minimize_fn=minimize,
     )
     return optimizer.solve(theta_start)
@@ -117,6 +125,8 @@ def run_finite_difference_minimize(
     ftol: float | None = None,
     initial_constr_penalty: float | None = None,
     step_reporter: StepReporter | None = None,
+    batch_rng: np.random.Generator | None = None,
+    gradient_rng: np.random.Generator | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     optimizer = Optimization(
         objective,
@@ -135,6 +145,8 @@ def run_finite_difference_minimize(
         initial_constr_penalty=initial_constr_penalty,
         step_reporter=step_reporter,
         method_label="finite_difference",
+        batch_rng=batch_rng,
+        gradient_rng=gradient_rng,
         minimize_fn=minimize,
     )
     return optimizer.solve(theta_start)
@@ -157,6 +169,8 @@ def run_gauss_stein_minimize(
     ftol: float | None = None,
     initial_constr_penalty: float | None = None,
     step_reporter: StepReporter | None = None,
+    batch_rng: np.random.Generator | None = None,
+    gradient_rng: np.random.Generator | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     optimizer = Optimization(
         objective,
@@ -175,6 +189,8 @@ def run_gauss_stein_minimize(
         initial_constr_penalty=initial_constr_penalty,
         step_reporter=step_reporter,
         method_label="gauss_stein",
+        batch_rng=batch_rng if batch_rng is not None else rng,
+        gradient_rng=gradient_rng if gradient_rng is not None else rng,
         rng=rng,
         minimize_fn=minimize,
     )
@@ -198,6 +214,8 @@ def run_spsa_minimize(
     ftol: float | None = None,
     initial_constr_penalty: float | None = None,
     step_reporter: StepReporter | None = None,
+    batch_rng: np.random.Generator | None = None,
+    gradient_rng: np.random.Generator | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     optimizer = Optimization(
         objective,
@@ -216,6 +234,8 @@ def run_spsa_minimize(
         initial_constr_penalty=initial_constr_penalty,
         step_reporter=step_reporter,
         method_label="spsa",
+        batch_rng=batch_rng if batch_rng is not None else rng,
+        gradient_rng=gradient_rng if gradient_rng is not None else rng,
         rng=rng,
         minimize_fn=minimize,
     )
@@ -239,6 +259,8 @@ def run_stein_difference_minimize(
     ftol: float | None = None,
     initial_constr_penalty: float | None = None,
     step_reporter: StepReporter | None = None,
+    batch_rng: np.random.Generator | None = None,
+    gradient_rng: np.random.Generator | None = None,
 ) -> tuple[np.ndarray, OptimizationTrace]:
     optimizer = Optimization(
         objective,
@@ -257,6 +279,8 @@ def run_stein_difference_minimize(
         initial_constr_penalty=initial_constr_penalty,
         step_reporter=step_reporter,
         method_label="stein_difference",
+        batch_rng=batch_rng if batch_rng is not None else rng,
+        gradient_rng=gradient_rng if gradient_rng is not None else rng,
         rng=rng,
         minimize_fn=minimize,
     )

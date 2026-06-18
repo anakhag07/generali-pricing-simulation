@@ -106,7 +106,7 @@ def reconstruct_run_row_indices(payload: Mapping[str, Any], model_type: str) -> 
     """Reconstruct the sampled canonical CSV row positions for a saved run."""
     config = payload["config"]
     n_samples = int(config["n_samples"])
-    seed = int(config["seed"])
+    data_seed = _resolved_config_seed(config, "data_seed")
     eligible = eligible_csv_row_indices(model_type)
     if n_samples == eligible.size:
         try:
@@ -114,7 +114,7 @@ def reconstruct_run_row_indices(payload: Mapping[str, Any], model_type: str) -> 
             return eligible
         except ValueError:
             pass
-    row_indices = sample_csv_row_indices(model_type, n_rows=n_samples, seed=seed)
+    row_indices = sample_csv_row_indices(model_type, n_rows=n_samples, seed=data_seed)
     _validate_reconstructed_indices(row_indices, config)
     return row_indices
 
@@ -138,12 +138,19 @@ def split_run_row_indices(
         return selected.copy()
     if selected.size < 2:
         raise ValueError("train/test split requires at least two rows.")
-    rng = np.random.default_rng(int(config["seed"]))
+    rng = np.random.default_rng(_resolved_config_seed(config, "split_seed"))
     shuffled = rng.permutation(selected.size).astype(int)
     n_test = int(round(test_fraction * selected.size))
     n_test = min(max(n_test, 1), selected.size - 1)
     indices = shuffled[:n_test] if split == "test" else shuffled[n_test:]
     return selected[indices].copy()
+
+
+def _resolved_config_seed(config: Mapping[str, Any], seed_name: str) -> int:
+    resolved = config.get("resolved_seed_setup")
+    if isinstance(resolved, Mapping) and seed_name in resolved:
+        return int(resolved[seed_name])
+    return int(config["seed"])
 
 
 def _validate_reconstructed_indices(row_indices: np.ndarray, config: Mapping[str, Any]) -> None:

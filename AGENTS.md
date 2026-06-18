@@ -6,6 +6,11 @@ Project context: simulation and optimization repo. Users should be able to speci
 
 - Prefer small, focused changes with clear doc updates. Prior to making code changes, think about whether the code addition is necessary and if it keeps a clean, intuitive repo structure for the public api. 
 - Keep simulation logic deterministic when a seed is set.
+- When adding any new stochastic or nondeterministic process (sampling, splits,
+  initialization, mini-batching, perturbations, randomized package calls, or
+  parallelism), ask whether it needs its own seed stream in the experiment seed
+  setup before implementation. Do not silently reuse an unrelated seed; document
+  which seed controls the process.
 - Include short comments or specs for functions when helpful.
 - Prefer vectorized or cached computations when they preserve existing logic.
 - Do not rely on prior chat context as the source of truth; repo context may be stale across terminals, worktrees, or later sessions.
@@ -217,6 +222,7 @@ Guidelines:
 - **`src/optimization/base.py`**
   - `Optimization`: class-based optimization entry point
   - `Optimization.solve(theta_start)`: dispatches to SciPy `minimize` for `step_rule="l-bfgs-b"` / `"trust-constr"` and to an internal manual gradient loop for `step_rule="constant"` / `"armijo"`; handles mini-batching, trace recording, and optional step-size history for manual rules
+  - Uses separate RNG streams for mini-batch sampling (`batch_rng`) and stochastic gradient perturbations (`gradient_rng`); `rng` remains a backward-compatible fallback
   - Contains only constructor + solve orchestration; batching/objective helpers live in `src/optimization/helpers.py`
   - Solvers consume theta-level objectives only (`value(theta, x_batch)`, `grad(theta, x_batch)`)
 
@@ -311,6 +317,15 @@ Guidelines:
   - `EstimatorResult`: final theta, u, value, wall-clock time, and optional acceptance-constraint diagnostics
   - `PolicyEvaluation`: final policy metrics on a split (`objective_value`, `objective_sum`, mean/quantile `u`, and optional acceptance/loss/revenue diagnostics)
   - `ExperimentResult`: full result including config, train samples in `x_samples`, optional `x_test`, split row/index metadata, traces, final train/test policy metrics, and optional u_star
+
+- **`src/experiments/seeding.py`**
+  - `SeedSetup`: optional per-run seed-stream overrides (`run_seed`, `data_seed`, `split_seed`, `theta_seed`, `optimizer_seed`)
+  - `resolve_seed_setup(...)`: legacy configs without `seed_setup` use `ExperimentConfig.seed` for every stream; explicit `SeedSetup` derives omitted streams from `run_seed`
+  - `optimizer_rngs(...)`: derives order-independent per-estimator batch and gradient RNGs from `optimizer_seed`
+
+- **`src/experiments/seed_repeats.py`**
+  - `SeedRepeatSpec`: repeated-run orchestrator over explicit seed streams; default varies only `optimizer_seed` while fixing data/split/theta to the first run seed
+  - `run_seed_repeats(...)`: runs a preset once per `run_seed`, writes normal per-run outputs plus `seed_repeats.csv` and `seed_repeats_summary.csv`
 
 - **`src/experiments/policy_validation.py`**
   - Shared optimizer-independent policy validation helpers (`policy_u_values`, `evaluate_policy`) used by both `run_experiment()` and saved policy artifacts
@@ -453,6 +468,8 @@ when appropriate.
 | `test_baseline_test.py` | End-to-end smoke test with fixed_regression_base overrides |
 | `test_run_context.py` | default output directory and run context paths |
 | `test_train_test_split.py` | Runner train/test split, held-out policy metrics, and summary payloads |
+| `test_seeding.py` | Seed setup serialization, data/split/theta stream routing, estimator-order independence |
+| `test_seed_repeats.py` | Seed-repeat setup construction and aggregate CSV outputs |
 | `test_sweep_utils.py` | Override-grid expansion and preset sweep config generation |
 | `test_sensitivity_buckets.py` | GLM local price-sensitivity scoring and tertile construction |
 | `test_sensitivity_bucket_script.py` | Sensitivity bucket experiment script constants and summaries |

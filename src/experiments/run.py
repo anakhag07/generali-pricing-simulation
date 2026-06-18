@@ -14,7 +14,6 @@ from objective.policy import ConstantPolicy
 from objective.utils import (
     mean_acceptance_at_constant_u,
     _mean_action,
-    _policy_value,
     optimal_u,
     value_at_constant_u,
     value_for_reporting,
@@ -29,6 +28,7 @@ from experiments.helpers import (
     run_spsa,
     run_stein_difference,
 )
+from experiments.policy_validation import evaluate_policy
 from experiments.reporters import StepReporter
 from experiments.results import ConstantBaselineResult, EstimatorResult, ExperimentResult, PolicyEvaluation
 
@@ -115,50 +115,6 @@ def _source_row_indices(config: ExperimentConfig, indices: np.ndarray) -> np.nda
         return None
     row_indices = np.asarray(config.x_fixed_row_indices, dtype=int)
     return row_indices[indices].copy()
-
-
-def _policy_u_values(objective: object, theta: np.ndarray, x_samples: object) -> np.ndarray:
-    u_values = np.asarray(_policy_value(objective, theta, x_samples), dtype=float).reshape(-1)
-    clip_fn = getattr(objective, "_clip_u", None)
-    if callable(clip_fn):
-        u_values = np.asarray(clip_fn(u_values), dtype=float).reshape(-1)
-    if u_values.shape != (_row_count(x_samples),):
-        raise ValueError("policy.value(theta, x_batch) must return one value per row.")
-    return u_values
-
-
-def _evaluate_final_policy(objective: object, theta: np.ndarray, x_samples: object) -> PolicyEvaluation:
-    theta_arr = np.asarray(theta, dtype=float)
-    n_samples = _row_count(x_samples)
-    objective_value = value_for_reporting(objective, theta_arr, x_samples)
-    u_values = _policy_u_values(objective, theta_arr, x_samples)
-    mean_acceptance_fn = getattr(objective, "mean_acceptance", None)
-    mean_acceptance = (
-        float(mean_acceptance_fn(theta_arr, x_samples)) if callable(mean_acceptance_fn) else None
-    )
-    projected_loss = None
-    projected_revenue = None
-    step_metrics_fn = getattr(objective, "_step_metrics", None)
-    if callable(step_metrics_fn):
-        step_metrics = step_metrics_fn(theta_arr, x_samples)
-        if "projected_loss" in step_metrics:
-            projected_loss = float(step_metrics["projected_loss"])
-        if "projected_revenue" in step_metrics:
-            projected_revenue = float(step_metrics["projected_revenue"])
-        if mean_acceptance is None and "mean_acceptance" in step_metrics:
-            mean_acceptance = float(step_metrics["mean_acceptance"])
-    q25, q75 = np.quantile(u_values, [0.25, 0.75])
-    return PolicyEvaluation(
-        n_samples=n_samples,
-        objective_value=objective_value,
-        objective_sum=n_samples * objective_value,
-        mean_u=float(np.mean(u_values)),
-        u_q25=float(q25),
-        u_q75=float(q75),
-        mean_acceptance=mean_acceptance,
-        projected_loss=projected_loss,
-        projected_revenue=projected_revenue,
-    )
 
 
 def run_experiment(
@@ -464,9 +420,9 @@ def run_experiment(
     test_metrics: dict[str, PolicyEvaluation] = {}
     for name, estimator_result in results.items():
         eval_objective = _constant_policy_objective(objective) if name == "constant" else objective
-        train_metrics[name] = _evaluate_final_policy(eval_objective, estimator_result.theta, x_samples)
+        train_metrics[name] = evaluate_policy(eval_objective, estimator_result.theta, x_samples)
         if x_test is not None:
-            test_metrics[name] = _evaluate_final_policy(eval_objective, estimator_result.theta, x_test)
+            test_metrics[name] = evaluate_policy(eval_objective, estimator_result.theta, x_test)
 
     return ExperimentResult(
         config=effective_config,

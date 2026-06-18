@@ -96,6 +96,69 @@ class PolicyFeaturePreprocessor:
             "output_feature_names": list(getattr(self, "output_feature_names_", ())),
         }
 
+    def to_state(self) -> dict[str, object]:
+        """Return metadata and fitted arrays needed to replay this transform exactly."""
+        if not hasattr(self, "transform_matrix_"):
+            raise ValueError("PolicyFeaturePreprocessor is not fitted. Call fit() first.")
+        return {
+            "metadata": self.to_dict(),
+            "arrays": {
+                "mean": np.asarray(self.mean_, dtype=float),
+                "scale": np.asarray(self.scale_, dtype=float),
+                "eigenvalues": np.asarray(self.eigenvalues_, dtype=float),
+                "explained_variance_ratio": np.asarray(self.explained_variance_ratio_, dtype=float),
+                "cumulative_variance_ratio": np.asarray(self.cumulative_variance_ratio_, dtype=float),
+                "transform_matrix": np.asarray(self.transform_matrix_, dtype=float),
+            },
+        }
+
+    @classmethod
+    def from_state(
+        cls,
+        metadata: dict[str, object],
+        arrays: dict[str, np.ndarray],
+    ) -> "PolicyFeaturePreprocessor":
+        """Restore a fitted preprocessor from ``to_state`` metadata and arrays."""
+        preprocessor = cls(
+            standardize=bool(metadata.get("standardize", True)),
+            sphere=bool(metadata.get("sphere", True)),
+            pca_dim=metadata.get("pca_dim"),
+            regularization=float(metadata.get("regularization", 1e-6)),
+        )
+        required = (
+            "mean",
+            "scale",
+            "eigenvalues",
+            "explained_variance_ratio",
+            "cumulative_variance_ratio",
+            "transform_matrix",
+        )
+        missing = [name for name in required if name not in arrays]
+        if missing:
+            raise ValueError(f"Missing policy preprocessor state arrays: {missing}")
+        preprocessor.input_dim_ = int(metadata["input_dim"])
+        preprocessor.output_dim_ = int(metadata["output_dim"])
+        preprocessor.output_feature_names_ = [
+            str(name) for name in metadata.get("output_feature_names", ())
+        ]
+        preprocessor.mean_ = np.asarray(arrays["mean"], dtype=float)
+        preprocessor.scale_ = np.asarray(arrays["scale"], dtype=float)
+        preprocessor.eigenvalues_ = np.asarray(arrays["eigenvalues"], dtype=float)
+        preprocessor.explained_variance_ratio_ = np.asarray(
+            arrays["explained_variance_ratio"], dtype=float
+        )
+        preprocessor.cumulative_variance_ratio_ = np.asarray(
+            arrays["cumulative_variance_ratio"], dtype=float
+        )
+        preprocessor.transform_matrix_ = np.asarray(arrays["transform_matrix"], dtype=float)
+        if preprocessor.mean_.shape != (preprocessor.input_dim_,):
+            raise ValueError("Restored policy preprocessor mean has invalid shape.")
+        if preprocessor.scale_.shape != (preprocessor.input_dim_,):
+            raise ValueError("Restored policy preprocessor scale has invalid shape.")
+        if preprocessor.transform_matrix_.shape != (preprocessor.input_dim_, preprocessor.output_dim_):
+            raise ValueError("Restored policy preprocessor transform matrix has invalid shape.")
+        return preprocessor
+
 
 def fit_policy_feature_preprocessor(
     x_raw: np.ndarray,

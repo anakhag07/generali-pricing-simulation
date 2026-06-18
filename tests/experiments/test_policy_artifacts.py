@@ -1,0 +1,119 @@
+from __future__ import annotations
+
+from datetime import datetime
+import json
+
+import numpy as np
+import pytest
+
+from experiments.configs import get_config
+from experiments.policy_artifacts import build_policy_artifact, load_policy_artifact
+from experiments.policy_validation import policy_u_values
+from experiments.reporters import JsonReporter, PolicyArtifactReporter, RunContext
+from experiments.run import run_experiment
+
+
+@pytest.fixture(scope="module")
+def glm_policy_result():
+    config = get_config(
+        "real_data_glm_base",
+        overrides={
+            "n_samples": 24,
+            "train_fraction": 0.75,
+            "test_fraction": 0.25,
+            "policy_kind": "softmax",
+            "softmax_action_bounds": (-0.1, 0.2),
+            "initial_u": 0.0,
+            "feature_order": "quadratic",
+            "policy_preprocessing": "no_pca",
+            "step_rule": "constant",
+            "t_steps": 1,
+            "n_grad_samples": 2,
+            "enabled_estimators": ("first_order",),
+            "grad_norm_tol": None,
+            "plot": False,
+            "verbose": False,
+            "wandb_enabled": False,
+        },
+    )
+    return run_experiment(config)
+
+
+def test_policy_artifact_round_trip_predicts_same_train_u(tmp_path, glm_policy_result) -> None:
+    artifact = build_policy_artifact(glm_policy_result, "first_order")
+    policy_json = artifact.save(tmp_path / "first_order" / "policy.json")
+
+    loaded = load_policy_artifact(policy_json)
+
+    theta = glm_policy_result.results["first_order"].theta
+    expected_u = policy_u_values(glm_policy_result.config.objective, theta, glm_policy_result.x_samples)
+    np.testing.assert_allclose(loaded.predict_u(split="train"), expected_u)
+    np.testing.assert_array_equal(loaded.row_indices("train"), glm_policy_result.train_row_indices)
+    assert (policy_json.parent / "arrays.npz").exists()
+
+    payload = json.loads(policy_json.read_text(encoding="utf-8"))
+    preprocessing = payload["policy_input_preprocessing"]
+    assert preprocessing["artifact_preprocessing"]["enabled"] is True
+    assert preprocessing["policy_side_preprocessing"]["enabled"] is True
+    assert payload["feature_map"]["type"] == "QuadraticFeatureMap"
+    assert payload["policy_head"]["type"] == "SoftmaxPolicy"
+
+
+def test_policy_artifact_round_trip_matches_train_metrics(tmp_path, glm_policy_result) -> None:
+    artifact = build_policy_artifact(glm_policy_result, "first_order")
+    loaded = load_policy_artifact(artifact.save(tmp_path / "policy.json"))
+
+    actual = loaded.evaluate(split="train")
+    expected = glm_policy_result.train_metrics["first_order"]
+
+    assert actual.n_samples == expected.n_samples
+    assert actual.objective_value == pytest.approx(expected.objective_value)
+    assert actual.objective_sum == pytest.approx(expected.objective_sum)
+    assert actual.mean_u == pytest.approx(expected.mean_u)
+    assert actual.mean_acceptance == pytest.approx(expected.mean_acceptance)
+    assert actual.projected_loss == pytest.approx(expected.projected_loss)
+    assert actual.projected_revenue == pytest.approx(expected.projected_revenue)
+
+
+def test_policy_artifact_separates_preprocessing_from_feature_map(tmp_path, glm_policy_result) -> None:
+    artifact = build_policy_artifact(glm_policy_result, "first_order")
+    loaded = load_policy_artifact(artifact.save(tmp_path / "policy.json"))
+
+    expected_z = glm_policy_result.config.objective._policy_features(glm_policy_result.x_samples)
+    actual_z = loaded.policy_input_features(split="train")
+    mapped = loaded.mapped_features(split="train")
+    phi = loaded.policy_design_matrix(split="train")
+
+    np.testing.assert_allclose(actual_z, expected_z)
+    assert loaded.policy_input.policy_preprocessor is not None
+    assert actual_z.shape[1] == loaded.policy_input.policy_preprocessor.output_dim_
+    assert mapped.shape[1] > actual_z.shape[1]
+    assert phi.shape[1] == loaded.theta.size
+    assert phi.shape[1] == mapped.shape[1] + 1
+
+
+def test_policy_artifact_reporter_writes_summary_paths(tmp_path, glm_policy_result) -> None:
+    run_context = RunContext(
+        experiment_name="real_data_glm_base",
+        run_id="test-run",
+        run_dir=tmp_path,
+        plots_dir=tmp_path / "plots",
+        started_at=datetime(2026, 1, 1),
+    )
+
+    PolicyArtifactReporter().on_end(run_context, glm_policy_result)
+    JsonReporter().on_end(run_context, glm_policy_result)
+
+    summary = json.loads((tmp_path / "summary.json").read_text(encoding="utf-8"))
+    assert summary["policy_artifacts"] == {
+        "first_order": "policies/first_order/policy.json"
+    }
+    loaded = load_policy_artifact(tmp_path / summary["policy_artifacts"]["first_order"])
+    np.testing.assert_allclose(
+        loaded.predict_u(split="train"),
+        policy_u_values(
+            glm_policy_result.config.objective,
+            glm_policy_result.results["first_order"].theta,
+            glm_policy_result.x_samples,
+        ),
+    )

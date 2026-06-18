@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import lru_cache
 import pickle
 from pathlib import Path
@@ -61,6 +61,9 @@ class ModelArtifactBundle:
     x_feature_cols: tuple[str, ...]
     probability_target: ProbabilityTarget = "none"
     source_format: str = "single_model"
+    model_type: ModelType | None = None
+    role: str | None = None
+    artifact_path: str | None = None
 
     def model_frame(self, raw_frame: pd.DataFrame) -> pd.DataFrame:
         """Build the exact model-input frame from raw source-space columns."""
@@ -338,6 +341,18 @@ def load_model_artifacts(model_type: ModelType) -> tuple[ModelArtifactBundle, Mo
     loss_model = _normalize_artifact(
         _load_pickle(paths["loss"]),
         probability_target=specs["loss"].get("probability_target", "none"),
+    )
+    acceptance_model = replace(
+        acceptance_model,
+        model_type=model_type,
+        role="acceptance",
+        artifact_path=str(paths["acceptance"]),
+    )
+    loss_model = replace(
+        loss_model,
+        model_type=model_type,
+        role="loss",
+        artifact_path=str(paths["loss"]),
     )
     return acceptance_model, loss_model
 

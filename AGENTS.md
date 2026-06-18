@@ -166,6 +166,7 @@ Guidelines:
   - `PolicyFeaturePreprocessor`: policy-side fit-once standardization, whitening/sphering, and optional PCA truncation independent of black-box artifact preprocessing
   - `fit_policy_feature_preprocessor(...)`: convenience constructor for fitted policy preprocessors
   - `make_policy_features(...)`: applies a fitted policy preprocessor to raw policy-state rows
+  - Full-state serialization via `to_state()` / `from_state(...)` persists fitted arrays such as means, scales, eigenvalues, and transform matrices for exact saved-policy replay
 
 - **`src/objective/utils.py`**
   - `optimal_u(objective)`: public helper to extract u* from objective if available
@@ -311,6 +312,15 @@ Guidelines:
   - `PolicyEvaluation`: final policy metrics on a split (`objective_value`, `objective_sum`, mean/quantile `u`, and optional acceptance/loss/revenue diagnostics)
   - `ExperimentResult`: full result including config, train samples in `x_samples`, optional `x_test`, split row/index metadata, traces, final train/test policy metrics, and optional u_star
 
+- **`src/experiments/policy_validation.py`**
+  - Shared optimizer-independent policy validation helpers (`policy_u_values`, `evaluate_policy`) used by both `run_experiment()` and saved policy artifacts
+
+- **`src/experiments/policy_artifacts.py`**
+  - `PolicyArtifact`: reloadable trained-policy object saved as `policies/<estimator>/policy.json` plus `arrays.npz`
+  - Separates policy input preprocessing (`raw x -> z`, including artifact preprocessing and optional policy-side whitening/PCA) from policy feature mapping (`z -> varphi(z) -> phi(z)`)
+  - Persists theta, train/test/all CSV row bindings, objective/model metadata, policy head/feature-map specs, and full fitted policy-side preprocessing arrays
+  - `load_policy_artifact(...).predict_u(split="train")` and `.evaluate(split="train")` rerun validation without optimizer training
+
 - **`src/experiments/reporters.py`**
   - `RunContext`: frozen dataclass with experiment name, run directory paths, timestamp
   - `create_run_context(...)`: creates run directories under `outputs/` by default
@@ -319,6 +329,7 @@ Guidelines:
   - `ReporterStack`: composite that delegates to a list of reporters; also implements `StepReporter`
   - `ConsoleReporter`: prints to terminal; per-step output controlled by `verbose`
   - `FileStepLogger`: writes per-step metrics to `plots/optimization/steps.csv`
+  - `PolicyArtifactReporter`: writes reloadable trained-policy artifacts before `JsonReporter` records their relative paths
   - `JsonReporter`: writes `summary.json` on end, including estimator-level `train` and optional `test` policy metric blocks
   - `PlotReporter`: generates all matplotlib plots on end; optimization plots go under `plots/optimization/`, policy diagnostics go under `plots/policy_train/` and `plots/policy_test/`, and step-size plots are emitted whenever traces include `step_sizes`; writes per-plot timings to `plots/plot_timings.json`; theta contours for model-based objectives use a deterministic train-subsample capped at 200 rows and a 20x20 grid cap
 
@@ -357,6 +368,8 @@ Guidelines:
 - `scripts/query_acceptance_at_u.py` loads a config preset or default GLM/XGB model type and reports mean acceptance for supplied or evenly sampled constant `u` values without running optimization; writes acceptance-curve and historical-`U` rug plots under `outputs/acceptance_queries/` by default and optionally writes `u,n,mean_acceptance` CSV output
 - `scripts/plot_pc_outcome_diagnostics.py` reads a saved run `summary.json`, rebuilds a real-data base preset objective with optional policy/preprocessing override flags, and writes processed-policy-component scatter diagnostics against final `f_acc`, loss, and `u`; defaults beside the summary under `pc_outcome_diagnostics/<estimator>/`
 - `scripts/evaluate_historical_policy_objective.py` reads a saved run `summary.json`, reconstructs selected CSV row positions from full-eligible mode or seed/`n_samples`, prints the estimator theta used, and evaluates final policy prices under historical acceptance `1 - is_churn` and observed `Y_G_Loss`; writes aggregate `summary.json` and row-level `per_row.csv` under `historical_policy_objective/<estimator>/`
+  - Prefer `--policy-artifact outputs/.../policies/<estimator>/policy.json` for new runs; `--summary-json` remains a legacy fallback for outputs created before policy artifacts existed
+  - Supports `--objective model` to replay the trained model objective and `--objective historical` for the observed-outcome diagnostic; both support `--split train|test|all`, where `all` means all selected run rows before splitting
 - `scripts/plot_glm_data_tsne.py` samples rows from the GLM real-data CSV, runs a standardized t-SNE/KMeans feature diagnostic, and writes embedding CSV plus color-by-feature plots under `outputs/data-tsne/`
 - `scripts/run_policy_pca_grid.py` runs the GLM policy PCA-dimensionality grid over configured PCA dimensions and policy classes `(constant, linear, quadratic, third_order, fourth_order, softmax_linear, softmax_quadratic, softmax_third_order, softmax_fourth_order, mlp)`; unconstrained is default, `--constrained` uses `trust-constr` with the observed GLM acceptance floor and a 500-step default cap; outputs aggregate CSVs, summary markdown, and headline/spread plots under `outputs/policy-pca-grid/`; prints per-condition progress by default and supports `--quiet`
 - `scripts/benchmark_experiment_speed.py` benchmarks GLM analytical acceptance vs sklearn `predict_proba`, Stein-difference gradient timing/call counts, repeated objective-cache behavior, and full-vs-subsampled contour grid timing; use it to quantify whether performance changes speed up real-data diagnostics without relying on flaky pytest time thresholds

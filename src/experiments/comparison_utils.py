@@ -17,6 +17,7 @@ from experiments.reporters import (
     FileStepLogger,
     JsonReporter,
     PlotReporter,
+    PolicyArtifactReporter,
     ReporterStack,
     WandbReporter,
     create_run_context,
@@ -109,6 +110,7 @@ def run_preset_comparison(
         reporter_list = [
             ConsoleReporter(verbose=run.config.verbose),
             FileStepLogger(),
+            PolicyArtifactReporter(),
             JsonReporter(),
             PlotReporter(),
         ]

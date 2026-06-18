@@ -4,9 +4,9 @@ import numpy as np
 import pytest
 
 from experiments.configs import get_config
+from experiments.run import run_experiment
 from experiments.seeding import (
     SeedSetup,
-    derive_seed,
     optimizer_rngs,
     resolve_seed_setup,
     seed_setup_from_mapping,
@@ -46,8 +46,13 @@ def test_resolve_seed_setup_preserves_explicit_overrides() -> None:
 def test_resolve_seed_setup_uses_legacy_seed_when_setup_absent() -> None:
     resolved = resolve_seed_setup(None, legacy_seed=11)
 
-    assert resolved.run_seed == 11
-    assert resolved.data_seed == derive_seed(11, "data")
+    assert resolved.to_dict() == {
+        "run_seed": 11,
+        "data_seed": 11,
+        "split_seed": 11,
+        "theta_seed": 11,
+        "optimizer_seed": 11,
+    }
 
 
 def test_seed_setup_from_mapping_normalizes_payload() -> None:
@@ -105,3 +110,92 @@ def test_experiment_config_serializes_seed_setup() -> None:
     }
     assert payload["resolved_seed_setup"]["run_seed"] == 13
     assert payload["resolved_seed_setup"]["optimizer_seed"] == 99
+
+
+def test_run_experiment_uses_data_seed_for_synthetic_samples() -> None:
+    base_overrides = {
+        "n_samples": 6,
+        "t_steps": 1,
+        "test_fraction": 0.0,
+        "train_fraction": 1.0,
+        "enabled_estimators": ("first_order",),
+        "plot": False,
+        "verbose": False,
+    }
+    first = run_experiment(
+        get_config(
+            "planted_logistic_base",
+            overrides={
+                **base_overrides,
+                "seed_setup": SeedSetup(run_seed=1, data_seed=10, split_seed=20, optimizer_seed=30),
+            },
+        )
+    )
+    second = run_experiment(
+        get_config(
+            "planted_logistic_base",
+            overrides={
+                **base_overrides,
+                "seed_setup": SeedSetup(run_seed=1, data_seed=11, split_seed=20, optimizer_seed=30),
+            },
+        )
+    )
+
+    assert not np.allclose(first.x_samples, second.x_samples)
+
+
+def test_run_experiment_uses_split_seed_for_train_test_split() -> None:
+    config = get_config(
+        "planted_logistic_base",
+        overrides={
+            "n_samples": 10,
+            "t_steps": 1,
+            "test_fraction": 0.3,
+            "train_fraction": 0.7,
+            "enabled_estimators": ("first_order",),
+            "plot": False,
+            "verbose": False,
+            "seed_setup": SeedSetup(run_seed=1, data_seed=10, split_seed=123, optimizer_seed=30),
+        },
+    )
+
+    result = run_experiment(config)
+    shuffled = np.random.default_rng(123).permutation(10).astype(int)
+
+    np.testing.assert_array_equal(result.test_indices, shuffled[:3])
+    np.testing.assert_array_equal(result.train_indices, shuffled[3:])
+
+
+def test_run_experiment_uses_theta_seed_for_random_theta0() -> None:
+    base_overrides = {
+        "theta0": None,
+        "n_samples": 6,
+        "t_steps": 1,
+        "test_fraction": 0.0,
+        "train_fraction": 1.0,
+        "enabled_estimators": ("first_order",),
+        "plot": False,
+        "verbose": False,
+    }
+    first = run_experiment(
+        get_config(
+            "planted_logistic_base",
+            overrides={
+                **base_overrides,
+                "seed_setup": SeedSetup(run_seed=1, data_seed=10, split_seed=20, theta_seed=100, optimizer_seed=30),
+            },
+        )
+    )
+    second = run_experiment(
+        get_config(
+            "planted_logistic_base",
+            overrides={
+                **base_overrides,
+                "seed_setup": SeedSetup(run_seed=1, data_seed=10, split_seed=20, theta_seed=101, optimizer_seed=30),
+            },
+        )
+    )
+
+    assert first.config.theta0 is not None
+    assert second.config.theta0 is not None
+    assert not np.allclose(first.config.theta0, second.config.theta0)

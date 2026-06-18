@@ -90,9 +90,15 @@ def resolve_seed_setup(
 ) -> ResolvedSeedSetup:
     """Resolve explicit seed streams, deriving missing streams from ``run_seed``."""
     if seed_setup is None:
-        setup = SeedSetup(run_seed=int(legacy_seed))
-    else:
-        setup = seed_setup_from_mapping(seed_setup)
+        seed = _validate_seed(legacy_seed, "legacy_seed")
+        return ResolvedSeedSetup(
+            run_seed=seed,
+            data_seed=seed,
+            split_seed=seed,
+            theta_seed=seed,
+            optimizer_seed=seed,
+        )
+    setup = seed_setup_from_mapping(seed_setup)
     run_seed = int(setup.run_seed)
     return ResolvedSeedSetup(
         run_seed=run_seed,

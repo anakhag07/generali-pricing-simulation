@@ -18,7 +18,7 @@ from objective.utils import (
     value_for_reporting,
 )
 from experiments.config import ExperimentConfig
-from experiments.seeding import resolve_seed_setup, rng_from_seed
+from experiments.seeding import optimizer_rngs, resolve_seed_setup, rng_from_seed
 from experiments.helpers import (
     resolve_true_grad_theta_fn,
     run_constant,
@@ -132,7 +132,6 @@ def run_experiment(
     enabled_estimators = tuple(effective_config.enabled_estimators)
 
     data_rng = rng_from_seed(resolved_seeds.data_seed)
-    optimizer_rng = rng_from_seed(resolved_seeds.optimizer_seed)
     if effective_config.theta0 is None:
         theta0_rng = rng_from_seed(resolved_seeds.theta_seed)
         policy = getattr(objective, "policy", None)
@@ -194,6 +193,7 @@ def run_experiment(
     traces = {}
 
     if "constant" in enabled_estimators:
+        batch_rng, gradient_rng = optimizer_rngs(resolved_seeds, "constant")
         constant_objective = _constant_policy_objective(objective)
         theta_constant_initial = _constant_theta_start(objective, theta_initial, x_samples)
         true_grad_constant_fn = resolve_true_grad_theta_fn(
@@ -206,7 +206,7 @@ def run_experiment(
             theta_constant_initial,
             x_samples,
             constant_objective,
-            optimizer_rng,
+            batch_rng,
             effective_config.t_steps,
             effective_config.step_rule,
             effective_config.step_size,
@@ -219,6 +219,7 @@ def run_experiment(
             ftol=effective_config.ftol,
             initial_constr_penalty=effective_config.initial_constr_penalty,
             step_reporter=step_reporter,
+            gradient_rng=gradient_rng,
         )
         time_constant = time.perf_counter() - start_constant
         u_constant = _mean_action(constant_objective, theta_constant, x_samples)
@@ -241,12 +242,13 @@ def run_experiment(
         traces["constant"] = trace_constant
 
     if "first_order" in enabled_estimators:
+        batch_rng, gradient_rng = optimizer_rngs(resolved_seeds, "first_order")
         start_first = time.perf_counter()
         theta_first, trace_first = run_first_order(
             theta_initial,
             x_samples,
             objective,
-            optimizer_rng,
+            batch_rng,
             effective_config.t_steps,
             effective_config.step_rule,
             effective_config.step_size,
@@ -259,6 +261,7 @@ def run_experiment(
             ftol=effective_config.ftol,
             initial_constr_penalty=effective_config.initial_constr_penalty,
             step_reporter=step_reporter,
+            gradient_rng=gradient_rng,
         )
         time_first = time.perf_counter() - start_first
         u_first = _mean_action(objective, theta_first, x_samples) if policy is not None else float("nan")
@@ -277,12 +280,13 @@ def run_experiment(
         traces["first_order"] = trace_first
 
     if "finite_difference" in enabled_estimators:
+        batch_rng, gradient_rng = optimizer_rngs(resolved_seeds, "finite_difference")
         start_fd = time.perf_counter()
         theta_fd, trace_fd = run_finite_difference(
             theta_initial,
             x_samples,
             objective,
-            optimizer_rng,
+            batch_rng,
             effective_config.t_steps,
             effective_config.step_rule,
             effective_config.step_size,
@@ -295,6 +299,7 @@ def run_experiment(
             ftol=effective_config.ftol,
             initial_constr_penalty=effective_config.initial_constr_penalty,
             step_reporter=step_reporter,
+            gradient_rng=gradient_rng,
         )
         time_fd = time.perf_counter() - start_fd
         u_fd = _mean_action(objective, theta_fd, x_samples) if policy is not None else float("nan")
@@ -313,12 +318,13 @@ def run_experiment(
         traces["finite_difference"] = trace_fd
 
     if "gauss_stein" in enabled_estimators:
+        batch_rng, gradient_rng = optimizer_rngs(resolved_seeds, "gauss_stein")
         start_zero = time.perf_counter()
         theta_zero, trace_zero = run_gauss_stein(
             theta_initial,
             x_samples,
             objective,
-            optimizer_rng,
+            batch_rng,
             effective_config.t_steps,
             effective_config.step_rule,
             effective_config.step_size,
@@ -331,6 +337,7 @@ def run_experiment(
             ftol=effective_config.ftol,
             initial_constr_penalty=effective_config.initial_constr_penalty,
             step_reporter=step_reporter,
+            gradient_rng=gradient_rng,
         )
         time_zero = time.perf_counter() - start_zero
         u_zero = _mean_action(objective, theta_zero, x_samples) if policy is not None else float("nan")
@@ -349,12 +356,13 @@ def run_experiment(
         traces["gauss_stein"] = trace_zero
 
     if "spsa" in enabled_estimators:
+        batch_rng, gradient_rng = optimizer_rngs(resolved_seeds, "spsa")
         start_spsa = time.perf_counter()
         theta_spsa, trace_spsa = run_spsa(
             theta_initial,
             x_samples,
             objective,
-            optimizer_rng,
+            batch_rng,
             effective_config.t_steps,
             effective_config.step_rule,
             effective_config.step_size,
@@ -367,6 +375,7 @@ def run_experiment(
             ftol=effective_config.ftol,
             initial_constr_penalty=effective_config.initial_constr_penalty,
             step_reporter=step_reporter,
+            gradient_rng=gradient_rng,
         )
         time_spsa = time.perf_counter() - start_spsa
         u_spsa = _mean_action(objective, theta_spsa, x_samples) if policy is not None else float("nan")
@@ -385,12 +394,13 @@ def run_experiment(
         traces["spsa"] = trace_spsa
 
     if "stein_difference" in enabled_estimators:
+        batch_rng, gradient_rng = optimizer_rngs(resolved_seeds, "stein_difference")
         start_stein = time.perf_counter()
         theta_stein, trace_stein = run_stein_difference(
             theta_initial,
             x_samples,
             objective,
-            optimizer_rng,
+            batch_rng,
             effective_config.t_steps,
             effective_config.step_rule,
             effective_config.step_size,
@@ -403,6 +413,7 @@ def run_experiment(
             ftol=effective_config.ftol,
             initial_constr_penalty=effective_config.initial_constr_penalty,
             step_reporter=step_reporter,
+            gradient_rng=gradient_rng,
         )
         time_stein = time.perf_counter() - start_stein
         u_stein = _mean_action(objective, theta_stein, x_samples) if policy is not None else float("nan")

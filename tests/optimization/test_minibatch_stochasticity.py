@@ -35,6 +35,7 @@ def test_minibatch_first_order_is_seed_deterministic() -> None:
         n_grad_samples=4,
         sigma=0.1,
         batch_size=4,
+        batch_rng=np.random.default_rng(123),
     )
     theta_b, trace_b = run_first_order_minimize(
         theta_start,
@@ -44,10 +45,40 @@ def test_minibatch_first_order_is_seed_deterministic() -> None:
         n_grad_samples=4,
         sigma=0.1,
         batch_size=4,
+        batch_rng=np.random.default_rng(123),
     )
 
-    # Values should be close (not exact due to mini-batch sampling)
+    assert np.allclose(theta_a, theta_b)
     assert len(trace_a.objective_values) == len(trace_b.objective_values)
+    assert np.allclose(trace_a.objective_values, trace_b.objective_values)
+
+
+def test_minibatch_first_order_changes_with_batch_seed() -> None:
+    """Different batch seeds should produce different stochastic paths."""
+    theta_start, x_samples, objective = _build_inputs()
+
+    theta_a, _ = run_first_order_minimize(
+        theta_start,
+        x_samples,
+        objective,
+        t_steps=10,
+        n_grad_samples=4,
+        sigma=0.1,
+        batch_size=4,
+        batch_rng=np.random.default_rng(123),
+    )
+    theta_b, _ = run_first_order_minimize(
+        theta_start,
+        x_samples,
+        objective,
+        t_steps=10,
+        n_grad_samples=4,
+        sigma=0.1,
+        batch_size=4,
+        batch_rng=np.random.default_rng(456),
+    )
+
+    assert not np.allclose(theta_a, theta_b)
 
 
 def test_batch_size_equal_n_samples_matches_full_batch() -> None:

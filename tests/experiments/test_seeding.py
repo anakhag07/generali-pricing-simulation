@@ -199,3 +199,41 @@ def test_run_experiment_uses_theta_seed_for_random_theta0() -> None:
     assert first.config.theta0 is not None
     assert second.config.theta0 is not None
     assert not np.allclose(first.config.theta0, second.config.theta0)
+
+
+def test_run_experiment_optimizer_streams_are_estimator_order_independent() -> None:
+    base_overrides = {
+        "n_samples": 8,
+        "t_steps": 2,
+        "step_rule": "constant",
+        "step_size": 0.01,
+        "n_grad_samples": 3,
+        "sigma": 0.05,
+        "test_fraction": 0.0,
+        "train_fraction": 1.0,
+        "plot": False,
+        "verbose": False,
+        "seed_setup": SeedSetup(run_seed=1, data_seed=10, split_seed=20, optimizer_seed=30),
+    }
+    first = run_experiment(
+        get_config(
+            "planted_logistic_base",
+            overrides={**base_overrides, "enabled_estimators": ("spsa", "stein_difference")},
+        )
+    )
+    second = run_experiment(
+        get_config(
+            "planted_logistic_base",
+            overrides={**base_overrides, "enabled_estimators": ("stein_difference", "spsa")},
+        )
+    )
+
+    for estimator in ("spsa", "stein_difference"):
+        np.testing.assert_allclose(
+            first.results[estimator].theta,
+            second.results[estimator].theta,
+        )
+        np.testing.assert_allclose(
+            first.traces[estimator].objective_values,
+            second.traces[estimator].objective_values,
+        )

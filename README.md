@@ -278,6 +278,15 @@ same three aggregate plots under
   `c`
 - `pareto_u_acceptance.png` -- final `u` vs acceptance, colored by `c`
 
+`scripts/run_glm_softmax_alpha_sweep.py` runs the trust-constrained softmax /
+no-PCA / linear-feature GLM setup over symmetric action bounds
+`[-alpha, alpha]` for `alpha in {0.5, 0.4, 0.3, 0.2, 0.15, 0.125, 0.1, 0.075}`.
+It writes normal per-alpha runs and policy artifacts under
+`outputs/glm-softmax-alpha-sweep/alpha_<value>/`, then writes aggregate outputs
+under `outputs/glm-softmax-alpha-sweep/alpha_sweep_<timestamp>/`: final
+objective/profit CSVs and plots, acceptance-threshold profit summaries, and one
+expected-profit-by-`u`-bin diagram per alpha.
+
 `scripts/run_glm_u_coef_sweep.py` runs the softmax/no-PCA/trust-constr GLM setup
 over `200000` sampled rows and direct acceptance coefficients
 `u_coef in {-4, -5, -8, -10, -20}` with per-run policy distribution plots

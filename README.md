@@ -1,7 +1,7 @@
 # Generali Pricing Simulation
 
 Pricing simulation and black-box optimization demo with pluggable objectives,
-policies, and gradient estimators. More detailed docs can be viewed [here](https://anakhag07.github.io/generali-pricing-simulation/index.html). 
+policies, and gradient estimators. More detailed docs can be viewed [here](https://anakhag07.github.io/generali-pricing-simulation/index.html).
 
 ## Quickstart
 

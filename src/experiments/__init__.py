@@ -18,6 +18,7 @@ from experiments.reporters import (
 )
 from experiments.results import EstimatorResult, ExperimentResult, OptimizationTrace
 from experiments.run import run_experiment
+from experiments.seeding import ResolvedSeedSetup, SeedSetup, resolve_seed_setup
 from experiments.sensitivity_buckets import (
     SENSITIVITY_BUCKETS,
     SensitivityBucket,
@@ -59,6 +60,9 @@ __all__ = [
     "StepReporter",
     "create_run_context",
     "run_experiment",
+    "SeedSetup",
+    "ResolvedSeedSetup",
+    "resolve_seed_setup",
     "SENSITIVITY_BUCKETS",
     "SensitivityBucket",
     "build_glm_sensitivity_buckets",

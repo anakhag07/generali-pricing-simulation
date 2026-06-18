@@ -16,6 +16,7 @@ from objective.objectives import (
 from objective.policy import ConstantPolicy, LinearPolicy, MLPPolicy, SoftmaxPolicy, policy_theta_dim
 from objective.policy_preprocessing import PolicyFeaturePreprocessor
 from optimization.steps import STEP_RULES, STEP_RULE_TRUST_CONSTR
+from experiments.seeding import SeedSetup, resolve_seed_setup, seed_setup_from_mapping
 
 
 def _policy_theta_dim_for_objective(objective: object, state_dim: int) -> int | None:
@@ -88,6 +89,7 @@ class ExperimentConfig:
     theta0: np.ndarray | None = None
     batch_size: int | None = None
     seed: int = 7
+    seed_setup: SeedSetup | Mapping[str, int | None] | None = None
     t_steps: int = 100
     step_size: float = 0.01
     grad_norm_tol: Optional[float] = None
@@ -118,6 +120,10 @@ class ExperimentConfig:
     x_fixed_row_indices: np.ndarray | None = None  # source CSV row positions for x_fixed
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "seed", int(self.seed))
+        if self.seed_setup is not None:
+            object.__setattr__(self, "seed_setup", seed_setup_from_mapping(self.seed_setup))
+
         estimator_aliases = {
             "finite-difference": "finite_difference",
             "stein-difference": "stein_difference",
@@ -387,6 +393,10 @@ class ExperimentConfig:
             "batch_size": int(self.batch_size) if self.batch_size is not None else None,
             "step_rule": self.step_rule,
             "seed": int(self.seed),
+            "seed_setup": self.seed_setup.to_dict()
+            if self.seed_setup is not None
+            else None,
+            "resolved_seed_setup": resolve_seed_setup(self.seed_setup, self.seed).to_dict(),
             "t_steps": int(self.t_steps),
             "step_size": float(self.step_size),
             "grad_norm_tol": float(self.grad_norm_tol)
@@ -724,6 +734,7 @@ def canonical_runtime_block(
 def build_experiment_config(
     *,
     seed: int,
+    seed_setup: SeedSetup | Mapping[str, int | None] | None = None,
     state_dim: int,
     objective: Objective,
     theta0: np.ndarray | None = None,
@@ -740,6 +751,7 @@ def build_experiment_config(
     """
     payload: dict[str, Any] = {
         "seed": int(seed),
+        "seed_setup": seed_setup,
         "state_dim": int(state_dim),
         "objective": objective,
         "theta0": np.asarray(theta0, dtype=float) if theta0 is not None else None,

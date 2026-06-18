@@ -23,6 +23,7 @@ from data.loader import (
     sample_csv_row_indices,
 )
 from experiments.configs.real_data_factory import _artifact_policy_features
+from experiments.policy_artifacts import load_policy_artifact
 from experiments.sensitivity_buckets import (
     SENSITIVITY_BUCKETS,
     SensitivityBucket,
@@ -58,6 +59,7 @@ DEFAULT_THETA: tuple[float, ...] = (
 DEFAULT_OUTPUT_ROOT = Path("outputs") / "low-sensitivity-policy-acceptance-diagnostics"
 DEFAULT_PREPROCESSOR_N_SAMPLES = 700000
 DEFAULT_PREPROCESSOR_SEED = 42
+BUCKET_ROW_SOURCES = ("eligible", "artifact-all", "artifact-train", "artifact-test")
 
 
 def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -75,11 +77,35 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Sensitivity bucket(s) to diagnose. Use 'all' for low, medium, and high.",
     )
     parser.add_argument(
+        "--policy-artifact",
+        type=Path,
+        default=None,
+        help=(
+            "Saved policy artifact policy.json, or its containing directory. "
+            "When supplied, theta, policy bounds, feature map, and preprocessing are replayed from the artifact."
+        ),
+    )
+    parser.add_argument(
         "--theta",
         type=float,
         nargs="+",
-        default=list(DEFAULT_THETA),
-        help="Softmax theta values. Defaults to the supplied full-data theta.",
+        default=None,
+        help="Manual softmax theta values. Defaults to the supplied full-data theta when --policy-artifact is omitted.",
+    )
+    parser.add_argument(
+        "--bucket-u-ref",
+        type=float,
+        default=None,
+        help="Reference u used to score sensitivity buckets. Defaults to the median observed GLM U.",
+    )
+    parser.add_argument(
+        "--bucket-row-source",
+        choices=BUCKET_ROW_SOURCES,
+        default="eligible",
+        help=(
+            "Rows used before splitting sensitivity buckets: all eligible GLM rows, "
+            "or rows saved in the policy artifact split. Artifact row sources require --policy-artifact."
+        ),
     )
     parser.add_argument(
         "--output-dir",
@@ -93,20 +119,20 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         default=DEFAULT_PREPROCESSOR_N_SAMPLES,
         help=(
             "Number of seeded GLM rows used to refit the policy-side preprocessor. "
-            "Default matches the supplied theta's full-data run."
+            "Only used with manual --theta. Default matches the supplied theta's full-data run."
         ),
     )
     parser.add_argument(
         "--preprocessor-seed",
         type=int,
         default=DEFAULT_PREPROCESSOR_SEED,
-        help="Seed used for the policy-side preprocessor row sample.",
+        help="Seed used for the manual-theta policy-side preprocessor row sample.",
     )
     parser.add_argument(
         "--u-coef",
         type=float,
         default=None,
-        help="Optional GLM beta_u override. Defaults to the artifact coefficient.",
+        help="Optional GLM beta_u override. Defaults to the policy artifact u_coef when present, otherwise the GLM artifact coefficient.",
     )
     parser.add_argument(
         "--max-rows",
@@ -151,8 +177,40 @@ def _resolve_bucket_names(bucket_args: Sequence[str]) -> tuple[str, ...]:
     return tuple(names)
 
 
-def _bucket_map() -> dict[str, SensitivityBucket]:
-    return {bucket.name: bucket for bucket in build_glm_sensitivity_buckets()}
+def _bucket_map(
+    *,
+    u_ref: float,
+    row_indices: Sequence[int] | np.ndarray | None,
+) -> dict[str, SensitivityBucket]:
+    return {
+        bucket.name: bucket
+        for bucket in build_glm_sensitivity_buckets(u_ref=float(u_ref), row_indices=row_indices)
+    }
+
+
+def _artifact_json_path(path: Path) -> Path:
+    return path / "policy.json" if path.is_dir() else path
+
+
+def _validate_policy_artifact(artifact: object) -> None:
+    objective = getattr(artifact, "objective", None)
+    model_type = getattr(objective, "model_type", None)
+    if model_type != "glm":
+        raise ValueError(f"diagnose_low_sensitivity_policy_acceptance only supports GLM artifacts, got {model_type!r}.")
+    policy_head = getattr(artifact, "policy_head", None)
+    policy_type = getattr(policy_head, "type", None)
+    if policy_type != "SoftmaxPolicy":
+        raise ValueError(f"diagnose_low_sensitivity_policy_acceptance requires a SoftmaxPolicy artifact, got {policy_type!r}.")
+
+
+def _bucket_source_row_indices(bucket_row_source: str, artifact: object | None) -> np.ndarray | None:
+    if bucket_row_source == "eligible":
+        return None
+    if artifact is None:
+        raise ValueError("Artifact bucket row sources require --policy-artifact.")
+    split = bucket_row_source.removeprefix("artifact-")
+    row_indices_fn = getattr(artifact, "row_indices")
+    return np.asarray(row_indices_fn(split), dtype=int)
 
 
 def _limit_bucket(bucket: SensitivityBucket, max_rows: int | None) -> SensitivityBucket:
@@ -203,6 +261,18 @@ def _policy_feature_names(policy_preprocessor: object, n_features: int) -> list[
     return names
 
 
+def _artifact_policy_feature_names(artifact: object, n_features: int) -> list[str]:
+    feature_map = getattr(artifact, "feature_map", None)
+    feature_map_type = getattr(feature_map, "type", None)
+    policy_input = getattr(artifact, "policy_input", None)
+    policy_preprocessor = getattr(policy_input, "policy_preprocessor", None)
+    names = list(getattr(policy_preprocessor, "output_feature_names_", ()))
+    if feature_map_type == "IdentityFeatureMap" and len(names) == int(n_features):
+        return names
+    label = str(feature_map_type or "mapped_policy")
+    return [f"{label}_feature_{idx + 1}" for idx in range(int(n_features))]
+
+
 def _policy_outputs(
     theta: Sequence[float],
     policy_features: np.ndarray,
@@ -223,6 +293,56 @@ def _policy_outputs(
     policy_sigmoid = _sigmoid(policy_score)
     policy_u = -0.5 + policy_sigmoid
     return feature_dot, policy_score, policy_sigmoid, policy_u
+
+
+def _artifact_policy_outputs(
+    artifact: object,
+    x_frame: pd.DataFrame,
+) -> tuple[list[str], np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    theta = np.asarray(getattr(artifact, "theta"), dtype=float)
+    mapped_features_fn = getattr(artifact, "mapped_features")
+    design_matrix_fn = getattr(artifact, "policy_design_matrix")
+    predict_u_fn = getattr(artifact, "predict_u")
+    mapped_features = np.asarray(mapped_features_fn(x_frame), dtype=float)
+    design_matrix = np.asarray(design_matrix_fn(x_frame), dtype=float)
+    if design_matrix.ndim != 2 or design_matrix.shape[1] != theta.size:
+        raise ValueError(
+            "Saved policy design matrix width must match theta length. "
+            f"Got design width {design_matrix.shape[1] if design_matrix.ndim == 2 else 'invalid'} "
+            f"and theta length {theta.size}."
+        )
+    if mapped_features.ndim != 2 or mapped_features.shape[1] != theta.size - 1:
+        raise ValueError(
+            "Saved SoftmaxPolicy mapped feature width must equal theta length minus one. "
+            f"Got mapped width {mapped_features.shape[1] if mapped_features.ndim == 2 else 'invalid'} "
+            f"and theta length {theta.size}."
+        )
+    feature_dot = design_matrix[:, 1:] @ theta[1:]
+    policy_score = design_matrix @ theta
+    policy_sigmoid = _sigmoid(policy_score)
+    policy_u = np.asarray(predict_u_fn(x_frame, clip=True), dtype=float).reshape(-1)
+    if policy_u.shape != (x_frame.shape[0],):
+        raise ValueError("Saved policy artifact must return one policy action per row.")
+    names = _artifact_policy_feature_names(artifact, mapped_features.shape[1])
+    return names, mapped_features, feature_dot, policy_score, policy_sigmoid, policy_u
+
+
+def _diagnostic_policy_outputs(
+    *,
+    theta: Sequence[float],
+    acceptance_model: object,
+    x_frame: pd.DataFrame,
+    policy_preprocessor: object | None,
+    artifact: object | None,
+) -> tuple[list[str], np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    if artifact is not None:
+        return _artifact_policy_outputs(artifact, x_frame)
+    if policy_preprocessor is None:
+        raise ValueError("Manual theta diagnostics require a fitted policy preprocessor.")
+    features = _policy_features(acceptance_model, x_frame, policy_preprocessor)
+    policy_names = _policy_feature_names(policy_preprocessor, features.shape[1])
+    feature_dot, policy_score, policy_sigmoid, policy_u = _policy_outputs(theta, features)
+    return policy_names, features, feature_dot, policy_score, policy_sigmoid, policy_u
 
 
 def _acceptance_base_terms(
@@ -275,6 +395,10 @@ def _feature_value_frame(
 def _diagnostic_frame(
     *,
     bucket: SensitivityBucket,
+    policy_source: str,
+    policy_estimator: str,
+    bucket_u_ref: float,
+    bucket_row_source: str,
     policy_feature_names: Sequence[str],
     policy_features: np.ndarray,
     policy_theta_coef: np.ndarray,
@@ -296,6 +420,10 @@ def _diagnostic_frame(
             "row_index": row_indices,
             "csv_line_number": row_indices + 2,
             "bucket": bucket.name,
+            "bucket_u_ref": float(bucket_u_ref),
+            "bucket_row_source": bucket_row_source,
+            "policy_source": policy_source,
+            "policy_estimator": policy_estimator,
             "bucket_position": np.arange(row_indices.size, dtype=int),
             "sensitivity_score": np.asarray(bucket.scores, dtype=float),
             "policy_feature_dot_without_intercept": feature_dot,
@@ -382,15 +510,31 @@ def _run_bucket_diagnostics(
     output_dir: Path,
     bucket: SensitivityBucket,
     theta: np.ndarray,
+    artifact: object | None,
+    policy_source: str,
+    policy_estimator: str,
+    bucket_u_ref: float,
+    bucket_row_source: str,
     acceptance_model: object,
     coeffs: dict[str, object],
     beta_u: float,
-    policy_preprocessor: object,
+    policy_preprocessor: object | None,
 ) -> dict[str, Path]:
     x_frame = load_x_frame("glm", row_indices=bucket.row_indices)
-    features = _policy_features(acceptance_model, x_frame, policy_preprocessor)
-    policy_names = _policy_feature_names(policy_preprocessor, features.shape[1])
-    feature_dot, policy_score, policy_sigmoid, policy_u = _policy_outputs(theta, features)
+    (
+        policy_names,
+        features,
+        feature_dot,
+        policy_score,
+        policy_sigmoid,
+        policy_u,
+    ) = _diagnostic_policy_outputs(
+        theta=theta,
+        acceptance_model=acceptance_model,
+        x_frame=x_frame,
+        policy_preprocessor=policy_preprocessor,
+        artifact=artifact,
+    )
 
     acceptance_base_logit, acceptance_names, acceptance_features, acceptance_beta_x = _acceptance_base_terms(
         acceptance_model,
@@ -405,6 +549,10 @@ def _run_bucket_diagnostics(
 
     diagnostics = _diagnostic_frame(
         bucket=bucket,
+        policy_source=policy_source,
+        policy_estimator=policy_estimator,
+        bucket_u_ref=bucket_u_ref,
+        bucket_row_source=bucket_row_source,
         policy_feature_names=policy_names,
         policy_features=features,
         policy_theta_coef=theta[1:],
@@ -488,20 +636,52 @@ def run_diagnostics(args: argparse.Namespace) -> dict[str, Path]:
     output_dir = args.output_dir or _default_output_dir()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    theta = np.asarray(args.theta, dtype=float)
+    artifact = None
+    policy_source = "manual-theta"
+    policy_estimator = "manual"
+    if args.policy_artifact is not None:
+        if args.theta is not None:
+            raise ValueError("Use either --policy-artifact or --theta, not both.")
+        artifact_path = _artifact_json_path(args.policy_artifact)
+        artifact = load_policy_artifact(artifact_path)
+        _validate_policy_artifact(artifact)
+        policy_source = str(artifact_path)
+        policy_estimator = str(getattr(artifact, "estimator", "artifact"))
+
+    theta_source = getattr(artifact, "theta", None) if artifact is not None else args.theta
+    theta = np.asarray(theta_source if theta_source is not None else DEFAULT_THETA, dtype=float)
     acceptance_model, _ = load_model_artifacts("glm")
     coeffs = extract_glm_acceptance_coefficients(acceptance_model)
-    beta_u = float(args.u_coef) if args.u_coef is not None else float(coeffs["u_coef"])
-    policy_preprocessor = _fit_full_data_policy_preprocessor(
-        acceptance_model,
-        n_samples=int(args.preprocessor_n_samples),
-        seed=int(args.preprocessor_seed),
+    artifact_u_coef = getattr(getattr(artifact, "objective", None), "u_coef", None) if artifact is not None else None
+    beta_u = (
+        float(args.u_coef)
+        if args.u_coef is not None
+        else float(artifact_u_coef)
+        if artifact_u_coef is not None
+        else float(coeffs["u_coef"])
     )
+    policy_preprocessor = None
+    if artifact is None:
+        policy_preprocessor = _fit_full_data_policy_preprocessor(
+            acceptance_model,
+            n_samples=int(args.preprocessor_n_samples),
+            seed=int(args.preprocessor_seed),
+        )
+
+    bucket_u_ref = median_observed_u("glm") if args.bucket_u_ref is None else float(args.bucket_u_ref)
+    bucket_row_indices = _bucket_source_row_indices(args.bucket_row_source, artifact)
 
     bucket_names = _resolve_bucket_names(args.bucket)
-    buckets = _bucket_map()
-    policy_feature_width = int(getattr(policy_preprocessor, "output_dim_", theta.size - 1))
-    print(f"Recovered sensitivity buckets at u_ref={median_observed_u('glm'):.12g}")
+    buckets = _bucket_map(u_ref=bucket_u_ref, row_indices=bucket_row_indices)
+    policy_feature_width = int(
+        getattr(policy_preprocessor, "output_dim_", theta.size - 1)
+        if policy_preprocessor is not None
+        else theta.size - 1
+    )
+    print(f"Recovered sensitivity buckets at u_ref={bucket_u_ref:.12g}")
+    print(f"bucket row source: {args.bucket_row_source}")
+    print(f"policy source: {policy_source}")
+    print(f"policy estimator: {policy_estimator}")
     print(f"theta length: {theta.size}; policy feature width: {policy_feature_width}")
     print(f"acceptance beta_u: {beta_u:.12g}")
     outputs: dict[str, Path] = {}
@@ -513,6 +693,11 @@ def run_diagnostics(args: argparse.Namespace) -> dict[str, Path]:
                 output_dir=output_dir,
                 bucket=bucket,
                 theta=theta,
+                artifact=artifact,
+                policy_source=policy_source,
+                policy_estimator=policy_estimator,
+                bucket_u_ref=bucket_u_ref,
+                bucket_row_source=str(args.bucket_row_source),
                 acceptance_model=acceptance_model,
                 coeffs=coeffs,
                 beta_u=beta_u,

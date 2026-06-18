@@ -207,12 +207,34 @@ metrics for the same split. `--objective historical` uses observed outcomes
 an observed-outcome diagnostic and need not match the training objective.
 Supported splits are `train`, `test`, and `all`, where `all` means all selected
 rows from the run before train/test splitting.
+To inspect client-level counterfactual acceptance curves for a saved policy,
+sample clients from low/medium/high mean-sensitivity and predicted-loss tertiles:
+
+```bash
+python scripts/plot_policy_acceptance_grid.py \
+  --policy-artifact outputs/.../policies/first_order/policy.json \
+  --split all \
+  --u-min 0 \
+  --u-max 0.15 \
+  --u-count 61 \
+  --n-clients 10
+```
+
+This writes separate three-panel acceptance-curve plots by sensitivity and by
+predicted loss under `outputs/policy-acceptance-grid/`, with each sampled
+client's artifact policy action overlaid on its predicted acceptance curve.
 When plotting is enabled, real-data runs write optimization plots under
 `plots/optimization/` and final customer-level policy diagnostics under
 `plots/policy_train/` and `plots/policy_test/`. Policy diagnostics include final
 metric bars with 25-75% customer ranges, observed-vs-policy `u` and acceptance
-histograms, and one `u_acceptance/<estimator>.png` file per estimator showing
-the final action histogram plus customer acceptance-vs-`u` scatter.
+histograms, `delta_u_histogram.png` showing `Δu = optimized customer u - historical u`,
+`delta_u_by_sensitivity.png` showing the same `Δu` against absolute acceptance
+sensitivity at `u=0.08`, `objective_contribution_summary.png` showing
+customer-level expected profit spread and expected profit vs predicted
+acceptance, and one
+`u_acceptance/<estimator>.png` file per estimator showing the final action
+histogram, customer acceptance-vs-`u` scatter, and raw objective contribution
+histogram.
 Plot generation writes per-plot wall-clock diagnostics to `plots/plot_timings.json`.
 For model-based objectives, theta contour plots are evaluated on a deterministic
 subsample of at most 200 rows so large real-data experiments do not spend most
@@ -285,11 +307,15 @@ histograms with default `0.5-99.5%` x-axis clipping marked on the chart, and CSV
 summaries under `outputs/glm-sensitivity-distribution/`.
 
 `scripts/diagnose_low_sensitivity_policy_acceptance.py` rebuilds the GLM
-sensitivity buckets, applies a saved softmax theta to selected bucket rows, and
-writes row-level policy-score / acceptance-logit diagnostics plus processed
-policy-feature and GLM acceptance-feature columns. Use `--bucket low medium high`
-or `--bucket all` to compare buckets; outputs go under
-`outputs/low-sensitivity-policy-acceptance-diagnostics/` by default.
+sensitivity buckets, applies either a manual softmax `--theta` or an exact
+`--policy-artifact outputs/.../policies/<estimator>/policy.json`, and writes
+row-level policy-score / acceptance-logit diagnostics plus policy-feature and
+GLM acceptance-feature columns. Use `--bucket-u-ref` to choose the reference
+action used for bucket scoring and `--bucket-row-source artifact-all` /
+`artifact-train` / `artifact-test` to form buckets within saved policy rows;
+the default bucket source remains all eligible GLM rows at median observed `U`.
+Outputs go under `outputs/low-sensitivity-policy-acceptance-diagnostics/` by
+default.
 
 If you already have saved acceptance-floor sweep outputs and only want the
 Pareto frontier for one estimator without rerunning optimization, use

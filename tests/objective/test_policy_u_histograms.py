@@ -143,6 +143,41 @@ def test_plot_policy_u_acceptance_histograms_writes_one_file_per_estimator(tmp_p
     assert not (tmp_path / "policy_u_vs_objective.png").exists()
 
 
+def test_plot_policy_u_acceptance_histograms_adds_objective_value_panel(monkeypatch, tmp_path) -> None:
+    x_samples = _x_samples()
+    objective = _objective()
+    theta = np.asarray([0.1, 0.2], dtype=float)
+    theta_by_estimator = {"first_order": theta}
+    hist_values: list[np.ndarray] = []
+    xlabel_values: list[str] = []
+    original_hist = matplotlib.axes.Axes.hist
+    original_set_xlabel = matplotlib.axes.Axes.set_xlabel
+
+    def record_hist(self, x, *args, **kwargs):
+        hist_values.append(np.asarray(x, dtype=float))
+        return original_hist(self, x, *args, **kwargs)
+
+    def record_xlabel(self, xlabel, *args, **kwargs):
+        xlabel_values.append(str(xlabel))
+        return original_set_xlabel(self, xlabel, *args, **kwargs)
+
+    monkeypatch.setattr(matplotlib.axes.Axes, "hist", record_hist)
+    monkeypatch.setattr(matplotlib.axes.Axes, "set_xlabel", record_xlabel)
+
+    _plot_policy_u_acceptance_histograms(
+        x_samples,
+        objective,
+        theta_by_estimator,
+        plot_dir=str(tmp_path),
+    )
+
+    policy_u = objective.policy.value(theta, x_samples)
+    expected_objective_values = objective._value_batch(x_samples, policy_u)
+    assert (tmp_path / "first_order.png").is_file()
+    np.testing.assert_allclose(hist_values[1], expected_objective_values)
+    assert any("Objective contribution M(x, u)" in label for label in xlabel_values)
+
+
 def test_policy_diagnostic_plots_preserve_categorical_dataframes(tmp_path) -> None:
     x_samples = _categorical_x_samples()
     observed_u = np.asarray([-0.1, 0.0, 0.1, 0.2], dtype=float)

@@ -25,7 +25,10 @@ from reporting.logging import log_step, log_summary
 from experiments.results import ExperimentResult, PolicyEvaluation
 from reporting.visualization import (
     _plot_policy_acceptance_histograms,
+    _plot_policy_delta_u_by_elasticity,
+    _plot_policy_delta_u_histograms,
     _plot_policy_final_summary_metrics,
+    _plot_policy_objective_contribution_summary,
     _plot_policy_u_acceptance_histograms,
     _plot_policy_u_histograms,
     plot_gradient_norms,
@@ -621,6 +624,32 @@ def _plot_policy_diagnostics(
         objective,
         theta_by_estimator,
         runtime_by_estimator,
+        plot_dir,
+    )
+    timed(
+        f"{timing_prefix}_policy_delta_u_histograms",
+        _plot_policy_delta_u_histograms,
+        observed_u,
+        x_samples,
+        objective,
+        theta_by_estimator,
+        plot_dir,
+    )
+    timed(
+        f"{timing_prefix}_policy_delta_u_by_elasticity",
+        _plot_policy_delta_u_by_elasticity,
+        observed_u,
+        x_samples,
+        objective,
+        theta_by_estimator,
+        plot_dir,
+    )
+    timed(
+        f"{timing_prefix}_policy_objective_contribution_summary",
+        _plot_policy_objective_contribution_summary,
+        x_samples,
+        objective,
+        theta_by_estimator,
         plot_dir,
     )
     timed(

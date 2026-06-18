@@ -1014,6 +1014,266 @@ def _plot_policy_acceptance_histograms(
     plt.close(fig)
 
 
+def _plot_policy_delta_u_histograms(
+    observed_u: np.ndarray,
+    x_samples: np.ndarray,
+    objective: Objective,
+    theta_by_estimator: Mapping[str, np.ndarray],
+    plot_dir: str,
+    filename: str = "delta_u_histogram.png",
+) -> None:
+    x_data = _as_2d_x_samples(x_samples)
+    observed_u_arr = np.asarray(observed_u, dtype=float).reshape(-1)
+    n_samples = _x_sample_count(x_data)
+    if observed_u_arr.shape != (n_samples,):
+        raise ValueError("observed_u must match the number of x_samples rows.")
+    if not theta_by_estimator:
+        return
+
+    ordered_names = _ordered_policy_estimator_names(theta_by_estimator)
+    delta_by_estimator: dict[str, np.ndarray] = {}
+    for name in ordered_names:
+        policy_u = _policy_outputs_for_estimator(objective, name, theta_by_estimator[name], x_data)
+        delta_u = policy_u - observed_u_arr
+        finite_delta = delta_u[np.isfinite(delta_u)]
+        if finite_delta.size > 0:
+            delta_by_estimator[name] = finite_delta
+    if not delta_by_estimator:
+        return
+
+    bins = _policy_output_histogram_bins(list(delta_by_estimator.values()))
+    path = _ensure_plot_dir(plot_dir)
+    fig, ax = plt.subplots(1, 1, figsize=(8, 4.75))
+    for name in ordered_names:
+        if name not in delta_by_estimator:
+            continue
+        style = _estimator_style(name)
+        ax.hist(
+            delta_by_estimator[name],
+            bins=bins,
+            density=True,
+            label=style["label"],
+            color=style["color"],
+            histtype="step",
+            alpha=_LINE_ALPHA,
+            linewidth=_LINE_WIDTH,
+        )
+
+    ax.axvline(0.0, color="#636363", linewidth=1.0, linestyle="--", alpha=0.75)
+    ax.set_xlabel("Δu = optimized customer u - historical u")
+    ax.set_ylabel("Density")
+    ax.set_title("Optimized minus historical customer u")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(path / filename, dpi=200)
+    plt.close(fig)
+
+
+def _plot_policy_delta_u_by_elasticity(
+    observed_u: np.ndarray,
+    x_samples: np.ndarray,
+    objective: Objective,
+    theta_by_estimator: Mapping[str, np.ndarray],
+    plot_dir: str,
+    *,
+    u_ref: float = 0.08,
+    filename: str = "delta_u_by_sensitivity.png",
+    max_scatter_points: int = 30000,
+) -> None:
+    x_data = _as_2d_x_samples(x_samples)
+    observed_u_arr = np.asarray(observed_u, dtype=float).reshape(-1)
+    n_samples = _x_sample_count(x_data)
+    if observed_u_arr.shape != (n_samples,):
+        raise ValueError("observed_u must match the number of x_samples rows.")
+    if not theta_by_estimator:
+        return
+    derivative_fn = getattr(objective, "_d_acceptance_du_batch", None)
+    if not callable(derivative_fn):
+        return
+
+    u_ref_value = float(u_ref)
+    u_ref_arr = np.full(n_samples, u_ref_value, dtype=float)
+    sensitivity = np.abs(np.asarray(derivative_fn(x_data, u_ref_arr), dtype=float).reshape(-1))
+    if sensitivity.shape != (n_samples,):
+        raise ValueError(
+            "objective._d_acceptance_du_batch(x_array, u_array) must return shape (n_samples,)."
+        )
+    finite_base = np.isfinite(observed_u_arr) & np.isfinite(sensitivity)
+    if not np.any(finite_base):
+        return
+
+    ordered_names = _ordered_policy_estimator_names(theta_by_estimator)
+    bins = _policy_output_histogram_bins([sensitivity[finite_base]])
+    path = _ensure_plot_dir(plot_dir)
+    fig, ax = plt.subplots(1, 1, figsize=(8.5, 5.25))
+    thinned = False
+    has_series = False
+
+    for name in ordered_names:
+        style = _estimator_style(name)
+        policy_u = _policy_outputs_for_estimator(objective, name, theta_by_estimator[name], x_data)
+        delta_u = policy_u - observed_u_arr
+        finite = finite_base & np.isfinite(delta_u)
+        if not np.any(finite):
+            continue
+        has_series = True
+
+        plot_indices = np.flatnonzero(finite)
+        if plot_indices.size > max_scatter_points:
+            thinned = True
+            plot_indices = plot_indices[
+                np.linspace(0, plot_indices.size - 1, max_scatter_points, dtype=int)
+            ]
+        ax.scatter(
+            sensitivity[plot_indices],
+            delta_u[plot_indices],
+            color=style["color"],
+            marker=style["marker"],
+            alpha=0.18,
+            s=_style_scatter_size(style),
+            linewidths=0.0,
+            label=style["label"],
+        )
+        centers, mean_delta = _binned_mean_line(sensitivity[finite], delta_u[finite], bins)
+        if centers.size > 0:
+            ax.plot(
+                centers,
+                mean_delta,
+                color=style["color"],
+                linewidth=_LINE_WIDTH,
+                alpha=0.95,
+            )
+
+    if not has_series:
+        plt.close(fig)
+        return
+
+    ax.axhline(0.0, color="#636363", linewidth=1.0, linestyle="--", alpha=0.75)
+    ax.set_xlabel(
+        f"Absolute sensitivity |d p_accept / du| evaluated at u = {u_ref_value:.2f}"
+    )
+    ax.set_ylabel("Δu = optimized customer u - historical u")
+    ax.set_title("Optimized price changes by reference acceptance sensitivity")
+    if thinned:
+        ax.text(
+            0.01,
+            0.01,
+            f"Scatter thinned to {max_scatter_points:,} customers per estimator; "
+            "lines use all rows",
+            transform=ax.transAxes,
+            fontsize=8,
+            color="#525252",
+            va="bottom",
+        )
+    ax.grid(True, alpha=0.3)
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(path / filename, dpi=200)
+    plt.close(fig)
+
+
+def _plot_policy_objective_contribution_summary(
+    x_samples: np.ndarray,
+    objective: Objective,
+    theta_by_estimator: Mapping[str, np.ndarray],
+    plot_dir: str,
+    filename: str = "objective_contribution_summary.png",
+    max_scatter_points: int = 30000,
+) -> None:
+    x_data = _as_2d_x_samples(x_samples)
+    if not theta_by_estimator:
+        return
+    if not callable(getattr(objective, "_acceptance_proba", None)):
+        return
+
+    ordered_names = _ordered_policy_estimator_names(theta_by_estimator)
+    profit_by_estimator: dict[str, np.ndarray] = {}
+    acceptance_by_estimator: dict[str, np.ndarray] = {}
+    for name in ordered_names:
+        policy_u = _policy_outputs_for_estimator(objective, name, theta_by_estimator[name], x_data)
+        objective_values = _row_objective_values(objective, x_data, policy_u)
+        acceptance_values = _row_acceptance_values(objective, x_data, policy_u)
+        expected_profit = -objective_values
+        finite = np.isfinite(expected_profit) & np.isfinite(acceptance_values)
+        if np.any(finite):
+            profit_by_estimator[name] = expected_profit[finite]
+            acceptance_by_estimator[name] = acceptance_values[finite]
+    if not profit_by_estimator:
+        return
+
+    bins = _policy_output_histogram_bins(list(profit_by_estimator.values()))
+    path = _ensure_plot_dir(plot_dir)
+    fig, axes = plt.subplots(1, 2, figsize=(12.5, 4.75))
+    hist_ax = axes[0]
+    scatter_ax = axes[1]
+    thinned = False
+
+    for name in ordered_names:
+        if name not in profit_by_estimator:
+            continue
+        style = _estimator_style(name)
+        profits = profit_by_estimator[name]
+        acceptance = acceptance_by_estimator[name]
+        hist_ax.hist(
+            profits,
+            bins=bins,
+            density=True,
+            label=style["label"],
+            color=style["color"],
+            histtype="step",
+            alpha=_LINE_ALPHA,
+            linewidth=_LINE_WIDTH,
+        )
+
+        plot_indices = np.arange(profits.size)
+        if plot_indices.size > max_scatter_points:
+            thinned = True
+            plot_indices = plot_indices[
+                np.linspace(0, plot_indices.size - 1, max_scatter_points, dtype=int)
+            ]
+        scatter_ax.scatter(
+            acceptance[plot_indices],
+            profits[plot_indices],
+            color=style["color"],
+            marker=style["marker"],
+            alpha=0.18,
+            s=_style_scatter_size(style),
+            linewidths=0.0,
+            label=style["label"],
+        )
+
+    hist_ax.axvline(0.0, color="#636363", linewidth=1.0, linestyle="--", alpha=0.75)
+    hist_ax.set_xlabel("Expected profit contribution = -objective contribution")
+    hist_ax.set_ylabel("Density")
+    hist_ax.set_title("Customer-level expected profit spread")
+    hist_ax.grid(True, alpha=0.3)
+    hist_ax.legend()
+
+    scatter_ax.axhline(0.0, color="#636363", linewidth=1.0, linestyle="--", alpha=0.75)
+    scatter_ax.set_xlabel("Predicted acceptance probability")
+    scatter_ax.set_ylabel("Expected profit contribution = -objective contribution")
+    scatter_ax.set_title("Expected profit vs predicted acceptance")
+    scatter_ax.set_xlim(0.0, 1.0)
+    scatter_ax.grid(True, alpha=0.3)
+    scatter_ax.legend()
+    if thinned:
+        scatter_ax.text(
+            0.01,
+            0.01,
+            f"Scatter thinned to {max_scatter_points:,} customers per estimator",
+            transform=scatter_ax.transAxes,
+            fontsize=8,
+            color="#525252",
+            va="bottom",
+        )
+
+    fig.suptitle("Positive expected profit means predicted money made")
+    fig.tight_layout()
+    fig.savefig(path / filename, dpi=200)
+    plt.close(fig)
+
+
 def _metric_summary(values: np.ndarray) -> tuple[float, float, float]:
     values_arr = np.asarray(values, dtype=float).reshape(-1)
     finite_values = values_arr[np.isfinite(values_arr)]
@@ -1150,11 +1410,14 @@ def _plot_policy_u_acceptance_histograms(
         style = _estimator_style(name)
         policy_u = _policy_outputs_for_estimator(objective, name, theta_by_estimator[name], x_data)
         acceptance_values = _row_acceptance_values(objective, x_data, policy_u)
+        objective_values = _row_objective_values(objective, x_data, policy_u)
+        finite_objective_values = objective_values[np.isfinite(objective_values)]
         bins = _policy_output_histogram_bins([policy_u])
         centers, mean_acceptance = _binned_mean_line(policy_u, acceptance_values, bins)
-        fig, axes = plt.subplots(1, 2, figsize=(12.0, 4.0))
+        fig, axes = plt.subplots(1, 3, figsize=(16.0, 4.0))
         hist_ax = axes[0]
         scatter_ax = axes[1]
+        objective_ax = axes[2]
 
         hist_ax.hist(
             policy_u,
@@ -1232,6 +1495,26 @@ def _plot_policy_u_acceptance_histograms(
         scatter_ax.set_ylim(0.0, 1.0)
         scatter_ax.grid(True, alpha=0.3)
         scatter_ax.legend(fontsize="small")
+
+        if finite_objective_values.size > 0:
+            objective_bins = _policy_output_histogram_bins([finite_objective_values])
+            objective_ax.hist(
+                finite_objective_values,
+                bins=objective_bins,
+                density=False,
+                label="customers",
+                color=style["color"],
+                edgecolor="#252525",
+                alpha=0.35,
+                linewidth=0.6,
+            )
+        objective_ax.axvline(0.0, color="#636363", linewidth=1.0, linestyle="--", alpha=0.75)
+        objective_ax.set_title(f"{style['label']}: objective contribution")
+        objective_ax.set_xlabel("Objective contribution M(x, u)")
+        objective_ax.set_ylabel("Customer count")
+        objective_ax.grid(True, alpha=0.3)
+        if finite_objective_values.size > 0:
+            objective_ax.legend(loc="upper right", fontsize="small")
 
         fig.tight_layout()
         fig.savefig(path / f"{name}.png", dpi=200)

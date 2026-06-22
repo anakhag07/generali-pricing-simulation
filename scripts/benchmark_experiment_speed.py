@@ -84,17 +84,32 @@ def benchmark_acceptance_prediction(x: np.ndarray) -> dict[str, object]:
             return class1
         return 1.0 - class1
 
-    slow_acceptance, predict_sec = _timed(predict_acceptance)
+    predict_error = None
+    try:
+        slow_acceptance, predict_sec = _timed(predict_acceptance)
+    except (AttributeError, ImportError, ModuleNotFoundError, ValueError) as exc:
+        slow_acceptance = None
+        predict_sec = None
+        predict_error = f"{type(exc).__name__}: {exc}"
     fast_acceptance, analytic_cold_sec = _timed(lambda: objective._acceptance_proba(x, u_arr))
     _, analytic_warm_sec = _timed(lambda: objective._acceptance_proba(x, u_arr + 0.01))
 
     return {
         "predict_proba_sec": predict_sec,
+        "predict_proba_error": predict_error,
         "analytical_cold_sec": analytic_cold_sec,
         "analytical_warm_sec": analytic_warm_sec,
-        "speedup_predict_over_analytical_cold": _speedup(predict_sec, analytic_cold_sec),
-        "speedup_predict_over_analytical_warm": _speedup(predict_sec, analytic_warm_sec),
-        "max_abs_diff": float(np.max(np.abs(slow_acceptance - fast_acceptance))),
+        "speedup_predict_over_analytical_cold": (
+            _speedup(predict_sec, analytic_cold_sec) if predict_sec is not None else None
+        ),
+        "speedup_predict_over_analytical_warm": (
+            _speedup(predict_sec, analytic_warm_sec) if predict_sec is not None else None
+        ),
+        "max_abs_diff": (
+            float(np.max(np.abs(slow_acceptance - fast_acceptance)))
+            if slow_acceptance is not None
+            else None
+        ),
     }
 
 

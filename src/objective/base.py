@@ -34,6 +34,21 @@ class Policy:
         """Return policy gradients for batch, shape (n_samples, theta_dim)."""
         raise NotImplementedError
 
+    def weighted_grad(
+        self,
+        theta: np.ndarray,
+        x_batch: np.ndarray,
+        weights: np.ndarray,
+    ) -> np.ndarray:
+        """Return ``sum_i weights_i * d pi_theta(x_i) / d theta``."""
+        policy_grad = self.grad(theta, x_batch)
+        weights_arr = np.asarray(weights, dtype=float)
+        if weights_arr.ndim != 1:
+            raise ValueError("weights must be a 1D array.")
+        if weights_arr.shape != (policy_grad.shape[0],):
+            raise ValueError("weights must have one value per x_batch row.")
+        return np.einsum("n,nd->d", weights_arr, policy_grad)
+
 
 class Objective:
     """Theta-space objective: $$J(\\theta) = \\mathbb{E}_x[f(\\pi_\\theta(x); x)]$$."""

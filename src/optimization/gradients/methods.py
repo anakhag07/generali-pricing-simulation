@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Callable, cast
 
 import numpy as np
 
-from objective.utils import _policy_grad, _policy_value
+from objective.utils import _policy_value, _theta_grad_from_u_grad
 from optimization.helpers import (
     finite_difference_theta_grad,
     objective_grad_on_indices,
@@ -58,20 +58,19 @@ def _u_space_policy_setup(
     optimizer: "Optimization",
     theta: np.ndarray,
     indices: np.ndarray,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Return ``(x_arr, u_arr, grad_pi)`` for u-space gradient methods.
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return ``(x_arr, u_arr)`` for u-space gradient methods.
 
-    Evaluates the policy at the current ``theta`` to get actions and the
-    policy Jacobian needed for the chain rule mapping back to theta-space.
+    Evaluates the policy at the current ``theta`` to get actions. The chain
+    rule back to theta-space is handled later through a VJP-style policy hook.
     """
     policy = getattr(optimizer.objective, "policy", None)
-    if policy is None or not callable(getattr(policy, "value", None)) or not callable(getattr(policy, "grad", None)):
-        raise ValueError("U-space perturbation requires objective.policy with value() and grad().")
+    if policy is None or not callable(getattr(policy, "value", None)):
+        raise ValueError("U-space perturbation requires objective.policy with value().")
     theta_arr = np.asarray(theta, dtype=float)
     x_arr = x_batch(optimizer.x_array, indices, optimizer.n_total)
     u_arr = _policy_value(optimizer.objective, theta_arr, x_arr).reshape(-1)
-    grad_pi = _policy_grad(optimizer.objective, theta_arr, x_arr)
-    return x_arr, u_arr, grad_pi
+    return x_arr, u_arr
 
 
 # ---------------------------------------------------------------------------
@@ -175,12 +174,12 @@ class FiniteDifferenceGradient(GradientMethod):
         theta: np.ndarray,
         indices: np.ndarray,
     ) -> np.ndarray:
-        x_arr, u_arr, grad_pi = _u_space_policy_setup(optimizer, theta, indices)
+        x_arr, u_arr = _u_space_policy_setup(optimizer, theta, indices)
         sigma = optimizer.sigma
         values_plus = _action_objective_values(optimizer.objective, x_arr, u_arr + sigma)
         values_minus = _action_objective_values(optimizer.objective, x_arr, u_arr - sigma)
         grad_u = (values_plus - values_minus) / (2.0 * sigma)
-        return np.mean(grad_u[:, None] * grad_pi, axis=0)
+        return _theta_grad_from_u_grad(optimizer.objective, theta, x_arr, grad_u)
 
 
 class GaussSteinGradient(GradientMethod):
@@ -243,14 +242,14 @@ class GaussSteinGradient(GradientMethod):
         theta: np.ndarray,
         indices: np.ndarray,
     ) -> np.ndarray:
-        x_arr, u_arr, grad_pi = _u_space_policy_setup(optimizer, theta, indices)
+        x_arr, u_arr = _u_space_policy_setup(optimizer, theta, indices)
         w_samples = optimizer.rng.normal(0.0, 1.0, size=optimizer.n_grad_samples).astype(float)
         grad_u = np.zeros(x_arr.shape[0], dtype=float)
         for w in w_samples:
             values = _action_objective_values(optimizer.objective, x_arr, u_arr + optimizer.sigma * w)
             grad_u += values * w
         grad_u /= float(w_samples.shape[0]) * max(optimizer.sigma, 1e-8)
-        return np.mean(grad_u[:, None] * grad_pi, axis=0)
+        return _theta_grad_from_u_grad(optimizer.objective, theta, x_arr, grad_u)
 
 
 class SPSAGradient(GradientMethod):
@@ -322,7 +321,7 @@ class SPSAGradient(GradientMethod):
         theta: np.ndarray,
         indices: np.ndarray,
     ) -> np.ndarray:
-        x_arr, u_arr, grad_pi = _u_space_policy_setup(optimizer, theta, indices)
+        x_arr, u_arr = _u_space_policy_setup(optimizer, theta, indices)
         delta_samples = optimizer.rng.choice(
             np.asarray([-1.0, 1.0], dtype=float), size=optimizer.n_grad_samples
         )
@@ -332,7 +331,7 @@ class SPSAGradient(GradientMethod):
             values_minus = _action_objective_values(optimizer.objective, x_arr, u_arr - optimizer.sigma * delta)
             grad_u += ((values_plus - values_minus) / (2.0 * optimizer.sigma)) * delta
         grad_u /= float(delta_samples.shape[0])
-        return np.mean(grad_u[:, None] * grad_pi, axis=0)
+        return _theta_grad_from_u_grad(optimizer.objective, theta, x_arr, grad_u)
 
 
 class SteinDifferenceGradient(GradientMethod):
@@ -397,7 +396,7 @@ class SteinDifferenceGradient(GradientMethod):
         theta: np.ndarray,
         indices: np.ndarray,
     ) -> np.ndarray:
-        x_arr, u_arr, grad_pi = _u_space_policy_setup(optimizer, theta, indices)
+        x_arr, u_arr = _u_space_policy_setup(optimizer, theta, indices)
         sigma = optimizer.sigma
         w_samples = optimizer.rng.normal(0.0, 1.0, size=optimizer.n_grad_samples).astype(float)
         grad_u = np.zeros(x_arr.shape[0], dtype=float)
@@ -406,7 +405,7 @@ class SteinDifferenceGradient(GradientMethod):
             values_minus = _action_objective_values(optimizer.objective, x_arr, u_arr - sigma * w)
             grad_u += ((values_plus - values_minus) / (2.0 * sigma)) * w
         grad_u /= float(w_samples.shape[0])
-        return np.mean(grad_u[:, None] * grad_pi, axis=0)
+        return _theta_grad_from_u_grad(optimizer.objective, theta, x_arr, grad_u)
 
 
 __all__ = [

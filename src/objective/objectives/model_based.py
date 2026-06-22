@@ -201,6 +201,20 @@ class ModelBasedObjective(Objective):
         theta_arr = np.asarray(theta, dtype=float)
         return np.asarray(self.policy.grad(theta_arr, self._policy_features(x_batch)), dtype=float)
 
+    def policy_weighted_grad(
+        self,
+        theta: np.ndarray,
+        x_batch: np.ndarray,
+        weights: np.ndarray,
+    ) -> np.ndarray:
+        """Evaluate weighted policy-gradient sum on acceptance-preprocessed features."""
+        theta_arr = np.asarray(theta, dtype=float)
+        weights_arr = np.asarray(weights, dtype=float)
+        return np.asarray(
+            self.policy.weighted_grad(theta_arr, self._policy_features(x_batch), weights_arr),
+            dtype=float,
+        )
+
     def policy_input_dim(self) -> int:
         """Return the processed state dimension seen by the policy."""
         if self.policy_preprocessor is not None:

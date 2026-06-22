@@ -28,6 +28,25 @@ def _policy_grad(target: "Objective | Policy", theta: np.ndarray, x_array: np.nd
     return np.asarray(policy.grad(theta, x_array), dtype=float)
 
 
+def _policy_weighted_grad(
+    target: "Objective | Policy",
+    theta: np.ndarray,
+    x_array: np.ndarray,
+    weights: np.ndarray,
+) -> np.ndarray:
+    """Evaluate ``sum_i weights_i * d pi_theta(x_i) / d theta``."""
+    weights_arr = np.asarray(weights, dtype=float)
+    weighted_grad_fn = getattr(target, "policy_weighted_grad", None)
+    if callable(weighted_grad_fn):
+        return np.asarray(weighted_grad_fn(theta, x_array, weights_arr), dtype=float)
+    policy = getattr(target, "policy", target)
+    policy_weighted_grad_fn = getattr(policy, "weighted_grad", None)
+    if callable(policy_weighted_grad_fn):
+        return np.asarray(policy_weighted_grad_fn(theta, x_array, weights_arr), dtype=float)
+    policy_grad = _policy_grad(target, theta, x_array)
+    return np.einsum("n,nd->d", weights_arr, policy_grad)
+
+
 def _theta_grad_from_u_grad(
     target: "Objective | Policy",
     theta: np.ndarray,
@@ -45,8 +64,12 @@ def _theta_grad_from_u_grad(
     Returns:
         Gradient of objective w.r.t. theta, shape (theta_dim,).
     """
-    policy_grad = _policy_grad(target, theta, x_array)  # (n_samples, theta_dim)
-    return np.mean(grad_u[:, None] * policy_grad, axis=0)
+    grad_u_arr = np.asarray(grad_u, dtype=float)
+    if grad_u_arr.ndim != 1:
+        raise ValueError("grad_u must be a 1D array.")
+    if grad_u_arr.size == 0:
+        raise ValueError("grad_u must contain at least one sample.")
+    return _policy_weighted_grad(target, theta, x_array, grad_u_arr) / float(grad_u_arr.size)
 
 
 def _mean_action(target: "Objective | Policy", theta: np.ndarray, x_array: np.ndarray) -> float:

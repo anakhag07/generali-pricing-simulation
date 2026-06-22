@@ -242,6 +242,17 @@ def _validate_theta(theta: np.ndarray, expected_dim: int) -> np.ndarray:
     return theta_arr
 
 
+def _validate_weights(weights: np.ndarray, n_samples: int) -> np.ndarray:
+    weights_arr = np.asarray(weights, dtype=float)
+    if weights_arr.ndim != 1:
+        raise ValueError("weights must be a 1D array.")
+    if weights_arr.shape != (int(n_samples),):
+        raise ValueError("weights must have one value per x_batch row.")
+    if not np.isfinite(weights_arr).all():
+        raise ValueError("weights must contain finite values.")
+    return weights_arr
+
+
 def policy_theta_dim(policy: Policy, state_dim: int) -> int:
     """Return the theta dimension required by ``policy`` for ``state_dim`` inputs."""
     theta_dim_fn = getattr(policy, "theta_dim", None)
@@ -278,6 +289,18 @@ class ConstantPolicy(Policy):
         grad[:, 0] = 1.0
         return grad
 
+    def weighted_grad(
+        self,
+        theta: np.ndarray,
+        x_batch: np.ndarray,
+        weights: np.ndarray,
+    ) -> np.ndarray:
+        """Return weighted policy-gradient sum without materializing a Jacobian."""
+        x_arr = _as_2d_float_array(x_batch)
+        _validate_theta(theta, expected_dim=1)
+        weights_arr = _validate_weights(weights, x_arr.shape[0])
+        return np.asarray([float(np.sum(weights_arr))], dtype=float)
+
 
 @dataclass(frozen=True)
 class LinearPolicy(Policy):
@@ -301,6 +324,18 @@ class LinearPolicy(Policy):
         features = _phi(x_batch, self.feature_map)
         _validate_theta(theta, expected_dim=features.shape[1])
         return features
+
+    def weighted_grad(
+        self,
+        theta: np.ndarray,
+        x_batch: np.ndarray,
+        weights: np.ndarray,
+    ) -> np.ndarray:
+        """Return weighted policy-gradient sum without materializing a Jacobian."""
+        features = _phi(x_batch, self.feature_map)
+        _validate_theta(theta, expected_dim=features.shape[1])
+        weights_arr = _validate_weights(weights, features.shape[0])
+        return features.T @ weights_arr
 
 
 @dataclass(frozen=True)
@@ -341,6 +376,21 @@ class SoftmaxPolicy(Policy):
         sigma = _sigmoid(z)
         du_dz = self.action_span * sigma * (1.0 - sigma)
         return du_dz[:, None] * features
+
+    def weighted_grad(
+        self,
+        theta: np.ndarray,
+        x_batch: np.ndarray,
+        weights: np.ndarray,
+    ) -> np.ndarray:
+        """Return weighted policy-gradient sum without materializing a Jacobian."""
+        features = _phi(x_batch, self.feature_map)
+        theta_arr = _validate_theta(theta, expected_dim=features.shape[1])
+        weights_arr = _validate_weights(weights, features.shape[0])
+        z = features @ theta_arr
+        sigma = _sigmoid(z)
+        du_dz = self.action_span * sigma * (1.0 - sigma)
+        return features.T @ (weights_arr * du_dz)
 
     @property
     def action_span(self) -> float:
@@ -451,6 +501,45 @@ class MLPPolicy(Policy):
             axis=1,
         )
 
+    def weighted_grad(
+        self,
+        theta: np.ndarray,
+        x_batch: np.ndarray,
+        weights: np.ndarray,
+    ) -> np.ndarray:
+        """Return weighted policy-gradient sum by reverse-mode batch backprop."""
+        phi = self._features(x_batch)
+        n_samples, d_in = phi.shape
+        H = int(self.hidden)
+        theta_arr = _validate_theta(theta, expected_dim=self._theta_dim_from_d_in(d_in))
+        weights_arr = _validate_weights(weights, n_samples)
+        W1, b1, W2, b2, W3, b3 = self._unpack(theta_arr, d_in)
+
+        z1 = phi @ W1 + b1
+        h1 = np.tanh(z1)
+        z2 = h1 @ W2 + b2
+        h2 = np.tanh(z2)
+        z3 = (h2 @ W3 + b3).ravel()
+        sigma = _sigmoid(z3)
+        dz3 = weights_arr * (-sigma * (1.0 - sigma))
+
+        dW3 = h2.T @ dz3[:, None]
+        db3 = np.asarray([float(np.sum(dz3))], dtype=float)
+
+        dh2 = dz3[:, None] * W3.ravel()[None, :]
+        dz2 = dh2 * (1.0 - h2 * h2)
+        dW2 = h1.T @ dz2
+        db2 = np.sum(dz2, axis=0)
+
+        dh1 = dz2 @ W2.T
+        dz1 = dh1 * (1.0 - h1 * h1)
+        dW1 = phi.T @ dz1
+        db1 = np.sum(dz1, axis=0)
+
+        return np.concatenate(
+            [dW1.ravel(), db1, dW2.ravel(), db2, dW3.ravel(), db3],
+        ).astype(float)
+
 
 def mlp_init_theta(rng: np.random.Generator, *, d_in: int, hidden: int = 16) -> np.ndarray:
     """Glorot-uniform init for an `MLPPolicy` of the given input/hidden width.
@@ -516,6 +605,14 @@ class FeatureProcessedPolicy(Policy):
 
     def grad(self, theta: np.ndarray, x_batch: np.ndarray) -> np.ndarray:
         return self.policy.grad(theta, self._transform(x_batch))
+
+    def weighted_grad(
+        self,
+        theta: np.ndarray,
+        x_batch: np.ndarray,
+        weights: np.ndarray,
+    ) -> np.ndarray:
+        return self.policy.weighted_grad(theta, self._transform(x_batch), weights)
 
 
 def policy_from_kind(kind: str) -> ConstantPolicy | LinearPolicy | SoftmaxPolicy | MLPPolicy:

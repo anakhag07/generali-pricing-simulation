@@ -55,14 +55,14 @@ $$\varphi_{\text{quartic}}(x) = [x_1,\; \dots,\; x_d,\; x_i x_j x_k x_l\; \text{
 $$u = \theta_0$$
 
 - **Gradient:** $\frac{\partial u}{\partial \theta} = [1, 0, \dots, 0]$
-- **Source:** `src/objective/policy.py` :: `ConstantPolicy.value()`, `ConstantPolicy.grad()`
+- **Source:** `src/objective/policy.py` :: `ConstantPolicy.value()`, `ConstantPolicy.grad()`, `ConstantPolicy.weighted_grad()`
 
 ### 2.3 Linear Policy
 
 $$u = \theta^\top \phi(x)$$
 
 - **Gradient:** $\frac{\partial u}{\partial \theta} = \phi(x)$
-- **Source:** `src/objective/policy.py` :: `LinearPolicy.value()`, `LinearPolicy.grad()`
+- **Source:** `src/objective/policy.py` :: `LinearPolicy.value()`, `LinearPolicy.grad()`, `LinearPolicy.weighted_grad()`
 
 ### 2.4 Softmax (Bounded) Policy
 
@@ -74,7 +74,7 @@ The default is $$l=-0.5$$ and $$h=0.5$$.
 
 - **Gradient:** $\frac{\partial u}{\partial \theta} = (h-l)\,\sigma(z)(1 - \sigma(z))\;\phi(x)$
   where $z = \theta^\top \phi(x)$
-- **Source:** `src/objective/policy.py` :: `SoftmaxPolicy.value()`, `SoftmaxPolicy.grad()`
+- **Source:** `src/objective/policy.py` :: `SoftmaxPolicy.value()`, `SoftmaxPolicy.grad()`, `SoftmaxPolicy.weighted_grad()`
 
 ### 2.5 MLP (Two-Layer) Policy
 
@@ -93,7 +93,7 @@ $\dim(\theta) = d_{in}H + H + H^2 + H + H + 1$.
 - **Gradient:** standard chain rule via reverse-mode through both layers, with
   $\partial u/\partial z = -\sigma(z)(1-\sigma(z))$ and
   $\tanh'(z_\ell) = 1 - h_\ell^2$ at each hidden layer.
-- **Source:** `src/objective/policy.py` :: `MLPPolicy.value()`, `MLPPolicy.grad()`
+- **Source:** `src/objective/policy.py` :: `MLPPolicy.value()`, `MLPPolicy.grad()`, `MLPPolicy.weighted_grad()`
 
 ### 2.6 Feature-Processed Policy
 
@@ -265,6 +265,8 @@ $$\frac{\partial\,\text{penalty}}{\partial\,\bar{a}} = -2w\,\text{softplus}(g/\t
   - `_grad_u_batch()` — per-sample $\partial f/\partial u$
   - `_d_acceptance_du_batch()` — analytical or FD acceptance derivative
   - `_acceptance_penalty()` — penalty value and gradient scale
+- **Source:** `src/objective/objectives/prepared_glm.py` :: `PreparedGLMObjective`, `PreparedGLMBatch`, `prepare_glm_objective()`
+  - Uses the same GLM formulas after materializing `base_logit`, `loss`, `premium`, and policy features into a compact numeric batch.
 - **Source:** `src/experiments/sensitivity_buckets.py` :: `glm_price_derivative_matrix()`, `glm_price_sensitivity_scores()`, `glm_price_sensitivity_matrix()`, `split_sensitivity_tertiles()`
 - **Source:** `src/reporting/visualization.py` :: `_plot_policy_delta_u_histograms()`, `_plot_policy_delta_u_by_elasticity()`, `_plot_policy_objective_contribution_summary()`
 
@@ -290,7 +292,9 @@ $$\nabla_\theta J = \mathbb{E}\!\left[\frac{\partial f}{\partial u}\;\frac{\part
 
 - **Source:** `src/objective/utils.py` :: `_theta_grad_from_u_grad()`
 - **Notes:** Used by all three objectives to compose the action-level gradient
-  with the policy Jacobian.
+  with the policy Jacobian. Policies may implement `weighted_grad()` to compute
+  the vector-Jacobian product directly instead of materializing the full
+  `(n, theta_dim)` Jacobian.
 
 ---
 

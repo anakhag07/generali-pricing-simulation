@@ -13,8 +13,9 @@ from data.loader import (
     LOSS_FEATURE_COLS,
     extract_glm_u_coef,
     load_model_artifacts,
-    load_x_array,
+    load_x_frame,
 )
+from data.dataset_metadata import PREMIUM_COL
 from experiments.reporters import _contour_grid_size, _contour_x_samples
 from objective.objectives.model_based import ModelBasedObjective
 from objective.policy import SoftmaxPolicy
@@ -30,7 +31,7 @@ def _make_glm_objective() -> ModelBasedObjective:
         loss_model=loss_model,
         acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),
         loss_cols=tuple(LOSS_FEATURE_COLS),
-        premium_col=9,
+        premium_col=PREMIUM_COL,
         u_coef=extract_glm_u_coef(acceptance_model),
     )
 
@@ -184,7 +185,7 @@ def main() -> None:
     parser.add_argument("--sigma", type=float, default=0.05)
     args = parser.parse_args()
 
-    x = load_x_array("glm", n_rows=args.n_rows, seed=args.seed)
+    x = load_x_frame("glm", n_rows=args.n_rows, seed=args.seed)
     payload = {
         "n_rows": int(x.shape[0]),
         "acceptance_prediction": benchmark_acceptance_prediction(x),

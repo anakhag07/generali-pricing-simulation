@@ -7,7 +7,7 @@ This module provides:
 - Policy feature maps: IdentityFeatureMap, QuadraticFeatureMap,
   CubicFeatureMap, QuarticFeatureMap, CallableFeatureMap
 - Concrete objectives: FixedRegressionObjective, PlantedLogisticObjective,
-  ModelBasedObjective
+  ModelBasedObjective, PreparedGLMObjective
  - Utility: optimal_u, value_at_constant_u, mean_acceptance_at_constant_u,
    value_for_reporting
 """
@@ -22,6 +22,10 @@ from objective.objectives import (
     FixedRegressionObjective,
     ModelBasedObjective,
     PlantedLogisticObjective,
+    PreparedGLMBatch,
+    PreparedGLMObjective,
+    prepare_glm_batch,
+    prepare_glm_objective,
 )
 from objective.policy import (
     CallableFeatureMap,
@@ -74,6 +78,10 @@ __all__ = [
     "FixedRegressionObjective",
     "ModelBasedObjective",
     "PlantedLogisticObjective",
+    "PreparedGLMBatch",
+    "PreparedGLMObjective",
+    "prepare_glm_batch",
+    "prepare_glm_objective",
     # Utility
     "mean_acceptance_at_constant_u",
     "optimal_u",

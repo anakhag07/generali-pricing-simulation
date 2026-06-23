@@ -12,6 +12,7 @@ dependencies = ["numpy>=1.24", "matplotlib>=3.7", "scipy>=1.10", "wandb>=0.19", 
 
 [project.optional-dependencies]
 dev = ["pytest>=7.0"]
+jax = ["jax[cuda12]>=0.4.30", "optax>=0.2.3"]
 
 [tool.setuptools]
 package-dir = {"" = "src"}

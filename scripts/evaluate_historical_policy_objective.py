@@ -1,4 +1,4 @@
-"""Evaluate a saved policy under model or observed historical objectives."""
+"""Evaluate saved policies or historical-U source diagnostics."""
 
 from __future__ import annotations
 
@@ -21,14 +21,20 @@ from data.dataset_metadata import (
     PREMIUM_COL,
 )
 from data.loader import (
+    ACCEPTANCE_STATE_COLS,
     FEATURE_COLS_GLM,
     FEATURE_COLS_XGB,
+    LOSS_FEATURE_COLS,
     dataset_csv_path,
     eligible_csv_row_indices,
+    load_model_artifacts,
+    load_x_frame,
     sample_csv_row_indices,
 )
 from experiments.configs import get_config
 from experiments.policy_artifacts import PolicyArtifact, load_policy_artifact
+from objective.objectives import ModelBasedObjective
+from objective.policy import ConstantPolicy
 
 
 @dataclass(frozen=True)
@@ -66,6 +72,28 @@ class ModelPolicyEvaluation:
     policy_revenue: np.ndarray
     objective_contribution: np.ndarray
     objective_kind: str = "model"
+
+
+@dataclass(frozen=True)
+class HistoricalUObjectiveEvaluation:
+    """Objective values at historical actions with configurable data/model sources."""
+
+    model_type: str
+    split: str
+    row_indices: np.ndarray
+    ids: pd.DataFrame
+    acceptance_source: str
+    technical_price_source: str
+    historical_u: np.ndarray
+    selected_acceptance: np.ndarray
+    selected_technical_price: np.ndarray
+    is_churn: np.ndarray
+    historical_acceptance: np.ndarray
+    historical_technical_price: np.ndarray
+    premium: np.ndarray
+    historical_revenue: np.ndarray
+    objective_contribution: np.ndarray
+    objective_kind: str = "historical_u_objective"
 
 
 def load_summary_payload(summary_json: Path) -> dict[str, Any]:
@@ -371,6 +399,143 @@ def evaluate_model_policy_objective(
     )
 
 
+def build_historical_u_model_objective(model_type: str) -> ModelBasedObjective:
+    """Build a model objective for acceptance/loss predictions at historical U."""
+    acceptance_model, loss_model = load_model_artifacts(model_type)
+    return ModelBasedObjective(
+        policy=ConstantPolicy(),
+        acceptance_model=acceptance_model,
+        loss_model=loss_model,
+        acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),
+        loss_cols=tuple(LOSS_FEATURE_COLS),
+        premium_col=PREMIUM_COL,
+        loss_source="predicted",
+        observed_loss_col=LOSS_TARGET_COL,
+    )
+
+
+def evaluate_historical_u_objective(
+    *,
+    model_type: str,
+    row_indices: np.ndarray,
+    historical_rows: pd.DataFrame,
+    acceptance_source: str,
+    technical_price_source: str,
+    objective: object | None = None,
+    x_eval: object | None = None,
+    split: str = "all",
+    n_rows: int | None = None,
+) -> HistoricalUObjectiveEvaluation:
+    """Evaluate historical actions with selected acceptance and technical-price sources."""
+    acceptance_source = _validate_source("acceptance_source", acceptance_source)
+    technical_price_source = _validate_source("technical_price_source", technical_price_source)
+    if n_rows is not None:
+        if int(n_rows) <= 0:
+            raise ValueError("n_rows must be positive when provided.")
+        n_eval = int(n_rows)
+        row_indices = row_indices[:n_eval]
+        historical_rows = historical_rows.iloc[:n_eval].reset_index(drop=True)
+        if x_eval is not None:
+            x_eval = x_eval.iloc[:n_eval].reset_index(drop=True) if hasattr(x_eval, "iloc") else x_eval[:n_eval]
+
+    historical_u = historical_rows[OBSERVED_U_COL].to_numpy(dtype=float)
+    is_churn = historical_rows[OBSERVED_CHURN_COL].to_numpy(dtype=float)
+    historical_acceptance = 1.0 - is_churn
+    historical_technical_price = historical_rows[LOSS_TARGET_COL].to_numpy(dtype=float)
+    premium = historical_rows[PREMIUM_COL].to_numpy(dtype=float)
+
+    selected_acceptance = _selected_acceptance(
+        acceptance_source,
+        historical_acceptance=historical_acceptance,
+        objective=objective,
+        x_eval=x_eval,
+        historical_u=historical_u,
+    )
+    selected_technical_price = _selected_technical_price(
+        technical_price_source,
+        historical_technical_price=historical_technical_price,
+        objective=objective,
+        x_eval=x_eval,
+    )
+    historical_revenue = (historical_u + 1.0) * premium
+    objective_contribution = selected_acceptance * (selected_technical_price - historical_revenue)
+
+    for name, values in {
+        "historical_u": historical_u,
+        "is_churn": is_churn,
+        "historical_acceptance": historical_acceptance,
+        "historical_technical_price": historical_technical_price,
+        "selected_acceptance": selected_acceptance,
+        "selected_technical_price": selected_technical_price,
+        "premium": premium,
+        "historical_revenue": historical_revenue,
+        "objective_contribution": objective_contribution,
+    }.items():
+        if values.shape != (row_indices.shape[0],):
+            raise ValueError(f"{name} must have one value per evaluated row.")
+        if not np.isfinite(values).all():
+            raise ValueError(f"{name} contains non-finite values.")
+
+    return HistoricalUObjectiveEvaluation(
+        model_type=str(model_type),
+        split=split,
+        row_indices=np.asarray(row_indices, dtype=int),
+        ids=historical_rows.loc[:, list(ID_COLS)].copy(),
+        acceptance_source=acceptance_source,
+        technical_price_source=technical_price_source,
+        historical_u=historical_u,
+        selected_acceptance=selected_acceptance,
+        selected_technical_price=selected_technical_price,
+        is_churn=is_churn,
+        historical_acceptance=historical_acceptance,
+        historical_technical_price=historical_technical_price,
+        premium=premium,
+        historical_revenue=historical_revenue,
+        objective_contribution=objective_contribution,
+        objective_kind=_historical_u_objective_kind(acceptance_source, technical_price_source),
+    )
+
+
+def _validate_source(name: str, value: str) -> str:
+    value = str(value)
+    if value not in {"historical", "model"}:
+        raise ValueError(f"{name} must be 'historical' or 'model'.")
+    return value
+
+
+def _selected_acceptance(
+    source: str,
+    *,
+    historical_acceptance: np.ndarray,
+    objective: object | None,
+    x_eval: object | None,
+    historical_u: np.ndarray,
+) -> np.ndarray:
+    if source == "historical":
+        return historical_acceptance
+    if objective is None or x_eval is None:
+        raise ValueError("acceptance_source='model' requires a model objective and x_eval rows.")
+    return np.asarray(objective._acceptance_proba(x_eval, historical_u), dtype=float).reshape(-1)
+
+
+def _selected_technical_price(
+    source: str,
+    *,
+    historical_technical_price: np.ndarray,
+    objective: object | None,
+    x_eval: object | None,
+) -> np.ndarray:
+    if source == "historical":
+        return historical_technical_price
+    if objective is None or x_eval is None:
+        raise ValueError("technical_price_source='model' requires a model objective and x_eval rows.")
+    return np.asarray(objective._loss_prediction(x_eval), dtype=float).reshape(-1)
+
+
+def _historical_u_objective_kind(acceptance_source: str, technical_price_source: str) -> str:
+    return f"historical_u_acceptance_{acceptance_source}_technical_price_{technical_price_source}"
+
+
 def evaluation_summary(evaluation: HistoricalPolicyEvaluation) -> dict[str, Any]:
     """Return aggregate metrics for a historical-policy evaluation."""
     return {
@@ -417,6 +582,31 @@ def model_evaluation_summary(evaluation: ModelPolicyEvaluation) -> dict[str, Any
     }
 
 
+def historical_u_evaluation_summary(
+    evaluation: HistoricalUObjectiveEvaluation,
+) -> dict[str, Any]:
+    """Return aggregate metrics for a historical-U source diagnostic."""
+    return {
+        "objective_kind": evaluation.objective_kind,
+        "model_type": evaluation.model_type,
+        "split": evaluation.split,
+        "acceptance_source": evaluation.acceptance_source,
+        "technical_price_source": evaluation.technical_price_source,
+        "n_rows": int(evaluation.row_indices.size),
+        "objective_value": float(np.mean(evaluation.objective_contribution)),
+        "objective_sum": float(np.sum(evaluation.objective_contribution)),
+        "mean_historical_u": float(np.mean(evaluation.historical_u)),
+        "mean_acceptance": float(np.mean(evaluation.selected_acceptance)),
+        "mean_technical_price": float(np.mean(evaluation.selected_technical_price)),
+        "mean_historical_acceptance": float(np.mean(evaluation.historical_acceptance)),
+        "mean_historical_technical_price": float(np.mean(evaluation.historical_technical_price)),
+        "mean_premium": float(np.mean(evaluation.premium)),
+        "mean_historical_revenue": float(np.mean(evaluation.historical_revenue)),
+        "csv_row_index_min": int(np.min(evaluation.row_indices)),
+        "csv_row_index_max": int(np.max(evaluation.row_indices)),
+    }
+
+
 def write_outputs(evaluation: HistoricalPolicyEvaluation, output_dir: Path, *, write_per_row: bool = True) -> list[Path]:
     """Write aggregate JSON and optional row-level CSV outputs."""
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -448,6 +638,26 @@ def write_model_outputs(
     if write_per_row:
         csv_path = output_dir / "per_row.csv"
         _write_model_per_row_csv(evaluation, csv_path)
+        outputs.append(csv_path)
+    return outputs
+
+
+def write_historical_u_outputs(
+    evaluation: HistoricalUObjectiveEvaluation,
+    output_dir: Path,
+    *,
+    write_per_row: bool = True,
+) -> list[Path]:
+    """Write historical-U diagnostic aggregate JSON and row-level CSV."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    outputs: list[Path] = []
+    summary_path = output_dir / "summary.json"
+    with summary_path.open("w", encoding="utf-8") as handle:
+        json.dump(historical_u_evaluation_summary(evaluation), handle, indent=2, sort_keys=True)
+    outputs.append(summary_path)
+    if write_per_row:
+        csv_path = output_dir / "per_row.csv"
+        _write_historical_u_per_row_csv(evaluation, csv_path)
         outputs.append(csv_path)
     return outputs
 
@@ -512,6 +722,48 @@ def _write_model_per_row_csv(evaluation: ModelPolicyEvaluation, csv_path: Path) 
             )
 
 
+def _write_historical_u_per_row_csv(
+    evaluation: HistoricalUObjectiveEvaluation,
+    csv_path: Path,
+) -> None:
+    fieldnames = [
+        "csv_row_index",
+        *ID_COLS,
+        "acceptance_source",
+        "technical_price_source",
+        "historical_u",
+        "selected_acceptance",
+        "selected_technical_price",
+        "is_churn",
+        "historical_acceptance",
+        "Y_G_Loss",
+        "X_policy_premium",
+        "historical_revenue",
+        "objective_contribution",
+    ]
+    with csv_path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        for idx in range(evaluation.row_indices.size):
+            row = {
+                "csv_row_index": int(evaluation.row_indices[idx]),
+                "acceptance_source": evaluation.acceptance_source,
+                "technical_price_source": evaluation.technical_price_source,
+                "historical_u": float(evaluation.historical_u[idx]),
+                "selected_acceptance": float(evaluation.selected_acceptance[idx]),
+                "selected_technical_price": float(evaluation.selected_technical_price[idx]),
+                "is_churn": float(evaluation.is_churn[idx]),
+                "historical_acceptance": float(evaluation.historical_acceptance[idx]),
+                "Y_G_Loss": float(evaluation.historical_technical_price[idx]),
+                "X_policy_premium": float(evaluation.premium[idx]),
+                "historical_revenue": float(evaluation.historical_revenue[idx]),
+                "objective_contribution": float(evaluation.objective_contribution[idx]),
+            }
+            for col in ID_COLS:
+                row[col] = evaluation.ids.iloc[idx][col]
+            writer.writerow(row)
+
+
 def format_theta(theta: np.ndarray) -> str:
     """Format theta values for terminal verification."""
     return "[" + ", ".join(f"{float(value):.12g}" for value in theta.tolist()) + "]"
@@ -527,6 +779,98 @@ def _default_artifact_output_dir(policy_artifact: Path, estimator: str) -> Path:
 
 def _default_artifact_model_output_dir(policy_artifact: Path, estimator: str) -> Path:
     return policy_artifact.parent / "model_policy_objective" / estimator
+
+
+def _historical_u_condition_name(acceptance_source: str, technical_price_source: str) -> str:
+    return f"acceptance_{acceptance_source}__technical_price_{technical_price_source}"
+
+
+def _default_historical_u_output_dir(
+    *,
+    model_type: str,
+    acceptance_source: str,
+    technical_price_source: str,
+    summary_json: Path | None = None,
+) -> Path:
+    condition = _historical_u_condition_name(acceptance_source, technical_price_source)
+    if summary_json is not None:
+        return summary_json.parent / "historical_u_objective" / condition
+    return Path("outputs") / "historical_u_objective" / model_type / condition
+
+
+def _resolve_historical_u_model_type(
+    *,
+    model_type: str | None,
+    summary_payload: Mapping[str, Any] | None,
+) -> str:
+    if summary_payload is None:
+        if model_type is None:
+            raise ValueError("--model-type is required for historical-U diagnostics without --summary-json.")
+        return _validate_model_type_arg(model_type)
+    inferred = infer_model_type(summary_payload)
+    if model_type is not None and _validate_model_type_arg(model_type) != inferred:
+        raise ValueError(f"--model-type {model_type!r} does not match summary-inferred model type {inferred!r}.")
+    return inferred
+
+
+def _validate_model_type_arg(model_type: str) -> str:
+    if model_type not in {"glm", "xgb"}:
+        raise ValueError("model_type must be 'glm' or 'xgb'.")
+    return model_type
+
+
+def _resolve_historical_u_row_indices(
+    *,
+    model_type: str,
+    summary_payload: Mapping[str, Any] | None,
+    split: str,
+    n_rows: int | None,
+) -> np.ndarray:
+    if summary_payload is not None:
+        selected = reconstruct_run_row_indices(summary_payload, model_type)
+        row_indices = split_run_row_indices(summary_payload, selected, split)
+        if n_rows is not None:
+            if int(n_rows) <= 0:
+                raise ValueError("n_rows must be positive when provided.")
+            row_indices = row_indices[: int(n_rows)]
+        return row_indices.astype(int, copy=True)
+    if split != "all":
+        raise ValueError("--split train/test requires --summary-json for historical-U diagnostics.")
+    row_indices = eligible_csv_row_indices(model_type)
+    if n_rows is not None:
+        if int(n_rows) <= 0:
+            raise ValueError("n_rows must be positive when provided.")
+        row_indices = row_indices[: int(n_rows)]
+    return row_indices.astype(int, copy=True)
+
+
+def _needs_model_predictions(acceptance_source: str, technical_price_source: str) -> bool:
+    return acceptance_source == "model" or technical_price_source == "model"
+
+
+def _is_historical_u_mode(args: argparse.Namespace) -> bool:
+    return (
+        args.u_source == "historical"
+        or bool(args.acceptance_model_historical_u)
+        or args.acceptance_source is not None
+        or args.technical_price_source is not None
+    )
+
+
+def _resolve_historical_u_sources(args: argparse.Namespace) -> tuple[str, str]:
+    if args.acceptance_model_historical_u:
+        if args.acceptance_source not in {None, "model"}:
+            raise SystemExit("--acceptance-model-historical-u requires --acceptance-source model when provided.")
+        if args.technical_price_source not in {None, "historical"}:
+            raise SystemExit(
+                "--acceptance-model-historical-u requires --technical-price-source historical when provided."
+            )
+        return "model", "historical"
+    if args.acceptance_source is None or args.technical_price_source is None:
+        raise SystemExit(
+            "--u-source historical requires both --acceptance-source and --technical-price-source."
+        )
+    return args.acceptance_source, args.technical_price_source
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -551,6 +895,38 @@ def build_parser() -> argparse.ArgumentParser:
         help="Objective to evaluate: observed historical diagnostic or trained model objective.",
     )
     parser.add_argument(
+        "--u-source",
+        choices=("policy-artifact", "historical"),
+        default=None,
+        help="Use a saved policy action path or historical CSV U actions. Defaults to policy replay.",
+    )
+    parser.add_argument(
+        "--model-type",
+        choices=("glm", "xgb"),
+        default=None,
+        help="Model family for historical-U diagnostics when no summary.json is supplied.",
+    )
+    parser.add_argument(
+        "--acceptance-source",
+        choices=("historical", "model"),
+        default=None,
+        help="Acceptance source for --u-source historical diagnostics.",
+    )
+    parser.add_argument(
+        "--technical-price-source",
+        choices=("historical", "model"),
+        default=None,
+        help="Technical-price/loss source for --u-source historical diagnostics.",
+    )
+    parser.add_argument(
+        "--acceptance-model-historical-u",
+        action="store_true",
+        help=(
+            "Shortcut for --u-source historical --acceptance-source model "
+            "--technical-price-source historical."
+        ),
+    )
+    parser.add_argument(
         "--split",
         choices=("all", "train", "test"),
         default="all",
@@ -560,13 +936,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--n-rows",
         type=int,
         default=None,
-        help="Evaluate only the first N rows from the saved run sample. Policy preprocessing still uses all saved-run rows.",
+        help="Evaluate only the first N selected rows.",
     )
     parser.add_argument(
         "--output-dir",
         type=Path,
         default=None,
-        help="Output directory. Defaults beside summary.json under historical_policy_objective/<estimator>/.",
+        help="Output directory. Defaults depend on the selected diagnostic mode.",
     )
     parser.add_argument(
         "--skip-per-row",
@@ -578,6 +954,71 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: Sequence[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
+    if _is_historical_u_mode(args):
+        if args.objective == "model":
+            raise SystemExit("--u-source historical cannot be combined with --objective model.")
+        if args.u_source == "policy-artifact":
+            raise SystemExit("--u-source policy-artifact cannot be combined with historical-U source flags.")
+        if args.policy_artifact is not None:
+            raise SystemExit("--u-source historical does not use --policy-artifact; use --summary-json or --model-type.")
+        acceptance_source, technical_price_source = _resolve_historical_u_sources(args)
+        payload = load_summary_payload(args.summary_json) if args.summary_json is not None else None
+        model_type = _resolve_historical_u_model_type(
+            model_type=args.model_type,
+            summary_payload=payload,
+        )
+        row_indices = _resolve_historical_u_row_indices(
+            model_type=model_type,
+            summary_payload=payload,
+            split=args.split,
+            n_rows=args.n_rows,
+        )
+        historical_rows = load_historical_rows(row_indices)
+        objective = None
+        x_eval = None
+        if _needs_model_predictions(acceptance_source, technical_price_source):
+            objective = build_historical_u_model_objective(model_type)
+            x_eval = load_x_frame(model_type, row_indices=row_indices)
+        evaluation = evaluate_historical_u_objective(
+            model_type=model_type,
+            row_indices=row_indices,
+            historical_rows=historical_rows,
+            acceptance_source=acceptance_source,
+            technical_price_source=technical_price_source,
+            objective=objective,
+            x_eval=x_eval,
+            split=args.split,
+            n_rows=None,
+        )
+        output_dir = (
+            args.output_dir
+            if args.output_dir is not None
+            else _default_historical_u_output_dir(
+                model_type=model_type,
+                acceptance_source=acceptance_source,
+                technical_price_source=technical_price_source,
+                summary_json=args.summary_json,
+            )
+        )
+        outputs = write_historical_u_outputs(
+            evaluation,
+            output_dir,
+            write_per_row=not args.skip_per_row,
+        )
+        summary = historical_u_evaluation_summary(evaluation)
+        print(
+            f"Evaluated {summary['n_rows']} {args.split} rows with historical U, "
+            f"{acceptance_source} acceptance, and {technical_price_source} technical price."
+        )
+        print(f"Mean historical-U objective: {summary['objective_value']:.6f}")
+        print(f"Total historical-U objective: {summary['objective_sum']:.6f}")
+        print(f"Mean historical u: {summary['mean_historical_u']:.6f}")
+        print(f"Mean selected acceptance: {summary['mean_acceptance']:.6f}")
+        print(f"Mean selected technical price: {summary['mean_technical_price']:.6f}")
+        for path in outputs:
+            print(f"Wrote {path}")
+        return
+
     if args.policy_artifact is None and args.summary_json is None:
         raise SystemExit("Either --policy-artifact or --summary-json is required.")
     if args.objective == "model" and args.policy_artifact is None:
@@ -589,7 +1030,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         theta = artifact.theta
         model_type = artifact.objective.model_type
         row_indices = artifact.row_indices(args.split)
-        config = build_config_for_policy_artifact(artifact, split=args.split)
+        config = None
         source_path = args.policy_artifact
     else:
         payload = load_summary_payload(args.summary_json)
@@ -624,6 +1065,8 @@ def main(argv: Sequence[str] | None = None) -> None:
             print(f"Wrote {path}")
         return
     historical_rows = load_historical_rows(row_indices)
+    if args.policy_artifact is not None:
+        config = build_config_for_policy_artifact(artifact, split=args.split)
     evaluation = evaluate_historical_policy_objective(
         config=config,
         theta=theta,

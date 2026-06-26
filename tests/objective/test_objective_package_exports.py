@@ -5,6 +5,7 @@ import numpy as np
 from objective import (
     ConstantPolicy,
     CubicFeatureMap,
+    JaxPreparedGLMObjective,
     PreparedGLMBatch,
     PreparedGLMObjective,
     QuadraticFeatureMap,
@@ -14,6 +15,7 @@ from objective import (
     mean_acceptance_at_constant_u,
     prepare_glm_batch,
     prepare_glm_objective,
+    prepare_jax_glm_objective,
     sample_states,
     value_at_constant_u,
     value_for_reporting,
@@ -53,5 +55,7 @@ def test_objective_package_exports_are_importable() -> None:
     assert mean_acceptance_at_constant_u(objective, x_batch, u=1.0) is None
     assert PreparedGLMBatch is not None
     assert PreparedGLMObjective is not None
+    assert JaxPreparedGLMObjective is not None
     assert prepare_glm_batch is not None
     assert prepare_glm_objective is not None
+    assert prepare_jax_glm_objective is not None

@@ -282,6 +282,20 @@ def test_glm_trust_constraint_override_sets_acceptance_floor():
     assert cfg.enabled_estimators == ("first_order", "constant")
 
 
+def test_glm_jax_backend_override_keeps_trust_constr_solver():
+    cfg = _cfg(
+        "real_data_glm_base",
+        constraint_mode="trust_constr",
+        compute_backend="jax",
+        enabled_estimators=("first_order",),
+    )
+
+    assert cfg.compute_backend == "jax"
+    assert cfg.step_rule == "trust-constr"
+    assert cfg.acceptance_floor is not None
+    assert cfg.enabled_estimators == ("first_order",)
+
+
 def test_glm_lagrangian_override_sets_scalarization():
     cfg = _cfg(
         "real_data_glm_base",

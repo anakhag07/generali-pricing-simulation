@@ -158,6 +158,11 @@ Guidelines:
   - `PreparedGLMObjective`: pure NumPy GLM objective over prepared batches; no pandas/sklearn calls in the hot path
   - `prepare_glm_batch(...)` / `prepare_glm_objective(...)`: materialize a GLM-backed `ModelBasedObjective` after artifact preprocessing has run once
 
+- **`src/objective/objectives/jax_prepared_glm.py`**
+  - `JaxPreparedGLMObjective`: fixed-batch JAX version of the prepared GLM objective for SciPy callback use; transfers prepared arrays to device once and exposes NumPy-returning `value()`, `grad()`, `mean_acceptance()`, and `mean_acceptance_grad()` methods
+  - `JaxPreparedGLMScipyAdapter`: explicit callback adapter with objective, gradient, constraint-margin, and constraint-Jacobian shapes for validation/benchmarking
+  - `prepare_jax_glm_objective(...)`: materializes a GLM-backed `ModelBasedObjective` into a JAX objective after CPU artifact preprocessing; currently supports full-batch first-order GLM trust-constr runs with constant/linear/softmax identity-feature policies
+
 - **`src/objective/objectives/planted_logistic.py`**
   - `PlantedLogisticObjective`: convex logistic objective with known optimum `u_star`
   - `optimal_u()` method exposes the planted optimum
@@ -258,6 +263,7 @@ Guidelines:
 - **`src/experiments/config.py`**
   - `ExperimentConfig`: frozen dataclass with extensive `__post_init__` validation
   - Primary fields: `objective` (theta objective) and `theta0` (initial theta)
+  - `compute_backend`: `"numpy"` by default; `"jax"` keeps SciPy `trust-constr` as the optimizer but swaps first-order GLM training callbacks to the fixed-batch JAX prepared objective for parity/speed experiments
   - `x_fixed: np.ndarray | None = None`: when set, runner uses this 2D array as state batch instead of sampling from N(0, I)
   - `x_fixed_row_indices: np.ndarray | None = None`: source acceptance-CSV row positions for `x_fixed`; real-data configs pass this so observed-`U` reporting uses the same selected rows
   - `train_fraction` / `test_fraction`: deterministic run-level split fractions over selected rows; they must sum to `1.0`, `train_fraction` must be positive, and optimizers fit on train rows only
@@ -278,6 +284,7 @@ Guidelines:
   - `fixed_regression_base.py`: base fixed-regression config (4D, L-BFGS-B step rule, W&B enabled)
   - `planted_logistic_base.py`: planted logistic base config (3D, L-BFGS-B step rule, 5000 steps, u*=1.1)
   - `real_data_glm_base`: registry-only base built by `real_data_factory.py`; supports `policy_kind`, `feature_order`, `policy_preprocessing`, `constraint_mode`, GLM acceptance `u_coef`, runtime, and estimator overrides
+    - `compute_backend="jax"` keeps `step_rule="trust-constr"` and swaps first-order GLM training callbacks to the fixed-batch JAX prepared objective; use only with `enabled_estimators=("first_order",)` and identity/linear feature maps in the initial backend
   - `real_data_xgb_base`: registry-only base built by `real_data_factory.py`; supports the same override axes, with XGB defaults excluding `first_order`
   - `config_template.py`: copy-first scaffold with `None` placeholders for all `ExperimentConfig` fields plus objective/correctness parameter blocks; not registered as a runnable preset
 
@@ -433,6 +440,7 @@ when appropriate.
 | `test_objective_package_exports.py` | objective package API exports remain importable |
 | `test_planted_logistic_objective.py` | Planted logistic gradient at u_star and minimum |
 | `test_model_based_objective.py` | `value()`, `grad()` shape, `value_at_u()`, analytical vs FD grad agreement |
+| `test_jax_prepared_glm_objective.py` | JAX prepared GLM value, gradient, policy-u, acceptance, and SciPy adapter parity |
 | `test_policy_batch.py` | Policy batch `value/grad` shapes, bounds, and kind labels (incl. `MLPPolicy`) |
 | `test_mlp_policy_grad.py` | `MLPPolicy.grad` matches per-coordinate FD Jacobian; `mlp_init_theta` symmetry-breaking |
 | `test_policy_preprocessing.py` | Policy-side standardization, whitening, PCA dimensionality, and transform validation |
@@ -451,6 +459,7 @@ when appropriate.
 | `test_minimize_orders.py` | SciPy first/Gauss-Stein/Stein-difference/SPSA wrappers |
 | `test_early_stopping.py` | grad_norm_tol early stopping |
 | `test_trust_constr_constraint.py` | Trust-region constraint acceptance floor |
+| `test_jax_trust_constr_callbacks.py` | JAX prepared GLM callbacks match CPU prepared GLM under SciPy trust-constr |
 
 #### `tests/data/`
 | Test File | Area |

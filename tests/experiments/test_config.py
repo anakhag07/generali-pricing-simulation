@@ -748,6 +748,39 @@ def test_step_rule_validation() -> None:
         )
 
 
+def test_compute_backend_validation() -> None:
+    policy = SoftmaxPolicy()
+    objective = FixedRegressionObjective.from_parameters(
+        policy=policy,
+        beta_1=[0.1],
+        beta_2=-0.5,
+        beta_3=[0.2],
+        beta_4=0.4,
+    )
+
+    with pytest.raises(ValueError, match="compute_backend"):
+        ExperimentConfig(
+            state_dim=1,
+            objective=objective,
+            theta0=default_theta0(1),
+            n_samples=5,
+            step_rule="constant",
+            perturbation_space="theta",
+            compute_backend="bogus",
+        )
+
+    with pytest.raises(ValueError, match="trust-constr"):
+        ExperimentConfig(
+            state_dim=1,
+            objective=objective,
+            theta0=default_theta0(1),
+            n_samples=5,
+            step_rule="constant",
+            perturbation_space="theta",
+            compute_backend="jax",
+        )
+
+
 def test_grad_norm_tol_validation() -> None:
     policy = SoftmaxPolicy()
     objective = FixedRegressionObjective.from_parameters(

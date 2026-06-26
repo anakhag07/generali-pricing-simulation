@@ -10,13 +10,11 @@ STEP_RULE_CONSTANT = "constant"
 STEP_RULE_ARMIJO = "armijo"
 STEP_RULE_LBFGSB = "l-bfgs-b"
 STEP_RULE_TRUST_CONSTR = "trust-constr"
-STEP_RULE_OPTAX_ADAM = "optax-adam"
 STEP_RULES = (
     STEP_RULE_CONSTANT,
     STEP_RULE_ARMIJO,
     STEP_RULE_LBFGSB,
     STEP_RULE_TRUST_CONSTR,
-    STEP_RULE_OPTAX_ADAM,
 )
 
 ObjectiveThetaFn = Callable[[np.ndarray], float]

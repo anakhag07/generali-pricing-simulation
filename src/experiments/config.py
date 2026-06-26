@@ -84,6 +84,7 @@ class ExperimentConfig:
     step_rule: str
     objective: Objective
     perturbation_space: Literal["theta", "u"]
+    compute_backend: Literal["numpy", "jax"] = "numpy"
     train_fraction: float = 1.0
     test_fraction: float = 0.0
     theta0: np.ndarray | None = None
@@ -255,6 +256,10 @@ class ExperimentConfig:
         if self.step_rule not in STEP_RULES:
             allowed = ", ".join(sorted(STEP_RULES))
             raise ValueError(f"step_rule must be one of {allowed}.")
+        if self.compute_backend not in {"numpy", "jax"}:
+            raise ValueError("compute_backend must be 'numpy' or 'jax'.")
+        if self.compute_backend == "jax" and self.step_rule != STEP_RULE_TRUST_CONSTR:
+            raise ValueError("compute_backend='jax' is currently supported only with step_rule='trust-constr'.")
         if self.step_size <= 0.0:
             raise ValueError("step_size must be positive.")
         if self.grad_norm_tol is not None and self.grad_norm_tol <= 0.0:
@@ -392,6 +397,7 @@ class ExperimentConfig:
             "test_fraction": float(self.test_fraction),
             "batch_size": int(self.batch_size) if self.batch_size is not None else None,
             "step_rule": self.step_rule,
+            "compute_backend": self.compute_backend,
             "seed": int(self.seed),
             "seed_setup": self.seed_setup.to_dict()
             if self.seed_setup is not None
@@ -653,6 +659,7 @@ def canonical_training_block(
     train_fraction: float = 1.0,
     test_fraction: float = 0.0,
     step_rule: str,
+    compute_backend: Literal["numpy", "jax"] = "numpy",
     t_steps: int,
     step_size: float,
     sigma: float,
@@ -675,6 +682,7 @@ def canonical_training_block(
         "train_fraction": float(train_fraction),
         "test_fraction": float(test_fraction),
         "step_rule": step_rule,
+        "compute_backend": compute_backend,
         "t_steps": int(t_steps),
         "step_size": float(step_size),
         "sigma": float(sigma),

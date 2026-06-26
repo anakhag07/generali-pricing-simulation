@@ -267,6 +267,8 @@ $$\frac{\partial\,\text{penalty}}{\partial\,\bar{a}} = -2w\,\text{softplus}(g/\t
   - `_acceptance_penalty()` — penalty value and gradient scale
 - **Source:** `src/objective/objectives/prepared_glm.py` :: `PreparedGLMObjective`, `PreparedGLMBatch`, `prepare_glm_objective()`
   - Uses the same GLM formulas after materializing `base_logit`, `loss`, `premium`, and policy features into a compact numeric batch.
+- **Source:** `src/objective/objectives/jax_prepared_glm.py` :: `JaxPreparedGLMObjective`, `JaxPreparedGLMScipyAdapter`, `prepare_jax_glm_objective()`
+  - Uses the same prepared GLM formulas in JAX for fixed-batch SciPy callbacks. The explicit constraint-margin adapter uses $$\bar{a}(\theta) - \alpha$$, equivalent to SciPy's existing lower-bound form $$\bar{a}(\theta) \ge \alpha$$.
 - **Source:** `src/experiments/sensitivity_buckets.py` :: `glm_price_derivative_matrix()`, `glm_price_sensitivity_scores()`, `glm_price_sensitivity_matrix()`, `split_sensitivity_tertiles()`
 - **Source:** `src/reporting/visualization.py` :: `_plot_policy_delta_u_histograms()`, `_plot_policy_delta_u_by_elasticity()`, `_plot_policy_objective_contribution_summary()`
 

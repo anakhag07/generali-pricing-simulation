@@ -17,6 +17,13 @@ Runtime dependencies live in `requirements.txt` and mirror `pyproject.toml`
 (including CPU JAX). Install `.[jax-cuda12]` only when you need CUDA-specific
 JAX wheels.
 
+On ORCD, `python main.py` auto-submits itself to Slurm before running the
+configured experiments. Runs with `compute_backend="jax"` use `mit_normal_gpu`
+with one L40S GPU by default, and NumPy-only runs use the CPU `mit_normal`
+profile. Slurm logs are written under `outputs/slurm/%x-%j.out`. Use
+`python main.py --no-sbatch` only when you intentionally want to run in the
+current process; JAX experiment runs still require a visible GPU backend.
+
 To run tests:
 
 ```bash
@@ -175,7 +182,9 @@ zeroth-order value queries, mean acceptance, and constraint Jacobian through
 JIT-compiled JAX callbacks. The JAX backend requires `batch_size=None` and
 supports fixed full-batch GLM runs for `first_order`, `finite_difference`,
 `gauss_stein`, `spsa`, and `stein_difference` with constant, linear, or softmax
-policies over identity/linear policy features.
+policies over identity/linear policy features. When launched through `main.py`,
+JAX configs are submitted to ORCD GPU Slurm and fail fast if JAX reports only a
+CPU backend, preventing silent CPU fallback.
 For policy-feature experiments, `ModelBasedObjective` can instead take a
 separate fitted policy-side preprocessor. In that mode the policy sees the
 configured policy features, while the sealed acceptance and loss model paths

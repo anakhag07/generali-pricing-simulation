@@ -260,6 +260,8 @@ class ExperimentConfig:
             raise ValueError("compute_backend must be 'numpy' or 'jax'.")
         if self.compute_backend == "jax" and self.step_rule != STEP_RULE_TRUST_CONSTR:
             raise ValueError("compute_backend='jax' is currently supported only with step_rule='trust-constr'.")
+        if self.compute_backend == "jax" and self.batch_size is not None:
+            raise ValueError("compute_backend='jax' requires batch_size=None because it uses a fixed full batch.")
         if self.step_size <= 0.0:
             raise ValueError("step_size must be positive.")
         if self.grad_norm_tol is not None and self.grad_norm_tol <= 0.0:

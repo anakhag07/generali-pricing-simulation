@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
+import jax
+import jax.numpy as jnp
 
 from objective._math import _sigmoid
 from objective.base import Objective, Policy
@@ -18,14 +20,7 @@ from objective.objectives.prepared_glm import (
 )
 from objective.policy import ConstantPolicy, IdentityFeatureMap, LinearPolicy, SoftmaxPolicy
 
-try:  # Optional dependency; importing this module should not require JAX.
-    import jax
-    import jax.numpy as jnp
-
-    jax.config.update("jax_enable_x64", True)
-except ImportError:  # pragma: no cover - exercised only without optional dependency.
-    jax = None  # type: ignore[assignment]
-    jnp = None  # type: ignore[assignment]
+jax.config.update("jax_enable_x64", True)
 
 
 @dataclass(frozen=True)
@@ -68,12 +63,12 @@ class JaxPreparedGLMObjective(Objective):
     lagrangian_lambda: float | None = None
     _objective_cache_key: tuple[tuple[int, ...], bytes] | None = field(init=False, default=None, repr=False)
     _objective_cache: tuple[float, np.ndarray] | None = field(init=False, default=None, repr=False)
+    _value_cache_key: tuple[tuple[int, ...], bytes] | None = field(init=False, default=None, repr=False)
+    _value_cache: float | None = field(init=False, default=None, repr=False)
     _acceptance_cache_key: tuple[tuple[int, ...], bytes] | None = field(init=False, default=None, repr=False)
     _acceptance_cache: tuple[float, np.ndarray] | None = field(init=False, default=None, repr=False)
 
     def __post_init__(self) -> None:
-        if jax is None or jnp is None:
-            raise ImportError("JAX compute backend requires installing the optional 'jax' dependency.")
         x_arr = _prepared_x_array(self.x_array)
         target = str(self.probability_target)
         if target not in {"acceptance", "churn"}:
@@ -105,28 +100,41 @@ class JaxPreparedGLMObjective(Objective):
         lagrangian_lambda = None if self.lagrangian_lambda is None else float(self.lagrangian_lambda)
         u_bounds = self.u_bounds
 
-        def policy_u(theta: Any) -> Any:
+        def clip_u(u: Any) -> Any:
+            if u_bounds is None:
+                return u
+            return jnp.clip(u, float(u_bounds[0]), float(u_bounds[1]))
+
+        def policy_raw_u(theta: Any) -> Any:
             if policy_kind == "constant":
-                u = jnp.full(base_logit.shape, theta[0], dtype=jnp.float64)
-            else:
-                score = design_jax @ theta
-                if policy_kind == "linear":
-                    u = score
-                else:
-                    u = action_low + action_span * jax.nn.sigmoid(score)
-            if u_bounds is not None:
-                u = jnp.clip(u, float(u_bounds[0]), float(u_bounds[1]))
-            return u
+                return jnp.full(base_logit.shape, theta[0], dtype=jnp.float64)
+            score = design_jax @ theta
+            if policy_kind == "linear":
+                return score
+            return action_low + action_span * jax.nn.sigmoid(score)
+
+        def policy_u(theta: Any) -> Any:
+            return clip_u(policy_raw_u(theta))
 
         def acceptance_from_u(u: Any) -> Any:
             class1 = jax.nn.sigmoid(base_logit + u_coef * u)
             return class1 if sign > 0.0 else 1.0 - class1
 
+        def action_values_from_u(u: Any) -> Any:
+            u_clipped = clip_u(u)
+            acceptance = acceptance_from_u(u_clipped)
+            revenue = (u_clipped + 1.0) * premium
+            return acceptance * (loss - revenue)
+
+        def action_values_from_u_many(u_matrix: Any) -> Any:
+            u_clipped = clip_u(u_matrix)
+            class1 = jax.nn.sigmoid(base_logit[None, :] + u_coef * u_clipped)
+            acceptance = class1 if sign > 0.0 else 1.0 - class1
+            revenue = (u_clipped + 1.0) * premium[None, :]
+            return acceptance * (loss[None, :] - revenue)
+
         def raw_objective(theta: Any) -> Any:
-            u = policy_u(theta)
-            acceptance = acceptance_from_u(u)
-            revenue = (u + 1.0) * premium
-            return jnp.mean(acceptance * (loss - revenue))
+            return jnp.mean(action_values_from_u(policy_u(theta)))
 
         def mean_acceptance(theta: Any) -> Any:
             return jnp.mean(acceptance_from_u(policy_u(theta)))
@@ -155,18 +163,35 @@ class JaxPreparedGLMObjective(Objective):
         object.__setattr__(self, "_action_span", action_span)
         object.__setattr__(self, "_policy_u_jit", jax.jit(policy_u))
         object.__setattr__(self, "_raw_objective_jit", jax.jit(raw_objective))
+        object.__setattr__(self, "_objective_value_jit", jax.jit(objective))
         object.__setattr__(self, "_objective_value_and_grad_jit", jax.jit(jax.value_and_grad(objective)))
         object.__setattr__(self, "_mean_acceptance_value_and_grad_jit", jax.jit(jax.value_and_grad(mean_acceptance)))
+        object.__setattr__(self, "_action_values_from_u_jit", jax.jit(action_values_from_u))
+        object.__setattr__(self, "_action_values_from_u_many_jit", jax.jit(action_values_from_u_many))
 
     def warmup(self, theta: np.ndarray) -> None:
         """Compile and run all JAX callbacks once before timing benchmarks."""
         self.objective_value_and_grad(theta)
         self.mean_acceptance_value_and_grad(theta)
-        self.policy_value(theta, self.x_array)
+        u_batch = self.policy_value(theta, self.x_array)
+        self._value_batch(self.x_array, u_batch)
+        self._value_batch_many(self.x_array, u_batch[None, :])
 
     def scipy_adapter(self) -> JaxPreparedGLMScipyAdapter:
         """Return explicit SciPy callback wrappers for this fixed batch."""
         return JaxPreparedGLMScipyAdapter(self)
+
+    def _objective_value(self, theta: np.ndarray) -> float:
+        """Return cached objective value for value-only estimators."""
+        key, theta_jax = self._theta_key_and_jax(theta)
+        if key == self._objective_cache_key and self._objective_cache is not None:
+            return float(self._objective_cache[0])
+        if key == self._value_cache_key and self._value_cache is not None:
+            return float(self._value_cache)
+        result = float(self._objective_value_jit(theta_jax))
+        object.__setattr__(self, "_value_cache_key", key)
+        object.__setattr__(self, "_value_cache", result)
+        return result
 
     def objective_value_and_grad(self, theta: np.ndarray) -> tuple[float, np.ndarray]:
         """Return cached objective value and gradient for ``theta``."""
@@ -193,8 +218,7 @@ class JaxPreparedGLMObjective(Objective):
     def value(self, theta: np.ndarray, x_batch: np.ndarray | PreparedGLMBatch) -> float:
         """Return JAX objective value on this fixed prepared batch."""
         self._validate_fixed_batch(x_batch)
-        value, _ = self.objective_value_and_grad(theta)
-        return value
+        return self._objective_value(theta)
 
     def base_value(self, theta: np.ndarray, x_batch: np.ndarray | PreparedGLMBatch) -> float:
         """Return raw pricing objective without penalty or Lagrangian terms."""
@@ -219,13 +243,17 @@ class JaxPreparedGLMObjective(Objective):
         self._validate_fixed_batch(x_batch)
         theta_arr = np.asarray(theta, dtype=float)
         if self._policy_kind == "constant":
-            return np.ones((self.x_array.shape[0], 1), dtype=float)
+            grad = np.ones((self.x_array.shape[0], 1), dtype=float)
+            raw_u = np.full(self.x_array.shape[0], theta_arr[0], dtype=float)
+            return self._apply_clip_derivative(grad, raw_u)
         design = np.asarray(self._design_matrix_np, dtype=float)
         if self._policy_kind == "linear":
-            return design
+            return self._apply_clip_derivative(design, design @ theta_arr)
         score = design @ theta_arr
         sigma = _sigmoid(score)
-        return self._action_span * sigma[:, None] * (1.0 - sigma[:, None]) * design
+        grad = self._action_span * sigma[:, None] * (1.0 - sigma[:, None]) * design
+        raw_u = self._action_low + self._action_span * sigma
+        return self._apply_clip_derivative(grad, raw_u)
 
     def policy_weighted_grad(
         self,
@@ -234,11 +262,22 @@ class JaxPreparedGLMObjective(Objective):
         weights: np.ndarray,
     ) -> np.ndarray:
         """Return ``sum_i weights_i * d pi_theta(x_i) / dtheta``."""
-        policy_grad = self.policy_grad(theta, x_batch)
+        self._validate_fixed_batch(x_batch)
         weights_arr = np.asarray(weights, dtype=float)
-        if weights_arr.shape != (policy_grad.shape[0],):
+        if weights_arr.shape != (self.x_array.shape[0],):
             raise ValueError("weights must have one value per x_batch row.")
-        return weights_arr @ policy_grad
+        theta_arr = np.asarray(theta, dtype=float)
+        if self._policy_kind == "constant":
+            raw_u = np.full(self.x_array.shape[0], theta_arr[0], dtype=float)
+            return np.asarray([np.sum(self._clip_derivative_weights(weights_arr, raw_u))], dtype=float)
+        design = np.asarray(self._design_matrix_np, dtype=float)
+        if self._policy_kind == "linear":
+            return self._clip_derivative_weights(weights_arr, design @ theta_arr) @ design
+        score = design @ theta_arr
+        sigma = _sigmoid(score)
+        raw_u = self._action_low + self._action_span * sigma
+        scaled_weights = weights_arr * self._action_span * sigma * (1.0 - sigma)
+        return self._clip_derivative_weights(scaled_weights, raw_u) @ design
 
     def policy_input_dim(self) -> int:
         """Return the prepared policy input dimension before feature mapping."""
@@ -264,9 +303,7 @@ class JaxPreparedGLMObjective(Objective):
         """Return raw objective value at a fixed action."""
         self._validate_fixed_batch(x_batch)
         u_arr = np.full(self.x_array.shape[0], self._clip_scalar_u(float(u)), dtype=float)
-        acceptance = self._acceptance_at_u_array(u_arr)
-        revenue = (u_arr + 1.0) * self._premium_np
-        return float(np.mean(acceptance * (self._loss_np - revenue)))
+        return float(np.mean(self._value_batch(self.x_array, u_arr)))
 
     def mean_acceptance(self, theta: np.ndarray, x_batch: np.ndarray | PreparedGLMBatch) -> float:
         """Return mean acceptance on this fixed prepared batch."""
@@ -318,6 +355,41 @@ class JaxPreparedGLMObjective(Objective):
             raise ValueError(f"theta must have exactly {self.policy_theta_dim()} elements.")
         return (tuple(theta_arr.shape), theta_arr.tobytes()), jnp.asarray(theta_arr, dtype=jnp.float64)
 
+    def _clip_u(self, u: np.ndarray) -> np.ndarray:
+        if self.u_bounds is None:
+            return np.asarray(u, dtype=float)
+        return np.clip(np.asarray(u, dtype=float), *self.u_bounds)
+
+    def _clip_derivative_weights(self, weights: np.ndarray, raw_u: np.ndarray) -> np.ndarray:
+        if self.u_bounds is None:
+            return weights
+        interior = (raw_u > self.u_bounds[0]) & (raw_u < self.u_bounds[1])
+        return weights * interior
+
+    def _apply_clip_derivative(self, grad: np.ndarray, raw_u: np.ndarray) -> np.ndarray:
+        if self.u_bounds is None:
+            return grad
+        keep = self._clip_derivative_weights(np.ones_like(raw_u, dtype=float), raw_u)
+        return grad * keep[:, None]
+
+    def _value_batch(self, x_batch: np.ndarray | PreparedGLMBatch, u_arr: np.ndarray) -> np.ndarray:
+        """Return raw per-row objective values for supplied actions."""
+        self._validate_fixed_batch(x_batch)
+        u_array = np.asarray(u_arr, dtype=float).reshape(-1)
+        if u_array.shape != (self.x_array.shape[0],):
+            raise ValueError("u_arr must have one value per x_batch row.")
+        values = self._action_values_from_u_jit(jnp.asarray(u_array, dtype=jnp.float64))
+        return np.asarray(values, dtype=float)
+
+    def _value_batch_many(self, x_batch: np.ndarray | PreparedGLMBatch, u_matrix: np.ndarray) -> np.ndarray:
+        """Return raw per-row objective values for multiple supplied action vectors."""
+        self._validate_fixed_batch(x_batch)
+        u_arr = np.asarray(u_matrix, dtype=float)
+        if u_arr.ndim != 2 or u_arr.shape[1] != self.x_array.shape[0]:
+            raise ValueError("u_matrix must have shape (n_evaluations, n_rows).")
+        values = self._action_values_from_u_many_jit(jnp.asarray(u_arr, dtype=jnp.float64))
+        return np.asarray(values, dtype=float)
+
     def _validate_fixed_batch(self, x_batch: np.ndarray | PreparedGLMBatch) -> None:
         x_arr = _prepared_x_array(x_batch)
         if x_arr.shape != self.x_array.shape:
@@ -333,7 +405,8 @@ class JaxPreparedGLMObjective(Objective):
         return self._acceptance_at_u_array(u_arr)
 
     def _acceptance_at_u_array(self, u_arr: np.ndarray) -> np.ndarray:
-        class1 = _sigmoid(self._base_logit_np + self.u_coef * np.asarray(u_arr, dtype=float))
+        u_clipped = self._clip_u(u_arr)
+        class1 = _sigmoid(self._base_logit_np + self.u_coef * u_clipped)
         if self.probability_target == "acceptance":
             return class1
         return 1.0 - class1

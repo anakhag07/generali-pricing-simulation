@@ -33,7 +33,7 @@ RUN_CONFIGS: list[str | tuple[str, dict[str, Any]]] = [
             "test_fraction": 0.2,
             "n_grad_samples": 8,
             "t_steps": 100,
-            "enabled_estimators": ("first_order",),
+            "enabled_estimators": ("first_order", "finite_difference", "stein_difference"),
             "wandb_enabled": False,
             "wandb_project": "jax-move-scipy-opt-demo",
             "compute_backend": "jax",

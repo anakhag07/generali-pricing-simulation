@@ -159,9 +159,9 @@ Guidelines:
   - `prepare_glm_batch(...)` / `prepare_glm_objective(...)`: materialize a GLM-backed `ModelBasedObjective` after artifact preprocessing has run once
 
 - **`src/objective/objectives/jax_prepared_glm.py`**
-  - `JaxPreparedGLMObjective`: fixed-batch JAX version of the prepared GLM objective for SciPy callback use; transfers prepared arrays to device once and exposes NumPy-returning `value()`, `grad()`, `mean_acceptance()`, and `mean_acceptance_grad()` methods
+  - `JaxPreparedGLMObjective`: fixed-batch JAX version of the prepared GLM objective for SciPy callback use; transfers prepared arrays to device once and exposes NumPy-returning `value()`, `grad()`, value-only action hooks, `mean_acceptance()`, and `mean_acceptance_grad()` methods
   - `JaxPreparedGLMScipyAdapter`: explicit callback adapter with objective, gradient, constraint-margin, and constraint-Jacobian shapes for validation/benchmarking
-  - `prepare_jax_glm_objective(...)`: materializes a GLM-backed `ModelBasedObjective` into a JAX objective after CPU artifact preprocessing; currently supports full-batch first-order GLM trust-constr runs with constant/linear/softmax identity-feature policies
+  - `prepare_jax_glm_objective(...)`: materializes a GLM-backed `ModelBasedObjective` into a JAX objective after CPU artifact preprocessing; currently supports fixed full-batch first-order and zeroth-order GLM trust-constr runs with constant/linear/softmax identity-feature policies
 
 - **`src/objective/objectives/planted_logistic.py`**
   - `PlantedLogisticObjective`: convex logistic objective with known optimum `u_star`
@@ -263,7 +263,7 @@ Guidelines:
 - **`src/experiments/config.py`**
   - `ExperimentConfig`: frozen dataclass with extensive `__post_init__` validation
   - Primary fields: `objective` (theta objective) and `theta0` (initial theta)
-  - `compute_backend`: `"numpy"` by default; `"jax"` keeps SciPy `trust-constr` as the optimizer but swaps first-order GLM training callbacks to the fixed-batch JAX prepared objective for parity/speed experiments
+  - `compute_backend`: `"numpy"` by default; `"jax"` keeps SciPy `trust-constr` as the optimizer but swaps GLM training callbacks to the fixed-batch JAX prepared objective for parity/speed experiments across `first_order`, `finite_difference`, `gauss_stein`, `spsa`, and `stein_difference`; JAX runs require `batch_size=None`
   - `x_fixed: np.ndarray | None = None`: when set, runner uses this 2D array as state batch instead of sampling from N(0, I)
   - `x_fixed_row_indices: np.ndarray | None = None`: source acceptance-CSV row positions for `x_fixed`; real-data configs pass this so observed-`U` reporting uses the same selected rows
   - `train_fraction` / `test_fraction`: deterministic run-level split fractions over selected rows; they must sum to `1.0`, `train_fraction` must be positive, and optimizers fit on train rows only
@@ -284,7 +284,7 @@ Guidelines:
   - `fixed_regression_base.py`: base fixed-regression config (4D, L-BFGS-B step rule, W&B enabled)
   - `planted_logistic_base.py`: planted logistic base config (3D, L-BFGS-B step rule, 5000 steps, u*=1.1)
   - `real_data_glm_base`: registry-only base built by `real_data_factory.py`; supports `policy_kind`, `feature_order`, `policy_preprocessing`, `constraint_mode`, GLM acceptance `u_coef`, runtime, and estimator overrides
-    - `compute_backend="jax"` keeps `step_rule="trust-constr"` and swaps first-order GLM training callbacks to the fixed-batch JAX prepared objective; use only with `enabled_estimators=("first_order",)` and identity/linear feature maps in the initial backend
+    - `compute_backend="jax"` keeps `step_rule="trust-constr"` and swaps supported GLM training callbacks to the fixed-batch JAX prepared objective; use with identity/linear feature maps and supported estimators `first_order`, `finite_difference`, `gauss_stein`, `spsa`, and `stein_difference`
   - `real_data_xgb_base`: registry-only base built by `real_data_factory.py`; supports the same override axes, with XGB defaults excluding `first_order`
   - `config_template.py`: copy-first scaffold with `None` placeholders for all `ExperimentConfig` fields plus objective/correctness parameter blocks; not registered as a runnable preset
 
@@ -399,6 +399,7 @@ Guidelines:
 - `scripts/evaluate_historical_policy_objective.py` reads a saved run `summary.json`, reconstructs selected CSV row positions from full-eligible mode or seed/`n_samples`, prints the estimator theta used, and evaluates final policy prices under historical acceptance `1 - is_churn` and observed `Y_G_Loss`; writes aggregate `summary.json` and row-level `per_row.csv` under `historical_policy_objective/<estimator>/`
   - Prefer `--policy-artifact outputs/.../policies/<estimator>/policy.json` for new runs; `--summary-json` remains a legacy fallback for outputs created before policy artifacts existed
   - Supports `--objective model` to replay the trained model objective and `--objective historical` for the observed-outcome diagnostic; both support `--split train|test|all`, where `all` means all selected run rows before splitting
+- `scripts/diagnose_stein_backend_divergence.py` compares NumPy vs JAX GLM Stein-difference behavior from two saved summaries that differ only by `compute_backend`; uses the existing optimizer seed, replays fixed perturbation blocks at `theta0` and saved final thetas, optionally reruns instrumented trust-constr traces, and writes fixed-probe/optimizer-event CSVs plus a diagnostic summary under `outputs/backend-divergence/`
 - `scripts/plot_glm_data_tsne.py` samples rows from the GLM real-data CSV, runs a standardized t-SNE/KMeans feature diagnostic, and writes embedding CSV plus color-by-feature plots under `outputs/data-tsne/`
 - `scripts/run_policy_pca_grid.py` runs the GLM policy PCA-dimensionality grid over configured PCA dimensions and policy classes `(constant, linear, quadratic, third_order, fourth_order, softmax_linear, softmax_quadratic, softmax_third_order, softmax_fourth_order, mlp)`; unconstrained is default, `--constrained` uses `trust-constr` with the observed GLM acceptance floor and a 500-step default cap; outputs aggregate CSVs, summary markdown, and headline/spread plots under `outputs/policy-pca-grid/`; prints per-condition progress by default and supports `--quiet`
 - `scripts/benchmark_experiment_speed.py` benchmarks GLM analytical acceptance vs sklearn `predict_proba`, Stein-difference gradient timing/call counts, repeated objective-cache behavior, and full-vs-subsampled contour grid timing; use it to quantify whether performance changes speed up real-data diagnostics without relying on flaky pytest time thresholds
@@ -440,7 +441,7 @@ when appropriate.
 | `test_objective_package_exports.py` | objective package API exports remain importable |
 | `test_planted_logistic_objective.py` | Planted logistic gradient at u_star and minimum |
 | `test_model_based_objective.py` | `value()`, `grad()` shape, `value_at_u()`, analytical vs FD grad agreement |
-| `test_jax_prepared_glm_objective.py` | JAX prepared GLM value, gradient, policy-u, acceptance, and SciPy adapter parity |
+| `test_jax_prepared_glm_objective.py` | JAX prepared GLM value, per-row action-value hooks, gradient, policy-u, acceptance, and SciPy adapter parity |
 | `test_policy_batch.py` | Policy batch `value/grad` shapes, bounds, and kind labels (incl. `MLPPolicy`) |
 | `test_mlp_policy_grad.py` | `MLPPolicy.grad` matches per-coordinate FD Jacobian; `mlp_init_theta` symmetry-breaking |
 | `test_policy_preprocessing.py` | Policy-side standardization, whitening, PCA dimensionality, and transform validation |
@@ -459,7 +460,7 @@ when appropriate.
 | `test_minimize_orders.py` | SciPy first/Gauss-Stein/Stein-difference/SPSA wrappers |
 | `test_early_stopping.py` | grad_norm_tol early stopping |
 | `test_trust_constr_constraint.py` | Trust-region constraint acceptance floor |
-| `test_jax_trust_constr_callbacks.py` | JAX prepared GLM callbacks match CPU prepared GLM under SciPy trust-constr |
+| `test_jax_trust_constr_callbacks.py` | JAX prepared GLM callbacks and zeroth-order gradients match CPU prepared GLM under SciPy trust-constr |
 
 #### `tests/data/`
 | Test File | Area |
@@ -491,6 +492,7 @@ when appropriate.
 | `test_plot_glm_sensitivity_distribution_script.py` | GLM elasticity distribution script summaries and plot outputs |
 | `test_reference_elasticity_bucket_script.py` | Reference-u GLM elasticity bucket script constants and plot outputs |
 | `test_policy_pca_grid.py` | Policy PCA grid condition construction and aggregate output writing |
+| `test_stein_backend_divergence_script.py` | Stein backend-divergence diagnostic fixed-sample gradients and trace comparison helpers |
 
 #### `tests/reporting/`
 | Test File | Area |

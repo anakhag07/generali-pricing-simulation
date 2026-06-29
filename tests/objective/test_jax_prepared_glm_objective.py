@@ -60,6 +60,25 @@ def test_jax_prepared_glm_matches_model_based_and_numpy_prepared() -> None:
     assert jax_objective.value_at_u(jax_batch.x_array, 0.02) == pytest.approx(
         objective.value_at_u(x, 0.02), rel=1e-10
     )
+    u_arr = np.linspace(-0.05, 0.08, x.shape[0])
+    np.testing.assert_allclose(
+        jax_objective._value_batch(jax_batch.x_array, u_arr),
+        objective._value_batch(x, u_arr),
+        rtol=1e-10,
+    )
+    u_matrix = np.vstack([u_arr, u_arr + 0.01])
+    np.testing.assert_allclose(
+        jax_objective._value_batch_many(jax_batch.x_array, u_matrix),
+        np.vstack([objective._value_batch(x, u_row) for u_row in u_matrix]),
+        rtol=1e-10,
+    )
+    weights = np.linspace(-0.25, 0.5, x.shape[0])
+    np.testing.assert_allclose(
+        jax_objective.policy_weighted_grad(theta, jax_batch.x_array, weights),
+        prepared.policy_weighted_grad(theta, batch.x_array, weights),
+        rtol=1e-10,
+        atol=1e-10,
+    )
     np.testing.assert_allclose(jax_objective.grad(theta, jax_batch.x_array), objective.grad(theta, x), rtol=1e-9, atol=1e-8)
     np.testing.assert_allclose(
         jax_objective.mean_acceptance_grad(theta, jax_batch.x_array),

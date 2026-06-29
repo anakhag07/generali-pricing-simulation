@@ -780,6 +780,18 @@ def test_compute_backend_validation() -> None:
             compute_backend="jax",
         )
 
+    with pytest.raises(ValueError, match="batch_size=None"):
+        ExperimentConfig(
+            state_dim=1,
+            objective=objective,
+            theta0=default_theta0(1),
+            n_samples=5,
+            step_rule="trust-constr",
+            perturbation_space="theta",
+            compute_backend="jax",
+            batch_size=2,
+        )
+
 
 def test_grad_norm_tol_validation() -> None:
     policy = SoftmaxPolicy()

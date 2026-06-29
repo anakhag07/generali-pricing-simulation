@@ -129,7 +129,7 @@ Guidelines:
 
 - **`src/objective/base.py`**
   - `sample_states(rng, n, dim)`: sample n state vectors from N(0, I), returns (n, dim) array
-  - `Policy`: batch-only policy interface (`value`, `grad`) operating on 2D arrays
+  - `Policy`: batch-only policy interface (`value`, `grad`, `weighted_grad`) operating on 2D arrays; `weighted_grad` is the VJP-style fast path for `sum_i weights_i * d pi_theta(x_i)/dtheta`
   - `Objective`: theta-space interface class (`value`, `grad`)
   - `default_rng(seed)`: wrapper around `np.random.default_rng`
 
@@ -153,12 +153,17 @@ Guidelines:
   - `loss_source="observed"` keeps model-predicted acceptance but replaces the loss-model prediction with row-aligned historical `Y_G_Loss` carried on the real-data `x_fixed` DataFrame
   - `value()`, `grad()`, `value_at_u()`
 
+- **`src/objective/objectives/prepared_glm.py`**
+  - `PreparedGLMBatch`: compact numeric GLM batch with columns `[base_logit, loss, premium, policy_features...]`
+  - `PreparedGLMObjective`: pure NumPy GLM objective over prepared batches; no pandas/sklearn calls in the hot path
+  - `prepare_glm_batch(...)` / `prepare_glm_objective(...)`: materialize a GLM-backed `ModelBasedObjective` after artifact preprocessing has run once
+
 - **`src/objective/objectives/planted_logistic.py`**
   - `PlantedLogisticObjective`: convex logistic objective with known optimum `u_star`
   - `optimal_u()` method exposes the planted optimum
 
 - **`src/objective/policy.py`**
-  - Implements `Policy` with batch methods `value(theta, x_batch)` and `grad(theta, x_batch)`
+  - Implements `Policy` with batch methods `value(theta, x_batch)`, `grad(theta, x_batch)`, and `weighted_grad(theta, x_batch, weights)`
   - Feature-map classes: `IdentityFeatureMap`, `QuadraticFeatureMap`, `CubicFeatureMap`, `QuarticFeatureMap`, `CallableFeatureMap`; policies prepend the intercept internally, so custom maps return `varphi(x)`, not `[1, varphi(x)]`
   - `policy_theta_dim(policy, state_dim)`: helper for resolving theta dimension from the policy feature map
   - Concrete policies: `ConstantPolicy`, `LinearPolicy`, `SoftmaxPolicy`, `MLPPolicy`, `FeatureProcessedPolicy`

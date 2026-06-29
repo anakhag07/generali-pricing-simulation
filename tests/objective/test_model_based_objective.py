@@ -360,16 +360,19 @@ def test_x_batch_must_be_2d():
 def test_policy_hooks_use_acceptance_preprocessor() -> None:
     obj, x, _ = _make_glm_objective(n_rows=5)
     theta = np.zeros(obj.policy_theta_dim(), dtype=float)
+    weights = np.linspace(-0.5, 0.5, x.shape[0], dtype=float)
 
     processed = obj._policy_features(x)
     direct_u = obj.policy.value(theta, processed)
     hook_u = obj.policy_value(theta, x)
     hook_grad = obj.policy_grad(theta, x)
     direct_grad = obj.policy.grad(theta, processed)
+    hook_weighted_grad = obj.policy_weighted_grad(theta, x, weights)
 
     assert processed.shape[1] == obj.acceptance_model.policy_feature_dim()
     assert np.allclose(hook_u, direct_u)
     assert np.allclose(hook_grad, direct_grad)
+    np.testing.assert_allclose(hook_weighted_grad, weights @ direct_grad)
 
 
 def test_policy_hooks_can_use_independent_policy_preprocessor() -> None:

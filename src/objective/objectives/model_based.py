@@ -156,7 +156,9 @@ class ModelBasedObjective(Objective):
             theta_arr = np.asarray(theta, dtype=float)
             u_batch = self._clip_u(self.policy_value(theta_arr, x_batch))
             acceptance = self._acceptance_proba(x_batch, u_batch)
-            base_value = self._mean_base_value(x_batch, u_batch)
+            loss = self._loss_prediction(x_batch)
+            premium = self._premium_values(x_batch)
+            base_value = float(np.mean(self._value_batch_from_components(acceptance, loss, premium, u_batch)))
             penalty_value, _ = self._acceptance_penalty(acceptance)
             lagrangian_value, _ = self._lagrangian_adjustment(acceptance)
             return base_value + penalty_value + lagrangian_value
@@ -176,13 +178,13 @@ class ModelBasedObjective(Objective):
         theta_arr = np.asarray(theta, dtype=float)
         u_raw = self.policy_value(theta_arr, x_batch)
         u_clipped = self._clip_u(u_raw)
-        grad_u = self._grad_u_batch(x_batch, u_clipped)
+        acceptance = self._acceptance_proba(x_batch, u_clipped)
+        grad_u = self._grad_u_batch(x_batch, u_clipped, acceptance=acceptance)
         # Zero gradient for samples where u was clipped (subgradient)
         if self.u_bounds is not None:
             interior = (u_raw > self.u_bounds[0]) & (u_raw < self.u_bounds[1])
             grad_u = grad_u * interior
         grad_theta = _theta_grad_from_u_grad(self, theta_arr, x_batch, grad_u)
-        acceptance = self._acceptance_proba(x_batch, u_clipped)
         penalty_value, penalty_scale = self._acceptance_penalty(acceptance)
         del penalty_value
         lagrangian_value, lagrangian_scale = self._lagrangian_adjustment(acceptance)
@@ -200,6 +202,20 @@ class ModelBasedObjective(Objective):
         """Evaluate policy Jacobians on acceptance-preprocessed features from raw state."""
         theta_arr = np.asarray(theta, dtype=float)
         return np.asarray(self.policy.grad(theta_arr, self._policy_features(x_batch)), dtype=float)
+
+    def policy_weighted_grad(
+        self,
+        theta: np.ndarray,
+        x_batch: np.ndarray,
+        weights: np.ndarray,
+    ) -> np.ndarray:
+        """Evaluate weighted policy-gradient sum on acceptance-preprocessed features."""
+        theta_arr = np.asarray(theta, dtype=float)
+        weights_arr = np.asarray(weights, dtype=float)
+        return np.asarray(
+            self.policy.weighted_grad(theta_arr, self._policy_features(x_batch), weights_arr),
+            dtype=float,
+        )
 
     def policy_input_dim(self) -> int:
         """Return the processed state dimension seen by the policy."""
@@ -226,7 +242,9 @@ class ModelBasedObjective(Objective):
             u_val = float(np.clip(u_val, *self.u_bounds))
         u_arr = np.full(self._row_count(x_batch), u_val, dtype=float)
         acceptance = self._acceptance_proba(x_batch, u_arr)
-        base_value = self._mean_base_value(x_batch, u_arr)
+        loss = self._loss_prediction(x_batch)
+        premium = self._premium_values(x_batch)
+        base_value = float(np.mean(self._value_batch_from_components(acceptance, loss, premium, u_arr)))
         penalty_value, _ = self._acceptance_penalty(acceptance)
         lagrangian_value, _ = self._lagrangian_adjustment(acceptance)
         return base_value + penalty_value + lagrangian_value
@@ -486,12 +504,32 @@ class ModelBasedObjective(Objective):
         acceptance = self._acceptance_proba(x_batch, u_arr)
         loss = self._loss_prediction(x_batch)
         premium = self._premium_values(x_batch)
+        return self._value_batch_from_components(acceptance, loss, premium, u_arr)
+
+    def _value_batch_from_components(
+        self,
+        acceptance: np.ndarray,
+        loss: np.ndarray,
+        premium: np.ndarray,
+        u_arr: np.ndarray,
+    ) -> np.ndarray:
+        """Compute per-sample objective values from already materialized components."""
         revenue = (u_arr + 1.0) * premium
         return acceptance * (loss - revenue)
 
-    def _d_acceptance_du_batch(self, x_batch: Any, u_arr: np.ndarray) -> np.ndarray:
+    def _d_acceptance_du_batch(
+        self,
+        x_batch: Any,
+        u_arr: np.ndarray,
+        *,
+        acceptance: np.ndarray | None = None,
+    ) -> np.ndarray:
         """Compute d acceptance / du for each sample."""
-        acceptance = self._acceptance_proba(x_batch, u_arr)
+        acceptance_arr = (
+            np.asarray(acceptance, dtype=float)
+            if acceptance is not None
+            else self._acceptance_proba(x_batch, u_arr)
+        )
         u_coef = self.u_coef
         probability_target = getattr(self.acceptance_model, "probability_target", "acceptance")
         if u_coef is None:
@@ -501,7 +539,7 @@ class ModelBasedObjective(Objective):
                 probability_target = coeffs.get("probability_target", probability_target)
         if u_coef is not None:
             sign = 1.0 if probability_target == "acceptance" else -1.0
-            return sign * acceptance * (1.0 - acceptance) * u_coef
+            return sign * acceptance_arr * (1.0 - acceptance_arr) * u_coef
         eps = self._fd_eps
         a_plus = self._acceptance_proba(x_batch, u_arr + eps)
         a_minus = self._acceptance_proba(x_batch, u_arr - eps)
@@ -535,15 +573,25 @@ class ModelBasedObjective(Objective):
         value = lambda_value * (float(self.acceptance_floor) - mean_acceptance)
         return value, -lambda_value
 
-    def _grad_u_batch(self, x_batch: Any, u_arr: np.ndarray) -> np.ndarray:
+    def _grad_u_batch(
+        self,
+        x_batch: Any,
+        u_arr: np.ndarray,
+        *,
+        acceptance: np.ndarray | None = None,
+    ) -> np.ndarray:
         """Compute df/du for each sample."""
-        acceptance = self._acceptance_proba(x_batch, u_arr)
+        acceptance_arr = (
+            np.asarray(acceptance, dtype=float)
+            if acceptance is not None
+            else self._acceptance_proba(x_batch, u_arr)
+        )
         loss = self._loss_prediction(x_batch)
         premium = self._premium_values(x_batch)
         revenue = (u_arr + 1.0) * premium
 
-        d_acceptance_du = self._d_acceptance_du_batch(x_batch, u_arr)
-        return d_acceptance_du * (loss - revenue) - acceptance * premium
+        d_acceptance_du = self._d_acceptance_du_batch(x_batch, u_arr, acceptance=acceptance_arr)
+        return d_acceptance_du * (loss - revenue) - acceptance_arr * premium
 
 
 __all__ = ["ModelBasedObjective"]

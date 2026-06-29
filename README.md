@@ -39,7 +39,7 @@ J(\theta) = \mathbb{E}_x\big[f(\pi_\theta(x); x)\big]
 $$
 
 Pluggable components:
-- **Objectives**: `FixedRegressionObjective`, `PlantedLogisticObjective`, `ModelBasedObjective`
+- **Objectives**: `FixedRegressionObjective`, `PlantedLogisticObjective`, `ModelBasedObjective`, `PreparedGLMObjective`
 - **Policies**: `ConstantPolicy`, `LinearPolicy`, `SoftmaxPolicy`, `MLPPolicy` (2-layer, default hidden=16)
 - **Gradient estimators**: `constant`, `first_order`, `finite_difference`, `gauss_stein`, `stein_difference`, `spsa`
 
@@ -75,6 +75,9 @@ that uses `2 * dim(theta)` objective evaluations per gradient call.
 Core API convention:
 - `sample_states(rng, n, dim)` produces state batches with shape `(n, dim)`.
 - `Policy.value/grad` and `Objective.value/grad` operate on 2D `x_batch` arrays.
+- `Policy.weighted_grad(theta, x_batch, weights)` is the preferred VJP-style
+  path for chain-rule gradients because it avoids materializing full
+  `(n_samples, theta_dim)` policy Jacobians.
 
 Optimization step rules:
 - `l-bfgs-b` uses `scipy.minimize(method="L-BFGS-B")`.
@@ -160,6 +163,10 @@ For GLM/linear artifacts, extractable first-fold coefficients are used for
 array-native acceptance and loss predictions, avoiding repeated sklearn
 prediction calls in value-query gradient estimators. XGBoost and unsupported
 artifacts fall back to their bundled estimator prediction methods.
+`PreparedGLMObjective` can further move the GLM hot path onto a compact numeric
+batch with columns `[base_logit, loss, premium, policy_features...]`. Use
+`prepare_glm_objective(model_based_objective, x_frame)` to materialize the
+numeric objective/batch pair after raw pandas/artifact preprocessing has run once.
 For policy-feature experiments, `ModelBasedObjective` can instead take a
 separate fitted policy-side preprocessor. In that mode the policy sees the
 configured policy features, while the sealed acceptance and loss model paths

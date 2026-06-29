@@ -5,11 +5,15 @@ import numpy as np
 from objective import (
     ConstantPolicy,
     CubicFeatureMap,
+    PreparedGLMBatch,
+    PreparedGLMObjective,
     QuadraticFeatureMap,
     QuarticFeatureMap,
     PlantedLogisticObjective,
     default_rng,
     mean_acceptance_at_constant_u,
+    prepare_glm_batch,
+    prepare_glm_objective,
     sample_states,
     value_at_constant_u,
     value_for_reporting,
@@ -47,3 +51,7 @@ def test_objective_package_exports_are_importable() -> None:
     assert isinstance(value_at_constant_u(objective, x_batch, u=1.0), float)
     assert isinstance(value_for_reporting(objective, theta, x_batch), float)
     assert mean_acceptance_at_constant_u(objective, x_batch, u=1.0) is None
+    assert PreparedGLMBatch is not None
+    assert PreparedGLMObjective is not None
+    assert prepare_glm_batch is not None
+    assert prepare_glm_objective is not None

@@ -18,7 +18,7 @@ from objective.objectives.prepared_glm import (
     _prepared_x_array,
     prepare_glm_batch,
 )
-from objective.policy import ConstantPolicy, IdentityFeatureMap, LinearPolicy, SoftmaxPolicy
+from objective.policy import ConstantPolicy, LinearPolicy, SoftmaxPolicy
 
 jax.config.update("jax_enable_x64", True)
 
@@ -456,29 +456,46 @@ def _policy_backend_spec(policy: Policy) -> tuple[str, float, float]:
     if isinstance(policy, ConstantPolicy):
         return "constant", 0.0, 0.0
     if isinstance(policy, LinearPolicy):
-        _validate_identity_feature_map(policy)
         return "linear", 0.0, 0.0
     if isinstance(policy, SoftmaxPolicy):
-        _validate_identity_feature_map(policy)
         return "softmax", float(policy.action_low), float(policy.action_span)
     raise ValueError("JAX prepared GLM backend currently supports constant, linear, and softmax policies.")
 
 
 def _policy_design_matrix(policy: Policy, features: np.ndarray) -> np.ndarray | None:
     features_arr = np.asarray(features, dtype=float)
+    if features_arr.ndim != 2:
+        raise ValueError("prepared policy features must be a 2D array.")
+    if not np.isfinite(features_arr).all():
+        raise ValueError("prepared policy features must be finite.")
     if isinstance(policy, ConstantPolicy):
         return None
     if isinstance(policy, (LinearPolicy, SoftmaxPolicy)):
-        _validate_identity_feature_map(policy)
+        feature_map = getattr(policy, "feature_map", None)
+        transform = getattr(feature_map, "transform", None)
+        if not callable(transform):
+            raise ValueError(
+                "JAX prepared GLM linear/softmax policies require a materializable feature_map."
+            )
+        mapped = np.asarray(transform(features_arr), dtype=float)
+        if mapped.ndim != 2:
+            raise ValueError("policy feature_map must return a 2D array.")
+        if mapped.shape[0] != features_arr.shape[0]:
+            raise ValueError("policy feature_map must preserve the prepared batch row count.")
+        if not np.isfinite(mapped).all():
+            raise ValueError("policy feature_map must return finite values.")
         ones = np.ones((features_arr.shape[0], 1), dtype=float)
-        return np.concatenate([ones, features_arr], axis=1)
+        design = np.concatenate([ones, mapped], axis=1)
+        theta_dim_fn = getattr(policy, "theta_dim", None)
+        if callable(theta_dim_fn):
+            expected_dim = int(theta_dim_fn(features_arr.shape[1]))
+            if design.shape[1] != expected_dim:
+                raise ValueError(
+                    f"policy feature_map produced design width {design.shape[1]}; "
+                    f"policy theta_dim expects {expected_dim}."
+                )
+        return design
     raise ValueError("JAX prepared GLM backend currently supports constant, linear, and softmax policies.")
-
-
-def _validate_identity_feature_map(policy: Policy) -> None:
-    feature_map = getattr(policy, "feature_map", None)
-    if not isinstance(feature_map, IdentityFeatureMap):
-        raise ValueError("JAX prepared GLM backend currently supports only identity/linear feature maps.")
 
 
 __all__ = [

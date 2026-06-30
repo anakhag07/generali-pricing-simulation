@@ -306,6 +306,11 @@ Guidelines:
   - `run_experiment(config, step_reporter)`: main runner; uses `config.x_fixed` as state array when set, otherwise samples from N(0, I); applies the train/test split after row selection/sampling; runs enabled estimators on train rows; evaluates final policies on train and optional test rows; returns `ExperimentResult` (pure computation, no I/O)
   - `enabled_estimators` may include `"constant"`, which optimizes a one-scalar `ConstantPolicy` copy of the configured objective; `constant_u_baselines` remains fixed-action evaluation only
 
+- **`src/experiments/slurm.py`**
+  - ORCD Slurm launcher helpers for `main.py`; lightweight `RUN_CONFIGS` inspection selects a CPU or GPU profile before expensive config/data loading
+  - NumPy-only runs auto-submit to `mit_normal` with CPU/memory/time resources; any explicit `compute_backend="jax"` run auto-submits to `mit_normal_gpu` with `--gres=gpu:l40s:1`
+  - Slurm logs go under `outputs/slurm/%x-%j.out`; child jobs rerun `python main.py --no-sbatch`, activate `simulation_env`, and require JAX GPU availability for JAX configs
+
 - **`src/experiments/sweep_utils.py`**
   - `expand_override_grid(...)`: cartesian product of override values
   - `apply_config_overrides(...)`: validates and applies top-level `ExperimentConfig` overrides
@@ -381,6 +386,8 @@ Guidelines:
 ### Entry Point (`main.py`)
 
 - Reads `RUN_CONFIGS` list; entries may be a config name or `(config_name, overrides)` tuple passed to `get_config(config_name, overrides=overrides)`
+- Before resolving full configs, auto-submits itself through `src/experiments/slurm.py` when not already inside Slurm; use `--no-sbatch` only for intentional local/debug execution
+- CPU-only specs submit to ORCD `mit_normal`; specs with `compute_backend="jax"` submit to `mit_normal_gpu` with one L40S GPU and fail fast if JAX reports only CPU in the child job
 - For each config spec: creates `RunContext`, assembles `ReporterStack`, calls `run_experiment()`, finalizes with `reporters.on_end()`
 - All I/O is handled by reporters, not by the runner
 - `scripts/run_sweep.py` provides optional preset-based sweep execution using top-level and real-data factory overrides
@@ -401,6 +408,7 @@ Guidelines:
   - Supports `--objective model` to replay the trained model objective and `--objective historical` for the observed-outcome diagnostic; both support `--split train|test|all`, where `all` means all selected run rows before splitting
   - `--u-source historical --acceptance-source historical|model --technical-price-source historical|model` runs script-only historical-`U` diagnostics without optimized policy actions; `--model-type glm|xgb` selects deterministic complete eligible rows unless `--summary-json` is supplied to reuse a saved run sample; `--acceptance-model-historical-u` is a shortcut for model acceptance plus historical technical price
 - `scripts/diagnose_stein_backend_divergence.py` compares NumPy vs JAX GLM Stein-difference behavior from two saved summaries that differ only by `compute_backend`; uses the existing optimizer seed, replays fixed perturbation blocks at `theta0` and saved final thetas, optionally reruns instrumented trust-constr traces, and writes fixed-probe/optimizer-event CSVs plus a diagnostic summary under `outputs/backend-divergence/`
+- `scripts/strict_stein_backend_verification.py` runs one backend as the only SciPy trust-constr driver while evaluating the peer backend at every identical theta and Stein perturbation block; use it to verify backend formula parity independently of two-run trust-region/RNG path divergence
 - `scripts/plot_glm_data_tsne.py` samples rows from the GLM real-data CSV, runs a standardized t-SNE/KMeans feature diagnostic, and writes embedding CSV plus color-by-feature plots under `outputs/data-tsne/`
 - `scripts/run_policy_pca_grid.py` runs the GLM policy PCA-dimensionality grid over configured PCA dimensions and policy classes `(constant, linear, quadratic, third_order, fourth_order, softmax_linear, softmax_quadratic, softmax_third_order, softmax_fourth_order, mlp)`; unconstrained is default, `--constrained` uses `trust-constr` with the observed GLM acceptance floor and a 500-step default cap; outputs aggregate CSVs, summary markdown, and headline/spread plots under `outputs/policy-pca-grid/`; prints per-condition progress by default and supports `--quiet`
 - `scripts/benchmark_experiment_speed.py` benchmarks GLM analytical acceptance vs sklearn `predict_proba`, Stein-difference gradient timing/call counts, repeated objective-cache behavior, and full-vs-subsampled contour grid timing; use it to quantify whether performance changes speed up real-data diagnostics without relying on flaky pytest time thresholds
@@ -483,6 +491,7 @@ when appropriate.
 | `test_verbose_config.py` | verbose flag defaults and serialization |
 | `test_baseline_test.py` | End-to-end smoke test with fixed_regression_base overrides |
 | `test_run_context.py` | default output directory and run context paths |
+| `test_slurm_launcher.py` | ORCD Slurm profile selection, command construction, autosubmit skips, and JAX GPU preflight |
 | `test_train_test_split.py` | Runner train/test split, held-out policy metrics, and summary payloads |
 | `test_seeding.py` | Seed setup serialization, data/split/theta stream routing, estimator-order independence |
 | `test_seed_repeats.py` | Seed-repeat setup construction and aggregate CSV outputs |
@@ -494,6 +503,7 @@ when appropriate.
 | `test_reference_elasticity_bucket_script.py` | Reference-u GLM elasticity bucket script constants and plot outputs |
 | `test_policy_pca_grid.py` | Policy PCA grid condition construction and aggregate output writing |
 | `test_stein_backend_divergence_script.py` | Stein backend-divergence diagnostic fixed-sample gradients and trace comparison helpers |
+| `test_strict_stein_backend_verification_script.py` | Strict single-driver Stein backend verification summary and failure detection helpers |
 
 #### `tests/reporting/`
 | Test File | Area |

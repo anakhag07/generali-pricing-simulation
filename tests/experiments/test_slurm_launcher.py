@@ -27,6 +27,10 @@ def _wrap_arg(command: list[str] | tuple[str, ...]) -> str:
     return next(part for part in command if part.startswith("--wrap="))
 
 
+def _expected_pythonpath_export(tmp_path) -> str:
+    return f"export PYTHONPATH={tmp_path / 'src'}${{PYTHONPATH:+:$PYTHONPATH}}"
+
+
 def test_run_specs_require_jax_from_overrides() -> None:
     specs = [
         "fixed_regression_base",
@@ -46,6 +50,7 @@ def test_build_sbatch_command_uses_gpu_profile_for_jax(tmp_path) -> None:
     assert "--job-name=generali-jax" in command
     assert "--output=outputs/slurm/%x-%j.out" in command
     assert f"--chdir={tmp_path}" in command
+    assert _expected_pythonpath_export(tmp_path) in wrap
     assert "JAX_PLATFORM_NAME=gpu" in wrap
     assert "python main.py --no-sbatch" in wrap
 
@@ -56,6 +61,7 @@ def test_build_sbatch_command_uses_cpu_profile_without_gpu(tmp_path) -> None:
 
     assert "--partition=mit_normal" in command
     assert "--job-name=generali-cpu" in command
+    assert _expected_pythonpath_export(tmp_path) in wrap
     assert not any(part.startswith("--gres=") for part in command)
     assert "JAX_PLATFORM_NAME" not in wrap
 

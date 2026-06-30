@@ -3,9 +3,15 @@
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 import sys
 from types import SimpleNamespace
 from typing import Any
+
+_REPO_ROOT = Path(__file__).resolve().parent
+_SRC_PATH = _REPO_ROOT / "src"
+if str(_SRC_PATH) not in sys.path:
+    sys.path.insert(0, str(_SRC_PATH))
 
 from experiments.configs import get_config
 from experiments.reporters import (
@@ -33,7 +39,7 @@ RUN_CONFIGS: list[str | tuple[str, dict[str, Any]]] = [
             "softmax_action_bounds": (-0.1, 0.2),
             "initial_u": 0.0,
             "policy_preprocessing": "no_pca",
-            "feature_order": "linear",
+            "feature_order": "cubic",
             "constraint_mode": "trust_constr",
             # "n_samples": 700000,
             "n_samples": None, 
@@ -43,8 +49,8 @@ RUN_CONFIGS: list[str | tuple[str, dict[str, Any]]] = [
             "t_steps": 100,
             "enabled_estimators": ("first_order", "finite_difference", "stein_difference"),
             "wandb_enabled": False,
-            "wandb_project": "cpu-move-scipy-opt-demo",
-            "compute_backend": "cpu",
+            "wandb_project": "jax`-move-scipy-opt-demo",
+            "compute_backend": "jax",
             "seed": 8,
         },
     )
@@ -81,6 +87,7 @@ def main(argv: list[str] | None = None) -> None:
         requires_jax=requires_jax,
         no_sbatch=args.no_sbatch,
         argv=original_argv,
+        cwd=_REPO_ROOT,
     )
     if submission is not None:
         print(

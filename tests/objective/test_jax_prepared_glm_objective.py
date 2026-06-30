@@ -8,7 +8,9 @@ import numpy as np
 import pytest
 
 jax = pytest.importorskip("jax")
+import jax.numpy as jnp  # noqa: E402
 
+import objective.objectives.jax_prepared_glm as jax_glm  # noqa: E402
 from data.loader import (  # noqa: E402
     ACCEPTANCE_STATE_COLS,
     LOSS_FEATURE_COLS,
@@ -228,6 +230,71 @@ def test_jax_prepared_glm_feature_maps_match_numpy_prepared(policy) -> None:
         rtol=1e-9,
         atol=1e-9,
     )
+
+
+def test_jax_prepared_glm_kernels_take_design_runtime_argument() -> None:
+    batch = _synthetic_prepared_batch()
+    policy = LinearPolicy(feature_map=QuadraticFeatureMap())
+    objective = JaxPreparedGLMObjective(
+        policy=policy,
+        x_array=batch.x_array,
+        u_coef=batch.u_coef,
+    )
+    theta = _theta_for_policy(policy, batch.policy_feature_dim)
+    theta_jax = objective._theta_key_and_jax(theta)[1]
+
+    baseline = np.asarray(
+        objective._policy_u_jit(
+            theta_jax,
+            objective._base_logit_jax,
+            objective._design_jax,
+        ),
+        dtype=float,
+    )
+    zero_design = jnp.zeros_like(objective._design_jax)
+    altered = np.asarray(
+        objective._policy_u_jit(theta_jax, objective._base_logit_jax, zero_design),
+        dtype=float,
+    )
+    altered_objective, altered_objective_grad = objective._objective_value_and_grad_jit(
+        theta_jax,
+        objective._base_logit_jax,
+        objective._loss_jax,
+        objective._premium_jax,
+        zero_design,
+    )
+    altered_acceptance, altered_acceptance_grad = objective._mean_acceptance_value_and_grad_jit(
+        theta_jax,
+        objective._base_logit_jax,
+        zero_design,
+    )
+
+    assert not np.allclose(baseline, altered)
+    np.testing.assert_allclose(altered, np.zeros(batch.n_rows), atol=1e-12)
+    assert float(altered_objective) != pytest.approx(objective.value(theta, batch.x_array))
+    assert float(altered_acceptance) != pytest.approx(
+        objective.mean_acceptance(theta, batch.x_array)
+    )
+    np.testing.assert_allclose(altered_objective_grad, np.zeros(theta.size), atol=1e-12)
+    np.testing.assert_allclose(altered_acceptance_grad, np.zeros(theta.size), atol=1e-12)
+
+
+def test_prepared_design_memory_summary_counts_design_bytes() -> None:
+    design = np.zeros((4, 7), dtype=np.float64)
+    summary = jax_glm._prepared_design_memory_summary(design)
+
+    assert summary["design_shape"] == (4, 7)
+    assert summary["design_dtype"] == "float64"
+    assert summary["design_nbytes"] == design.nbytes
+    assert summary["design_gb"] == pytest.approx(design.nbytes / 1e9)
+    assert jax_glm._prepared_design_memory_summary(None)["design_nbytes"] == 0
+
+
+def test_prepared_design_memory_warning(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(jax_glm, "_LARGE_DESIGN_WARN_BYTES", 1)
+
+    with pytest.warns(RuntimeWarning, match="large policy design matrix"):
+        jax_glm._warn_if_large_prepared_design(np.zeros((2, 3), dtype=float))
 
 
 def test_jax_scipy_adapter_constraint_margin_shapes() -> None:

@@ -440,6 +440,7 @@ Guidelines:
 
 - Reads `RUN_CONFIGS` list; entries may be a config name or `(config_name, overrides)` tuple passed to `get_config(config_name, overrides=overrides)`
 - Before resolving full configs, auto-submits itself through `src/experiments/slurm.py` when not already inside Slurm; use `--no-sbatch` only for intentional local/debug execution
+- `main.py` prepends its checkout-local `src` directory to `sys.path`, and Slurm child jobs export the submitting checkout's `src` on `PYTHONPATH`, so worktree runs do not accidentally import the canonical checkout's editable install
 - CPU-only specs submit to ORCD `mit_normal`; specs with `compute_backend="jax"` submit to `mit_normal_gpu` with one L40S GPU and fail fast if JAX reports only CPU in the child job
 - For each config spec: creates `RunContext`, assembles `ReporterStack`, calls `run_experiment()`, finalizes with `reporters.on_end()`
 - All I/O is handled by reporters, not by the runner

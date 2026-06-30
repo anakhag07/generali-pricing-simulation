@@ -11,7 +11,7 @@ from experiments.sweep_utils import run_preset_sweep
 
 BASE_PRESET = "real_data_glm_base"
 PROJECT_NAME = "feature-order-sweep"
-DISPLAY_KEYS = ("feature_order",)
+DISPLAY_KEYS = ("feature_order", "seed")
 
 OVERRIDE_GRID = {
     "policy_kind": ["softmax"],
@@ -20,7 +20,7 @@ OVERRIDE_GRID = {
     "policy_preprocessing": ["no_pca"],
     "feature_order": ["linear", "quadratic", "cubic"],
     "constraint_mode": ["trust_constr"],
-    "n_samples": [100],
+    "n_samples": [None],
     "train_fraction": [0.8] , 
     "test_fraction": [0.2],
     "n_grad_samples": [8],
@@ -29,7 +29,7 @@ OVERRIDE_GRID = {
     "wandb_enabled": [False],
     "wandb_project": ["jax-move-scipy-opt-demo"],
     "compute_backend": ["jax"],
-    "seed": [8],
+    "seed": [8, 42],
 }
 
 

@@ -214,6 +214,12 @@ python scripts/evaluate_historical_policy_objective.py \
   --policy-artifact outputs/.../policies/first_order/policy.json \
   --objective historical \
   --split all
+
+python scripts/evaluate_historical_policy_objective.py \
+  --u-source historical \
+  --model-type glm \
+  --acceptance-source model \
+  --technical-price-source historical
 ```
 
 `--objective model` replays
@@ -221,6 +227,9 @@ python scripts/evaluate_historical_policy_objective.py \
 metrics for the same split. `--objective historical` uses observed outcomes
 `(1 - is_churn) * (Y_G_Loss - revenue)` with the learned policy `u`, so it is
 an observed-outcome diagnostic and need not match the training objective.
+`--u-source historical` does not use the optimized policy action; it evaluates
+historical CSV `U` with independently selected `--acceptance-source` and
+`--technical-price-source` values, each one of `historical` or `model`.
 Supported splits are `train`, `test`, and `all`, where `all` means all selected
 rows from the run before train/test splitting.
 To inspect client-level counterfactual acceptance curves for a saved policy,
@@ -429,6 +438,37 @@ The script reconstructs the saved real-data row sample from the run seed and
 theta used for manual verification and writes aggregate `summary.json` plus
 row-level `per_row.csv` under `historical_policy_objective/<estimator>/` beside
 the input summary by default.
+
+For script-only checks that use historical CSV actions instead of optimized
+policy actions, choose historical or model sources for acceptance and technical
+price (`technical_price` is the loss term in the objective):
+
+```bash
+python scripts/evaluate_historical_policy_objective.py \
+  --u-source historical \
+  --model-type glm \
+  --acceptance-source model \
+  --technical-price-source historical
+
+python scripts/evaluate_historical_policy_objective.py \
+  --u-source historical \
+  --model-type glm \
+  --acceptance-source historical \
+  --technical-price-source model
+
+python scripts/evaluate_historical_policy_objective.py \
+  --u-source historical \
+  --model-type glm \
+  --acceptance-source model \
+  --technical-price-source model
+```
+
+All three evaluate
+`acceptance_source(x,U_historical) * (technical_price_source(x) - (U_historical + 1) * X_policy_premium)`.
+Use `--summary-json outputs/.../summary.json --split train|test|all` to reuse a
+saved run's row sample; otherwise the script uses deterministic complete
+eligible rows for `--model-type`. Outputs are written under
+`historical_u_objective/<acceptance_...__technical_price_...>/`.
 
 ## Creating Config Presets
 

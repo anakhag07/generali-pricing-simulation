@@ -35,6 +35,31 @@ Before editing code:
 7. If working in a parallel terminal or worktree, assume other branches may have changed the repo recently and re-check branch state.
 8. If repo structure or behavior appears inconsistent with `README.md` or `AGENTS.md`, update docs as part of the task.
 
+### Worktree Workflow
+
+- Treat `/home/anakhag/projects/generali-pricing/generali-pricing-simulation`
+  as the canonical/main checkout for this repo.
+- For large feature additions or parallel feature work, create a dedicated git
+  worktree before editing so multiple branches can be developed independently.
+  Small documentation edits, tiny fixes, or follow-ups on an already appropriate
+  feature branch do not require a new worktree.
+- Keep feature worktrees outside the canonical checkout under the parent-level
+  convention
+  `/home/anakhag/projects/generali-pricing/worktrees/generali-pricing-simulation/<branch-slug>`.
+  Do not create nested worktrees inside the repo checkout.
+- Create the parent worktree directory only when a feature worktree is actually
+  needed. From the canonical checkout, use a filesystem-safe slug that mirrors
+  the branch name, for example:
+
+```bash
+mkdir -p ../worktrees/generali-pricing-simulation
+git worktree add ../worktrees/generali-pricing-simulation/feature-policy-grid -b feature/policy-grid
+```
+
+- If the branch already exists, omit `-b` and pass the existing branch name.
+- After entering a worktree, re-read `AGENTS.md`, confirm the branch/status, and
+  assume other worktrees may have changed the repo recently.
+
 ### End of Session
 Before finishing a build session:
 
@@ -54,6 +79,18 @@ Before finishing a build session:
   implementation. If the user approves, make small logical commits as work
   lands during build mode; otherwise leave changes uncommitted.
 - Call out any expected `README.md` or `AGENTS.md` updates.
+- For any feature that integrates with core pipeline logic, write a checklist
+  plan before build mode. The plan must cover user-facing goals, implementation
+  questions, integration points, the lowest-code viable design, public API/docs
+  exposure, test strategy, seed/determinism implications, data/model/reporting
+  effects, and migration or compatibility concerns.
+- Reread core feature plans through a system-design lens before implementation:
+  verify that responsibilities stay in the right modules, abstractions are not
+  added prematurely, public surfaces are intentional, and the change does not
+  bypass existing extension points.
+- For large feature changes or code additions, scan for dead code that the new
+  design would replace. In plan mode, suggest specific removals and explain why;
+  only remove dead code in build mode after the user approves the removal.
 
 ### Build Mode
 - Make focused code changes.
@@ -114,6 +151,12 @@ If lower-priority docs are stale, update them in the same task.
 Before adding code, inspect the surrounding module structure and choose the narrowest sensible location for the change.
 
 Guidelines:
+- Classify new work before choosing files. One-off or ad-hoc analyses belong in
+  `scripts/`; reusable behavior that changes the experiment pipeline belongs in
+  `src/` only after core-feature planning.
+- Keep the boundary strict: do not hide reusable pipeline logic inside a script,
+  and do not promote analysis-only code into `src/` without a concrete reusable
+  integration point.
 - Extend an existing module when responsibilities clearly match.
 - Create a new file only when it introduces a reusable concept or prevents an existing file from becoming overloaded.
 - Avoid scattering similar logic across multiple files.
@@ -305,6 +348,12 @@ Guidelines:
 - **`src/experiments/run.py`**
   - `run_experiment(config, step_reporter)`: main runner; uses `config.x_fixed` as state array when set, otherwise samples from N(0, I); applies the train/test split after row selection/sampling; runs enabled estimators on train rows; evaluates final policies on train and optional test rows; returns `ExperimentResult` (pure computation, no I/O)
   - `enabled_estimators` may include `"constant"`, which optimizes a one-scalar `ConstantPolicy` copy of the configured objective; `constant_u_baselines` remains fixed-action evaluation only
+  - `compute_backend="jax"` converts supported GLM train batches to `JaxPreparedGLMObjective` before optimizer execution and requires `trust-constr` with full batches
+
+- **`src/experiments/slurm.py`**
+  - ORCD Slurm launcher helpers for experiment entry points; lightweight sweep override inspection selects a CPU or GPU profile before expensive config/data loading
+  - NumPy-only runs auto-submit to `mit_normal` with CPU/memory/time resources; any explicit `compute_backend="jax"` run auto-submits to `mit_normal_gpu` with `--gres=gpu:l40s:1`
+  - Slurm logs go under `outputs/slurm/%x-%j.out`; child jobs rerun the same entry point with `--no-sbatch`, activate `simulation_env`, and require JAX GPU availability for JAX configs
 
 - **`src/experiments/slurm.py`**
   - ORCD Slurm launcher helpers for `main.py`; lightweight `RUN_CONFIGS` inspection selects a CPU or GPU profile before expensive config/data loading
@@ -390,7 +439,7 @@ Guidelines:
 - CPU-only specs submit to ORCD `mit_normal`; specs with `compute_backend="jax"` submit to `mit_normal_gpu` with one L40S GPU and fail fast if JAX reports only CPU in the child job
 - For each config spec: creates `RunContext`, assembles `ReporterStack`, calls `run_experiment()`, finalizes with `reporters.on_end()`
 - All I/O is handled by reporters, not by the runner
-- `scripts/run_sweep.py` provides optional preset-based sweep execution using top-level and real-data factory overrides
+- `scripts/run_sweep.py` provides preset-based sweep execution using top-level and real-data factory overrides; it defaults to a JAX GLM initial-constraint-penalty sweep and auto-submits through the ORCD Slurm launcher, with `--no-sbatch` for intentional local/debug execution
 - `scripts/run_lagrangian_sweep.py` runs a lagrangian-lambda sweep and writes aggregate frontier plots under `outputs/<project>/lagrangian_frontier_<timestamp>/`
 - `scripts/run_acceptance_floor_sweep.py` runs the trust-constrained softmax GLM preset over a dense acceptance-floor grid `c` and writes aggregate frontier plots under `outputs/<project>/acceptance_floor_frontier_<timestamp>/`
 - `scripts/run_glm_u_coef_sweep.py` runs the softmax/no-PCA/trust-constr GLM setup over 200000 sampled rows and `u_coef in {-4, -5, -8, -10, -20}`, keeps per-run distribution plots enabled, and writes aggregate `glm_u_coef_sweep.csv` plus frontier plots under `outputs/glm-u-coef-sweep/u_coef_frontier_<timestamp>/`
@@ -436,6 +485,8 @@ when appropriate.
   - `tests/experiments/` — config, runner, and sweep tests
   - `tests/reporting/` — visualization and logging tests
   - `tests/integration/` — end-to-end tests
+- Tests for one-off or ad-hoc analysis scripts belong under `tests/scripts/`,
+  mirroring the relevant `scripts/` filename or script domain.
 - Place new tests in the subdirectory matching the module under test.
 
 ### Current Test Coverage
@@ -453,6 +504,7 @@ when appropriate.
 | `test_jax_prepared_glm_objective.py` | JAX prepared GLM value, per-row action-value hooks, gradient, policy-u, acceptance, and SciPy adapter parity |
 | `test_policy_batch.py` | Policy batch `value/grad` shapes, bounds, and kind labels (incl. `MLPPolicy`) |
 | `test_mlp_policy_grad.py` | `MLPPolicy.grad` matches per-coordinate FD Jacobian; `mlp_init_theta` symmetry-breaking |
+| `test_jax_prepared_glm_objective.py` | JAX prepared GLM value, per-row action-value hooks, gradient, policy-u, acceptance, and SciPy adapter parity |
 | `test_policy_preprocessing.py` | Policy-side standardization, whitening, PCA dimensionality, and transform validation |
 | `test_policy_u_histograms.py` | Policy u-distribution visualization |
 
@@ -464,6 +516,7 @@ when appropriate.
 | `test_step_rules.py` | Armijo sufficient decrease, edge cases, input validation |
 | `test_finite_difference_gradient.py` | Finite-difference gradient accuracy and determinism |
 | `test_gradient_resampling.py` | Gradient method resampling behavior |
+| `test_jax_trust_constr_callbacks.py` | JAX prepared GLM callbacks and zeroth-order gradients match CPU prepared GLM under SciPy trust-constr |
 | `test_optimization_class.py` | Class-based optimizer entry point and gradient-object behavior |
 | `test_minibatch_stochasticity.py` | Mini-batch determinism and full-batch equivalence |
 | `test_minimize_orders.py` | SciPy first/Gauss-Stein/Stein-difference/SPSA wrappers |
@@ -491,6 +544,7 @@ when appropriate.
 | `test_verbose_config.py` | verbose flag defaults and serialization |
 | `test_baseline_test.py` | End-to-end smoke test with fixed_regression_base overrides |
 | `test_run_context.py` | default output directory and run context paths |
+| `test_run_sweep_script.py` | `scripts/run_sweep.py` JAX default, Slurm autosubmit, and child-process execution behavior |
 | `test_slurm_launcher.py` | ORCD Slurm profile selection, command construction, autosubmit skips, and JAX GPU preflight |
 | `test_train_test_split.py` | Runner train/test split, held-out policy metrics, and summary payloads |
 | `test_seeding.py` | Seed setup serialization, data/split/theta stream routing, estimator-order independence |

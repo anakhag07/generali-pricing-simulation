@@ -13,7 +13,7 @@ from experiments.slurm import (
     build_sbatch_command,
     configs_require_jax,
     in_slurm_allocation,
-    override_specs_require_jax,
+    run_specs_require_jax,
     submit_to_slurm_if_needed,
 )
 
@@ -27,21 +27,18 @@ def _wrap_arg(command: list[str] | tuple[str, ...]) -> str:
     return next(part for part in command if part.startswith("--wrap="))
 
 
-def test_override_specs_require_jax_from_grid_or_list() -> None:
-    assert override_specs_require_jax(
-        override_grid={"seed": [1], "compute_backend": ["numpy", "jax"]}
-    ) is True
-    assert override_specs_require_jax(
-        override_list=[{"seed": 1}, {"compute_backend": "jax"}]
-    ) is True
-    assert override_specs_require_jax(
-        override_grid={"seed": [1], "compute_backend": ["numpy"]}
-    ) is False
-    assert override_specs_require_jax(override_list=[{"seed": 1}]) is False
+def test_run_specs_require_jax_from_overrides() -> None:
+    specs = [
+        "fixed_regression_base",
+        ("real_data_glm_base", {"compute_backend": "jax"}),
+    ]
+
+    assert run_specs_require_jax(specs) is True
+    assert run_specs_require_jax([("real_data_glm_base", {"compute_backend": "numpy"})]) is False
 
 
 def test_build_sbatch_command_uses_gpu_profile_for_jax(tmp_path) -> None:
-    command = build_sbatch_command(GPU_PROFILE, ["scripts/run_sweep.py"], cwd=tmp_path)
+    command = build_sbatch_command(GPU_PROFILE, ["main.py"], cwd=tmp_path)
     wrap = _wrap_arg(command)
 
     assert "--partition=mit_normal_gpu" in command
@@ -50,11 +47,11 @@ def test_build_sbatch_command_uses_gpu_profile_for_jax(tmp_path) -> None:
     assert "--output=outputs/slurm/%x-%j.out" in command
     assert f"--chdir={tmp_path}" in command
     assert "JAX_PLATFORM_NAME=gpu" in wrap
-    assert "python scripts/run_sweep.py --no-sbatch" in wrap
+    assert "python main.py --no-sbatch" in wrap
 
 
 def test_build_sbatch_command_uses_cpu_profile_without_gpu(tmp_path) -> None:
-    command = build_sbatch_command(CPU_PROFILE, ["scripts/run_sweep.py"], cwd=tmp_path)
+    command = build_sbatch_command(CPU_PROFILE, ["main.py"], cwd=tmp_path)
     wrap = _wrap_arg(command)
 
     assert "--partition=mit_normal" in command
@@ -76,7 +73,7 @@ def test_submit_to_slurm_creates_log_dir_and_returns_job(tmp_path) -> None:
     submission = submit_to_slurm_if_needed(
         requires_jax=True,
         no_sbatch=False,
-        argv=["scripts/run_sweep.py"],
+        argv=["main.py"],
         cwd=tmp_path,
         runner=fake_runner,
     )
@@ -95,14 +92,14 @@ def test_submit_to_slurm_skips_when_disabled_or_already_allocated(tmp_path) -> N
     assert submit_to_slurm_if_needed(
         requires_jax=False,
         no_sbatch=True,
-        argv=["scripts/run_sweep.py"],
+        argv=["main.py"],
         cwd=tmp_path,
         runner=fail_runner,
     ) is None
     assert submit_to_slurm_if_needed(
         requires_jax=False,
         no_sbatch=False,
-        argv=["scripts/run_sweep.py"],
+        argv=["main.py"],
         cwd=tmp_path,
         env={"SLURM_JOB_ID": "99"},
         runner=fail_runner,
@@ -134,15 +131,3 @@ def test_assert_jax_gpu_available_rejects_cpu_backend() -> None:
 
     with pytest.raises(RuntimeError, match="requires a GPU Slurm allocation"):
         assert_jax_gpu_available([jax_config], jax_module=fake_cpu_jax)
-
-
-def test_assert_jax_gpu_available_explains_missing_cuda_jaxlib() -> None:
-    jax_config = SimpleNamespace(compute_backend="jax")
-
-    def fail_default_backend() -> str:
-        raise RuntimeError("Unknown backend: 'gpu'")
-
-    fake_jax = SimpleNamespace(default_backend=fail_default_backend, devices=lambda: [])
-
-    with pytest.raises(RuntimeError, match="pip install -U -e"):
-        assert_jax_gpu_available([jax_config], jax_module=fake_jax)

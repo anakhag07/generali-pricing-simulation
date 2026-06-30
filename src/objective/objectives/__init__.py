@@ -9,6 +9,11 @@ from objective.objectives.prepared_glm import (
     prepare_glm_batch,
     prepare_glm_objective,
 )
+from objective.objectives.jax_prepared_glm import (
+    JaxPreparedGLMObjective,
+    JaxPreparedGLMScipyAdapter,
+    prepare_jax_glm_objective,
+)
 
 __all__ = [
     "FixedRegressionObjective",
@@ -16,6 +21,9 @@ __all__ = [
     "PlantedLogisticObjective",
     "PreparedGLMBatch",
     "PreparedGLMObjective",
+    "JaxPreparedGLMObjective",
+    "JaxPreparedGLMScipyAdapter",
     "prepare_glm_batch",
     "prepare_glm_objective",
+    "prepare_jax_glm_objective",
 ]

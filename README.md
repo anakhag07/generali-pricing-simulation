@@ -14,7 +14,15 @@ python main.py
 ```
 
 Runtime dependencies live in `requirements.txt` and mirror `pyproject.toml`
-(numpy >= 1.24, matplotlib >= 3.7, scipy >= 1.10, wandb >= 0.19).
+(including CPU JAX). Install `.[jax-cuda12]` only when you need CUDA-specific
+JAX wheels.
+
+On ORCD, `python main.py` auto-submits itself to Slurm before running the
+configured experiments. Runs with `compute_backend="jax"` use `mit_normal_gpu`
+with one L40S GPU by default, and NumPy-only runs use the CPU `mit_normal`
+profile. Slurm logs are written under `outputs/slurm/%x-%j.out`. Use
+`python main.py --no-sbatch` only when you intentionally want to run in the
+current process; JAX experiment runs still require a visible GPU backend.
 
 To run tests:
 
@@ -39,7 +47,7 @@ J(\theta) = \mathbb{E}_x\big[f(\pi_\theta(x); x)\big]
 $$
 
 Pluggable components:
-- **Objectives**: `FixedRegressionObjective`, `PlantedLogisticObjective`, `ModelBasedObjective`, `PreparedGLMObjective`
+- **Objectives**: `FixedRegressionObjective`, `PlantedLogisticObjective`, `ModelBasedObjective`, `PreparedGLMObjective`, `JaxPreparedGLMObjective`
 - **Policies**: `ConstantPolicy`, `LinearPolicy`, `SoftmaxPolicy`, `MLPPolicy` (2-layer, default hidden=16)
 - **Gradient estimators**: `constant`, `first_order`, `finite_difference`, `gauss_stein`, `stein_difference`, `spsa`
 
@@ -132,8 +140,9 @@ config = get_config(
 Supported policy axes are `policy_kind in {"constant", "linear", "softmax",
 "mlp"}`, `feature_order in {"linear", "quadratic", "cubic", "quartic"}`,
 `policy_preprocessing in {"artifact", "no_pca"}`, and `constraint_mode in
-{"none", "trust_constr", "penalty", "lagrangian"}`. Softmax real-data runs also
-accept `softmax_action_bounds=(low, high)`. `loss_source` defaults to
+{"none", "trust_constr", "penalty", "lagrangian"}`. `compute_backend` defaults
+to `"numpy"`; GLM `trust_constr` fixed-full-batch runs may use `"jax"`.
+Softmax real-data runs also accept `softmax_action_bounds=(low, high)`. `loss_source` defaults to
 `"predicted"`; setting `loss_source="observed"` keeps model-predicted acceptance
 but uses row-aligned historical `Y_G_Loss` as the loss term. GLM real-data runs
 also accept a `u_coef` override for counterfactual acceptance sensitivity sweeps;
@@ -167,6 +176,15 @@ artifacts fall back to their bundled estimator prediction methods.
 batch with columns `[base_logit, loss, premium, policy_features...]`. Use
 `prepare_glm_objective(model_based_objective, x_frame)` to materialize the
 numeric objective/batch pair after raw pandas/artifact preprocessing has run once.
+For GLM `trust-constr` parity experiments, `compute_backend="jax"` keeps SciPy's
+constrained optimizer but evaluates the prepared GLM objective, gradients,
+zeroth-order value queries, mean acceptance, and constraint Jacobian through
+JIT-compiled JAX callbacks. The JAX backend requires `batch_size=None` and
+supports fixed full-batch GLM runs for `first_order`, `finite_difference`,
+`gauss_stein`, `spsa`, and `stein_difference` with constant, linear, or softmax
+policies over identity/linear policy features. When launched through `main.py`,
+JAX configs are submitted to ORCD GPU Slurm and fail fast if JAX reports only a
+CPU backend, preventing silent CPU fallback.
 For policy-feature experiments, `ModelBasedObjective` can instead take a
 separate fitted policy-side preprocessor. In that mode the policy sees the
 configured policy features, while the sealed acceptance and loss model paths
@@ -205,6 +223,12 @@ python scripts/evaluate_historical_policy_objective.py \
   --policy-artifact outputs/.../policies/first_order/policy.json \
   --objective historical \
   --split all
+
+python scripts/evaluate_historical_policy_objective.py \
+  --u-source historical \
+  --model-type glm \
+  --acceptance-source model \
+  --technical-price-source historical
 ```
 
 `--objective model` replays
@@ -212,6 +236,9 @@ python scripts/evaluate_historical_policy_objective.py \
 metrics for the same split. `--objective historical` uses observed outcomes
 `(1 - is_churn) * (Y_G_Loss - revenue)` with the learned policy `u`, so it is
 an observed-outcome diagnostic and need not match the training objective.
+`--u-source historical` does not use the optimized policy action; it evaluates
+historical CSV `U` with independently selected `--acceptance-source` and
+`--technical-price-source` values, each one of `historical` or `model`.
 Supported splits are `train`, `test`, and `all`, where `all` means all selected
 rows from the run before train/test splitting.
 To inspect client-level counterfactual acceptance curves for a saved policy,
@@ -420,6 +447,37 @@ The script reconstructs the saved real-data row sample from the run seed and
 theta used for manual verification and writes aggregate `summary.json` plus
 row-level `per_row.csv` under `historical_policy_objective/<estimator>/` beside
 the input summary by default.
+
+For script-only checks that use historical CSV actions instead of optimized
+policy actions, choose historical or model sources for acceptance and technical
+price (`technical_price` is the loss term in the objective):
+
+```bash
+python scripts/evaluate_historical_policy_objective.py \
+  --u-source historical \
+  --model-type glm \
+  --acceptance-source model \
+  --technical-price-source historical
+
+python scripts/evaluate_historical_policy_objective.py \
+  --u-source historical \
+  --model-type glm \
+  --acceptance-source historical \
+  --technical-price-source model
+
+python scripts/evaluate_historical_policy_objective.py \
+  --u-source historical \
+  --model-type glm \
+  --acceptance-source model \
+  --technical-price-source model
+```
+
+All three evaluate
+`acceptance_source(x,U_historical) * (technical_price_source(x) - (U_historical + 1) * X_policy_premium)`.
+Use `--summary-json outputs/.../summary.json --split train|test|all` to reuse a
+saved run's row sample; otherwise the script uses deterministic complete
+eligible rows for `--model-type`. Outputs are written under
+`historical_u_objective/<acceptance_...__technical_price_...>/`.
 
 ## Creating Config Presets
 

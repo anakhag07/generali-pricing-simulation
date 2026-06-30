@@ -68,18 +68,14 @@ GPU_PROFILE = SlurmProfile(
 )
 
 
-def override_specs_require_jax(
-    *,
-    override_grid: Mapping[str, Sequence[Any]] | None = None,
-    override_list: Sequence[Mapping[str, Any]] | None = None,
-) -> bool:
-    """Return whether sweep overrides explicitly include ``compute_backend='jax'``."""
-    if override_grid is not None:
-        backends = override_grid.get("compute_backend", ())
-        if any(str(backend) == "jax" for backend in backends):
+def run_specs_require_jax(run_specs: Sequence[Any]) -> bool:
+    """Return whether lightweight run specs explicitly request the JAX backend."""
+    for run_spec in run_specs:
+        if not isinstance(run_spec, tuple) or len(run_spec) != 2:
+            continue
+        _, overrides = run_spec
+        if isinstance(overrides, Mapping) and overrides.get("compute_backend") == "jax":
             return True
-    if override_list is not None:
-        return any(overrides.get("compute_backend") == "jax" for overrides in override_list)
     return False
 
 
@@ -185,15 +181,8 @@ def assert_jax_gpu_available(configs: Sequence[Any], *, jax_module: Any | None =
         except ImportError as exc:
             raise RuntimeError("compute_backend='jax' requires JAX to be installed.") from exc
 
-    try:
-        backend = str(jax_module.default_backend()).lower()
-        devices = list(jax_module.devices())
-    except RuntimeError as exc:
-        raise RuntimeError(
-            "compute_backend='jax' requires CUDA-enabled JAX on a GPU Slurm allocation. "
-            "Install with `pip install -U -e \".[jax-cuda12]\"` and rerun from the entry point."
-        ) from exc
-
+    backend = str(jax_module.default_backend()).lower()
+    devices = list(jax_module.devices())
     platforms = {str(getattr(device, "platform", "")).lower() for device in devices}
     if backend == "cpu" or not devices or platforms <= {"cpu"}:
         raise RuntimeError(
@@ -215,7 +204,7 @@ __all__ = [
     "child_argv",
     "configs_require_jax",
     "in_slurm_allocation",
-    "override_specs_require_jax",
     "profile_for_backend",
+    "run_specs_require_jax",
     "submit_to_slurm_if_needed",
 ]

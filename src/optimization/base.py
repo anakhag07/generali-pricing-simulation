@@ -200,10 +200,29 @@ class Optimization:
                 )
             return np.asarray(acceptance_grad_fn(np.asarray(theta_vec, dtype=float), self.x_array), dtype=float)
 
+        def constraint_margin_fn(theta_vec: np.ndarray) -> float:
+            margin_fn = getattr(self.objective, "constraint_margin", None)
+            if not callable(margin_fn):
+                return mean_acceptance_fn(theta_vec) - float(acceptance_floor())
+            return float(margin_fn(np.asarray(theta_vec, dtype=float)))
+
+        def constraint_margin_grad_fn(theta_vec: np.ndarray) -> np.ndarray:
+            margin_grad_fn = getattr(self.objective, "constraint_margin_grad", None)
+            if not callable(margin_grad_fn):
+                return mean_acceptance_grad_fn(theta_vec)
+            return np.asarray(margin_grad_fn(np.asarray(theta_vec, dtype=float)), dtype=float)
+
         def trust_constr_constraint() -> NonlinearConstraint:
             floor = acceptance_floor()
             if floor is None:
                 raise ValueError("step_rule='trust-constr' requires objective.acceptance_floor.")
+            if callable(getattr(self.objective, "constraint_margin", None)):
+                return NonlinearConstraint(
+                    fun=lambda theta_vec: np.asarray([constraint_margin_fn(theta_vec)], dtype=float),
+                    lb=np.asarray([0.0], dtype=float),
+                    ub=np.asarray([np.inf], dtype=float),
+                    jac=lambda theta_vec: np.atleast_2d(constraint_margin_grad_fn(theta_vec)),
+                )
             return NonlinearConstraint(
                 fun=lambda theta_vec: np.asarray([mean_acceptance_fn(theta_vec)], dtype=float),
                 lb=np.asarray([floor], dtype=float),
@@ -220,6 +239,8 @@ class Optimization:
             floor = acceptance_floor()
             if floor is None:
                 return None
+            if callable(getattr(self.objective, "constraint_margin", None)):
+                return max(0.0, -constraint_margin_fn(theta_vec))
             return max(0.0, floor - mean_acceptance_fn(theta_vec))
 
         def extract_acceptance_multiplier(result: Any) -> float | None:

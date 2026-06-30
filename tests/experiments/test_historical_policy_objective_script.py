@@ -30,6 +30,12 @@ class _ModelObjective:
         return x_batch[self.premium_col].to_numpy(dtype=float)
 
 
+class _AcceptanceUsesUObjective(_ModelObjective):
+    def _acceptance_proba(self, x_batch: pd.DataFrame, u_arr: np.ndarray) -> np.ndarray:
+        del x_batch
+        return np.asarray(u_arr, dtype=float)
+
+
 def _config(n_rows: int = 2) -> SimpleNamespace:
     return SimpleNamespace(
         objective=_ConstantPolicyObjective(),
@@ -37,13 +43,17 @@ def _config(n_rows: int = 2) -> SimpleNamespace:
     )
 
 
-def _model_artifact() -> SimpleNamespace:
+def _model_artifact(
+    objective: object | None = None,
+    *,
+    model_loss: tuple[float, float] = (100.0, 200.0),
+) -> SimpleNamespace:
     x_by_split = {
         "train": pd.DataFrame(
             {
                 "premium": [10.0, 20.0],
                 "acceptance": [0.5, 1.0],
-                "loss": [100.0, 200.0],
+                "loss": list(model_loss),
             }
         ),
         "test": pd.DataFrame(
@@ -69,7 +79,7 @@ def _model_artifact() -> SimpleNamespace:
         estimator="first_order",
         theta=np.asarray([0.5], dtype=float),
         objective=SimpleNamespace(model_type="glm"),
-        build_objective=lambda: _ModelObjective(),
+        build_objective=lambda: objective if objective is not None else _ModelObjective(),
         load_x=load_x,
         row_indices=lambda split="all": rows_by_split[split].copy(),
     )
@@ -124,6 +134,78 @@ def test_evaluate_model_policy_objective_uses_model_acceptance_and_loss() -> Non
     assert summary["split"] == "train"
     assert summary["objective_value"] == pytest.approx(106.25)
     assert summary["mean_acceptance"] == pytest.approx(0.75)
+
+
+def test_historical_u_model_acceptance_historical_technical_price() -> None:
+    artifact = _model_artifact(_AcceptanceUsesUObjective())
+    x_eval = artifact.load_x(split="train")
+    evaluation = script.evaluate_historical_u_objective(
+        model_type="glm",
+        row_indices=np.asarray([5, 6], dtype=int),
+        historical_rows=_historical_rows(),
+        acceptance_source="model",
+        technical_price_source="historical",
+        objective=artifact.build_objective(),
+        x_eval=x_eval,
+        split="train",
+    )
+
+    np.testing.assert_allclose(evaluation.historical_u, [0.1, 0.2])
+    np.testing.assert_allclose(evaluation.selected_acceptance, [0.1, 0.2])
+    np.testing.assert_allclose(evaluation.selected_technical_price, [100.0, 200.0])
+    np.testing.assert_allclose(evaluation.historical_revenue, [11.0, 24.0])
+    np.testing.assert_allclose(evaluation.objective_contribution, [8.9, 35.2])
+
+    summary = script.historical_u_evaluation_summary(evaluation)
+    assert summary["objective_kind"] == "historical_u_acceptance_model_technical_price_historical"
+    assert summary["objective_value"] == pytest.approx(22.05)
+    assert summary["mean_acceptance"] == pytest.approx(0.15)
+
+
+def test_historical_u_historical_acceptance_model_technical_price() -> None:
+    artifact = _model_artifact(model_loss=(50.0, 150.0))
+    x_eval = artifact.load_x(split="train")
+    evaluation = script.evaluate_historical_u_objective(
+        model_type="glm",
+        row_indices=np.asarray([5, 6], dtype=int),
+        historical_rows=_historical_rows(),
+        acceptance_source="historical",
+        technical_price_source="model",
+        objective=artifact.build_objective(),
+        x_eval=x_eval,
+        split="train",
+    )
+
+    np.testing.assert_allclose(evaluation.selected_acceptance, [1.0, 0.0])
+    np.testing.assert_allclose(evaluation.selected_technical_price, [50.0, 150.0])
+    np.testing.assert_allclose(evaluation.objective_contribution, [39.0, 0.0])
+
+    summary = script.historical_u_evaluation_summary(evaluation)
+    assert summary["objective_kind"] == "historical_u_acceptance_historical_technical_price_model"
+    assert summary["objective_value"] == pytest.approx(19.5)
+
+
+def test_historical_u_model_acceptance_model_technical_price() -> None:
+    artifact = _model_artifact(_AcceptanceUsesUObjective(), model_loss=(50.0, 150.0))
+    x_eval = artifact.load_x(split="train")
+    evaluation = script.evaluate_historical_u_objective(
+        model_type="glm",
+        row_indices=np.asarray([5, 6], dtype=int),
+        historical_rows=_historical_rows(),
+        acceptance_source="model",
+        technical_price_source="model",
+        objective=artifact.build_objective(),
+        x_eval=x_eval,
+        split="train",
+    )
+
+    np.testing.assert_allclose(evaluation.selected_acceptance, [0.1, 0.2])
+    np.testing.assert_allclose(evaluation.selected_technical_price, [50.0, 150.0])
+    np.testing.assert_allclose(evaluation.objective_contribution, [3.9, 25.2])
+
+    summary = script.historical_u_evaluation_summary(evaluation)
+    assert summary["objective_kind"] == "historical_u_acceptance_model_technical_price_model"
+    assert summary["objective_value"] == pytest.approx(14.55)
 
 
 def test_write_outputs_includes_summary_and_per_row_csv(tmp_path) -> None:
@@ -370,6 +452,70 @@ def test_main_model_objective_loads_artifact_split(
     assert '"split": "train"' in summary
 
 
+def test_main_historical_u_source_flags_run_without_policy_artifact(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+    capsys,
+) -> None:
+    artifact = _model_artifact(_AcceptanceUsesUObjective())
+    monkeypatch.setattr(script, "eligible_csv_row_indices", lambda model_type: np.asarray([5, 6], dtype=int))
+    monkeypatch.setattr(script, "load_x_frame", lambda model_type, row_indices: artifact.load_x(split="train"))
+    monkeypatch.setattr(script, "load_historical_rows", lambda row_indices: _historical_rows())
+    monkeypatch.setattr(script, "build_historical_u_model_objective", lambda model_type: artifact.build_objective())
+
+    script.main(
+        [
+            "--u-source",
+            "historical",
+            "--model-type",
+            "glm",
+            "--acceptance-source",
+            "model",
+            "--technical-price-source",
+            "historical",
+            "--output-dir",
+            str(tmp_path / "out"),
+            "--skip-per-row",
+        ]
+    )
+
+    output = capsys.readouterr().out
+    assert "historical U, model acceptance, and historical technical price" in output
+    assert "Mean historical-U objective: 22.050000" in output
+    summary = (tmp_path / "out" / "summary.json").read_text(encoding="utf-8")
+    assert '"objective_kind": "historical_u_acceptance_model_technical_price_historical"' in summary
+    assert '"model_type": "glm"' in summary
+
+
+def test_acceptance_model_historical_u_shortcut_runs_without_policy_artifact(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+    capsys,
+) -> None:
+    artifact = _model_artifact(_AcceptanceUsesUObjective())
+    monkeypatch.setattr(script, "eligible_csv_row_indices", lambda model_type: np.asarray([5, 6], dtype=int))
+    monkeypatch.setattr(script, "load_x_frame", lambda model_type, row_indices: artifact.load_x(split="train"))
+    monkeypatch.setattr(script, "load_historical_rows", lambda row_indices: _historical_rows())
+    monkeypatch.setattr(script, "build_historical_u_model_objective", lambda model_type: artifact.build_objective())
+
+    script.main(
+        [
+            "--acceptance-model-historical-u",
+            "--model-type",
+            "glm",
+            "--output-dir",
+            str(tmp_path / "out"),
+            "--skip-per-row",
+        ]
+    )
+
+    output = capsys.readouterr().out
+    assert "Mean historical-U objective: 22.050000" in output
+    summary = (tmp_path / "out" / "summary.json").read_text(encoding="utf-8")
+    assert '"acceptance_source": "model"' in summary
+    assert '"technical_price_source": "historical"' in summary
+
+
 def test_model_objective_requires_policy_artifact(tmp_path) -> None:
     with pytest.raises(SystemExit, match="requires --policy-artifact"):
         script.main(
@@ -378,6 +524,21 @@ def test_model_objective_requires_policy_artifact(tmp_path) -> None:
                 str(tmp_path / "summary.json"),
                 "--objective",
                 "model",
+                "--skip-per-row",
+            ]
+        )
+
+
+def test_historical_u_diagnostic_requires_model_type_without_summary() -> None:
+    with pytest.raises(ValueError, match="--model-type is required"):
+        script.main(
+            [
+                "--u-source",
+                "historical",
+                "--acceptance-source",
+                "model",
+                "--technical-price-source",
+                "historical",
                 "--skip-per-row",
             ]
         )

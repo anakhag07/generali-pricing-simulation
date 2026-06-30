@@ -204,7 +204,7 @@ Guidelines:
 - **`src/objective/objectives/jax_prepared_glm.py`**
   - `JaxPreparedGLMObjective`: fixed-batch JAX version of the prepared GLM objective for SciPy callback use; transfers prepared arrays to device once and exposes NumPy-returning `value()`, `grad()`, value-only action hooks, `mean_acceptance()`, and `mean_acceptance_grad()` methods
   - `JaxPreparedGLMScipyAdapter`: explicit callback adapter with objective, gradient, constraint-margin, and constraint-Jacobian shapes for validation/benchmarking
-  - `prepare_jax_glm_objective(...)`: materializes a GLM-backed `ModelBasedObjective` into a JAX objective after CPU artifact preprocessing; currently supports fixed full-batch first-order and zeroth-order GLM trust-constr runs with constant/linear/softmax identity-feature policies
+  - `prepare_jax_glm_objective(...)`: materializes a GLM-backed `ModelBasedObjective` into a JAX objective after CPU artifact preprocessing; currently supports fixed full-batch first-order and zeroth-order GLM trust-constr runs with constant policies plus linear/softmax policies over finite materializable feature maps, including built-in higher-order maps and `CallableFeatureMap`; the expanded policy design matrix is materialized once before device transfer
 
 - **`src/objective/objectives/planted_logistic.py`**
   - `PlantedLogisticObjective`: convex logistic objective with known optimum `u_star`
@@ -327,7 +327,7 @@ Guidelines:
   - `fixed_regression_base.py`: base fixed-regression config (4D, L-BFGS-B step rule, W&B enabled)
   - `planted_logistic_base.py`: planted logistic base config (3D, L-BFGS-B step rule, 5000 steps, u*=1.1)
   - `real_data_glm_base`: registry-only base built by `real_data_factory.py`; supports `policy_kind`, `feature_order`, `policy_preprocessing`, `constraint_mode`, GLM acceptance `u_coef`, runtime, and estimator overrides
-    - `compute_backend="jax"` keeps `step_rule="trust-constr"` and swaps supported GLM training callbacks to the fixed-batch JAX prepared objective; use with identity/linear feature maps and supported estimators `first_order`, `finite_difference`, `gauss_stein`, `spsa`, and `stein_difference`
+    - `compute_backend="jax"` keeps `step_rule="trust-constr"` and swaps supported GLM training callbacks to the fixed-batch JAX prepared objective; use with constant/linear/softmax policies, finite materializable linear/softmax feature maps, and supported estimators `first_order`, `finite_difference`, `gauss_stein`, `spsa`, and `stein_difference`
   - `real_data_xgb_base`: registry-only base built by `real_data_factory.py`; supports the same override axes, with XGB defaults excluding `first_order`
   - `config_template.py`: copy-first scaffold with `None` placeholders for all `ExperimentConfig` fields plus objective/correctness parameter blocks; not registered as a runnable preset
 

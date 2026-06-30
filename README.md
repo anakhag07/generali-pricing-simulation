@@ -181,10 +181,13 @@ constrained optimizer but evaluates the prepared GLM objective, gradients,
 zeroth-order value queries, mean acceptance, and constraint Jacobian through
 JIT-compiled JAX callbacks. The JAX backend requires `batch_size=None` and
 supports fixed full-batch GLM runs for `first_order`, `finite_difference`,
-`gauss_stein`, `spsa`, and `stein_difference` with constant, linear, or softmax
-policies over identity/linear policy features. When launched through `main.py`,
-JAX configs are submitted to ORCD GPU Slurm and fail fast if JAX reports only a
-CPU backend, preventing silent CPU fallback.
+`gauss_stein`, `spsa`, and `stein_difference` with constant policies plus
+linear or softmax policies over finite materializable feature maps, including
+the built-in linear, quadratic, cubic, and quartic maps and `CallableFeatureMap`.
+The expanded policy design matrix is materialized once before transfer to JAX,
+so high-order or callable maps increase fixed-batch device memory use. When
+launched through `main.py`, JAX configs are submitted to ORCD GPU Slurm and fail
+fast if JAX reports only a CPU backend, preventing silent CPU fallback.
 For policy-feature experiments, `ModelBasedObjective` can instead take a
 separate fitted policy-side preprocessor. In that mode the policy sees the
 configured policy features, while the sealed acceptance and loss model paths

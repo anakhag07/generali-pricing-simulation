@@ -8,6 +8,7 @@ import time
 import numpy as np
 
 from objective.base import sample_states
+from objective.objectives import ModelBasedObjective, prepare_jax_glm_objective
 from experiments.defaults import random_theta0
 from objective.policy import ConstantPolicy
 from objective.utils import (
@@ -31,6 +32,15 @@ from experiments.helpers import (
 from experiments.policy_validation import evaluate_policy
 from experiments.reporters import StepReporter
 from experiments.results import ConstantBaselineResult, EstimatorResult, ExperimentResult, PolicyEvaluation
+
+
+_JAX_BACKEND_ESTIMATORS = {
+    "first_order",
+    "finite_difference",
+    "gauss_stein",
+    "spsa",
+    "stein_difference",
+}
 
 
 def _maybe_apply_acceptance_controls(config: ExperimentConfig) -> ExperimentConfig:
@@ -121,6 +131,44 @@ def _source_row_indices(config: ExperimentConfig, indices: np.ndarray) -> np.nda
     return row_indices[indices].copy()
 
 
+def _optimizer_backend_objective(
+    config: ExperimentConfig,
+    objective: object,
+    x_samples: object,
+    theta_initial: np.ndarray,
+    row_indices: np.ndarray | None,
+) -> tuple[object, object]:
+    """Return optimizer-facing objective/x samples for the configured compute backend."""
+    if config.compute_backend == "numpy":
+        return objective, x_samples
+    if config.compute_backend != "jax":
+        raise ValueError(f"Unsupported compute_backend '{config.compute_backend}'.")
+    if config.step_rule != "trust-constr":
+        raise ValueError("compute_backend='jax' is currently supported only with step_rule='trust-constr'.")
+    if config.batch_size is not None:
+        raise ValueError("compute_backend='jax' requires batch_size=None because it uses a fixed full batch.")
+    unsupported = set(config.enabled_estimators) - _JAX_BACKEND_ESTIMATORS - {"constant"}
+    if unsupported:
+        supported = ", ".join(sorted(_JAX_BACKEND_ESTIMATORS | {"constant"}))
+        unsupported_names = ", ".join(sorted(unsupported))
+        raise ValueError(
+            f"compute_backend='jax' does not support enabled estimator(s): {unsupported_names}. "
+            f"Supported estimators: {supported}."
+        )
+    if not isinstance(objective, ModelBasedObjective):
+        raise ValueError("compute_backend='jax' currently supports GLM ModelBasedObjective runs only.")
+    model_type = getattr(objective.acceptance_model, "model_type", None)
+    if model_type != "glm":
+        raise ValueError("compute_backend='jax' currently supports only GLM real-data artifacts.")
+    jax_objective, batch = prepare_jax_glm_objective(
+        objective,
+        x_samples,
+        row_indices=row_indices,
+    )
+    jax_objective.warmup(theta_initial)
+    return jax_objective, batch.x_array
+
+
 def run_experiment(
     config: ExperimentConfig,
     step_reporter: StepReporter | None = None,
@@ -159,7 +207,6 @@ def run_experiment(
     )
     train_row_indices = _source_row_indices(effective_config, train_indices)
     test_row_indices = _source_row_indices(effective_config, test_indices)
-    true_grad_theta_fn = resolve_true_grad_theta_fn(objective, effective_config.correctness)
     initial_value = value_for_reporting(objective, theta_initial, x_samples)
     mean_acceptance_fn = getattr(objective, "mean_acceptance", None)
     initial_mean_acceptance = (
@@ -188,6 +235,17 @@ def run_experiment(
 
     # Get policy from objective for mean_action computation
     policy = getattr(objective, "policy", None)
+    optimizer_objective, optimizer_x_samples = _optimizer_backend_objective(
+        effective_config,
+        objective,
+        x_samples,
+        theta_initial,
+        train_row_indices,
+    )
+    optimizer_true_grad_theta_fn = resolve_true_grad_theta_fn(
+        optimizer_objective,
+        effective_config.correctness,
+    )
 
     results: dict[str, EstimatorResult] = {}
     traces = {}
@@ -246,8 +304,8 @@ def run_experiment(
         start_first = time.perf_counter()
         theta_first, trace_first = run_first_order(
             theta_initial,
-            x_samples,
-            objective,
+            optimizer_x_samples,
+            optimizer_objective,
             batch_rng,
             effective_config.t_steps,
             effective_config.step_rule,
@@ -256,7 +314,7 @@ def run_experiment(
             effective_config.sigma,
             effective_config.batch_size,
             perturbation_space=effective_config.perturbation_space,
-            true_grad_theta_fn=true_grad_theta_fn,
+            true_grad_theta_fn=optimizer_true_grad_theta_fn,
             grad_norm_tol=effective_config.grad_norm_tol,
             ftol=effective_config.ftol,
             initial_constr_penalty=effective_config.initial_constr_penalty,
@@ -284,8 +342,8 @@ def run_experiment(
         start_fd = time.perf_counter()
         theta_fd, trace_fd = run_finite_difference(
             theta_initial,
-            x_samples,
-            objective,
+            optimizer_x_samples,
+            optimizer_objective,
             batch_rng,
             effective_config.t_steps,
             effective_config.step_rule,
@@ -294,7 +352,7 @@ def run_experiment(
             effective_config.sigma,
             effective_config.batch_size,
             perturbation_space=effective_config.perturbation_space,
-            true_grad_theta_fn=true_grad_theta_fn,
+            true_grad_theta_fn=optimizer_true_grad_theta_fn,
             grad_norm_tol=effective_config.grad_norm_tol,
             ftol=effective_config.ftol,
             initial_constr_penalty=effective_config.initial_constr_penalty,
@@ -322,8 +380,8 @@ def run_experiment(
         start_zero = time.perf_counter()
         theta_zero, trace_zero = run_gauss_stein(
             theta_initial,
-            x_samples,
-            objective,
+            optimizer_x_samples,
+            optimizer_objective,
             batch_rng,
             effective_config.t_steps,
             effective_config.step_rule,
@@ -332,7 +390,7 @@ def run_experiment(
             effective_config.sigma,
             effective_config.batch_size,
             perturbation_space=effective_config.perturbation_space,
-            true_grad_theta_fn=true_grad_theta_fn,
+            true_grad_theta_fn=optimizer_true_grad_theta_fn,
             grad_norm_tol=effective_config.grad_norm_tol,
             ftol=effective_config.ftol,
             initial_constr_penalty=effective_config.initial_constr_penalty,
@@ -360,8 +418,8 @@ def run_experiment(
         start_spsa = time.perf_counter()
         theta_spsa, trace_spsa = run_spsa(
             theta_initial,
-            x_samples,
-            objective,
+            optimizer_x_samples,
+            optimizer_objective,
             batch_rng,
             effective_config.t_steps,
             effective_config.step_rule,
@@ -370,7 +428,7 @@ def run_experiment(
             effective_config.sigma,
             effective_config.batch_size,
             perturbation_space=effective_config.perturbation_space,
-            true_grad_theta_fn=true_grad_theta_fn,
+            true_grad_theta_fn=optimizer_true_grad_theta_fn,
             grad_norm_tol=effective_config.grad_norm_tol,
             ftol=effective_config.ftol,
             initial_constr_penalty=effective_config.initial_constr_penalty,
@@ -398,8 +456,8 @@ def run_experiment(
         start_stein = time.perf_counter()
         theta_stein, trace_stein = run_stein_difference(
             theta_initial,
-            x_samples,
-            objective,
+            optimizer_x_samples,
+            optimizer_objective,
             batch_rng,
             effective_config.t_steps,
             effective_config.step_rule,
@@ -408,7 +466,7 @@ def run_experiment(
             effective_config.sigma,
             effective_config.batch_size,
             perturbation_space=effective_config.perturbation_space,
-            true_grad_theta_fn=true_grad_theta_fn,
+            true_grad_theta_fn=optimizer_true_grad_theta_fn,
             grad_norm_tol=effective_config.grad_norm_tol,
             ftol=effective_config.ftol,
             initial_constr_penalty=effective_config.initial_constr_penalty,

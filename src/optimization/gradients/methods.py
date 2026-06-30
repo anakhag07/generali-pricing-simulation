@@ -54,6 +54,22 @@ def _action_objective_values(objective: object, x_array: np.ndarray, u_array: np
     )
 
 
+def _action_objective_values_many(objective: object, x_array: np.ndarray, u_matrix: np.ndarray) -> np.ndarray:
+    """Compute action-level objective values for many action vectors."""
+    u_arr = np.asarray(u_matrix, dtype=float)
+    if u_arr.ndim != 2 or u_arr.shape[1] != x_array.shape[0]:
+        raise ValueError("u_matrix must have shape (n_evaluations, n_samples).")
+
+    value_batch_many_fn = getattr(objective, "_value_batch_many", None)
+    if callable(value_batch_many_fn):
+        values = np.asarray(value_batch_many_fn(x_array, u_arr), dtype=float)
+        if values.shape != u_arr.shape:
+            raise ValueError("objective._value_batch_many(x_array, u_matrix) must return u_matrix shape.")
+        return values
+
+    return np.vstack([_action_objective_values(objective, x_array, u_row) for u_row in u_arr])
+
+
 def _u_space_policy_setup(
     optimizer: "Optimization",
     theta: np.ndarray,
@@ -176,8 +192,13 @@ class FiniteDifferenceGradient(GradientMethod):
     ) -> np.ndarray:
         x_arr, u_arr = _u_space_policy_setup(optimizer, theta, indices)
         sigma = optimizer.sigma
-        values_plus = _action_objective_values(optimizer.objective, x_arr, u_arr + sigma)
-        values_minus = _action_objective_values(optimizer.objective, x_arr, u_arr - sigma)
+        values = _action_objective_values_many(
+            optimizer.objective,
+            x_arr,
+            np.vstack([u_arr + sigma, u_arr - sigma]),
+        )
+        values_plus = values[0]
+        values_minus = values[1]
         grad_u = (values_plus - values_minus) / (2.0 * sigma)
         return _theta_grad_from_u_grad(optimizer.objective, theta, x_arr, grad_u)
 
@@ -244,11 +265,12 @@ class GaussSteinGradient(GradientMethod):
     ) -> np.ndarray:
         x_arr, u_arr = _u_space_policy_setup(optimizer, theta, indices)
         w_samples = optimizer.rng.normal(0.0, 1.0, size=optimizer.n_grad_samples).astype(float)
-        grad_u = np.zeros(x_arr.shape[0], dtype=float)
-        for w in w_samples:
-            values = _action_objective_values(optimizer.objective, x_arr, u_arr + optimizer.sigma * w)
-            grad_u += values * w
-        grad_u /= float(w_samples.shape[0]) * max(optimizer.sigma, 1e-8)
+        values = _action_objective_values_many(
+            optimizer.objective,
+            x_arr,
+            u_arr[None, :] + optimizer.sigma * w_samples[:, None],
+        )
+        grad_u = np.mean(values * w_samples[:, None], axis=0) / max(optimizer.sigma, 1e-8)
         return _theta_grad_from_u_grad(optimizer.objective, theta, x_arr, grad_u)
 
 
@@ -325,12 +347,20 @@ class SPSAGradient(GradientMethod):
         delta_samples = optimizer.rng.choice(
             np.asarray([-1.0, 1.0], dtype=float), size=optimizer.n_grad_samples
         )
-        grad_u = np.zeros(x_arr.shape[0], dtype=float)
-        for delta in delta_samples:
-            values_plus = _action_objective_values(optimizer.objective, x_arr, u_arr + optimizer.sigma * delta)
-            values_minus = _action_objective_values(optimizer.objective, x_arr, u_arr - optimizer.sigma * delta)
-            grad_u += ((values_plus - values_minus) / (2.0 * optimizer.sigma)) * delta
-        grad_u /= float(delta_samples.shape[0])
+        values_plus = _action_objective_values_many(
+            optimizer.objective,
+            x_arr,
+            u_arr[None, :] + optimizer.sigma * delta_samples[:, None],
+        )
+        values_minus = _action_objective_values_many(
+            optimizer.objective,
+            x_arr,
+            u_arr[None, :] - optimizer.sigma * delta_samples[:, None],
+        )
+        grad_u = np.mean(
+            ((values_plus - values_minus) / (2.0 * optimizer.sigma)) * delta_samples[:, None],
+            axis=0,
+        )
         return _theta_grad_from_u_grad(optimizer.objective, theta, x_arr, grad_u)
 
 
@@ -399,12 +429,17 @@ class SteinDifferenceGradient(GradientMethod):
         x_arr, u_arr = _u_space_policy_setup(optimizer, theta, indices)
         sigma = optimizer.sigma
         w_samples = optimizer.rng.normal(0.0, 1.0, size=optimizer.n_grad_samples).astype(float)
-        grad_u = np.zeros(x_arr.shape[0], dtype=float)
-        for w in w_samples:
-            values_plus = _action_objective_values(optimizer.objective, x_arr, u_arr + sigma * w)
-            values_minus = _action_objective_values(optimizer.objective, x_arr, u_arr - sigma * w)
-            grad_u += ((values_plus - values_minus) / (2.0 * sigma)) * w
-        grad_u /= float(w_samples.shape[0])
+        values_plus = _action_objective_values_many(
+            optimizer.objective,
+            x_arr,
+            u_arr[None, :] + sigma * w_samples[:, None],
+        )
+        values_minus = _action_objective_values_many(
+            optimizer.objective,
+            x_arr,
+            u_arr[None, :] - sigma * w_samples[:, None],
+        )
+        grad_u = np.mean(((values_plus - values_minus) / (2.0 * sigma)) * w_samples[:, None], axis=0)
         return _theta_grad_from_u_grad(optimizer.objective, theta, x_arr, grad_u)
 
 

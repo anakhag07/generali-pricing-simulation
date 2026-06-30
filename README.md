@@ -14,7 +14,8 @@ python main.py
 ```
 
 Runtime dependencies live in `requirements.txt` and mirror `pyproject.toml`
-(numpy >= 1.24, matplotlib >= 3.7, scipy >= 1.10, wandb >= 0.19).
+(including CPU JAX). Install `.[jax-cuda12]` only when you need CUDA-specific
+JAX wheels.
 
 To run tests:
 
@@ -39,7 +40,7 @@ J(\theta) = \mathbb{E}_x\big[f(\pi_\theta(x); x)\big]
 $$
 
 Pluggable components:
-- **Objectives**: `FixedRegressionObjective`, `PlantedLogisticObjective`, `ModelBasedObjective`, `PreparedGLMObjective`
+- **Objectives**: `FixedRegressionObjective`, `PlantedLogisticObjective`, `ModelBasedObjective`, `PreparedGLMObjective`, `JaxPreparedGLMObjective`
 - **Policies**: `ConstantPolicy`, `LinearPolicy`, `SoftmaxPolicy`, `MLPPolicy` (2-layer, default hidden=16)
 - **Gradient estimators**: `constant`, `first_order`, `finite_difference`, `gauss_stein`, `stein_difference`, `spsa`
 
@@ -132,8 +133,9 @@ config = get_config(
 Supported policy axes are `policy_kind in {"constant", "linear", "softmax",
 "mlp"}`, `feature_order in {"linear", "quadratic", "cubic", "quartic"}`,
 `policy_preprocessing in {"artifact", "no_pca"}`, and `constraint_mode in
-{"none", "trust_constr", "penalty", "lagrangian"}`. Softmax real-data runs also
-accept `softmax_action_bounds=(low, high)`. `loss_source` defaults to
+{"none", "trust_constr", "penalty", "lagrangian"}`. `compute_backend` defaults
+to `"numpy"`; GLM `trust_constr` fixed-full-batch runs may use `"jax"`.
+Softmax real-data runs also accept `softmax_action_bounds=(low, high)`. `loss_source` defaults to
 `"predicted"`; setting `loss_source="observed"` keeps model-predicted acceptance
 but uses row-aligned historical `Y_G_Loss` as the loss term. GLM real-data runs
 also accept a `u_coef` override for counterfactual acceptance sensitivity sweeps;
@@ -167,6 +169,13 @@ artifacts fall back to their bundled estimator prediction methods.
 batch with columns `[base_logit, loss, premium, policy_features...]`. Use
 `prepare_glm_objective(model_based_objective, x_frame)` to materialize the
 numeric objective/batch pair after raw pandas/artifact preprocessing has run once.
+For GLM `trust-constr` parity experiments, `compute_backend="jax"` keeps SciPy's
+constrained optimizer but evaluates the prepared GLM objective, gradients,
+zeroth-order value queries, mean acceptance, and constraint Jacobian through
+JIT-compiled JAX callbacks. The JAX backend requires `batch_size=None` and
+supports fixed full-batch GLM runs for `first_order`, `finite_difference`,
+`gauss_stein`, `spsa`, and `stein_difference` with constant, linear, or softmax
+policies over identity/linear policy features.
 For policy-feature experiments, `ModelBasedObjective` can instead take a
 separate fitted policy-side preprocessor. In that mode the policy sees the
 configured policy features, while the sealed acceptance and loss model paths

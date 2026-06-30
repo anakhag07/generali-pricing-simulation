@@ -112,7 +112,8 @@ def build_sbatch_command(
     module_name: str = DEFAULT_MODULE,
 ) -> list[str]:
     """Build the ``sbatch`` command for a parent process to submit."""
-    workdir = Path.cwd() if cwd is None else Path(cwd)
+    workdir = (Path.cwd() if cwd is None else Path(cwd)).resolve()
+    source_path = workdir / "src"
     setup_commands = [
         "set -euo pipefail",
         f"module load {shlex.quote(module_name)}",
@@ -120,6 +121,7 @@ def build_sbatch_command(
         f"conda activate {shlex.quote(conda_env)}",
         f"export {SLURM_CHILD_ENV}=1",
         "export PYTHONUNBUFFERED=1",
+        f"export PYTHONPATH={shlex.quote(str(source_path))}${{PYTHONPATH:+:$PYTHONPATH}}",
     ]
     if profile.gres is not None:
         setup_commands.append("export JAX_PLATFORM_NAME=gpu")
@@ -160,7 +162,7 @@ def submit_to_slurm_if_needed(
         return None
 
     profile = profile_for_backend(requires_jax=requires_jax)
-    workdir = Path.cwd() if cwd is None else Path(cwd)
+    workdir = (Path.cwd() if cwd is None else Path(cwd)).resolve()
     log_path = log_dir if log_dir.is_absolute() else workdir / log_dir
     log_path.mkdir(parents=True, exist_ok=True)
 

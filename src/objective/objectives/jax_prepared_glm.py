@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import warnings
 from typing import Any
 
 import numpy as np
@@ -21,6 +22,8 @@ from objective.objectives.prepared_glm import (
 from objective.policy import ConstantPolicy, LinearPolicy, SoftmaxPolicy
 
 jax.config.update("jax_enable_x64", True)
+
+_LARGE_DESIGN_WARN_BYTES = 1_000_000_000
 
 
 @dataclass(frozen=True)
@@ -86,10 +89,20 @@ class JaxPreparedGLMObjective(Objective):
         if policy_kind != "constant" and design is None:
             raise ValueError("JAX GLM backend requires a policy design matrix.")
 
-        base_logit = jnp.asarray(x_arr[:, 0], dtype=jnp.float64)
-        loss = jnp.asarray(x_arr[:, 1], dtype=jnp.float64)
-        premium = jnp.asarray(x_arr[:, 2], dtype=jnp.float64)
-        design_jax = None if design is None else jnp.asarray(design, dtype=jnp.float64)
+        _warn_if_large_prepared_design(design)
+        base_logit_np = np.asarray(x_arr[:, 0], dtype=float)
+        loss_np = np.asarray(x_arr[:, 1], dtype=float)
+        premium_np = np.asarray(x_arr[:, 2], dtype=float)
+        design_np = None if design is None else np.asarray(design, dtype=float)
+        design_for_jax = (
+            np.empty((x_arr.shape[0], 0), dtype=float)
+            if design_np is None
+            else design_np
+        )
+        base_logit_jax = jnp.asarray(base_logit_np, dtype=jnp.float64)
+        loss_jax = jnp.asarray(loss_np, dtype=jnp.float64)
+        premium_jax = jnp.asarray(premium_np, dtype=jnp.float64)
+        design_jax = jnp.asarray(design_for_jax, dtype=jnp.float64)
         u_coef = float(self.u_coef)
         sign = 1.0 if target == "acceptance" else -1.0
         floor = None if self.acceptance_floor is None else float(self.acceptance_floor)
@@ -105,43 +118,77 @@ class JaxPreparedGLMObjective(Objective):
                 return u
             return jnp.clip(u, float(u_bounds[0]), float(u_bounds[1]))
 
-        def policy_raw_u(theta: Any) -> Any:
+        def policy_raw_u(theta: Any, base_logit_arr: Any, design_arr: Any) -> Any:
             if policy_kind == "constant":
-                return jnp.full(base_logit.shape, theta[0], dtype=jnp.float64)
-            score = design_jax @ theta
+                return jnp.full(base_logit_arr.shape, theta[0], dtype=jnp.float64)
+            score = design_arr @ theta
             if policy_kind == "linear":
                 return score
             return action_low + action_span * jax.nn.sigmoid(score)
 
-        def policy_u(theta: Any) -> Any:
-            return clip_u(policy_raw_u(theta))
+        def policy_u(theta: Any, base_logit_arr: Any, design_arr: Any) -> Any:
+            return clip_u(policy_raw_u(theta, base_logit_arr, design_arr))
 
-        def acceptance_from_u(u: Any) -> Any:
-            class1 = jax.nn.sigmoid(base_logit + u_coef * u)
+        def acceptance_from_u(base_logit_arr: Any, u: Any) -> Any:
+            class1 = jax.nn.sigmoid(base_logit_arr + u_coef * u)
             return class1 if sign > 0.0 else 1.0 - class1
 
-        def action_values_from_u(u: Any) -> Any:
+        def action_values_from_u(
+            base_logit_arr: Any,
+            loss_arr: Any,
+            premium_arr: Any,
+            u: Any,
+        ) -> Any:
             u_clipped = clip_u(u)
-            acceptance = acceptance_from_u(u_clipped)
-            revenue = (u_clipped + 1.0) * premium
-            return acceptance * (loss - revenue)
+            acceptance = acceptance_from_u(base_logit_arr, u_clipped)
+            revenue = (u_clipped + 1.0) * premium_arr
+            return acceptance * (loss_arr - revenue)
 
-        def action_values_from_u_many(u_matrix: Any) -> Any:
+        def action_values_from_u_many(
+            base_logit_arr: Any,
+            loss_arr: Any,
+            premium_arr: Any,
+            u_matrix: Any,
+        ) -> Any:
             u_clipped = clip_u(u_matrix)
-            class1 = jax.nn.sigmoid(base_logit[None, :] + u_coef * u_clipped)
+            class1 = jax.nn.sigmoid(base_logit_arr[None, :] + u_coef * u_clipped)
             acceptance = class1 if sign > 0.0 else 1.0 - class1
-            revenue = (u_clipped + 1.0) * premium[None, :]
-            return acceptance * (loss[None, :] - revenue)
+            revenue = (u_clipped + 1.0) * premium_arr[None, :]
+            return acceptance * (loss_arr[None, :] - revenue)
 
-        def raw_objective(theta: Any) -> Any:
-            return jnp.mean(action_values_from_u(policy_u(theta)))
+        def raw_objective(
+            theta: Any,
+            base_logit_arr: Any,
+            loss_arr: Any,
+            premium_arr: Any,
+            design_arr: Any,
+        ) -> Any:
+            return jnp.mean(
+                action_values_from_u(
+                    base_logit_arr,
+                    loss_arr,
+                    premium_arr,
+                    policy_u(theta, base_logit_arr, design_arr),
+                )
+            )
 
-        def mean_acceptance(theta: Any) -> Any:
-            return jnp.mean(acceptance_from_u(policy_u(theta)))
+        def mean_acceptance(theta: Any, base_logit_arr: Any, design_arr: Any) -> Any:
+            return jnp.mean(
+                acceptance_from_u(
+                    base_logit_arr,
+                    policy_u(theta, base_logit_arr, design_arr),
+                )
+            )
 
-        def objective(theta: Any) -> Any:
-            value = raw_objective(theta)
-            acceptance_mean = mean_acceptance(theta)
+        def objective(
+            theta: Any,
+            base_logit_arr: Any,
+            loss_arr: Any,
+            premium_arr: Any,
+            design_arr: Any,
+        ) -> Any:
+            value = raw_objective(theta, base_logit_arr, loss_arr, premium_arr, design_arr)
+            acceptance_mean = mean_acceptance(theta, base_logit_arr, design_arr)
             if floor is not None and penalty_weight is not None:
                 gap = floor - acceptance_mean
                 soft_gap = penalty_temperature * jax.nn.softplus(gap / penalty_temperature)
@@ -153,19 +200,35 @@ class JaxPreparedGLMObjective(Objective):
         object.__setattr__(self, "x_array", x_arr)
         object.__setattr__(self, "u_coef", u_coef)
         object.__setattr__(self, "probability_target", target)
-        object.__setattr__(self, "_base_logit_np", np.asarray(x_arr[:, 0], dtype=float))
-        object.__setattr__(self, "_loss_np", np.asarray(x_arr[:, 1], dtype=float))
-        object.__setattr__(self, "_premium_np", np.asarray(x_arr[:, 2], dtype=float))
-        object.__setattr__(self, "_policy_features_np", np.asarray(x_arr[:, _N_METADATA_COLS:], dtype=float))
-        object.__setattr__(self, "_design_matrix_np", None if design is None else np.asarray(design, dtype=float))
+        object.__setattr__(self, "_base_logit_np", base_logit_np)
+        object.__setattr__(self, "_loss_np", loss_np)
+        object.__setattr__(self, "_premium_np", premium_np)
+        object.__setattr__(
+            self,
+            "_policy_features_np",
+            np.asarray(x_arr[:, _N_METADATA_COLS:], dtype=float),
+        )
+        object.__setattr__(self, "_design_matrix_np", design_np)
+        object.__setattr__(self, "_base_logit_jax", base_logit_jax)
+        object.__setattr__(self, "_loss_jax", loss_jax)
+        object.__setattr__(self, "_premium_jax", premium_jax)
+        object.__setattr__(self, "_design_jax", design_jax)
         object.__setattr__(self, "_policy_kind", policy_kind)
         object.__setattr__(self, "_action_low", action_low)
         object.__setattr__(self, "_action_span", action_span)
         object.__setattr__(self, "_policy_u_jit", jax.jit(policy_u))
         object.__setattr__(self, "_raw_objective_jit", jax.jit(raw_objective))
         object.__setattr__(self, "_objective_value_jit", jax.jit(objective))
-        object.__setattr__(self, "_objective_value_and_grad_jit", jax.jit(jax.value_and_grad(objective)))
-        object.__setattr__(self, "_mean_acceptance_value_and_grad_jit", jax.jit(jax.value_and_grad(mean_acceptance)))
+        object.__setattr__(
+            self,
+            "_objective_value_and_grad_jit",
+            jax.jit(jax.value_and_grad(objective)),
+        )
+        object.__setattr__(
+            self,
+            "_mean_acceptance_value_and_grad_jit",
+            jax.jit(jax.value_and_grad(mean_acceptance)),
+        )
         object.__setattr__(self, "_action_values_from_u_jit", jax.jit(action_values_from_u))
         object.__setattr__(self, "_action_values_from_u_many_jit", jax.jit(action_values_from_u_many))
 
@@ -188,7 +251,15 @@ class JaxPreparedGLMObjective(Objective):
             return float(self._objective_cache[0])
         if key == self._value_cache_key and self._value_cache is not None:
             return float(self._value_cache)
-        result = float(self._objective_value_jit(theta_jax))
+        result = float(
+            self._objective_value_jit(
+                theta_jax,
+                self._base_logit_jax,
+                self._loss_jax,
+                self._premium_jax,
+                self._design_jax,
+            )
+        )
         object.__setattr__(self, "_value_cache_key", key)
         object.__setattr__(self, "_value_cache", result)
         return result
@@ -198,7 +269,13 @@ class JaxPreparedGLMObjective(Objective):
         key, theta_jax = self._theta_key_and_jax(theta)
         if key == self._objective_cache_key and self._objective_cache is not None:
             return self._objective_cache
-        value_jax, grad_jax = self._objective_value_and_grad_jit(theta_jax)
+        value_jax, grad_jax = self._objective_value_and_grad_jit(
+            theta_jax,
+            self._base_logit_jax,
+            self._loss_jax,
+            self._premium_jax,
+            self._design_jax,
+        )
         result = (float(value_jax), np.asarray(grad_jax, dtype=float))
         object.__setattr__(self, "_objective_cache_key", key)
         object.__setattr__(self, "_objective_cache", result)
@@ -209,7 +286,11 @@ class JaxPreparedGLMObjective(Objective):
         key, theta_jax = self._theta_key_and_jax(theta)
         if key == self._acceptance_cache_key and self._acceptance_cache is not None:
             return self._acceptance_cache
-        value_jax, grad_jax = self._mean_acceptance_value_and_grad_jit(theta_jax)
+        value_jax, grad_jax = self._mean_acceptance_value_and_grad_jit(
+            theta_jax,
+            self._base_logit_jax,
+            self._design_jax,
+        )
         result = (float(value_jax), np.asarray(grad_jax, dtype=float))
         object.__setattr__(self, "_acceptance_cache_key", key)
         object.__setattr__(self, "_acceptance_cache", result)
@@ -224,7 +305,15 @@ class JaxPreparedGLMObjective(Objective):
         """Return raw pricing objective without penalty or Lagrangian terms."""
         self._validate_fixed_batch(x_batch)
         theta_jax = self._theta_key_and_jax(theta)[1]
-        return float(self._raw_objective_jit(theta_jax))
+        return float(
+            self._raw_objective_jit(
+                theta_jax,
+                self._base_logit_jax,
+                self._loss_jax,
+                self._premium_jax,
+                self._design_jax,
+            )
+        )
 
     def grad(self, theta: np.ndarray, x_batch: np.ndarray | PreparedGLMBatch) -> np.ndarray:
         """Return JAX objective gradient on this fixed prepared batch."""
@@ -236,7 +325,10 @@ class JaxPreparedGLMObjective(Objective):
         """Return policy actions on this fixed prepared batch."""
         self._validate_fixed_batch(x_batch)
         theta_jax = self._theta_key_and_jax(theta)[1]
-        return np.asarray(self._policy_u_jit(theta_jax), dtype=float)
+        return np.asarray(
+            self._policy_u_jit(theta_jax, self._base_logit_jax, self._design_jax),
+            dtype=float,
+        )
 
     def policy_grad(self, theta: np.ndarray, x_batch: np.ndarray | PreparedGLMBatch) -> np.ndarray:
         """Return policy Jacobian, primarily for API parity diagnostics."""
@@ -378,7 +470,12 @@ class JaxPreparedGLMObjective(Objective):
         u_array = np.asarray(u_arr, dtype=float).reshape(-1)
         if u_array.shape != (self.x_array.shape[0],):
             raise ValueError("u_arr must have one value per x_batch row.")
-        values = self._action_values_from_u_jit(jnp.asarray(u_array, dtype=jnp.float64))
+        values = self._action_values_from_u_jit(
+            self._base_logit_jax,
+            self._loss_jax,
+            self._premium_jax,
+            jnp.asarray(u_array, dtype=jnp.float64),
+        )
         return np.asarray(values, dtype=float)
 
     def _value_batch_many(self, x_batch: np.ndarray | PreparedGLMBatch, u_matrix: np.ndarray) -> np.ndarray:
@@ -387,7 +484,12 @@ class JaxPreparedGLMObjective(Objective):
         u_arr = np.asarray(u_matrix, dtype=float)
         if u_arr.ndim != 2 or u_arr.shape[1] != self.x_array.shape[0]:
             raise ValueError("u_matrix must have shape (n_evaluations, n_rows).")
-        values = self._action_values_from_u_many_jit(jnp.asarray(u_arr, dtype=jnp.float64))
+        values = self._action_values_from_u_many_jit(
+            self._base_logit_jax,
+            self._loss_jax,
+            self._premium_jax,
+            jnp.asarray(u_arr, dtype=jnp.float64),
+        )
         return np.asarray(values, dtype=float)
 
     def _validate_fixed_batch(self, x_batch: np.ndarray | PreparedGLMBatch) -> None:
@@ -496,6 +598,46 @@ def _policy_design_matrix(policy: Policy, features: np.ndarray) -> np.ndarray | 
                 )
         return design
     raise ValueError("JAX prepared GLM backend currently supports constant, linear, and softmax policies.")
+
+
+def _prepared_design_memory_summary(design: np.ndarray | None) -> dict[str, object]:
+    """Return shape and byte-count diagnostics for a materialized design matrix."""
+    if design is None:
+        return {
+            "design_shape": None,
+            "design_dtype": None,
+            "design_nbytes": 0,
+            "design_gb": 0.0,
+            "design_gib": 0.0,
+        }
+    design_arr = np.asarray(design)
+    nbytes = int(design_arr.nbytes)
+    return {
+        "design_shape": tuple(int(dim) for dim in design_arr.shape),
+        "design_dtype": str(design_arr.dtype),
+        "design_nbytes": nbytes,
+        "design_gb": nbytes / 1e9,
+        "design_gib": nbytes / float(1024**3),
+    }
+
+
+def _warn_if_large_prepared_design(design: np.ndarray | None) -> None:
+    summary = _prepared_design_memory_summary(design)
+    nbytes = int(summary["design_nbytes"])
+    if nbytes < _LARGE_DESIGN_WARN_BYTES:
+        return
+    warnings.warn(
+        "JAX prepared GLM materialized a large policy design matrix: "
+        f"shape={summary['design_shape']}, "
+        f"dtype={summary['design_dtype']}, "
+        f"estimated_memory={summary['design_gb']:.2f} GB "
+        f"({summary['design_gib']:.2f} GiB). "
+        "The matrix is passed to JAX callbacks as runtime device data rather "
+        "than a captured compile-time constant, but large full-batch higher-order "
+        "feature maps can still exceed GPU memory.",
+        RuntimeWarning,
+        stacklevel=3,
+    )
 
 
 __all__ = [

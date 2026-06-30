@@ -19,6 +19,11 @@ Project context: simulation and optimization repo. Users should be able to speci
 
 - Prefer optimized math operations from online packages instead of implementing from scratch (for gradient descent methods, objective definitions, etc ...)
 
+## Pull Request Reviews
+
+- When asked to review a pull request, read `REVIEW.md` first and follow its
+  architecture, workflow, docs, interface, and output-format checklist.
+
 ## Session Workflow
 
 ### Start of Session

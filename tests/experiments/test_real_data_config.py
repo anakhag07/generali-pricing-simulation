@@ -283,9 +283,12 @@ def test_glm_trust_constraint_override_sets_acceptance_floor():
 
 
 def test_glm_jax_backend_override_keeps_trust_constr_solver():
+    from objective.policy import QuadraticFeatureMap
+
     cfg = _cfg(
         "real_data_glm_base",
         constraint_mode="trust_constr",
+        feature_order="quadratic",
         compute_backend="jax",
         enabled_estimators=("first_order", "finite_difference", "stein_difference"),
     )
@@ -294,6 +297,9 @@ def test_glm_jax_backend_override_keeps_trust_constr_solver():
     assert cfg.step_rule == "trust-constr"
     assert cfg.acceptance_floor is not None
     assert cfg.enabled_estimators == ("first_order", "finite_difference", "stein_difference")
+    assert isinstance(cfg.objective.policy.feature_map, QuadraticFeatureMap)
+    assert cfg.theta0 is not None
+    assert cfg.theta0.size == cfg.objective.policy_theta_dim()
 
 
 def test_glm_lagrangian_override_sets_scalarization():

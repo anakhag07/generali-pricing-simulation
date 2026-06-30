@@ -9,7 +9,7 @@ pytest.importorskip("jax")
 
 from objective.objectives.jax_prepared_glm import JaxPreparedGLMObjective  # noqa: E402
 from objective.objectives.prepared_glm import PreparedGLMBatch, PreparedGLMObjective  # noqa: E402
-from objective.policy import SoftmaxPolicy  # noqa: E402
+from objective.policy import QuadraticFeatureMap, SoftmaxPolicy  # noqa: E402
 from optimization.base import Optimization  # noqa: E402
 from optimization.gradients.methods import (  # noqa: E402
     FiniteDifferenceGradient,
@@ -31,7 +31,11 @@ def test_jax_callbacks_match_cpu_prepared_trust_constr_solution() -> None:
         policy_features=policy_features,
         u_coef=-3.0,
     )
-    policy = SoftmaxPolicy(action_low=-0.1, action_high=0.2)
+    policy = SoftmaxPolicy(
+        feature_map=QuadraticFeatureMap(),
+        action_low=-0.1,
+        action_high=0.2,
+    )
     floor = 0.2
     cpu_objective = PreparedGLMObjective(
         policy=policy,
@@ -86,7 +90,11 @@ def test_jax_zeroth_order_gradients_match_cpu_prepared() -> None:
         policy_features=policy_features,
         u_coef=-2.5,
     )
-    policy = SoftmaxPolicy(action_low=-0.1, action_high=0.2)
+    policy = SoftmaxPolicy(
+        feature_map=QuadraticFeatureMap(),
+        action_low=-0.1,
+        action_high=0.2,
+    )
     cpu_objective = PreparedGLMObjective(
         policy=policy,
         policy_feature_dim=batch.policy_feature_dim,
@@ -97,7 +105,12 @@ def test_jax_zeroth_order_gradients_match_cpu_prepared() -> None:
         x_array=batch.x_array,
         u_coef=batch.u_coef,
     )
-    theta = np.array([0.02, -0.03, 0.04], dtype=float)
+    theta = np.linspace(
+        -0.04,
+        0.05,
+        policy.theta_dim(batch.policy_feature_dim),
+        dtype=float,
+    )
     jax_objective.warmup(theta)
     indices = np.arange(n_rows, dtype=int)
 

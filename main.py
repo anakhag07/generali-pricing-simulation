@@ -43,8 +43,9 @@ RUN_CONFIGS: list[str | tuple[str, dict[str, Any]]] = [
             "t_steps": 100,
             "enabled_estimators": ("first_order", "finite_difference", "stein_difference"),
             "wandb_enabled": False,
-            "wandb_project": "jax-move-scipy-opt-demo",
-            "compute_backend": "jax",
+            "wandb_project": "cpu-move-scipy-opt-demo",
+            "compute_backend": "cpu",
+            "seed": 8,
         },
     )
 ]

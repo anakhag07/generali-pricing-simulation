@@ -137,12 +137,11 @@ When modifying or adding code that implements a mathematical formula:
 
 When behavior and documentation disagree, use this priority:
 
-1. `src/objective/objectives/fixed_regression.py`
-2. Current implementation in the relevant source module
-3. Tests
-4. `MATH.md`
-5. `README.md`
-6. `AGENTS.md`
+1. Current implementation in the relevant source module
+2. Tests
+3. `MATH.md`
+4. `README.md`
+5. `AGENTS.md`
 
 If lower-priority docs are stale, update them in the same task.
 

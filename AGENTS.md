@@ -45,7 +45,7 @@ Before editing code:
   feature branch do not require a new worktree.
 - Keep feature worktrees outside the canonical checkout under the parent-level
   convention
-  `/home/anakhag/projects/generali-pricing/worktrees/generali-pricing-simulation/<branch-slug>`.
+  `/home/anakhag/projects/generali-pricing/worktrees/<branch-slug>`.
   Do not create nested worktrees inside the repo checkout.
 - Create the parent worktree directory only when a feature worktree is actually
   needed. From the canonical checkout, use a filesystem-safe slug that mirrors

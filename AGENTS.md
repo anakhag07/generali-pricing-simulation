@@ -78,6 +78,8 @@ Before finishing a build session:
 
 ### Plan Mode
 - Do not edit code.
+- In plan mode, classify whether a task is `worktree-required` before editing.
+  Use an external worktree for changes that add a new reusable `src/` module or span infrastructure areas such as seeding, config, runner behavior, package exports, or generated docs; a feature branch in the canonical checkout is not sufficient for those tasks.
 - Propose implementation approach, file targets, and unit-test structure.
 - Ask whether the proposed test structure is appropriate before implementing tests.
 - For non-trivial changes, ask whether the user wants incremental commits during

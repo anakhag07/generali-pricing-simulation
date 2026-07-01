@@ -47,7 +47,7 @@ J(\theta) = \mathbb{E}_x\big[f(\pi_\theta(x); x)\big]
 $$
 
 Pluggable components:
-- **Objectives**: `FixedRegressionObjective`, `PlantedLogisticObjective`, `ModelBasedObjective`, `PreparedGLMObjective`, `JaxPreparedGLMObjective`
+- **Objectives**: `FixedRegressionObjective`, `PlantedLogisticObjective`, `ModelBasedObjective`, `PreparedGLMObjective`, `JaxPreparedGLMObjective`, plus `NoisyObjective` wrappers
 - **Policies**: `ConstantPolicy`, `LinearPolicy`, `SoftmaxPolicy`, `MLPPolicy` (2-layer, default hidden=16)
 - **Gradient estimators**: `constant`, `first_order`, `finite_difference`, `gauss_stein`, `stein_difference`, `spsa`
 
@@ -86,6 +86,14 @@ Core API convention:
 - `Policy.weighted_grad(theta, x_batch, weights)` is the preferred VJP-style
   path for chain-rule gradients because it avoids materializing full
   `(n_samples, theta_dim)` policy Jacobians.
+
+`NoisyObjective` wraps an existing objective with additive deterministic
+action-level noise $$\hat{M}(x,u)=M(x,u)+\delta(x,u)$$. The initial
+`HomoskedasticGaussianNoise` adapter is keyed by exact `(x, u, seed)`, so the
+same row/action pair has the same noise on every call. It exposes noisy value
+oracles for zeroth-order optimization and intentionally has no analytical
+gradient; use `base_objective.grad(...)` when inspecting the true non-noisy
+objective gradient.
 
 Optimization step rules:
 - `l-bfgs-b` uses `scipy.minimize(method="L-BFGS-B")`.
@@ -535,6 +543,7 @@ that into explicit seed streams:
 - `data_seed`: synthetic state sampling or real-data row subsampling.
 - `split_seed`: train/test split permutation.
 - `theta_seed`: random policy initialization when `theta0=None` or MLP theta is initialized.
+- `noise_seed`: deterministic objective-noise surfaces such as `NoisyObjective`.
 - `optimizer_seed`: mini-batches and stochastic gradient-estimator perturbations.
 
 If `seed_setup` is omitted, all streams use the legacy `seed`. If a
@@ -545,7 +554,7 @@ ordering.
 
 For repeated runs, use `experiments.seed_repeats.run_seed_repeats(...)`. The
 default repeat mode varies only `optimizer_seed` and fixes data, split, and
-theta initialization to the first `run_seed`; set `vary=("all",)` for full
+theta initialization/noise to the first `run_seed`; set `vary=("all",)` for full
 end-to-end seed variation.
 
 ## Contributing

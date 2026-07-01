@@ -68,6 +68,14 @@ def _maybe_apply_acceptance_controls(config: ExperimentConfig) -> ExperimentConf
     return replace(config, objective=objective_with_floor)
 
 
+def _maybe_apply_noise_seed(config: ExperimentConfig, noise_seed: int) -> ExperimentConfig:
+    """Inject the resolved experiment noise seed into noisy objectives."""
+    with_noise_seed = getattr(config.objective, "with_noise_seed", None)
+    if not callable(with_noise_seed):
+        return config
+    return replace(config, objective=with_noise_seed(int(noise_seed)))
+
+
 def _constant_policy_objective(objective: object) -> object:
     """Return an objective copy with a one-parameter constant policy."""
     if not hasattr(objective, "policy"):
@@ -176,6 +184,7 @@ def run_experiment(
     """Run optimization with all enabled estimators; returns traces and final values."""
     effective_config = _maybe_apply_acceptance_controls(config)
     resolved_seeds = resolve_seed_setup(effective_config.seed_setup, effective_config.seed)
+    effective_config = _maybe_apply_noise_seed(effective_config, resolved_seeds.noise_seed)
     objective = effective_config.objective
     enabled_estimators = tuple(effective_config.enabled_estimators)
 

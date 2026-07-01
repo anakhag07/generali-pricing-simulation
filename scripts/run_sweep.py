@@ -20,7 +20,7 @@ OVERRIDE_GRID = {
     "policy_preprocessing": ["no_pca"],
     "feature_order": ["linear", "quadratic", "cubic"],
     "constraint_mode": ["trust_constr"],
-    "n_samples": [None],
+    "n_samples": [200000],
     "train_fraction": [0.8] , 
     "test_fraction": [0.2],
     "n_grad_samples": [8],

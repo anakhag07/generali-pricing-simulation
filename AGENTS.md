@@ -180,6 +180,12 @@ Guidelines:
   - `Objective`: theta-space interface class (`value`, `grad`)
   - `default_rng(seed)`: wrapper around `np.random.default_rng`
 
+- **`src/objective/noise.py`**
+  - `ObjectiveNoise`: interface for deterministic additive action-level noise fields $$\delta(x,u)$$
+  - `HomoskedasticGaussianNoise`: standard/constant-std Gaussian noise keyed by exact `(x, u, seed)`, so repeated evaluations of the same row/action pair return the same noise
+  - `NoisyObjective`: wraps any objective as $$\hat{M}(x,u)=M(x,u)+\delta(x,u)$$ for value-based optimization; intentionally raises for analytical `grad()` because the noisy objective has no analytical gradient
+  - `NoNoise`: zero-noise adapter for tests or disabled noise wiring
+
 - **`src/objective/objectives/fixed_regression.py`** (source of truth for objective math)
   - `FixedRegressionObjective`: pricing objective $$f(u;x) = a(x,u)(\ell(x) - r(u))$$
   - `from_parameters` classmethod; batch evaluation via `value()`, `grad()`, `value_at_u()`
@@ -389,12 +395,12 @@ Guidelines:
   - `ExperimentResult`: full result including config, train samples in `x_samples`, optional `x_test`, split row/index metadata, traces, final train/test policy metrics, and optional u_star
 
 - **`src/experiments/seeding.py`**
-  - `SeedSetup`: optional per-run seed-stream overrides (`run_seed`, `data_seed`, `split_seed`, `theta_seed`, `optimizer_seed`)
+  - `SeedSetup`: optional per-run seed-stream overrides (`run_seed`, `data_seed`, `split_seed`, `theta_seed`, `noise_seed`, `optimizer_seed`)
   - `resolve_seed_setup(...)`: legacy configs without `seed_setup` use `ExperimentConfig.seed` for every stream; explicit `SeedSetup` derives omitted streams from `run_seed`
   - `optimizer_rngs(...)`: derives order-independent per-estimator batch and gradient RNGs from `optimizer_seed`
 
 - **`src/experiments/seed_repeats.py`**
-  - `SeedRepeatSpec`: repeated-run orchestrator over explicit seed streams; default varies only `optimizer_seed` while fixing data/split/theta to the first run seed
+  - `SeedRepeatSpec`: repeated-run orchestrator over explicit seed streams; default varies only `optimizer_seed` while fixing data/split/theta/noise to the first run seed
   - `run_seed_repeats(...)`: runs a preset once per `run_seed`, writes normal per-run outputs plus `seed_repeats.csv` and `seed_repeats_summary.csv`
 
 - **`src/experiments/policy_validation.py`**

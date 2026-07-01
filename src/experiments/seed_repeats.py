@@ -25,7 +25,7 @@ from experiments.results import ExperimentResult, PolicyEvaluation
 from experiments.run import run_experiment
 from experiments.seeding import SeedSetup
 
-SeedStream = Literal["data", "split", "theta", "optimizer", "all"]
+SeedStream = Literal["data", "split", "theta", "noise", "optimizer", "all"]
 
 
 @dataclass(frozen=True)
@@ -39,6 +39,7 @@ class SeedRepeatSpec:
     fixed_data_seed: int | None = None
     fixed_split_seed: int | None = None
     fixed_theta_seed: int | None = None
+    fixed_noise_seed: int | None = None
     fixed_optimizer_seed: int | None = None
     output_root: str = "outputs"
     project_name: str = "seed-repeats"
@@ -48,7 +49,7 @@ class SeedRepeatSpec:
             raise ValueError("run_seeds must contain at least one seed.")
         run_seeds = tuple(int(seed) for seed in self.run_seeds)
         object.__setattr__(self, "run_seeds", run_seeds)
-        allowed = {"data", "split", "theta", "optimizer", "all"}
+        allowed = {"data", "split", "theta", "noise", "optimizer", "all"}
         unknown = sorted(set(self.vary) - allowed)
         if unknown:
             raise ValueError(f"Unknown seed streams: {', '.join(unknown)}.")
@@ -94,6 +95,14 @@ def seed_setup_for_repeat(spec: SeedRepeatSpec, run_seed: int) -> SeedSetup:
             anchor_seed,
             spec.vary,
             spec.fixed_theta_seed,
+            vary_all,
+        ),
+        noise_seed=_repeat_stream_seed(
+            "noise",
+            int(run_seed),
+            anchor_seed,
+            spec.vary,
+            spec.fixed_noise_seed,
             vary_all,
         ),
         optimizer_seed=_repeat_stream_seed(

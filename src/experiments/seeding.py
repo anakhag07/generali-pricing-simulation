@@ -20,11 +20,12 @@ class SeedSetup:
     data_seed: int | None = None
     split_seed: int | None = None
     theta_seed: int | None = None
+    noise_seed: int | None = None
     optimizer_seed: int | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "run_seed", _validate_seed(self.run_seed, "run_seed"))
-        for field_name in ("data_seed", "split_seed", "theta_seed", "optimizer_seed"):
+        for field_name in ("data_seed", "split_seed", "theta_seed", "noise_seed", "optimizer_seed"):
             value = getattr(self, field_name)
             if value is not None:
                 object.__setattr__(self, field_name, _validate_seed(value, field_name))
@@ -36,6 +37,7 @@ class SeedSetup:
             "data_seed": _optional_int(self.data_seed),
             "split_seed": _optional_int(self.split_seed),
             "theta_seed": _optional_int(self.theta_seed),
+            "noise_seed": _optional_int(self.noise_seed),
             "optimizer_seed": _optional_int(self.optimizer_seed),
         }
 
@@ -48,6 +50,7 @@ class ResolvedSeedSetup:
     data_seed: int
     split_seed: int
     theta_seed: int
+    noise_seed: int
     optimizer_seed: int
 
     def __post_init__(self) -> None:
@@ -56,6 +59,7 @@ class ResolvedSeedSetup:
             "data_seed",
             "split_seed",
             "theta_seed",
+            "noise_seed",
             "optimizer_seed",
         ):
             object.__setattr__(self, field_name, _validate_seed(getattr(self, field_name), field_name))
@@ -67,6 +71,7 @@ class ResolvedSeedSetup:
             "data_seed": int(self.data_seed),
             "split_seed": int(self.split_seed),
             "theta_seed": int(self.theta_seed),
+            "noise_seed": int(self.noise_seed),
             "optimizer_seed": int(self.optimizer_seed),
         }
 
@@ -80,6 +85,7 @@ def seed_setup_from_mapping(setup: SeedSetup | Mapping[str, int | None]) -> Seed
         data_seed=_optional_seed_from_mapping(setup, "data_seed"),
         split_seed=_optional_seed_from_mapping(setup, "split_seed"),
         theta_seed=_optional_seed_from_mapping(setup, "theta_seed"),
+        noise_seed=_optional_seed_from_mapping(setup, "noise_seed"),
         optimizer_seed=_optional_seed_from_mapping(setup, "optimizer_seed"),
     )
 
@@ -96,6 +102,7 @@ def resolve_seed_setup(
             data_seed=seed,
             split_seed=seed,
             theta_seed=seed,
+            noise_seed=seed,
             optimizer_seed=seed,
         )
     setup = seed_setup_from_mapping(seed_setup)
@@ -105,6 +112,7 @@ def resolve_seed_setup(
         data_seed=_resolve_or_derive(setup.data_seed, run_seed, "data"),
         split_seed=_resolve_or_derive(setup.split_seed, run_seed, "split"),
         theta_seed=_resolve_or_derive(setup.theta_seed, run_seed, "theta"),
+        noise_seed=_resolve_or_derive(setup.noise_seed, run_seed, "noise"),
         optimizer_seed=_resolve_or_derive(setup.optimizer_seed, run_seed, "optimizer"),
     )
 

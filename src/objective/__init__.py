@@ -8,6 +8,8 @@ This module provides:
   CubicFeatureMap, QuarticFeatureMap, CallableFeatureMap
 - Concrete objectives: FixedRegressionObjective, PlantedLogisticObjective,
   ModelBasedObjective, PreparedGLMObjective, JaxPreparedGLMObjective
+- Objective noise: ObjectiveNoise, NoNoise, HomoskedasticGaussianNoise,
+  NoisyObjective
  - Utility: optimal_u, value_at_constant_u, mean_acceptance_at_constant_u,
    value_for_reporting
 """
@@ -29,6 +31,12 @@ from objective.objectives import (
     prepare_glm_batch,
     prepare_glm_objective,
     prepare_jax_glm_objective,
+)
+from objective.noise import (
+    HomoskedasticGaussianNoise,
+    NoisyObjective,
+    NoNoise,
+    ObjectiveNoise,
 )
 from objective.policy import (
     CallableFeatureMap,
@@ -88,6 +96,11 @@ __all__ = [
     "prepare_glm_batch",
     "prepare_glm_objective",
     "prepare_jax_glm_objective",
+    # Objective noise
+    "HomoskedasticGaussianNoise",
+    "NoisyObjective",
+    "NoNoise",
+    "ObjectiveNoise",
     # Utility
     "mean_acceptance_at_constant_u",
     "optimal_u",

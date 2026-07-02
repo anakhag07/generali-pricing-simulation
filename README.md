@@ -363,17 +363,6 @@ writes a mean/quantile elasticity-by-`u` curve, selected-`u` customer elasticity
 histograms with default `0.5-99.5%` x-axis clipping marked on the chart, and CSV
 summaries under `outputs/glm-sensitivity-distribution/`.
 
-`scripts/diagnose_low_sensitivity_policy_acceptance.py` rebuilds the GLM
-sensitivity buckets, applies either a manual softmax `--theta` or an exact
-`--policy-artifact outputs/.../policies/<estimator>/policy.json`, and writes
-row-level policy-score / acceptance-logit diagnostics plus policy-feature and
-GLM acceptance-feature columns. Use `--bucket-u-ref` to choose the reference
-action used for bucket scoring and `--bucket-row-source artifact-all` /
-`artifact-train` / `artifact-test` to form buckets within saved policy rows;
-the default bucket source remains all eligible GLM rows at median observed `U`.
-Outputs go under `outputs/low-sensitivity-policy-acceptance-diagnostics/` by
-default.
-
 If you already have saved acceptance-floor sweep outputs and only want the
 Pareto frontier for one estimator without rerunning optimization, use
 `scripts/plot_saved_acceptance_floor_frontier.py`:
@@ -430,21 +419,6 @@ objective, use:
 ```bash
 python scripts/benchmark_experiment_speed.py --n-rows 1000 --grid-size 10
 ```
-
-To diagnose how final real-data policies relate processed policy components to
-acceptance, loss, and action variation, use a saved run `summary.json`:
-
-```bash
-python scripts/plot_pc_outcome_diagnostics.py \
-  --preset real_data_glm_base \
-  --policy-kind mlp \
-  --summary-json outputs/glm-policy-comparison/mlp/<run_id>/summary.json \
-  --estimator first_order
-```
-
-This writes scatter grids for processed components vs `f_acc`, loss, and final
-`u`, plus `u_vs_acceptance.png` and `pc_diagnostic_correlations.csv` beside the
-run summary by default.
 
 To evaluate a saved final policy under actual historical acceptance and observed
 loss, use:

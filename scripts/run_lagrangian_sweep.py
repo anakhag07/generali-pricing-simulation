@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-import csv
-from datetime import datetime
-from pathlib import Path
-
 from data.loader import load_mean_observed_acceptance
-from experiments.sweep_utils import run_preset_sweep
-from reporting.visualization import (
-    plot_lagrangian_lambda_tradeoffs,
-    plot_lagrangian_pareto_frontier,
+from experiments.sweep_reporting import (
+    collect_config_sweep_final_rows,
+    timestamped_sweep_output_dir,
+    write_rows_csv,
+    write_sweep_frontier_plots,
 )
+from experiments.sweep_utils import run_preset_sweep
 
 BASE_PRESET = "real_data_glm_base"
 PROJECT_NAME = "glm-softmax-lagrangian-sweep"
@@ -35,41 +33,6 @@ OVERRIDE_GRID = {
     "wandb_enabled": [True],
 }
 
-
-def _collect_rows(results):
-    rows: list[dict[str, float | str]] = []
-    for run_name, result in results:
-        lambda_value = result.config.lagrangian_lambda
-        if lambda_value is None:
-            continue
-        for estimator, estimator_result in result.results.items():
-            if estimator_result.mean_acceptance is None:
-                continue
-            rows.append(
-                {
-                    "run_name": run_name,
-                    "estimator": estimator,
-                    "lambda": float(lambda_value),
-                    "u": float(estimator_result.u),
-                    "mean_acceptance": float(estimator_result.mean_acceptance),
-                    "value": float(estimator_result.value),
-                }
-            )
-    return rows
-
-
-def _write_rows(rows, output_dir: Path) -> None:
-    csv_path = output_dir / "lagrangian_sweep.csv"
-    with csv_path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(
-            handle,
-            fieldnames=["run_name", "estimator", "lambda", "u", "mean_acceptance", "value"],
-        )
-        writer.writeheader()
-        for row in rows:
-            writer.writerow(row)
-
-
 def main() -> None:
     results = run_preset_sweep(
         base_preset=BASE_PRESET,
@@ -77,30 +40,29 @@ def main() -> None:
         project_name=PROJECT_NAME,
         display_keys=DISPLAY_KEYS,
     )
-    rows = _collect_rows(results)
+    rows = collect_config_sweep_final_rows(
+        results,
+        config_attr="lagrangian_lambda",
+        sweep_key="lambda",
+    )
     if not rows:
         raise ValueError("No lagrangian sweep rows were produced. Check lagrangian_lambda overrides.")
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = Path("outputs") / PROJECT_NAME / f"lagrangian_frontier_{timestamp}"
-    output_dir.mkdir(parents=True, exist_ok=True)
-    _write_rows(rows, output_dir)
-
-    plot_dir = str(output_dir)
-    plot_lagrangian_lambda_tradeoffs(rows, plot_dir)
-    plot_lagrangian_pareto_frontier(
-        rows,
-        plot_dir,
-        y_key="value",
-        y_label="Final objective value",
-        filename="pareto_objective_acceptance.png",
+    output_dir = timestamped_sweep_output_dir(
+        project_name=PROJECT_NAME,
+        dirname_prefix="lagrangian_frontier",
     )
-    plot_lagrangian_pareto_frontier(
+    write_rows_csv(
+        output_dir / "lagrangian_sweep.csv",
         rows,
-        plot_dir,
-        y_key="u",
-        y_label="Final u",
-        filename="pareto_u_acceptance.png",
+        fieldnames=["run_name", "estimator", "lambda", "u", "mean_acceptance", "value"],
+    )
+    write_sweep_frontier_plots(
+        rows,
+        output_dir,
+        sweep_key="lambda",
+        sweep_label="Lagrangian lambda",
+        tradeoff_filename="lambda_vs_u_acceptance.png",
     )
     print(f"Completed {len(results)} lagrangian sweep runs for preset '{BASE_PRESET}'.")
     print(f"Wrote sweep summary and frontier plots to {output_dir}.")

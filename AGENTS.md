@@ -362,6 +362,10 @@ Guidelines:
   - `enabled_estimators` may include `"constant"`, which optimizes a one-scalar `ConstantPolicy` copy of the configured objective; `constant_u_baselines` remains fixed-action evaluation only
   - `compute_backend="jax"` converts supported GLM train batches to `JaxPreparedGLMObjective` before optimizer execution and requires `trust-constr` with full batches
 
+- **`src/experiments/execution.py`**
+  - `default_reporter_stack(config)`: constructs the standard reporter stack in the required order (`PolicyArtifactReporter` before `JsonReporter`, plots before W&B upload)
+  - `execute_experiment_run(name, config, runs_root=...)`: creates `RunContext`, runs `run_experiment(...)`, finalizes reporters, and returns `ExecutedRun` with the result and output context
+
 - **`src/experiments/slurm.py`**
   - ORCD Slurm launcher helpers for experiment entry points; lightweight sweep override inspection selects a CPU or GPU profile before expensive config/data loading
   - NumPy-only runs auto-submit to `mit_normal` with CPU/memory/time resources; any explicit `compute_backend="jax"` run auto-submits to `mit_normal_gpu` with `--gres=gpu:l40s:1`
@@ -376,7 +380,11 @@ Guidelines:
   - `expand_override_grid(...)`: cartesian product of override values
   - `apply_config_overrides(...)`: validates and applies top-level `ExperimentConfig` overrides
   - `generate_sweep_runs(...)`: expands a base preset into named sweep variants; accepts either `override_grid` (cartesian product) or an explicit `override_list` of per-run override dicts; real-data override grids may include factory axes such as `policy_kind` and `constraint_mode`; either override form may include an `_run_name` key to set an explicit run name instead of the derived display name
-  - `run_preset_sweep(...)`: same `override_grid`/`override_list` signature as `generate_sweep_runs(...)`; executes the generated sweep variants through the standard reporter pipeline
+  - `run_preset_sweep(...)`: same `override_grid`/`override_list` signature as `generate_sweep_runs(...)`; executes variants through `execute_experiment_run(...)` and returns `SweepRunResult` records with run name, config, overrides, result, and `RunContext`
+
+- **`src/experiments/sweep_reporting.py`**
+  - Aggregate sweep-output helpers for recurring scripts: timestamped aggregate directories, final estimator row collection for scalar config sweeps, CSV writing, and standard action/acceptance plus Pareto frontier plots
+  - Simple sweep scripts should call this module instead of carrying local `_write_rows`, timestamp-dir, and private plotting-helper logic
 
 - **`src/experiments/sensitivity_buckets.py`**
   - `median_observed_u(...)`: computes the median historical `U` over complete eligible rows
@@ -441,7 +449,7 @@ Guidelines:
   - `plot_theta_objective_contours(...)`: 2D contour plot with optimization paths; use adaptive linear/log/symlog color scaling when objective ranges make a single linear scale unreadable
   - `plot_comparison_objective_curves(...)`, `plot_comparison_u_curves(...)`, `plot_comparison_final_metric(...)`: aggregate policy-comparison plots; final metrics render as grouped bars by policy with estimator colors and policy hatching
   - Model-based real-data run plots under `plots/policy_train/` and `plots/policy_test/` include `final_summary_metrics.png`, `u_histogram.png`, `acceptance_histograms.png`, `delta_u_histogram.png`, `delta_u_by_sensitivity.png`, `objective_contribution_summary.png`, and per-estimator `u_acceptance/<estimator>.png` files with binned mean acceptance, customer-level acceptance-vs-`u` scatter, and raw objective contribution histograms
-  - Private sweep helpers power both lambda and trust-constrained acceptance-floor frontier plots
+  - Public `plot_sweep_tradeoffs(...)` and `plot_sweep_pareto_frontier(...)` power generic sweep frontier plots; lambda-specific wrappers call these helpers
   - `select_theta_axes_max_variance(...)`: picks the two theta axes with highest variance for contour plots
 
 ### Entry Point (`main.py`)
@@ -450,7 +458,7 @@ Guidelines:
 - Before resolving full configs, auto-submits itself through `src/experiments/slurm.py` when not already inside Slurm; use `--no-sbatch` only for intentional local/debug execution
 - `main.py` prepends its checkout-local `src` directory to `sys.path`, and Slurm child jobs export the submitting checkout's `src` on `PYTHONPATH`, so worktree runs do not accidentally import the canonical checkout's editable install
 - CPU-only specs submit to ORCD `mit_normal`; specs with `compute_backend="jax"` submit to `mit_normal_gpu` with one L40S GPU and fail fast if JAX reports only CPU in the child job
-- For each config spec: creates `RunContext`, assembles `ReporterStack`, calls `run_experiment()`, finalizes with `reporters.on_end()`
+- For each config spec: delegates the run lifecycle to `experiments.execution.execute_experiment_run(...)`, which creates `RunContext`, assembles the default `ReporterStack`, calls `run_experiment()`, and finalizes reporters
 - All I/O is handled by reporters, not by the runner
 - `scripts/run_sweep.py` provides preset-based sweep execution using top-level and real-data factory overrides; it defaults to a `planted_logistic_base` homoskedastic-noise theta-offset sweep (`OVERRIDE_LIST` built from `THETA_OFFSETS` added to `BASE_THETA`, wrapping the base objective in `NoisyObjective`/`HomoskedasticGaussianNoise` with `NOISE_STD`, and using `correctness=CorrectnessSpec(gradient_source="denoised_exact")`); this preset does not use JAX/GLM, so it still auto-submits through the ORCD Slurm launcher but no longer requires GPU submission, with `--no-sbatch` for intentional local/debug execution
 - `scripts/run_lagrangian_sweep.py` runs a lagrangian-lambda sweep and writes aggregate frontier plots under `outputs/<project>/lagrangian_frontier_<timestamp>/`
@@ -551,6 +559,7 @@ when appropriate.
 | `test_config.py` | ExperimentConfig validation rules |
 | `test_config_template.py` | Config template scaffold |
 | `test_correctness_spec.py` | CorrectnessSpec gradient source modes |
+| `test_execution.py` | Shared experiment run lifecycle and default reporter stack |
 | `test_experiment_configs.py` | Config registry (get_config, list_configs) |
 | `test_real_data_config.py` | All real-data presets load; x_fixed shape; correct estimator sets |
 | `test_enabled_estimators.py` | Selective estimator execution |
@@ -562,7 +571,8 @@ when appropriate.
 | `test_train_test_split.py` | Runner train/test split, held-out policy metrics, and summary payloads |
 | `test_seeding.py` | Seed setup serialization, data/split/theta stream routing, estimator-order independence |
 | `test_seed_repeats.py` | Seed-repeat setup construction and aggregate CSV outputs |
-| `test_sweep_utils.py` | Override-grid expansion and preset sweep config generation |
+| `test_sweep_reporting.py` | Aggregate sweep row and CSV helpers |
+| `test_sweep_utils.py` | Override-grid expansion and preset sweep config/result generation |
 | `test_sensitivity_buckets.py` | GLM local price-sensitivity scoring and tertile construction |
 | `test_sensitivity_bucket_script.py` | Sensitivity bucket experiment script constants and summaries |
 | `test_softmax_alpha_sweep_script.py` | Softmax alpha sweep constants, artifact-replayed profit bins, and aggregate output plots |

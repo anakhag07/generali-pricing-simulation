@@ -11,18 +11,8 @@ from typing import Any, Literal, Mapping, Sequence
 import numpy as np
 
 from experiments.configs import get_config
-from experiments.reporters import (
-    ConsoleReporter,
-    FileStepLogger,
-    JsonReporter,
-    PlotReporter,
-    PolicyArtifactReporter,
-    ReporterStack,
-    WandbReporter,
-    create_run_context,
-)
+from experiments.execution import execute_experiment_run
 from experiments.results import ExperimentResult, PolicyEvaluation
-from experiments.run import run_experiment
 from experiments.seeding import SeedSetup
 
 SeedStream = Literal["data", "split", "theta", "noise", "optimizer", "all"]
@@ -128,11 +118,9 @@ def run_seed_repeats(spec: SeedRepeatSpec) -> SeedRepeatOutput:
         overrides = {**dict(spec.overrides), "seed_setup": seed_setup}
         config = get_config(spec.base_preset, overrides=overrides)
         run_name = f"seed-{int(run_seed)}"
-        run_context = create_run_context(run_name, runs_root=str(output_dir / "runs"))
-        reporters = _reporters_for_config(config)
-        reporters.on_start(run_context, config)
-        result = run_experiment(config, step_reporter=reporters)
-        reporters.on_end(run_context, result)
+        executed = execute_experiment_run(run_name, config, runs_root=str(output_dir / "runs"))
+        run_context = executed.run_context
+        result = executed.result
         results.append((int(run_seed), run_name, result))
         final_rows.extend(_final_rows(int(run_seed), run_name, str(run_context.run_dir), result))
 
@@ -162,19 +150,6 @@ def _repeat_stream_seed(
     if stream in vary:
         return int(run_seed)
     return int(anchor_seed)
-
-
-def _reporters_for_config(config: object) -> ReporterStack:
-    reporter_list = [
-        ConsoleReporter(verbose=config.verbose),
-        FileStepLogger(),
-        PolicyArtifactReporter(),
-        JsonReporter(),
-        PlotReporter(),
-    ]
-    if config.wandb_enabled:
-        reporter_list.append(WandbReporter())
-    return ReporterStack(reporter_list)
 
 
 def _final_rows(

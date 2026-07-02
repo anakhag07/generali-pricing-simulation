@@ -375,8 +375,8 @@ Guidelines:
 - **`src/experiments/sweep_utils.py`**
   - `expand_override_grid(...)`: cartesian product of override values
   - `apply_config_overrides(...)`: validates and applies top-level `ExperimentConfig` overrides
-  - `generate_sweep_runs(...)`: expands a base preset into named sweep variants; real-data override grids may include factory axes such as `policy_kind` and `constraint_mode`
-  - `run_preset_sweep(...)`: executes sweep variants through the standard reporter pipeline
+  - `generate_sweep_runs(...)`: expands a base preset into named sweep variants; accepts either `override_grid` (cartesian product) or an explicit `override_list` of per-run override dicts; real-data override grids may include factory axes such as `policy_kind` and `constraint_mode`; either override form may include an `_run_name` key to set an explicit run name instead of the derived display name
+  - `run_preset_sweep(...)`: same `override_grid`/`override_list` signature as `generate_sweep_runs(...)`; executes the generated sweep variants through the standard reporter pipeline
 
 - **`src/experiments/sensitivity_buckets.py`**
   - `median_observed_u(...)`: computes the median historical `U` over complete eligible rows
@@ -452,7 +452,7 @@ Guidelines:
 - CPU-only specs submit to ORCD `mit_normal`; specs with `compute_backend="jax"` submit to `mit_normal_gpu` with one L40S GPU and fail fast if JAX reports only CPU in the child job
 - For each config spec: creates `RunContext`, assembles `ReporterStack`, calls `run_experiment()`, finalizes with `reporters.on_end()`
 - All I/O is handled by reporters, not by the runner
-- `scripts/run_sweep.py` provides preset-based sweep execution using top-level and real-data factory overrides; it defaults to a JAX GLM initial-constraint-penalty sweep and auto-submits through the ORCD Slurm launcher, with `--no-sbatch` for intentional local/debug execution
+- `scripts/run_sweep.py` provides preset-based sweep execution using top-level and real-data factory overrides; it defaults to a `planted_logistic_base` homoskedastic-noise theta-offset sweep (`OVERRIDE_LIST` built from `THETA_OFFSETS` added to `BASE_THETA`, wrapping the base objective in `NoisyObjective`/`HomoskedasticGaussianNoise` with `NOISE_STD`, and using `correctness=CorrectnessSpec(gradient_source="denoised_exact")`); this preset does not use JAX/GLM, so it still auto-submits through the ORCD Slurm launcher but no longer requires GPU submission, with `--no-sbatch` for intentional local/debug execution
 - `scripts/run_lagrangian_sweep.py` runs a lagrangian-lambda sweep and writes aggregate frontier plots under `outputs/<project>/lagrangian_frontier_<timestamp>/`
 - `scripts/run_acceptance_floor_sweep.py` runs the trust-constrained softmax GLM preset over a dense acceptance-floor grid `c` and writes aggregate frontier plots under `outputs/<project>/acceptance_floor_frontier_<timestamp>/`
 - `scripts/run_glm_u_coef_sweep.py` runs the softmax/no-PCA/trust-constr GLM setup over 200000 sampled rows and `u_coef in {-4, -5, -8, -10, -20}`, keeps per-run distribution plots enabled, and writes aggregate `glm_u_coef_sweep.csv` plus frontier plots under `outputs/glm-u-coef-sweep/u_coef_frontier_<timestamp>/`

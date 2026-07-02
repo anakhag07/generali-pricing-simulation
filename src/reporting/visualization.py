@@ -1860,21 +1860,6 @@ def plot_sweep_tradeoffs(
     plt.close(fig)
 
 
-def plot_lagrangian_lambda_tradeoffs(
-    points: Sequence[Mapping[str, object]],
-    plot_dir: str,
-    filename: str = "lambda_vs_u_acceptance.png",
-) -> None:
-    """Plot final mean action and acceptance versus lagrangian lambda."""
-    plot_sweep_tradeoffs(
-        points,
-        plot_dir,
-        sweep_key="lambda",
-        sweep_label="Lagrangian lambda",
-        filename=filename,
-    )
-
-
 def plot_sweep_pareto_frontier(
     points: Sequence[Mapping[str, object]],
     plot_dir: str,
@@ -1936,23 +1921,3 @@ def plot_sweep_pareto_frontier(
     fig.tight_layout()
     fig.savefig(path / filename, dpi=200)
     plt.close(fig)
-
-
-def plot_lagrangian_pareto_frontier(
-    points: Sequence[Mapping[str, object]],
-    plot_dir: str,
-    *,
-    y_key: str,
-    y_label: str,
-    filename: str,
-) -> None:
-    """Plot a lagrangian sweep frontier colored by lambda."""
-    plot_sweep_pareto_frontier(
-        points,
-        plot_dir,
-        sweep_key="lambda",
-        sweep_label="Lagrangian lambda",
-        y_key=y_key,
-        y_label=y_label,
-        filename=filename,
-    )

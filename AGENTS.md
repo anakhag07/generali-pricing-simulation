@@ -457,7 +457,7 @@ Guidelines:
   - `plot_theta_objective_contours(...)`: 2D contour plot with optimization paths; use adaptive linear/log/symlog color scaling when objective ranges make a single linear scale unreadable
   - `plot_comparison_objective_curves(...)`, `plot_comparison_u_curves(...)`, `plot_comparison_final_metric(...)`: aggregate policy-comparison plots; final metrics render as grouped bars by policy with estimator colors and policy hatching
   - Model-based real-data run plots under `plots/policy_train/` and `plots/policy_test/` include `final_summary_metrics.png`, `u_histogram.png`, `acceptance_histograms.png`, `delta_u_histogram.png`, `delta_u_by_sensitivity.png`, `objective_contribution_summary.png`, and per-estimator `u_acceptance/<estimator>.png` files with binned mean acceptance, customer-level acceptance-vs-`u` scatter, and raw objective contribution histograms
-  - Public `plot_sweep_tradeoffs(...)` and `plot_sweep_pareto_frontier(...)` power generic sweep frontier plots; lambda-specific wrappers call these helpers
+  - Public `plot_sweep_tradeoffs(...)` and `plot_sweep_pareto_frontier(...)` power generic sweep frontier plots; `sweep_reporting.write_sweep_frontier_plots(...)` is the standard caller (e.g. `scripts/run_lagrangian_sweep.py` uses it with `sweep_key="lambda"`)
   - `select_theta_axes_max_variance(...)`: picks the two theta axes with highest variance for contour plots
 
 ### Entry Point (`main.py`)
@@ -599,7 +599,7 @@ when appropriate.
 | `test_wandb_reporter.py` | W&B reporter integration |
 | `test_reporting_theta_norms.py` | Theta norm visualization |
 | `test_plot_u_star.py` | u_star selection for plotting |
-| `test_lagrangian_sweep_plots.py` | lambda-wrapper and generic sweep frontier plot generation |
+| `test_lagrangian_sweep_plots.py` | generic sweep frontier plot generation |
 | `test_theta_contours.py` | Contour grid shapes, axis selection |
 | `test_trace_theta_values.py` | theta_values recorded in traces |
 | `test_visualization_step_sizes.py` | step_sizes plot uses log y-scale |

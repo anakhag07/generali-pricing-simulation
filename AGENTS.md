@@ -157,17 +157,14 @@ If lower-priority docs are stale, update them in the same task.
 Before adding code, inspect the surrounding module structure and choose the narrowest sensible location for the change.
 
 Guidelines:
-- Classify new work by lifespan before choosing files:
-  - `scratch/` (gitignored) — throwaway probes and one-off investigations.
-    Carry a small set of inline unit tests/assertions covering the core logic,
-    but no `tests/` suite, docstrings, or docs entry. Delete once the finding is
-    captured (plots and notes live in Notion).
-  - `scripts/` — durable, reusable, rerun-worthy tooling. Promote here only when
-    it is parameterized and answers a recurring question, adding a proper test
-    under `tests/` and a row in the scripts list.
-  - `src/` — cross-module reusable pipeline logic, only after core-feature planning.
-  Escalate scratch → scripts → src only as reuse proves out; most probes stop at
-  `scratch/` and are deleted.
+- Classify new work before choosing files. One-off or ad-hoc analyses belong in
+  `scripts/`; reusable behavior that changes the experiment pipeline belongs in
+  `src/` only after core-feature planning.
+- `scratch/` is a tracked (committed) area for drivers of concluded experiments
+  and short-lived probes. Retire a `scripts/` driver here once its experiment is
+  done rather than deleting it, and drop its `scripts/` docs entries — `scratch/`
+  contents are intentionally left out of the AGENTS/README scripts docs. Promote
+  back to `scripts/` only if it becomes reusable tooling again.
 - Keep the boundary strict: do not hide reusable pipeline logic inside a script,
   and do not promote analysis-only code into `src/` without a concrete reusable
   integration point.
@@ -469,25 +466,18 @@ Guidelines:
 - For each config spec: delegates the run lifecycle to `experiments.execution.execute_experiment_run(...)`, which creates `RunContext`, assembles the default `ReporterStack`, calls `run_experiment()`, and finalizes reporters
 - All I/O is handled by reporters, not by the runner
 - `scripts/run_sweep.py` provides preset-based sweep execution using top-level and real-data factory overrides; it defaults to a `planted_logistic_base` homoskedastic-noise theta-offset sweep (`OVERRIDE_LIST` built from `THETA_OFFSETS` added to `BASE_THETA`, wrapping the base objective in `NoisyObjective`/`HomoskedasticGaussianNoise` with `NOISE_STD`, and using `correctness=CorrectnessSpec(gradient_source="denoised_exact")`); this preset does not use JAX/GLM, so it still auto-submits through the ORCD Slurm launcher but no longer requires GPU submission, with `--no-sbatch` for intentional local/debug execution
-- `scripts/run_lagrangian_sweep.py` runs a lagrangian-lambda sweep and writes aggregate frontier plots under `outputs/<project>/lagrangian_frontier_<timestamp>/`
-- `scripts/run_acceptance_floor_sweep.py` runs the trust-constrained softmax GLM preset over a dense acceptance-floor grid `c` and writes aggregate frontier plots under `outputs/<project>/acceptance_floor_frontier_<timestamp>/`
 - `scripts/run_glm_u_coef_sweep.py` runs the softmax/no-PCA/trust-constr GLM setup over 200000 sampled rows and `u_coef in {-4, -5, -8, -10, -20}`, keeps per-run distribution plots enabled, and writes aggregate `glm_u_coef_sweep.csv` plus frontier plots under `outputs/glm-u-coef-sweep/u_coef_frontier_<timestamp>/`
 - `scripts/run_glm_softmax_alpha_sweep.py` runs the trust-constrained softmax/no-PCA/linear-feature GLM setup over symmetric action bounds `[-alpha, alpha]` for `alpha in {0.5, 0.4, 0.3, 0.2, 0.15, 0.125, 0.1, 0.075}`, saves normal per-alpha policy artifacts, and writes aggregate final objective/profit plots plus artifact-replayed acceptance-threshold and per-alpha `u`-bin expected-profit summaries under `outputs/glm-softmax-alpha-sweep/alpha_sweep_<timestamp>/`
 - `scripts/run_glm_sensitivity_bucket_experiment.py` buckets all complete eligible GLM rows into low/medium/high local price-sensitivity tertiles at median observed `U`, runs the softmax/no-PCA/trust-constr GLM setup on every row in each bucket, keeps per-run distribution plots enabled, and writes aggregate `glm_sensitivity_bucket_experiment.csv` plus comparison plots under `outputs/glm-sensitivity-buckets/sensitivity_bucket_summary_<timestamp>/`
 - `scripts/run_glm_reference_elasticity_bucket_experiment.py` repeats the GLM bucket experiment for reference actions `u_ref in {-0.1, 0.1, 0.2, 0.3}`, ranks rows by elasticity magnitude at each reference action, runs only `first_order`, annotates summary charts with average bucket elasticity magnitude, and writes per-reference summaries under `outputs/glm-reference-elasticity-buckets/`
 - `scripts/plot_glm_sensitivity_distribution.py` computes GLM customer elasticities $$d p_{accept}(x, u) / du$$ over a default `u in [-0.3, 0.3]` grid, writes a mean/quantile elasticity-by-`u` curve, selected-`u` elasticity histograms for `{-0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3}` with default `0.5-99.5%` x-axis clipping marked, and CSV summaries under `outputs/glm-sensitivity-distribution/`
-- `scripts/diagnose_low_sensitivity_policy_acceptance.py` rebuilds GLM sensitivity buckets, applies either a manual softmax `--theta` or exact saved-policy replay via `--policy-artifact outputs/.../policies/<estimator>/policy.json`, and writes row-level `row_index`, policy-feature, GLM acceptance-feature, policy-score, and acceptance-logit diagnostics plus histograms under `outputs/low-sensitivity-policy-acceptance-diagnostics/`; use `--bucket all` for low/medium/high, `--bucket-u-ref` to choose the scoring action, and `--bucket-row-source artifact-all|artifact-train|artifact-test` to form buckets within saved artifact rows
 - `scripts/plot_policy_acceptance_grid.py` loads a saved policy artifact, scores artifact-bound rows by mean absolute acceptance sensitivity over a simulated `u` grid and by predicted loss, randomly samples clients from low/medium/high tertiles for each score, and writes two three-panel client-level acceptance-curve plots plus `sampled_clients.csv` under `outputs/policy-acceptance-grid/`; omit `--seed` to resample clients each run
 - `scripts/plot_saved_acceptance_floor_frontier.py` re-plots acceptance-floor Pareto frontiers from a saved `acceptance_floor_sweep.csv` (or the latest matching frontier directory) without rerunning optimization; defaults to `first_order` and writes estimator-suffixed Pareto PNGs
 - `scripts/query_acceptance_at_u.py` loads a config preset or default GLM/XGB model type and reports mean acceptance for supplied or evenly sampled constant `u` values without running optimization; writes acceptance-curve and historical-`U` rug plots under `outputs/acceptance_queries/` by default and optionally writes `u,n,mean_acceptance` CSV output
-- `scripts/plot_pc_outcome_diagnostics.py` reads a saved run `summary.json`, rebuilds a real-data base preset objective with optional policy/preprocessing override flags, and writes processed-policy-component scatter diagnostics against final `f_acc`, loss, and `u`; defaults beside the summary under `pc_outcome_diagnostics/<estimator>/`
 - `scripts/evaluate_historical_policy_objective.py` reads a saved run `summary.json`, reconstructs selected CSV row positions from full-eligible mode or seed/`n_samples`, prints the estimator theta used, and evaluates final policy prices under historical acceptance `1 - is_churn` and observed `Y_G_Loss`; writes aggregate `summary.json` and row-level `per_row.csv` under `historical_policy_objective/<estimator>/`
   - Prefer `--policy-artifact outputs/.../policies/<estimator>/policy.json` for new runs; `--summary-json` remains a legacy fallback for outputs created before policy artifacts existed
   - Supports `--objective model` to replay the trained model objective and `--objective historical` for the observed-outcome diagnostic; both support `--split train|test|all`, where `all` means all selected run rows before splitting
   - `--u-source historical --acceptance-source historical|model --technical-price-source historical|model` runs script-only historical-`U` diagnostics without optimized policy actions; `--model-type glm|xgb` selects deterministic complete eligible rows unless `--summary-json` is supplied to reuse a saved run sample; `--acceptance-model-historical-u` is a shortcut for model acceptance plus historical technical price
-- `scripts/diagnose_stein_backend_divergence.py` compares NumPy vs JAX GLM Stein-difference behavior from two saved summaries that differ only by `compute_backend`; uses the existing optimizer seed, replays fixed perturbation blocks at `theta0` and saved final thetas, optionally reruns instrumented trust-constr traces, and writes fixed-probe/optimizer-event CSVs plus a diagnostic summary under `outputs/backend-divergence/`
-- `scripts/strict_stein_backend_verification.py` runs one backend as the only SciPy trust-constr driver while evaluating the peer backend at every identical theta and Stein perturbation block; use it to verify backend formula parity independently of two-run trust-region/RNG path divergence
-- `scripts/plot_glm_data_tsne.py` samples rows from the GLM real-data CSV, runs a standardized t-SNE/KMeans feature diagnostic, and writes embedding CSV plus color-by-feature plots under `outputs/data-tsne/`
 - `scripts/run_policy_pca_grid.py` runs the GLM policy PCA-dimensionality grid over configured PCA dimensions and policy classes `(constant, linear, quadratic, third_order, fourth_order, softmax_linear, softmax_quadratic, softmax_third_order, softmax_fourth_order, mlp)`; unconstrained is default, `--constrained` uses `trust-constr` with the observed GLM acceptance floor and a 500-step default cap; outputs aggregate CSVs, summary markdown, and headline/spread plots under `outputs/policy-pca-grid/`; prints per-condition progress by default and supports `--quiet`
 - `scripts/benchmark_experiment_speed.py` benchmarks GLM analytical acceptance vs sklearn `predict_proba`, Stein-difference gradient timing/call counts, repeated objective-cache behavior, and full-vs-subsampled contour grid timing; use it to quantify whether performance changes speed up real-data diagnostics without relying on flaky pytest time thresholds
 
@@ -496,9 +486,7 @@ Guidelines:
 These are documented here so agents can account for them and clean them up
 when appropriate.
 
-- **`plot_dir` on `ExperimentConfig` is ignored by `PlotReporter`:**
-  `PlotReporter` always uses `run_context.plots_dir` (which is
-  `run_dir / "plots"`). The config field is only serialized.
+- _None currently tracked._
 
 ## Testing
 
@@ -587,8 +575,6 @@ when appropriate.
 | `test_plot_glm_sensitivity_distribution_script.py` | GLM elasticity distribution script summaries and plot outputs |
 | `test_reference_elasticity_bucket_script.py` | Reference-u GLM elasticity bucket script constants and plot outputs |
 | `test_policy_pca_grid.py` | Policy PCA grid condition construction and aggregate output writing |
-| `test_stein_backend_divergence_script.py` | Stein backend-divergence diagnostic fixed-sample gradients and trace comparison helpers |
-| `test_strict_stein_backend_verification_script.py` | Strict single-driver Stein backend verification summary and failure detection helpers |
 
 #### `tests/reporting/`
 | Test File | Area |

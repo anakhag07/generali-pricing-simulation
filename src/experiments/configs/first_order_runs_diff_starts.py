@@ -25,7 +25,6 @@ SIGMA = 0.05
 N_GRAD_SAMPLES = 256
 VERBOSE = True
 PLOT = True
-PLOT_DIR = "plots"
 ENABLED_ESTIMATORS = ("first_order", "spsa", "stein-difference", "finite-difference")
 WANDB_ENABLED = True
 
@@ -74,7 +73,6 @@ RUNTIME = canonical_runtime_block(
     plot=PLOT,
     verbose=VERBOSE,
     wandb_enabled=WANDB_ENABLED,
-    plot_dir=PLOT_DIR,
 )
 
 CORRECTNESS = CorrectnessSpec(

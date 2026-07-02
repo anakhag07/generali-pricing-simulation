@@ -107,7 +107,6 @@ class ExperimentConfig:
     n_grad_samples: int = 64
     verbose: bool = False
     plot: bool = True
-    plot_dir: str = "plots"
     enabled_estimators: tuple[str, ...] = ("first_order", "finite_difference", "stein_difference")
     constant_u_baselines: tuple[float, ...] = ()
     wandb_enabled: bool = False
@@ -431,7 +430,6 @@ class ExperimentConfig:
             "n_grad_samples": int(self.n_grad_samples),
             "verbose": bool(self.verbose),
             "plot": bool(self.plot),
-            "plot_dir": self.plot_dir,
             "enabled_estimators": list(self.enabled_estimators),
             "constant_u_baselines": [float(u) for u in self.constant_u_baselines],
             "perturbation_space": self.perturbation_space,
@@ -734,7 +732,6 @@ def canonical_runtime_block(
     plot: bool,
     verbose: bool,
     wandb_enabled: bool,
-    plot_dir: str = "plots",
     wandb_project: str | None = None,
     wandb_entity: str | None = "generali-pricing",
     wandb_group: str | None = None,
@@ -747,7 +744,6 @@ def canonical_runtime_block(
     """Create a canonical runtime configuration block."""
     return {
         "plot": bool(plot),
-        "plot_dir": plot_dir,
         "verbose": bool(verbose),
         "wandb_enabled": bool(wandb_enabled),
         "wandb_project": wandb_project,

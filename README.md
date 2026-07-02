@@ -306,26 +306,6 @@ instead of the default 60x60 used for cheaper synthetic objectives.
   summaries on the raw objective `J(theta)` so lambda sweeps can be compared on
   the same frontier.
 
-`scripts/run_lagrangian_sweep.py` runs a preset sweep over `lagrangian_lambda`
-and writes three aggregate plots under `outputs/<project>/lagrangian_frontier_<timestamp>/`:
-
-- `lambda_vs_u_acceptance.png` -- two panels for `lambda -> final u` and
-  `lambda -> mean acceptance`
-- `pareto_objective_acceptance.png` -- final objective vs acceptance, colored by
-  lambda
-- `pareto_u_acceptance.png` -- final `u` vs acceptance, colored by lambda
-
-`scripts/run_acceptance_floor_sweep.py` runs the trust-constrained softmax GLM
-preset over a dense acceptance-floor grid `c in [0.50, 0.995]` and writes the
-same three aggregate plots under
-`outputs/<project>/acceptance_floor_frontier_<timestamp>/`:
-
-- `c_vs_u_acceptance.png` -- two panels for `c -> final u` and
-  `c -> mean acceptance`
-- `pareto_objective_acceptance.png` -- final objective vs acceptance, colored by
-  `c`
-- `pareto_u_acceptance.png` -- final `u` vs acceptance, colored by `c`
-
 `scripts/run_glm_softmax_alpha_sweep.py` runs the trust-constrained softmax /
 no-PCA / linear-feature GLM setup over symmetric action bounds
 `[-alpha, alpha]` for `alpha in {0.5, 0.4, 0.3, 0.2, 0.15, 0.125, 0.1, 0.075}`.
@@ -362,17 +342,6 @@ elasticities `d p_accept / du` across a default `u in [-0.3, 0.3]` grid. It
 writes a mean/quantile elasticity-by-`u` curve, selected-`u` customer elasticity
 histograms with default `0.5-99.5%` x-axis clipping marked on the chart, and CSV
 summaries under `outputs/glm-sensitivity-distribution/`.
-
-`scripts/diagnose_low_sensitivity_policy_acceptance.py` rebuilds the GLM
-sensitivity buckets, applies either a manual softmax `--theta` or an exact
-`--policy-artifact outputs/.../policies/<estimator>/policy.json`, and writes
-row-level policy-score / acceptance-logit diagnostics plus policy-feature and
-GLM acceptance-feature columns. Use `--bucket-u-ref` to choose the reference
-action used for bucket scoring and `--bucket-row-source artifact-all` /
-`artifact-train` / `artifact-test` to form buckets within saved policy rows;
-the default bucket source remains all eligible GLM rows at median observed `U`.
-Outputs go under `outputs/low-sensitivity-policy-acceptance-diagnostics/` by
-default.
 
 If you already have saved acceptance-floor sweep outputs and only want the
 Pareto frontier for one estimator without rerunning optimization, use
@@ -430,21 +399,6 @@ objective, use:
 ```bash
 python scripts/benchmark_experiment_speed.py --n-rows 1000 --grid-size 10
 ```
-
-To diagnose how final real-data policies relate processed policy components to
-acceptance, loss, and action variation, use a saved run `summary.json`:
-
-```bash
-python scripts/plot_pc_outcome_diagnostics.py \
-  --preset real_data_glm_base \
-  --policy-kind mlp \
-  --summary-json outputs/glm-policy-comparison/mlp/<run_id>/summary.json \
-  --estimator first_order
-```
-
-This writes scatter grids for processed components vs `f_acc`, loss, and final
-`u`, plus `u_vs_acceptance.png` and `pc_diagnostic_correlations.csv` beside the
-run summary by default.
 
 To evaluate a saved final policy under actual historical acceptance and observed
 loss, use:

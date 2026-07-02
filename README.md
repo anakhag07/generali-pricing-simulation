@@ -306,26 +306,6 @@ instead of the default 60x60 used for cheaper synthetic objectives.
   summaries on the raw objective `J(theta)` so lambda sweeps can be compared on
   the same frontier.
 
-`scripts/run_lagrangian_sweep.py` runs a preset sweep over `lagrangian_lambda`
-and writes three aggregate plots under `outputs/<project>/lagrangian_frontier_<timestamp>/`:
-
-- `lambda_vs_u_acceptance.png` -- two panels for `lambda -> final u` and
-  `lambda -> mean acceptance`
-- `pareto_objective_acceptance.png` -- final objective vs acceptance, colored by
-  lambda
-- `pareto_u_acceptance.png` -- final `u` vs acceptance, colored by lambda
-
-`scripts/run_acceptance_floor_sweep.py` runs the trust-constrained softmax GLM
-preset over a dense acceptance-floor grid `c in [0.50, 0.995]` and writes the
-same three aggregate plots under
-`outputs/<project>/acceptance_floor_frontier_<timestamp>/`:
-
-- `c_vs_u_acceptance.png` -- two panels for `c -> final u` and
-  `c -> mean acceptance`
-- `pareto_objective_acceptance.png` -- final objective vs acceptance, colored by
-  `c`
-- `pareto_u_acceptance.png` -- final `u` vs acceptance, colored by `c`
-
 `scripts/run_glm_softmax_alpha_sweep.py` runs the trust-constrained softmax /
 no-PCA / linear-feature GLM setup over symmetric action bounds
 `[-alpha, alpha]` for `alpha in {0.5, 0.4, 0.3, 0.2, 0.15, 0.125, 0.1, 0.075}`.

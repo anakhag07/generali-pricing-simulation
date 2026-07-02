@@ -160,6 +160,11 @@ Guidelines:
 - Classify new work before choosing files. One-off or ad-hoc analyses belong in
   `scripts/`; reusable behavior that changes the experiment pipeline belongs in
   `src/` only after core-feature planning.
+- `scratch/` is a tracked (committed) area for drivers of concluded experiments
+  and short-lived probes. Retire a `scripts/` driver here once its experiment is
+  done rather than deleting it, and drop its `scripts/` docs entries — `scratch/`
+  contents are intentionally left out of the AGENTS/README scripts docs. Promote
+  back to `scripts/` only if it becomes reusable tooling again.
 - Keep the boundary strict: do not hide reusable pipeline logic inside a script,
   and do not promote analysis-only code into `src/` without a concrete reusable
   integration point.
@@ -461,8 +466,6 @@ Guidelines:
 - For each config spec: delegates the run lifecycle to `experiments.execution.execute_experiment_run(...)`, which creates `RunContext`, assembles the default `ReporterStack`, calls `run_experiment()`, and finalizes reporters
 - All I/O is handled by reporters, not by the runner
 - `scripts/run_sweep.py` provides preset-based sweep execution using top-level and real-data factory overrides; it defaults to a `planted_logistic_base` homoskedastic-noise theta-offset sweep (`OVERRIDE_LIST` built from `THETA_OFFSETS` added to `BASE_THETA`, wrapping the base objective in `NoisyObjective`/`HomoskedasticGaussianNoise` with `NOISE_STD`, and using `correctness=CorrectnessSpec(gradient_source="denoised_exact")`); this preset does not use JAX/GLM, so it still auto-submits through the ORCD Slurm launcher but no longer requires GPU submission, with `--no-sbatch` for intentional local/debug execution
-- `scripts/run_lagrangian_sweep.py` runs a lagrangian-lambda sweep and writes aggregate frontier plots under `outputs/<project>/lagrangian_frontier_<timestamp>/`
-- `scripts/run_acceptance_floor_sweep.py` runs the trust-constrained softmax GLM preset over a dense acceptance-floor grid `c` and writes aggregate frontier plots under `outputs/<project>/acceptance_floor_frontier_<timestamp>/`
 - `scripts/run_glm_u_coef_sweep.py` runs the softmax/no-PCA/trust-constr GLM setup over 200000 sampled rows and `u_coef in {-4, -5, -8, -10, -20}`, keeps per-run distribution plots enabled, and writes aggregate `glm_u_coef_sweep.csv` plus frontier plots under `outputs/glm-u-coef-sweep/u_coef_frontier_<timestamp>/`
 - `scripts/run_glm_softmax_alpha_sweep.py` runs the trust-constrained softmax/no-PCA/linear-feature GLM setup over symmetric action bounds `[-alpha, alpha]` for `alpha in {0.5, 0.4, 0.3, 0.2, 0.15, 0.125, 0.1, 0.075}`, saves normal per-alpha policy artifacts, and writes aggregate final objective/profit plots plus artifact-replayed acceptance-threshold and per-alpha `u`-bin expected-profit summaries under `outputs/glm-softmax-alpha-sweep/alpha_sweep_<timestamp>/`
 - `scripts/run_glm_sensitivity_bucket_experiment.py` buckets all complete eligible GLM rows into low/medium/high local price-sensitivity tertiles at median observed `U`, runs the softmax/no-PCA/trust-constr GLM setup on every row in each bucket, keeps per-run distribution plots enabled, and writes aggregate `glm_sensitivity_bucket_experiment.csv` plus comparison plots under `outputs/glm-sensitivity-buckets/sensitivity_bucket_summary_<timestamp>/`

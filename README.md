@@ -93,7 +93,10 @@ action-level noise $$\hat{M}(x,u)=M(x,u)+\delta(x,u)$$. The initial
 same row/action pair has the same noise on every call. It exposes noisy value
 oracles for zeroth-order optimization and intentionally has no analytical
 gradient; use `base_objective.grad(...)` when inspecting the true non-noisy
-objective gradient.
+objective gradient. For trace diagnostics on noisy objectives,
+`CorrectnessSpec(gradient_source="denoised_exact")` uses the exact gradient of
+the wrapped clean objective, while `gradient_source="exact"` still refers to the
+optimizer-facing noisy objective.
 
 Optimization step rules:
 - `l-bfgs-b` uses `scipy.minimize(method="L-BFGS-B")`.

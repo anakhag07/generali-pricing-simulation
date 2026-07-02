@@ -310,7 +310,9 @@ different actions for the same row generally receive different noise.
 - **Notes:** This wrapper intentionally exposes no analytical gradient for
   $$\hat{M}$$. Use zeroth-order estimators for optimization on $$\hat{M}$$, or
   call the wrapped `base_objective.grad(...)` to inspect the true non-noisy
-  objective gradient.
+  objective gradient. `CorrectnessSpec(gradient_source="denoised_exact")` uses
+  this wrapped-objective gradient for diagnostics, while `"exact"` remains the
+  optimizer-facing objective gradient source.
 
 ---
 

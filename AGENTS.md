@@ -326,7 +326,7 @@ Guidelines:
   - `batch_size: int | None = None` enables stochastic mini-batch optimization when set
   - `acceptance_floor` can be enforced directly with `step_rule="trust-constr"` or via the smooth penalty path using `acceptance_penalty_weight` / `acceptance_penalty_temperature`
   - `lagrangian_lambda` enables the scalarized model-based target $$J(\theta) + \lambda(\text{floor} - \bar{a}(\theta))$$ on unconstrained step rules; experiment summaries still report the raw objective $$J(\theta)$$
-  - `CorrectnessSpec`: controls how "true" gradients are computed (`"exact"`, `"numdiff"`, `"none"`)
+  - `CorrectnessSpec`: controls how "true" gradients are computed (`"exact"`, `"denoised_exact"`, `"numdiff"`, `"none"`); `denoised_exact` uses the wrapped clean objective gradient for `NoisyObjective`
   - `verbose: bool = False` controls terminal output of per-step metrics
   - Preset-composition helpers: `make_*_objective`, `make_softmax_policy`, `make_model_based_objective`,
     `canonical_training_block`, `canonical_runtime_block`, and `build_experiment_config`

@@ -6,6 +6,7 @@ import pytest
 
 from experiments.config import CorrectnessSpec
 from experiments.configs import get_config
+from experiments.helpers import resolve_true_grad_theta_fn
 from experiments.run import run_experiment
 from experiments.seeding import SeedSetup
 from objective.noise import HomoskedasticGaussianNoise, NoisyObjective, NoNoise
@@ -117,3 +118,54 @@ def test_run_experiment_applies_noise_seed_stream() -> None:
     assert isinstance(objective, NoisyObjective)
     assert isinstance(objective.noise, HomoskedasticGaussianNoise)
     assert objective.noise.seed == 99
+
+
+def test_denoised_exact_correctness_uses_base_objective_gradient() -> None:
+    base = _base_objective()
+    objective = NoisyObjective(base, HomoskedasticGaussianNoise(seed=3))
+    correctness = CorrectnessSpec(gradient_source="denoised_exact")
+    true_grad_fn = resolve_true_grad_theta_fn(objective, correctness)
+    assert true_grad_fn is not None
+    x = np.asarray([[0.0, 1.0], [1.0, -1.0]], dtype=float)
+    theta = np.asarray([0.2], dtype=float)
+
+    np.testing.assert_allclose(true_grad_fn(theta, x), base.grad(theta, x))
+
+
+def test_exact_correctness_still_uses_noisy_objective_gradient() -> None:
+    base = _base_objective()
+    objective = NoisyObjective(base, HomoskedasticGaussianNoise(seed=3))
+    correctness = CorrectnessSpec(gradient_source="exact")
+    true_grad_fn = resolve_true_grad_theta_fn(objective, correctness)
+    assert true_grad_fn is not None
+    x = np.asarray([[0.0, 1.0], [1.0, -1.0]], dtype=float)
+    theta = np.asarray([0.2], dtype=float)
+
+    with pytest.raises(NotImplementedError, match="no analytical gradient"):
+        true_grad_fn(theta, x)
+
+
+def test_run_experiment_supports_denoised_exact_correctness_for_noisy_objective() -> None:
+    base_config = get_config("planted_logistic_base")
+    config = get_config(
+        "planted_logistic_base",
+        overrides={
+            "objective": NoisyObjective(
+                base_config.objective,
+                HomoskedasticGaussianNoise(std=0.1),
+            ),
+            "enabled_estimators": ("finite_difference",),
+            "correctness": CorrectnessSpec(gradient_source="denoised_exact"),
+            "n_samples": 5,
+            "t_steps": 1,
+            "plot": False,
+            "verbose": False,
+            "seed_setup": SeedSetup(run_seed=1, data_seed=2, split_seed=3, noise_seed=99, optimizer_seed=4),
+        },
+    )
+
+    result = run_experiment(config)
+
+    trace = result.traces["finite_difference"]
+    assert trace.true_theta_grad_norms is not None
+    assert len(trace.true_theta_grad_norms) > 0

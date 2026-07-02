@@ -61,6 +61,12 @@ def test_resolve_true_grad_none_returns_none() -> None:
     assert resolve_true_grad_theta_fn(objective, correctness) is None
 
 
+def test_correctness_accepts_denoised_exact_source() -> None:
+    correctness = CorrectnessSpec(gradient_source="denoised_exact")
+
+    assert correctness.gradient_source == "denoised_exact"
+
+
 def test_numdiff_batch_is_supported_for_theta_grad() -> None:
     objective = _build_theta_objective()
     config = ExperimentConfig(

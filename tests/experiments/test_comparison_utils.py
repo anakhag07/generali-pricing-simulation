@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -141,10 +142,13 @@ def test_validate_comparison_x_samples_rejects_mismatch() -> None:
 def test_run_preset_comparison_writes_aggregate_outputs(monkeypatch, tmp_path: Path) -> None:
     import experiments.comparison_utils as comparison_utils
 
-    def fake_run_experiment(config, step_reporter=None):
-        return _build_result(estimator_names=tuple(config.enabled_estimators))
+    def fake_execute_experiment_run(name, config, *, runs_root):
+        return SimpleNamespace(
+            result=_build_result(estimator_names=tuple(config.enabled_estimators)),
+            run_context=SimpleNamespace(run_dir=Path(runs_root) / name),
+        )
 
-    monkeypatch.setattr(comparison_utils, "run_experiment", fake_run_experiment)
+    monkeypatch.setattr(comparison_utils, "execute_experiment_run", fake_execute_experiment_run)
 
     results = run_preset_comparison(
         specs=(

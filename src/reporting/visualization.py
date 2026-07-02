@@ -1817,7 +1817,7 @@ def plot_theta_objective_contours(
     plt.close(fig)
 
 
-def _plot_sweep_tradeoffs(
+def plot_sweep_tradeoffs(
     points: Sequence[Mapping[str, object]],
     plot_dir: str,
     *,
@@ -1825,6 +1825,7 @@ def _plot_sweep_tradeoffs(
     sweep_label: str,
     filename: str,
 ) -> None:
+    """Plot final action and acceptance versus a generic sweep parameter."""
     if not points:
         return
     path = _ensure_plot_dir(plot_dir)
@@ -1865,7 +1866,7 @@ def plot_lagrangian_lambda_tradeoffs(
     filename: str = "lambda_vs_u_acceptance.png",
 ) -> None:
     """Plot final mean action and acceptance versus lagrangian lambda."""
-    _plot_sweep_tradeoffs(
+    plot_sweep_tradeoffs(
         points,
         plot_dir,
         sweep_key="lambda",
@@ -1874,7 +1875,7 @@ def plot_lagrangian_lambda_tradeoffs(
     )
 
 
-def _plot_sweep_pareto_frontier(
+def plot_sweep_pareto_frontier(
     points: Sequence[Mapping[str, object]],
     plot_dir: str,
     *,
@@ -1884,6 +1885,7 @@ def _plot_sweep_pareto_frontier(
     y_label: str,
     filename: str,
 ) -> None:
+    """Plot a generic sweep Pareto frontier colored by the sweep parameter."""
     if not points:
         return
     path = _ensure_plot_dir(plot_dir)
@@ -1945,7 +1947,7 @@ def plot_lagrangian_pareto_frontier(
     filename: str,
 ) -> None:
     """Plot a lagrangian sweep frontier colored by lambda."""
-    _plot_sweep_pareto_frontier(
+    plot_sweep_pareto_frontier(
         points,
         plot_dir,
         sweep_key="lambda",

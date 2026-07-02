@@ -2,27 +2,29 @@
 
 from __future__ import annotations
 
-from dataclasses import fields, replace
+from dataclasses import dataclass, fields, replace
 from itertools import product
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from experiments.config import ExperimentConfig
 from experiments.configs import get_config
-from experiments.reporters import (
-    ConsoleReporter,
-    FileStepLogger,
-    JsonReporter,
-    PlotReporter,
-    PolicyArtifactReporter,
-    ReporterStack,
-    WandbReporter,
-    create_run_context,
-)
+from experiments.execution import execute_experiment_run
+from experiments.reporters import RunContext
 from experiments.results import ExperimentResult
-from experiments.run import run_experiment
 
 _RUN_NAME_KEY = "_run_name"
+
+
+@dataclass(frozen=True)
+class SweepRunResult:
+    """Completed sweep variant with config, overrides, result, and output context."""
+
+    run_name: str
+    config: ExperimentConfig
+    overrides: dict[str, Any]
+    result: ExperimentResult
+    run_context: RunContext
 
 
 def expand_override_grid(grid: Mapping[str, Sequence[Any]]) -> list[dict[str, Any]]:
@@ -116,33 +118,28 @@ def run_preset_sweep(
     runs_root: str = "outputs",
     project_name: str | None = None,
     display_keys: Sequence[str] | None = None,
-) -> list[tuple[str, ExperimentResult]]:
-    """Execute a preset sweep and return `(run_name, result)` pairs."""
+) -> list[SweepRunResult]:
+    """Execute a preset sweep and return rich per-run result records."""
     sweep_runs = generate_sweep_runs(
         base_preset=base_preset,
         override_grid=override_grid,
         override_list=override_list,
         display_keys=display_keys,
     )
-    results: list[tuple[str, ExperimentResult]] = []
+    results: list[SweepRunResult] = []
     runs_root_path = _project_runs_root(runs_root, project_name)
 
-    for run_name, config, _ in sweep_runs:
-        run_context = create_run_context(run_name, runs_root=runs_root_path)
-        reporter_list = [
-            ConsoleReporter(verbose=config.verbose),
-            FileStepLogger(),
-            PolicyArtifactReporter(),
-            JsonReporter(),
-            PlotReporter(),
-        ]
-        if config.wandb_enabled:
-            reporter_list.append(WandbReporter())
-        reporters = ReporterStack(reporter_list)
-        reporters.on_start(run_context, config)
-        result = run_experiment(config, step_reporter=reporters)
-        reporters.on_end(run_context, result)
-        results.append((run_name, result))
+    for run_name, config, overrides in sweep_runs:
+        executed = execute_experiment_run(run_name, config, runs_root=runs_root_path)
+        results.append(
+            SweepRunResult(
+                run_name=run_name,
+                config=config,
+                overrides=overrides,
+                result=executed.result,
+                run_context=executed.run_context,
+            )
+        )
 
     return results
 

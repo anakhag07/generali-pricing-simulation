@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from reporting.visualization import (
-    _plot_sweep_pareto_frontier,
-    _plot_sweep_tradeoffs,
     plot_lagrangian_lambda_tradeoffs,
     plot_lagrangian_pareto_frontier,
+    plot_sweep_pareto_frontier,
+    plot_sweep_tradeoffs,
 )
 
 
@@ -89,7 +89,7 @@ def test_plot_lagrangian_lambda_tradeoffs_writes_png(tmp_path) -> None:
 
 
 def test_plot_generic_sweep_tradeoffs_writes_png(tmp_path) -> None:
-    _plot_sweep_tradeoffs(
+    plot_sweep_tradeoffs(
         _c_points(),
         str(tmp_path),
         sweep_key="c",
@@ -123,7 +123,7 @@ def test_plot_lagrangian_pareto_frontier_writes_pngs(tmp_path) -> None:
 
 def test_plot_generic_sweep_pareto_frontier_writes_pngs(tmp_path) -> None:
     points = _c_points()
-    _plot_sweep_pareto_frontier(
+    plot_sweep_pareto_frontier(
         points,
         str(tmp_path),
         sweep_key="c",
@@ -132,7 +132,7 @@ def test_plot_generic_sweep_pareto_frontier_writes_pngs(tmp_path) -> None:
         y_label="Final objective value",
         filename="pareto_objective_acceptance.png",
     )
-    _plot_sweep_pareto_frontier(
+    plot_sweep_pareto_frontier(
         points,
         str(tmp_path),
         sweep_key="c",

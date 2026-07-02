@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-import csv
-from datetime import datetime
-from pathlib import Path
-
+from experiments.sweep_reporting import (
+    collect_config_sweep_final_rows,
+    timestamped_sweep_output_dir,
+    write_rows_csv,
+    write_sweep_frontier_plots,
+)
 from experiments.sweep_utils import run_preset_sweep
-from reporting.visualization import _plot_sweep_pareto_frontier, _plot_sweep_tradeoffs
 
 BASE_PRESET = "real_data_glm_base"
 PROJECT_NAME = "glm-softmax-acceptance-floor-sweep"
@@ -55,54 +56,6 @@ OVERRIDE_GRID = {
     "wandb_enabled": [False],
 }
 
-
-def _collect_rows(results):
-    rows: list[dict[str, float | str]] = []
-    for run_name, result in results:
-        acceptance_floor = result.config.acceptance_floor
-        if acceptance_floor is None:
-            continue
-        for estimator, estimator_result in result.results.items():
-            if estimator_result.mean_acceptance is None:
-                continue
-            rows.append(
-                {
-                    "run_name": run_name,
-                    "estimator": estimator,
-                    "c": float(acceptance_floor),
-                    "u": float(estimator_result.u),
-                    "mean_acceptance": float(estimator_result.mean_acceptance),
-                    "value": float(estimator_result.value),
-                    "constraint_violation": (
-                        float(estimator_result.constraint_violation)
-                        if estimator_result.constraint_violation is not None
-                        else ""
-                    ),
-                }
-            )
-    return rows
-
-
-def _write_rows(rows, output_dir: Path) -> None:
-    csv_path = output_dir / "acceptance_floor_sweep.csv"
-    with csv_path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(
-            handle,
-            fieldnames=[
-                "run_name",
-                "estimator",
-                "c",
-                "u",
-                "mean_acceptance",
-                "value",
-                "constraint_violation",
-            ],
-        )
-        writer.writeheader()
-        for row in rows:
-            writer.writerow(row)
-
-
 def main() -> None:
     results = run_preset_sweep(
         base_preset=BASE_PRESET,
@@ -110,40 +63,38 @@ def main() -> None:
         project_name=PROJECT_NAME,
         display_keys=DISPLAY_KEYS,
     )
-    rows = _collect_rows(results)
+    rows = collect_config_sweep_final_rows(
+        results,
+        config_attr="acceptance_floor",
+        sweep_key="c",
+        include_constraint_violation=True,
+    )
     if not rows:
         raise ValueError("No acceptance-floor sweep rows were produced. Check acceptance_floor overrides.")
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = Path("outputs") / PROJECT_NAME / f"acceptance_floor_frontier_{timestamp}"
-    output_dir.mkdir(parents=True, exist_ok=True)
-    _write_rows(rows, output_dir)
-
-    plot_dir = str(output_dir)
-    _plot_sweep_tradeoffs(
-        rows,
-        plot_dir,
-        sweep_key="c",
-        sweep_label="Acceptance floor c",
-        filename="c_vs_u_acceptance.png",
+    output_dir = timestamped_sweep_output_dir(
+        project_name=PROJECT_NAME,
+        dirname_prefix="acceptance_floor_frontier",
     )
-    _plot_sweep_pareto_frontier(
+    write_rows_csv(
+        output_dir / "acceptance_floor_sweep.csv",
         rows,
-        plot_dir,
-        sweep_key="c",
-        sweep_label="Acceptance floor c",
-        y_key="value",
-        y_label="Final objective value",
-        filename="pareto_objective_acceptance.png",
+        fieldnames=[
+            "run_name",
+            "estimator",
+            "c",
+            "u",
+            "mean_acceptance",
+            "value",
+            "constraint_violation",
+        ],
     )
-    _plot_sweep_pareto_frontier(
+    write_sweep_frontier_plots(
         rows,
-        plot_dir,
+        output_dir,
         sweep_key="c",
         sweep_label="Acceptance floor c",
-        y_key="u",
-        y_label="Final u",
-        filename="pareto_u_acceptance.png",
+        tradeoff_filename="c_vs_u_acceptance.png",
     )
     print(f"Completed {len(results)} acceptance-floor sweep runs for preset '{BASE_PRESET}'.")
     print(f"Wrote sweep summary and frontier plots to {output_dir}.")

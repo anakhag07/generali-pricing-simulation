@@ -12,18 +12,8 @@ import numpy as np
 
 from experiments.config import ExperimentConfig
 from experiments.configs import get_config
-from experiments.reporters import (
-    ConsoleReporter,
-    FileStepLogger,
-    JsonReporter,
-    PlotReporter,
-    PolicyArtifactReporter,
-    ReporterStack,
-    WandbReporter,
-    create_run_context,
-)
+from experiments.execution import execute_experiment_run
 from experiments.results import ExperimentResult
-from experiments.run import run_experiment
 from reporting.visualization import (
     plot_comparison_final_metric,
     plot_comparison_objective_curves,
@@ -106,21 +96,8 @@ def run_preset_comparison(
     runs_root_path = _project_runs_root(runs_root, project_name)
 
     for run in comparison_runs:
-        run_context = create_run_context(run.name, runs_root=runs_root_path)
-        reporter_list = [
-            ConsoleReporter(verbose=run.config.verbose),
-            FileStepLogger(),
-            PolicyArtifactReporter(),
-            JsonReporter(),
-            PlotReporter(),
-        ]
-        if run.config.wandb_enabled:
-            reporter_list.append(WandbReporter())
-        reporters = ReporterStack(reporter_list)
-        reporters.on_start(run_context, run.config)
-        result = run_experiment(run.config, step_reporter=reporters)
-        reporters.on_end(run_context, result)
-        results.append(ComparisonResult(name=run.name, preset=run.preset, result=result))
+        executed = execute_experiment_run(run.name, run.config, runs_root=runs_root_path)
+        results.append(ComparisonResult(name=run.name, preset=run.preset, result=executed.result))
 
     if validate_shared_estimators:
         validate_comparison_estimators(results)

@@ -11,20 +11,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from experiments.configs import get_config
+from experiments.execution import execute_experiment_run
 from experiments.policy_artifacts import load_policy_artifact
-from experiments.reporters import (
-    ConsoleReporter,
-    FileStepLogger,
-    JsonReporter,
-    PlotReporter,
-    PolicyArtifactReporter,
-    ReporterStack,
-    RunContext,
-    WandbReporter,
-    create_run_context,
-)
+from experiments.reporters import RunContext
 from experiments.results import ExperimentResult, PolicyEvaluation
-from experiments.run import run_experiment
 from reporting.visualization import _estimator_style
 
 BASE_PRESET = "real_data_glm_base"
@@ -127,24 +117,12 @@ def _run_alpha(alpha: float) -> tuple[float, str, ExperimentResult, RunContext]:
         "softmax_action_bounds": (-alpha_value, alpha_value),
     }
     config = get_config(BASE_PRESET, overrides=overrides)
-    run_context = create_run_context(
+    executed = execute_experiment_run(
         run_name,
+        config,
         runs_root=str(Path("outputs") / PROJECT_NAME),
     )
-    reporter_list = [
-        ConsoleReporter(verbose=config.verbose),
-        FileStepLogger(),
-        PolicyArtifactReporter(),
-        JsonReporter(),
-        PlotReporter(),
-    ]
-    if config.wandb_enabled:
-        reporter_list.append(WandbReporter())
-    reporters = ReporterStack(reporter_list)
-    reporters.on_start(run_context, config)
-    result = run_experiment(config, step_reporter=reporters)
-    reporters.on_end(run_context, result)
-    return alpha_value, run_name, result, run_context
+    return alpha_value, run_name, executed.result, executed.run_context
 
 
 def _collect_final_rows(

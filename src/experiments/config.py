@@ -13,6 +13,7 @@ from objective.objectives import (
     ModelBasedObjective,
     PlantedLogisticObjective,
 )
+from objective.noise import HomoskedasticGaussianNoise, NoisyObjective, NoNoise, ObjectiveNoise
 from objective.policy import ConstantPolicy, LinearPolicy, MLPPolicy, SoftmaxPolicy, policy_theta_dim
 from objective.policy_preprocessing import PolicyFeaturePreprocessor
 from optimization.steps import STEP_RULES, STEP_RULE_TRUST_CONSTR
@@ -49,17 +50,19 @@ def _x_fixed_frame_matches_state_dim(objective: object, x_fixed_frame: Any, stat
 
 @dataclass(frozen=True)
 class CorrectnessSpec:
-    """Controls how "true" gradients are computed: exact, numdiff, or none."""
+    """Controls how "true" gradients are computed for diagnostics."""
 
-    gradient_source: Literal["exact", "numdiff", "none"] = "exact"
+    gradient_source: Literal["exact", "denoised_exact", "numdiff", "none"] = "exact"
     numdiff_method: Literal["central", "forward", "backward"] = "central"
     numdiff_step: float = 1e-4
     numdiff_aggregate: Literal["per-sample", "batch"] = "batch"
     numdiff_bounds: Optional[tuple[float, float]] = None
 
     def __post_init__(self) -> None:
-        if self.gradient_source not in {"exact", "numdiff", "none"}:
-            raise ValueError("gradient_source must be 'exact', 'numdiff', or 'none'.")
+        if self.gradient_source not in {"exact", "denoised_exact", "numdiff", "none"}:
+            raise ValueError(
+                "gradient_source must be 'exact', 'denoised_exact', 'numdiff', or 'none'."
+            )
         if self.numdiff_method not in {"central", "forward", "backward"}:
             raise ValueError("numdiff_method must be 'central', 'forward', or 'backward'.")
         if self.numdiff_step <= 0.0:
@@ -105,7 +108,7 @@ class ExperimentConfig:
     verbose: bool = False
     plot: bool = True
     plot_dir: str = "plots"
-    enabled_estimators: tuple[str, ...] = ("first_order", "gauss_stein")
+    enabled_estimators: tuple[str, ...] = ("first_order", "finite_difference", "stein_difference")
     constant_u_baselines: tuple[float, ...] = ()
     wandb_enabled: bool = False
     wandb_project: str | None = None
@@ -466,6 +469,12 @@ class ExperimentConfig:
 
 def _objective_to_dict(objective: Objective) -> dict[str, Any]:
     """Serialize objective to dictionary."""
+    if isinstance(objective, NoisyObjective):
+        return {
+            "type": "NoisyObjective",
+            "base_objective": _objective_to_dict(objective.base_objective),
+            "noise": _noise_to_dict(objective.noise),
+        }
     if isinstance(objective, FixedRegressionObjective):
         return {
             "type": "FixedRegressionObjective",
@@ -515,6 +524,19 @@ def _objective_to_dict(objective: Objective) -> dict[str, Any]:
             else None,
         }
     return {"type": type(objective).__name__}
+
+
+def _noise_to_dict(noise: ObjectiveNoise) -> dict[str, Any]:
+    """Serialize objective noise to dictionary."""
+    if isinstance(noise, NoNoise):
+        return {"type": "NoNoise"}
+    if isinstance(noise, HomoskedasticGaussianNoise):
+        return {
+            "type": "HomoskedasticGaussianNoise",
+            "std": float(noise.std),
+            "seed": int(noise.seed) if noise.seed is not None else None,
+        }
+    return {"type": type(noise).__name__}
 
 
 def _policy_to_dict(policy: object) -> dict[str, Any]:

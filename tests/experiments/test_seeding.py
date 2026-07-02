@@ -19,7 +19,7 @@ def test_resolve_seed_setup_is_deterministic() -> None:
 
     assert first == second
     assert first.run_seed == 42
-    assert len(set(first.to_dict().values())) == 5
+    assert len(set(first.to_dict().values())) == 6
 
 
 def test_resolve_seed_setup_preserves_explicit_overrides() -> None:
@@ -29,7 +29,8 @@ def test_resolve_seed_setup_preserves_explicit_overrides() -> None:
             data_seed=100,
             split_seed=101,
             theta_seed=102,
-            optimizer_seed=103,
+            noise_seed=103,
+            optimizer_seed=104,
         ),
         legacy_seed=7,
     )
@@ -39,7 +40,8 @@ def test_resolve_seed_setup_preserves_explicit_overrides() -> None:
         "data_seed": 100,
         "split_seed": 101,
         "theta_seed": 102,
-        "optimizer_seed": 103,
+        "noise_seed": 103,
+        "optimizer_seed": 104,
     }
 
 
@@ -51,6 +53,7 @@ def test_resolve_seed_setup_uses_legacy_seed_when_setup_absent() -> None:
         "data_seed": 11,
         "split_seed": 11,
         "theta_seed": 11,
+        "noise_seed": 11,
         "optimizer_seed": 11,
     }
 
@@ -62,11 +65,12 @@ def test_seed_setup_from_mapping_normalizes_payload() -> None:
             "data_seed": None,
             "split_seed": 6,
             "theta_seed": None,
+            "noise_seed": 8,
             "optimizer_seed": 7,
         }
     )
 
-    assert setup == SeedSetup(run_seed=5, split_seed=6, optimizer_seed=7)
+    assert setup == SeedSetup(run_seed=5, split_seed=6, noise_seed=8, optimizer_seed=7)
 
 
 def test_seed_setup_rejects_negative_seed() -> None:
@@ -106,6 +110,7 @@ def test_experiment_config_serializes_seed_setup() -> None:
         "data_seed": None,
         "split_seed": None,
         "theta_seed": None,
+        "noise_seed": None,
         "optimizer_seed": 99,
     }
     assert payload["resolved_seed_setup"]["run_seed"] == 13

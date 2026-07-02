@@ -32,6 +32,9 @@ def resolve_true_grad_theta_fn(
         return None
     if correctness.gradient_source == "exact":
         return lambda theta, x_batch: objective.grad(theta, x_batch)
+    if correctness.gradient_source == "denoised_exact":
+        denoised_objective = getattr(objective, "base_objective", objective)
+        return lambda theta, x_batch: denoised_objective.grad(theta, x_batch)
     if correctness.gradient_source == "numdiff":
         return lambda theta, x_batch: finite_difference_theta_grad(
             lambda theta_eval: objective.value(theta_eval, x_batch),

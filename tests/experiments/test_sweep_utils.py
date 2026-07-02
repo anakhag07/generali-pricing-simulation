@@ -82,6 +82,19 @@ def test_generate_sweep_runs_accepts_real_data_factory_overrides() -> None:
     assert override["policy_kind"] == "linear"
 
 
+def test_generate_sweep_runs_accepts_explicit_run_name() -> None:
+    runs = generate_sweep_runs(
+        base_preset="planted_logistic_base",
+        override_list=[{"_run_name": "noise-std-0.25", "sigma": 0.03}],
+    )
+
+    run_name, config, override = runs[0]
+
+    assert run_name == "noise-std-0.25"
+    assert config.sigma == 0.03
+    assert override == {"sigma": 0.03}
+
+
 def test_make_sweep_name_is_deterministic() -> None:
     name = make_sweep_name("fixed_regression_base", 3, {"sigma": 0.05, "seed": 7})
     assert name == "fixed_regression_base__sweep_003__seed-7__sigma-0.05"

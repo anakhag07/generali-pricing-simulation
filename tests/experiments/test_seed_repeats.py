@@ -12,6 +12,7 @@ def test_seed_setup_for_repeat_varies_only_optimizer_by_default() -> None:
     assert setup.data_seed == 10
     assert setup.split_seed == 10
     assert setup.theta_seed == 10
+    assert setup.noise_seed == 10
     assert setup.optimizer_seed == 11
 
 
@@ -22,6 +23,7 @@ def test_seed_setup_for_repeat_allows_explicit_fixed_seeds() -> None:
         fixed_data_seed=100,
         fixed_split_seed=101,
         fixed_theta_seed=102,
+        fixed_noise_seed=103,
         vary=("optimizer",),
     )
 
@@ -30,6 +32,7 @@ def test_seed_setup_for_repeat_allows_explicit_fixed_seeds() -> None:
     assert setup.data_seed == 100
     assert setup.split_seed == 101
     assert setup.theta_seed == 102
+    assert setup.noise_seed == 103
     assert setup.optimizer_seed == 11
 
 
@@ -46,6 +49,7 @@ def test_seed_setup_for_repeat_all_mode_derives_streams_from_run_seed() -> None:
     assert setup.data_seed is None
     assert setup.split_seed is None
     assert setup.theta_seed is None
+    assert setup.noise_seed is None
     assert setup.optimizer_seed is None
 
 

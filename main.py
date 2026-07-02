@@ -13,6 +13,7 @@ _SRC_PATH = _REPO_ROOT / "src"
 if str(_SRC_PATH) not in sys.path:
     sys.path.insert(0, str(_SRC_PATH))
 
+from experiments.config import CorrectnessSpec
 from experiments.configs import get_config
 from experiments.reporters import (
     ConsoleReporter,
@@ -25,36 +26,71 @@ from experiments.reporters import (
     create_run_context,
 )
 from experiments.run import run_experiment
+from experiments.seeding import SeedSetup
 from experiments.slurm import (
     assert_jax_gpu_available,
     run_specs_require_jax,
     submit_to_slurm_if_needed,
 )
+from objective.noise import HomoskedasticGaussianNoise, NoisyObjective
 
+_PLANTED_BASE = get_config("planted_logistic_base")
 RUN_CONFIGS: list[str | tuple[str, dict[str, Any]]] = [
     (
-        "real_data_glm_base",
+        "planted_logistic_base",
         {
-            "policy_kind": "softmax",
-            "softmax_action_bounds": (-0.1, 0.2),
-            "initial_u": 0.0,
-            "policy_preprocessing": "no_pca",
-            "feature_order": "cubic",
-            "constraint_mode": "trust_constr",
-            # "n_samples": 700000,
-            "n_samples": None, 
-            "train_fraction": 0.8, 
-            "test_fraction": 0.2,
+            # "objective": NoisyObjective(
+            #     base_objective=_PLANTED_BASE.objective,
+            #     noise=HomoskedasticGaussianNoise(std=1.0),
+            # ),
+            "seed_setup": SeedSetup(
+                run_seed=7,
+                data_seed=7,
+                split_seed=7,
+                theta_seed=7,
+                noise_seed=101,
+                optimizer_seed=7,
+            ),
+            "enabled_estimators": ("first_order",),
+            "correctness": CorrectnessSpec(gradient_source="exact"),
+            "perturbation_space": "u",
+            "step_rule": "l-bfgs-b",
+            "t_steps": 1000,
+            "step_size": 0.001,
+            "n_samples": 1000,
+            "sigma": 0.05,
             "n_grad_samples": 8,
-            "t_steps": 100,
-            "enabled_estimators": ("first_order", "finite_difference", "stein_difference"),
+            "plot": True,
+            "verbose": True,
             "wandb_enabled": False,
-            "wandb_project": "jax`-move-scipy-opt-demo",
-            "compute_backend": "jax",
-            "seed": 8,
         },
     )
 ]
+
+# RUN_CONFIGS: list[str | tuple[str, dict[str, Any]]] = [
+#     (
+#         "real_data_glm_base",
+#         {
+#             "policy_kind": "softmax",
+#             "softmax_action_bounds": (-0.1, 0.2),
+#             "initial_u": 0.0,
+#             "policy_preprocessing": "no_pca",
+#             "feature_order": "cubic",
+#             "constraint_mode": "trust_constr",
+#             # "n_samples": 700000,
+#             "n_samples": None, 
+#             "train_fraction": 0.8, 
+#             "test_fraction": 0.2,
+#             "n_grad_samples": 8,
+#             "t_steps": 100,
+#             "enabled_estimators": ("first_order", "finite_difference", "stein_difference"),
+#             "wandb_enabled": False,
+#             "wandb_project": "jax-move-scipy-opt-demo",
+#             "compute_backend": "jax",
+#             "seed": 8,
+#         },
+#     )
+# ]
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:

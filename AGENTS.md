@@ -78,6 +78,8 @@ Before finishing a build session:
 
 ### Plan Mode
 - Do not edit code.
+- In plan mode, classify whether a task is `worktree-required` before editing.
+  Use an external worktree for changes that add a new reusable `src/` module or span infrastructure areas such as seeding, config, runner behavior, package exports, or generated docs; a feature branch in the canonical checkout is not sufficient for those tasks.
 - Propose implementation approach, file targets, and unit-test structure.
 - Ask whether the proposed test structure is appropriate before implementing tests.
 - For non-trivial changes, ask whether the user wants incremental commits during
@@ -179,6 +181,12 @@ Guidelines:
   - `Policy`: batch-only policy interface (`value`, `grad`, `weighted_grad`) operating on 2D arrays; `weighted_grad` is the VJP-style fast path for `sum_i weights_i * d pi_theta(x_i)/dtheta`
   - `Objective`: theta-space interface class (`value`, `grad`)
   - `default_rng(seed)`: wrapper around `np.random.default_rng`
+
+- **`src/objective/noise.py`**
+  - `ObjectiveNoise`: interface for deterministic additive action-level noise fields $$\delta(x,u)$$
+  - `HomoskedasticGaussianNoise`: standard/constant-std Gaussian noise keyed by exact `(x, u, seed)`, so repeated evaluations of the same row/action pair return the same noise
+  - `NoisyObjective`: wraps any objective as $$\hat{M}(x,u)=M(x,u)+\delta(x,u)$$ for value-based optimization; intentionally raises for analytical `grad()` because the noisy objective has no analytical gradient
+  - `NoNoise`: zero-noise adapter for tests or disabled noise wiring
 
 - **`src/objective/objectives/fixed_regression.py`** (source of truth for objective math)
   - `FixedRegressionObjective`: pricing objective $$f(u;x) = a(x,u)(\ell(x) - r(u))$$
@@ -318,7 +326,7 @@ Guidelines:
   - `batch_size: int | None = None` enables stochastic mini-batch optimization when set
   - `acceptance_floor` can be enforced directly with `step_rule="trust-constr"` or via the smooth penalty path using `acceptance_penalty_weight` / `acceptance_penalty_temperature`
   - `lagrangian_lambda` enables the scalarized model-based target $$J(\theta) + \lambda(\text{floor} - \bar{a}(\theta))$$ on unconstrained step rules; experiment summaries still report the raw objective $$J(\theta)$$
-  - `CorrectnessSpec`: controls how "true" gradients are computed (`"exact"`, `"numdiff"`, `"none"`)
+  - `CorrectnessSpec`: controls how "true" gradients are computed (`"exact"`, `"denoised_exact"`, `"numdiff"`, `"none"`); `denoised_exact` uses the wrapped clean objective gradient for `NoisyObjective`
   - `verbose: bool = False` controls terminal output of per-step metrics
   - Preset-composition helpers: `make_*_objective`, `make_softmax_policy`, `make_model_based_objective`,
     `canonical_training_block`, `canonical_runtime_block`, and `build_experiment_config`
@@ -389,12 +397,12 @@ Guidelines:
   - `ExperimentResult`: full result including config, train samples in `x_samples`, optional `x_test`, split row/index metadata, traces, final train/test policy metrics, and optional u_star
 
 - **`src/experiments/seeding.py`**
-  - `SeedSetup`: optional per-run seed-stream overrides (`run_seed`, `data_seed`, `split_seed`, `theta_seed`, `optimizer_seed`)
+  - `SeedSetup`: optional per-run seed-stream overrides (`run_seed`, `data_seed`, `split_seed`, `theta_seed`, `noise_seed`, `optimizer_seed`)
   - `resolve_seed_setup(...)`: legacy configs without `seed_setup` use `ExperimentConfig.seed` for every stream; explicit `SeedSetup` derives omitted streams from `run_seed`
   - `optimizer_rngs(...)`: derives order-independent per-estimator batch and gradient RNGs from `optimizer_seed`
 
 - **`src/experiments/seed_repeats.py`**
-  - `SeedRepeatSpec`: repeated-run orchestrator over explicit seed streams; default varies only `optimizer_seed` while fixing data/split/theta to the first run seed
+  - `SeedRepeatSpec`: repeated-run orchestrator over explicit seed streams; default varies only `optimizer_seed` while fixing data/split/theta/noise to the first run seed
   - `run_seed_repeats(...)`: runs a preset once per `run_seed`, writes normal per-run outputs plus `seed_repeats.csv` and `seed_repeats_summary.csv`
 
 - **`src/experiments/policy_validation.py`**

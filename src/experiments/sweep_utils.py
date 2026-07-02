@@ -22,6 +22,8 @@ from experiments.reporters import (
 from experiments.results import ExperimentResult
 from experiments.run import run_experiment
 
+_RUN_NAME_KEY = "_run_name"
+
 
 def expand_override_grid(grid: Mapping[str, Sequence[Any]]) -> list[dict[str, Any]]:
     """Build cartesian-product override dictionaries from a field-value grid."""
@@ -89,14 +91,20 @@ def generate_sweep_runs(
 
     runs: list[tuple[str, ExperimentConfig, dict[str, Any]]] = []
     for index, override in enumerate(overrides, start=1):
-        config = get_config(base_preset, overrides=override)
-        run_name = make_display_name(
-            base_preset,
-            index=index,
-            overrides=override,
-            display_keys=display_keys,
+        override_payload = dict(override)
+        explicit_run_name = override_payload.pop(_RUN_NAME_KEY, None)
+        config = get_config(base_preset, overrides=override_payload)
+        run_name = (
+            str(explicit_run_name)
+            if explicit_run_name is not None
+            else make_display_name(
+                base_preset,
+                index=index,
+                overrides=override_payload,
+                display_keys=display_keys,
+            )
         )
-        runs.append((run_name, config, override))
+        runs.append((run_name, config, override_payload))
     return runs
 
 

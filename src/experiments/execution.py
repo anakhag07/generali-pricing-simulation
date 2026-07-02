@@ -4,21 +4,15 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from experiments.config import ExperimentConfig
-from experiments.reporters import (
-    ConsoleReporter,
-    FileStepLogger,
-    JsonReporter,
-    PlotReporter,
-    PolicyArtifactReporter,
-    ReporterStack,
-    RunContext,
-    WandbReporter,
-    create_run_context,
-)
+from experiments.reporting.context import RunContext, create_run_context
 from experiments.results import ExperimentResult
 from experiments.run import run_experiment
+
+if TYPE_CHECKING:
+    from experiments.reporting.base import ReporterStack
 
 
 @dataclass(frozen=True)
@@ -31,11 +25,19 @@ class ExecutedRun:
     run_context: RunContext
 
 
-ReporterStackFactory = Callable[[ExperimentConfig], ReporterStack]
+ReporterStackFactory = Callable[[ExperimentConfig], "ReporterStack"]
 
 
-def default_reporter_stack(config: ExperimentConfig) -> ReporterStack:
+def default_reporter_stack(config: ExperimentConfig) -> "ReporterStack":
     """Build the default reporter stack in its required execution order."""
+    from experiments.reporting.artifacts import PolicyArtifactReporter
+    from experiments.reporting.base import ReporterStack
+    from experiments.reporting.console import ConsoleReporter
+    from experiments.reporting.json_summary import JsonReporter
+    from experiments.reporting.plots import PlotReporter
+    from experiments.reporting.step_logger import FileStepLogger
+    from experiments.reporting.wandb import WandbReporter
+
     reporter_list = [
         ConsoleReporter(verbose=config.verbose),
         FileStepLogger(),

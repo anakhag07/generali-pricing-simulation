@@ -1,7 +1,7 @@
 import numpy as np
 
 from objective import FixedRegressionObjective, SoftmaxPolicy
-from experiments.reporters import _u_star_for_plot
+from experiments.reporting.plots import _u_star_for_plot
 
 
 class DummyObjective:

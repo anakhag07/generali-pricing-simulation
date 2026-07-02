@@ -6,16 +6,16 @@ import numpy as np
 import pytest
 
 from experiments.config import ExperimentConfig
-from experiments.defaults import default_theta0, default_policy
-from experiments.reporters import RunContext, _build_summary_payload
+from experiments.reporting.context import RunContext
+from experiments.reporting.json_summary import build_summary_payload
 from experiments.run import run_experiment
-from objective import FixedRegressionObjective
+from objective import FixedRegressionObjective, SoftmaxPolicy
 from objective.utils import value_for_reporting
 
 
 def _objective() -> FixedRegressionObjective:
     return FixedRegressionObjective.from_parameters(
-        policy=default_policy(1),
+        policy=SoftmaxPolicy(),
         beta_1=[0.1],
         beta_2=-0.5,
         beta_3=[0.2],
@@ -29,7 +29,7 @@ def _config(**overrides: object) -> ExperimentConfig:
         "seed": 3,
         "state_dim": 1,
         "objective": _objective(),
-        "theta0": default_theta0(1),
+        "theta0": np.zeros(2, dtype=float),
         "n_samples": x_fixed.shape[0],
         "x_fixed": x_fixed,
         "step_rule": "constant",
@@ -111,7 +111,7 @@ def test_summary_payload_includes_train_and_test_metrics(tmp_path) -> None:
         started_at=datetime(2026, 6, 13, 0, 0, 0),
     )
 
-    payload = _build_summary_payload(run_context, result)
+    payload = build_summary_payload(run_context, result)
     estimator_payload = payload["estimators"]["first_order"]
 
     assert payload["split"]["train_fraction"] == pytest.approx(0.6)

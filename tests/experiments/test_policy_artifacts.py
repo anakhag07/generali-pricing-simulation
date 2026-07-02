@@ -9,7 +9,7 @@ import pytest
 from experiments.configs import get_config
 from experiments.policy_artifacts import build_policy_artifact, load_policy_artifact
 from experiments.policy_validation import policy_u_values
-from experiments.reporters import JsonReporter, PolicyArtifactReporter, RunContext
+from experiments.reporting import JsonReporter, PolicyArtifactReporter, RunContext
 from experiments.run import run_experiment
 
 

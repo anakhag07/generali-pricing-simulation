@@ -19,7 +19,7 @@ from optimization.gradients import (
 from optimization.steps import STEP_RULE_LBFGSB
 
 if TYPE_CHECKING:
-    from experiments.reporters import StepReporter
+    from experiments.reporting.base import StepReporter
     from experiments.results import OptimizationTrace
 
 

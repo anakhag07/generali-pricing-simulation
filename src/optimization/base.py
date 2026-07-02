@@ -25,7 +25,7 @@ from optimization.steps import (
 )
 
 if TYPE_CHECKING:
-    from experiments.reporters import StepReporter
+    from experiments.reporting.base import StepReporter
     from experiments.results import OptimizationTrace
 
 TrueThetaGradFn = Callable[[np.ndarray, np.ndarray], np.ndarray]

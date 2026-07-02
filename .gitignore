@@ -15,7 +15,6 @@ runs/
 worktrees/
 outputs/
 wandb/
-scratch/
 
 .agents/
 .claude/

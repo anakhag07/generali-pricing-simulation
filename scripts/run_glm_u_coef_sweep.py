@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
-import csv
-from datetime import datetime
-from pathlib import Path
-from typing import Mapping, Sequence
+from typing import Sequence
 
 import numpy as np
 
 from data.loader import extract_glm_u_coef
 from experiments.results import ExperimentResult
+from experiments.sweep_reporting import (
+    timestamped_sweep_output_dir,
+    write_rows_csv,
+    write_sweep_frontier_plots,
+)
 from experiments.sweep_utils import run_preset_sweep
-from reporting.visualization import _plot_sweep_pareto_frontier, _plot_sweep_tradeoffs
 
 BASE_PRESET = "real_data_glm_base"
 PROJECT_NAME = "glm-u-coef-sweep"
@@ -80,9 +81,10 @@ def _summary(prefix: str, values: np.ndarray) -> dict[str, float | str]:
     }
 
 
-def _collect_rows(results: Sequence[tuple[str, ExperimentResult]]) -> list[dict[str, object]]:
+def _collect_rows(results) -> list[dict[str, object]]:
     rows: list[dict[str, object]] = []
-    for run_name, result in results:
+    for sweep_result in results:
+        result = sweep_result.result
         objective = result.config.objective
         u_coef = float(objective.u_coef)
         artifact_u_coef = extract_glm_u_coef(objective.acceptance_model)
@@ -90,7 +92,7 @@ def _collect_rows(results: Sequence[tuple[str, ExperimentResult]]) -> list[dict[
             u_values = _policy_u_values(result, estimator)
             acceptance_values = _acceptance_values(result, u_values)
             row: dict[str, object] = {
-                "run_name": run_name,
+                "run_name": sweep_result.run_name,
                 "estimator": estimator,
                 "u_coef": u_coef,
                 "artifact_u_coef": float(artifact_u_coef),
@@ -114,9 +116,7 @@ def _collect_rows(results: Sequence[tuple[str, ExperimentResult]]) -> list[dict[
     return rows
 
 
-def _write_rows(rows: Sequence[Mapping[str, object]], output_dir: Path) -> None:
-    csv_path = output_dir / "glm_u_coef_sweep.csv"
-    fieldnames = [
+_FIELDNAMES = [
         "run_name",
         "estimator",
         "u_coef",
@@ -138,41 +138,7 @@ def _write_rows(rows: Sequence[Mapping[str, object]], output_dir: Path) -> None:
         "acceptance_q50",
         "acceptance_q75",
         "acceptance_q95",
-    ]
-    with csv_path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames)
-        writer.writeheader()
-        for row in rows:
-            writer.writerow(row)
-
-
-def _write_frontier_plots(rows: Sequence[Mapping[str, object]], output_dir: Path) -> None:
-    plot_dir = str(output_dir)
-    _plot_sweep_tradeoffs(
-        rows,
-        plot_dir,
-        sweep_key="u_coef",
-        sweep_label="GLM acceptance beta_u",
-        filename="u_coef_vs_u_acceptance.png",
-    )
-    _plot_sweep_pareto_frontier(
-        rows,
-        plot_dir,
-        sweep_key="u_coef",
-        sweep_label="GLM acceptance beta_u",
-        y_key="value",
-        y_label="Final objective value",
-        filename="pareto_objective_acceptance.png",
-    )
-    _plot_sweep_pareto_frontier(
-        rows,
-        plot_dir,
-        sweep_key="u_coef",
-        sweep_label="GLM acceptance beta_u",
-        y_key="u",
-        y_label="Final u",
-        filename="pareto_u_acceptance.png",
-    )
+]
 
 
 def main() -> None:
@@ -186,11 +152,18 @@ def main() -> None:
     if not rows:
         raise ValueError("No GLM u_coef sweep rows were produced. Check u_coef overrides.")
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = Path("outputs") / PROJECT_NAME / f"u_coef_frontier_{timestamp}"
-    output_dir.mkdir(parents=True, exist_ok=True)
-    _write_rows(rows, output_dir)
-    _write_frontier_plots(rows, output_dir)
+    output_dir = timestamped_sweep_output_dir(
+        project_name=PROJECT_NAME,
+        dirname_prefix="u_coef_frontier",
+    )
+    write_rows_csv(output_dir / "glm_u_coef_sweep.csv", rows, _FIELDNAMES)
+    write_sweep_frontier_plots(
+        rows,
+        output_dir,
+        sweep_key="u_coef",
+        sweep_label="GLM acceptance beta_u",
+        tradeoff_filename="u_coef_vs_u_acceptance.png",
+    )
 
     print(f"Completed {len(results)} GLM u_coef sweep runs for preset '{BASE_PRESET}'.")
     print(f"Wrote sweep summary and frontier plots to {output_dir}.")

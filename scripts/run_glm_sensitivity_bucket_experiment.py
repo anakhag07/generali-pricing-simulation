@@ -11,18 +11,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from experiments.configs import get_config
-from experiments.reporters import (
-    ConsoleReporter,
-    FileStepLogger,
-    JsonReporter,
-    PlotReporter,
-    PolicyArtifactReporter,
-    ReporterStack,
-    WandbReporter,
-    create_run_context,
-)
+from experiments.execution import execute_experiment_run
 from experiments.results import ExperimentResult
-from experiments.run import run_experiment
 from experiments.sensitivity_buckets import (
     SensitivityBucket,
     build_glm_sensitivity_buckets,
@@ -55,24 +45,12 @@ def _run_bucket(bucket: SensitivityBucket) -> ExperimentResult:
         "row_indices": bucket.row_indices,
     }
     config = get_config(BASE_PRESET, overrides=overrides)
-    run_context = create_run_context(
+    executed = execute_experiment_run(
         f"{bucket.name}_sensitivity",
+        config,
         runs_root=str(Path("outputs") / PROJECT_NAME),
     )
-    reporter_list = [
-        ConsoleReporter(verbose=config.verbose),
-        FileStepLogger(),
-        PolicyArtifactReporter(),
-        JsonReporter(),
-        PlotReporter(),
-    ]
-    if config.wandb_enabled:
-        reporter_list.append(WandbReporter())
-    reporters = ReporterStack(reporter_list)
-    reporters.on_start(run_context, config)
-    result = run_experiment(config, step_reporter=reporters)
-    reporters.on_end(run_context, result)
-    return result
+    return executed.result
 
 
 def _policy_u_values(result: ExperimentResult, estimator: str) -> np.ndarray:

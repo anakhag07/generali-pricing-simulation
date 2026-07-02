@@ -7,7 +7,7 @@ import csv
 from pathlib import Path
 from typing import Sequence
 
-from reporting.visualization import _plot_sweep_pareto_frontier
+from reporting.visualization import plot_sweep_pareto_frontier
 
 
 def _resolve_csv_path(source: Path) -> Path:
@@ -102,7 +102,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     rows = _filter_rows(_load_rows(csv_path), estimator=args.estimator)
 
     plot_dir = str(output_dir)
-    _plot_sweep_pareto_frontier(
+    plot_sweep_pareto_frontier(
         rows,
         plot_dir,
         sweep_key="c",
@@ -111,7 +111,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         y_label="Final objective value",
         filename=f"pareto_objective_acceptance_{args.estimator}.png",
     )
-    _plot_sweep_pareto_frontier(
+    plot_sweep_pareto_frontier(
         rows,
         plot_dir,
         sweep_key="c",

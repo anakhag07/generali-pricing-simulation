@@ -15,34 +15,18 @@ if str(_SRC_PATH) not in sys.path:
 
 from experiments.config import CorrectnessSpec
 from experiments.configs import get_config
-from experiments.reporters import (
-    ConsoleReporter,
-    FileStepLogger,
-    JsonReporter,
-    PlotReporter,
-    PolicyArtifactReporter,
-    ReporterStack,
-    WandbReporter,
-    create_run_context,
-)
-from experiments.run import run_experiment
+from experiments.execution import execute_experiment_run
 from experiments.seeding import SeedSetup
 from experiments.slurm import (
     assert_jax_gpu_available,
     run_specs_require_jax,
     submit_to_slurm_if_needed,
 )
-from objective.noise import HomoskedasticGaussianNoise, NoisyObjective
 
-_PLANTED_BASE = get_config("planted_logistic_base")
 RUN_CONFIGS: list[str | tuple[str, dict[str, Any]]] = [
     (
         "planted_logistic_base",
         {
-            # "objective": NoisyObjective(
-            #     base_objective=_PLANTED_BASE.objective,
-            #     noise=HomoskedasticGaussianNoise(std=1.0),
-            # ),
             "seed_setup": SeedSetup(
                 run_seed=7,
                 data_seed=7,
@@ -144,20 +128,7 @@ def main(argv: list[str] | None = None) -> None:
             print(jax_status)
 
     for config_name, config in resolved_configs:
-        run_context = create_run_context(config_name, runs_root="outputs")
-        reporter_list = [
-            ConsoleReporter(verbose=config.verbose),
-            FileStepLogger(),
-            PolicyArtifactReporter(),
-            JsonReporter(),
-            PlotReporter(),
-        ]
-        if config.wandb_enabled:
-            reporter_list.append(WandbReporter())
-        reporters = ReporterStack(reporter_list)
-        reporters.on_start(run_context, config)
-        result = run_experiment(config, step_reporter=reporters)
-        reporters.on_end(run_context, result)
+        execute_experiment_run(config_name, config, runs_root="outputs")
 
 
 if __name__ == "__main__":

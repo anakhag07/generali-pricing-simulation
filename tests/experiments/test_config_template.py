@@ -26,7 +26,6 @@ def test_config_template_core_placeholders_exist_and_default_to_none() -> None:
         "N_GRAD_SAMPLES",
         "VERBOSE",
         "PLOT",
-        "PLOT_DIR",
         "ENABLED_ESTIMATORS",
         "WANDB_ENABLED",
         "WANDB_PROJECT",

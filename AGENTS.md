@@ -157,9 +157,17 @@ If lower-priority docs are stale, update them in the same task.
 Before adding code, inspect the surrounding module structure and choose the narrowest sensible location for the change.
 
 Guidelines:
-- Classify new work before choosing files. One-off or ad-hoc analyses belong in
-  `scripts/`; reusable behavior that changes the experiment pipeline belongs in
-  `src/` only after core-feature planning.
+- Classify new work by lifespan before choosing files:
+  - `scratch/` (gitignored) — throwaway probes and one-off investigations.
+    Carry a small set of inline unit tests/assertions covering the core logic,
+    but no `tests/` suite, docstrings, or docs entry. Delete once the finding is
+    captured (plots and notes live in Notion).
+  - `scripts/` — durable, reusable, rerun-worthy tooling. Promote here only when
+    it is parameterized and answers a recurring question, adding a proper test
+    under `tests/` and a row in the scripts list.
+  - `src/` — cross-module reusable pipeline logic, only after core-feature planning.
+  Escalate scratch → scripts → src only as reuse proves out; most probes stop at
+  `scratch/` and are deleted.
 - Keep the boundary strict: do not hide reusable pipeline logic inside a script,
   and do not promote analysis-only code into `src/` without a concrete reusable
   integration point.

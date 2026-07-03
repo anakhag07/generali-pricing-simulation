@@ -124,9 +124,10 @@ class _FakeExecutedRun:
 def test_run_preset_sweep_uses_project_name_as_runs_root(monkeypatch, tmp_path) -> None:
     captured: dict[str, str] = {}
 
-    def fake_execute_experiment_run(run_name: str, config, *, runs_root: str):
+    def fake_execute_experiment_run(run_name: str, config, *, runs_root, run_metadata=None):
         captured["run_name"] = run_name
         captured["runs_root"] = runs_root
+        captured["run_metadata"] = run_metadata
         return _FakeExecutedRun(
             result=object(),
             run_context=_FakeRunContext(experiment_name=run_name),
@@ -144,6 +145,11 @@ def test_run_preset_sweep_uses_project_name_as_runs_root(monkeypatch, tmp_path) 
 
     assert captured["run_name"] == "sigma-0.03__ngrad-64"
     assert captured["runs_root"] == tmp_path / "one_project"
+    assert captured["run_metadata"] == {
+        "preset_name": "planted_logistic_base",
+        "variant_name": "sigma-0.03__ngrad-64",
+        "overrides": {"sigma": 0.03, "n_grad_samples": 64, "wandb_enabled": True},
+    }
     assert len(results) == 1
     assert results[0].run_name == "sigma-0.03__ngrad-64"
     assert results[0].overrides["sigma"] == 0.03

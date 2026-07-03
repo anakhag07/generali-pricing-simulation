@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from experiments.config import ExperimentConfig
 from experiments.reporting.context import RunContext, create_run_context
@@ -73,6 +73,7 @@ def execute_experiment_run(
     runs_root: str | Path | None = None,
     reporter_stack_factory: ReporterStackFactory = default_reporter_stack,
     run_context: RunContext | None = None,
+    run_metadata: Mapping[str, Any] | None = None,
 ) -> ExecutedRun:
     """Create output context, run one experiment, and finalize reporters.
 
@@ -81,7 +82,7 @@ def execute_experiment_run(
     ``runs_root`` or the shared external results root when ``runs_root`` is omitted.
     """
     if run_context is None:
-        run_context = create_run_context(name, runs_root=runs_root)
+        run_context = create_run_context(name, runs_root=runs_root, run_metadata=run_metadata)
     reporters = reporter_stack_factory(config)
     reporters.on_start(run_context, config)
     result = run_experiment(config, step_reporter=reporters)

@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
+from dataclasses import asdict, is_dataclass
 import json
 import os
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -30,9 +33,10 @@ class JsonReporter:
         del run_context, config
 
     def on_end(self, run_context: RunContext, result: ExperimentResult) -> None:
-        summary_dir = run_context.run_dir
+        summary_dir = self._summary_dir or run_context.run_dir
+        summary_dir.mkdir(parents=True, exist_ok=True)
         payload = build_summary_payload(run_context, result, summary_dir=summary_dir)
-        with (summary_dir / "summary.json").open("w", encoding="utf-8") as handle:
+        with (summary_dir / self._summary_name).open("w", encoding="utf-8") as handle:
             json.dump(payload, handle, indent=2, sort_keys=True, ensure_ascii=True)
 
 
@@ -127,6 +131,9 @@ def build_summary_payload(
             else None,
         },
     }
+    run_metadata = getattr(run_context, "run_metadata", None)
+    if run_metadata:
+        payload["preset"] = _preset_payload(run_metadata)
     if result.constant_u_baselines:
         payload["constant_u_baselines"] = [
             {
@@ -202,6 +209,55 @@ def _policy_artifact_paths(
 def _as_list(values: object) -> list[float]:
     arr = np.asarray(values, dtype=float)
     return [float(val) for val in arr.tolist()]
+
+
+def _preset_payload(run_metadata: Mapping[str, Any]) -> dict[str, Any]:
+    payload: dict[str, Any] = {}
+    if "preset_name" in run_metadata:
+        payload["preset_name"] = _serialize_metadata_value(run_metadata["preset_name"])
+    if "overrides" in run_metadata:
+        payload["overrides"] = _serialize_overrides(run_metadata["overrides"])
+    for key, value in run_metadata.items():
+        key_text = str(key)
+        if key_text in {"preset_name", "overrides"}:
+            continue
+        payload[key_text] = _serialize_metadata_value(value)
+    return payload
+
+
+def _serialize_overrides(overrides: object) -> dict[str, Any]:
+    if not isinstance(overrides, Mapping):
+        return {}
+    return {
+        str(key): _serialize_metadata_value(value)
+        for key, value in overrides.items()
+        if str(key) != "_run_name"
+    }
+
+
+def _serialize_metadata_value(value: object) -> Any:
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, np.ndarray):
+        return _serialize_metadata_value(value.tolist())
+    to_dict = getattr(value, "to_dict", None)
+    if callable(to_dict):
+        return _serialize_metadata_value(to_dict())
+    if is_dataclass(value) and not isinstance(value, type):
+        return _serialize_metadata_value(asdict(value))
+    if isinstance(value, Mapping):
+        return {
+            str(key): _serialize_metadata_value(item)
+            for key, item in value.items()
+            if str(key) != "_run_name"
+        }
+    if isinstance(value, tuple):
+        return [_serialize_metadata_value(item) for item in value]
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        return [_serialize_metadata_value(item) for item in value]
+    return str(value)
 
 
 def _policy_evaluation_to_dict(evaluation: PolicyEvaluation) -> dict[str, float | int | None]:

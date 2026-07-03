@@ -26,3 +26,12 @@ def test_create_run_context_uses_run_dir_verbatim(tmp_path) -> None:
     assert run_context.run_dir == run_dir
     assert run_context.run_id == "seed-7"
     assert run_context.run_dir.exists()
+
+
+def test_create_run_context_stores_run_metadata(tmp_path) -> None:
+    run_metadata = {"preset_name": "demo", "overrides": {"sigma": 0.1}}
+
+    run_context = create_run_context("demo", runs_root=tmp_path, run_metadata=run_metadata)
+
+    assert run_context.run_metadata == run_metadata
+    assert run_context.run_metadata is not run_metadata

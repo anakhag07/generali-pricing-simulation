@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 import re
+from typing import Any
 
 from experiments.paths import results_root
 
@@ -19,6 +21,7 @@ class RunContext:
     run_dir: Path
     plots_dir: Path
     started_at: datetime
+    run_metadata: Mapping[str, Any] | None = None
 
 
 def create_run_context(
@@ -26,6 +29,7 @@ def create_run_context(
     runs_root: str | Path | None = None,
     started_at: datetime | None = None,
     run_dir: Path | None = None,
+    run_metadata: Mapping[str, Any] | None = None,
 ) -> RunContext:
     """Create the standard output directory context for a run.
 
@@ -51,6 +55,7 @@ def create_run_context(
         run_dir=resolved_dir,
         plots_dir=resolved_dir / "plots",
         started_at=timestamp,
+        run_metadata=dict(run_metadata) if run_metadata is not None else None,
     )
 
 

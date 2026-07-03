@@ -127,8 +127,12 @@ def main(argv: list[str] | None = None) -> None:
         if jax_status is not None:
             print(jax_status)
 
-    for config_name, config, _overrides in resolved_configs:
-        execute_experiment_run(config_name, config)
+    for config_name, config, overrides in resolved_configs:
+        execute_experiment_run(
+            config_name,
+            config,
+            run_metadata={"preset_name": config_name, "overrides": overrides},
+        )
 
 
 if __name__ == "__main__":

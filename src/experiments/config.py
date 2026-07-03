@@ -17,7 +17,7 @@ from objective.noise import HomoskedasticGaussianNoise, NoisyObjective, NoNoise,
 from objective.policy import ConstantPolicy, LinearPolicy, MLPPolicy, SoftmaxPolicy, policy_theta_dim
 from objective.policy_preprocessing import PolicyFeaturePreprocessor
 from optimization.steps import STEP_RULES, STEP_RULE_TRUST_CONSTR
-from experiments.seeding import SeedSetup, resolve_seed_setup, seed_setup_from_mapping
+from experiments.seeds import SeedSetup, resolve_seed_setup, seed_setup_from_mapping
 
 
 def _policy_theta_dim_for_objective(objective: object, state_dim: int) -> int | None:

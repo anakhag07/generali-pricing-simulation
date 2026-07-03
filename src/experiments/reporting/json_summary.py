@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
+
 import numpy as np
 
 from data.loader import extract_model_based_coefficients
@@ -12,14 +14,25 @@ from experiments.results import ExperimentResult, PolicyEvaluation
 
 
 class JsonReporter:
-    """Writes the run summary JSON artifact."""
+    """Writes the run summary JSON artifact.
+
+    ``summary_name`` names the file (seed sweeps pass ``summary-seed-<seed>.json``);
+    ``summary_dir`` overrides where it is written (defaulting to the run directory)
+    so per-seed summaries can share one variant-level folder.
+    """
+
+    def __init__(self, summary_name: str = "summary.json", summary_dir: Path | None = None) -> None:
+        self._summary_name = summary_name
+        self._summary_dir = Path(summary_dir) if summary_dir is not None else None
 
     def on_start(self, run_context: RunContext, config: ExperimentConfig) -> None:
         del run_context, config
 
     def on_end(self, run_context: RunContext, result: ExperimentResult) -> None:
         payload = build_summary_payload(run_context, result)
-        with (run_context.run_dir / "summary.json").open("w", encoding="utf-8") as handle:
+        target_dir = self._summary_dir if self._summary_dir is not None else run_context.run_dir
+        target_dir.mkdir(parents=True, exist_ok=True)
+        with (target_dir / self._summary_name).open("w", encoding="utf-8") as handle:
             json.dump(payload, handle, indent=2, sort_keys=True, ensure_ascii=True)
 
 

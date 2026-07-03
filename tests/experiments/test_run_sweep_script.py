@@ -35,11 +35,11 @@ def test_run_sweep_submits_to_slurm_before_running(monkeypatch) -> None:
             job_id="12345",
         )
 
-    def fail_run_preset_sweep(**kwargs):
+    def fail_run_sweep(**kwargs):
         raise AssertionError("sweep should not run in the parent process")
 
     monkeypatch.setattr(script, "submit_to_slurm_if_needed", fake_submit_to_slurm_if_needed)
-    monkeypatch.setattr(script, "run_preset_sweep", fail_run_preset_sweep)
+    monkeypatch.setattr(script, "run_sweep", fail_run_sweep)
 
     script.main([])
 
@@ -61,13 +61,13 @@ def test_run_sweep_no_sbatch_runs_without_jax_preflight(monkeypatch) -> None:
         calls["preflight"] = configs
         return "JAX backend: gpu; devices: [FakeGpu]"
 
-    def fake_run_preset_sweep(**kwargs):
+    def fake_run_sweep(**kwargs):
         calls["sweep"] = kwargs
-        return [("run", object())]
+        return SimpleNamespace(run_results=[object()], summary_rows=[], project_dir="outputs")
 
     monkeypatch.setattr(script, "submit_to_slurm_if_needed", fake_submit_to_slurm_if_needed)
     monkeypatch.setattr(script, "assert_jax_gpu_available", fake_assert_jax_gpu_available)
-    monkeypatch.setattr(script, "run_preset_sweep", fake_run_preset_sweep)
+    monkeypatch.setattr(script, "run_sweep", fake_run_sweep)
 
     script.main(["--no-sbatch"])
 
@@ -77,7 +77,11 @@ def test_run_sweep_no_sbatch_runs_without_jax_preflight(monkeypatch) -> None:
     assert "preflight" not in calls
     assert calls["sweep"] == {
         "base_preset": script.BASE_PRESET,
+        "run_seeds": script.RUN_SEEDS,
         "override_list": script.OVERRIDE_LIST,
+        "vary": script.VARY,
+        "anchor_seed": script.ANCHOR_SEED,
+        "fixed": script.FIXED_SEEDS,
         "project_name": script.PROJECT_NAME,
         "display_keys": script.DISPLAY_KEYS,
     }

@@ -1938,6 +1938,194 @@ def plot_sweep_pareto_frontier(
     plt.close(fig)
 
 
+def _seed_summary_stat(row: Mapping[str, object], metric: str, stat: str) -> float | None:
+    return _row_float(row.get(f"{metric}_{stat}"))
+
+
+def plot_seed_grid_metric_bars(
+    summary_rows: Sequence[Mapping[str, object]],
+    plot_dir: str,
+    *,
+    metric: str,
+    y_label: str,
+    filename: str,
+) -> None:
+    """Grouped bars of a metric mean per variant, with std error bars across seeds.
+
+    Consumes ``aggregate_seed_grid_rows`` output (rows carrying ``<metric>_mean`` and
+    ``<metric>_std`` per (variant, estimator)); bars are grouped by variant and
+    colored by estimator with ``yerr`` set to the across-seed standard deviation.
+    """
+    if not summary_rows:
+        return
+    variants = _ordered_labels(summary_rows, "variant")
+    estimators = _ordered_estimators_from_rows(summary_rows)
+    if not variants or not estimators:
+        return
+    lookup = {(str(row["variant"]), str(row["estimator"])): row for row in summary_rows}
+    path = _ensure_plot_dir(plot_dir)
+    x = np.arange(len(variants), dtype=float)
+    width = 0.8 / len(estimators)
+    fig, ax = plt.subplots(1, 1, figsize=(max(8.0, 1.6 * len(variants)), 5))
+    for index, estimator in enumerate(estimators):
+        style = _estimator_style(estimator)
+        means: list[float] = []
+        errs: list[float] = []
+        for variant in variants:
+            row = lookup.get((variant, estimator))
+            mean = _seed_summary_stat(row, metric, "mean") if row is not None else None
+            std = _seed_summary_stat(row, metric, "std") if row is not None else None
+            means.append(mean if mean is not None else np.nan)
+            errs.append(std if std is not None else 0.0)
+        offsets = x + (index - (len(estimators) - 1) / 2) * width
+        ax.bar(
+            offsets,
+            means,
+            width=width,
+            yerr=errs,
+            capsize=3,
+            color=style["color"],
+            alpha=0.85,
+            label=str(style["label"]),
+            error_kw={"elinewidth": 1.0},
+        )
+    ax.set_xticks(x)
+    ax.set_xticklabels(variants, rotation=30, ha="right")
+    ax.set_ylabel(y_label)
+    ax.grid(True, axis="y", alpha=0.3)
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(path / filename, dpi=200)
+    plt.close(fig)
+
+
+def plot_seed_grid_frontier(
+    summary_rows: Sequence[Mapping[str, object]],
+    plot_dir: str,
+    *,
+    x_metric: str = "mean_acceptance",
+    x_label: str = "Mean acceptance",
+    y_metric: str = "final_value",
+    y_label: str = "Final objective value",
+    filename: str = "seed_frontier_objective_acceptance.png",
+) -> None:
+    """Frontier of mean y vs mean x per (variant, estimator) with std error bars.
+
+    Consumes ``aggregate_seed_grid_rows`` output and draws one point per
+    (variant, estimator) with ``xerr``/``yerr`` equal to the across-seed std.
+    """
+    if not summary_rows:
+        return
+    path = _ensure_plot_dir(plot_dir)
+    fig, ax = plt.subplots(1, 1, figsize=(8, 5))
+    plotted = False
+    for estimator in _ordered_estimators_from_rows(summary_rows):
+        style = _estimator_style(estimator)
+        rows = [row for row in summary_rows if str(row["estimator"]) == estimator]
+        xs: list[float] = []
+        ys: list[float] = []
+        xerr: list[float] = []
+        yerr: list[float] = []
+        for row in rows:
+            x_mean = _seed_summary_stat(row, x_metric, "mean")
+            y_mean = _seed_summary_stat(row, y_metric, "mean")
+            if x_mean is None or y_mean is None:
+                continue
+            xs.append(x_mean)
+            ys.append(y_mean)
+            xerr.append(_seed_summary_stat(row, x_metric, "std") or 0.0)
+            yerr.append(_seed_summary_stat(row, y_metric, "std") or 0.0)
+        if not xs:
+            continue
+        plotted = True
+        ax.errorbar(
+            xs,
+            ys,
+            xerr=xerr,
+            yerr=yerr,
+            fmt=str(style["marker"]),
+            color=style["color"],
+            label=str(style["label"]),
+            markersize=_style_marker_size(style),
+            alpha=0.9,
+            capsize=3,
+            elinewidth=1.0,
+            linestyle="none",
+        )
+    if not plotted:
+        plt.close(fig)
+        return
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+    ax.grid(True, alpha=0.3)
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(path / filename, dpi=200)
+    plt.close(fig)
+
+
+def plot_seed_loss_bands(
+    objective_values_by_estimator: Mapping[str, Sequence[Sequence[float]]],
+    plot_dir: str,
+    *,
+    filename: str = "seed_loss_bands.png",
+    title: str | None = None,
+) -> None:
+    """Plot mean objective-vs-step with a +/- std band across seed replicates.
+
+    ``objective_values_by_estimator`` maps an estimator to its per-seed objective
+    trajectories; each estimator's curves are truncated to the shortest length and
+    reduced to a mean line plus a one-standard-deviation shaded band.
+    """
+    if not objective_values_by_estimator:
+        return
+    ordered = _ordered_estimators_from_rows(
+        [{"estimator": name} for name in objective_values_by_estimator]
+    )
+    path = _ensure_plot_dir(plot_dir)
+    fig, ax = plt.subplots(1, 1, figsize=(8, 5))
+    plotted = False
+    for estimator in ordered:
+        series_list = [
+            np.asarray(series, dtype=float)
+            for series in objective_values_by_estimator.get(estimator, [])
+            if len(series) > 0
+        ]
+        if not series_list:
+            continue
+        min_len = min(series.size for series in series_list)
+        if min_len == 0:
+            continue
+        stacked = np.vstack([series[:min_len] for series in series_list])
+        mean = np.mean(stacked, axis=0)
+        std = np.std(stacked, axis=0, ddof=0)
+        steps = np.arange(min_len)
+        style = _estimator_style(estimator)
+        plotted = True
+        ax.plot(
+            steps,
+            mean,
+            color=style["color"],
+            alpha=_LINE_ALPHA,
+            linewidth=_LINE_WIDTH,
+            label=str(style["label"]),
+        )
+        if stacked.shape[0] > 1:
+            ax.fill_between(steps, mean - std, mean + std, color=style["color"], alpha=0.15)
+    if not plotted:
+        plt.close(fig)
+        return
+    ax.set_xlabel("Step")
+    ax.set_ylabel("Objective value")
+    if title:
+        ax.set_title(title)
+    ax.grid(True, alpha=0.3)
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(path / filename, dpi=200)
+    plt.close(fig)
+
+
 def plot_lagrangian_pareto_frontier(
     points: Sequence[Mapping[str, object]],
     plot_dir: str,

@@ -5,7 +5,7 @@ from experiments.configs import get_config, list_configs
 from experiments.execution import ExecutedRun, default_reporter_stack, execute_experiment_run
 from experiments.results import ConstantBaselineResult, EstimatorResult, ExperimentResult, OptimizationTrace, PolicyEvaluation
 from experiments.run import run_experiment
-from experiments.seeding import ResolvedSeedSetup, SeedSetup, resolve_seed_setup
+from experiments.seeds import ResolvedSeedSetup, SeedSetup, resolve_seed_setup
 
 __all__ = [
     "CorrectnessSpec",

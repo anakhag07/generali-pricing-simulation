@@ -42,7 +42,7 @@ from objective.policy import (
     mlp_init_theta,
 )
 from objective.policy_preprocessing import fit_policy_feature_preprocessor
-from experiments.seeding import SeedSetup, resolve_seed_setup
+from experiments.seeds import SeedSetup, resolve_seed_setup
 
 ModelType = Literal["glm", "xgb"]
 PolicyKind = Literal["constant", "linear", "softmax", "mlp"]

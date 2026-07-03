@@ -505,14 +505,21 @@ that into explicit seed streams:
 
 If `seed_setup` is omitted, all streams use the legacy `seed`. If a
 `SeedSetup(run_seed=...)` is provided, any omitted stream is derived
-deterministically from `run_seed`, while explicit stream seeds remain fixed.
-Per-estimator optimizer RNG streams are independent of `enabled_estimators`
-ordering.
+deterministically from `run_seed`, while explicit stream seeds remain fixed
+(seed logic lives in the `experiments.seeds` package). Per-estimator optimizer
+RNG streams are independent of `enabled_estimators` ordering.
 
-For repeated runs, use `experiments.seed_repeats.run_seed_repeats(...)`. The
-default repeat mode varies only `optimizer_seed` and fixes data, split, and
-theta initialization/noise to the first `run_seed`; set `vary=("all",)` for full
-end-to-end seed variation.
+For seed-replicated sweeps with error bars, use the canonical
+`experiments.sweep_utils.run_sweep(base_preset=..., run_seeds=(...), ...)`. It
+replicates every variant across `run_seeds`; by default `vary=("theta",)` keeps
+data, split, and noise identical across replicates and only reinitializes policy
+`theta`. Each variant collects all its seeds under one folder
+(`summary-seed-<seed>.json` plus aggregate error-bar plots and
+`seed_grid_summary.csv`). A plain seed sweep is just the no-axis case. Note that
+the stochastic estimators draw perturbations from `optimizer_seed`, so add
+`"optimizer"` to `vary` to put error bars on their estimator noise, not just
+initialization. The older `experiments.seed_repeats.run_seed_repeats(...)`
+remains for its CSV-only output.
 
 ## Contributing
 

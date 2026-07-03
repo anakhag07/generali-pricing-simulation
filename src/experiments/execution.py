@@ -56,9 +56,16 @@ def execute_experiment_run(
     *,
     runs_root: str = "outputs",
     reporter_stack_factory: ReporterStackFactory = default_reporter_stack,
+    run_context: RunContext | None = None,
 ) -> ExecutedRun:
-    """Create output context, run one experiment, and finalize reporters."""
-    run_context = create_run_context(name, runs_root=runs_root)
+    """Create output context, run one experiment, and finalize reporters.
+
+    Pass ``run_context`` to reuse a caller-built output directory (e.g. a per-seed
+    replicate under a shared variant folder); otherwise one is created under
+    ``runs_root``.
+    """
+    if run_context is None:
+        run_context = create_run_context(name, runs_root=runs_root)
     reporters = reporter_stack_factory(config)
     reporters.on_start(run_context, config)
     result = run_experiment(config, step_reporter=reporters)

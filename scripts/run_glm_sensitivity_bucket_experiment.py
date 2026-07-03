@@ -54,7 +54,10 @@ def _run_bucket(bucket: SensitivityBucket) -> ExperimentResult:
         run_metadata={
             "preset_name": BASE_PRESET,
             "variant_name": run_name,
-            "overrides": overrides,
+            # Exclude the full row-index array from summary metadata; ``n_samples``
+            # already records the bucket size and the run's own row bindings are
+            # persisted separately.
+            "overrides": {k: v for k, v in overrides.items() if k != "row_indices"},
         },
     )
     return executed.result

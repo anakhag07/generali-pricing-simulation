@@ -30,7 +30,7 @@ from experiments.results import (
     OptimizationTrace,
     PolicyEvaluation,
 )
-from experiments.seeding import ResolvedSeedSetup, optimizer_rngs, resolve_seed_setup, rng_from_seed
+from experiments.seeds import ResolvedSeedSetup, optimizer_rngs, resolve_seed_setup, rng_from_seed
 from optimization.solvers import (
     run_constant_minimize,
     run_finite_difference_minimize,

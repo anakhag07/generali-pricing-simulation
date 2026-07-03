@@ -379,11 +379,14 @@ Guidelines:
 - **`src/experiments/sweep_utils.py`**
   - `expand_override_grid(...)`: cartesian product of override values
   - `apply_config_overrides(...)`: validates and applies top-level `ExperimentConfig` overrides
+  - `expand_sweep_overrides(...)`: pure `(variant_name, override_dict)` expansion (no `get_config`), so callers can merge a per-seed `seed_setup` into overrides before the config is built (required to reach the real-data factory)
   - `generate_sweep_runs(...)`: expands a base preset into named sweep variants; accepts either `override_grid` (cartesian product) or an explicit `override_list` of per-run override dicts; real-data override grids may include factory axes such as `policy_kind` and `constraint_mode`; either override form may include an `_run_name` key to set an explicit run name instead of the derived display name
-  - `run_preset_sweep(...)`: same `override_grid`/`override_list` signature as `generate_sweep_runs(...)`; executes variants through `execute_experiment_run(...)` and returns `SweepRunResult` records with run name, config, overrides, result, and `RunContext`
+  - `run_sweep(...)`: **canonical seed-aware sweep.** Replicates every variant across `run_seeds`, building each run's `SeedSetup` with `replicate_seed_setup(seed, anchor_seed, vary=..., fixed=...)`; by default `vary=("theta",)` keeps data/split/noise identical across replicates and only reinitializes policy `theta`. Per-seed runs share one variant folder (`summary-seed-<seed>.json` at the variant root, heavy artifacts under `seeds/seed-<seed>/`); writes per-variant and cross-variant aggregate error-bar plots plus `seed_grid_summary.csv`. Returns `SweepResult(project_dir, run_results, summary_rows)`. A plain seed sweep is the no-axis case (`override_list`/`override_grid` omitted). **Pitfall:** with `vary=("theta",)` the stochastic estimators (`stein_difference`/`spsa`/`gauss_stein`) reuse one perturbation stream across replicates, so their error bars capture init sensitivity only; add `"optimizer"` to `vary` to also capture estimator stochasticity.
+  - `run_preset_sweep(...)`: legacy single-seed axis sweep; same `override_grid`/`override_list` signature as `generate_sweep_runs(...)`; executes variants through `execute_experiment_run(...)` and returns `SweepRunResult` records (each now also carries `run_seed`, `None` for single-seed sweeps)
 
 - **`src/experiments/sweep_reporting.py`**
   - Aggregate sweep-output helpers for recurring scripts: timestamped aggregate directories, final estimator row collection for scalar config sweeps, CSV writing, and standard action/acceptance plus Pareto frontier plots
+  - Cross-seed aggregation (home of the generalized `seed_repeats._summary_rows`): `collect_seed_grid_final_rows(...)` / `aggregate_seed_grid_rows(...)` group per-(variant, estimator) finals to mean/std/min/max over seeds; `write_seed_grid_outputs(...)` writes `seed_grid_finals.csv` + `seed_grid_summary.csv` and the aggregate error-bar plots; `objective_traces_by_estimator(...)` groups per-seed traces for loss-band plots
   - Simple sweep scripts should call this module instead of carrying local `_write_rows`, timestamp-dir, and private plotting-helper logic
 
 - **`src/experiments/sensitivity_buckets.py`**
@@ -404,14 +407,14 @@ Guidelines:
   - `PolicyEvaluation`: final policy metrics on a split (`objective_value`, `objective_sum`, mean/quantile `u`, and optional acceptance/loss/revenue diagnostics)
   - `ExperimentResult`: full result including config, train samples in `x_samples`, optional `x_test`, split row/index metadata, traces, final train/test policy metrics, and optional u_star
 
-- **`src/experiments/seeding.py`**
-  - `SeedSetup`: optional per-run seed-stream overrides (`run_seed`, `data_seed`, `split_seed`, `theta_seed`, `noise_seed`, `optimizer_seed`)
-  - `resolve_seed_setup(...)`: legacy configs without `seed_setup` use `ExperimentConfig.seed` for every stream; explicit `SeedSetup` derives omitted streams from `run_seed`
-  - `optimizer_rngs(...)`: derives order-independent per-estimator batch and gradient RNGs from `optimizer_seed`
+- **`src/experiments/seeds/`** (package; replaces the former `seeding.py` module)
+  - `streams.py`: seed primitives — `SeedSetup`/`ResolvedSeedSetup`, `resolve_seed_setup(...)` (legacy configs without `seed_setup` use `ExperimentConfig.seed` for every stream; explicit `SeedSetup` derives omitted streams from `run_seed`), `derive_seed`, `rng_from_seed`, and `optimizer_rngs(...)` (order-independent per-estimator batch and gradient RNGs from `optimizer_seed`)
+  - `replicate.py`: seed-vary policy — `SeedStream` literal, `validate_vary(...)`, and `replicate_seed_setup(run_seed, anchor_seed, *, vary=("theta",), fixed=None)` which pins non-`vary` streams to `anchor_seed` and follows `run_seed` for `vary` streams (`vary=("all",)` leaves streams unset; `fixed` pins a stream). This is the single source of truth for "what varies across replicates"; `run_sweep` and `seed_repeats` both use it
+  - `__init__.py`: re-exports the full public seed surface; import from `experiments.seeds`
 
 - **`src/experiments/seed_repeats.py`**
-  - `SeedRepeatSpec`: repeated-run orchestrator over explicit seed streams; default varies only `optimizer_seed` while fixing data/split/theta/noise to the first run seed
-  - `run_seed_repeats(...)`: runs a preset once per `run_seed`, writes normal per-run outputs plus `seed_repeats.csv` and `seed_repeats_summary.csv`
+  - `SeedRepeatSpec`: repeated-run orchestrator over explicit seed streams; default varies only `optimizer_seed` while fixing data/split/theta/noise to the first run seed. `seed_setup_for_repeat(...)` now delegates to `replicate_seed_setup(...)`
+  - `run_seed_repeats(...)`: runs a preset once per `run_seed`, writes normal per-run outputs plus `seed_repeats.csv` and `seed_repeats_summary.csv`. Prefer `sweep_utils.run_sweep(...)` for new seed-aware sweeps
 
 - **`src/experiments/policy_validation.py`**
   - Shared optimizer-independent policy validation helpers (`policy_u_values`, `evaluate_policy`) used by both `run_experiment()` and saved policy artifacts
@@ -423,12 +426,12 @@ Guidelines:
   - `load_policy_artifact(...).predict_u(split="train")` and `.evaluate(split="train")` rerun validation without optimizer training
 
 - **`src/experiments/reporting/`**
-  - `context.py`: `RunContext` and `create_run_context(...)` output-directory helpers
+  - `context.py`: `RunContext` and `create_run_context(...)` output-directory helpers; `create_run_context` accepts an optional caller-fixed `run_dir` (no timestamp segment) so per-seed replicate runs can share one variant folder
   - `base.py`: `StepReporter`, `Reporter`, and `ReporterStack` interfaces/composition
   - `console.py`: `ConsoleReporter` terminal output; per-step output controlled by `verbose`
   - `step_logger.py`: `FileStepLogger` writes per-step metrics to `plots/optimization/steps.csv`
   - `artifacts.py`: `PolicyArtifactReporter` writes reloadable trained-policy artifacts before `JsonReporter` records their relative paths
-  - `json_summary.py`: `JsonReporter` and `build_summary_payload(...)` write `summary.json`, including estimator-level `train` and optional `test` policy metric blocks
+  - `json_summary.py`: `JsonReporter` and `build_summary_payload(...)` write `summary.json`, including estimator-level `train` and optional `test` policy metric blocks; `JsonReporter(summary_name=..., summary_dir=...)` parameterizes the filename/location so seed sweeps write `summary-seed-<seed>.json` at the variant root
   - `plots.py`: `PlotReporter` generates optimization and policy diagnostics, writes per-plot timings, and caps model-based theta contour subsampling/grid sizes
   - `wandb.py`: `WandbReporter` uploads run summaries and generated artifacts to W&B when enabled
 
@@ -448,6 +451,7 @@ Guidelines:
   - `plot_comparison_objective_curves(...)`, `plot_comparison_u_curves(...)`, `plot_comparison_final_metric(...)`: aggregate policy-comparison plots; final metrics render as grouped bars by policy with estimator colors and policy hatching
   - Model-based real-data run plots under `plots/policy_train/` and `plots/policy_test/` include `final_summary_metrics.png`, `u_histogram.png`, `acceptance_histograms.png`, `delta_u_histogram.png`, `delta_u_by_sensitivity.png`, `objective_contribution_summary.png`, and per-estimator `u_acceptance/<estimator>.png` files with binned mean acceptance, customer-level acceptance-vs-`u` scatter, and raw objective contribution histograms
   - Public `plot_sweep_tradeoffs(...)` and `plot_sweep_pareto_frontier(...)` power generic sweep frontier plots; lambda-specific wrappers call these helpers
+  - Seed-aggregated error-bar plots for `run_sweep`: `plot_seed_grid_metric_bars(...)` (grouped bars per variant with `yerr` across seeds), `plot_seed_grid_frontier(...)` (mean acceptance vs mean objective with `xerr`/`yerr`), and `plot_seed_loss_bands(...)` (mean objective-vs-step with a +/- std band); consume `aggregate_seed_grid_rows(...)` output / per-seed traces
   - `select_theta_axes_max_variance(...)`: picks the two theta axes with highest variance for contour plots
 
 ### Entry Point (`main.py`)
@@ -458,7 +462,7 @@ Guidelines:
 - CPU-only specs submit to ORCD `mit_normal`; specs with `compute_backend="jax"` submit to `mit_normal_gpu` with one L40S GPU and fail fast if JAX reports only CPU in the child job
 - For each config spec: delegates the run lifecycle to `experiments.execution.execute_experiment_run(...)`, which creates `RunContext`, assembles the default `ReporterStack`, calls `run_experiment()`, and finalizes reporters
 - All I/O is handled by reporters, not by the runner
-- `scripts/run_sweep.py` provides preset-based sweep execution using top-level and real-data factory overrides; it defaults to a `planted_logistic_base` homoskedastic-noise theta-offset sweep (`OVERRIDE_LIST` built from `THETA_OFFSETS` added to `BASE_THETA`, wrapping the base objective in `NoisyObjective`/`HomoskedasticGaussianNoise` with `NOISE_STD`, and using `correctness=CorrectnessSpec(gradient_source="denoised_exact")`); this preset does not use JAX/GLM, so it still auto-submits through the ORCD Slurm launcher but no longer requires GPU submission, with `--no-sbatch` for intentional local/debug execution
+- `scripts/run_sweep.py` provides preset-based sweep execution using top-level and real-data factory overrides; it defaults to a `planted_logistic_base` homoskedastic-noise theta-offset sweep (`OVERRIDE_LIST` built from `THETA_OFFSETS` added to `BASE_THETA`, wrapping the base objective in `NoisyObjective`/`HomoskedasticGaussianNoise` with `NOISE_STD`, and using `correctness=CorrectnessSpec(gradient_source="denoised_exact")`). It is the representative `sweep_utils.run_sweep(...)` driver: each theta-offset variant is replicated across `RUN_SEEDS` with `vary=("optimizer",)` (so the stochastic `stein_difference` estimator gets non-degenerate error bars) while `ANCHOR_SEED`/`FIXED_SEEDS` keep data/split/theta and the noise realization fixed; outputs land under one variant folder per offset with `summary-seed-<seed>.json` and aggregate error-bar plots. Remaining GLM sweep drivers (e.g. `run_glm_u_coef_sweep.py`) still use `run_preset_sweep` and follow the same swap when seed replication is wanted. This preset does not use JAX/GLM, so it still auto-submits through the ORCD Slurm launcher but no longer requires GPU submission, with `--no-sbatch` for intentional local/debug execution
 - `scripts/run_glm_u_coef_sweep.py` runs the softmax/no-PCA/trust-constr GLM setup over 200000 sampled rows and `u_coef in {-4, -5, -8, -10, -20}`, keeps per-run distribution plots enabled, and writes aggregate `glm_u_coef_sweep.csv` plus frontier plots under `outputs/glm-u-coef-sweep/u_coef_frontier_<timestamp>/`
 - `scripts/run_glm_softmax_alpha_sweep.py` runs the trust-constrained softmax/no-PCA/linear-feature GLM setup over symmetric action bounds `[-alpha, alpha]` for `alpha in {0.5, 0.4, 0.3, 0.2, 0.15, 0.125, 0.1, 0.075}`, saves normal per-alpha policy artifacts, and writes aggregate final objective/profit plots plus artifact-replayed acceptance-threshold and per-alpha `u`-bin expected-profit summaries under `outputs/glm-softmax-alpha-sweep/alpha_sweep_<timestamp>/`
 - `scripts/run_glm_sensitivity_bucket_experiment.py` buckets all complete eligible GLM rows into low/medium/high local price-sensitivity tertiles at median observed `U`, runs the softmax/no-PCA/trust-constr GLM setup on every row in each bucket, keeps per-run distribution plots enabled, and writes aggregate `glm_sensitivity_bucket_experiment.csv` plus comparison plots under `outputs/glm-sensitivity-buckets/sensitivity_bucket_summary_<timestamp>/`
@@ -558,9 +562,10 @@ when appropriate.
 | `test_run_sweep_script.py` | `scripts/run_sweep.py` JAX default, Slurm autosubmit, and child-process execution behavior |
 | `test_slurm_launcher.py` | ORCD Slurm profile selection, command construction, autosubmit skips, and JAX GPU preflight |
 | `test_train_test_split.py` | Runner train/test split, held-out policy metrics, and summary payloads |
-| `test_seeding.py` | Seed setup serialization, data/split/theta stream routing, estimator-order independence |
+| `test_seeding.py` | Seed setup serialization, stream routing, `replicate_seed_setup` vary/fixed policy and legacy parity |
 | `test_seed_repeats.py` | Seed-repeat setup construction and aggregate CSV outputs |
-| `test_sweep_reporting.py` | Aggregate sweep row and CSV helpers |
+| `test_sweep_run.py` | Canonical `run_sweep`: shared variant folder, fixed data/split/noise vs varying theta, non-degenerate error bars |
+| `test_sweep_reporting.py` | Aggregate sweep rows, cross-seed grid aggregation, and CSV helpers |
 | `test_sweep_utils.py` | Override-grid expansion and preset sweep config/result generation |
 | `test_sensitivity_buckets.py` | GLM local price-sensitivity scoring and tertile construction |
 | `test_sensitivity_bucket_script.py` | Sensitivity bucket experiment script constants and summaries |
@@ -574,6 +579,7 @@ when appropriate.
 |---|---|
 | `test_logging.py` | Step logging output format |
 | `test_file_step_logger.py` | FileStepLogger CSV output |
+| `test_json_summary_reporter.py` | JsonReporter default and parameterized `summary-seed-<seed>.json` naming/location |
 | `test_split_plot_folders.py` | Split policy plot folder creation |
 | `test_wandb_reporter.py` | W&B reporter integration |
 | `test_reporting_theta_norms.py` | Theta norm visualization |

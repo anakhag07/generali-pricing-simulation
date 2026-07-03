@@ -1,4 +1,4 @@
-"""Seed stream helpers for reproducible experiment runs."""
+"""Seed-stream primitives: derivation, resolution, and RNG construction."""
 
 from __future__ import annotations
 

@@ -153,17 +153,17 @@ reporting    </h1>
 <input id="ESTIMATOR_STYLES-view-value" class="view-value-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
             <label class="view-value-button pdoc-button" for="ESTIMATOR_STYLES-view-value"></label><span class="default_value">{&#39;constant&#39;: {&#39;label&#39;: &#39;constant&#39;, &#39;color&#39;: &#39;#9467bd&#39;, &#39;marker&#39;: &#39;o&#39;}, &#39;first_order&#39;: {&#39;label&#39;: &#39;first-order&#39;, &#39;color&#39;: &#39;#1f77b4&#39;, &#39;marker&#39;: &#39;X&#39;, &#39;marker_size&#39;: 6.2, &#39;scatter_size&#39;: 28.0}, &#39;finite_difference&#39;: {&#39;label&#39;: &#39;finite-difference&#39;, &#39;color&#39;: &#39;#8c564b&#39;, &#39;marker&#39;: &#39;P&#39;}, &#39;gauss_stein&#39;: {&#39;label&#39;: &#39;gauss-stein&#39;, &#39;color&#39;: &#39;#ff7f0e&#39;, &#39;marker&#39;: &#39;s&#39;}, &#39;stein_difference&#39;: {&#39;label&#39;: &#39;stein-difference&#39;, &#39;color&#39;: &#39;#2ca02c&#39;, &#39;marker&#39;: &#39;^&#39;}, &#39;spsa&#39;: {&#39;label&#39;: &#39;SPSA&#39;, &#39;color&#39;: &#39;#d62728&#39;, &#39;marker&#39;: &#39;D&#39;}}</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ESTIMATOR_STYLES"></a>
-
-
+    
+    
 
                 </section>
                 <section id="log_step">
                             <input id="log_step-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">log_step</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">method</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">step</span><span class="p">:</span> <span class="nb">int</span>,</span><span class="param">	<span class="n">u</span><span class="p">:</span> <span class="nb">float</span>,</span><span class="param">	<span class="n">value</span><span class="p">:</span> <span class="nb">float</span>,</span><span class="param">	<span class="n">grad_norm</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">step_size</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">mean_acceptance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">projected_loss</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">projected_revenue</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
 
@@ -206,7 +206,7 @@ reporting    </h1>
                 <section id="log_summary">
                             <input id="log_summary-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">log_summary</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">result</span><span class="p">:</span> <span class="n"><a href="experiments.html#ExperimentResult">experiments.ExperimentResult</a></span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
 
@@ -406,13 +406,13 @@ reporting    </h1>
 </span></pre></div>
 
 
-
+    
 
                 </section>
                 <section id="plot_gradient_norms">
                             <input id="plot_gradient_norms-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">plot_gradient_norms</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">traces</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n"><a href="experiments.html#OptimizationTrace">experiments.OptimizationTrace</a></span><span class="p">]</span>,</span><span class="param">	<span class="n">plot_dir</span><span class="p">:</span> <span class="nb">str</span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
 
@@ -496,13 +496,13 @@ reporting    </h1>
 </span></pre></div>
 
 
-
+    
 
                 </section>
                 <section id="plot_loss_curves">
                             <input id="plot_loss_curves-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">plot_loss_curves</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">traces</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n"><a href="experiments.html#OptimizationTrace">experiments.OptimizationTrace</a></span><span class="p">]</span>,</span><span class="param">	<span class="n">plot_dir</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">u_star</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">constant_u_baselines</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n"><a href="experiments.html#ConstantBaselineResult">experiments.ConstantBaselineResult</a></span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
 
@@ -581,13 +581,13 @@ reporting    </h1>
 </span></pre></div>
 
 
-
+    
 
                 </section>
                 <section id="plot_objective_u_slice">
                             <input id="plot_objective_u_slice-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">plot_objective_u_slice</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">x_samples</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>,</span><span class="param">	<span class="n">objective</span><span class="p">:</span> <span class="n"><a href="objective.html#Objective">objective.Objective</a></span>,</span><span class="param">	<span class="n">traces</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n"><a href="experiments.html#OptimizationTrace">experiments.OptimizationTrace</a></span><span class="p">]</span>,</span><span class="param">	<span class="n">plot_dir</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">u_star</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">constant_u_baselines</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n"><a href="experiments.html#ConstantBaselineResult">experiments.ConstantBaselineResult</a></span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
 
@@ -708,7 +708,7 @@ reporting    </h1>
                 <section id="plot_step_sizes">
                             <input id="plot_step_sizes-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">plot_step_sizes</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">traces</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n"><a href="experiments.html#OptimizationTrace">experiments.OptimizationTrace</a></span><span class="p">]</span>,</span><span class="param">	<span class="n">plot_dir</span><span class="p">:</span> <span class="nb">str</span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
 
@@ -761,13 +761,13 @@ reporting    </h1>
 </span></pre></div>
 
 
-
+    
 
                 </section>
                 <section id="plot_sweep_pareto_frontier">
                             <input id="plot_sweep_pareto_frontier-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">plot_sweep_pareto_frontier</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">points</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]]</span>,</span><span class="param">	<span class="n">plot_dir</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="o">*</span>,</span><span class="param">	<span class="n">sweep_key</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">sweep_label</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">y_key</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">y_label</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">filename</span><span class="p">:</span> <span class="nb">str</span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
 
@@ -847,7 +847,7 @@ reporting    </h1>
                 <section id="plot_sweep_tradeoffs">
                             <input id="plot_sweep_tradeoffs-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">plot_sweep_tradeoffs</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">points</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]]</span>,</span><span class="param">	<span class="n">plot_dir</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="o">*</span>,</span><span class="param">	<span class="n">sweep_key</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">sweep_label</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">filename</span><span class="p">:</span> <span class="nb">str</span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
 
@@ -907,7 +907,7 @@ reporting    </h1>
                 <section id="plot_theta_objective_contours">
                             <input id="plot_theta_objective_contours-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">plot_theta_objective_contours</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">x_samples</span><span class="p">:</span> <span class="nb">object</span>,</span><span class="param">	<span class="n">objective</span><span class="p">:</span> <span class="n"><a href="objective.html#Objective">objective.Objective</a></span>,</span><span class="param">	<span class="n">theta_base</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>,</span><span class="param">	<span class="n">plot_dir</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">axis_indices</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>,</span><span class="param">	<span class="n">axis_labels</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">theta_refs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">theta_points</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">traces</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n"><a href="experiments.html#OptimizationTrace">experiments.OptimizationTrace</a></span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">grid_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">60</span>,</span><span class="param">	<span class="n">levels</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">15</span>,</span><span class="param">	<span class="n">filename</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;theta_objective_contours.png&#39;</span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
 
@@ -998,13 +998,13 @@ reporting    </h1>
 </span></pre></div>
 
 
-
+    
 
                 </section>
                 <section id="select_theta_axes_max_variance">
                             <input id="select_theta_axes_max_variance-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">select_theta_axes_max_variance</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">theta_points</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span></span><span class="return-annotation">) -> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>:</span></span>
 
@@ -1027,13 +1027,13 @@ reporting    </h1>
 </span></pre></div>
 
 
-
+    
 
                 </section>
                 <section id="theta_objective_contour_grid">
                             <input id="theta_objective_contour_grid-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">theta_objective_contour_grid</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">x_samples</span><span class="p">:</span> <span class="nb">object</span>,</span><span class="param">	<span class="n">objective</span><span class="p">:</span> <span class="n"><a href="objective.html#Objective">objective.Objective</a></span>,</span><span class="param">	<span class="n">theta_base</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>,</span><span class="param">	<span class="n">axis_indices</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>,</span><span class="param">	<span class="n">theta_refs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">grid_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">60</span>,</span><span class="param">	<span class="n">pad_ratio</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.08</span>,</span><span class="param">	<span class="n">min_pad</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.02</span></span><span class="return-annotation">) -> <span class="nb">tuple</span><span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>:</span></span>
 

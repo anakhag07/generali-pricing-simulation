@@ -15,7 +15,16 @@ from experiments.results import ExperimentResult, PolicyEvaluation
 
 
 class JsonReporter:
-    """Writes the run summary JSON artifact."""
+    """Writes the run summary JSON artifact.
+
+    ``summary_name`` names the file (seed sweeps pass ``summary-seed-<seed>.json``);
+    ``summary_dir`` overrides where it is written (defaulting to the run directory)
+    so per-seed summaries can share one variant-level folder.
+    """
+
+    def __init__(self, summary_name: str = "summary.json", summary_dir: Path | None = None) -> None:
+        self._summary_name = summary_name
+        self._summary_dir = Path(summary_dir) if summary_dir is not None else None
 
     def on_start(self, run_context: RunContext, config: ExperimentConfig) -> None:
         del run_context, config

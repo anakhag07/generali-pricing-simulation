@@ -100,7 +100,11 @@ def _run_config_task(index: int, context: LaunchContext) -> dict[str, object]:
     jax_status = assert_jax_gpu_available([config])
     if jax_status is not None:
         print(jax_status)
-    executed = execute_experiment_run(_run_name(index, config_name), config, runs_root="outputs")
+    executed = execute_experiment_run(
+        _run_name(index, config_name),
+        config,
+        run_metadata={"preset_name": config_name, "overrides": overrides},
+    )
     return {
         "config_name": config_name,
         "run_name": executed.name,
@@ -120,7 +124,6 @@ def _build_launch_plan() -> LaunchPlan:
         requires_jax=run_specs_require_jax(RUN_CONFIGS),
         run_task=_run_config_task,
         run_all=_run_all_configs,
-        runs_root="outputs",
         default_launch="auto",
         default_array=False,
     )

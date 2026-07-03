@@ -14,6 +14,7 @@ from data.loader import extract_glm_u_coef
 from experiments.configs import get_config
 from experiments.execution import execute_experiment_run
 from experiments.launch import LaunchContext, LaunchPlan, add_launch_args, run_launch_plan, task_payloads
+from experiments.paths import results_root
 from experiments.results import ExperimentResult
 from experiments.sweep_reporting import (
     timestamped_sweep_output_dir,
@@ -169,7 +170,7 @@ def _run_u_coef_task(index: int, context: LaunchContext) -> dict[str, object]:
     executed = execute_experiment_run(
         run_name,
         config,
-        runs_root=str(Path("outputs") / PROJECT_NAME),
+        runs_root=results_root() / PROJECT_NAME,
     )
     rows = _collect_rows([SimpleNamespace(run_name=run_name, result=executed.result)])
     return {"run_name": run_name, "rows": rows, "run_dir": str(executed.run_context.run_dir)}
@@ -238,7 +239,6 @@ def _build_launch_plan() -> LaunchPlan:
         run_task=_run_u_coef_task,
         run_all=_run_u_coef_serial,
         collect=_collect_u_coef_tasks,
-        runs_root="outputs",
         default_launch="local",
         default_array=False,
     )

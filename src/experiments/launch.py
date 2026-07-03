@@ -14,6 +14,7 @@ import subprocess
 from types import SimpleNamespace
 from typing import Any, Literal
 
+from experiments.paths import results_root
 from experiments.slurm import (
     SlurmArraySpec,
     assert_jax_gpu_available,
@@ -38,7 +39,7 @@ class LaunchPlan:
     run_task: TaskRunner
     run_all: RunAll | None = None
     collect: Collector | None = None
-    runs_root: str = "outputs"
+    runs_root: str | None = None
     default_launch: LaunchMode = "auto"
     default_array: bool = False
 
@@ -317,7 +318,7 @@ def _launch_context(
     sweep_id: str,
     task_index: int | None,
 ) -> LaunchContext:
-    runs_root = Path(plan.runs_root)
+    runs_root = results_root() if plan.runs_root is None else Path(plan.runs_root)
     sweep_dir = runs_root / _path_part(plan.name) / "sweeps" / _path_part(sweep_id)
     return LaunchContext(
         plan_name=plan.name,

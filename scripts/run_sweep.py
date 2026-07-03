@@ -21,6 +21,7 @@ from experiments.launch import (
     run_launch_plan,
     task_payloads,
 )
+from experiments.paths import results_root
 from experiments.reporting.context import create_run_context
 from experiments.reporting.json_summary import JsonReporter
 from experiments.seeds import replicate_seed_setup
@@ -122,7 +123,7 @@ def _task_specs() -> list[tuple[str, dict[str, Any], int]]:
 
 
 def _project_dir() -> Path:
-    return Path("outputs") / _path_part(PROJECT_NAME)
+    return results_root() / _path_part(PROJECT_NAME)
 
 
 def _variant_dir(variant_name: str) -> Path:
@@ -292,7 +293,6 @@ def _build_launch_plan() -> LaunchPlan:
         run_task=_run_sweep_task,
         run_all=_run_sweep_serial,
         collect=_collect_sweep_tasks,
-        runs_root="outputs",
         default_launch="auto",
         default_array=False,
     )

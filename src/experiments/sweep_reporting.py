@@ -10,6 +10,7 @@ from typing import Mapping, Sequence
 
 import numpy as np
 
+from experiments.paths import results_root
 from experiments.results import PolicyEvaluation
 from experiments.sweep_utils import SweepRunResult
 from reporting.visualization import (
@@ -47,11 +48,12 @@ def timestamped_sweep_output_dir(
     *,
     project_name: str,
     dirname_prefix: str,
-    runs_root: str = "outputs",
+    runs_root: str | Path | None = None,
 ) -> Path:
     """Return and create a timestamped aggregate sweep output directory."""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = Path(runs_root) / _path_part(project_name) / f"{dirname_prefix}_{timestamp}"
+    root = results_root() if runs_root is None else Path(runs_root)
+    output_dir = root / _path_part(project_name) / f"{dirname_prefix}_{timestamp}"
     output_dir.mkdir(parents=True, exist_ok=True)
     return output_dir
 

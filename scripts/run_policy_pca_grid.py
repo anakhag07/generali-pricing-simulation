@@ -10,6 +10,7 @@ import sys
 
 from data.loader import load_mean_observed_acceptance
 from experiments.launch import LaunchContext, LaunchPlan, add_launch_args, run_launch_plan, task_payloads
+from experiments.paths import results_root
 from experiments.policy_pca_grid import (
     PCA_DIMS,
     POLICY_CLASSES,
@@ -104,7 +105,8 @@ def _collect_pca_tasks(context: LaunchContext, spec: PolicyPcaGridSpec) -> None:
     if not final_rows:
         raise ValueError("No policy PCA grid rows were produced.")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = Path(spec.output_root) / spec.project_name / f"policy_pca_grid_array_{timestamp}"
+    root = results_root() if spec.output_root is None else Path(spec.output_root)
+    output_dir = root / spec.project_name / f"policy_pca_grid_array_{timestamp}"
     write_policy_pca_outputs(final_rows, trace_rows, output_dir)
     print(f"Collected {len(payloads)} policy PCA grid array tasks into {output_dir}")
 

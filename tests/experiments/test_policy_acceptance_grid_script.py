@@ -100,6 +100,14 @@ def test_parser_defaults_to_unseeded_sampling() -> None:
     assert args.u_max == 0.15
 
 
+def test_default_output_dir_uses_results_root(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("GENERALI_RESULTS_ROOT", str(tmp_path / "results"))
+
+    output_dir = script._default_output_dir()
+
+    assert output_dir.parent == tmp_path / "results" / "policy-acceptance-grid"
+
+
 def test_run_acceptance_grid_writes_plots_and_sample_csv(monkeypatch, tmp_path) -> None:
     artifact = _FakeArtifact(_frame())
     artifact_dir = tmp_path / "artifact"

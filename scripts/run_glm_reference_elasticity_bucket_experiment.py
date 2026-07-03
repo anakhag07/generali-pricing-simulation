@@ -15,6 +15,7 @@ import numpy as np
 from experiments.configs import get_config
 from experiments.execution import execute_experiment_run
 from experiments.launch import LaunchContext, LaunchPlan, add_launch_args, run_launch_plan, task_payloads
+from experiments.paths import results_root
 from experiments.results import ExperimentResult
 from experiments.sensitivity_buckets import SensitivityBucket, build_glm_sensitivity_buckets
 from reporting.visualization import _estimator_style
@@ -52,10 +53,19 @@ def _run_bucket(bucket: SensitivityBucket, *, u_ref: float) -> ExperimentResult:
         "row_indices": bucket.row_indices,
     }
     config = get_config(BASE_PRESET, overrides=overrides)
+    run_name = f"{_u_label(u_ref)}_{bucket.name}_elasticity"
     executed = execute_experiment_run(
-        f"{_u_label(u_ref)}_{bucket.name}_elasticity",
+        run_name,
         config,
-        runs_root=str(Path("outputs") / PROJECT_NAME),
+        runs_root=results_root() / PROJECT_NAME,
+        run_metadata={
+            "preset_name": BASE_PRESET,
+            "variant_name": run_name,
+            # Exclude the full row-index array from summary metadata; ``n_samples``
+            # already records the bucket size and the run's own row bindings are
+            # persisted separately.
+            "overrides": {k: v for k, v in overrides.items() if k != "row_indices"},
+        },
     )
     return executed.result
 
@@ -351,7 +361,7 @@ def _run_reference_bucket_task(index: int, context: LaunchContext) -> dict[str, 
 def _run_reference_buckets_serial(context: LaunchContext) -> None:
     del context
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = Path("outputs") / PROJECT_NAME / f"reference_elasticity_bucket_summary_{timestamp}"
+    output_dir = results_root() / PROJECT_NAME / f"reference_elasticity_bucket_summary_{timestamp}"
     all_bucket_results: list[tuple[float, SensitivityBucket, ExperimentResult]] = []
     buckets_by_u: dict[float, tuple[SensitivityBucket, SensitivityBucket, SensitivityBucket]] = {}
 
@@ -387,7 +397,7 @@ def _collect_reference_bucket_tasks(context: LaunchContext) -> None:
     if not rows:
         raise ValueError("No reference elasticity bucket rows were produced.")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = Path("outputs") / PROJECT_NAME / f"reference_elasticity_bucket_summary_{timestamp}"
+    output_dir = results_root() / PROJECT_NAME / f"reference_elasticity_bucket_summary_{timestamp}"
     _write_rows(rows, output_dir / "glm_reference_elasticity_bucket_experiment.csv")
     for u_ref in REFERENCE_U_VALUES:
         buckets = build_glm_sensitivity_buckets(u_ref=float(u_ref))
@@ -406,7 +416,6 @@ def _build_launch_plan() -> LaunchPlan:
         run_task=_run_reference_bucket_task,
         run_all=_run_reference_buckets_serial,
         collect=_collect_reference_bucket_tasks,
-        runs_root="outputs",
         default_launch="local",
         default_array=False,
     )

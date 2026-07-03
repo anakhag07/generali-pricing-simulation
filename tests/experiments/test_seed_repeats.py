@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import json
+
 from experiments.seed_repeats import SeedRepeatSpec, run_seed_repeats, seed_setup_for_repeat
+from experiments.seed_repeats import _seed_repeat_output_dir
 
 
 def test_seed_setup_for_repeat_varies_only_optimizer_by_default() -> None:
@@ -76,3 +79,16 @@ def test_run_seed_repeats_writes_aggregate_outputs(tmp_path) -> None:
     assert len(output.final_rows) == 2
     assert output.summary_rows[0]["estimator"] == "first_order"
     assert output.summary_rows[0]["n_runs"] == 2
+    run_summary_path = next((output.output_dir / "runs").glob("seed-1__*/summary.json"))
+    summary = json.loads(run_summary_path.read_text(encoding="utf-8"))
+    assert summary["preset"]["preset_name"] == "planted_logistic_base"
+    assert summary["preset"]["run_seed"] == 1
+
+
+def test_seed_repeat_default_output_root_uses_results_root(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("GENERALI_RESULTS_ROOT", str(tmp_path / "results"))
+    spec = SeedRepeatSpec(base_preset="planted_logistic_base", run_seeds=(1,))
+
+    output_dir = _seed_repeat_output_dir(spec)
+
+    assert output_dir.parent == tmp_path / "results" / "seed-repeats"

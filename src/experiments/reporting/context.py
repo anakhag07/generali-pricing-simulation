@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 import re
+from typing import Any
+
+from experiments.paths import results_root
 
 
 @dataclass(frozen=True)
@@ -17,19 +21,23 @@ class RunContext:
     run_dir: Path
     plots_dir: Path
     started_at: datetime
+    run_metadata: Mapping[str, Any] | None = None
 
 
 def create_run_context(
     experiment_name: str,
-    runs_root: str = "outputs",
+    runs_root: str | Path | None = None,
     started_at: datetime | None = None,
     run_dir: Path | None = None,
+    run_metadata: Mapping[str, Any] | None = None,
 ) -> RunContext:
     """Create the standard output directory context for a run.
 
     When ``run_dir`` is given it is used verbatim (no timestamp segment), letting a
     caller place several runs -- e.g. per-seed replicates -- under one shared
-    parent directory. Otherwise the run lands in ``runs_root/<name>/<timestamp>``.
+    parent directory. Otherwise the run lands in
+    ``runs_root/<safe-name>__<timestamp>``. If ``runs_root`` is omitted, the
+    shared external ``results_root()`` is used.
     """
     timestamp = started_at or datetime.now()
     if run_dir is not None:
@@ -38,7 +46,8 @@ def create_run_context(
     else:
         run_id = timestamp.strftime("%Y%m%d_%H%M%S")
         safe_name = _sanitize_name(experiment_name)
-        resolved_dir = Path(runs_root) / safe_name / run_id
+        root = results_root() if runs_root is None else Path(runs_root)
+        resolved_dir = root / f"{safe_name}__{run_id}"
     resolved_dir.mkdir(parents=True, exist_ok=True)
     return RunContext(
         experiment_name=experiment_name,
@@ -46,6 +55,7 @@ def create_run_context(
         run_dir=resolved_dir,
         plots_dir=resolved_dir / "plots",
         started_at=timestamp,
+        run_metadata=dict(run_metadata) if run_metadata is not None else None,
     )
 
 

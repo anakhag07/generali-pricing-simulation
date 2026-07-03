@@ -15,6 +15,7 @@ import numpy as np
 from experiments.configs import get_config
 from experiments.execution import execute_experiment_run
 from experiments.launch import LaunchContext, LaunchPlan, add_launch_args, run_launch_plan, task_payloads
+from experiments.paths import results_root
 from experiments.policy_artifacts import load_policy_artifact
 from experiments.reporting.context import RunContext
 from experiments.results import ExperimentResult, PolicyEvaluation
@@ -123,7 +124,12 @@ def _run_alpha(alpha: float) -> tuple[float, str, ExperimentResult, RunContext]:
     executed = execute_experiment_run(
         run_name,
         config,
-        runs_root=str(Path("outputs") / PROJECT_NAME),
+        runs_root=results_root() / PROJECT_NAME,
+        run_metadata={
+            "preset_name": BASE_PRESET,
+            "variant_name": run_name,
+            "overrides": overrides,
+        },
     )
     return alpha_value, run_name, executed.result, executed.run_context
 
@@ -705,7 +711,7 @@ def _write_alpha_outputs(final_rows: Sequence[Mapping[str, object]]) -> None:
     bin_rows = _collect_bin_rows_from_artifacts(final_rows)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = Path("outputs") / PROJECT_NAME / f"alpha_sweep_{timestamp}"
+    output_dir = results_root() / PROJECT_NAME / f"alpha_sweep_{timestamp}"
     output_dir.mkdir(parents=True, exist_ok=True)
     _write_rows(final_rows, output_dir / "softmax_alpha_sweep.csv", _FINAL_FIELDNAMES)
     _write_rows(bin_rows, output_dir / "softmax_alpha_bin_summary.csv", _BIN_FIELDNAMES)
@@ -722,7 +728,6 @@ def _build_launch_plan() -> LaunchPlan:
         run_task=_run_alpha_task,
         run_all=_run_alpha_serial,
         collect=_collect_alpha_tasks,
-        runs_root="outputs",
         default_launch="local",
         default_array=False,
     )

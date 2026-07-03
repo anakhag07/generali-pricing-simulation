@@ -17,13 +17,13 @@ import numpy as np
 
 from data.loader import FEATURE_COLS_GLM, FEATURE_COLS_XGB, load_observed_u_array
 from experiments.configs import get_config
+from experiments.paths import results_root
 from objective import default_rng, mean_acceptance_at_constant_u, sample_states
 
 DEFAULT_MODEL_PRESETS: dict[str, str] = {
     "glm": "real_data_glm_base",
     "xgb": "real_data_xgb_base",
 }
-DEFAULT_OUTPUT_ROOT = Path("outputs") / "acceptance_queries"
 
 
 @dataclass(frozen=True)
@@ -103,6 +103,10 @@ def _resolve_output_dir(
     model_type: Literal["glm", "xgb"],
 ) -> Path:
     return output_root / (output_subdir if output_subdir is not None else model_type)
+
+
+def _default_output_root() -> Path:
+    return results_root() / "acceptance_queries"
 
 
 def query_mean_acceptance(
@@ -278,8 +282,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--output-root",
         type=Path,
-        default=DEFAULT_OUTPUT_ROOT,
-        help="Root directory for plots. Defaults to outputs/acceptance_queries.",
+        default=None,
+        help="Root directory for plots. Defaults to results_root()/acceptance_queries.",
     )
     parser.add_argument(
         "--output-subdir",
@@ -301,7 +305,8 @@ def main(argv: Sequence[str] | None = None) -> None:
         _write_csv(rows, args.csv)
         print(f"Wrote acceptance query CSV to {args.csv}.")
 
-    output_dir = _resolve_output_dir(args.output_root, args.output_subdir, model_type)
+    output_root = args.output_root if args.output_root is not None else _default_output_root()
+    output_dir = _resolve_output_dir(output_root, args.output_subdir, model_type)
     row_indices = getattr(config, "x_fixed_row_indices", None)
     if row_indices is not None:
         row_indices = np.asarray(row_indices, dtype=int)[: rows[0].n]

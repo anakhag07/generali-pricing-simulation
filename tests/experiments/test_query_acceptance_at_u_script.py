@@ -147,3 +147,20 @@ def test_main_uses_custom_output_subdir(monkeypatch: pytest.MonkeyPatch, tmp_pat
 
     assert (output_root / "custom_xgb" / "constant_u_histograms.png").exists()
     assert (output_root / "custom_xgb" / "constant_u_acceptance_curve.png").exists()
+
+
+def test_main_defaults_output_root_to_results_root(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    config = _make_config(np.array([[0.0], [2.0]], dtype=float))
+    monkeypatch.setenv("GENERALI_RESULTS_ROOT", str(tmp_path / "results"))
+    monkeypatch.setattr(query_acceptance_at_u, "get_config", lambda preset: config)
+    monkeypatch.setattr(
+        query_acceptance_at_u,
+        "load_observed_u_array",
+        lambda model_type, n_rows, **kwargs: np.asarray([0.1, 0.2], dtype=float),
+    )
+
+    query_acceptance_at_u.main(["--model-type", "glm", "--u", "0.0"])
+
+    output_root = tmp_path / "results" / "acceptance_queries"
+    assert (output_root / "glm" / "constant_u_histograms.png").exists()
+    assert (output_root / "glm" / "constant_u_acceptance_curve.png").exists()

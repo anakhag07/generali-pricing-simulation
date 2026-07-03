@@ -18,11 +18,11 @@ from matplotlib.lines import Line2D
 from matplotlib.ticker import PercentFormatter
 import numpy as np
 
+from experiments.paths import results_root
 from experiments.policy_artifacts import load_policy_artifact
 
 
 BUCKET_NAMES: tuple[str, str, str] = ("low", "medium", "high")
-DEFAULT_OUTPUT_ROOT = Path("outputs") / "policy-acceptance-grid"
 
 
 @dataclass(frozen=True)
@@ -388,7 +388,7 @@ def _write_summary_json(
 
 def _default_output_dir() -> Path:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    return DEFAULT_OUTPUT_ROOT / f"acceptance_grid_{timestamp}"
+    return results_root() / "policy-acceptance-grid" / f"acceptance_grid_{timestamp}"
 
 
 def run_acceptance_grid(args: argparse.Namespace) -> dict[str, Path]:
@@ -524,7 +524,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--output-dir",
         type=Path,
         default=None,
-        help="Output directory. Defaults to timestamped outputs/policy-acceptance-grid/ directory.",
+        help="Output directory. Defaults to timestamped results_root()/policy-acceptance-grid/ directory.",
     )
     parser.add_argument("--dpi", type=int, default=200, help="Saved plot DPI.")
     return parser

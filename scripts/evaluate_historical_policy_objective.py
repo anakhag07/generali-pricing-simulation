@@ -32,6 +32,7 @@ from data.loader import (
     sample_csv_row_indices,
 )
 from experiments.configs import get_config
+from experiments.paths import results_root
 from experiments.policy_artifacts import PolicyArtifact, load_policy_artifact
 from objective.objectives import ModelBasedObjective
 from objective.policy import ConstantPolicy
@@ -795,7 +796,7 @@ def _default_historical_u_output_dir(
     condition = _historical_u_condition_name(acceptance_source, technical_price_source)
     if summary_json is not None:
         return summary_json.parent / "historical_u_objective" / condition
-    return Path("outputs") / "historical_u_objective" / model_type / condition
+    return results_root() / "historical_u_objective" / model_type / condition
 
 
 def _resolve_historical_u_model_type(

@@ -12,6 +12,7 @@ import numpy as np
 
 from experiments.configs import get_config
 from experiments.execution import execute_experiment_run
+from experiments.paths import results_root
 from experiments.results import ExperimentResult
 from experiments.sensitivity_buckets import (
     SensitivityBucket,
@@ -45,10 +46,16 @@ def _run_bucket(bucket: SensitivityBucket) -> ExperimentResult:
         "row_indices": bucket.row_indices,
     }
     config = get_config(BASE_PRESET, overrides=overrides)
+    run_name = f"{bucket.name}_sensitivity"
     executed = execute_experiment_run(
-        f"{bucket.name}_sensitivity",
+        run_name,
         config,
-        runs_root=str(Path("outputs") / PROJECT_NAME),
+        runs_root=results_root() / PROJECT_NAME,
+        run_metadata={
+            "preset_name": BASE_PRESET,
+            "variant_name": run_name,
+            "overrides": overrides,
+        },
     )
     return executed.result
 
@@ -321,7 +328,7 @@ def main() -> None:
     if not rows:
         raise ValueError("No sensitivity bucket rows were produced.")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = Path("outputs") / PROJECT_NAME / f"sensitivity_bucket_summary_{timestamp}"
+    output_dir = results_root() / PROJECT_NAME / f"sensitivity_bucket_summary_{timestamp}"
     output_dir.mkdir(parents=True, exist_ok=True)
     _write_rows(rows, output_dir)
     _write_plots(rows, buckets, output_dir)

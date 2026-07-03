@@ -28,84 +28,84 @@ def test_run_sweep_uses_noise_override_list() -> None:
         assert entry["objective"].noise.std == float(noise_std)
 
 
-def test_run_sweep_submits_to_slurm_before_running(monkeypatch) -> None:
+def test_run_sweep_sweeps_bind_both_grids() -> None:
+    assert script.SWEEPS == (
+        (script.THETA_PROJECT_NAME, script.THETA_OVERRIDE_LIST),
+        (script.NOISE_PROJECT_NAME, script.NOISE_OVERRIDE_LIST),
+    )
+
+
+def test_run_sweep_main_delegates_to_launch_plan(monkeypatch) -> None:
     calls: dict[str, object] = {}
 
-    def fake_submit_to_slurm_if_needed(*, requires_jax, no_sbatch, argv):
-        calls["submit"] = (requires_jax, no_sbatch, argv)
-        return SimpleNamespace(
-            profile=SimpleNamespace(name="gpu", output="outputs/slurm/%x-%j.out"),
-            job_id="12345",
-        )
+    def fake_run_launch_plan(plan, *, args, argv):
+        calls["plan"] = plan
+        calls["args"] = args
+        calls["argv"] = argv
 
-    def fail_run_sweep(**kwargs):
-        raise AssertionError("sweep should not run in the parent process")
-
-    monkeypatch.setattr(script, "submit_to_slurm_if_needed", fake_submit_to_slurm_if_needed)
-    monkeypatch.setattr(script, "run_sweep", fail_run_sweep)
+    monkeypatch.setattr(script, "run_launch_plan", fake_run_launch_plan)
 
     script.main([])
 
-    requires_jax, no_sbatch, argv = calls["submit"]
-    assert requires_jax is False
-    assert no_sbatch is False
+    plan = calls["plan"]
+    args = calls["args"]
+    argv = calls["argv"]
+    expected_tasks = (
+        len(script.THETA_OVERRIDE_LIST) + len(script.NOISE_OVERRIDE_LIST)
+    ) * len(script.RUN_SEEDS)
+    assert plan.task_count == expected_tasks
+    assert plan.requires_jax is False
+    assert plan.name == script.LAUNCH_PLAN_NAME
+    assert args.no_sbatch is False
     assert isinstance(argv, list)
     assert "--no-sbatch" not in argv
 
 
-def test_run_sweep_no_sbatch_runs_without_jax_preflight(monkeypatch) -> None:
+def test_run_sweep_no_sbatch_passes_launch_local(monkeypatch) -> None:
     calls: dict[str, object] = {}
+
+    def fake_run_launch_plan(plan, *, args, argv):
+        calls["args"] = args
+        calls["argv"] = argv
+
+    monkeypatch.setattr(script, "run_launch_plan", fake_run_launch_plan)
+
+    script.main(["--no-sbatch"])
+
+    assert calls["args"].no_sbatch is True
+    assert "--no-sbatch" in calls["argv"]
+
+
+def test_run_sweep_serial_path_runs_both_grids(monkeypatch) -> None:
     sweep_calls: list[dict[str, object]] = []
-
-    def fake_submit_to_slurm_if_needed(*, requires_jax, no_sbatch, argv):
-        calls["submit"] = (requires_jax, no_sbatch, argv)
-        return None
-
-    def fake_assert_jax_gpu_available(configs):
-        calls["preflight"] = configs
-        return "JAX backend: gpu; devices: [FakeGpu]"
 
     def fake_run_sweep(**kwargs):
         sweep_calls.append(kwargs)
-        return SimpleNamespace(run_results=[object()], summary_rows=[], project_dir="outputs")
+        return SimpleNamespace(run_results=[object()], summary_rows=[], project_dir="results")
 
-    monkeypatch.setattr(script, "submit_to_slurm_if_needed", fake_submit_to_slurm_if_needed)
-    monkeypatch.setattr(script, "assert_jax_gpu_available", fake_assert_jax_gpu_available)
     monkeypatch.setattr(script, "run_sweep", fake_run_sweep)
     monkeypatch.setattr(script, "_variant_is_completed", lambda variant_dir, required_estimators: False)
     monkeypatch.setattr(script, "_regenerate_distance_plots", lambda: None)
 
-    script.main(["--no-sbatch"])
+    script._run_sweep_serial(SimpleNamespace())
 
-    requires_jax, no_sbatch, _ = calls["submit"]
-    assert requires_jax is False
-    assert no_sbatch is True
-    assert "preflight" not in calls
     assert len(sweep_calls) == 2
     theta_call, noise_call = sweep_calls
-    assert {key: theta_call[key] for key in theta_call if key != "override_list"} == {
+    common = {
         "base_preset": script.BASE_PRESET,
         "run_seeds": script.RUN_SEEDS,
         "vary": script.VARY,
         "anchor_seed": script.ANCHOR_SEED,
         "fixed": script.FIXED_SEEDS,
-        "runs_root": "outputs",
-        "project_name": script.THETA_PROJECT_NAME,
         "display_keys": script.DISPLAY_KEYS,
     }
+    assert {k: theta_call[k] for k in common} == common
+    assert theta_call["project_name"] == script.THETA_PROJECT_NAME
     assert [entry["_run_name"] for entry in theta_call["override_list"]] == [
         entry["_run_name"] for entry in script.THETA_OVERRIDE_LIST
     ]
-    assert {key: noise_call[key] for key in noise_call if key != "override_list"} == {
-        "base_preset": script.BASE_PRESET,
-        "run_seeds": script.RUN_SEEDS,
-        "vary": script.VARY,
-        "anchor_seed": script.ANCHOR_SEED,
-        "fixed": script.FIXED_SEEDS,
-        "runs_root": "outputs",
-        "project_name": script.NOISE_PROJECT_NAME,
-        "display_keys": script.DISPLAY_KEYS,
-    }
+    assert {k: noise_call[k] for k in common} == common
+    assert noise_call["project_name"] == script.NOISE_PROJECT_NAME
     assert [entry["_run_name"] for entry in noise_call["override_list"]] == [
         entry["_run_name"] for entry in script.NOISE_OVERRIDE_LIST
     ]
@@ -119,7 +119,7 @@ def test_run_sweep_skips_completed_variants(monkeypatch) -> None:
 
     def fake_run_sweep(**kwargs):
         calls.append(kwargs["override_list"])
-        return SimpleNamespace(run_results=[], summary_rows=[], project_dir="outputs")
+        return SimpleNamespace(run_results=[], summary_rows=[], project_dir="results")
 
     monkeypatch.setattr(script, "_variant_is_completed", fake_variant_is_completed)
     monkeypatch.setattr(script, "run_sweep", fake_run_sweep)

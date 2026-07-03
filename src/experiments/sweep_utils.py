@@ -10,6 +10,7 @@ from typing import Any, Mapping, Sequence
 from experiments.config import ExperimentConfig
 from experiments.configs import get_config
 from experiments.execution import default_reporter_stack, execute_experiment_run
+from experiments.paths import results_root
 from experiments.reporting.context import RunContext, create_run_context
 from experiments.results import ExperimentResult
 from experiments.seeds import SeedStream, replicate_seed_setup
@@ -158,7 +159,7 @@ def run_preset_sweep(
     base_preset: str,
     override_grid: Mapping[str, Sequence[Any]] | None = None,
     override_list: Sequence[Mapping[str, Any]] | None = None,
-    runs_root: str = "outputs",
+    runs_root: str | Path | None = None,
     project_name: str | None = None,
     display_keys: Sequence[str] | None = None,
 ) -> list[SweepRunResult]:
@@ -173,7 +174,16 @@ def run_preset_sweep(
     runs_root_path = _project_runs_root(runs_root, project_name)
 
     for run_name, config, overrides in sweep_runs:
-        executed = execute_experiment_run(run_name, config, runs_root=runs_root_path)
+        executed = execute_experiment_run(
+            run_name,
+            config,
+            runs_root=runs_root_path,
+            run_metadata={
+                "preset_name": base_preset,
+                "variant_name": run_name,
+                "overrides": dict(overrides),
+            },
+        )
         results.append(
             SweepRunResult(
                 run_name=run_name,
@@ -197,7 +207,7 @@ def run_sweep(
     anchor_seed: int | None = None,
     fixed: Mapping[str, int | None] | None = None,
     per_seed_plots: bool = False,
-    runs_root: str = "outputs",
+    runs_root: str | Path | None = None,
     project_name: str | None = None,
     display_keys: Sequence[str] | None = None,
 ) -> SweepResult:
@@ -239,7 +249,14 @@ def run_sweep(
             merged_overrides = {**overrides, "seed_setup": seed_setup}
             config = get_config(base_preset, overrides=merged_overrides)
             run_context = create_run_context(
-                variant_name, run_dir=variant_dir / "seeds" / f"seed-{seed}"
+                variant_name,
+                run_dir=variant_dir / "seeds" / f"seed-{seed}",
+                run_metadata={
+                    "preset_name": base_preset,
+                    "variant_name": variant_name,
+                    "overrides": dict(overrides),
+                    "run_seed": seed,
+                },
             )
             executed = execute_experiment_run(
                 variant_name,
@@ -311,7 +328,8 @@ def _display_key_label(key: str) -> str:
     return aliases.get(key, key)
 
 
-def _project_runs_root(runs_root: str, project_name: str | None) -> str:
+def _project_runs_root(runs_root: str | Path | None, project_name: str | None) -> Path:
+    root = results_root() if runs_root is None else Path(runs_root)
     if not project_name:
-        return runs_root
-    return str(Path(runs_root) / _stringify_override_value(project_name))
+        return root
+    return root / _stringify_override_value(project_name)

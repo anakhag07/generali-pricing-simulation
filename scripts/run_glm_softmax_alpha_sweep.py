@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import argparse
 import csv
 from datetime import datetime
 from pathlib import Path
+import sys
 from typing import Mapping, Sequence
 
 import matplotlib.pyplot as plt
@@ -12,6 +14,8 @@ import numpy as np
 
 from experiments.configs import get_config
 from experiments.execution import execute_experiment_run
+from experiments.launch import LaunchContext, LaunchPlan, add_launch_args, run_launch_plan, task_payloads
+from experiments.paths import results_root
 from experiments.policy_artifacts import load_policy_artifact
 from experiments.reporting.context import RunContext
 from experiments.results import ExperimentResult, PolicyEvaluation
@@ -120,7 +124,12 @@ def _run_alpha(alpha: float) -> tuple[float, str, ExperimentResult, RunContext]:
     executed = execute_experiment_run(
         run_name,
         config,
-        runs_root=str(Path("outputs") / PROJECT_NAME),
+        runs_root=results_root() / PROJECT_NAME,
+        run_metadata={
+            "preset_name": BASE_PRESET,
+            "variant_name": run_name,
+            "overrides": overrides,
+        },
     )
     return alpha_value, run_name, executed.result, executed.run_context
 
@@ -665,25 +674,69 @@ def _optional_float(value: object) -> float | str:
     return "" if value is None else float(value)
 
 
-def main() -> None:
+def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    add_launch_args(parser, default_launch="local", default_array=False)
+    return parser.parse_args(argv)
+
+
+def _run_alpha_task(index: int, context: LaunchContext) -> dict[str, object]:
+    del context
+    run = _run_alpha(ALPHA_VALUES[index])
+    final_rows = _collect_final_rows([run])
+    return {"alpha": float(ALPHA_VALUES[index]), "final_rows": final_rows}
+
+
+def _run_alpha_serial(context: LaunchContext) -> None:
+    del context
     runs: list[tuple[float, str, ExperimentResult, RunContext]] = []
     for alpha in ALPHA_VALUES:
         runs.append(_run_alpha(alpha))
 
     final_rows = _collect_final_rows(runs)
+    _write_alpha_outputs(final_rows)
+    print(f"Completed {len(runs)} GLM softmax alpha sweep runs for preset '{BASE_PRESET}'.")
+
+
+def _collect_alpha_tasks(context: LaunchContext) -> None:
+    payloads = task_payloads(context)
+    final_rows = [row for payload in payloads for row in payload.get("final_rows", [])]
+    _write_alpha_outputs(final_rows)
+    print(f"Collected {len(payloads)} GLM softmax alpha array tasks.")
+
+
+def _write_alpha_outputs(final_rows: Sequence[Mapping[str, object]]) -> None:
     if not final_rows:
         raise ValueError("No alpha sweep rows were produced. Check enabled estimators.")
     bin_rows = _collect_bin_rows_from_artifacts(final_rows)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = Path("outputs") / PROJECT_NAME / f"alpha_sweep_{timestamp}"
+    output_dir = results_root() / PROJECT_NAME / f"alpha_sweep_{timestamp}"
     output_dir.mkdir(parents=True, exist_ok=True)
     _write_rows(final_rows, output_dir / "softmax_alpha_sweep.csv", _FINAL_FIELDNAMES)
     _write_rows(bin_rows, output_dir / "softmax_alpha_bin_summary.csv", _BIN_FIELDNAMES)
     _write_plots(final_rows, bin_rows, output_dir)
 
-    print(f"Completed {len(runs)} GLM softmax alpha sweep runs for preset '{BASE_PRESET}'.")
     print(f"Wrote alpha sweep summaries and plots to {output_dir}.")
+
+
+def _build_launch_plan() -> LaunchPlan:
+    return LaunchPlan(
+        name=PROJECT_NAME,
+        task_count=len(ALPHA_VALUES),
+        requires_jax=RUN_OVERRIDES.get("compute_backend") == "jax",
+        run_task=_run_alpha_task,
+        run_all=_run_alpha_serial,
+        collect=_collect_alpha_tasks,
+        default_launch="local",
+        default_array=False,
+    )
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = _parse_args(argv)
+    original_argv = [sys.argv[0], *(sys.argv[1:] if argv is None else argv)]
+    run_launch_plan(_build_launch_plan(), args=args, argv=original_argv)
 
 
 if __name__ == "__main__":

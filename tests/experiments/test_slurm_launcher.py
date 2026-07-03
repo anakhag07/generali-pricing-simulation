@@ -9,6 +9,7 @@ from experiments.slurm import (
     CPU_PROFILE,
     GPU_PROFILE,
     SLURM_CHILD_ENV,
+    SlurmArraySpec,
     assert_jax_gpu_available,
     build_sbatch_command,
     configs_require_jax,
@@ -66,8 +67,23 @@ def test_build_sbatch_command_uses_cpu_profile_without_gpu(tmp_path) -> None:
     assert "JAX_PLATFORM_NAME" not in wrap
 
 
-def test_submit_to_slurm_creates_log_dir_and_returns_job(tmp_path) -> None:
+def test_build_sbatch_command_supports_array_and_dependency(tmp_path) -> None:
+    command = build_sbatch_command(
+        CPU_PROFILE,
+        ["scripts/run_sweep.py"],
+        cwd=tmp_path,
+        array=SlurmArraySpec(0, 8, max_parallel=3),
+        dependency="afterany:12345",
+    )
+
+    assert "--array=0-8%3" in command
+    assert "--dependency=afterany:12345" in command
+
+
+def test_submit_to_slurm_creates_log_dir_and_returns_job(tmp_path, monkeypatch) -> None:
     captured: dict[str, list[str]] = {}
+    results_root = tmp_path / "results"
+    monkeypatch.setenv("GENERALI_RESULTS_ROOT", str(results_root))
 
     def fake_runner(command, *, check, capture_output, text):
         captured["command"] = command
@@ -87,7 +103,9 @@ def test_submit_to_slurm_creates_log_dir_and_returns_job(tmp_path) -> None:
     assert submission is not None
     assert submission.job_id == "12345"
     assert submission.profile.name == "gpu"
-    assert (tmp_path / "outputs" / "slurm").is_dir()
+    assert (results_root / "slurm").is_dir()
+    assert submission.profile.output == str(results_root / "slurm" / "%x-%j.out")
+    assert f"--output={results_root / 'slurm' / '%x-%j.out'}" in captured["command"]
     assert captured["command"] == list(submission.command)
 
 

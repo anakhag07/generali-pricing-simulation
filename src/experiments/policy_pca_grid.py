@@ -22,6 +22,7 @@ from data.loader import (
     sample_csv_row_indices,
 )
 from experiments.config import CorrectnessSpec, ExperimentConfig, make_model_based_objective
+from experiments.paths import results_root
 from experiments.results import ExperimentResult
 from experiments.run import run_experiment
 from objective.policy import (
@@ -80,7 +81,7 @@ class PolicyPcaGridSpec:
     acceptance_floor: float | None = None
     standardize: bool = True
     sphere: bool = True
-    output_root: str = "outputs"
+    output_root: str | Path | None = None
     project_name: str = "policy-pca-grid"
     verbose: bool = True
 
@@ -505,7 +506,8 @@ def _failure_row(condition: PolicyPcaCondition, spec: PolicyPcaGridSpec, exc: Ex
 
 def _grid_output_dir(spec: PolicyPcaGridSpec) -> Path:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    return Path(spec.output_root) / spec.project_name / f"policy_pca_grid_{timestamp}"
+    root = results_root() if spec.output_root is None else Path(spec.output_root)
+    return root / spec.project_name / f"policy_pca_grid_{timestamp}"
 
 
 def _write_rows(path: Path, rows: Sequence[Mapping[str, object]], fieldnames: Sequence[str]) -> None:

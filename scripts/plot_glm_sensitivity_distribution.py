@@ -25,8 +25,8 @@ from data.loader import (
 from experiments.sensitivity_buckets import (
     glm_price_derivative_matrix,
 )
+from experiments.paths import results_root
 
-DEFAULT_OUTPUT_ROOT = Path("outputs") / "glm-sensitivity-distribution"
 DEFAULT_HIST_U_VALUES = (-0.3, -0.2, -0.1, 0.0, 0.1, 0.2, 0.3)
 _QUANTILES = (0.05, 0.25, 0.50, 0.75, 0.95)
 
@@ -364,8 +364,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--output-root",
         type=Path,
-        default=DEFAULT_OUTPUT_ROOT,
-        help="Root directory for outputs.",
+        default=None,
+        help="Root directory for outputs. Defaults to results_root()/glm-sensitivity-distribution.",
     )
     parser.add_argument(
         "--output-subdir",
@@ -404,7 +404,12 @@ def main(argv: Sequence[str] | None = None) -> None:
     output_subdir = args.output_subdir or (
         f"elasticity_distribution_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     )
-    output_dir = args.output_root / output_subdir
+    output_root = (
+        args.output_root
+        if args.output_root is not None
+        else results_root() / "glm-sensitivity-distribution"
+    )
+    output_dir = output_root / output_subdir
     output_dir.mkdir(parents=True, exist_ok=True)
 
     dense_csv = output_dir / "glm_elasticity_by_u.csv"

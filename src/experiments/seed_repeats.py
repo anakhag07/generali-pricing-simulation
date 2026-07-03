@@ -12,6 +12,7 @@ import numpy as np
 
 from experiments.configs import get_config
 from experiments.execution import execute_experiment_run
+from experiments.paths import results_root
 from experiments.results import ExperimentResult, PolicyEvaluation
 from experiments.seeds import SeedSetup, SeedStream, replicate_seed_setup
 
@@ -29,7 +30,7 @@ class SeedRepeatSpec:
     fixed_theta_seed: int | None = None
     fixed_noise_seed: int | None = None
     fixed_optimizer_seed: int | None = None
-    output_root: str = "outputs"
+    output_root: str | Path | None = None
     project_name: str = "seed-repeats"
 
     def __post_init__(self) -> None:
@@ -88,7 +89,17 @@ def run_seed_repeats(spec: SeedRepeatSpec) -> SeedRepeatOutput:
         overrides = {**dict(spec.overrides), "seed_setup": seed_setup}
         config = get_config(spec.base_preset, overrides=overrides)
         run_name = f"seed-{int(run_seed)}"
-        executed = execute_experiment_run(run_name, config, runs_root=str(output_dir / "runs"))
+        executed = execute_experiment_run(
+            run_name,
+            config,
+            runs_root=output_dir / "runs",
+            run_metadata={
+                "preset_name": spec.base_preset,
+                "variant_name": run_name,
+                "overrides": dict(spec.overrides),
+                "run_seed": int(run_seed),
+            },
+        )
         run_context = executed.run_context
         result = executed.result
         results.append((int(run_seed), run_name, result))
@@ -186,7 +197,8 @@ def _write_rows(
 
 def _seed_repeat_output_dir(spec: SeedRepeatSpec) -> Path:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    return Path(spec.output_root) / spec.project_name / f"seed_repeats_{timestamp}"
+    root = results_root() if spec.output_root is None else Path(spec.output_root)
+    return root / spec.project_name / f"seed_repeats_{timestamp}"
 
 
 def _optional_float(value: float | None) -> float | str:

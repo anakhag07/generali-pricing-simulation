@@ -1,4 +1,11 @@
-"""Run dense planted-logistic homoskedastic-noise sweeps."""
+"""Run dense planted-logistic homoskedastic-noise sweeps.
+
+Two dense fill-in grids (theta-offset and noise-std) over the planted-logistic
+homoskedastic-noise objective, driven through the shared ``LaunchPlan`` launch
+framework. Serial runs skip already-complete variant folders and, after the runs
+finish, both the serial path and the array collector regenerate the
+theta-distance-to-first-order-truth CSV/PNG plots for each grid.
+"""
 
 from __future__ import annotations
 
@@ -8,15 +15,33 @@ import json
 import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from types import SimpleNamespace
+from typing import Any
 
 import numpy as np
 
 from experiments.config import CorrectnessSpec
 from experiments.configs import get_config
-from experiments.slurm import assert_jax_gpu_available, submit_to_slurm_if_needed
-from experiments.sweep_utils import run_sweep
+from experiments.execution import default_reporter_stack, execute_experiment_run
+from experiments.launch import (
+    LaunchContext,
+    LaunchPlan,
+    add_launch_args,
+    read_task_records,
+    run_launch_plan,
+    task_payloads,
+)
+from experiments.paths import results_root
+from experiments.reporting.context import create_run_context
+from experiments.reporting.json_summary import JsonReporter
+from experiments.seeds import replicate_seed_setup
+from experiments.sweep_reporting import (
+    DEFAULT_SEED_METRIC_BARS,
+    aggregate_seed_grid_rows,
+    write_seed_grid_csvs,
+)
+from experiments.sweep_utils import expand_sweep_overrides, run_sweep
 from objective.noise import HomoskedasticGaussianNoise, NoisyObjective
+from reporting.visualization import plot_seed_grid_frontier, plot_seed_grid_metric_bars
 
 
 # =============================================================================
@@ -26,11 +51,9 @@ from objective.noise import HomoskedasticGaussianNoise, NoisyObjective
 # =============================================================================
 
 BASE_PRESET = "planted_logistic_base"
+LAUNCH_PLAN_NAME = "homoskedastic-fill-in-sweeps"
 THETA_PROJECT_NAME = "homoskedastic-theta-offset-sweep"
 NOISE_PROJECT_NAME = "homoskedastic-noise-sweep"
-FIRST_ORDER_TRUTH_SUMMARY = Path(
-    "outputs/planted_logistic_base/first_order_truth_20260701_174139/summary.json"
-)
 # Backward-compatible aliases used by tests and older ad-hoc imports.
 PROJECT_NAME = THETA_PROJECT_NAME
 DISPLAY_KEYS: tuple[str, ...] = ()
@@ -96,6 +119,16 @@ NOISE_STDS = (
 )
 
 _PLANTED_BASE = get_config(BASE_PRESET)
+
+
+def _first_order_truth_summary() -> Path:
+    """Path to the saved first-order truth run used as the distance reference."""
+    return (
+        results_root()
+        / "planted_logistic_base"
+        / "first_order_truth_20260701_174139"
+        / "summary.json"
+    )
 
 
 def _theta0(offset: float) -> np.ndarray:
@@ -169,22 +202,28 @@ def _format_sweep_value(value: object) -> str:
         return text.replace(" ", "").replace("/", "-")
 
 
+def _path_part(value: object) -> str:
+    return str(value).replace(" ", "").replace("/", "-")
+
+
+def _project_dir(project_name: str) -> Path:
+    return results_root() / _path_part(project_name)
+
+
+def _variant_dir(project_name: str, variant_name: str) -> Path:
+    return _project_dir(project_name) / _path_part(variant_name)
+
+
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run the configured preset sweep.")
-    parser.add_argument(
-        "--no-sbatch",
-        action="store_true",
-        help="Run in the current process instead of auto-submitting to ORCD Slurm.",
-    )
+    parser = argparse.ArgumentParser(description="Run the configured preset sweeps.")
+    add_launch_args(parser, default_launch="auto", default_array=False)
     return parser.parse_args(argv)
 
 
-def _override_lists_require_jax(
-    override_lists: Sequence[Sequence[Mapping[str, object]]],
-) -> bool:
+def _sweeps_require_jax() -> bool:
     return any(
         overrides.get("compute_backend") == "jax"
-        for override_list in override_lists
+        for _, override_list in SWEEPS
         for overrides in override_list
     )
 
@@ -194,15 +233,14 @@ def _missing_overrides(
     project_name: str,
     override_list: Sequence[Mapping[str, object]],
     required_estimators: Sequence[str],
-    runs_root: str = "outputs",
 ) -> list[dict[str, object]]:
     missing: list[dict[str, object]] = []
-    project_dir = Path(runs_root) / project_name
+    project_dir = _project_dir(project_name)
     for overrides in override_list:
         run_name = overrides.get("_run_name")
         if run_name is None:
             raise ValueError("Resume/skipping requires each override to include '_run_name'.")
-        if not _variant_is_completed(project_dir / str(run_name), required_estimators):
+        if not _variant_is_completed(project_dir / _path_part(run_name), required_estimators):
             missing.append(dict(overrides))
     return missing
 
@@ -253,13 +291,11 @@ def _run_missing_sweep(
     fixed: Mapping[str, int | None],
     display_keys: Sequence[str],
     required_estimators: Sequence[str],
-    runs_root: str = "outputs",
 ) -> int:
     missing = _missing_overrides(
         project_name=project_name,
         override_list=override_list,
         required_estimators=required_estimators,
-        runs_root=runs_root,
     )
     skipped = len(override_list) - len(missing)
     if not missing:
@@ -273,7 +309,6 @@ def _run_missing_sweep(
         vary=vary,
         anchor_seed=anchor_seed,
         fixed=fixed,
-        runs_root=runs_root,
         project_name=project_name,
         display_keys=display_keys,
     )
@@ -300,16 +335,217 @@ SWEEPS: tuple[tuple[str, list[dict[str, object]]], ...] = (
 
 
 # =============================================================================
+# Launch wiring
+# Expands the two grids into launch tasks and delegates local/Slurm orchestration
+# to the shared LaunchPlan framework. Array tasks run one (grid, variant, seed);
+# the serial path fills in missing variants and the collector aggregates records.
+# =============================================================================
+
+
+def _task_specs() -> list[tuple[str, str, dict[str, Any], int]]:
+    specs: list[tuple[str, str, dict[str, Any], int]] = []
+    for project_name, override_list in SWEEPS:
+        variants = expand_sweep_overrides(
+            base_preset=BASE_PRESET,
+            override_list=override_list,
+            display_keys=DISPLAY_KEYS,
+        )
+        for variant_name, overrides in variants:
+            for seed in RUN_SEEDS:
+                specs.append((project_name, variant_name, dict(overrides), int(seed)))
+    return specs
+
+
+def _run_sweep_task(index: int, context: LaunchContext) -> dict[str, object]:
+    del context
+    project_name, variant_name, overrides, seed = _task_specs()[index]
+    variant_dir = _variant_dir(project_name, variant_name)
+    seed_setup = replicate_seed_setup(
+        seed,
+        ANCHOR_SEED,
+        vary=VARY,
+        fixed=FIXED_SEEDS,
+    )
+    merged_overrides = {**overrides, "seed_setup": seed_setup}
+    config = get_config(BASE_PRESET, overrides=merged_overrides)
+    run_context = create_run_context(
+        variant_name,
+        run_dir=variant_dir / "seeds" / f"seed-{seed}",
+    )
+    executed = execute_experiment_run(
+        variant_name,
+        config,
+        run_context=run_context,
+        reporter_stack_factory=_seed_reporter_stack_factory(variant_dir, seed),
+    )
+    return {
+        "project": project_name,
+        "variant": variant_name,
+        "run_seed": seed,
+        "run_dir": str(executed.run_context.run_dir),
+        "summary_json": str(variant_dir / f"summary-seed-{seed}.json"),
+    }
+
+
+def _run_sweep_serial(context: LaunchContext) -> None:
+    del context
+    n_runs = 0
+    for project_name, override_list in SWEEPS:
+        n_runs += _run_missing_sweep(
+            base_preset=BASE_PRESET,
+            project_name=project_name,
+            override_list=override_list,
+            run_seeds=RUN_SEEDS,
+            vary=VARY,
+            anchor_seed=ANCHOR_SEED,
+            fixed=FIXED_SEEDS,
+            display_keys=DISPLAY_KEYS,
+            required_estimators=REQUIRED_ESTIMATORS,
+        )
+    _regenerate_distance_plots()
+    print(f"Completed {n_runs} total missing sweep runs for preset '{BASE_PRESET}'.")
+
+
+def _collect_sweep_tasks(context: LaunchContext) -> None:
+    records = read_task_records(context)
+    if len(records) != len(_task_specs()):
+        raise RuntimeError(
+            f"Expected {len(_task_specs())} task records under {context.tasks_dir}, "
+            f"found {len(records)}."
+        )
+    payloads = task_payloads(context)
+    final_rows = _final_rows_from_payloads(payloads)
+    if not final_rows:
+        raise ValueError("No sweep task final rows were produced.")
+
+    rows_by_variant: dict[tuple[str, str], list[dict[str, object]]] = {}
+    rows_by_project: dict[str, list[dict[str, object]]] = {}
+    for row in final_rows:
+        project = str(row["project"])
+        variant = str(row["variant"])
+        rows_by_variant.setdefault((project, variant), []).append(row)
+        rows_by_project.setdefault(project, []).append(row)
+
+    for (project, variant), rows in rows_by_variant.items():
+        _write_seed_outputs_from_rows(_variant_dir(project, variant), rows)
+    for project, rows in rows_by_project.items():
+        _write_seed_outputs_from_rows(_project_dir(project), rows)
+    _regenerate_distance_plots()
+    print(f"Collected {len(payloads)} sweep array tasks under {results_root()}.")
+
+
+def _final_rows_from_payloads(payloads: list[dict[str, Any]]) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    for payload in payloads:
+        summary_path = Path(str(payload["summary_json"]))
+        with summary_path.open("r", encoding="utf-8") as handle:
+            summary = json.load(handle)
+        rows.extend(
+            _summary_final_rows(
+                summary,
+                project=str(payload["project"]),
+                variant=str(payload["variant"]),
+                run_seed=int(payload["run_seed"]),
+                run_dir=str(payload["run_dir"]),
+            )
+        )
+    return rows
+
+
+def _summary_final_rows(
+    summary: dict[str, Any],
+    *,
+    project: str,
+    variant: str,
+    run_seed: int,
+    run_dir: str,
+) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    for estimator, estimator_payload in summary.get("estimators", {}).items():
+        row: dict[str, object] = {
+            "project": project,
+            "variant": variant,
+            "run_seed": int(run_seed),
+            "run_dir": run_dir,
+            "estimator": estimator,
+            "final_u": estimator_payload.get("final_u", ""),
+            "final_value": estimator_payload.get("final_value", ""),
+            "runtime_sec": estimator_payload.get("runtime_sec", ""),
+            "mean_acceptance": estimator_payload.get("mean_acceptance", ""),
+            "constraint_violation": estimator_payload.get("constraint_violation", ""),
+        }
+        row.update(_evaluation_fields("train", estimator_payload.get("train")))
+        row.update(_evaluation_fields("test", estimator_payload.get("test")))
+        rows.append(row)
+    return rows
+
+
+def _evaluation_fields(prefix: str, evaluation: dict[str, Any] | None) -> dict[str, object]:
+    if not evaluation:
+        return {
+            f"{prefix}_objective_value": "",
+            f"{prefix}_objective_sum": "",
+            f"{prefix}_mean_u": "",
+            f"{prefix}_mean_acceptance": "",
+        }
+    return {
+        f"{prefix}_objective_value": evaluation.get("objective_value", ""),
+        f"{prefix}_objective_sum": evaluation.get("objective_sum", ""),
+        f"{prefix}_mean_u": evaluation.get("mean_u", ""),
+        f"{prefix}_mean_acceptance": evaluation.get("mean_acceptance", ""),
+    }
+
+
+def _write_seed_outputs_from_rows(output_dir: Path, final_rows: list[dict[str, object]]) -> None:
+    summary_rows = aggregate_seed_grid_rows(final_rows)
+    write_seed_grid_csvs(output_dir, final_rows, summary_rows)
+    if not summary_rows:
+        return
+    plot_dir = str(output_dir / "plots")
+    for metric, y_label, filename in DEFAULT_SEED_METRIC_BARS:
+        plot_seed_grid_metric_bars(summary_rows, plot_dir, metric=metric, y_label=y_label, filename=filename)
+    plot_seed_grid_frontier(summary_rows, plot_dir)
+
+
+def _seed_reporter_stack_factory(variant_dir: Path, seed: int):
+    def factory(config):
+        return default_reporter_stack(
+            config,
+            json_reporter=JsonReporter(
+                summary_name=f"summary-seed-{seed}.json",
+                summary_dir=variant_dir,
+            ),
+            include_plots=False,
+        )
+
+    return factory
+
+
+def _build_launch_plan() -> LaunchPlan:
+    return LaunchPlan(
+        name=LAUNCH_PLAN_NAME,
+        task_count=len(_task_specs()),
+        requires_jax=_sweeps_require_jax(),
+        run_task=_run_sweep_task,
+        run_all=_run_sweep_serial,
+        collect=_collect_sweep_tasks,
+        default_launch="auto",
+        default_array=False,
+    )
+
+
+# =============================================================================
 # Experiment-specific distance-reporting helpers
 # These helpers are intentionally tied to the two dense homoskedastic sweeps.
 # =============================================================================
 
 
 def _regenerate_distance_plots() -> None:
-    if not FIRST_ORDER_TRUTH_SUMMARY.exists():
-        print(f"Skipping distance plots; missing truth summary: {FIRST_ORDER_TRUTH_SUMMARY}")
+    truth_summary = _first_order_truth_summary()
+    if not truth_summary.exists():
+        print(f"Skipping distance plots; missing truth summary: {truth_summary}")
         return
-    truth_theta = _theta_from_summary(FIRST_ORDER_TRUTH_SUMMARY, "first_order")
+    truth_theta = _theta_from_summary(truth_summary, "first_order")
     _write_distance_plot(
         project_name=THETA_PROJECT_NAME,
         truth_theta=truth_theta,
@@ -340,7 +576,7 @@ def _write_distance_plot(
     csv_name: str,
     plot_name: str,
 ) -> None:
-    project_dir = Path("outputs") / project_name
+    project_dir = _project_dir(project_name)
     rows = _collect_distance_rows(project_dir, truth_theta, axis_key)
     if not rows:
         print(f"Skipping distance plot for '{project_name}'; no summary rows found.")
@@ -530,40 +766,7 @@ def _variant_sort_key(path: Path) -> tuple[int, float | str]:
 def main(argv: list[str] | None = None) -> None:
     args = _parse_args(argv)
     original_argv = [sys.argv[0], *(sys.argv[1:] if argv is None else argv)]
-    requires_jax = _override_lists_require_jax([override_list for _, override_list in SWEEPS])
-
-    submission = submit_to_slurm_if_needed(
-        requires_jax=requires_jax,
-        no_sbatch=args.no_sbatch,
-        argv=original_argv,
-    )
-    if submission is not None:
-        print(
-            f"Submitted {submission.profile.name} Slurm job {submission.job_id}; "
-            f"logs: {submission.profile.output}"
-        )
-        return
-
-    if requires_jax:
-        jax_status = assert_jax_gpu_available([SimpleNamespace(compute_backend="jax")])
-        if jax_status is not None:
-            print(jax_status)
-
-    n_runs = 0
-    for project_name, override_list in SWEEPS:
-        n_runs += _run_missing_sweep(
-            base_preset=BASE_PRESET,
-            project_name=project_name,
-            override_list=override_list,
-            run_seeds=RUN_SEEDS,
-            vary=VARY,
-            anchor_seed=ANCHOR_SEED,
-            fixed=FIXED_SEEDS,
-            display_keys=DISPLAY_KEYS,
-            required_estimators=REQUIRED_ESTIMATORS,
-        )
-    _regenerate_distance_plots()
-    print(f"Completed {n_runs} total missing sweep runs for preset '{BASE_PRESET}'.")
+    run_launch_plan(_build_launch_plan(), args=args, argv=original_argv)
 
 
 if __name__ == "__main__":

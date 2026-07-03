@@ -23,6 +23,12 @@ def test_resolve_u_grid_rejects_bad_inputs() -> None:
         script._resolve_u_grid(float("nan"), 0.3, 7)
 
 
+def test_parser_defaults_output_root_to_none() -> None:
+    args = script._build_parser().parse_args([])
+
+    assert args.output_root is None
+
+
 def test_summary_rows_reports_per_u_customer_summaries() -> None:
     matrix = np.array(
         [

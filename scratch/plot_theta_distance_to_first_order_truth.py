@@ -12,11 +12,22 @@ from typing import Any
 import matplotlib.pyplot as plt
 import numpy as np
 
+from experiments.paths import results_root
 
-DEFAULT_SWEEP_DIR = Path("outputs/homoskedastic-noise-sweep")
-DEFAULT_TRUTH_SUMMARY = Path(
-    "outputs/planted_logistic_base/first_order_truth_20260701_174139/summary.json"
-)
+
+def _default_sweep_dir() -> Path:
+    return results_root() / "homoskedastic-noise-sweep"
+
+
+def _default_truth_summary() -> Path:
+    return (
+        results_root()
+        / "planted_logistic_base"
+        / "first_order_truth_20260701_174139"
+        / "summary.json"
+    )
+
+
 ESTIMATORS = ("finite_difference", "stein_difference")
 
 
@@ -49,13 +60,13 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--sweep-dir",
         type=Path,
-        default=DEFAULT_SWEEP_DIR,
+        default=_default_sweep_dir(),
         help="Saved homoskedastic-noise sweep directory.",
     )
     parser.add_argument(
         "--truth-summary",
         type=Path,
-        default=DEFAULT_TRUTH_SUMMARY,
+        default=_default_truth_summary(),
         help="summary.json containing the first_order truth theta.",
     )
     parser.add_argument(

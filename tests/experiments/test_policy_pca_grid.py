@@ -9,6 +9,7 @@ from experiments.policy_pca_grid import (
     PolicyPcaGridSpec,
     build_policy_pca_condition,
     write_policy_pca_outputs,
+    _grid_output_dir,
 )
 from objective.policy_preprocessing import fit_policy_feature_preprocessor
 
@@ -27,6 +28,14 @@ def test_policy_pca_grid_verbose_defaults_to_true() -> None:
 
 def test_policy_pca_grid_default_seed_is_single_42() -> None:
     assert PolicyPcaGridSpec().seeds == (42,)
+
+
+def test_policy_pca_grid_default_output_root_uses_results_root(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("GENERALI_RESULTS_ROOT", str(tmp_path / "results"))
+
+    output_dir = _grid_output_dir(PolicyPcaGridSpec())
+
+    assert output_dir.parent == tmp_path / "results" / "policy-pca-grid"
 
 
 def test_build_condition_uses_policy_preprocessor_dimension() -> None:

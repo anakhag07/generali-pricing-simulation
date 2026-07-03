@@ -17,12 +17,32 @@ Runtime dependencies live in `requirements.txt` and mirror `pyproject.toml`
 (including CPU JAX). Install `.[jax-cuda12]` only when you need CUDA-specific
 JAX wheels.
 
-On ORCD, `python main.py` auto-submits itself to Slurm before running the
-configured experiments. Runs with `compute_backend="jax"` use `mit_normal_gpu`
-with one L40S GPU by default, and NumPy-only runs use the CPU `mit_normal`
-profile. Slurm logs are written under `outputs/slurm/%x-%j.out`. Use
-`python main.py --no-sbatch` only when you intentionally want to run in the
-current process; JAX experiment runs still require a visible GPU backend.
+On ORCD, launch-aware entry points can run locally or submit themselves to
+Slurm. `python main.py` defaults to `--launch auto`, submitting when outside a
+Slurm allocation and running directly inside one. Use `--launch local` (or the
+legacy alias `--no-sbatch`) to run in the current process, and `--launch slurm`
+to force submission when outside an allocation. Runs with
+`compute_backend="jax"` use `mit_normal_gpu` with one L40S GPU by default;
+NumPy-only runs use the CPU `mit_normal` profile. Slurm logs are written under
+`results/slurm/%x-%j.out`.
+
+Sweep entry points that opt into the shared launcher can split task-level work
+across Slurm arrays:
+
+```bash
+python main.py --launch slurm --array
+python scripts/run_sweep.py --launch slurm --array --array-max-parallel 6
+python scripts/run_sweep.py --launch local --task-index 0
+```
+
+Array tasks write task records under
+`results/<project>/sweeps/<sweep-id>/tasks/`; sweep collectors run after the
+array and rebuild aggregate CSVs/plots from completed task summaries.
+
+Run artifacts land in a shared external results root at
+`~/projects/generali-pricing/results` by default, independent of the active
+checkout or worktree. Override this with `GENERALI_RESULTS_ROOT=/path/to/results`.
+Normal run directories use readable flat names like `<slug>__<timestamp>`.
 
 To run tests:
 
@@ -220,7 +240,7 @@ retraining the optimizer:
 ```python
 from experiments.policy_artifacts import load_policy_artifact
 
-artifact = load_policy_artifact("outputs/.../policies/first_order/policy.json")
+artifact = load_policy_artifact("results/.../policies/first_order/policy.json")
 u_train = artifact.predict_u(split="train")
 train_metrics = artifact.evaluate(split="train")
 ```
@@ -229,12 +249,12 @@ observed historical diagnostic on saved run rows:
 
 ```bash
 python scripts/evaluate_historical_policy_objective.py \
-  --policy-artifact outputs/.../policies/first_order/policy.json \
+  --policy-artifact results/.../policies/first_order/policy.json \
   --objective model \
   --split train
 
 python scripts/evaluate_historical_policy_objective.py \
-  --policy-artifact outputs/.../policies/first_order/policy.json \
+  --policy-artifact results/.../policies/first_order/policy.json \
   --objective historical \
   --split all
 
@@ -260,7 +280,7 @@ sample clients from low/medium/high mean-sensitivity and predicted-loss tertiles
 
 ```bash
 python scripts/plot_policy_acceptance_grid.py \
-  --policy-artifact outputs/.../policies/first_order/policy.json \
+  --policy-artifact results/.../policies/first_order/policy.json \
   --split all \
   --u-min 0 \
   --u-max 0.15 \
@@ -269,7 +289,7 @@ python scripts/plot_policy_acceptance_grid.py \
 ```
 
 This writes separate three-panel acceptance-curve plots by sensitivity and by
-predicted loss under `outputs/policy-acceptance-grid/`, with each sampled
+predicted loss under `results/policy-acceptance-grid/`, with each sampled
 client's artifact policy action overlaid on its predicted acceptance curve.
 When plotting is enabled, real-data runs write optimization plots under
 `plots/optimization/` and final customer-level policy diagnostics under
@@ -310,38 +330,43 @@ instead of the default 60x60 used for cheaper synthetic objectives.
 no-PCA / linear-feature GLM setup over symmetric action bounds
 `[-alpha, alpha]` for `alpha in {0.5, 0.4, 0.3, 0.2, 0.15, 0.125, 0.1, 0.075}`.
 It writes normal per-alpha runs and policy artifacts under
-`outputs/glm-softmax-alpha-sweep/alpha_<value>/`, then writes aggregate outputs
-under `outputs/glm-softmax-alpha-sweep/alpha_sweep_<timestamp>/`: final
+`results/glm-softmax-alpha-sweep/alpha_<value>__<timestamp>/`, then writes aggregate outputs
+under `results/glm-softmax-alpha-sweep/alpha_sweep_<timestamp>/`: final
 objective/profit CSVs and plots, acceptance-threshold profit summaries, and one
-expected-profit-by-`u`-bin diagram per alpha.
+expected-profit-by-`u`-bin diagram per alpha. It accepts the shared launch flags;
+`--launch slurm --array` runs one alpha value per array task.
 
 `scripts/run_glm_u_coef_sweep.py` runs the softmax/no-PCA/trust-constr GLM setup
 over `200000` sampled rows and direct acceptance coefficients
 `u_coef in {-4, -5, -8, -10, -20}` with per-run policy distribution plots
-enabled. It writes per-run outputs under `outputs/glm-u-coef-sweep/<u_coef-run>/`
+enabled. It writes per-run outputs under `results/glm-u-coef-sweep/<u_coef-run>__<timestamp>/`
 plus aggregate `glm_u_coef_sweep.csv` and frontier plots under
-`outputs/glm-u-coef-sweep/u_coef_frontier_<timestamp>/`.
+`results/glm-u-coef-sweep/u_coef_frontier_<timestamp>/`. It accepts the shared
+launch flags; `--launch slurm --array` runs one `u_coef` value per Slurm array
+task and submits a collector to write the same aggregate outputs.
 
 `scripts/run_glm_sensitivity_bucket_experiment.py` buckets all complete GLM rows
 into low/medium/high local price-sensitivity tertiles using
 `|d p_accept(x, u_ref) / du|` at the median observed historical `U`, then runs
 the same softmax/no-PCA/trust-constr GLM setup on all rows in each bucket. It
-writes per-bucket policy distribution plots under `outputs/glm-sensitivity-buckets/`
+writes per-bucket policy distribution plots under `results/glm-sensitivity-buckets/`
 and an aggregate `glm_sensitivity_bucket_experiment.csv` plus comparison plots
-under `sensitivity_bucket_summary_<timestamp>/`.
+under `sensitivity_bucket_summary_<timestamp>/`. It accepts the shared launch
+flags; `--launch slurm --array` runs one sensitivity bucket per array task.
 
 `scripts/run_glm_reference_elasticity_bucket_experiment.py` repeats the bucketed
 GLM experiment for reference actions `u_ref in {-0.1, 0.1, 0.2, 0.3}`, ranking
 customers into low/medium/high buckets by elasticity magnitude at each reference
 action. It runs only `first_order`, annotates summary charts with average bucket
 elasticity magnitude, and writes per-reference summaries under
-`outputs/glm-reference-elasticity-buckets/`.
+`results/glm-reference-elasticity-buckets/`. It accepts the shared launch flags;
+`--launch slurm --array` runs one `(u_ref, bucket)` pair per array task.
 
 `scripts/plot_glm_sensitivity_distribution.py` computes GLM customer
 elasticities `d p_accept / du` across a default `u in [-0.3, 0.3]` grid. It
 writes a mean/quantile elasticity-by-`u` curve, selected-`u` customer elasticity
 histograms with default `0.5-99.5%` x-axis clipping marked on the chart, and CSV
-summaries under `outputs/glm-sensitivity-distribution/`.
+summaries under `results/glm-sensitivity-distribution/`.
 
 If you already have saved acceptance-floor sweep outputs and only want the
 Pareto frontier for one estimator without rerunning optimization, use
@@ -349,7 +374,7 @@ Pareto frontier for one estimator without rerunning optimization, use
 
 ```bash
 python scripts/plot_saved_acceptance_floor_frontier.py \
-  outputs/glm-softmax-acceptance-floor-sweep
+  results/glm-softmax-acceptance-floor-sweep
 ```
 
 The script accepts either a direct `acceptance_floor_sweep.csv` path, a single
@@ -369,11 +394,13 @@ python scripts/run_policy_pca_grid.py --n-samples 5000
 This keeps the GLM black-box preprocessing sealed, fits configurable policy-side
 preprocessors on the 19 acceptance-state columns, and writes aggregate finals,
 traces, summary markdown, headline PCA/richness-gap plots, and final `u` /
-acceptance-spread plots under `outputs/policy-pca-grid/`. The grid includes
+acceptance-spread plots under `results/policy-pca-grid/`. The grid includes
 linear-feature policies, matching softmax-wrapped feature policies, constant,
 and MLP policies. The script prints per-condition progress by default; pass
 `--quiet` to suppress progress output. Add `--constrained` to use `trust-constr`
-with the observed GLM acceptance floor and a default 500-step cap.
+with the observed GLM acceptance floor and a default 500-step cap. It accepts the
+shared launch flags; `--launch slurm --array` runs one `(pca_dim, policy_class,
+seed)` condition per array task.
 
 To query the existing acceptance model at fixed constant actions without
 running optimization, use:
@@ -388,8 +415,8 @@ python scripts/query_acceptance_at_u.py \
 The script loads the preset objective and state batch, then reports mean
 acceptance for each sampled `u` value. It writes acceptance curves and a
 historical-`U` histogram with sampled constant-`u` rug marks under
-`outputs/acceptance_queries/<model_type>/` by default. Use `--output-subdir`
-to choose a subdirectory under `outputs/acceptance_queries/`, or pass explicit
+`results/acceptance_queries/<model_type>/` by default. Use `--output-subdir`
+to choose a subdirectory under `results/acceptance_queries/`, or pass explicit
 values with `--u -0.3 0.0 0.2` instead of `--u-count`.
 
 To benchmark GLM analytical acceptance speed, Stein-difference call counts,
@@ -405,7 +432,7 @@ loss, use:
 
 ```bash
 python scripts/evaluate_historical_policy_objective.py \
-  --summary-json outputs/real_data_glm_base/<run_id>/summary.json \
+  --summary-json results/<slug>__<timestamp>/summary.json \
   --estimator first_order
 ```
 
@@ -442,7 +469,7 @@ python scripts/evaluate_historical_policy_objective.py \
 
 All three evaluate
 `acceptance_source(x,U_historical) * (technical_price_source(x) - (U_historical + 1) * X_policy_premium)`.
-Use `--summary-json outputs/.../summary.json --split train|test|all` to reuse a
+Use `--summary-json results/.../summary.json --split train|test|all` to reuse a
 saved run's row sample; otherwise the script uses deterministic complete
 eligible rows for `--model-type`. Outputs are written under
 `historical_u_objective/<acceptance_...__technical_price_...>/`.
@@ -454,15 +481,27 @@ rather than creating one-off preset files. Use
 `src/experiments/configs/config_template.py` only for genuinely new synthetic or
 non-real-data experiment families.
 
-## Outputs
+## Results
 
-Each run writes artifacts to `outputs/<experiment_name>/<timestamp>/`:
+Each run writes artifacts under the shared external results root
+(`~/projects/generali-pricing/results` by default):
+
+- `results/<slug>__<timestamp>/` -- normal run directory
+- `results/<project>/<variant>/seeds/seed-<seed>/` -- seed-sweep heavy artifacts
+- `results/slurm/%x-%j.out` -- Slurm logs
+
+Override the root with `GENERALI_RESULTS_ROOT`. Existing gitignored in-repo
+`outputs/` directories are not migrated automatically.
+
+Run artifacts include:
 
 - `summary.json` -- full result payload
   including final trust-constr diagnostics such as `constraint_penalty`
   and any configured constant-`u` baseline evaluations; estimator results
   include both the mean objective `final_value` and summed objective
-  `final_objective_sum`, plus `train` and optional `test` metric blocks
+  `final_objective_sum`, plus `train` and optional `test` metric blocks;
+  when a preset call site is known, `preset` records the preset name, variant,
+  run seed, and serialized overrides
 - `plots/optimization/steps.csv` -- per-step metrics for every estimator
 - `plots/optimization/` -- loss curves, gradient norms, step sizes, and theta contour plots
 - `plots/policy_train/` -- real-data final policy diagnostics on optimization rows

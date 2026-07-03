@@ -110,7 +110,7 @@ def test_execute_experiment_run_returns_context_and_result(monkeypatch) -> None:
     monkeypatch.setattr(
         execution,
         "create_run_context",
-        lambda name, runs_root="outputs": _FakeRunContext(experiment_name=name),
+        lambda name, runs_root=None, run_metadata=None: _FakeRunContext(experiment_name=name),
     )
     monkeypatch.setattr(execution, "run_experiment", lambda cfg, step_reporter=None: fake_result)
 
@@ -126,3 +126,33 @@ def test_execute_experiment_run_returns_context_and_result(monkeypatch) -> None:
     assert executed.result is fake_result
     assert executed.run_context.experiment_name == "one-run"
     assert reporter_stack.events == [("start", "one-run"), ("end", "one-run")]
+
+
+def test_execute_experiment_run_forwards_metadata(monkeypatch) -> None:
+    config = get_config("planted_logistic_base", overrides={"plot": False, "wandb_enabled": False})
+    reporter_stack = _FakeReporterStack()
+    fake_result = object()
+    captured: dict[str, object] = {}
+
+    def fake_create_run_context(name, runs_root=None, run_metadata=None):
+        captured["name"] = name
+        captured["runs_root"] = runs_root
+        captured["run_metadata"] = run_metadata
+        return _FakeRunContext(experiment_name=name)
+
+    monkeypatch.setattr(execution, "create_run_context", fake_create_run_context)
+    monkeypatch.setattr(execution, "run_experiment", lambda cfg, step_reporter=None: fake_result)
+
+    execute_experiment_run(
+        "one-run",
+        config,
+        runs_root="unused",
+        run_metadata={"preset_name": "base", "overrides": {"sigma": 0.1}},
+        reporter_stack_factory=lambda cfg: reporter_stack,
+    )
+
+    assert captured == {
+        "name": "one-run",
+        "runs_root": "unused",
+        "run_metadata": {"preset_name": "base", "overrides": {"sigma": 0.1}},
+    }

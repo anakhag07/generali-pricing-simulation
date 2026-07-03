@@ -9,7 +9,7 @@ from typing import Any, Mapping, Sequence
 
 from experiments.config import ExperimentConfig
 from experiments.configs import get_config
-from experiments.execution import execute_experiment_run
+from experiments.execution import default_reporter_stack, execute_experiment_run
 from experiments.reporting.context import RunContext, create_run_context
 from experiments.results import ExperimentResult
 from experiments.seeds import SeedStream, replicate_seed_setup
@@ -285,25 +285,15 @@ def run_sweep(
 
 def _seed_reporter_stack_factory(variant_dir: Path, seed: int, *, per_seed_plots: bool):
     def factory(config: ExperimentConfig):
-        from experiments.reporting.artifacts import PolicyArtifactReporter
-        from experiments.reporting.base import ReporterStack
-        from experiments.reporting.console import ConsoleReporter
         from experiments.reporting.json_summary import JsonReporter
-        from experiments.reporting.plots import PlotReporter
-        from experiments.reporting.step_logger import FileStepLogger
-        from experiments.reporting.wandb import WandbReporter
 
-        reporters = [
-            ConsoleReporter(verbose=config.verbose),
-            FileStepLogger(),
-            PolicyArtifactReporter(),
-            JsonReporter(summary_name=f"summary-seed-{seed}.json", summary_dir=variant_dir),
-        ]
-        if per_seed_plots:
-            reporters.append(PlotReporter())
-        if config.wandb_enabled:
-            reporters.append(WandbReporter())
-        return ReporterStack(reporters)
+        return default_reporter_stack(
+            config,
+            json_reporter=JsonReporter(
+                summary_name=f"summary-seed-{seed}.json", summary_dir=variant_dir
+            ),
+            include_plots=per_seed_plots,
+        )
 
     return factory
 

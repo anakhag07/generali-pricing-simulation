@@ -13,6 +13,7 @@ from experiments.run import run_experiment
 
 if TYPE_CHECKING:
     from experiments.reporting.base import ReporterStack
+    from experiments.reporting.json_summary import JsonReporter
 
 
 @dataclass(frozen=True)
@@ -28,8 +29,21 @@ class ExecutedRun:
 ReporterStackFactory = Callable[[ExperimentConfig], "ReporterStack"]
 
 
-def default_reporter_stack(config: ExperimentConfig) -> "ReporterStack":
-    """Build the default reporter stack in its required execution order."""
+def default_reporter_stack(
+    config: ExperimentConfig,
+    *,
+    json_reporter: "JsonReporter | None" = None,
+    include_plots: bool = True,
+) -> "ReporterStack":
+    """Build the default reporter stack in its required execution order.
+
+    This is the single source of truth for the reporter ordering contract:
+    ``PolicyArtifactReporter`` before ``JsonReporter`` (so summaries can record
+    artifact paths) and plots before the optional W&B upload. ``json_reporter``
+    overrides the default ``JsonReporter()`` (e.g. seed sweeps inject a per-seed
+    summary target) while keeping its slot; ``include_plots=False`` drops the
+    ``PlotReporter`` for callers that skip per-run plots.
+    """
     from experiments.reporting.artifacts import PolicyArtifactReporter
     from experiments.reporting.base import ReporterStack
     from experiments.reporting.console import ConsoleReporter
@@ -42,9 +56,10 @@ def default_reporter_stack(config: ExperimentConfig) -> "ReporterStack":
         ConsoleReporter(verbose=config.verbose),
         FileStepLogger(),
         PolicyArtifactReporter(),
-        JsonReporter(),
-        PlotReporter(),
+        json_reporter if json_reporter is not None else JsonReporter(),
     ]
+    if include_plots:
+        reporter_list.append(PlotReporter())
     if config.wandb_enabled:
         reporter_list.append(WandbReporter())
     return ReporterStack(reporter_list)

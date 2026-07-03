@@ -12,7 +12,12 @@ import numpy as np
 
 from experiments.results import PolicyEvaluation
 from experiments.sweep_utils import SweepRunResult
-from reporting.visualization import plot_sweep_pareto_frontier, plot_sweep_tradeoffs
+from reporting.visualization import (
+    plot_seed_grid_frontier,
+    plot_seed_grid_metric_bars,
+    plot_sweep_pareto_frontier,
+    plot_sweep_tradeoffs,
+)
 
 
 @dataclass(frozen=True)
@@ -233,6 +238,47 @@ def write_seed_grid_csvs(
     write_rows_csv(output_dir / "seed_grid_summary.csv", summary_rows, SEED_GRID_SUMMARY_FIELDNAMES)
 
 
+DEFAULT_SEED_METRIC_BARS: tuple[tuple[str, str, str], ...] = (
+    ("final_value", "Final objective value", "seed_bars_final_value.png"),
+    ("mean_acceptance", "Mean acceptance", "seed_bars_mean_acceptance.png"),
+    ("final_u", "Final u", "seed_bars_final_u.png"),
+)
+
+
+def write_seed_grid_outputs(
+    output_dir: Path,
+    sweep_results: Sequence[SweepRunResult],
+    *,
+    plot: bool = True,
+    metric_bars: Sequence[tuple[str, str, str]] = DEFAULT_SEED_METRIC_BARS,
+) -> list[dict[str, object]]:
+    """Write cross-seed CSVs and aggregate error-bar plots; return the summary rows."""
+    final_rows = collect_seed_grid_final_rows(sweep_results)
+    summary_rows = aggregate_seed_grid_rows(final_rows)
+    write_seed_grid_csvs(output_dir, final_rows, summary_rows)
+    if plot and summary_rows:
+        plot_dir = str(output_dir / "plots")
+        for metric, y_label, filename in metric_bars:
+            plot_seed_grid_metric_bars(
+                summary_rows, plot_dir, metric=metric, y_label=y_label, filename=filename
+            )
+        plot_seed_grid_frontier(summary_rows, plot_dir)
+    return summary_rows
+
+
+def objective_traces_by_estimator(
+    sweep_results: Sequence[SweepRunResult],
+) -> dict[str, list[list[float]]]:
+    """Group per-seed objective-value trajectories by estimator for band plots."""
+    grouped: dict[str, list[list[float]]] = {}
+    for sweep_result in sweep_results:
+        for estimator, trace in sweep_result.result.traces.items():
+            values = list(getattr(trace, "objective_values", []) or [])
+            if values:
+                grouped.setdefault(estimator, []).append(values)
+    return grouped
+
+
 def _evaluation_fields(prefix: str, evaluation: PolicyEvaluation | None) -> dict[str, object]:
     if evaluation is None:
         return {
@@ -270,14 +316,17 @@ def _path_part(value: object) -> str:
 
 __all__ = [
     "DEFAULT_FRONTIER_METRICS",
+    "DEFAULT_SEED_METRIC_BARS",
     "SEED_GRID_FINAL_FIELDNAMES",
     "SEED_GRID_SUMMARY_FIELDNAMES",
     "SweepFrontierMetric",
     "aggregate_seed_grid_rows",
     "collect_config_sweep_final_rows",
     "collect_seed_grid_final_rows",
+    "objective_traces_by_estimator",
     "timestamped_sweep_output_dir",
     "write_rows_csv",
     "write_seed_grid_csvs",
+    "write_seed_grid_outputs",
     "write_sweep_frontier_plots",
 ]

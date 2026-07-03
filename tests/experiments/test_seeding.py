@@ -5,11 +5,13 @@ import pytest
 
 from experiments.configs import get_config
 from experiments.run import run_experiment
-from experiments.seeding import (
+from experiments.seeds import (
     SeedSetup,
     optimizer_rngs,
+    replicate_seed_setup,
     resolve_seed_setup,
     seed_setup_from_mapping,
+    validate_vary,
 )
 
 
@@ -204,6 +206,77 @@ def test_run_experiment_uses_theta_seed_for_random_theta0() -> None:
     assert first.config.theta0 is not None
     assert second.config.theta0 is not None
     assert not np.allclose(first.config.theta0, second.config.theta0)
+
+
+def test_replicate_seed_setup_varies_only_theta_by_default() -> None:
+    setup = replicate_seed_setup(run_seed=11, anchor_seed=10)
+
+    assert setup.run_seed == 11
+    assert setup.data_seed == 10
+    assert setup.split_seed == 10
+    assert setup.noise_seed == 10
+    assert setup.optimizer_seed == 10
+    assert setup.theta_seed == 11
+
+
+def test_replicate_seed_setup_can_vary_multiple_streams() -> None:
+    setup = replicate_seed_setup(run_seed=11, anchor_seed=10, vary=("theta", "optimizer"))
+
+    assert setup.theta_seed == 11
+    assert setup.optimizer_seed == 11
+    assert setup.data_seed == 10
+    assert setup.split_seed == 10
+    assert setup.noise_seed == 10
+
+
+def test_replicate_seed_setup_all_mode_leaves_streams_unset() -> None:
+    setup = replicate_seed_setup(run_seed=11, anchor_seed=10, vary=("all",))
+
+    assert setup.run_seed == 11
+    assert setup.data_seed is None
+    assert setup.split_seed is None
+    assert setup.theta_seed is None
+    assert setup.noise_seed is None
+    assert setup.optimizer_seed is None
+
+
+def test_replicate_seed_setup_fixed_pins_stream() -> None:
+    setup = replicate_seed_setup(
+        run_seed=11,
+        anchor_seed=10,
+        vary=("theta",),
+        fixed={"data": 999, "noise": None},
+    )
+
+    assert setup.data_seed == 999
+    assert setup.noise_seed == 10  # fixed None means "not pinned"
+
+
+def test_replicate_seed_setup_matches_legacy_seed_setup_for_repeat() -> None:
+    from experiments.seed_repeats import SeedRepeatSpec, seed_setup_for_repeat
+
+    spec = SeedRepeatSpec(
+        base_preset="planted_logistic_base",
+        run_seeds=(10, 11),
+        vary=("optimizer",),
+        fixed_data_seed=100,
+    )
+    legacy = seed_setup_for_repeat(spec, run_seed=11)
+    replicated = replicate_seed_setup(
+        run_seed=11,
+        anchor_seed=10,
+        vary=("optimizer",),
+        fixed={"data": 100},
+    )
+
+    assert replicated == legacy
+
+
+def test_validate_vary_rejects_unknown_and_illegal() -> None:
+    with pytest.raises(ValueError, match="Unknown seed streams"):
+        validate_vary(("bogus",))
+    with pytest.raises(ValueError, match="cannot be combined"):
+        validate_vary(("all", "theta"))
 
 
 def test_run_experiment_optimizer_streams_are_estimator_order_independent() -> None:

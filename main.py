@@ -16,7 +16,7 @@ if str(_SRC_PATH) not in sys.path:
 from experiments.config import CorrectnessSpec
 from experiments.configs import get_config
 from experiments.execution import execute_experiment_run
-from experiments.seeding import SeedSetup
+from experiments.seeds import SeedSetup
 from experiments.slurm import (
     assert_jax_gpu_available,
     run_specs_require_jax,

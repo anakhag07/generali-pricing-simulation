@@ -10,7 +10,7 @@ import numpy as np
 
 from experiments.config import CorrectnessSpec
 from experiments.configs import get_config
-from experiments.seeding import SeedSetup
+from experiments.seeds import SeedSetup
 from experiments.slurm import assert_jax_gpu_available, submit_to_slurm_if_needed
 from experiments.sweep_utils import run_preset_sweep
 from objective.noise import HomoskedasticGaussianNoise, NoisyObjective

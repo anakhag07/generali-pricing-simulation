@@ -13,7 +13,7 @@ import numpy as np
 from experiments.configs import get_config
 from experiments.execution import execute_experiment_run
 from experiments.results import ExperimentResult, PolicyEvaluation
-from experiments.seeding import SeedSetup
+from experiments.seeds import SeedSetup
 
 SeedStream = Literal["data", "split", "theta", "noise", "optimizer", "all"]
 

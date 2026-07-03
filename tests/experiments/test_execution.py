@@ -42,6 +42,50 @@ def test_default_reporter_stack_appends_wandb_when_enabled() -> None:
     assert isinstance(stack._reporters[-1], WandbReporter)
 
 
+def test_default_reporter_stack_uses_supplied_json_reporter() -> None:
+    config = get_config("planted_logistic_base", overrides={"wandb_enabled": False})
+    custom_json = JsonReporter(summary_name="summary-seed-7.json")
+
+    stack = default_reporter_stack(config, json_reporter=custom_json)
+
+    # Ordering contract preserved: injected reporter occupies the JsonReporter slot,
+    # right after PolicyArtifactReporter.
+    assert [type(reporter) for reporter in stack._reporters] == [
+        ConsoleReporter,
+        FileStepLogger,
+        PolicyArtifactReporter,
+        JsonReporter,
+        PlotReporter,
+    ]
+    assert stack._reporters[3] is custom_json
+
+
+def test_default_reporter_stack_omits_plots_when_include_plots_false() -> None:
+    config = get_config("planted_logistic_base", overrides={"wandb_enabled": False})
+
+    stack = default_reporter_stack(config, include_plots=False)
+
+    assert [type(reporter) for reporter in stack._reporters] == [
+        ConsoleReporter,
+        FileStepLogger,
+        PolicyArtifactReporter,
+        JsonReporter,
+    ]
+
+
+def test_default_reporter_stack_keeps_plots_before_wandb_without_plots() -> None:
+    config = get_config(
+        "planted_logistic_base",
+        overrides={"wandb_enabled": True, "wandb_project": "test-project"},
+    )
+
+    stack = default_reporter_stack(config, include_plots=False)
+
+    # Plots dropped, but W&B stays last so the plots-before-wandb contract holds.
+    assert not any(isinstance(reporter, PlotReporter) for reporter in stack._reporters)
+    assert isinstance(stack._reporters[-1], WandbReporter)
+
+
 @dataclass(frozen=True)
 class _FakeRunContext:
     experiment_name: str

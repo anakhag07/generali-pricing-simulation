@@ -363,7 +363,7 @@ Guidelines:
   - `compute_backend="jax"` converts supported GLM train batches to `JaxPreparedGLMObjective` before optimizer execution and requires `trust-constr` with full batches
 
 - **`src/experiments/execution.py`**
-  - `default_reporter_stack(config)`: constructs the standard reporter stack in the required order (`PolicyArtifactReporter` before `JsonReporter`, plots before W&B upload)
+  - `default_reporter_stack(config, *, json_reporter=None, include_plots=True)`: single source of truth for the reporter stack ordering (`PolicyArtifactReporter` before `JsonReporter`, plots before W&B upload); pass `json_reporter` to swap in a custom `JsonReporter` (e.g. seed sweeps' per-seed summary target) in the same slot and `include_plots=False` to drop the `PlotReporter`. `sweep_utils._seed_reporter_stack_factory` delegates here instead of re-hardcoding the order
   - `execute_experiment_run(name, config, runs_root=...)`: creates `RunContext`, runs `run_experiment(...)`, finalizes reporters, and returns `ExecutedRun` with the result and output context
 
 - **`src/experiments/slurm.py`**

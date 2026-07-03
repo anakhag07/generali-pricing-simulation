@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
-from experiments.reporters import create_run_context
+from experiments.reporting import create_run_context
 
 
 def test_create_run_context_defaults_to_outputs(monkeypatch, tmp_path) -> None:

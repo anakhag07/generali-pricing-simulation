@@ -7,7 +7,8 @@ import numpy as np
 import pytest
 
 from experiments.config import ExperimentConfig
-from experiments.reporters import PlotReporter, RunContext, _contour_grid_size, _contour_x_samples
+from experiments.reporting.context import RunContext
+from experiments.reporting.plots import PlotReporter, _contour_grid_size, _contour_x_samples
 from experiments.results import EstimatorResult, ExperimentResult
 from experiments.results import OptimizationTrace
 from objective import FixedRegressionObjective, LinearPolicy
@@ -188,10 +189,10 @@ def test_plot_reporter_subsamples_model_based_contours_and_writes_timings(
         captured["x_samples"] = np.asarray(x_samples, dtype=float)
         captured["grid_size"] = kwargs["grid_size"]
 
-    monkeypatch.setattr("experiments.reporters.plot_loss_curves", no_op)
-    monkeypatch.setattr("experiments.reporters.plot_gradient_norms", no_op)
-    monkeypatch.setattr("experiments.reporters.plot_step_sizes", no_op)
-    monkeypatch.setattr("experiments.reporters.plot_theta_objective_contours", capture_contour)
+    monkeypatch.setattr("experiments.reporting.plots.plot_loss_curves", no_op)
+    monkeypatch.setattr("experiments.reporting.plots.plot_gradient_norms", no_op)
+    monkeypatch.setattr("experiments.reporting.plots.plot_step_sizes", no_op)
+    monkeypatch.setattr("experiments.reporting.plots.plot_theta_objective_contours", capture_contour)
 
     x_samples = np.arange(1000 * 3, dtype=float).reshape(1000, 3)
     theta0 = np.asarray([0.0, 0.0], dtype=float)

@@ -348,22 +348,17 @@ Guidelines:
   - `real_data_xgb_base`: registry-only base built by `real_data_factory.py`; supports the same override axes, with XGB defaults excluding `first_order`
   - `config_template.py`: copy-first scaffold with `None` placeholders for all `ExperimentConfig` fields plus objective/correctness parameter blocks; not registered as a runnable preset
 
-- **`src/experiments/defaults.py`**
-  - `default_theta0(state_dim, policy=None)`: returns default initial theta sized by `policy_theta_dim(policy, state_dim)` when a policy is provided, otherwise `state_dim + 1`
-  - `default_policy(state_dim)`: returns default `SoftmaxPolicy`
+- **`src/experiments/initialization.py`**
+  - `random_theta0(state_dim, policy, rng)`: generates policy-aware random initial theta when configs request random initialization
 
-- **`src/experiments/helpers.py`** (largest file; orchestration + wrappers)
+- **`src/experiments/correctness.py`**
+  - `TrueThetaGradFn`: callable type alias for theta-gradient diagnostics
   - `resolve_true_grad_theta_fn(objective, correctness)`: resolves the "true" theta-gradient function from correctness spec
-  - `run_constant(...)`: optimized `ConstantPolicy` baseline wrapper delegating to `optimization.solvers.run_constant_minimize`
-  - `run_first_order(...)`: wrapper delegating to `optimization.solvers.run_first_order_minimize`
-  - `run_finite_difference(...)`: wrapper delegating to `optimization.solvers.run_finite_difference_minimize`
-  - `run_gauss_stein(...)`: wrapper delegating to `optimization.solvers.run_gauss_stein_minimize`
-  - `run_stein_difference(...)`: wrapper delegating to `optimization.solvers.run_stein_difference_minimize`
-  - `run_spsa(...)`: wrapper delegating to `optimization.solvers.run_spsa_minimize`
   - Uses `optimization.helpers.finite_difference_theta_grad(...)` for correctness-mode numerical theta gradients
 
 - **`src/experiments/run.py`**
   - `run_experiment(config, step_reporter)`: main runner; uses `config.x_fixed` as state array when set, otherwise samples from N(0, I); applies the train/test split after row selection/sampling; runs enabled estimators on train rows; evaluates final policies on train and optional test rows; returns `ExperimentResult` (pure computation, no I/O)
+  - Owns estimator dispatch through `_ESTIMATOR_ORDER` / `_ESTIMATOR_SPECS`, which map enabled estimator keys to `optimization.solvers` wrappers
   - `enabled_estimators` may include `"constant"`, which optimizes a one-scalar `ConstantPolicy` copy of the configured objective; `constant_u_baselines` remains fixed-action evaluation only
   - `compute_backend="jax"` converts supported GLM train batches to `JaxPreparedGLMObjective` before optimizer execution and requires `trust-constr` with full batches
 
@@ -427,17 +422,15 @@ Guidelines:
   - Persists theta, train/test/all CSV row bindings, objective/model metadata, policy head/feature-map specs, and full fitted policy-side preprocessing arrays
   - `load_policy_artifact(...).predict_u(split="train")` and `.evaluate(split="train")` rerun validation without optimizer training
 
-- **`src/experiments/reporters.py`**
-  - `RunContext`: frozen dataclass with experiment name, run directory paths, timestamp
-  - `create_run_context(...)`: creates run directories under `outputs/` by default
-  - `StepReporter`: protocol for per-step metric logging
-  - `Reporter`: protocol with `on_start` and `on_end` hooks
-  - `ReporterStack`: composite that delegates to a list of reporters; also implements `StepReporter`
-  - `ConsoleReporter`: prints to terminal; per-step output controlled by `verbose`
-  - `FileStepLogger`: writes per-step metrics to `plots/optimization/steps.csv`
-  - `PolicyArtifactReporter`: writes reloadable trained-policy artifacts before `JsonReporter` records their relative paths
-  - `JsonReporter`: writes `summary.json` on end, including estimator-level `train` and optional `test` policy metric blocks
-  - `PlotReporter`: generates all matplotlib plots on end; optimization plots go under `plots/optimization/`, policy diagnostics go under `plots/policy_train/` and `plots/policy_test/`, and step-size plots are emitted whenever traces include `step_sizes`; writes per-plot timings to `plots/plot_timings.json`; theta contours for model-based objectives use a deterministic train-subsample capped at 200 rows and a 20x20 grid cap
+- **`src/experiments/reporting/`**
+  - `context.py`: `RunContext` and `create_run_context(...)` output-directory helpers
+  - `base.py`: `StepReporter`, `Reporter`, and `ReporterStack` interfaces/composition
+  - `console.py`: `ConsoleReporter` terminal output; per-step output controlled by `verbose`
+  - `step_logger.py`: `FileStepLogger` writes per-step metrics to `plots/optimization/steps.csv`
+  - `artifacts.py`: `PolicyArtifactReporter` writes reloadable trained-policy artifacts before `JsonReporter` records their relative paths
+  - `json_summary.py`: `JsonReporter` and `build_summary_payload(...)` write `summary.json`, including estimator-level `train` and optional `test` policy metric blocks
+  - `plots.py`: `PlotReporter` generates optimization and policy diagnostics, writes per-plot timings, and caps model-based theta contour subsampling/grid sizes
+  - `wandb.py`: `WandbReporter` uploads run summaries and generated artifacts to W&B when enabled
 
 #### Reporting Layer (`src/reporting/`)
 

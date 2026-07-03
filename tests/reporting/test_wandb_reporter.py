@@ -10,11 +10,10 @@ import sys
 import numpy as np
 
 from experiments.config import ExperimentConfig
-from experiments.defaults import default_theta0, default_policy
-from experiments.reporters import ReporterStack, RunContext, WandbReporter
+from experiments.reporting import ReporterStack, RunContext, WandbReporter
 from experiments.results import EstimatorResult, ExperimentResult
 from experiments.run import run_experiment
-from objective import FixedRegressionObjective
+from objective import FixedRegressionObjective, SoftmaxPolicy
 
 
 @dataclass
@@ -59,7 +58,7 @@ class _FakeRun:
 
 def _build_config(**overrides: object) -> ExperimentConfig:
     objective = FixedRegressionObjective.from_parameters(
-        policy=default_policy(1),
+        policy=SoftmaxPolicy(),
         beta_1=[0.1],
         beta_2=-0.5,
         beta_3=[0.2],
@@ -68,7 +67,7 @@ def _build_config(**overrides: object) -> ExperimentConfig:
     kwargs = {
         "state_dim": 1,
         "objective": objective,
-        "theta0": default_theta0(1),
+        "theta0": np.zeros(2, dtype=float),
         "n_samples": 2,
         "step_rule": "constant",
         "perturbation_space": "theta",

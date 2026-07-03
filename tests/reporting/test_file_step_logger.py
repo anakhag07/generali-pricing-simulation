@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from experiments.reporters import FileStepLogger, RunContext
+from experiments.reporting import FileStepLogger, RunContext
 
 
 @pytest.fixture

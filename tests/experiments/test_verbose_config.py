@@ -6,7 +6,6 @@ import numpy as np
 
 from objective import FixedRegressionObjective, LinearPolicy
 from experiments.config import ExperimentConfig
-from experiments.defaults import default_theta0
 
 
 def _make_config(verbose: bool = False) -> ExperimentConfig:
@@ -21,7 +20,7 @@ def _make_config(verbose: bool = False) -> ExperimentConfig:
             beta_3=np.array([0.05, 0.1]),
             beta_4=0.3,
         ),
-        theta0=default_theta0(2),
+        theta0=np.zeros(3, dtype=float),
         n_samples=5,
         step_rule="constant",
         perturbation_space="theta",
@@ -40,7 +39,7 @@ def test_verbose_default_false() -> None:
             beta_3=np.array([0.05, 0.1]),
             beta_4=0.3,
         ),
-        theta0=default_theta0(2),
+        theta0=np.zeros(3, dtype=float),
         n_samples=5,
         step_rule="constant",
         perturbation_space="theta",

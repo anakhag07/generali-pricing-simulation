@@ -5,7 +5,8 @@ from datetime import datetime
 import numpy as np
 
 from experiments.config import ExperimentConfig
-from experiments.reporters import PlotReporter, RunContext
+from experiments.reporting.context import RunContext
+from experiments.reporting.plots import PlotReporter
 from experiments.results import EstimatorResult, ExperimentResult, OptimizationTrace
 from objective import ConstantPolicy, FixedRegressionObjective
 
@@ -70,25 +71,25 @@ def test_plot_reporter_creates_split_plot_folders(monkeypatch, tmp_path) -> None
     objective_summary_calls = []
 
     monkeypatch.setattr(
-        "experiments.reporters._observed_u_reference",
+        "experiments.reporting.plots._observed_u_reference",
         lambda result, x_samples, row_indices: np.zeros(x_samples.shape[0], dtype=float),
     )
-    monkeypatch.setattr("experiments.reporters._plot_policy_u_histograms", lambda *args, **kwargs: None)
-    monkeypatch.setattr("experiments.reporters._plot_policy_acceptance_histograms", lambda *args, **kwargs: None)
-    monkeypatch.setattr("experiments.reporters._plot_policy_final_summary_metrics", lambda *args, **kwargs: None)
+    monkeypatch.setattr("experiments.reporting.plots._plot_policy_u_histograms", lambda *args, **kwargs: None)
+    monkeypatch.setattr("experiments.reporting.plots._plot_policy_acceptance_histograms", lambda *args, **kwargs: None)
+    monkeypatch.setattr("experiments.reporting.plots._plot_policy_final_summary_metrics", lambda *args, **kwargs: None)
     monkeypatch.setattr(
-        "experiments.reporters._plot_policy_delta_u_histograms",
+        "experiments.reporting.plots._plot_policy_delta_u_histograms",
         lambda *args, **kwargs: delta_histogram_calls.append(args),
     )
     monkeypatch.setattr(
-        "experiments.reporters._plot_policy_delta_u_by_elasticity",
+        "experiments.reporting.plots._plot_policy_delta_u_by_elasticity",
         lambda *args, **kwargs: delta_plot_calls.append(args),
     )
     monkeypatch.setattr(
-        "experiments.reporters._plot_policy_objective_contribution_summary",
+        "experiments.reporting.plots._plot_policy_objective_contribution_summary",
         lambda *args, **kwargs: objective_summary_calls.append(args),
     )
-    monkeypatch.setattr("experiments.reporters._plot_policy_u_acceptance_histograms", lambda *args, **kwargs: None)
+    monkeypatch.setattr("experiments.reporting.plots._plot_policy_u_acceptance_histograms", lambda *args, **kwargs: None)
 
     PlotReporter().on_end(run_context, result)
 

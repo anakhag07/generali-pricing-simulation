@@ -6,7 +6,7 @@ import pytest
 
 from experiments.config import CorrectnessSpec
 from experiments.configs import get_config
-from experiments.helpers import resolve_true_grad_theta_fn
+from experiments.correctness import resolve_true_grad_theta_fn
 from experiments.run import run_experiment
 from experiments.seeding import SeedSetup
 from objective.noise import HomoskedasticGaussianNoise, NoisyObjective, NoNoise

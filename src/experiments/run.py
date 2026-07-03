@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
+from collections.abc import Callable
+from dataclasses import dataclass, replace
 import time
 
 import numpy as np
 
 from objective.base import sample_states
 from objective.objectives import ModelBasedObjective, prepare_jax_glm_objective
-from experiments.defaults import random_theta0
 from objective.policy import ConstantPolicy
 from objective.utils import (
     mean_acceptance_at_constant_u,
@@ -19,19 +19,55 @@ from objective.utils import (
     value_for_reporting,
 )
 from experiments.config import ExperimentConfig
-from experiments.seeding import optimizer_rngs, resolve_seed_setup, rng_from_seed
-from experiments.helpers import (
-    resolve_true_grad_theta_fn,
-    run_constant,
-    run_finite_difference,
-    run_first_order,
-    run_gauss_stein,
-    run_spsa,
-    run_stein_difference,
-)
+from experiments.correctness import TrueThetaGradFn, resolve_true_grad_theta_fn
+from experiments.initialization import random_theta0
 from experiments.policy_validation import evaluate_policy
-from experiments.reporters import StepReporter
-from experiments.results import ConstantBaselineResult, EstimatorResult, ExperimentResult, PolicyEvaluation
+from experiments.reporting.base import StepReporter
+from experiments.results import (
+    ConstantBaselineResult,
+    EstimatorResult,
+    ExperimentResult,
+    OptimizationTrace,
+    PolicyEvaluation,
+)
+from experiments.seeding import ResolvedSeedSetup, optimizer_rngs, resolve_seed_setup, rng_from_seed
+from optimization.solvers import (
+    run_constant_minimize,
+    run_finite_difference_minimize,
+    run_first_order_minimize,
+    run_gauss_stein_minimize,
+    run_spsa_minimize,
+    run_stein_difference_minimize,
+)
+
+
+_SolverFn = Callable[..., tuple[np.ndarray, OptimizationTrace]]
+
+
+@dataclass(frozen=True)
+class _EstimatorSpec:
+    solver: _SolverFn
+    requires_rng_arg: bool = False
+
+
+_ESTIMATOR_ORDER = (
+    "constant",
+    "first_order",
+    "finite_difference",
+    "gauss_stein",
+    "spsa",
+    "stein_difference",
+)
+
+
+_ESTIMATOR_SPECS = {
+    "constant": _EstimatorSpec(run_constant_minimize),
+    "first_order": _EstimatorSpec(run_first_order_minimize),
+    "finite_difference": _EstimatorSpec(run_finite_difference_minimize),
+    "gauss_stein": _EstimatorSpec(run_gauss_stein_minimize, requires_rng_arg=True),
+    "spsa": _EstimatorSpec(run_spsa_minimize, requires_rng_arg=True),
+    "stein_difference": _EstimatorSpec(run_stein_difference_minimize, requires_rng_arg=True),
+}
 
 
 _JAX_BACKEND_ESTIMATORS = {
@@ -177,6 +213,68 @@ def _optimizer_backend_objective(
     return jax_objective, batch.x_array
 
 
+def _solve_estimator(
+    *,
+    estimator_name: str,
+    spec: _EstimatorSpec,
+    theta_start: np.ndarray,
+    x_samples: object,
+    objective: object,
+    config: ExperimentConfig,
+    seeds: ResolvedSeedSetup,
+    true_grad_theta_fn: TrueThetaGradFn | None,
+    step_reporter: StepReporter | None,
+) -> tuple[np.ndarray, OptimizationTrace, float]:
+    batch_rng, gradient_rng = optimizer_rngs(seeds, estimator_name)
+    kwargs = {
+        "theta_start": theta_start,
+        "x_samples": x_samples,
+        "objective": objective,
+        "t_steps": config.t_steps,
+        "n_grad_samples": config.n_grad_samples,
+        "sigma": config.sigma,
+        "perturbation_space": config.perturbation_space,
+        "algorithm": config.step_rule,
+        "step_size": config.step_size,
+        "batch_size": config.batch_size,
+        "true_grad_theta_fn": true_grad_theta_fn,
+        "grad_norm_tol": config.grad_norm_tol,
+        "ftol": config.ftol,
+        "initial_constr_penalty": config.initial_constr_penalty,
+        "step_reporter": step_reporter,
+        "batch_rng": batch_rng,
+        "gradient_rng": gradient_rng,
+    }
+    if spec.requires_rng_arg:
+        kwargs["rng"] = gradient_rng
+    start = time.perf_counter()
+    theta_final, trace = spec.solver(**kwargs)
+    return theta_final, trace, time.perf_counter() - start
+
+
+def _estimator_result(
+    objective: object,
+    theta: np.ndarray,
+    trace: OptimizationTrace,
+    elapsed: float,
+    x_samples: object,
+) -> EstimatorResult:
+    policy = getattr(objective, "policy", None)
+    mean_acceptance_fn = getattr(objective, "mean_acceptance", None)
+    return EstimatorResult(
+        theta=theta,
+        u=_mean_action(objective, theta, x_samples) if policy is not None else float("nan"),
+        value=value_for_reporting(objective, theta, x_samples),
+        time=elapsed,
+        mean_acceptance=(
+            float(mean_acceptance_fn(theta, x_samples)) if callable(mean_acceptance_fn) else None
+        ),
+        constraint_violation=trace.constraint_violation,
+        acceptance_multiplier=trace.acceptance_multiplier,
+        constraint_penalty=trace.constraint_penalty,
+    )
+
+
 def run_experiment(
     config: ExperimentConfig,
     step_reporter: StepReporter | None = None,
@@ -242,8 +340,6 @@ def run_experiment(
         except ValueError:
             pass
 
-    # Get policy from objective for mean_action computation
-    policy = getattr(objective, "policy", None)
     optimizer_objective, optimizer_x_samples = _optimizer_backend_objective(
         effective_config,
         objective,
@@ -257,246 +353,46 @@ def run_experiment(
     )
 
     results: dict[str, EstimatorResult] = {}
-    traces = {}
+    traces: dict[str, OptimizationTrace] = {}
 
-    if "constant" in enabled_estimators:
-        batch_rng, gradient_rng = optimizer_rngs(resolved_seeds, "constant")
-        constant_objective = _constant_policy_objective(objective)
-        theta_constant_initial = _constant_theta_start(objective, theta_initial, x_samples)
-        true_grad_constant_fn = resolve_true_grad_theta_fn(
-            constant_objective,
-            effective_config.correctness,
+    for estimator_name in _ESTIMATOR_ORDER:
+        if estimator_name not in enabled_estimators:
+            continue
+        spec = _ESTIMATOR_SPECS[estimator_name]
+        if estimator_name == "constant":
+            estimator_objective = _constant_policy_objective(objective)
+            estimator_x_samples = x_samples
+            estimator_theta_start = _constant_theta_start(objective, theta_initial, x_samples)
+            true_grad_fn = resolve_true_grad_theta_fn(
+                estimator_objective,
+                effective_config.correctness,
+            )
+        else:
+            estimator_objective = optimizer_objective
+            estimator_x_samples = optimizer_x_samples
+            estimator_theta_start = theta_initial
+            true_grad_fn = optimizer_true_grad_theta_fn
+
+        theta_final, trace, elapsed = _solve_estimator(
+            estimator_name=estimator_name,
+            spec=spec,
+            theta_start=estimator_theta_start,
+            x_samples=estimator_x_samples,
+            objective=estimator_objective,
+            config=effective_config,
+            seeds=resolved_seeds,
+            true_grad_theta_fn=true_grad_fn,
+            step_reporter=step_reporter,
         )
-        mean_acceptance_constant_fn = getattr(constant_objective, "mean_acceptance", None)
-        start_constant = time.perf_counter()
-        theta_constant, trace_constant = run_constant(
-            theta_constant_initial,
+        result_objective = _constant_policy_objective(objective) if estimator_name == "constant" else objective
+        results[estimator_name] = _estimator_result(
+            result_objective,
+            theta_final,
+            trace,
+            elapsed,
             x_samples,
-            constant_objective,
-            batch_rng,
-            effective_config.t_steps,
-            effective_config.step_rule,
-            effective_config.step_size,
-            effective_config.n_grad_samples,
-            effective_config.sigma,
-            effective_config.batch_size,
-            perturbation_space=effective_config.perturbation_space,
-            true_grad_theta_fn=true_grad_constant_fn,
-            grad_norm_tol=effective_config.grad_norm_tol,
-            ftol=effective_config.ftol,
-            initial_constr_penalty=effective_config.initial_constr_penalty,
-            step_reporter=step_reporter,
-            gradient_rng=gradient_rng,
         )
-        time_constant = time.perf_counter() - start_constant
-        u_constant = _mean_action(constant_objective, theta_constant, x_samples)
-        value_constant = value_for_reporting(constant_objective, theta_constant, x_samples)
-        acceptance_constant = (
-            float(mean_acceptance_constant_fn(theta_constant, x_samples))
-            if callable(mean_acceptance_constant_fn)
-            else None
-        )
-        results["constant"] = EstimatorResult(
-            theta=theta_constant,
-            u=u_constant,
-            value=value_constant,
-            time=time_constant,
-            mean_acceptance=acceptance_constant,
-            constraint_violation=trace_constant.constraint_violation,
-            acceptance_multiplier=trace_constant.acceptance_multiplier,
-            constraint_penalty=trace_constant.constraint_penalty,
-        )
-        traces["constant"] = trace_constant
-
-    if "first_order" in enabled_estimators:
-        batch_rng, gradient_rng = optimizer_rngs(resolved_seeds, "first_order")
-        start_first = time.perf_counter()
-        theta_first, trace_first = run_first_order(
-            theta_initial,
-            optimizer_x_samples,
-            optimizer_objective,
-            batch_rng,
-            effective_config.t_steps,
-            effective_config.step_rule,
-            effective_config.step_size,
-            effective_config.n_grad_samples,
-            effective_config.sigma,
-            effective_config.batch_size,
-            perturbation_space=effective_config.perturbation_space,
-            true_grad_theta_fn=optimizer_true_grad_theta_fn,
-            grad_norm_tol=effective_config.grad_norm_tol,
-            ftol=effective_config.ftol,
-            initial_constr_penalty=effective_config.initial_constr_penalty,
-            step_reporter=step_reporter,
-            gradient_rng=gradient_rng,
-        )
-        time_first = time.perf_counter() - start_first
-        u_first = _mean_action(objective, theta_first, x_samples) if policy is not None else float("nan")
-        value_first = value_for_reporting(objective, theta_first, x_samples)
-        acceptance_first = float(mean_acceptance_fn(theta_first, x_samples)) if callable(mean_acceptance_fn) else None
-        results["first_order"] = EstimatorResult(
-            theta=theta_first,
-            u=u_first,
-            value=value_first,
-            time=time_first,
-            mean_acceptance=acceptance_first,
-            constraint_violation=trace_first.constraint_violation,
-            acceptance_multiplier=trace_first.acceptance_multiplier,
-            constraint_penalty=trace_first.constraint_penalty,
-        )
-        traces["first_order"] = trace_first
-
-    if "finite_difference" in enabled_estimators:
-        batch_rng, gradient_rng = optimizer_rngs(resolved_seeds, "finite_difference")
-        start_fd = time.perf_counter()
-        theta_fd, trace_fd = run_finite_difference(
-            theta_initial,
-            optimizer_x_samples,
-            optimizer_objective,
-            batch_rng,
-            effective_config.t_steps,
-            effective_config.step_rule,
-            effective_config.step_size,
-            effective_config.n_grad_samples,
-            effective_config.sigma,
-            effective_config.batch_size,
-            perturbation_space=effective_config.perturbation_space,
-            true_grad_theta_fn=optimizer_true_grad_theta_fn,
-            grad_norm_tol=effective_config.grad_norm_tol,
-            ftol=effective_config.ftol,
-            initial_constr_penalty=effective_config.initial_constr_penalty,
-            step_reporter=step_reporter,
-            gradient_rng=gradient_rng,
-        )
-        time_fd = time.perf_counter() - start_fd
-        u_fd = _mean_action(objective, theta_fd, x_samples) if policy is not None else float("nan")
-        value_fd = value_for_reporting(objective, theta_fd, x_samples)
-        acceptance_fd = float(mean_acceptance_fn(theta_fd, x_samples)) if callable(mean_acceptance_fn) else None
-        results["finite_difference"] = EstimatorResult(
-            theta=theta_fd,
-            u=u_fd,
-            value=value_fd,
-            time=time_fd,
-            mean_acceptance=acceptance_fd,
-            constraint_violation=trace_fd.constraint_violation,
-            acceptance_multiplier=trace_fd.acceptance_multiplier,
-            constraint_penalty=trace_fd.constraint_penalty,
-        )
-        traces["finite_difference"] = trace_fd
-
-    if "gauss_stein" in enabled_estimators:
-        batch_rng, gradient_rng = optimizer_rngs(resolved_seeds, "gauss_stein")
-        start_zero = time.perf_counter()
-        theta_zero, trace_zero = run_gauss_stein(
-            theta_initial,
-            optimizer_x_samples,
-            optimizer_objective,
-            batch_rng,
-            effective_config.t_steps,
-            effective_config.step_rule,
-            effective_config.step_size,
-            effective_config.n_grad_samples,
-            effective_config.sigma,
-            effective_config.batch_size,
-            perturbation_space=effective_config.perturbation_space,
-            true_grad_theta_fn=optimizer_true_grad_theta_fn,
-            grad_norm_tol=effective_config.grad_norm_tol,
-            ftol=effective_config.ftol,
-            initial_constr_penalty=effective_config.initial_constr_penalty,
-            step_reporter=step_reporter,
-            gradient_rng=gradient_rng,
-        )
-        time_zero = time.perf_counter() - start_zero
-        u_zero = _mean_action(objective, theta_zero, x_samples) if policy is not None else float("nan")
-        value_zero = value_for_reporting(objective, theta_zero, x_samples)
-        acceptance_zero = float(mean_acceptance_fn(theta_zero, x_samples)) if callable(mean_acceptance_fn) else None
-        results["gauss_stein"] = EstimatorResult(
-            theta=theta_zero,
-            u=u_zero,
-            value=value_zero,
-            time=time_zero,
-            mean_acceptance=acceptance_zero,
-            constraint_violation=trace_zero.constraint_violation,
-            acceptance_multiplier=trace_zero.acceptance_multiplier,
-            constraint_penalty=trace_zero.constraint_penalty,
-        )
-        traces["gauss_stein"] = trace_zero
-
-    if "spsa" in enabled_estimators:
-        batch_rng, gradient_rng = optimizer_rngs(resolved_seeds, "spsa")
-        start_spsa = time.perf_counter()
-        theta_spsa, trace_spsa = run_spsa(
-            theta_initial,
-            optimizer_x_samples,
-            optimizer_objective,
-            batch_rng,
-            effective_config.t_steps,
-            effective_config.step_rule,
-            effective_config.step_size,
-            effective_config.n_grad_samples,
-            effective_config.sigma,
-            effective_config.batch_size,
-            perturbation_space=effective_config.perturbation_space,
-            true_grad_theta_fn=optimizer_true_grad_theta_fn,
-            grad_norm_tol=effective_config.grad_norm_tol,
-            ftol=effective_config.ftol,
-            initial_constr_penalty=effective_config.initial_constr_penalty,
-            step_reporter=step_reporter,
-            gradient_rng=gradient_rng,
-        )
-        time_spsa = time.perf_counter() - start_spsa
-        u_spsa = _mean_action(objective, theta_spsa, x_samples) if policy is not None else float("nan")
-        value_spsa = value_for_reporting(objective, theta_spsa, x_samples)
-        acceptance_spsa = float(mean_acceptance_fn(theta_spsa, x_samples)) if callable(mean_acceptance_fn) else None
-        results["spsa"] = EstimatorResult(
-            theta=theta_spsa,
-            u=u_spsa,
-            value=value_spsa,
-            time=time_spsa,
-            mean_acceptance=acceptance_spsa,
-            constraint_violation=trace_spsa.constraint_violation,
-            acceptance_multiplier=trace_spsa.acceptance_multiplier,
-            constraint_penalty=trace_spsa.constraint_penalty,
-        )
-        traces["spsa"] = trace_spsa
-
-    if "stein_difference" in enabled_estimators:
-        batch_rng, gradient_rng = optimizer_rngs(resolved_seeds, "stein_difference")
-        start_stein = time.perf_counter()
-        theta_stein, trace_stein = run_stein_difference(
-            theta_initial,
-            optimizer_x_samples,
-            optimizer_objective,
-            batch_rng,
-            effective_config.t_steps,
-            effective_config.step_rule,
-            effective_config.step_size,
-            effective_config.n_grad_samples,
-            effective_config.sigma,
-            effective_config.batch_size,
-            perturbation_space=effective_config.perturbation_space,
-            true_grad_theta_fn=optimizer_true_grad_theta_fn,
-            grad_norm_tol=effective_config.grad_norm_tol,
-            ftol=effective_config.ftol,
-            initial_constr_penalty=effective_config.initial_constr_penalty,
-            step_reporter=step_reporter,
-            gradient_rng=gradient_rng,
-        )
-        time_stein = time.perf_counter() - start_stein
-        u_stein = _mean_action(objective, theta_stein, x_samples) if policy is not None else float("nan")
-        value_stein = value_for_reporting(objective, theta_stein, x_samples)
-        acceptance_stein = float(mean_acceptance_fn(theta_stein, x_samples)) if callable(mean_acceptance_fn) else None
-        results["stein_difference"] = EstimatorResult(
-            theta=theta_stein,
-            u=u_stein,
-            value=value_stein,
-            time=time_stein,
-            mean_acceptance=acceptance_stein,
-            constraint_violation=trace_stein.constraint_violation,
-            acceptance_multiplier=trace_stein.acceptance_multiplier,
-            constraint_penalty=trace_stein.constraint_penalty,
-        )
-        traces["stein_difference"] = trace_stein
+        traces[estimator_name] = trace
 
     train_metrics: dict[str, PolicyEvaluation] = {}
     test_metrics: dict[str, PolicyEvaluation] = {}

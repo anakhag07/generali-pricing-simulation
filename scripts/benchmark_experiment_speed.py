@@ -16,7 +16,7 @@ from data.loader import (
     load_x_frame,
 )
 from data.dataset_metadata import PREMIUM_COL
-from experiments.reporters import _contour_grid_size, _contour_x_samples
+from experiments.reporting.plots import _contour_grid_size, _contour_x_samples
 from objective.objectives.model_based import ModelBasedObjective
 from objective.policy import SoftmaxPolicy
 from optimization import Optimization, SteinDifferenceGradient

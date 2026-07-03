@@ -10,7 +10,7 @@ from typing import Any, Mapping, Sequence
 from experiments.config import ExperimentConfig
 from experiments.configs import get_config
 from experiments.execution import execute_experiment_run
-from experiments.reporters import RunContext
+from experiments.reporting.context import RunContext
 from experiments.results import ExperimentResult
 
 _RUN_NAME_KEY = "_run_name"

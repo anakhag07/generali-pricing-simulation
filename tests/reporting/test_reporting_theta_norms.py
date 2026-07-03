@@ -6,8 +6,8 @@ from pathlib import Path
 import numpy as np
 
 from experiments.config import ExperimentConfig
-from experiments.defaults import default_theta0
-from experiments.reporters import RunContext, _build_summary_payload
+from experiments.reporting.context import RunContext
+from experiments.reporting.json_summary import build_summary_payload
 from experiments.results import ConstantBaselineResult, EstimatorResult, ExperimentResult, OptimizationTrace
 from objective import FixedRegressionObjective, LinearPolicy, ModelBasedObjective, SoftmaxPolicy
 from reporting.logging import log_summary
@@ -144,7 +144,7 @@ def test_summary_payload_contains_theta_norms(tmp_path: Path) -> None:
         started_at=datetime(2026, 3, 10, 0, 0, 0),
     )
 
-    payload = _build_summary_payload(run_context, result)
+    payload = build_summary_payload(run_context, result)
     estimator_payload = payload["estimators"]["first_order"]
     assert "theta_l2_norm" in estimator_payload
     assert "theta_delta_l2_norm" in estimator_payload
@@ -191,7 +191,7 @@ def test_summary_payload_contains_model_coefficients(tmp_path: Path) -> None:
         started_at=datetime(2026, 3, 10, 0, 0, 0),
     )
 
-    payload = _build_summary_payload(run_context, result)
+    payload = build_summary_payload(run_context, result)
     coeffs = payload["model_coefficients"]
     assert payload["model_formulas"]["acceptance"] == "p_acc(x, u) = sigmoid(beta_0 + beta_x^T x_acc + beta_u * u)"
     assert set(coeffs) == {"acceptance", "loss"}

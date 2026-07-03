@@ -4,8 +4,7 @@ import numpy as np
 import pytest
 
 from experiments.config import CorrectnessSpec, ExperimentConfig
-from experiments.defaults import default_theta0
-from experiments.helpers import resolve_true_grad_theta_fn
+from experiments.correctness import resolve_true_grad_theta_fn
 from objective import FixedRegressionObjective, SoftmaxPolicy
 
 
@@ -33,7 +32,7 @@ def test_correctness_exact_requires_theta_grad() -> None:
             step_rule="constant",
         perturbation_space="theta",
             objective=DummyThetaObjectiveNoGrad(),
-            theta0=default_theta0(1),
+            theta0=np.zeros(2, dtype=float),
             correctness=CorrectnessSpec(gradient_source="exact"),
         )
 
@@ -48,7 +47,7 @@ def test_resolve_true_grad_numdiff_matches_exact() -> None:
     true_grad_fn = resolve_true_grad_theta_fn(objective, correctness)
     assert true_grad_fn is not None
 
-    theta = default_theta0(1)
+    theta = np.zeros(2, dtype=float)
     x_batch = np.asarray([[0.8]], dtype=float)
     grad_exact = objective.grad(theta, x_batch)
     grad_numdiff = true_grad_fn(theta, x_batch)
@@ -75,7 +74,7 @@ def test_numdiff_batch_is_supported_for_theta_grad() -> None:
         step_rule="constant",
         perturbation_space="theta",
         objective=objective,
-        theta0=default_theta0(1),
+        theta0=np.zeros(2, dtype=float),
         correctness=CorrectnessSpec(
             gradient_source="numdiff",
             numdiff_aggregate="batch",

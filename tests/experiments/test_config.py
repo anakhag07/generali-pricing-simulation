@@ -4,8 +4,13 @@ import numpy as np
 import pytest
 
 from experiments.config import ExperimentConfig
-from experiments.defaults import default_theta0, default_policy
 from objective import FixedRegressionObjective, QuadraticFeatureMap, SoftmaxPolicy
+from objective.policy import Policy, policy_theta_dim
+
+
+def _theta0(state_dim: int = 1, policy: Policy | None = None) -> np.ndarray:
+    dim = policy_theta_dim(policy, state_dim) if policy is not None else state_dim + 1
+    return np.zeros(dim, dtype=float)
 
 
 def test_beta_2_must_be_negative() -> None:
@@ -40,7 +45,7 @@ def test_state_dim_requires_matching_objective() -> None:
     beta_1 = np.linspace(0.1, 0.5, num=state_dim, dtype=float)
     beta_3 = np.linspace(0.1, 0.5, num=state_dim, dtype=float)
     objective = FixedRegressionObjective.from_parameters(
-        policy=default_policy(state_dim),
+        policy=SoftmaxPolicy(),
         beta_1=beta_1,
         beta_2=-0.5,
         beta_3=beta_3,
@@ -49,7 +54,7 @@ def test_state_dim_requires_matching_objective() -> None:
     config = ExperimentConfig(
         state_dim=state_dim,
         objective=objective,
-        theta0=default_theta0(state_dim),
+        theta0=_theta0(state_dim),
         n_samples=5,
         step_rule="constant",
         perturbation_space="theta",
@@ -69,7 +74,7 @@ def test_verbose_default_and_override() -> None:
     config_default = ExperimentConfig(
         state_dim=1,
         objective=objective,
-        theta0=default_theta0(1),
+        theta0=_theta0(1),
         n_samples=5,
         step_rule="constant",
         perturbation_space="theta",
@@ -79,7 +84,7 @@ def test_verbose_default_and_override() -> None:
     config_verbose = ExperimentConfig(
         state_dim=1,
         objective=objective,
-        theta0=default_theta0(1),
+        theta0=_theta0(1),
         n_samples=5,
         step_rule="constant",
         perturbation_space="theta",
@@ -100,7 +105,7 @@ def test_train_test_fraction_defaults_and_serialization() -> None:
     config = ExperimentConfig(
         state_dim=1,
         objective=objective,
-        theta0=default_theta0(1),
+        theta0=_theta0(1),
         n_samples=5,
         step_rule="constant",
         perturbation_space="theta",
@@ -143,7 +148,7 @@ def test_train_test_fraction_validation(
         ExperimentConfig(
             state_dim=1,
             objective=objective,
-            theta0=default_theta0(1),
+            theta0=_theta0(1),
             n_samples=5,
             step_rule="constant",
             perturbation_space="theta",
@@ -164,7 +169,7 @@ def test_constant_u_baselines_are_serialized() -> None:
     config = ExperimentConfig(
         state_dim=1,
         objective=objective,
-        theta0=default_theta0(1),
+        theta0=_theta0(1),
         n_samples=5,
         step_rule="constant",
         perturbation_space="theta",
@@ -187,7 +192,7 @@ def test_constant_enabled_estimator_is_accepted() -> None:
     config = ExperimentConfig(
         state_dim=1,
         objective=objective,
-        theta0=default_theta0(1),
+        theta0=_theta0(1),
         n_samples=5,
         step_rule="constant",
         perturbation_space="theta",
@@ -212,7 +217,7 @@ def test_config_accepts_quadratic_policy_theta_dim() -> None:
     config = ExperimentConfig(
         state_dim=state_dim,
         objective=objective,
-        theta0=default_theta0(state_dim, policy),
+        theta0=_theta0(state_dim, policy),
         n_samples=5,
         step_rule="constant",
         perturbation_space="theta",
@@ -233,7 +238,7 @@ def test_softmax_policy_action_bounds_are_serialized() -> None:
     config = ExperimentConfig(
         state_dim=1,
         objective=objective,
-        theta0=default_theta0(1, policy),
+        theta0=_theta0(1, policy),
         n_samples=5,
         step_rule="constant",
         perturbation_space="theta",
@@ -279,7 +284,7 @@ def test_constant_u_baselines_reject_duplicates() -> None:
         ExperimentConfig(
             state_dim=1,
             objective=objective,
-            theta0=default_theta0(1),
+            theta0=_theta0(1),
             n_samples=5,
             step_rule="constant",
             perturbation_space="theta",
@@ -300,7 +305,7 @@ def test_acceptance_floor_requires_supporting_objective() -> None:
         ExperimentConfig(
             state_dim=1,
             objective=objective,
-            theta0=default_theta0(1),
+            theta0=_theta0(1),
             n_samples=5,
             step_rule="constant",
             perturbation_space="theta",
@@ -336,7 +341,7 @@ def test_lagrangian_lambda_requires_acceptance_floor() -> None:
         ExperimentConfig(
             state_dim=1,
             objective=objective,
-            theta0=default_theta0(1),
+            theta0=_theta0(1),
             n_samples=5,
             step_rule="constant",
             perturbation_space="theta",
@@ -363,7 +368,7 @@ def test_lagrangian_lambda_requires_mean_acceptance_grad() -> None:
         ExperimentConfig(
             state_dim=1,
             objective=objective,
-            theta0=default_theta0(1),
+            theta0=_theta0(1),
             n_samples=5,
             step_rule="constant",
             perturbation_space="theta",
@@ -416,7 +421,7 @@ def test_trust_constr_requires_acceptance_floor() -> None:
         ExperimentConfig(
             state_dim=1,
             objective=objective,
-            theta0=default_theta0(1),
+            theta0=_theta0(1),
             n_samples=5,
             step_rule="trust-constr",
             perturbation_space="theta",
@@ -437,7 +442,7 @@ def test_trust_constr_requires_mean_acceptance_grad() -> None:
         ExperimentConfig(
             state_dim=1,
             objective=objective,
-            theta0=default_theta0(1),
+            theta0=_theta0(1),
             n_samples=5,
             step_rule="trust-constr",
             perturbation_space="theta",
@@ -536,7 +541,7 @@ def test_initial_constr_penalty_rejected_outside_trust_constr() -> None:
         ExperimentConfig(
             state_dim=1,
             objective=objective,
-            theta0=default_theta0(1),
+            theta0=_theta0(1),
             n_samples=5,
             step_rule="constant",
             perturbation_space="theta",
@@ -553,7 +558,7 @@ def test_enabled_estimators_validation() -> None:
         beta_3=[0.2],
         beta_4=0.4,
     )
-    theta0 = default_theta0(1)
+    theta0 = _theta0(1)
     with pytest.raises(ValueError, match="Unknown estimators"):
         ExperimentConfig(
             state_dim=1,
@@ -600,7 +605,7 @@ def test_enabled_estimators_accepts_spsa() -> None:
     config = ExperimentConfig(
         state_dim=1,
         objective=objective,
-        theta0=default_theta0(1),
+        theta0=_theta0(1),
         n_samples=5,
         step_rule="constant",
         perturbation_space="theta",
@@ -621,7 +626,7 @@ def test_enabled_estimators_accepts_finite_difference() -> None:
     config = ExperimentConfig(
         state_dim=1,
         objective=objective,
-        theta0=default_theta0(1),
+        theta0=_theta0(1),
         n_samples=5,
         step_rule="constant",
         perturbation_space="theta",
@@ -642,7 +647,7 @@ def test_enabled_estimators_accepts_finite_difference_alias() -> None:
     config = ExperimentConfig(
         state_dim=1,
         objective=objective,
-        theta0=default_theta0(1),
+        theta0=_theta0(1),
         n_samples=5,
         step_rule="constant",
         perturbation_space="theta",
@@ -663,7 +668,7 @@ def test_enabled_estimators_accepts_stein_difference() -> None:
     config = ExperimentConfig(
         state_dim=1,
         objective=objective,
-        theta0=default_theta0(1),
+        theta0=_theta0(1),
         n_samples=5,
         step_rule="constant",
         perturbation_space="theta",
@@ -684,7 +689,7 @@ def test_enabled_estimators_accepts_stein_difference_alias() -> None:
     config = ExperimentConfig(
         state_dim=1,
         objective=objective,
-        theta0=default_theta0(1),
+        theta0=_theta0(1),
         n_samples=5,
         step_rule="constant",
         perturbation_space="theta",
@@ -702,7 +707,7 @@ def test_step_rule_validation() -> None:
         beta_3=[0.2],
         beta_4=0.4,
     )
-    theta0 = default_theta0(1)
+    theta0 = _theta0(1)
 
     with pytest.raises(ValueError, match="step_rule must be one of"):
         ExperimentConfig(
@@ -762,7 +767,7 @@ def test_compute_backend_validation() -> None:
         ExperimentConfig(
             state_dim=1,
             objective=objective,
-            theta0=default_theta0(1),
+            theta0=_theta0(1),
             n_samples=5,
             step_rule="constant",
             perturbation_space="theta",
@@ -773,7 +778,7 @@ def test_compute_backend_validation() -> None:
         ExperimentConfig(
             state_dim=1,
             objective=objective,
-            theta0=default_theta0(1),
+            theta0=_theta0(1),
             n_samples=5,
             step_rule="constant",
             perturbation_space="theta",
@@ -784,7 +789,7 @@ def test_compute_backend_validation() -> None:
         ExperimentConfig(
             state_dim=1,
             objective=objective,
-            theta0=default_theta0(1),
+            theta0=_theta0(1),
             n_samples=5,
             step_rule="trust-constr",
             perturbation_space="theta",
@@ -807,7 +812,7 @@ def test_grad_norm_tol_validation() -> None:
         ExperimentConfig(
             state_dim=1,
             objective=objective,
-            theta0=default_theta0(1),
+            theta0=_theta0(1),
             n_samples=5,
             step_rule="constant",
         perturbation_space="theta",
@@ -824,7 +829,7 @@ def test_ftol_validation_and_serialization() -> None:
         beta_3=[0.2],
         beta_4=0.4,
     )
-    theta0 = default_theta0(1)
+    theta0 = _theta0(1)
 
     with pytest.raises(ValueError, match="ftol must be positive"):
         ExperimentConfig(
@@ -859,7 +864,7 @@ def test_batch_size_validation() -> None:
         beta_3=[0.2],
         beta_4=0.4,
     )
-    theta0 = default_theta0(1)
+    theta0 = _theta0(1)
 
     with pytest.raises(ValueError, match="batch_size must be positive"):
         ExperimentConfig(
@@ -896,7 +901,7 @@ def test_batch_size_serialization() -> None:
     config = ExperimentConfig(
         state_dim=1,
         objective=objective,
-        theta0=default_theta0(1),
+        theta0=_theta0(1),
         n_samples=5,
         batch_size=2,
         step_rule="constant",
@@ -919,7 +924,7 @@ def test_wandb_allowlist_validation() -> None:
         ExperimentConfig(
             state_dim=1,
             objective=objective,
-            theta0=default_theta0(1),
+            theta0=_theta0(1),
             n_samples=5,
             step_rule="constant",
         perturbation_space="theta",
@@ -939,7 +944,7 @@ def test_wandb_config_serialization() -> None:
     config = ExperimentConfig(
         state_dim=1,
         objective=objective,
-        theta0=default_theta0(1),
+        theta0=_theta0(1),
         n_samples=5,
         step_rule="constant",
         perturbation_space="theta",

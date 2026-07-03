@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import experiments.execution as execution
 from experiments.configs import get_config
 from experiments.execution import default_reporter_stack, execute_experiment_run
-from experiments.reporters import (
+from experiments.reporting import (
     ConsoleReporter,
     FileStepLogger,
     JsonReporter,

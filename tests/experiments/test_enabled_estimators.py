@@ -1,14 +1,15 @@
 from __future__ import annotations
 
+import numpy as np
+
 from objective import FixedRegressionObjective, SoftmaxPolicy
 from experiments.config import ExperimentConfig
-from experiments.defaults import default_theta0, default_policy
 from experiments.run import run_experiment
 
 
 def test_run_experiment_single_estimator() -> None:
     objective = FixedRegressionObjective.from_parameters(
-        policy=default_policy(1),
+        policy=SoftmaxPolicy(),
         beta_1=[0.1],
         beta_2=-0.5,
         beta_3=[0.2],
@@ -18,7 +19,7 @@ def test_run_experiment_single_estimator() -> None:
         seed=3,
         state_dim=1,
         objective=objective,
-        theta0=default_theta0(1),
+        theta0=np.zeros(2, dtype=float),
         n_samples=1,
         step_rule="l-bfgs-b",
         perturbation_space="theta",
@@ -38,7 +39,7 @@ def test_run_experiment_single_estimator() -> None:
 
 def test_run_experiment_constant_only() -> None:
     objective = FixedRegressionObjective.from_parameters(
-        policy=default_policy(1),
+        policy=SoftmaxPolicy(),
         beta_1=[0.1],
         beta_2=-0.5,
         beta_3=[0.2],
@@ -48,7 +49,7 @@ def test_run_experiment_constant_only() -> None:
         seed=3,
         state_dim=1,
         objective=objective,
-        theta0=default_theta0(1),
+        theta0=np.zeros(2, dtype=float),
         n_samples=4,
         step_rule="l-bfgs-b",
         perturbation_space="theta",
@@ -70,7 +71,7 @@ def test_run_experiment_constant_only() -> None:
 
 def test_run_experiment_finite_difference_only() -> None:
     objective = FixedRegressionObjective.from_parameters(
-        policy=default_policy(1),
+        policy=SoftmaxPolicy(),
         beta_1=[0.1],
         beta_2=-0.5,
         beta_3=[0.2],
@@ -80,7 +81,7 @@ def test_run_experiment_finite_difference_only() -> None:
         seed=3,
         state_dim=1,
         objective=objective,
-        theta0=default_theta0(1),
+        theta0=np.zeros(2, dtype=float),
         n_samples=1,
         step_rule="l-bfgs-b",
         perturbation_space="theta",
@@ -101,7 +102,7 @@ def test_run_experiment_finite_difference_only() -> None:
 
 def test_run_experiment_spsa_only() -> None:
     objective = FixedRegressionObjective.from_parameters(
-        policy=default_policy(1),
+        policy=SoftmaxPolicy(),
         beta_1=[0.1],
         beta_2=-0.5,
         beta_3=[0.2],
@@ -111,7 +112,7 @@ def test_run_experiment_spsa_only() -> None:
         seed=3,
         state_dim=1,
         objective=objective,
-        theta0=default_theta0(1),
+        theta0=np.zeros(2, dtype=float),
         n_samples=1,
         step_rule="l-bfgs-b",
         perturbation_space="theta",
@@ -131,7 +132,7 @@ def test_run_experiment_spsa_only() -> None:
 
 def test_run_experiment_stein_difference_only() -> None:
     objective = FixedRegressionObjective.from_parameters(
-        policy=default_policy(1),
+        policy=SoftmaxPolicy(),
         beta_1=[0.1],
         beta_2=-0.5,
         beta_3=[0.2],
@@ -141,7 +142,7 @@ def test_run_experiment_stein_difference_only() -> None:
         seed=3,
         state_dim=1,
         objective=objective,
-        theta0=default_theta0(1),
+        theta0=np.zeros(2, dtype=float),
         n_samples=1,
         step_rule="l-bfgs-b",
         perturbation_space="theta",

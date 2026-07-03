@@ -481,8 +481,8 @@ To add a new value-query estimator and run it through experiments:
 2. Re-export it in `src/optimization/gradients/__init__.py`.
 3. Add a solver wrapper in `src/optimization/solvers.py` that instantiates
    `Optimization(..., <YourGradientMethod>(), ...)`.
-4. Add a corresponding experiment helper in `src/experiments/helpers.py`, then
-   call it from `src/experiments/run.py`.
+4. Register the estimator in `_ESTIMATOR_ORDER` and `_ESTIMATOR_SPECS` in
+   `src/experiments/run.py`.
 5. Register the estimator key in `src/experiments/config.py`
    (`allowed_estimators` in `ExperimentConfig.__post_init__`).
 6. Add plot metadata in `src/reporting/visualization.py`

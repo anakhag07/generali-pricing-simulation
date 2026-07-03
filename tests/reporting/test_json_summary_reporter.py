@@ -19,7 +19,11 @@ def _run_context(run_dir):
 
 
 def test_json_reporter_defaults_to_summary_json(tmp_path, monkeypatch) -> None:
-    monkeypatch.setattr(json_summary, "build_summary_payload", lambda ctx, result, **kwargs: {"ok": True})
+    monkeypatch.setattr(
+        json_summary,
+        "build_summary_payload",
+        lambda ctx, result, summary_dir=None: {"ok": True},
+    )
     reporter = JsonReporter()
 
     reporter.on_end(_run_context(tmp_path), result=SimpleNamespace())
@@ -29,7 +33,11 @@ def test_json_reporter_defaults_to_summary_json(tmp_path, monkeypatch) -> None:
 
 
 def test_json_reporter_writes_named_summary_in_variant_dir(tmp_path, monkeypatch) -> None:
-    monkeypatch.setattr(json_summary, "build_summary_payload", lambda ctx, result, **kwargs: {"seed": 7})
+    monkeypatch.setattr(
+        json_summary,
+        "build_summary_payload",
+        lambda ctx, result, summary_dir=None: {"seed": 7},
+    )
     variant_dir = tmp_path / "variant"
     seed_dir = variant_dir / "seeds" / "seed-7"
     seed_dir.mkdir(parents=True)

@@ -9,6 +9,7 @@ from experiments.slurm import (
     CPU_PROFILE,
     GPU_PROFILE,
     SLURM_CHILD_ENV,
+    SlurmArraySpec,
     assert_jax_gpu_available,
     build_sbatch_command,
     configs_require_jax,
@@ -64,6 +65,19 @@ def test_build_sbatch_command_uses_cpu_profile_without_gpu(tmp_path) -> None:
     assert _expected_pythonpath_export(tmp_path) in wrap
     assert not any(part.startswith("--gres=") for part in command)
     assert "JAX_PLATFORM_NAME" not in wrap
+
+
+def test_build_sbatch_command_supports_array_and_dependency(tmp_path) -> None:
+    command = build_sbatch_command(
+        CPU_PROFILE,
+        ["scripts/run_sweep.py"],
+        cwd=tmp_path,
+        array=SlurmArraySpec(0, 8, max_parallel=3),
+        dependency="afterany:12345",
+    )
+
+    assert "--array=0-8%3" in command
+    assert "--dependency=afterany:12345" in command
 
 
 def test_submit_to_slurm_creates_log_dir_and_returns_job(tmp_path, monkeypatch) -> None:

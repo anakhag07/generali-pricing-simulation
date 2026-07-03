@@ -44,6 +44,24 @@ class SlurmSubmission:
     command: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class SlurmArraySpec:
+    """Array-task range for one Slurm submission."""
+
+    start: int
+    end: int
+    max_parallel: int | None = None
+
+    def option(self) -> str:
+        """Return the sbatch ``--array`` option value."""
+        if self.end < self.start:
+            raise ValueError("Slurm array end must be greater than or equal to start.")
+        if self.max_parallel is not None and self.max_parallel <= 0:
+            raise ValueError("Slurm array max_parallel must be positive when provided.")
+        base = f"{self.start}-{self.end}"
+        return base if self.max_parallel is None else f"{base}%{self.max_parallel}"
+
+
 CPU_PROFILE = SlurmProfile(
     name="cpu",
     partition="mit_normal",
@@ -113,6 +131,8 @@ def build_sbatch_command(
     output: str | None = None,
     conda_env: str = DEFAULT_CONDA_ENV,
     module_name: str = DEFAULT_MODULE,
+    array: SlurmArraySpec | None = None,
+    dependency: str | None = None,
 ) -> list[str]:
     """Build the ``sbatch`` command for a parent process to submit."""
     workdir = (Path.cwd() if cwd is None else Path(cwd)).resolve()
@@ -146,6 +166,10 @@ def build_sbatch_command(
     ]
     if profile.gres is not None:
         command.append(f"--gres={profile.gres}")
+    if array is not None:
+        command.append(f"--array={array.option()}")
+    if dependency is not None:
+        command.append(f"--dependency={dependency}")
     command.append(f"--wrap={wrapped}")
     return command
 
@@ -159,6 +183,8 @@ def submit_to_slurm_if_needed(
     log_dir: Path | None = None,
     env: Mapping[str, str] | None = None,
     runner: Any = subprocess.run,
+    array: SlurmArraySpec | None = None,
+    dependency: str | None = None,
 ) -> SlurmSubmission | None:
     """Submit the current entry point to Slurm unless already allocated or disabled."""
     if no_sbatch or in_slurm_allocation(env):
@@ -173,7 +199,14 @@ def submit_to_slurm_if_needed(
     log_path.mkdir(parents=True, exist_ok=True)
 
     output = str(log_path / "%x-%j.out")
-    command = build_sbatch_command(profile, argv, cwd=workdir, output=output)
+    command = build_sbatch_command(
+        profile,
+        argv,
+        cwd=workdir,
+        output=output,
+        array=array,
+        dependency=dependency,
+    )
     result = runner(command, check=True, capture_output=True, text=True)
     job_id = str(result.stdout).strip() or "unknown"
     return SlurmSubmission(profile=replace(profile, output=output), job_id=job_id, command=tuple(command))
@@ -206,6 +239,7 @@ __all__ = [
     "CPU_PROFILE",
     "GPU_PROFILE",
     "SLURM_CHILD_ENV",
+    "SlurmArraySpec",
     "SlurmProfile",
     "SlurmSubmission",
     "assert_jax_gpu_available",

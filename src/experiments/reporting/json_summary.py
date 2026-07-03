@@ -33,7 +33,7 @@ class JsonReporter:
         del run_context, config
 
     def on_end(self, run_context: RunContext, result: ExperimentResult) -> None:
-        summary_dir = self._summary_dir or run_context.run_dir
+        summary_dir = self._summary_dir if self._summary_dir is not None else run_context.run_dir
         summary_dir.mkdir(parents=True, exist_ok=True)
         payload = build_summary_payload(run_context, result, summary_dir=summary_dir)
         with (summary_dir / self._summary_name).open("w", encoding="utf-8") as handle:

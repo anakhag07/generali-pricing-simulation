@@ -28,24 +28,21 @@ def test_run_sweep_uses_theta_offset_override_list() -> None:
 def test_run_sweep_submits_to_slurm_before_running(monkeypatch) -> None:
     calls: dict[str, object] = {}
 
-    def fake_submit_to_slurm_if_needed(*, requires_jax, no_sbatch, argv):
-        calls["submit"] = (requires_jax, no_sbatch, argv)
-        return SimpleNamespace(
-            profile=SimpleNamespace(name="gpu", output="outputs/slurm/%x-%j.out"),
-            job_id="12345",
-        )
+    def fake_run_launch_plan(plan, *, args, argv):
+        calls["plan"] = plan
+        calls["args"] = args
+        calls["argv"] = argv
 
-    def fail_run_sweep(**kwargs):
-        raise AssertionError("sweep should not run in the parent process")
-
-    monkeypatch.setattr(script, "submit_to_slurm_if_needed", fake_submit_to_slurm_if_needed)
-    monkeypatch.setattr(script, "run_sweep", fail_run_sweep)
+    monkeypatch.setattr(script, "run_launch_plan", fake_run_launch_plan)
 
     script.main([])
 
-    requires_jax, no_sbatch, argv = calls["submit"]
-    assert requires_jax is False
-    assert no_sbatch is False
+    plan = calls["plan"]
+    args = calls["args"]
+    argv = calls["argv"]
+    assert plan.task_count == len(script.OVERRIDE_LIST) * len(script.RUN_SEEDS)
+    assert plan.requires_jax is False
+    assert args.no_sbatch is False
     assert isinstance(argv, list)
     assert "--no-sbatch" not in argv
 
@@ -53,28 +50,29 @@ def test_run_sweep_submits_to_slurm_before_running(monkeypatch) -> None:
 def test_run_sweep_no_sbatch_runs_without_jax_preflight(monkeypatch) -> None:
     calls: dict[str, object] = {}
 
-    def fake_submit_to_slurm_if_needed(*, requires_jax, no_sbatch, argv):
-        calls["submit"] = (requires_jax, no_sbatch, argv)
-        return None
+    def fake_run_launch_plan(plan, *, args, argv):
+        calls["args"] = args
+        calls["argv"] = argv
 
-    def fake_assert_jax_gpu_available(configs):
-        calls["preflight"] = configs
-        return "JAX backend: gpu; devices: [FakeGpu]"
+    monkeypatch.setattr(script, "run_launch_plan", fake_run_launch_plan)
+
+    script.main(["--no-sbatch"])
+
+    assert calls["args"].no_sbatch is True
+    assert "--no-sbatch" in calls["argv"]
+
+
+def test_run_sweep_serial_path_uses_seed_aware_sweep(monkeypatch) -> None:
+    calls: dict[str, object] = {}
 
     def fake_run_sweep(**kwargs):
         calls["sweep"] = kwargs
         return SimpleNamespace(run_results=[object()], summary_rows=[], project_dir="outputs")
 
-    monkeypatch.setattr(script, "submit_to_slurm_if_needed", fake_submit_to_slurm_if_needed)
-    monkeypatch.setattr(script, "assert_jax_gpu_available", fake_assert_jax_gpu_available)
     monkeypatch.setattr(script, "run_sweep", fake_run_sweep)
 
-    script.main(["--no-sbatch"])
+    script._run_sweep_serial(SimpleNamespace())
 
-    requires_jax, no_sbatch, _ = calls["submit"]
-    assert requires_jax is False
-    assert no_sbatch is True
-    assert "preflight" not in calls
     assert calls["sweep"] == {
         "base_preset": script.BASE_PRESET,
         "run_seeds": script.RUN_SEEDS,

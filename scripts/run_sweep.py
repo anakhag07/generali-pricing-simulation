@@ -3,16 +3,36 @@
 from __future__ import annotations
 
 import argparse
+import json
+from pathlib import Path
 import sys
-from types import SimpleNamespace
+from typing import Any
 
 import numpy as np
 
 from experiments.config import CorrectnessSpec
 from experiments.configs import get_config
-from experiments.slurm import assert_jax_gpu_available, submit_to_slurm_if_needed
-from experiments.sweep_utils import run_sweep
+from experiments.execution import default_reporter_stack, execute_experiment_run
+from experiments.launch import (
+    LaunchContext,
+    LaunchPlan,
+    add_launch_args,
+    read_task_records,
+    run_launch_plan,
+    task_payloads,
+)
+from experiments.paths import results_root
+from experiments.reporting.context import create_run_context
+from experiments.reporting.json_summary import JsonReporter
+from experiments.seeds import replicate_seed_setup
+from experiments.sweep_reporting import (
+    DEFAULT_SEED_METRIC_BARS,
+    aggregate_seed_grid_rows,
+    write_seed_grid_csvs,
+)
+from experiments.sweep_utils import expand_sweep_overrides, run_sweep
 from objective.noise import HomoskedasticGaussianNoise, NoisyObjective
+from reporting.visualization import plot_seed_grid_frontier, plot_seed_grid_metric_bars
 
 BASE_PRESET = "planted_logistic_base"
 PROJECT_NAME = "homoskedastic-theta-offset-sweep"
@@ -81,11 +101,7 @@ OVERRIDE_LIST = [
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run the configured preset sweep.")
-    parser.add_argument(
-        "--no-sbatch",
-        action="store_true",
-        help="Run in the current process instead of auto-submitting to ORCD Slurm.",
-    )
+    add_launch_args(parser, default_launch="auto", default_array=False)
     return parser.parse_args(argv)
 
 
@@ -93,28 +109,59 @@ def _override_list_requires_jax() -> bool:
     return any(overrides.get("compute_backend") == "jax" for overrides in OVERRIDE_LIST)
 
 
-def main(argv: list[str] | None = None) -> None:
-    args = _parse_args(argv)
-    original_argv = [sys.argv[0], *(sys.argv[1:] if argv is None else argv)]
-    requires_jax = _override_list_requires_jax()
-
-    submission = submit_to_slurm_if_needed(
-        requires_jax=requires_jax,
-        no_sbatch=args.no_sbatch,
-        argv=original_argv,
+def _task_specs() -> list[tuple[str, dict[str, Any], int]]:
+    variants = expand_sweep_overrides(
+        base_preset=BASE_PRESET,
+        override_list=OVERRIDE_LIST,
+        display_keys=DISPLAY_KEYS,
     )
-    if submission is not None:
-        print(
-            f"Submitted {submission.profile.name} Slurm job {submission.job_id}; "
-            f"logs: {submission.profile.output}"
-        )
-        return
+    return [
+        (variant_name, dict(overrides), int(seed))
+        for variant_name, overrides in variants
+        for seed in RUN_SEEDS
+    ]
 
-    if requires_jax:
-        jax_status = assert_jax_gpu_available([SimpleNamespace(compute_backend="jax")])
-        if jax_status is not None:
-            print(jax_status)
 
+def _project_dir() -> Path:
+    return results_root() / _path_part(PROJECT_NAME)
+
+
+def _variant_dir(variant_name: str) -> Path:
+    return _project_dir() / _path_part(variant_name)
+
+
+def _run_sweep_task(index: int, context: LaunchContext) -> dict[str, object]:
+    del context
+    variant_name, overrides, seed = _task_specs()[index]
+    variant_dir = _variant_dir(variant_name)
+    seed_setup = replicate_seed_setup(
+        seed,
+        ANCHOR_SEED,
+        vary=VARY,
+        fixed=FIXED_SEEDS,
+    )
+    merged_overrides = {**overrides, "seed_setup": seed_setup}
+    config = get_config(BASE_PRESET, overrides=merged_overrides)
+    run_context = create_run_context(
+        variant_name,
+        run_dir=variant_dir / "seeds" / f"seed-{seed}",
+    )
+    executed = execute_experiment_run(
+        variant_name,
+        config,
+        run_context=run_context,
+        reporter_stack_factory=_seed_reporter_stack_factory(variant_dir, seed),
+    )
+    return {
+        "variant": variant_name,
+        "run_seed": seed,
+        "run_dir": str(executed.run_context.run_dir),
+        "summary_json": str(variant_dir / f"summary-seed-{seed}.json"),
+    }
+
+
+def _run_sweep_serial(context: LaunchContext) -> None:
+    del context
     sweep = run_sweep(
         base_preset=BASE_PRESET,
         run_seeds=RUN_SEEDS,
@@ -129,6 +176,136 @@ def main(argv: list[str] | None = None) -> None:
         f"Completed {len(sweep.run_results)} sweep runs "
         f"({len(OVERRIDE_LIST)} variants x {len(RUN_SEEDS)} seeds) for preset '{BASE_PRESET}'."
     )
+
+
+def _collect_sweep_tasks(context: LaunchContext) -> None:
+    records = read_task_records(context)
+    if len(records) != len(_task_specs()):
+        raise RuntimeError(
+            f"Expected {len(_task_specs())} task records under {context.tasks_dir}, "
+            f"found {len(records)}."
+        )
+    payloads = task_payloads(context)
+    final_rows = _final_rows_from_payloads(payloads)
+    if not final_rows:
+        raise ValueError("No sweep task final rows were produced.")
+
+    rows_by_variant: dict[str, list[dict[str, object]]] = {}
+    for row in final_rows:
+        rows_by_variant.setdefault(str(row["variant"]), []).append(row)
+
+    for variant_name, rows in rows_by_variant.items():
+        _write_seed_outputs_from_rows(_variant_dir(variant_name), rows)
+    if len(rows_by_variant) > 1:
+        _write_seed_outputs_from_rows(_project_dir(), final_rows)
+    print(f"Collected {len(payloads)} sweep array tasks into {_project_dir()}.")
+
+
+def _final_rows_from_payloads(payloads: list[dict[str, Any]]) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    for payload in payloads:
+        summary_path = Path(str(payload["summary_json"]))
+        with summary_path.open("r", encoding="utf-8") as handle:
+            summary = json.load(handle)
+        rows.extend(
+            _summary_final_rows(
+                summary,
+                variant=str(payload["variant"]),
+                run_seed=int(payload["run_seed"]),
+                run_dir=str(payload["run_dir"]),
+            )
+        )
+    return rows
+
+
+def _summary_final_rows(
+    summary: dict[str, Any],
+    *,
+    variant: str,
+    run_seed: int,
+    run_dir: str,
+) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    for estimator, estimator_payload in summary.get("estimators", {}).items():
+        row: dict[str, object] = {
+            "variant": variant,
+            "run_seed": int(run_seed),
+            "run_dir": run_dir,
+            "estimator": estimator,
+            "final_u": estimator_payload.get("final_u", ""),
+            "final_value": estimator_payload.get("final_value", ""),
+            "runtime_sec": estimator_payload.get("runtime_sec", ""),
+            "mean_acceptance": estimator_payload.get("mean_acceptance", ""),
+            "constraint_violation": estimator_payload.get("constraint_violation", ""),
+        }
+        row.update(_evaluation_fields("train", estimator_payload.get("train")))
+        row.update(_evaluation_fields("test", estimator_payload.get("test")))
+        rows.append(row)
+    return rows
+
+
+def _evaluation_fields(prefix: str, evaluation: dict[str, Any] | None) -> dict[str, object]:
+    if not evaluation:
+        return {
+            f"{prefix}_objective_value": "",
+            f"{prefix}_objective_sum": "",
+            f"{prefix}_mean_u": "",
+            f"{prefix}_mean_acceptance": "",
+        }
+    return {
+        f"{prefix}_objective_value": evaluation.get("objective_value", ""),
+        f"{prefix}_objective_sum": evaluation.get("objective_sum", ""),
+        f"{prefix}_mean_u": evaluation.get("mean_u", ""),
+        f"{prefix}_mean_acceptance": evaluation.get("mean_acceptance", ""),
+    }
+
+
+def _write_seed_outputs_from_rows(output_dir: Path, final_rows: list[dict[str, object]]) -> None:
+    summary_rows = aggregate_seed_grid_rows(final_rows)
+    write_seed_grid_csvs(output_dir, final_rows, summary_rows)
+    if not summary_rows:
+        return
+    plot_dir = str(output_dir / "plots")
+    for metric, y_label, filename in DEFAULT_SEED_METRIC_BARS:
+        plot_seed_grid_metric_bars(summary_rows, plot_dir, metric=metric, y_label=y_label, filename=filename)
+    plot_seed_grid_frontier(summary_rows, plot_dir)
+
+
+def _seed_reporter_stack_factory(variant_dir: Path, seed: int):
+    def factory(config):
+        return default_reporter_stack(
+            config,
+            json_reporter=JsonReporter(
+                summary_name=f"summary-seed-{seed}.json",
+                summary_dir=variant_dir,
+            ),
+            include_plots=False,
+        )
+
+    return factory
+
+
+def _build_launch_plan() -> LaunchPlan:
+    return LaunchPlan(
+        name=PROJECT_NAME,
+        task_count=len(_task_specs()),
+        requires_jax=_override_list_requires_jax(),
+        run_task=_run_sweep_task,
+        run_all=_run_sweep_serial,
+        collect=_collect_sweep_tasks,
+        default_launch="auto",
+        default_array=False,
+    )
+
+
+def _path_part(value: object) -> str:
+    return str(value).replace(" ", "").replace("/", "-")
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = _parse_args(argv)
+    original_argv = [sys.argv[0], *(sys.argv[1:] if argv is None else argv)]
+    run_launch_plan(_build_launch_plan(), args=args, argv=original_argv)
 
 
 if __name__ == "__main__":

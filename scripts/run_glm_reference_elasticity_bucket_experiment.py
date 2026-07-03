@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import argparse
 import csv
 from datetime import datetime
 from pathlib import Path
+import sys
 from typing import Mapping, Sequence
 
 import matplotlib.pyplot as plt
@@ -12,6 +14,7 @@ import numpy as np
 
 from experiments.configs import get_config
 from experiments.execution import execute_experiment_run
+from experiments.launch import LaunchContext, LaunchPlan, add_launch_args, run_launch_plan, task_payloads
 from experiments.paths import results_root
 from experiments.results import ExperimentResult
 from experiments.sensitivity_buckets import SensitivityBucket, build_glm_sensitivity_buckets
@@ -328,7 +331,35 @@ def _write_plots(
     _plot_score_histograms(buckets, output_dir, u_ref=u_ref)
 
 
-def main() -> None:
+def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    add_launch_args(parser, default_launch="local", default_array=False)
+    return parser.parse_args(argv)
+
+
+def _task_ref_bucket(index: int) -> tuple[float, SensitivityBucket]:
+    u_ref = float(REFERENCE_U_VALUES[index // 3])
+    bucket_index = index % 3
+    buckets = build_glm_sensitivity_buckets(u_ref=u_ref)
+    return u_ref, buckets[bucket_index]
+
+
+def _run_reference_bucket_task(index: int, context: LaunchContext) -> dict[str, object]:
+    del context
+    u_ref, bucket = _task_ref_bucket(index)
+    print(
+        f"[reference-elasticity-buckets] start u_ref={u_ref:.1f} "
+        f"bucket={bucket.name} n_rows={bucket.row_indices.size} "
+        f"mean_abs_elasticity={float(np.mean(bucket.scores)):.6f}",
+        flush=True,
+    )
+    result = _run_bucket(bucket, u_ref=u_ref)
+    rows = _collect_rows([(u_ref, bucket, result)])
+    return {"u_ref": u_ref, "bucket": bucket.name, "rows": rows}
+
+
+def _run_reference_buckets_serial(context: LaunchContext) -> None:
+    del context
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = results_root() / PROJECT_NAME / f"reference_elasticity_bucket_summary_{timestamp}"
     all_bucket_results: list[tuple[float, SensitivityBucket, ExperimentResult]] = []
@@ -358,6 +389,42 @@ def main() -> None:
 
     print(f"Completed {len(all_bucket_results)} reference elasticity bucket runs.")
     print(f"Wrote bucket summary and aggregate plots to {output_dir}.")
+
+
+def _collect_reference_bucket_tasks(context: LaunchContext) -> None:
+    payloads = task_payloads(context)
+    rows = [row for payload in payloads for row in payload.get("rows", [])]
+    if not rows:
+        raise ValueError("No reference elasticity bucket rows were produced.")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir = results_root() / PROJECT_NAME / f"reference_elasticity_bucket_summary_{timestamp}"
+    _write_rows(rows, output_dir / "glm_reference_elasticity_bucket_experiment.csv")
+    for u_ref in REFERENCE_U_VALUES:
+        buckets = build_glm_sensitivity_buckets(u_ref=float(u_ref))
+        rows_for_ref = _rows_for_u_ref(rows, float(u_ref))
+        _write_rows(rows_for_ref, output_dir / _u_label(float(u_ref)) / "glm_reference_elasticity_bucket_experiment.csv")
+        _write_plots(rows_for_ref, buckets, output_dir / _u_label(float(u_ref)), u_ref=float(u_ref))
+    print(f"Collected {len(payloads)} reference elasticity bucket array tasks.")
+    print(f"Wrote bucket summary and aggregate plots to {output_dir}.")
+
+
+def _build_launch_plan() -> LaunchPlan:
+    return LaunchPlan(
+        name=PROJECT_NAME,
+        task_count=len(REFERENCE_U_VALUES) * 3,
+        requires_jax=RUN_OVERRIDES.get("compute_backend") == "jax",
+        run_task=_run_reference_bucket_task,
+        run_all=_run_reference_buckets_serial,
+        collect=_collect_reference_bucket_tasks,
+        default_launch="local",
+        default_array=False,
+    )
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = _parse_args(argv)
+    original_argv = [sys.argv[0], *(sys.argv[1:] if argv is None else argv)]
+    run_launch_plan(_build_launch_plan(), args=args, argv=original_argv)
 
 
 if __name__ == "__main__":

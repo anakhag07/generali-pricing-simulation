@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 import sys
-from types import SimpleNamespace
 from typing import Any
 
 _REPO_ROOT = Path(__file__).resolve().parent
@@ -16,12 +15,9 @@ if str(_SRC_PATH) not in sys.path:
 from experiments.config import CorrectnessSpec
 from experiments.configs import get_config
 from experiments.execution import execute_experiment_run
+from experiments.launch import LaunchContext, LaunchPlan, add_launch_args, run_launch_plan
 from experiments.seeds import SeedSetup
-from experiments.slurm import (
-    assert_jax_gpu_available,
-    run_specs_require_jax,
-    submit_to_slurm_if_needed,
-)
+from experiments.slurm import assert_jax_gpu_available, run_specs_require_jax
 
 RUN_CONFIGS: list[str | tuple[str, dict[str, Any]]] = [
     (
@@ -79,60 +75,64 @@ RUN_CONFIGS: list[str | tuple[str, dict[str, Any]]] = [
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run configured pricing experiments.")
-    parser.add_argument(
-        "--no-sbatch",
-        action="store_true",
-        help="Run in the current process instead of auto-submitting to ORCD Slurm.",
-    )
+    add_launch_args(parser, default_launch="auto", default_array=False)
     return parser.parse_args(argv)
 
 
-def _resolve_configs() -> list[tuple[str, Any, dict[str, Any]]]:
-    configs: list[tuple[str, Any, dict[str, Any]]] = []
-    for run_spec in RUN_CONFIGS:
-        if isinstance(run_spec, tuple):
-            config_name, overrides = run_spec
-        else:
-            config_name, overrides = run_spec, {}
-        config = get_config(config_name, overrides=overrides)
-        configs.append((config_name, config, dict(overrides)))
-    return configs
+def _normalize_run_spec(index: int) -> tuple[str, dict[str, Any]]:
+    run_spec = RUN_CONFIGS[index]
+    if isinstance(run_spec, tuple):
+        config_name, overrides = run_spec
+        return config_name, dict(overrides)
+    return run_spec, {}
+
+
+def _run_name(index: int, config_name: str) -> str:
+    if len(RUN_CONFIGS) == 1:
+        return config_name
+    return f"{config_name}__task_{index:03d}"
+
+
+def _run_config_task(index: int, context: LaunchContext) -> dict[str, object]:
+    del context
+    config_name, overrides = _normalize_run_spec(index)
+    config = get_config(config_name, overrides=overrides)
+    jax_status = assert_jax_gpu_available([config])
+    if jax_status is not None:
+        print(jax_status)
+    executed = execute_experiment_run(
+        _run_name(index, config_name),
+        config,
+        run_metadata={"preset_name": config_name, "overrides": overrides},
+    )
+    return {
+        "config_name": config_name,
+        "run_name": executed.name,
+        "run_dir": str(executed.run_context.run_dir),
+    }
+
+
+def _run_all_configs(context: LaunchContext) -> None:
+    for index in range(len(RUN_CONFIGS)):
+        _run_config_task(index, context)
+
+
+def _build_launch_plan() -> LaunchPlan:
+    return LaunchPlan(
+        name="main",
+        task_count=len(RUN_CONFIGS),
+        requires_jax=run_specs_require_jax(RUN_CONFIGS),
+        run_task=_run_config_task,
+        run_all=_run_all_configs,
+        default_launch="auto",
+        default_array=False,
+    )
 
 
 def main(argv: list[str] | None = None) -> None:
     args = _parse_args(argv)
     original_argv = [sys.argv[0], *(sys.argv[1:] if argv is None else argv)]
-    requires_jax = run_specs_require_jax(RUN_CONFIGS)
-    submission = submit_to_slurm_if_needed(
-        requires_jax=requires_jax,
-        no_sbatch=args.no_sbatch,
-        argv=original_argv,
-        cwd=_REPO_ROOT,
-    )
-    if submission is not None:
-        print(
-            f"Submitted {submission.profile.name} Slurm job {submission.job_id}; "
-            f"logs: {submission.profile.output}"
-        )
-        return
-
-    if requires_jax:
-        jax_status = assert_jax_gpu_available([SimpleNamespace(compute_backend="jax")])
-        if jax_status is not None:
-            print(jax_status)
-
-    resolved_configs = _resolve_configs()
-    if not requires_jax:
-        jax_status = assert_jax_gpu_available([config for _, config, _ in resolved_configs])
-        if jax_status is not None:
-            print(jax_status)
-
-    for config_name, config, overrides in resolved_configs:
-        execute_experiment_run(
-            config_name,
-            config,
-            run_metadata={"preset_name": config_name, "overrides": overrides},
-        )
+    run_launch_plan(_build_launch_plan(), args=args, argv=original_argv, cwd=_REPO_ROOT)
 
 
 if __name__ == "__main__":

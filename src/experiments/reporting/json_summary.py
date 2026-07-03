@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import json
+import os
+from pathlib import Path
+
 import numpy as np
 
 from data.loader import extract_model_based_coefficients
@@ -18,13 +21,23 @@ class JsonReporter:
         del run_context, config
 
     def on_end(self, run_context: RunContext, result: ExperimentResult) -> None:
-        payload = build_summary_payload(run_context, result)
-        with (run_context.run_dir / "summary.json").open("w", encoding="utf-8") as handle:
+        summary_dir = run_context.run_dir
+        payload = build_summary_payload(run_context, result, summary_dir=summary_dir)
+        with (summary_dir / "summary.json").open("w", encoding="utf-8") as handle:
             json.dump(payload, handle, indent=2, sort_keys=True, ensure_ascii=True)
 
 
-def build_summary_payload(run_context: RunContext, result: ExperimentResult) -> dict:
-    """Build the serializable summary payload for one completed run."""
+def build_summary_payload(
+    run_context: RunContext,
+    result: ExperimentResult,
+    summary_dir: Path | None = None,
+) -> dict:
+    """Build the serializable summary payload for one completed run.
+
+    ``summary_dir`` is the directory the summary file is written to; policy
+    artifact paths are recorded relative to it so they resolve against the
+    summary's own location. Defaults to ``run_context.run_dir``.
+    """
     estimators: dict[str, dict] = {}
     n_objective_terms = int(result.x_samples.shape[0])
     for name, estimator_result in result.results.items():
@@ -155,18 +168,25 @@ def build_summary_payload(run_context: RunContext, result: ExperimentResult) -> 
             "loss": "loss_hat(x) = gamma_0 + gamma_x^T x_loss",
         }
         payload["model_coefficients"] = coeffs
-    policy_artifacts = _policy_artifact_paths(run_context, result)
+    policy_artifacts = _policy_artifact_paths(run_context, result, summary_dir)
     if policy_artifacts:
         payload["policy_artifacts"] = policy_artifacts
     return payload
 
 
-def _policy_artifact_paths(run_context: RunContext, result: ExperimentResult) -> dict[str, str]:
+def _policy_artifact_paths(
+    run_context: RunContext,
+    result: ExperimentResult,
+    summary_dir: Path | None = None,
+) -> dict[str, str]:
+    # Artifacts always live under run_dir, but paths are recorded relative to
+    # summary_dir (where summary.json is written) so they resolve against it.
+    base_dir = run_context.run_dir if summary_dir is None else summary_dir
     paths: dict[str, str] = {}
     for name in result.results:
         policy_json = run_context.run_dir / "policies" / name / "policy.json"
         if policy_json.exists():
-            paths[name] = str(policy_json.relative_to(run_context.run_dir))
+            paths[name] = os.path.relpath(policy_json, base_dir)
     return paths
 
 

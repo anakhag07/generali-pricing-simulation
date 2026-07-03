@@ -2,18 +2,25 @@
 
 from __future__ import annotations
 
+import argparse
+from pathlib import Path
+import sys
+from types import SimpleNamespace
 from typing import Sequence
 
 import numpy as np
 
 from data.loader import extract_glm_u_coef
+from experiments.configs import get_config
+from experiments.execution import execute_experiment_run
+from experiments.launch import LaunchContext, LaunchPlan, add_launch_args, run_launch_plan, task_payloads
 from experiments.results import ExperimentResult
 from experiments.sweep_reporting import (
     timestamped_sweep_output_dir,
     write_rows_csv,
     write_sweep_frontier_plots,
 )
-from experiments.sweep_utils import run_preset_sweep
+from experiments.sweep_utils import expand_sweep_overrides, run_preset_sweep
 
 BASE_PRESET = "real_data_glm_base"
 PROJECT_NAME = "glm-u-coef-sweep"
@@ -141,7 +148,35 @@ _FIELDNAMES = [
 ]
 
 
-def main() -> None:
+def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    add_launch_args(parser, default_launch="local", default_array=False)
+    return parser.parse_args(argv)
+
+
+def _task_specs() -> list[tuple[str, dict[str, object]]]:
+    return expand_sweep_overrides(
+        base_preset=BASE_PRESET,
+        override_grid=OVERRIDE_GRID,
+        display_keys=DISPLAY_KEYS,
+    )
+
+
+def _run_u_coef_task(index: int, context: LaunchContext) -> dict[str, object]:
+    del context
+    run_name, overrides = _task_specs()[index]
+    config = get_config(BASE_PRESET, overrides=overrides)
+    executed = execute_experiment_run(
+        run_name,
+        config,
+        runs_root=str(Path("outputs") / PROJECT_NAME),
+    )
+    rows = _collect_rows([SimpleNamespace(run_name=run_name, result=executed.result)])
+    return {"run_name": run_name, "rows": rows, "run_dir": str(executed.run_context.run_dir)}
+
+
+def _run_u_coef_serial(context: LaunchContext) -> None:
+    del context
     results = run_preset_sweep(
         base_preset=BASE_PRESET,
         override_grid=OVERRIDE_GRID,
@@ -167,6 +202,52 @@ def main() -> None:
 
     print(f"Completed {len(results)} GLM u_coef sweep runs for preset '{BASE_PRESET}'.")
     print(f"Wrote sweep summary and frontier plots to {output_dir}.")
+
+
+def _collect_u_coef_tasks(context: LaunchContext) -> None:
+    payloads = task_payloads(context)
+    rows = [row for payload in payloads for row in payload.get("rows", [])]
+    _write_u_coef_outputs(rows)
+    print(f"Collected {len(payloads)} GLM u_coef array tasks.")
+
+
+def _write_u_coef_outputs(rows: Sequence[dict[str, object]]) -> None:
+    if not rows:
+        raise ValueError("No GLM u_coef sweep rows were produced. Check u_coef overrides.")
+
+    output_dir = timestamped_sweep_output_dir(
+        project_name=PROJECT_NAME,
+        dirname_prefix="u_coef_frontier",
+    )
+    write_rows_csv(output_dir / "glm_u_coef_sweep.csv", rows, _FIELDNAMES)
+    write_sweep_frontier_plots(
+        rows,
+        output_dir,
+        sweep_key="u_coef",
+        sweep_label="GLM acceptance beta_u",
+        tradeoff_filename="u_coef_vs_u_acceptance.png",
+    )
+    print(f"Wrote sweep summary and frontier plots to {output_dir}.")
+
+
+def _build_launch_plan() -> LaunchPlan:
+    return LaunchPlan(
+        name=PROJECT_NAME,
+        task_count=len(_task_specs()),
+        requires_jax=any(overrides.get("compute_backend") == "jax" for _, overrides in _task_specs()),
+        run_task=_run_u_coef_task,
+        run_all=_run_u_coef_serial,
+        collect=_collect_u_coef_tasks,
+        runs_root="outputs",
+        default_launch="local",
+        default_array=False,
+    )
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = _parse_args(argv)
+    original_argv = [sys.argv[0], *(sys.argv[1:] if argv is None else argv)]
+    run_launch_plan(_build_launch_plan(), args=args, argv=original_argv)
 
 
 if __name__ == "__main__":

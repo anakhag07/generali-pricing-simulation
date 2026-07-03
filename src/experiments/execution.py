@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from experiments.config import ExperimentConfig
@@ -69,7 +70,7 @@ def execute_experiment_run(
     name: str,
     config: ExperimentConfig,
     *,
-    runs_root: str = "outputs",
+    runs_root: str | Path | None = None,
     reporter_stack_factory: ReporterStackFactory = default_reporter_stack,
     run_context: RunContext | None = None,
 ) -> ExecutedRun:
@@ -77,7 +78,7 @@ def execute_experiment_run(
 
     Pass ``run_context`` to reuse a caller-built output directory (e.g. a per-seed
     replicate under a shared variant folder); otherwise one is created under
-    ``runs_root``.
+    ``runs_root`` or the shared external results root when ``runs_root`` is omitted.
     """
     if run_context is None:
         run_context = create_run_context(name, runs_root=runs_root)

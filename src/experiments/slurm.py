@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import os
 from pathlib import Path
 import shlex
@@ -11,8 +11,10 @@ import subprocess
 from typing import Any
 
 
+from experiments.paths import results_root
+
+
 SLURM_CHILD_ENV = "GENERALI_SLURM_CHILD"
-DEFAULT_LOG_DIR = Path("outputs/slurm")
 DEFAULT_CONDA_ENV = "simulation_env"
 DEFAULT_MODULE = "miniforge/24.3.0-0"
 
@@ -108,6 +110,7 @@ def build_sbatch_command(
     argv: Sequence[str],
     *,
     cwd: Path | None = None,
+    output: str | None = None,
     conda_env: str = DEFAULT_CONDA_ENV,
     module_name: str = DEFAULT_MODULE,
 ) -> list[str]:
@@ -138,7 +141,7 @@ def build_sbatch_command(
         f"--cpus-per-task={profile.cpus_per_task}",
         f"--mem={profile.memory}",
         f"--job-name={profile.job_name}",
-        f"--output={profile.output}",
+        f"--output={output or profile.output}",
         f"--chdir={workdir}",
     ]
     if profile.gres is not None:
@@ -153,7 +156,7 @@ def submit_to_slurm_if_needed(
     no_sbatch: bool,
     argv: Sequence[str],
     cwd: Path | None = None,
-    log_dir: Path = DEFAULT_LOG_DIR,
+    log_dir: Path | None = None,
     env: Mapping[str, str] | None = None,
     runner: Any = subprocess.run,
 ) -> SlurmSubmission | None:
@@ -163,13 +166,17 @@ def submit_to_slurm_if_needed(
 
     profile = profile_for_backend(requires_jax=requires_jax)
     workdir = (Path.cwd() if cwd is None else Path(cwd)).resolve()
-    log_path = log_dir if log_dir.is_absolute() else workdir / log_dir
+    if log_dir is None:
+        log_path = results_root() / "slurm"
+    else:
+        log_path = log_dir if log_dir.is_absolute() else workdir / log_dir
     log_path.mkdir(parents=True, exist_ok=True)
 
-    command = build_sbatch_command(profile, argv, cwd=workdir)
+    output = str(log_path / "%x-%j.out")
+    command = build_sbatch_command(profile, argv, cwd=workdir, output=output)
     result = runner(command, check=True, capture_output=True, text=True)
     job_id = str(result.stdout).strip() or "unknown"
-    return SlurmSubmission(profile=profile, job_id=job_id, command=tuple(command))
+    return SlurmSubmission(profile=replace(profile, output=output), job_id=job_id, command=tuple(command))
 
 
 def assert_jax_gpu_available(configs: Sequence[Any], *, jax_module: Any | None = None) -> str | None:

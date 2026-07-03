@@ -87,15 +87,15 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def _resolve_configs() -> list[tuple[str, Any]]:
-    configs: list[tuple[str, Any]] = []
+def _resolve_configs() -> list[tuple[str, Any, dict[str, Any]]]:
+    configs: list[tuple[str, Any, dict[str, Any]]] = []
     for run_spec in RUN_CONFIGS:
         if isinstance(run_spec, tuple):
             config_name, overrides = run_spec
         else:
             config_name, overrides = run_spec, {}
         config = get_config(config_name, overrides=overrides)
-        configs.append((config_name, config))
+        configs.append((config_name, config, dict(overrides)))
     return configs
 
 
@@ -123,12 +123,12 @@ def main(argv: list[str] | None = None) -> None:
 
     resolved_configs = _resolve_configs()
     if not requires_jax:
-        jax_status = assert_jax_gpu_available([config for _, config in resolved_configs])
+        jax_status = assert_jax_gpu_available([config for _, config, _ in resolved_configs])
         if jax_status is not None:
             print(jax_status)
 
-    for config_name, config in resolved_configs:
-        execute_experiment_run(config_name, config, runs_root="outputs")
+    for config_name, config, _overrides in resolved_configs:
+        execute_experiment_run(config_name, config)
 
 
 if __name__ == "__main__":

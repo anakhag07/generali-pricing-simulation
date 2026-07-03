@@ -7,6 +7,8 @@ from datetime import datetime
 from pathlib import Path
 import re
 
+from experiments.paths import results_root
+
 
 @dataclass(frozen=True)
 class RunContext:
@@ -21,7 +23,7 @@ class RunContext:
 
 def create_run_context(
     experiment_name: str,
-    runs_root: str = "outputs",
+    runs_root: str | Path | None = None,
     started_at: datetime | None = None,
     run_dir: Path | None = None,
 ) -> RunContext:
@@ -29,7 +31,9 @@ def create_run_context(
 
     When ``run_dir`` is given it is used verbatim (no timestamp segment), letting a
     caller place several runs -- e.g. per-seed replicates -- under one shared
-    parent directory. Otherwise the run lands in ``runs_root/<name>/<timestamp>``.
+    parent directory. Otherwise the run lands in
+    ``runs_root/<safe-name>__<timestamp>``. If ``runs_root`` is omitted, the
+    shared external ``results_root()`` is used.
     """
     timestamp = started_at or datetime.now()
     if run_dir is not None:
@@ -38,7 +42,8 @@ def create_run_context(
     else:
         run_id = timestamp.strftime("%Y%m%d_%H%M%S")
         safe_name = _sanitize_name(experiment_name)
-        resolved_dir = Path(runs_root) / safe_name / run_id
+        root = results_root() if runs_root is None else Path(runs_root)
+        resolved_dir = root / f"{safe_name}__{run_id}"
     resolved_dir.mkdir(parents=True, exist_ok=True)
     return RunContext(
         experiment_name=experiment_name,

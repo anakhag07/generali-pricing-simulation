@@ -143,7 +143,7 @@ def test_run_preset_sweep_uses_project_name_as_runs_root(monkeypatch, tmp_path) 
     )
 
     assert captured["run_name"] == "sigma-0.03__ngrad-64"
-    assert captured["runs_root"] == str(tmp_path / "one_project")
+    assert captured["runs_root"] == tmp_path / "one_project"
     assert len(results) == 1
     assert results[0].run_name == "sigma-0.03__ngrad-64"
     assert results[0].overrides["sigma"] == 0.03

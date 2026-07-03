@@ -10,6 +10,7 @@ from typing import Any, Mapping, Sequence
 from experiments.config import ExperimentConfig
 from experiments.configs import get_config
 from experiments.execution import default_reporter_stack, execute_experiment_run
+from experiments.paths import results_root
 from experiments.reporting.context import RunContext, create_run_context
 from experiments.results import ExperimentResult
 from experiments.seeds import SeedStream, replicate_seed_setup
@@ -158,7 +159,7 @@ def run_preset_sweep(
     base_preset: str,
     override_grid: Mapping[str, Sequence[Any]] | None = None,
     override_list: Sequence[Mapping[str, Any]] | None = None,
-    runs_root: str = "outputs",
+    runs_root: str | Path | None = None,
     project_name: str | None = None,
     display_keys: Sequence[str] | None = None,
 ) -> list[SweepRunResult]:
@@ -197,7 +198,7 @@ def run_sweep(
     anchor_seed: int | None = None,
     fixed: Mapping[str, int | None] | None = None,
     per_seed_plots: bool = False,
-    runs_root: str = "outputs",
+    runs_root: str | Path | None = None,
     project_name: str | None = None,
     display_keys: Sequence[str] | None = None,
 ) -> SweepResult:
@@ -311,7 +312,8 @@ def _display_key_label(key: str) -> str:
     return aliases.get(key, key)
 
 
-def _project_runs_root(runs_root: str, project_name: str | None) -> str:
+def _project_runs_root(runs_root: str | Path | None, project_name: str | None) -> Path:
+    root = results_root() if runs_root is None else Path(runs_root)
     if not project_name:
-        return runs_root
-    return str(Path(runs_root) / _stringify_override_value(project_name))
+        return root
+    return root / _stringify_override_value(project_name)

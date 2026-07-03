@@ -18,13 +18,18 @@ _RUN_NAME_KEY = "_run_name"
 
 @dataclass(frozen=True)
 class SweepRunResult:
-    """Completed sweep variant with config, overrides, result, and output context."""
+    """Completed sweep variant with config, overrides, result, and output context.
+
+    ``run_name`` identifies the variant (shared across seed replicates); ``run_seed``
+    is the replicate seed (``None`` for single-seed sweeps).
+    """
 
     run_name: str
     config: ExperimentConfig
     overrides: dict[str, Any]
     result: ExperimentResult
     run_context: RunContext
+    run_seed: int | None = None
 
 
 def expand_override_grid(grid: Mapping[str, Sequence[Any]]) -> list[dict[str, Any]]:

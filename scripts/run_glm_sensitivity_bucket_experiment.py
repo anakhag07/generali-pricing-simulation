@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import argparse
 import csv
 from datetime import datetime
 from pathlib import Path
+import sys
 from typing import Mapping, Sequence
 
 import matplotlib.pyplot as plt
@@ -12,6 +14,7 @@ import numpy as np
 
 from experiments.configs import get_config
 from experiments.execution import execute_experiment_run
+from experiments.launch import LaunchContext, LaunchPlan, add_launch_args, run_launch_plan, task_payloads
 from experiments.results import ExperimentResult
 from experiments.sensitivity_buckets import (
     SensitivityBucket,
@@ -303,7 +306,34 @@ def _write_plots(
     _plot_score_histograms(buckets, output_dir)
 
 
-def main() -> None:
+def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    add_launch_args(parser, default_launch="local", default_array=False)
+    return parser.parse_args(argv)
+
+
+def _bucket_task(index: int) -> tuple[float, SensitivityBucket]:
+    u_ref = median_observed_u("glm")
+    buckets = build_glm_sensitivity_buckets(u_ref=u_ref)
+    return float(u_ref), buckets[index]
+
+
+def _run_bucket_task(index: int, context: LaunchContext) -> dict[str, object]:
+    del context
+    u_ref, bucket = _bucket_task(index)
+    print(
+        f"[sensitivity-buckets] start bucket={bucket.name} "
+        f"n_rows={bucket.row_indices.size} "
+        f"score_median={float(np.median(bucket.scores)):.6f}",
+        flush=True,
+    )
+    result = _run_bucket(bucket)
+    rows = _collect_rows([(bucket, result)], u_ref=u_ref)
+    return {"bucket": bucket.name, "u_ref": u_ref, "rows": rows}
+
+
+def _run_buckets_serial(context: LaunchContext) -> None:
+    del context
     u_ref = median_observed_u("glm")
     buckets = build_glm_sensitivity_buckets(u_ref=u_ref)
     bucket_results: list[tuple[SensitivityBucket, ExperimentResult]] = []
@@ -318,6 +348,24 @@ def main() -> None:
         bucket_results.append((bucket, result))
 
     rows = _collect_rows(bucket_results, u_ref=u_ref)
+    _write_bucket_outputs(rows, buckets)
+
+    print(f"Completed {len(bucket_results)} sensitivity bucket runs for preset '{BASE_PRESET}'.")
+
+
+def _collect_bucket_tasks(context: LaunchContext) -> None:
+    payloads = task_payloads(context)
+    rows = [row for payload in payloads for row in payload.get("rows", [])]
+    u_ref = median_observed_u("glm")
+    buckets = build_glm_sensitivity_buckets(u_ref=u_ref)
+    _write_bucket_outputs(rows, buckets)
+    print(f"Collected {len(payloads)} sensitivity bucket array tasks.")
+
+
+def _write_bucket_outputs(
+    rows: Sequence[Mapping[str, object]],
+    buckets: Sequence[SensitivityBucket],
+) -> None:
     if not rows:
         raise ValueError("No sensitivity bucket rows were produced.")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -325,9 +373,27 @@ def main() -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     _write_rows(rows, output_dir)
     _write_plots(rows, buckets, output_dir)
-
-    print(f"Completed {len(bucket_results)} sensitivity bucket runs for preset '{BASE_PRESET}'.")
     print(f"Wrote bucket summary and aggregate plots to {output_dir}.")
+
+
+def _build_launch_plan() -> LaunchPlan:
+    return LaunchPlan(
+        name=PROJECT_NAME,
+        task_count=3,
+        requires_jax=RUN_OVERRIDES.get("compute_backend") == "jax",
+        run_task=_run_bucket_task,
+        run_all=_run_buckets_serial,
+        collect=_collect_bucket_tasks,
+        runs_root="outputs",
+        default_launch="local",
+        default_array=False,
+    )
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = _parse_args(argv)
+    original_argv = [sys.argv[0], *(sys.argv[1:] if argv is None else argv)]
+    run_launch_plan(_build_launch_plan(), args=args, argv=original_argv)
 
 
 if __name__ == "__main__":

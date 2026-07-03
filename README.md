@@ -17,12 +17,27 @@ Runtime dependencies live in `requirements.txt` and mirror `pyproject.toml`
 (including CPU JAX). Install `.[jax-cuda12]` only when you need CUDA-specific
 JAX wheels.
 
-On ORCD, `python main.py` auto-submits itself to Slurm before running the
-configured experiments. Runs with `compute_backend="jax"` use `mit_normal_gpu`
-with one L40S GPU by default, and NumPy-only runs use the CPU `mit_normal`
-profile. Slurm logs are written under `outputs/slurm/%x-%j.out`. Use
-`python main.py --no-sbatch` only when you intentionally want to run in the
-current process; JAX experiment runs still require a visible GPU backend.
+On ORCD, launch-aware entry points can run locally or submit themselves to
+Slurm. `python main.py` defaults to `--launch auto`, submitting when outside a
+Slurm allocation and running directly inside one. Use `--launch local` (or the
+legacy alias `--no-sbatch`) to run in the current process, and `--launch slurm`
+to force submission when outside an allocation. Runs with
+`compute_backend="jax"` use `mit_normal_gpu` with one L40S GPU by default;
+NumPy-only runs use the CPU `mit_normal` profile. Slurm logs are written under
+`outputs/slurm/%x-%j.out`.
+
+Sweep entry points that opt into the shared launcher can split task-level work
+across Slurm arrays:
+
+```bash
+python main.py --launch slurm --array
+python scripts/run_sweep.py --launch slurm --array --array-max-parallel 6
+python scripts/run_sweep.py --launch local --task-index 0
+```
+
+Array tasks write task records under
+`outputs/<project>/sweeps/<sweep-id>/tasks/`; sweep collectors run after the
+array and rebuild aggregate CSVs/plots from completed task summaries.
 
 To run tests:
 
@@ -313,14 +328,17 @@ It writes normal per-alpha runs and policy artifacts under
 `outputs/glm-softmax-alpha-sweep/alpha_<value>/`, then writes aggregate outputs
 under `outputs/glm-softmax-alpha-sweep/alpha_sweep_<timestamp>/`: final
 objective/profit CSVs and plots, acceptance-threshold profit summaries, and one
-expected-profit-by-`u`-bin diagram per alpha.
+expected-profit-by-`u`-bin diagram per alpha. It accepts the shared launch flags;
+`--launch slurm --array` runs one alpha value per array task.
 
 `scripts/run_glm_u_coef_sweep.py` runs the softmax/no-PCA/trust-constr GLM setup
 over `200000` sampled rows and direct acceptance coefficients
 `u_coef in {-4, -5, -8, -10, -20}` with per-run policy distribution plots
 enabled. It writes per-run outputs under `outputs/glm-u-coef-sweep/<u_coef-run>/`
 plus aggregate `glm_u_coef_sweep.csv` and frontier plots under
-`outputs/glm-u-coef-sweep/u_coef_frontier_<timestamp>/`.
+`outputs/glm-u-coef-sweep/u_coef_frontier_<timestamp>/`. It accepts the shared
+launch flags; `--launch slurm --array` runs one `u_coef` value per Slurm array
+task and submits a collector to write the same aggregate outputs.
 
 `scripts/run_glm_sensitivity_bucket_experiment.py` buckets all complete GLM rows
 into low/medium/high local price-sensitivity tertiles using
@@ -328,14 +346,16 @@ into low/medium/high local price-sensitivity tertiles using
 the same softmax/no-PCA/trust-constr GLM setup on all rows in each bucket. It
 writes per-bucket policy distribution plots under `outputs/glm-sensitivity-buckets/`
 and an aggregate `glm_sensitivity_bucket_experiment.csv` plus comparison plots
-under `sensitivity_bucket_summary_<timestamp>/`.
+under `sensitivity_bucket_summary_<timestamp>/`. It accepts the shared launch
+flags; `--launch slurm --array` runs one sensitivity bucket per array task.
 
 `scripts/run_glm_reference_elasticity_bucket_experiment.py` repeats the bucketed
 GLM experiment for reference actions `u_ref in {-0.1, 0.1, 0.2, 0.3}`, ranking
 customers into low/medium/high buckets by elasticity magnitude at each reference
 action. It runs only `first_order`, annotates summary charts with average bucket
 elasticity magnitude, and writes per-reference summaries under
-`outputs/glm-reference-elasticity-buckets/`.
+`outputs/glm-reference-elasticity-buckets/`. It accepts the shared launch flags;
+`--launch slurm --array` runs one `(u_ref, bucket)` pair per array task.
 
 `scripts/plot_glm_sensitivity_distribution.py` computes GLM customer
 elasticities `d p_accept / du` across a default `u in [-0.3, 0.3]` grid. It
@@ -373,7 +393,9 @@ acceptance-spread plots under `outputs/policy-pca-grid/`. The grid includes
 linear-feature policies, matching softmax-wrapped feature policies, constant,
 and MLP policies. The script prints per-condition progress by default; pass
 `--quiet` to suppress progress output. Add `--constrained` to use `trust-constr`
-with the observed GLM acceptance floor and a default 500-step cap.
+with the observed GLM acceptance floor and a default 500-step cap. It accepts the
+shared launch flags; `--launch slurm --array` runs one `(pca_dim, policy_class,
+seed)` condition per array task.
 
 To query the existing acceptance model at fixed constant actions without
 running optimization, use:

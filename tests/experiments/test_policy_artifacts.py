@@ -10,7 +10,71 @@ from experiments.configs import get_config
 from experiments.policy_artifacts import build_policy_artifact, load_policy_artifact
 from experiments.policy_validation import policy_u_values
 from experiments.reporting import JsonReporter, PolicyArtifactReporter, RunContext
+from experiments.reporting.json_summary import _policy_artifact_paths
 from experiments.run import run_experiment
+
+
+class _NamesResult:
+    """Minimal result stub exposing only the estimator names iterated over."""
+
+    def __init__(self, names) -> None:
+        self.results = {name: None for name in names}
+
+
+def _touch_policy_json(run_dir, name):
+    policy_json = run_dir / "policies" / name / "policy.json"
+    policy_json.parent.mkdir(parents=True, exist_ok=True)
+    policy_json.write_text("{}", encoding="utf-8")
+    return policy_json
+
+
+def _run_context(run_dir):
+    return RunContext(
+        experiment_name="exp",
+        run_id="rid",
+        run_dir=run_dir,
+        plots_dir=run_dir / "plots",
+        started_at=datetime(2026, 1, 1),
+    )
+
+
+def test_policy_artifact_paths_default_relative_to_run_dir(tmp_path) -> None:
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    _touch_policy_json(run_dir, "first_order")
+
+    paths = _policy_artifact_paths(_run_context(run_dir), _NamesResult(["first_order"]))
+
+    # Default (summary_dir=None) is unchanged: relative to run_dir.
+    assert paths == {"first_order": "policies/first_order/policy.json"}
+
+
+def test_policy_artifact_paths_relative_to_summary_dir(tmp_path) -> None:
+    # Seed-sweep layout: summary.json is written to the variant root, while the
+    # artifacts live under a nested per-seed run_dir.
+    variant_root = tmp_path / "variant"
+    run_dir = variant_root / "runs" / "seed-1" / "ts"
+    policy_json = _touch_policy_json(run_dir, "first_order")
+
+    paths = _policy_artifact_paths(
+        _run_context(run_dir), _NamesResult(["first_order"]), summary_dir=variant_root
+    )
+
+    assert paths == {"first_order": "runs/seed-1/ts/policies/first_order/policy.json"}
+    # The recorded path must resolve against the summary's own directory.
+    assert (variant_root / paths["first_order"]).resolve() == policy_json.resolve()
+
+
+def test_policy_artifact_paths_skips_missing_artifacts(tmp_path) -> None:
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    _touch_policy_json(run_dir, "first_order")
+
+    paths = _policy_artifact_paths(
+        _run_context(run_dir), _NamesResult(["first_order", "spsa"]), summary_dir=run_dir
+    )
+
+    assert paths == {"first_order": "policies/first_order/policy.json"}
 
 
 @pytest.fixture(scope="module")

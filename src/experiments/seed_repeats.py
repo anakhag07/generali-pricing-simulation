@@ -6,16 +6,14 @@ import csv
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Literal, Mapping, Sequence
+from typing import Any, Mapping, Sequence
 
 import numpy as np
 
 from experiments.configs import get_config
 from experiments.execution import execute_experiment_run
 from experiments.results import ExperimentResult, PolicyEvaluation
-from experiments.seeds import SeedSetup
-
-SeedStream = Literal["data", "split", "theta", "noise", "optimizer", "all"]
+from experiments.seeds import SeedSetup, SeedStream, replicate_seed_setup
 
 
 @dataclass(frozen=True)
@@ -58,51 +56,23 @@ class SeedRepeatOutput:
 
 
 def seed_setup_for_repeat(spec: SeedRepeatSpec, run_seed: int) -> SeedSetup:
-    """Build the concrete ``SeedSetup`` for one repeated run."""
-    anchor_seed = int(spec.run_seeds[0])
-    vary_all = "all" in spec.vary
-    return SeedSetup(
-        run_seed=int(run_seed),
-        data_seed=_repeat_stream_seed(
-            "data",
-            int(run_seed),
-            anchor_seed,
-            spec.vary,
-            spec.fixed_data_seed,
-            vary_all,
-        ),
-        split_seed=_repeat_stream_seed(
-            "split",
-            int(run_seed),
-            anchor_seed,
-            spec.vary,
-            spec.fixed_split_seed,
-            vary_all,
-        ),
-        theta_seed=_repeat_stream_seed(
-            "theta",
-            int(run_seed),
-            anchor_seed,
-            spec.vary,
-            spec.fixed_theta_seed,
-            vary_all,
-        ),
-        noise_seed=_repeat_stream_seed(
-            "noise",
-            int(run_seed),
-            anchor_seed,
-            spec.vary,
-            spec.fixed_noise_seed,
-            vary_all,
-        ),
-        optimizer_seed=_repeat_stream_seed(
-            "optimizer",
-            int(run_seed),
-            anchor_seed,
-            spec.vary,
-            spec.fixed_optimizer_seed,
-            vary_all,
-        ),
+    """Build the concrete ``SeedSetup`` for one repeated run.
+
+    Thin wrapper over ``experiments.seeds.replicate_seed_setup`` that maps the
+    spec's per-stream ``fixed_*_seed`` overrides onto the shared replication policy.
+    """
+    fixed = {
+        "data": spec.fixed_data_seed,
+        "split": spec.fixed_split_seed,
+        "theta": spec.fixed_theta_seed,
+        "noise": spec.fixed_noise_seed,
+        "optimizer": spec.fixed_optimizer_seed,
+    }
+    return replicate_seed_setup(
+        int(run_seed),
+        int(spec.run_seeds[0]),
+        vary=spec.vary,
+        fixed=fixed,
     )
 
 
@@ -133,23 +103,6 @@ def run_seed_repeats(spec: SeedRepeatSpec) -> SeedRepeatOutput:
         summary_rows=summary_rows,
         results=results,
     )
-
-
-def _repeat_stream_seed(
-    stream: str,
-    run_seed: int,
-    anchor_seed: int,
-    vary: tuple[SeedStream, ...],
-    fixed_seed: int | None,
-    vary_all: bool,
-) -> int | None:
-    if fixed_seed is not None:
-        return int(fixed_seed)
-    if vary_all:
-        return None
-    if stream in vary:
-        return int(run_seed)
-    return int(anchor_seed)
 
 
 def _final_rows(

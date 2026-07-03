@@ -10,15 +10,24 @@ import numpy as np
 
 from experiments.config import CorrectnessSpec
 from experiments.configs import get_config
-from experiments.seeds import SeedSetup
 from experiments.slurm import assert_jax_gpu_available, submit_to_slurm_if_needed
-from experiments.sweep_utils import run_preset_sweep
+from experiments.sweep_utils import run_sweep
 from objective.noise import HomoskedasticGaussianNoise, NoisyObjective
 
 BASE_PRESET = "planted_logistic_base"
 PROJECT_NAME = "homoskedastic-theta-offset-sweep"
 DISPLAY_KEYS: tuple[str, ...] = ()
 NOISE_STD = 0.5
+
+# Seed replication: each theta-offset variant is repeated across these run seeds so
+# every plot gets error bars. The stein-difference estimator draws its perturbations
+# from optimizer_seed, so vary="optimizer" here yields non-degenerate error bars.
+# Non-varied streams stay pinned to ANCHOR_SEED (data/split/theta identical across
+# replicates); FIXED_SEEDS keeps the same homoskedastic noise realization as before.
+RUN_SEEDS: tuple[int, ...] = (7, 8, 9)
+ANCHOR_SEED = 7
+VARY: tuple[str, ...] = ("optimizer",)
+FIXED_SEEDS: dict[str, int | None] = {"noise": 101}
 BASE_THETA = np.asarray(
     [
         0.4054882808450241,
@@ -31,14 +40,6 @@ BASE_THETA = np.asarray(
 THETA_OFFSETS = (0.0, 0.01, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0)
 
 _PLANTED_BASE = get_config(BASE_PRESET)
-_SEED_SETUP = SeedSetup(
-    run_seed=7,
-    data_seed=7,
-    split_seed=7,
-    theta_seed=7,
-    noise_seed=101,
-    optimizer_seed=7,
-)
 
 
 def _theta_offset_label(offset: float) -> str:
@@ -61,7 +62,6 @@ OVERRIDE_LIST = [
         "_run_name": _theta_offset_label(offset),
         "objective": _noisy_objective(),
         "theta0": _theta0(offset),
-        "seed_setup": _SEED_SETUP,
         "enabled_estimators": ("finite_difference", "stein_difference"),
         "correctness": CorrectnessSpec(gradient_source="denoised_exact"),
         "perturbation_space": "u",
@@ -115,13 +115,20 @@ def main(argv: list[str] | None = None) -> None:
         if jax_status is not None:
             print(jax_status)
 
-    results = run_preset_sweep(
+    sweep = run_sweep(
         base_preset=BASE_PRESET,
+        run_seeds=RUN_SEEDS,
         override_list=OVERRIDE_LIST,
+        vary=VARY,
+        anchor_seed=ANCHOR_SEED,
+        fixed=FIXED_SEEDS,
         project_name=PROJECT_NAME,
         display_keys=DISPLAY_KEYS,
     )
-    print(f"Completed {len(results)} sweep runs for preset '{BASE_PRESET}'.")
+    print(
+        f"Completed {len(sweep.run_results)} sweep runs "
+        f"({len(OVERRIDE_LIST)} variants x {len(RUN_SEEDS)} seeds) for preset '{BASE_PRESET}'."
+    )
 
 
 if __name__ == "__main__":

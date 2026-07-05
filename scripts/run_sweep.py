@@ -75,12 +75,16 @@ NOISE_STD = 0.5
 # far-from-optimum std on the same scale as the homoskedastic NOISE_STD grid.
 NOISE_GROWTH = 1.0
 
-# These dense fill-in sweeps match the existing saved single-seed runs. Existing
-# completed variant folders are skipped before dispatching to run_sweep().
-RUN_SEEDS: tuple[int, ...] = (7,)
+# Replicate every variant across seeds for error bars. Data/split/theta stay
+# anchored to ANCHOR_SEED so variants remain comparable; the estimator
+# perturbation streams and the frozen noise field are redrawn per seed, so the
+# per-variant spread reflects noise-realization and estimator stochasticity.
+# Existing completed per-seed summaries are skipped before rerunning (the saved
+# seed-7 runs were generated with a pinned noise_seed=101 realization).
+RUN_SEEDS: tuple[int, ...] = (7, 8, 9, 10, 11)
 ANCHOR_SEED = 7
-VARY: tuple[str, ...] = ("optimizer",)
-FIXED_SEEDS: dict[str, int | None] = {"noise": 101}
+VARY: tuple[str, ...] = ("optimizer", "noise")
+FIXED_SEEDS: dict[str, int | None] = {}
 BASE_THETA = np.asarray(
     [
         0.4054882808450241,

@@ -58,7 +58,7 @@ Before editing code:
 
 ```bash
 mkdir -p ../worktrees/generali-pricing-simulation
-git worktree add ../worktrees/generali-pricing-simulation/feature-policy-grid -b feature/policy-grid
+git worktree add ../worktrees/feature-policy-grid -b feature/policy-grid
 ```
 
 - If the branch already exists, omit `-b` and pass the existing branch name.

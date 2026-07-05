@@ -33,6 +33,7 @@ across Slurm arrays:
 python main.py --launch slurm --array
 python scripts/run_sweep.py --launch slurm --array --array-max-parallel 6
 python scripts/run_sweep.py --launch local --task-index 0
+python scripts/run_sweep.py --grids heteroskedastic  # only the heteroskedastic noise grids
 ```
 
 Array tasks write task records under
@@ -108,9 +109,13 @@ Core API convention:
   `(n_samples, theta_dim)` policy Jacobians.
 
 `NoisyObjective` wraps an existing objective with additive deterministic
-action-level noise $$\hat{M}(x,u)=M(x,u)+\delta(x,u)$$. The initial
-`HomoskedasticGaussianNoise` adapter is keyed by exact `(x, u, seed)`, so the
-same row/action pair has the same noise on every call. It exposes noisy value
+action-level noise $$\hat{M}(x,u)=M(x,u)+\delta(x,u)$$. The
+`HomoskedasticGaussianNoise` adapter (constant std) is keyed by exact
+`(x, u, seed)`, so the same row/action pair has the same noise on every call.
+`HeteroskedasticGaussianNoise` scales the same keyed unit-normal field by
+$$\sigma_0 + \gamma\,|u - u_c|$$, so noise grows with action distance from
+`u_center` (typically the planted optimum) and vanishes near the global
+minimum when $$\sigma_0 = 0$$. It exposes noisy value
 oracles for zeroth-order optimization and intentionally has no analytical
 gradient; use `base_objective.grad(...)` when inspecting the true non-noisy
 objective gradient. For trace diagnostics on noisy objectives,

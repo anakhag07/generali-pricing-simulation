@@ -64,6 +64,14 @@ git worktree add ../worktrees/generali-pricing-simulation/feature-policy-grid -b
 - If the branch already exists, omit `-b` and pass the existing branch name.
 - After entering a worktree, re-read `AGENTS.md`, confirm the branch/status, and
   assume other worktrees may have changed the repo recently.
+- Gitignored data artifacts (`src/data/dataset.csv`, `src/data/models/**/*.pkl`)
+  exist only in the canonical checkout, so real-data tests fail in a fresh
+  worktree until they are symlinked in:
+
+```bash
+ln -sfn <canonical>/src/data/models <worktree>/src/data/models
+ln -sf <canonical>/src/data/dataset.csv <worktree>/src/data/dataset.csv
+```
 
 ### End of Session
 Before finishing a build session:

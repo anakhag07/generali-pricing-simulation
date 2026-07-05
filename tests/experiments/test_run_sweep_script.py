@@ -28,11 +28,43 @@ def test_run_sweep_uses_noise_override_list() -> None:
         assert entry["objective"].noise.std == float(noise_std)
 
 
-def test_run_sweep_sweeps_bind_both_grids() -> None:
-    assert script.SWEEPS == (
+def test_run_sweep_uses_hetero_theta_override_list() -> None:
+    assert len(script.HETERO_THETA_OVERRIDE_LIST) == len(script.THETA_OFFSETS)
+    assert [entry["_run_name"] for entry in script.HETERO_THETA_OVERRIDE_LIST] == [
+        f"theta-offset-{float(offset):g}" for offset in script.THETA_OFFSETS
+    ]
+    for entry, offset in zip(script.HETERO_THETA_OVERRIDE_LIST, script.THETA_OFFSETS):
+        np.testing.assert_allclose(entry["theta0"], script.BASE_THETA + float(offset))
+        noise = entry["objective"].noise
+        assert noise.growth == script.NOISE_GROWTH
+        assert noise.base_std == 0.0
+        assert noise.u_center == script.U_STAR
+
+
+def test_run_sweep_uses_hetero_noise_override_list() -> None:
+    assert len(script.HETERO_NOISE_OVERRIDE_LIST) == len(script.NOISE_GROWTHS)
+    assert [entry["_run_name"] for entry in script.HETERO_NOISE_OVERRIDE_LIST] == [
+        f"noise-growth-{float(growth):g}" for growth in script.NOISE_GROWTHS
+    ]
+    for entry, growth in zip(script.HETERO_NOISE_OVERRIDE_LIST, script.NOISE_GROWTHS):
+        np.testing.assert_allclose(entry["theta0"], np.zeros_like(script.BASE_THETA))
+        noise = entry["objective"].noise
+        assert noise.growth == float(growth)
+        assert noise.base_std == 0.0
+        assert noise.u_center == script.U_STAR
+
+
+def test_run_sweep_sweeps_bind_all_grids() -> None:
+    assert script.HOMOSKEDASTIC_SWEEPS == (
         (script.THETA_PROJECT_NAME, script.THETA_OVERRIDE_LIST),
         (script.NOISE_PROJECT_NAME, script.NOISE_OVERRIDE_LIST),
     )
+    assert script.HETEROSKEDASTIC_SWEEPS == (
+        (script.HETERO_THETA_PROJECT_NAME, script.HETERO_THETA_OVERRIDE_LIST),
+        (script.HETERO_NOISE_PROJECT_NAME, script.HETERO_NOISE_OVERRIDE_LIST),
+    )
+    assert script.SWEEPS == script.HOMOSKEDASTIC_SWEEPS + script.HETEROSKEDASTIC_SWEEPS
+    assert script.SWEEP_GROUPS["all"] == script.SWEEPS
 
 
 def test_run_sweep_main_delegates_to_launch_plan(monkeypatch) -> None:
@@ -50,8 +82,8 @@ def test_run_sweep_main_delegates_to_launch_plan(monkeypatch) -> None:
     plan = calls["plan"]
     args = calls["args"]
     argv = calls["argv"]
-    expected_tasks = (
-        len(script.THETA_OVERRIDE_LIST) + len(script.NOISE_OVERRIDE_LIST)
+    expected_tasks = sum(
+        len(override_list) for _, override_list in script.SWEEPS
     ) * len(script.RUN_SEEDS)
     assert plan.task_count == expected_tasks
     assert plan.requires_jax is False
@@ -87,7 +119,7 @@ def test_run_sweep_serial_path_runs_both_grids(monkeypatch) -> None:
     monkeypatch.setattr(script, "_variant_is_completed", lambda variant_dir, required_estimators: False)
     monkeypatch.setattr(script, "_regenerate_distance_plots", lambda: None)
 
-    script._run_sweep_serial(SimpleNamespace())
+    script._run_sweep_serial(SimpleNamespace(), sweeps=script.HOMOSKEDASTIC_SWEEPS)
 
     assert len(sweep_calls) == 2
     theta_call, noise_call = sweep_calls
@@ -140,3 +172,39 @@ def test_run_sweep_skips_completed_variants(monkeypatch) -> None:
     remaining_names = [entry["_run_name"] for entry in calls[0]]
     assert "theta-offset-0" not in remaining_names
     assert "theta-offset-0.01" not in remaining_names
+
+
+def test_run_sweep_grids_flag_selects_heteroskedastic_tasks(monkeypatch) -> None:
+    calls: dict[str, object] = {}
+
+    def fake_run_launch_plan(plan, *, args, argv):
+        calls["plan"] = plan
+        calls["argv"] = argv
+
+    monkeypatch.setattr(script, "run_launch_plan", fake_run_launch_plan)
+
+    script.main(["--grids", "heteroskedastic"])
+
+    plan = calls["plan"]
+    expected_tasks = (
+        len(script.HETERO_THETA_OVERRIDE_LIST) + len(script.HETERO_NOISE_OVERRIDE_LIST)
+    ) * len(script.RUN_SEEDS)
+    assert plan.task_count == expected_tasks
+    assert "--grids" in calls["argv"]
+
+
+def test_run_sweep_task_skips_completed_seed_summary(monkeypatch) -> None:
+    executed: list[object] = []
+
+    monkeypatch.setattr(script, "_summary_has_estimators", lambda path, estimators: True)
+    monkeypatch.setattr(
+        script, "execute_experiment_run", lambda *args, **kwargs: executed.append(args)
+    )
+
+    payload = script._run_sweep_task(0, SimpleNamespace(), sweeps=script.HETEROSKEDASTIC_SWEEPS)
+
+    assert executed == []
+    assert payload["project"] == script.HETERO_THETA_PROJECT_NAME
+    assert payload["variant"] == script.HETERO_THETA_OVERRIDE_LIST[0]["_run_name"]
+    assert payload["run_seed"] == script.RUN_SEEDS[0]
+    assert payload["summary_json"].endswith(f"summary-seed-{script.RUN_SEEDS[0]}.json")

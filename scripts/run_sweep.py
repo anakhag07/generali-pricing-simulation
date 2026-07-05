@@ -1,10 +1,14 @@
-"""Run dense planted-logistic homoskedastic-noise sweeps.
+"""Run dense planted-logistic noise sweeps (homoskedastic and heteroskedastic).
 
-Two dense fill-in grids (theta-offset and noise-std) over the planted-logistic
-homoskedastic-noise objective, driven through the shared ``LaunchPlan`` launch
-framework. Serial runs skip already-complete variant folders and, after the runs
-finish, both the serial path and the array collector regenerate the
-theta-distance-to-first-order-truth CSV/PNG plots for each grid.
+Four dense fill-in grids over the planted-logistic noisy objective, driven
+through the shared ``LaunchPlan`` launch framework: a theta-offset grid and a
+noise-scale grid for each of the homoskedastic (constant std) and
+heteroskedastic (std grows with $$|u - u^*|$$) Gaussian noise adapters. Select a
+subset with ``--grids homoskedastic|heteroskedastic|all``. Serial runs skip
+already-complete variant folders, array tasks skip already-complete per-seed
+summaries, and after the runs finish both the serial path and the array
+collector regenerate the theta-distance-to-first-order-truth CSV/PNG plots for
+each grid.
 """
 
 from __future__ import annotations
@@ -14,6 +18,7 @@ import csv
 import json
 import sys
 from collections.abc import Mapping, Sequence
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -40,7 +45,11 @@ from experiments.sweep_reporting import (
     write_seed_grid_csvs,
 )
 from experiments.sweep_utils import expand_sweep_overrides, run_sweep
-from objective.noise import HomoskedasticGaussianNoise, NoisyObjective
+from objective.noise import (
+    HeteroskedasticGaussianNoise,
+    HomoskedasticGaussianNoise,
+    NoisyObjective,
+)
 from reporting.visualization import plot_seed_grid_frontier, plot_seed_grid_metric_bars
 
 
@@ -51,14 +60,20 @@ from reporting.visualization import plot_seed_grid_frontier, plot_seed_grid_metr
 # =============================================================================
 
 BASE_PRESET = "planted_logistic_base"
-LAUNCH_PLAN_NAME = "homoskedastic-fill-in-sweeps"
+LAUNCH_PLAN_NAME = "planted-noise-fill-in-sweeps"
 THETA_PROJECT_NAME = "homoskedastic-theta-offset-sweep"
 NOISE_PROJECT_NAME = "homoskedastic-noise-sweep"
+HETERO_THETA_PROJECT_NAME = "heteroskedastic-theta-offset-sweep"
+HETERO_NOISE_PROJECT_NAME = "heteroskedastic-noise-sweep"
 # Backward-compatible aliases used by tests and older ad-hoc imports.
 PROJECT_NAME = THETA_PROJECT_NAME
 DISPLAY_KEYS: tuple[str, ...] = ()
 REQUIRED_ESTIMATORS = ("finite_difference", "stein_difference")
 NOISE_STD = 0.5
+# Fixed growth rate for the heteroskedastic theta-offset grid; with the softmax
+# action range (-0.5, 0.5) and u* = 0.1, |u - u*| <= 0.6, so growth 1.0 keeps the
+# far-from-optimum std on the same scale as the homoskedastic NOISE_STD grid.
+NOISE_GROWTH = 1.0
 
 # These dense fill-in sweeps match the existing saved single-seed runs. Existing
 # completed variant folders are skipped before dispatching to run_sweep().
@@ -117,8 +132,30 @@ NOISE_STDS = (
     1.5,
     2.0,
 )
+# Heteroskedastic variance axis: growth rate gamma in std(u) = gamma * |u - u*|.
+# The grid spans the NOISE_STDS scale after multiplying by the max action
+# distance |u - u*| <= 0.6 reachable under the softmax policy bounds.
+NOISE_GROWTHS = (
+    0.0,
+    0.05,
+    0.1,
+    0.15,
+    0.2,
+    0.25,
+    0.35,
+    0.5,
+    0.75,
+    1.0,
+    1.5,
+    2.0,
+    3.0,
+    4.0,
+)
 
 _PLANTED_BASE = get_config(BASE_PRESET)
+# Center the heteroskedastic noise at the planted optimum so the noise floor
+# sits exactly on the global-minimum region.
+U_STAR = float(_PLANTED_BASE.objective.optimal_u())
 
 
 def _first_order_truth_summary() -> Path:
@@ -139,6 +176,17 @@ def _noisy_objective(noise_std: float) -> NoisyObjective:
     return NoisyObjective(
         base_objective=_PLANTED_BASE.objective,
         noise=HomoskedasticGaussianNoise(std=float(noise_std)),
+    )
+
+
+def _hetero_noisy_objective(growth: float) -> NoisyObjective:
+    return NoisyObjective(
+        base_objective=_PLANTED_BASE.objective,
+        noise=HeteroskedasticGaussianNoise(
+            base_std=0.0,
+            growth=float(growth),
+            u_center=U_STAR,
+        ),
     )
 
 
@@ -182,6 +230,30 @@ def _build_noise_override_list() -> list[dict[str, object]]:
     ]
 
 
+def _build_hetero_theta_override_list() -> list[dict[str, object]]:
+    return [
+        {
+            "_run_name": _axis_run_name("theta-offset", offset),
+            **COMMON_OVERRIDES,
+            "objective": _hetero_noisy_objective(NOISE_GROWTH),
+            "theta0": _theta0(offset),
+        }
+        for offset in THETA_OFFSETS
+    ]
+
+
+def _build_hetero_noise_override_list() -> list[dict[str, object]]:
+    return [
+        {
+            "_run_name": _axis_run_name("noise-growth", growth),
+            **COMMON_OVERRIDES,
+            "objective": _hetero_noisy_objective(growth),
+            "theta0": np.zeros_like(BASE_THETA),
+        }
+        for growth in NOISE_GROWTHS
+    ]
+
+
 # =============================================================================
 # Reusable sweep-script helpers
 # Helpers in this section must receive run-specific values as parameters. If a
@@ -216,14 +288,20 @@ def _variant_dir(project_name: str, variant_name: str) -> Path:
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run the configured preset sweeps.")
+    parser.add_argument(
+        "--grids",
+        choices=("all", "homoskedastic", "heteroskedastic"),
+        default="all",
+        help="Which noise-grid group to run (default: all grids).",
+    )
     add_launch_args(parser, default_launch="auto", default_array=False)
     return parser.parse_args(argv)
 
 
-def _sweeps_require_jax() -> bool:
+def _sweeps_require_jax(sweeps: "SweepList") -> bool:
     return any(
         overrides.get("compute_backend") == "jax"
-        for _, override_list in SWEEPS
+        for _, override_list in sweeps
         for overrides in override_list
     )
 
@@ -325,13 +403,27 @@ def _run_missing_sweep(
 # =============================================================================
 
 
+SweepList = tuple[tuple[str, list[dict[str, object]]], ...]
+
 THETA_OVERRIDE_LIST = _build_theta_override_list()
 NOISE_OVERRIDE_LIST = _build_noise_override_list()
+HETERO_THETA_OVERRIDE_LIST = _build_hetero_theta_override_list()
+HETERO_NOISE_OVERRIDE_LIST = _build_hetero_noise_override_list()
 OVERRIDE_LIST = THETA_OVERRIDE_LIST
-SWEEPS: tuple[tuple[str, list[dict[str, object]]], ...] = (
+HOMOSKEDASTIC_SWEEPS: SweepList = (
     (THETA_PROJECT_NAME, THETA_OVERRIDE_LIST),
     (NOISE_PROJECT_NAME, NOISE_OVERRIDE_LIST),
 )
+HETEROSKEDASTIC_SWEEPS: SweepList = (
+    (HETERO_THETA_PROJECT_NAME, HETERO_THETA_OVERRIDE_LIST),
+    (HETERO_NOISE_PROJECT_NAME, HETERO_NOISE_OVERRIDE_LIST),
+)
+SWEEPS: SweepList = HOMOSKEDASTIC_SWEEPS + HETEROSKEDASTIC_SWEEPS
+SWEEP_GROUPS: dict[str, SweepList] = {
+    "homoskedastic": HOMOSKEDASTIC_SWEEPS,
+    "heteroskedastic": HETEROSKEDASTIC_SWEEPS,
+    "all": SWEEPS,
+}
 
 
 # =============================================================================
@@ -342,9 +434,9 @@ SWEEPS: tuple[tuple[str, list[dict[str, object]]], ...] = (
 # =============================================================================
 
 
-def _task_specs() -> list[tuple[str, str, dict[str, Any], int]]:
+def _task_specs(sweeps: SweepList) -> list[tuple[str, str, dict[str, Any], int]]:
     specs: list[tuple[str, str, dict[str, Any], int]] = []
-    for project_name, override_list in SWEEPS:
+    for project_name, override_list in sweeps:
         variants = expand_sweep_overrides(
             base_preset=BASE_PRESET,
             override_list=override_list,
@@ -356,10 +448,21 @@ def _task_specs() -> list[tuple[str, str, dict[str, Any], int]]:
     return specs
 
 
-def _run_sweep_task(index: int, context: LaunchContext) -> dict[str, object]:
+def _run_sweep_task(index: int, context: LaunchContext, *, sweeps: SweepList) -> dict[str, object]:
     del context
-    project_name, variant_name, overrides, seed = _task_specs()[index]
+    project_name, variant_name, overrides, seed = _task_specs(sweeps)[index]
     variant_dir = _variant_dir(project_name, variant_name)
+    seed_summary = variant_dir / f"summary-seed-{seed}.json"
+    payload = {
+        "project": project_name,
+        "variant": variant_name,
+        "run_seed": seed,
+        "run_dir": str(variant_dir / "seeds" / f"seed-{seed}"),
+        "summary_json": str(seed_summary),
+    }
+    if _summary_has_estimators(seed_summary, REQUIRED_ESTIMATORS):
+        print(f"Skipping completed task '{variant_name}' seed {seed} in '{project_name}'.")
+        return payload
     seed_setup = replicate_seed_setup(
         seed,
         ANCHOR_SEED,
@@ -378,19 +481,13 @@ def _run_sweep_task(index: int, context: LaunchContext) -> dict[str, object]:
         run_context=run_context,
         reporter_stack_factory=_seed_reporter_stack_factory(variant_dir, seed),
     )
-    return {
-        "project": project_name,
-        "variant": variant_name,
-        "run_seed": seed,
-        "run_dir": str(executed.run_context.run_dir),
-        "summary_json": str(variant_dir / f"summary-seed-{seed}.json"),
-    }
+    return {**payload, "run_dir": str(executed.run_context.run_dir)}
 
 
-def _run_sweep_serial(context: LaunchContext) -> None:
+def _run_sweep_serial(context: LaunchContext, *, sweeps: SweepList) -> None:
     del context
     n_runs = 0
-    for project_name, override_list in SWEEPS:
+    for project_name, override_list in sweeps:
         n_runs += _run_missing_sweep(
             base_preset=BASE_PRESET,
             project_name=project_name,
@@ -406,11 +503,12 @@ def _run_sweep_serial(context: LaunchContext) -> None:
     print(f"Completed {n_runs} total missing sweep runs for preset '{BASE_PRESET}'.")
 
 
-def _collect_sweep_tasks(context: LaunchContext) -> None:
+def _collect_sweep_tasks(context: LaunchContext, *, sweeps: SweepList) -> None:
     records = read_task_records(context)
-    if len(records) != len(_task_specs()):
+    expected = len(_task_specs(sweeps))
+    if len(records) != expected:
         raise RuntimeError(
-            f"Expected {len(_task_specs())} task records under {context.tasks_dir}, "
+            f"Expected {expected} task records under {context.tasks_dir}, "
             f"found {len(records)}."
         )
     payloads = task_payloads(context)
@@ -521,14 +619,14 @@ def _seed_reporter_stack_factory(variant_dir: Path, seed: int):
     return factory
 
 
-def _build_launch_plan() -> LaunchPlan:
+def _build_launch_plan(sweeps: SweepList) -> LaunchPlan:
     return LaunchPlan(
         name=LAUNCH_PLAN_NAME,
-        task_count=len(_task_specs()),
-        requires_jax=_sweeps_require_jax(),
-        run_task=_run_sweep_task,
-        run_all=_run_sweep_serial,
-        collect=_collect_sweep_tasks,
+        task_count=len(_task_specs(sweeps)),
+        requires_jax=_sweeps_require_jax(sweeps),
+        run_task=partial(_run_sweep_task, sweeps=sweeps),
+        run_all=partial(_run_sweep_serial, sweeps=sweeps),
+        collect=partial(_collect_sweep_tasks, sweeps=sweeps),
         default_launch="auto",
         default_array=False,
     )
@@ -563,6 +661,24 @@ def _regenerate_distance_plots() -> None:
         title="Final theta distance to first-order truth by noise",
         csv_name="theta_distance_to_first_order_truth_by_noise.csv",
         plot_name="theta_distance_to_first_order_truth_by_noise.png",
+    )
+    _write_distance_plot(
+        project_name=HETERO_THETA_PROJECT_NAME,
+        truth_theta=truth_theta,
+        axis_key="theta_offset",
+        x_label="Theta offset added to first-order truth theta",
+        title="Final theta distance to first-order truth by offset (heteroskedastic)",
+        csv_name="theta_distance_to_first_order_truth_by_offset.csv",
+        plot_name="theta_distance_to_first_order_truth_by_offset.png",
+    )
+    _write_distance_plot(
+        project_name=HETERO_NOISE_PROJECT_NAME,
+        truth_theta=truth_theta,
+        axis_key="noise_growth",
+        x_label="Heteroskedastic noise growth rate (std per |u - u*|)",
+        title="Final theta distance to first-order truth by noise growth",
+        csv_name="theta_distance_to_first_order_truth_by_noise_growth.csv",
+        plot_name="theta_distance_to_first_order_truth_by_noise_growth.png",
     )
 
 
@@ -632,13 +748,24 @@ def _distance_axis_value(
     if axis_key == "theta_offset" and variant_name.startswith("theta-offset-"):
         return float(variant_name.removeprefix("theta-offset-"))
     if axis_key == "noise_std":
-        objective = summary.get("config", {}).get("objective", {})
-        noise = objective.get("noise", {}) if isinstance(objective, dict) else {}
+        noise = _summary_noise_payload(summary)
         if "std" in noise:
             return float(noise["std"])
         if variant_name.startswith("noise-std-"):
             return float(variant_name.removeprefix("noise-std-"))
+    if axis_key == "noise_growth":
+        noise = _summary_noise_payload(summary)
+        if "growth" in noise:
+            return float(noise["growth"])
+        if variant_name.startswith("noise-growth-"):
+            return float(variant_name.removeprefix("noise-growth-"))
     return None
+
+
+def _summary_noise_payload(summary: dict) -> dict:
+    objective = summary.get("config", {}).get("objective", {})
+    noise = objective.get("noise", {}) if isinstance(objective, dict) else {}
+    return noise if isinstance(noise, dict) else {}
 
 
 def _theta_from_summary(summary_path: Path, estimator: str) -> np.ndarray:
@@ -751,7 +878,7 @@ def _set_symlog_ticks(ax: object, values: list[float]) -> None:
 
 
 def _variant_sort_key(path: Path) -> tuple[int, float | str]:
-    for prefix in ("theta-offset-", "noise-std-"):
+    for prefix in ("theta-offset-", "noise-std-", "noise-growth-"):
         if path.name.startswith(prefix):
             return (0, float(path.name.removeprefix(prefix)))
     return (1, path.name)
@@ -766,7 +893,7 @@ def _variant_sort_key(path: Path) -> tuple[int, float | str]:
 def main(argv: list[str] | None = None) -> None:
     args = _parse_args(argv)
     original_argv = [sys.argv[0], *(sys.argv[1:] if argv is None else argv)]
-    run_launch_plan(_build_launch_plan(), args=args, argv=original_argv)
+    run_launch_plan(_build_launch_plan(SWEEP_GROUPS[args.grids]), args=args, argv=original_argv)
 
 
 if __name__ == "__main__":

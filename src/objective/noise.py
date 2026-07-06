@@ -63,28 +63,63 @@ class HomoskedasticGaussianNoise(ObjectiveNoise):
 
     def values(self, x_batch: Any, u: np.ndarray) -> np.ndarray:
         """Return deterministic $$N(0, \text{std}^2)$$ noise keyed by exact ``(x, u)``."""
-        u_arr = np.asarray(u, dtype=float)
-        if u_arr.ndim not in {1, 2}:
-            raise ValueError("u must be a 1D action vector or 2D action matrix.")
-        if not np.isfinite(u_arr).all():
-            raise ValueError("u must contain only finite values.")
+        u_arr = _validate_u_field(u)
         if self.std == 0.0:
             return np.zeros_like(u_arr, dtype=float)
         if self.seed is None:
             raise ValueError("HomoskedasticGaussianNoise requires a seed before evaluation.")
+        return self.std * _unit_normal_field(self.seed, x_batch, u_arr)
 
-        row_hashes = _row_fingerprints(x_batch)
-        n_rows = len(row_hashes)
-        if u_arr.ndim == 1:
-            if u_arr.shape != (n_rows,):
-                raise ValueError("1D u must have one value per x_batch row.")
-            return self.std * _standard_normals(self.seed, row_hashes, u_arr)
-        if u_arr.shape[1] != n_rows:
-            raise ValueError("2D u must have shape (n_evaluations, n_rows).")
-        normals = np.vstack(
-            [_standard_normals(self.seed, row_hashes, u_row) for u_row in u_arr]
-        )
-        return self.std * normals
+
+@dataclass(frozen=True)
+class HeteroskedasticGaussianNoise(ObjectiveNoise):
+    r"""Deterministic Gaussian field whose std grows with action distance from ``u_center``.
+
+    $$\delta(x, u) = \big(\sigma_0 + \gamma\,|u - u_c|\big)\,\varepsilon(x, u; s)$$ with the
+    same hash-keyed unit-normal field $$\varepsilon(x, u; s)$$ as the homoskedastic adapter,
+    so evaluations near ``u_center`` (typically the planted optimum) stay nearly noiseless
+    while far-from-optimum queries become increasingly noisy. With ``growth = 0`` this is
+    exactly ``HomoskedasticGaussianNoise(std=base_std)``. The seed is controlled by the
+    experiment ``noise_seed`` stream through ``with_seed``.
+    """
+
+    base_std: float = 0.0
+    growth: float = 1.0
+    u_center: float = 0.0
+    seed: int | None = None
+
+    def __post_init__(self) -> None:
+        base_std = float(self.base_std)
+        growth = float(self.growth)
+        u_center = float(self.u_center)
+        if not np.isfinite(base_std) or base_std < 0.0:
+            raise ValueError("base_std must be finite and nonnegative.")
+        if not np.isfinite(growth) or growth < 0.0:
+            raise ValueError("growth must be finite and nonnegative.")
+        if not np.isfinite(u_center):
+            raise ValueError("u_center must be finite.")
+        object.__setattr__(self, "base_std", base_std)
+        object.__setattr__(self, "growth", growth)
+        object.__setattr__(self, "u_center", u_center)
+        if self.seed is not None:
+            object.__setattr__(self, "seed", _validate_seed(self.seed))
+
+    def with_seed(self, seed: int) -> "HeteroskedasticGaussianNoise":
+        return replace(self, seed=_validate_seed(seed))
+
+    def std_values(self, u: np.ndarray) -> np.ndarray:
+        r"""Return the local noise std $$\sigma(u) = \sigma_0 + \gamma\,|u - u_c|$$."""
+        u_arr = _validate_u_field(u)
+        return self.base_std + self.growth * np.abs(u_arr - self.u_center)
+
+    def values(self, x_batch: Any, u: np.ndarray) -> np.ndarray:
+        r"""Return deterministic $$N(0, \sigma(u)^2)$$ noise keyed by exact ``(x, u)``."""
+        u_arr = _validate_u_field(u)
+        if self.base_std == 0.0 and self.growth == 0.0:
+            return np.zeros_like(u_arr, dtype=float)
+        if self.seed is None:
+            raise ValueError("HeteroskedasticGaussianNoise requires a seed before evaluation.")
+        return self.std_values(u_arr) * _unit_normal_field(self.seed, x_batch, u_arr)
 
 
 @dataclass(frozen=True)
@@ -223,6 +258,28 @@ def _slice_rows(x_batch: Any, start: int, stop: int) -> Any:
     return np.asarray(x_batch)[start:stop]
 
 
+def _validate_u_field(u: np.ndarray) -> np.ndarray:
+    u_arr = np.asarray(u, dtype=float)
+    if u_arr.ndim not in {1, 2}:
+        raise ValueError("u must be a 1D action vector or 2D action matrix.")
+    if not np.isfinite(u_arr).all():
+        raise ValueError("u must contain only finite values.")
+    return u_arr
+
+
+def _unit_normal_field(seed: int, x_batch: Any, u_arr: np.ndarray) -> np.ndarray:
+    """Unit-normal field shared by the Gaussian noise adapters, keyed by exact (x, u, seed)."""
+    row_hashes = _row_fingerprints(x_batch)
+    n_rows = len(row_hashes)
+    if u_arr.ndim == 1:
+        if u_arr.shape != (n_rows,):
+            raise ValueError("1D u must have one value per x_batch row.")
+        return _standard_normals(seed, row_hashes, u_arr)
+    if u_arr.shape[1] != n_rows:
+        raise ValueError("2D u must have shape (n_evaluations, n_rows).")
+    return np.vstack([_standard_normals(seed, row_hashes, u_row) for u_row in u_arr])
+
+
 def _validate_u_vector(u: np.ndarray, n_rows: int) -> np.ndarray:
     u_arr = np.asarray(u, dtype=float).reshape(-1)
     if u_arr.shape != (n_rows,):
@@ -318,6 +375,7 @@ def _validate_seed(seed: int) -> int:
 
 
 __all__ = [
+    "HeteroskedasticGaussianNoise",
     "HomoskedasticGaussianNoise",
     "NoisyObjective",
     "NoNoise",

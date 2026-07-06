@@ -71,6 +71,14 @@ git worktree add ../worktrees/feature-policy-grid -b feature/policy-grid
 - If the branch already exists, omit `-b` and pass the existing branch name.
 - After entering a worktree, re-read `AGENTS.md`, confirm the branch/status, and
   assume other worktrees may have changed the repo recently.
+- Gitignored data artifacts (`src/data/dataset.csv`, `src/data/models/**/*.pkl`)
+  exist only in the canonical checkout, so real-data tests fail in a fresh
+  worktree until they are symlinked in:
+
+```bash
+ln -sfn <canonical>/src/data/models <worktree>/src/data/models
+ln -sf <canonical>/src/data/dataset.csv <worktree>/src/data/dataset.csv
+```
 
 ### End of Session
 Before finishing a build session:
@@ -197,6 +205,7 @@ Guidelines:
 - **`src/objective/noise.py`**
   - `ObjectiveNoise`: interface for deterministic additive action-level noise fields $$\delta(x,u)$$
   - `HomoskedasticGaussianNoise`: standard/constant-std Gaussian noise keyed by exact `(x, u, seed)`, so repeated evaluations of the same row/action pair return the same noise
+  - `HeteroskedasticGaussianNoise`: Gaussian noise sharing the same keyed unit-normal field with std $$\sigma_0 + \gamma\,|u - u_c|$$ growing with action distance from `u_center` (typically the planted optimum), so queries near the global minimum stay nearly noiseless; `growth=0` reproduces the homoskedastic adapter exactly
   - `NoisyObjective`: wraps any objective as $$\hat{M}(x,u)=M(x,u)+\delta(x,u)$$ for value-based optimization; intentionally raises for analytical `grad()` because the noisy objective has no analytical gradient
   - `NoNoise`: zero-noise adapter for tests or disabled noise wiring
 
@@ -473,7 +482,7 @@ Guidelines:
 - CPU-only specs submit to ORCD `mit_normal`; specs with `compute_backend="jax"` submit to `mit_normal_gpu` with one L40S GPU and fail fast if JAX reports only CPU in the child job
 - For each config spec: delegates the run lifecycle to `experiments.execution.execute_experiment_run(...)`, which creates `RunContext`, assembles the default `ReporterStack`, calls `run_experiment()`, finalizes reporters, and stores preset/override metadata in `summary.json`
 - All I/O is handled by reporters, not by the runner
-- `scripts/run_sweep.py` provides the dense planted-logistic homoskedastic fill-in sweeps using `sweep_utils.run_sweep(...)`: one theta-offset grid under `results/homoskedastic-theta-offset-sweep/` and one noise-std grid under `results/homoskedastic-noise-sweep/`, both driven through the shared `LaunchPlan` framework. In serial mode it skips completed variant folders that already contain both `finite_difference` and `stein_difference` results and runs only missing variants with `RUN_SEEDS=(7,)`, `vary=("optimizer",)`, fixed `noise_seed=101`, and `CorrectnessSpec(gradient_source="denoised_exact")`; `--launch slurm --array` runs one `(grid, variant, seed)` task per array index and a dependent collector rebuilds per-variant and per-project seed-grid CSVs/plots from `summary-seed-<seed>.json`. After the runs finish, both the serial path and the collector regenerate combined theta-distance-to-first-order-truth CSV/PNG plots for both grids. The sweeps are CPU-only and auto-submit through the ORCD Slurm launcher unless `--launch local`/`--no-sbatch` is passed for intentional local/debug execution
+- `scripts/run_sweep.py` provides the dense planted-logistic noise fill-in sweeps using `sweep_utils.run_sweep(...)`: for each noise adapter, one theta-offset grid and one noise-scale grid, under `results/homoskedastic-theta-offset-sweep/`, `results/homoskedastic-noise-sweep/` (constant std), `results/heteroskedastic-theta-offset-sweep/`, and `results/heteroskedastic-noise-sweep/` (std `growth * |u - u*|` via `HeteroskedasticGaussianNoise` centered at the planted optimum; the noise grid varies `growth`), all driven through the shared `LaunchPlan` framework. `--grids homoskedastic|heteroskedastic|all` selects the grid group (default `all`). In serial mode it skips completed variant folders that already contain both `finite_difference` and `stein_difference` results and runs only missing variants with `RUN_SEEDS=(7, 8, 9, 10, 11)`, `vary=("optimizer", "noise")` (data/split/theta anchored to seed 7; the saved seed-7 runs used a pinned `noise_seed=101`), and `CorrectnessSpec(gradient_source="denoised_exact")`; `--launch slurm --array` runs one `(grid, variant, seed)` task per array index (skipping tasks whose per-seed summary is already complete) and a dependent collector rebuilds per-variant and per-project seed-grid CSVs/plots from `summary-seed-<seed>.json`. After the runs finish, both the serial path and the collector regenerate combined theta-distance-to-first-order-truth CSV/PNG plots for each grid. The sweeps are CPU-only and auto-submit through the ORCD Slurm launcher unless `--launch local`/`--no-sbatch` is passed for intentional local/debug execution
 - `scripts/run_glm_u_coef_sweep.py` runs the softmax/no-PCA/trust-constr GLM setup over 200000 sampled rows and `u_coef in {-4, -5, -8, -10, -20}`, keeps per-run distribution plots enabled, and writes aggregate `glm_u_coef_sweep.csv` plus frontier plots under `results/glm-u-coef-sweep/u_coef_frontier_<timestamp>/`. It is launch-aware but defaults to local execution; `--launch slurm --array` runs one `u_coef` value per array task and a dependent collector combines row payloads into the existing frontier outputs
 - `scripts/run_glm_softmax_alpha_sweep.py` runs the trust-constrained softmax/no-PCA/linear-feature GLM setup over symmetric action bounds `[-alpha, alpha]` for `alpha in {0.5, 0.4, 0.3, 0.2, 0.15, 0.125, 0.1, 0.075}`, saves normal per-alpha policy artifacts, and writes aggregate final objective/profit plots plus artifact-replayed acceptance-threshold and per-alpha `u`-bin expected-profit summaries under `results/glm-softmax-alpha-sweep/alpha_sweep_<timestamp>/`. It is launch-aware; `--launch slurm --array` runs one alpha per array task and a dependent collector combines final-row payloads plus artifact-replayed bin summaries into the existing aggregate outputs
 - `scripts/run_glm_sensitivity_bucket_experiment.py` buckets all complete eligible GLM rows into low/medium/high local price-sensitivity tertiles at median observed `U`, runs the softmax/no-PCA/trust-constr GLM setup on every row in each bucket, keeps per-run distribution plots enabled, and writes aggregate `glm_sensitivity_bucket_experiment.csv` plus comparison plots under `results/glm-sensitivity-buckets/sensitivity_bucket_summary_<timestamp>/`. It is launch-aware; `--launch slurm --array` runs one bucket per array task and the collector recomputes bucket definitions for plots
@@ -525,6 +534,7 @@ when appropriate.
 | `test_objective_batch.py` | Deterministic objective private batch helpers and `value_at_u` |
 | `test_objective_package_exports.py` | objective package API exports remain importable |
 | `test_planted_logistic_objective.py` | Planted logistic gradient at u_star and minimum |
+| `test_noise.py` | Gaussian noise adapters (homoskedastic + heteroskedastic keying, determinism, seed-stream wiring) and `NoisyObjective` behavior |
 | `test_model_based_objective.py` | `value()`, `grad()` shape, `value_at_u()`, analytical vs FD grad agreement |
 | `test_jax_prepared_glm_objective.py` | JAX prepared GLM value, per-row action-value hooks, gradient, policy-u, acceptance, and SciPy adapter parity |
 | `test_policy_batch.py` | Policy batch `value/grad` shapes, bounds, and kind labels (incl. `MLPPolicy`) |

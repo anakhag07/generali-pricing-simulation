@@ -9,7 +9,7 @@ This module provides:
 - Concrete objectives: FixedRegressionObjective, PlantedLogisticObjective,
   ModelBasedObjective, PreparedGLMObjective, JaxPreparedGLMObjective
 - Objective noise: ObjectiveNoise, NoNoise, HomoskedasticGaussianNoise,
-  NoisyObjective
+  HeteroskedasticGaussianNoise, NoisyObjective
  - Utility: optimal_u, value_at_constant_u, mean_acceptance_at_constant_u,
    value_for_reporting
 """
@@ -33,6 +33,7 @@ from objective.objectives import (
     prepare_jax_glm_objective,
 )
 from objective.noise import (
+    HeteroskedasticGaussianNoise,
     HomoskedasticGaussianNoise,
     NoisyObjective,
     NoNoise,
@@ -97,6 +98,7 @@ __all__ = [
     "prepare_glm_objective",
     "prepare_jax_glm_objective",
     # Objective noise
+    "HeteroskedasticGaussianNoise",
     "HomoskedasticGaussianNoise",
     "NoisyObjective",
     "NoNoise",

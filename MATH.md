@@ -306,7 +306,20 @@ noise seed $$s$$, the exact row $$x_i$$, and the exact action $$u_i$$. Therefore
 the same $$(x_i, u_i)$$ pair receives the same noise on every objective call, while
 different actions for the same row generally receive different noise.
 
-- **Source:** `src/objective/noise.py` :: `NoisyObjective`, `HomoskedasticGaussianNoise`
+The heteroskedastic Gaussian adapter scales the same unit-normal field by an
+action-dependent standard deviation that grows linearly with distance from a
+noise center $$u_c$$ (typically the planted optimum $$u^*$$):
+
+$$\delta(x_i, u_i) = \big(\sigma_0 + \gamma\,|u_i - u_c|\big)\,\varepsilon(x_i, u_i; s)$$
+
+so value queries near the global minimum stay nearly noiseless while queries far
+from it become increasingly noisy. Because both adapters share the hash-keyed
+field $$\varepsilon(x_i, u_i; s)$$, setting $$\gamma = 0$$ reproduces the
+homoskedastic adapter with $$\sigma_\delta = \sigma_0$$ exactly. The noise is
+zero-mean at every $$(x, u)$$, so it perturbs value oracles without biasing the
+objective in expectation.
+
+- **Source:** `src/objective/noise.py` :: `NoisyObjective`, `HomoskedasticGaussianNoise`, `HeteroskedasticGaussianNoise`
 - **Notes:** This wrapper intentionally exposes no analytical gradient for
   $$\hat{M}$$. Use zeroth-order estimators for optimization on $$\hat{M}$$, or
   call the wrapped `base_objective.grad(...)` to inspect the true non-noisy

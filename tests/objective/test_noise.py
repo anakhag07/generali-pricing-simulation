@@ -9,7 +9,12 @@ from experiments.configs import get_config
 from experiments.correctness import resolve_true_grad_theta_fn
 from experiments.run import run_experiment
 from experiments.seeds import SeedSetup
-from objective.noise import HomoskedasticGaussianNoise, NoisyObjective, NoNoise
+from objective.noise import (
+    HeteroskedasticGaussianNoise,
+    HomoskedasticGaussianNoise,
+    NoisyObjective,
+    NoNoise,
+)
 from objective.objectives import PlantedLogisticObjective
 from objective.policy import ConstantPolicy
 
@@ -169,3 +174,93 @@ def test_run_experiment_supports_denoised_exact_correctness_for_noisy_objective(
     trace = result.traces["finite_difference"]
     assert trace.true_theta_grad_norms is not None
     assert len(trace.true_theta_grad_norms) > 0
+
+
+def test_heteroskedastic_noise_scales_shared_unit_field_by_distance() -> None:
+    x = np.asarray([[1.0, 2.0], [3.0, 4.0], [-1.0, 0.5]], dtype=float)
+    u = np.asarray([-0.4, 0.1, 0.3], dtype=float)
+    unit_field = HeteroskedasticGaussianNoise(base_std=1.0, growth=0.0, seed=5).values(x, u)
+    hetero = HeteroskedasticGaussianNoise(base_std=0.05, growth=2.0, u_center=0.1, seed=5)
+
+    expected_std = 0.05 + 2.0 * np.abs(u - 0.1)
+    np.testing.assert_allclose(hetero.std_values(u), expected_std)
+    np.testing.assert_allclose(hetero.values(x, u), expected_std * unit_field)
+
+
+def test_heteroskedastic_growth_zero_matches_homoskedastic() -> None:
+    x = np.asarray([[1.0, 2.0], [3.0, 4.0]], dtype=float)
+    u = np.asarray([0.1, -0.2], dtype=float)
+    homo = HomoskedasticGaussianNoise(std=0.5, seed=7).values(x, u)
+    hetero = HeteroskedasticGaussianNoise(base_std=0.5, growth=0.0, u_center=3.0, seed=7).values(x, u)
+
+    np.testing.assert_allclose(hetero, homo)
+
+
+def test_heteroskedastic_noise_vanishes_at_center_and_supports_2d_u() -> None:
+    noise = HeteroskedasticGaussianNoise(base_std=0.0, growth=1.5, u_center=0.1, seed=13)
+    x = np.asarray([[1.0], [2.0]], dtype=float)
+    u_center = np.full(2, 0.1, dtype=float)
+    u_matrix = np.vstack([u_center, u_center + 0.2])
+
+    np.testing.assert_allclose(noise.values(x, u_center), np.zeros(2))
+    values_2d = noise.values(x, u_matrix)
+    assert values_2d.shape == (2, 2)
+    np.testing.assert_allclose(values_2d[0], np.zeros(2))
+    assert not np.allclose(values_2d[1], np.zeros(2))
+
+
+def test_heteroskedastic_noise_is_deterministic_and_keyed_by_u() -> None:
+    noise = HeteroskedasticGaussianNoise(base_std=0.1, growth=1.0, seed=123)
+    x = np.asarray([[1.0, 2.0], [3.0, 4.0]], dtype=float)
+    u = np.asarray([0.3, -0.2], dtype=float)
+
+    np.testing.assert_allclose(noise.values(x, u), noise.values(x, u))
+    assert not np.allclose(noise.values(x, u), noise.values(x, u + np.asarray([0.0, 0.01])))
+
+
+def test_heteroskedastic_noise_validation() -> None:
+    with pytest.raises(ValueError, match="base_std"):
+        HeteroskedasticGaussianNoise(base_std=-0.1)
+    with pytest.raises(ValueError, match="growth"):
+        HeteroskedasticGaussianNoise(growth=-1.0)
+    with pytest.raises(ValueError, match="u_center"):
+        HeteroskedasticGaussianNoise(u_center=float("nan"))
+    with pytest.raises(ValueError, match="requires a seed"):
+        HeteroskedasticGaussianNoise(base_std=0.1).values(
+            np.asarray([[1.0]], dtype=float), np.asarray([0.2])
+        )
+    # Zero-noise degenerate case needs no seed, mirroring HomoskedasticGaussianNoise(std=0).
+    np.testing.assert_allclose(
+        HeteroskedasticGaussianNoise(base_std=0.0, growth=0.0).values(
+            np.asarray([[1.0]], dtype=float), np.asarray([0.2])
+        ),
+        np.zeros(1),
+    )
+
+
+def test_run_experiment_applies_noise_seed_stream_to_heteroskedastic_noise() -> None:
+    base_config = get_config("planted_logistic_base")
+    noisy_objective = NoisyObjective(
+        base_config.objective,
+        HeteroskedasticGaussianNoise(base_std=0.0, growth=1.0, u_center=0.1),
+    )
+    config = get_config(
+        "planted_logistic_base",
+        overrides={
+            "objective": noisy_objective,
+            "enabled_estimators": ("finite_difference",),
+            "correctness": CorrectnessSpec(gradient_source="denoised_exact"),
+            "n_samples": 5,
+            "t_steps": 1,
+            "plot": False,
+            "verbose": False,
+            "seed_setup": SeedSetup(run_seed=1, data_seed=2, split_seed=3, noise_seed=99, optimizer_seed=4),
+        },
+    )
+
+    result = run_experiment(config)
+
+    objective = result.config.objective
+    assert isinstance(objective, NoisyObjective)
+    assert isinstance(objective.noise, HeteroskedasticGaussianNoise)
+    assert objective.noise.seed == 99

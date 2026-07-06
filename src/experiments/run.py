@@ -9,6 +9,7 @@ import time
 import numpy as np
 
 from objective.base import sample_states
+from objective.noise import NoisyObjective
 from objective.objectives import ModelBasedObjective, prepare_jax_glm_objective
 from objective.policy import ConstantPolicy
 from objective.utils import (
@@ -83,10 +84,20 @@ def _maybe_apply_acceptance_controls(config: ExperimentConfig) -> ExperimentConf
     """Inject config-level acceptance controls into model-based objectives."""
     if config.acceptance_floor is None and config.lagrangian_lambda is None:
         return config
-    objective = config.objective
-    if not hasattr(objective, "acceptance_floor"):
+    objective_with_floor = _objective_with_acceptance_controls(config.objective, config)
+    if objective_with_floor is config.objective:
         return config
-    objective_with_floor = replace(
+    return replace(config, objective=objective_with_floor)
+
+
+def _objective_with_acceptance_controls(objective: object, config: ExperimentConfig) -> object:
+    """Return ``objective`` with config acceptance controls applied where supported."""
+    if isinstance(objective, NoisyObjective):
+        updated_base = _objective_with_acceptance_controls(objective.base_objective, config)
+        return replace(objective, base_objective=updated_base)
+    if not hasattr(objective, "acceptance_floor"):
+        return objective
+    return replace(
         objective,
         acceptance_floor=float(config.acceptance_floor),
         acceptance_penalty_weight=(
@@ -101,7 +112,6 @@ def _maybe_apply_acceptance_controls(config: ExperimentConfig) -> ExperimentConf
             else None
         ),
     )
-    return replace(config, objective=objective_with_floor)
 
 
 def _maybe_apply_noise_seed(config: ExperimentConfig, noise_seed: int) -> ExperimentConfig:
@@ -199,17 +209,21 @@ def _optimizer_backend_objective(
             f"compute_backend='jax' does not support enabled estimator(s): {unsupported_names}. "
             f"Supported estimators: {supported}."
         )
-    if not isinstance(objective, ModelBasedObjective):
+    noisy_objective = objective if isinstance(objective, NoisyObjective) else None
+    source_objective = noisy_objective.base_objective if noisy_objective is not None else objective
+    if not isinstance(source_objective, ModelBasedObjective):
         raise ValueError("compute_backend='jax' currently supports GLM ModelBasedObjective runs only.")
-    model_type = getattr(objective.acceptance_model, "model_type", None)
+    model_type = getattr(source_objective.acceptance_model, "model_type", None)
     if model_type != "glm":
         raise ValueError("compute_backend='jax' currently supports only GLM real-data artifacts.")
     jax_objective, batch = prepare_jax_glm_objective(
-        objective,
+        source_objective,
         x_samples,
         row_indices=row_indices,
     )
     jax_objective.warmup(theta_initial)
+    if noisy_objective is not None:
+        return replace(noisy_objective, base_objective=jax_objective), batch.x_array
     return jax_objective, batch.x_array
 
 

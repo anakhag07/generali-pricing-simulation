@@ -13,6 +13,7 @@ from data.dataset_metadata import DATASET_SCHEMA_VERSION
 from data.loader import load_model_artifacts, load_observed_loss_array, load_x_frame
 from experiments.policy_validation import evaluate_policy, policy_u_values
 from experiments.results import ExperimentResult, PolicyEvaluation
+from objective.noise import NoisyObjective
 from objective.objectives import ModelBasedObjective
 from objective.policy import (
     ConstantPolicy,
@@ -548,7 +549,7 @@ def build_policy_artifact(result: ExperimentResult, estimator: str) -> PolicyArt
     """Build a replayable artifact for one estimator in an experiment result."""
     if estimator not in result.results:
         raise ValueError(f"Estimator '{estimator}' is not present in the result.")
-    objective = result.config.objective
+    objective = _unwrap_model_based_objective(result.config.objective)
     if not isinstance(objective, ModelBasedObjective):
         raise ValueError("PolicyArtifact currently supports ModelBasedObjective results.")
     policy = ConstantPolicy() if estimator == "constant" else objective.policy
@@ -564,6 +565,12 @@ def build_policy_artifact(result: ExperimentResult, estimator: str) -> PolicyArt
         train_metrics=result.train_metrics.get(estimator),
         test_metrics=result.test_metrics.get(estimator),
     )
+
+
+def _unwrap_model_based_objective(objective: object) -> object:
+    if isinstance(objective, NoisyObjective):
+        return objective.base_objective
+    return objective
 
 
 def load_policy_artifact(path: str | Path) -> PolicyArtifact:

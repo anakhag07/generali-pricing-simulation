@@ -155,6 +155,13 @@ class NoisyObjective(Objective):
         u_arr = self._clip_u(_policy_value(self.base_objective, theta_arr, x_batch))
         return base_value + float(np.mean(self.noise.values(x_batch, u_arr)))
 
+    def base_value(self, theta: np.ndarray, x_batch: Any) -> float:
+        """Return the wrapped clean objective value used for reporting."""
+        base_value_fn = getattr(self.base_objective, "base_value", None)
+        if callable(base_value_fn):
+            return float(base_value_fn(theta, x_batch))
+        return float(self.base_objective.value(theta, x_batch))
+
     def grad(self, theta: np.ndarray, x_batch: Any) -> np.ndarray:
         """No analytical gradient exists for hash-keyed noisy objective values."""
         del theta, x_batch
@@ -172,6 +179,16 @@ class NoisyObjective(Objective):
         row_count = _row_count(x_batch)
         u_arr = self._clip_u(np.full(row_count, float(u), dtype=float))
         return float(value_at_u_fn(x_batch, float(u))) + float(np.mean(self.noise.values(x_batch, u_arr)))
+
+    def base_value_at_u(self, x_batch: Any, u: float) -> float:
+        """Return the wrapped clean objective value at a fixed action ``u``."""
+        base_value_at_u_fn = getattr(self.base_objective, "base_value_at_u", None)
+        if callable(base_value_at_u_fn):
+            return float(base_value_at_u_fn(x_batch, u))
+        value_at_u_fn = getattr(self.base_objective, "value_at_u", None)
+        if callable(value_at_u_fn):
+            return float(value_at_u_fn(x_batch, u))
+        raise ValueError("base_objective does not support value_at_u(x_batch, u).")
 
     def _value_batch(self, x_batch: Any, u_arr: np.ndarray) -> np.ndarray:
         """Return per-row noisy action-level objective values."""
@@ -227,7 +244,7 @@ class NoisyObjective(Objective):
         return np.asarray(u, dtype=float)
 
     def __getattr__(self, name: str) -> Any:
-        if name in {"base_value", "base_value_at_u", "grad"}:
+        if name == "grad":
             raise AttributeError(name)
         return getattr(self.base_objective, name)
 

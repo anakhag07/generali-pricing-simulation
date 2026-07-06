@@ -15,6 +15,7 @@ from data.loader import extract_model_based_coefficients
 from experiments.config import ExperimentConfig
 from experiments.reporting.context import RunContext
 from experiments.results import ExperimentResult, PolicyEvaluation
+from objective.noise import NoisyObjective
 
 
 class JsonReporter:
@@ -277,6 +278,8 @@ def _policy_evaluation_to_dict(evaluation: PolicyEvaluation) -> dict[str, float 
 def _final_lagrangian_diagnostics(result: ExperimentResult, theta: np.ndarray, trace: object) -> dict:
     acceptance_multiplier = getattr(trace, "acceptance_multiplier", None)
     if acceptance_multiplier is None:
+        return {}
+    if isinstance(result.config.objective, NoisyObjective):
         return {}
     mean_acceptance_grad_fn = getattr(result.config.objective, "mean_acceptance_grad", None)
     if not callable(mean_acceptance_grad_fn):

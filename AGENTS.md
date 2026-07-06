@@ -26,7 +26,7 @@ Project context: simulation and optimization repo. Users should be able to speci
 
 ## Skills
 
-- `.skills/research-report/SKILL.md`: post-run/post-sweep analysis skill —
+- `~/skills/research-report/SKILL.md`: shared post-run/post-sweep analysis skill —
   summarize results from existing `summary.json`/CSV outputs, suggest
   pareto/sweep-axis diagnostic plots, and (when prompted) write reports to
   `results/agent-reports/`. Use it after a feature lands or a sweep finishes.

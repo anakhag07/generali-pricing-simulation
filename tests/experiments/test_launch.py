@@ -4,6 +4,8 @@ from argparse import Namespace
 import subprocess
 from types import SimpleNamespace
 
+import pytest
+
 from experiments.launch import LaunchPlan, read_task_records, run_launch_plan
 
 
@@ -94,6 +96,38 @@ def test_slurm_array_parent_submits_array_and_collector(tmp_path) -> None:
     assert "--array=0-3%2" in commands[0]
     assert any(part == "--dependency=afterany:111" for part in commands[1])
     assert not any(part.startswith("--array=") for part in commands[1])
+
+
+def test_slurm_parent_submission_failure_exits_without_traceback(tmp_path) -> None:
+    def fake_runner(command, *, check, capture_output, text):
+        raise subprocess.CalledProcessError(
+            1,
+            command,
+            stderr="sbatch: error: Batch job submission failed",
+        )
+
+    plan = LaunchPlan(
+        name="demo",
+        task_count=4,
+        requires_jax=True,
+        run_task=lambda index, context: {},
+        collect=lambda context: None,
+        runs_root=str(tmp_path),
+    )
+
+    with pytest.raises(SystemExit) as excinfo:
+        run_launch_plan(
+            plan,
+            args=_args(launch="slurm", array=True),
+            argv=["script.py", "--launch", "slurm", "--array"],
+            cwd=tmp_path,
+            env={},
+            runner=fake_runner,
+        )
+
+    message = str(excinfo.value)
+    assert "Slurm sbatch submission failed with exit code 1." in message
+    assert "sbatch stderr:\nsbatch: error: Batch job submission failed" in message
 
 
 def test_slurm_array_child_runs_only_array_task(tmp_path) -> None:

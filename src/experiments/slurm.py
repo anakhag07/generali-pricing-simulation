@@ -62,6 +62,10 @@ class SlurmArraySpec:
         return base if self.max_parallel is None else f"{base}%{self.max_parallel}"
 
 
+class SlurmSubmissionError(RuntimeError):
+    """Raised when ``sbatch`` rejects a launch request."""
+
+
 CPU_PROFILE = SlurmProfile(
     name="cpu",
     partition="mit_normal",
@@ -207,9 +211,30 @@ def submit_to_slurm_if_needed(
         array=array,
         dependency=dependency,
     )
-    result = runner(command, check=True, capture_output=True, text=True)
+    try:
+        result = runner(command, check=True, capture_output=True, text=True)
+    except subprocess.CalledProcessError as exc:
+        message = _format_sbatch_failure(command, exc)
+        raise SlurmSubmissionError(message) from exc
     job_id = str(result.stdout).strip() or "unknown"
     return SlurmSubmission(profile=replace(profile, output=output), job_id=job_id, command=tuple(command))
+
+
+def _format_sbatch_failure(command: Sequence[str], exc: subprocess.CalledProcessError) -> str:
+    """Return an actionable message for a rejected ``sbatch`` submission."""
+    stdout = str(exc.stdout or exc.output or "").strip()
+    stderr = str(exc.stderr or "").strip()
+    parts = [
+        f"Slurm sbatch submission failed with exit code {exc.returncode}.",
+        f"Command: {shlex.join(command)}",
+    ]
+    if stdout:
+        parts.append(f"sbatch stdout:\n{stdout}")
+    if stderr:
+        parts.append(f"sbatch stderr:\n{stderr}")
+    if not stdout and not stderr:
+        parts.append("sbatch produced no stdout/stderr.")
+    return "\n".join(parts)
 
 
 def assert_jax_gpu_available(configs: Sequence[Any], *, jax_module: Any | None = None) -> str | None:
@@ -242,6 +267,7 @@ __all__ = [
     "SlurmArraySpec",
     "SlurmProfile",
     "SlurmSubmission",
+    "SlurmSubmissionError",
     "assert_jax_gpu_available",
     "build_sbatch_command",
     "child_argv",

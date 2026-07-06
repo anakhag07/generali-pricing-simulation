@@ -24,6 +24,13 @@ Project context: simulation and optimization repo. Users should be able to speci
 - When asked to review a pull request, read `REVIEW.md` first and follow its
   architecture, workflow, docs, interface, and output-format checklist.
 
+## Skills
+
+- `~/skills/research-report/SKILL.md`: shared post-run/post-sweep analysis skill —
+  summarize results from existing `summary.json`/CSV outputs, suggest
+  pareto/sweep-axis diagnostic plots, and (when prompted) write reports to
+  `results/agent-reports/`. Use it after a feature lands or a sweep finishes.
+
 ## Session Workflow
 
 ### Start of Session

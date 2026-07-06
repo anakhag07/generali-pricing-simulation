@@ -58,13 +58,14 @@ Before editing code:
 - Keep feature worktrees outside the canonical checkout under the parent-level
   convention
   `/home/anakhag/projects/generali-pricing/worktrees/<branch-slug>`.
-  Do not create nested worktrees inside the repo checkout.
+  Do not create nested worktrees inside the repo checkout or under an extra
+  `worktrees/generali-pricing-simulation/` directory.
 - Create the parent worktree directory only when a feature worktree is actually
   needed. From the canonical checkout, use a filesystem-safe slug that mirrors
   the branch name, for example:
 
 ```bash
-mkdir -p ../worktrees/generali-pricing-simulation
+mkdir -p ../worktrees
 git worktree add ../worktrees/feature-policy-grid -b feature/policy-grid
 ```
 

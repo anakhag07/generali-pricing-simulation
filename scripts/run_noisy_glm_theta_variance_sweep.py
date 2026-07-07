@@ -29,11 +29,11 @@ PROJECT_NAME = "noisy-glm-theta-variance-sweep"
 DEFAULT_TRUTH_SUMMARY = Path(
     "/home/anakhag/projects/generali-pricing/results/real_data_glm_base__20260706_124627/summary.json"
 )
-REQUIRED_ESTIMATORS = ("finite_difference", "gauss_stein", "spsa", "stein_difference")
-RUN_SEEDS = (8, 9, 10, 11, 12)
+REQUIRED_ESTIMATORS = ("finite_difference", "stein_difference")
+RUN_SEEDS = (8, 9, 10)
 VARY = ("optimizer", "noise")
-THETA_DISTANCE_FRACTIONS = (0.0, 0.05, 0.1, 0.2, 0.35, 0.5, 0.75, 1.0)
-NOISE_VARIANCES = (0.0, 0.01, 0.04, 0.09, 0.25, 0.5, 1.0, 2.25, 4.0, 9.0, 16.0, 25.0)
+THETA_DISTANCE_FRACTIONS = (0.0, 0.1, 0.35, 1.0)
+NOISE_VARIANCES = (0.0, 0.25, 1.0, 4.0)
 THETA_SWEEP_NOISE_VARIANCE = 1.0
 
 GridName = Literal["homoskedastic", "heteroskedastic", "all"]

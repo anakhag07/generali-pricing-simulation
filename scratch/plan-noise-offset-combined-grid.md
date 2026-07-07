@@ -94,8 +94,27 @@ first-order truth and (b) clean-objective gap. Separate figures for
       truth theta for sigma=0, delta=0 (smoke output deleted before submit so
       the serial skip logic would not drop seeds 8/9 for that variant).
 - [x] Submitted serial CPU Slurm job 17382892 (all 162 runs + plot regen).
-- [ ] Verify job completion; sanity-check combined curves.
-- [ ] Small test under `tests/scripts/`, AGENTS.md entry, commit + summary.
+- [x] Job 17382892 COMPLETED in 1m28s; all four combined figures written.
+- [x] Plot polish: theta-distance panel stays nonnegative (symlog with
+      bottom=0 only when an exact-zero distance exists, log otherwise) and
+      lower error bars are clipped at 0 for the nonnegative distance metric.
+- [x] Tests added (`tests/scripts/test_noise_offset_grid_script.py`, 5 passed;
+      existing `test_run_sweep_script.py` still passes), AGENTS.md entry added.
+
+## Findings (first read of the combined grids)
+
+- Once any noise is present, final theta distance jumps to ~1e-1..1e0 even
+  when initialized exactly at the truth (delta=0), and the noise MAGNITUDE
+  separates curves much less than the init offset does: sigma=0.1/0.5/2 (and
+  gamma=0.25/1/4) largely overlap for delta >= 0.05 and all climb to ~1e1 by
+  delta=5. The clean sigma=gamma=0 baseline stays at ~1e-3 distance across all
+  offsets.
+- Heteroskedastic gamma=0.25 is the exception: visibly lower distance and
+  clean-objective gap (~1e-5..1e-4) at small offsets than gamma=1/4 —
+  consistent with the low-noise-near-optimum story.
+- Clean-objective gaps for noisy runs sit at ~1e-4..1e-2 and grow with offset;
+  seed error bars on the gap panel frequently cross 0 at small offsets (some
+  seeds land at or below the truth objective on the train batch).
 
 ## Output locations
 

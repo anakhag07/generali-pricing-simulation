@@ -510,10 +510,15 @@ def _plot_family_estimator(
             means_stds = [_metric_stats(level_rows, metric, offset) for offset in offsets]
             means = [mean for mean, _ in means_stds]
             stds = [std for _, std in means_stds]
+            if metric == "theta_distance_to_truth":
+                # Distance is nonnegative: never draw error bars below zero.
+                yerr = np.vstack([np.minimum(stds, means), stds])
+            else:
+                yerr = np.vstack([stds, stds])
             ax.errorbar(
                 offsets,
                 means,
-                yerr=stds if any(std > 0.0 for std in stds) else None,
+                yerr=yerr if any(std > 0.0 for std in stds) else None,
                 label=label,
                 color=color,
                 marker="o",
@@ -524,8 +529,17 @@ def _plot_family_estimator(
     for ax, (metric, y_label) in zip(axes, metrics):
         run_sweep._set_symlog_ticks(ax, all_offsets)
         metric_values = [float(row[metric]) for row in rows]
-        if metric == "theta_distance_to_truth" and all(value > 0.0 for value in metric_values):
-            ax.set_yscale("log")
+        if metric == "theta_distance_to_truth":
+            positive = [value for value in metric_values if value > 0.0]
+            if len(positive) == len(metric_values):
+                ax.set_yscale("log")
+            else:
+                # Exact-zero distances (runs that recover the truth theta):
+                # keep the axis nonnegative instead of wasting a mirrored
+                # negative symlog half.
+                linthresh = 0.5 * min(positive) if positive else 1e-8
+                ax.set_yscale("symlog", linthresh=linthresh)
+                ax.set_ylim(bottom=0.0)
         else:
             ax.set_yscale("symlog", linthresh=1e-8)
         ax.set_xlabel(X_AXIS_LABEL)

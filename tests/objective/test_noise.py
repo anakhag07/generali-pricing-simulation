@@ -77,6 +77,18 @@ def test_noisy_objective_wraps_value_and_action_batches() -> None:
     np.testing.assert_allclose(objective._value_batch_many(x, u_matrix), expected_many)
 
 
+def test_noisy_objective_base_value_reports_clean_objective() -> None:
+    base = _base_objective()
+    noise = HomoskedasticGaussianNoise(std=0.25, seed=11)
+    objective = NoisyObjective(base, noise)
+    x = np.asarray([[0.0, 1.0], [1.0, -1.0], [2.0, 0.5]], dtype=float)
+    theta = np.asarray([0.2], dtype=float)
+
+    assert objective.base_value(theta, x) == pytest.approx(base.value(theta, x))
+    assert objective.base_value_at_u(x, 0.1) == pytest.approx(base.value_at_u(x, 0.1))
+    assert objective.value(theta, x) != pytest.approx(objective.base_value(theta, x))
+
+
 def test_noisy_objective_grad_raises_but_base_grad_remains_available() -> None:
     base = _base_objective()
     objective = NoisyObjective(base, HomoskedasticGaussianNoise(seed=3))
@@ -264,3 +276,30 @@ def test_run_experiment_applies_noise_seed_stream_to_heteroskedastic_noise() -> 
     assert isinstance(objective, NoisyObjective)
     assert isinstance(objective.noise, HeteroskedasticGaussianNoise)
     assert objective.noise.seed == 99
+
+
+def test_heteroskedastic_noise_config_serialization_includes_parameters() -> None:
+    base_config = get_config("planted_logistic_base")
+    config = get_config(
+        "planted_logistic_base",
+        overrides={
+            "objective": NoisyObjective(
+                base_config.objective,
+                HeteroskedasticGaussianNoise(base_std=0.1, growth=2.5, u_center=0.3),
+            ),
+            "enabled_estimators": ("finite_difference",),
+            "correctness": CorrectnessSpec(gradient_source="none"),
+            "plot": False,
+            "verbose": False,
+        },
+    )
+
+    noise_payload = config.to_dict()["objective"]["noise"]
+
+    assert noise_payload == {
+        "type": "HeteroskedasticGaussianNoise",
+        "base_std": 0.1,
+        "growth": 2.5,
+        "u_center": 0.3,
+        "seed": None,
+    }

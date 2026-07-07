@@ -17,6 +17,7 @@ from typing import Any, Literal
 from experiments.paths import results_root
 from experiments.slurm import (
     SlurmArraySpec,
+    SlurmSubmissionError,
     assert_jax_gpu_available,
     in_slurm_allocation,
     submit_to_slurm_if_needed,
@@ -147,15 +148,18 @@ def run_launch_plan(
     )
 
     if launch_mode == "slurm" and not in_slurm_allocation(env_map):
-        _submit_parent_jobs(
-            plan,
-            args=args,
-            argv=argv,
-            cwd=workdir,
-            runner=runner,
-            array_requested=array_requested,
-            sweep_id=sweep_id,
-        )
+        try:
+            _submit_parent_jobs(
+                plan,
+                args=args,
+                argv=argv,
+                cwd=workdir,
+                runner=runner,
+                array_requested=array_requested,
+                sweep_id=sweep_id,
+            )
+        except SlurmSubmissionError as exc:
+            raise SystemExit(str(exc)) from None
         return
 
     if bool(getattr(args, "collect", False)):

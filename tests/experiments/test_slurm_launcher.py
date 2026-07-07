@@ -10,6 +10,7 @@ from experiments.slurm import (
     GPU_PROFILE,
     SLURM_CHILD_ENV,
     SlurmArraySpec,
+    SlurmSubmissionError,
     assert_jax_gpu_available,
     build_sbatch_command,
     configs_require_jax,
@@ -107,6 +108,31 @@ def test_submit_to_slurm_creates_log_dir_and_returns_job(tmp_path, monkeypatch) 
     assert submission.profile.output == str(results_root / "slurm" / "%x-%j.out")
     assert f"--output={results_root / 'slurm' / '%x-%j.out'}" in captured["command"]
     assert captured["command"] == list(submission.command)
+
+
+def test_submit_to_slurm_reports_sbatch_stderr(tmp_path) -> None:
+    def fake_runner(command, *, check, capture_output, text):
+        raise subprocess.CalledProcessError(
+            1,
+            command,
+            output="submitted stdout",
+            stderr="sbatch: error: invalid generic resource",
+        )
+
+    with pytest.raises(SlurmSubmissionError) as excinfo:
+        submit_to_slurm_if_needed(
+            requires_jax=True,
+            no_sbatch=False,
+            argv=["main.py"],
+            cwd=tmp_path,
+            runner=fake_runner,
+        )
+
+    message = str(excinfo.value)
+    assert "Slurm sbatch submission failed with exit code 1." in message
+    assert "Command: sbatch" in message
+    assert "sbatch stdout:\nsubmitted stdout" in message
+    assert "sbatch stderr:\nsbatch: error: invalid generic resource" in message
 
 
 def test_submit_to_slurm_skips_when_disabled_or_already_allocated(tmp_path) -> None:

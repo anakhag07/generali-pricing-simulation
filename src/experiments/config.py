@@ -13,7 +13,13 @@ from objective.objectives import (
     ModelBasedObjective,
     PlantedLogisticObjective,
 )
-from objective.noise import HomoskedasticGaussianNoise, NoisyObjective, NoNoise, ObjectiveNoise
+from objective.noise import (
+    HeteroskedasticGaussianNoise,
+    HomoskedasticGaussianNoise,
+    NoisyObjective,
+    NoNoise,
+    ObjectiveNoise,
+)
 from objective.policy import ConstantPolicy, LinearPolicy, MLPPolicy, SoftmaxPolicy, policy_theta_dim
 from objective.policy_preprocessing import PolicyFeaturePreprocessor
 from optimization.steps import STEP_RULES, STEP_RULE_TRUST_CONSTR
@@ -532,6 +538,14 @@ def _noise_to_dict(noise: ObjectiveNoise) -> dict[str, Any]:
         return {
             "type": "HomoskedasticGaussianNoise",
             "std": float(noise.std),
+            "seed": int(noise.seed) if noise.seed is not None else None,
+        }
+    if isinstance(noise, HeteroskedasticGaussianNoise):
+        return {
+            "type": "HeteroskedasticGaussianNoise",
+            "base_std": float(noise.base_std),
+            "growth": float(noise.growth),
+            "u_center": float(noise.u_center),
             "seed": int(noise.seed) if noise.seed is not None else None,
         }
     return {"type": type(noise).__name__}

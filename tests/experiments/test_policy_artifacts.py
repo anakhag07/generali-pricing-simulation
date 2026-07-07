@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime
 import json
 
@@ -12,6 +13,7 @@ from experiments.policy_validation import policy_u_values
 from experiments.reporting import JsonReporter, PolicyArtifactReporter, RunContext
 from experiments.reporting.json_summary import _policy_artifact_paths
 from experiments.run import run_experiment
+from objective.noise import NoisyObjective, NoNoise
 
 
 class _NamesResult:
@@ -121,6 +123,21 @@ def test_policy_artifact_round_trip_predicts_same_train_u(tmp_path, glm_policy_r
     assert preprocessing["policy_side_preprocessing"]["enabled"] is True
     assert payload["feature_map"]["type"] == "QuadraticFeatureMap"
     assert payload["policy_head"]["type"] == "SoftmaxPolicy"
+
+
+def test_policy_artifact_unwraps_noisy_model_based_objective(glm_policy_result) -> None:
+    noisy_result = replace(
+        glm_policy_result,
+        config=replace(
+            glm_policy_result.config,
+            objective=NoisyObjective(glm_policy_result.config.objective, NoNoise()),
+        ),
+    )
+
+    artifact = build_policy_artifact(noisy_result, "first_order")
+
+    assert artifact.objective.model_type == "glm"
+    assert artifact.objective.loss_source == glm_policy_result.config.objective.loss_source
 
 
 def test_policy_artifact_round_trip_matches_train_metrics(tmp_path, glm_policy_result) -> None:

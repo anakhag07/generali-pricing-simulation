@@ -31,9 +31,9 @@ across Slurm arrays:
 
 ```bash
 python main.py --launch slurm --array
-python scripts/run_sweep.py --launch slurm --array --array-max-parallel 6
-python scripts/run_sweep.py --launch local --task-index 0
-python scripts/run_sweep.py --grids heteroskedastic  # only the heteroskedastic noise grids
+python scripts/run_sweep.py fixed_regression_base --launch slurm
+python scripts/run_sweep.py real_data_glm_base --requires-jax --launch slurm
+python scripts/run_noisy_glm_theta_variance_sweep.py --launch slurm --array --array-max-parallel 6
 ```
 
 Array tasks write task records under
@@ -118,7 +118,9 @@ $$\sigma_0 + \gamma\,|u - u_c|$$, so noise grows with action distance from
 minimum when $$\sigma_0 = 0$$. It exposes noisy value
 oracles for zeroth-order optimization and intentionally has no analytical
 gradient; use `base_objective.grad(...)` when inspecting the true non-noisy
-objective gradient. For trace diagnostics on noisy objectives,
+objective gradient. Summaries and policy evaluations use the wrapped clean
+objective when it exposes `base_value(...)` / `base_value_at_u(...)`, while
+optimizer traces still record the noisy oracle values. For trace diagnostics on noisy objectives,
 `CorrectnessSpec(gradient_source="denoised_exact")` uses the exact gradient of
 the wrapped clean objective, while `gradient_source="exact"` still refers to the
 optimizer-facing noisy objective.
@@ -224,6 +226,9 @@ The expanded policy design matrix is materialized once before transfer to JAX,
 so high-order or callable maps increase fixed-batch device memory use. When
 launched through `main.py`, JAX configs are submitted to ORCD GPU Slurm and fail
 fast if JAX reports only a CPU backend, preventing silent CPU fallback.
+`NoisyObjective(ModelBasedObjective(...))` is also supported on this fixed-batch
+JAX path for zeroth-order trust-constr sweeps: the clean GLM base is prepared on
+device first and then re-wrapped with the deterministic noise field.
 For policy-feature experiments, `ModelBasedObjective` can instead take a
 separate fitted policy-side preprocessor. In that mode the policy sees the
 configured policy features, while the sealed acceptance and loss model paths
@@ -330,6 +335,21 @@ instead of the default 60x60 used for cheaper synthetic objectives.
   This path is available on unconstrained step rules and keeps experiment
   summaries on the raw objective `J(theta)` so lambda sweeps can be compared on
   the same frontier.
+
+`scripts/run_sweep.py` is a generic seed-aware preset sweep launcher around
+`experiments.sweep_utils.run_sweep(...)`. Pass a base preset plus JSON overrides,
+override lists, or override grids; use `--requires-jax` when a sweep should submit
+to the GPU Slurm profile.
+
+`scripts/run_noisy_glm_theta_variance_sweep.py` runs the all-data trust-constrained
+GLM noisy-objective sweeps on GPU/JAX. By default it uses the saved no-noise
+first-order run at
+`/home/anakhag/projects/generali-pricing/results/real_data_glm_base__20260706_124627/summary.json`
+as truth, centers heteroskedastic noise at that run's final mean `u`, sweeps
+theta starts along the real initialization-to-truth line by L2 distance, and
+sweeps homoskedastic/heteroskedastic noise variance for zeroth-order estimators.
+Outputs land under `results/noisy-glm-*-sweep/` with final CSVs and theta-distance
+diagnostic plots.
 
 `scripts/run_glm_softmax_alpha_sweep.py` runs the trust-constrained softmax /
 no-PCA / linear-feature GLM setup over symmetric action bounds

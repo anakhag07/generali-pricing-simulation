@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 
 from objective import (
+    BiasedObjective,
     ConstantPolicy,
     CubicFeatureMap,
     JaxPreparedGLMObjective,
@@ -52,6 +53,7 @@ def test_objective_package_exports_are_importable() -> None:
     assert isinstance(value_at_u, float)
     assert isinstance(value_at_constant_u(objective, x_batch, u=1.0), float)
     assert isinstance(value_for_reporting(objective, theta, x_batch), float)
+    assert BiasedObjective(objective, lambda_bias=0.1).lambda_bias == 0.1
     assert mean_acceptance_at_constant_u(objective, x_batch, u=1.0) is None
     assert PreparedGLMBatch is not None
     assert PreparedGLMObjective is not None

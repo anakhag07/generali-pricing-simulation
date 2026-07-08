@@ -1,6 +1,7 @@
 """Concrete objective implementations."""
 
 from objective.objectives.fixed_regression import FixedRegressionObjective
+from objective.objectives.biased import BiasedObjective
 from objective.objectives.model_based import ModelBasedObjective
 from objective.objectives.planted_logistic import PlantedLogisticObjective
 from objective.objectives.prepared_glm import (
@@ -17,6 +18,7 @@ from objective.objectives.jax_prepared_glm import (
 
 __all__ = [
     "FixedRegressionObjective",
+    "BiasedObjective",
     "ModelBasedObjective",
     "PlantedLogisticObjective",
     "PreparedGLMBatch",

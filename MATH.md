@@ -327,6 +327,34 @@ objective in expectation.
   this wrapped-objective gradient for diagnostics, while `"exact"` remains the
   optimizer-facing objective gradient source.
 
+### 3.5 Biased Objective Wrapper
+
+`BiasedObjective` wraps an action-level objective with a deterministic linear
+action bias:
+
+$$\hat{M}(x, u) = M(x, u) - \lambda_{bias}\,u$$
+
+and the theta-space value oracle is
+
+$$\hat{J}(\theta) = J(\theta) - \lambda_{bias}\,\frac{1}{n}\sum_{i=1}^n \pi_\theta(x_i).$$
+
+For minimization and $$\lambda_{bias} > 0$$, larger actions look artificially
+better because they reduce $$\hat{M}$$.
+
+**Gradient w.r.t. $u$:**
+
+$$\frac{\partial \hat{M}}{\partial u} = \frac{\partial M}{\partial u} - \lambda_{bias}$$
+
+**Gradient w.r.t. $\theta$:**
+
+$$\nabla_\theta \hat{J}(\theta) = \nabla_\theta J(\theta) - \lambda_{bias}\,\frac{1}{n}\sum_{i=1}^n \nabla_\theta\pi_\theta(x_i)$$
+
+- **Source:** `src/objective/objectives/biased.py` :: `BiasedObjective`
+- **Notes:** `base_value()` and `base_value_at_u()` expose the wrapped true
+  objective for reporting, while optimization uses the biased surrogate through
+  `value()` and `grad()`. The bias is deterministic and introduces no new seed
+  stream.
+
 ---
 
 ## 4. Chain Rule (Theta-Gradient from Action-Gradient)

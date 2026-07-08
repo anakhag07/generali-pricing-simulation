@@ -6,8 +6,9 @@ This module provides:
 - Concrete policies: ConstantPolicy, LinearPolicy, SoftmaxPolicy, MLPPolicy
 - Policy feature maps: IdentityFeatureMap, QuadraticFeatureMap,
   CubicFeatureMap, QuarticFeatureMap, CallableFeatureMap
-- Concrete objectives: FixedRegressionObjective, PlantedLogisticObjective,
-  ModelBasedObjective, PreparedGLMObjective, JaxPreparedGLMObjective
+- Concrete objectives: FixedRegressionObjective, BiasedObjective,
+  PlantedLogisticObjective, ModelBasedObjective, PreparedGLMObjective,
+  JaxPreparedGLMObjective
 - Objective noise: ObjectiveNoise, NoNoise, HomoskedasticGaussianNoise,
   HeteroskedasticGaussianNoise, NoisyObjective
  - Utility: optimal_u, value_at_constant_u, mean_acceptance_at_constant_u,
@@ -21,6 +22,7 @@ from objective.base import (
     sample_states,
 )
 from objective.objectives import (
+    BiasedObjective,
     FixedRegressionObjective,
     ModelBasedObjective,
     PlantedLogisticObjective,
@@ -87,6 +89,7 @@ __all__ = [
     "fit_policy_feature_preprocessor",
     "make_policy_features",
     # Concrete objectives
+    "BiasedObjective",
     "FixedRegressionObjective",
     "ModelBasedObjective",
     "PlantedLogisticObjective",

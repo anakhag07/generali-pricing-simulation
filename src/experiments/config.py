@@ -9,6 +9,7 @@ import numpy as np
 
 from objective.base import Objective, Policy
 from objective.objectives import (
+    BiasedObjective,
     FixedRegressionObjective,
     ModelBasedObjective,
     PlantedLogisticObjective,
@@ -485,6 +486,12 @@ def _objective_to_dict(objective: Objective) -> dict[str, Any]:
             "type": "NoisyObjective",
             "base_objective": _objective_to_dict(objective.base_objective),
             "noise": _noise_to_dict(objective.noise),
+        }
+    if isinstance(objective, BiasedObjective):
+        return {
+            "type": "BiasedObjective",
+            "base_objective": _objective_to_dict(objective.base_objective),
+            "lambda_bias": float(objective.lambda_bias),
         }
     if isinstance(objective, FixedRegressionObjective):
         return {

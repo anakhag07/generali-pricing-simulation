@@ -65,6 +65,13 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--glm-steps", type=int, default=100)
     parser.add_argument("--glm-adam-lr", type=float, default=0.02)
     parser.add_argument(
+        "--glm-policy-kind",
+        type=str,
+        default="softmax",
+        choices=("constant", "linear", "softmax", "mlp"),
+        help="policy class for the GLM group (mlp uses the JAX MLP backend)",
+    )
+    parser.add_argument(
         "--glm-penalty-weights",
         type=str,
         default="1e4",
@@ -172,6 +179,7 @@ def run_glm_jax_group(args: argparse.Namespace) -> list[dict]:
         overrides={
             "n_samples": n_samples,
             "constraint_mode": "trust_constr",
+            "policy_kind": args.glm_policy_kind,
             "seed": args.seed,
         },
     )

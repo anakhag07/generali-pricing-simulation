@@ -2,10 +2,12 @@
 
 Finite difference is included as a deterministic zeroth-order baseline and only
 varies the noise field. Stein difference additionally varies
-``n_grad_samples``. The default seed policy fixes data, split, and theta while
-varying the optimizer perturbation stream and the objective noise stream, so
-replicates target estimator/noisy-oracle variance rather than sample or
-initialization variance.
+``n_grad_samples``. The task grid contains only combinations missing from the
+initial sweep: new-noise finite-difference runs, old-noise/new-ngrad Stein
+cross sections, and new-noise/full-ngrad Stein runs. The default seed policy
+fixes data, split, and theta while varying the optimizer perturbation stream
+and the objective noise stream, so replicates target estimator/noisy-oracle
+variance rather than sample or initialization variance.
 """
 
 from __future__ import annotations
@@ -57,9 +59,13 @@ RUN_SEEDS = (7, 8, 9)
 ANCHOR_SEED = 7
 VARY = ("optimizer", "noise")
 
-HOMOSKEDASTIC_STDS = (0.0, 0.5, 2.0)
-HETEROSKEDASTIC_GROWTHS = (0.0, 1.0, 4.0)
-STEIN_N_GRAD_SAMPLES = (32, 64, 128)
+COMPLETED_HOMOSKEDASTIC_STDS = (0.0, 0.5, 2.0)
+NEW_HOMOSKEDASTIC_STDS = (0.25, 1.0, 1.5)
+COMPLETED_HETEROSKEDASTIC_GROWTHS = (0.0, 1.0, 4.0)
+NEW_HETEROSKEDASTIC_GROWTHS = (0.5, 2.0, 3.0)
+COMPLETED_STEIN_N_GRAD_SAMPLES = (32, 64, 128)
+NEW_STEIN_N_GRAD_SAMPLES = (4, 8, 16)
+STEIN_N_GRAD_SAMPLES = (*NEW_STEIN_N_GRAD_SAMPLES, *COMPLETED_STEIN_N_GRAD_SAMPLES)
 
 NoiseFamilyName = Literal["homoskedastic", "heteroskedastic"]
 
@@ -98,7 +104,8 @@ SUMMARY_FIELDNAMES = (
 class NoiseFamily:
     name: NoiseFamilyName
     level_key: str
-    levels: tuple[float, ...]
+    completed_levels: tuple[float, ...]
+    new_levels: tuple[float, ...]
 
 
 @dataclass(frozen=True)
@@ -122,12 +129,14 @@ NOISE_FAMILIES: dict[NoiseFamilyName, NoiseFamily] = {
     "homoskedastic": NoiseFamily(
         name="homoskedastic",
         level_key="std",
-        levels=tuple(float(value) for value in HOMOSKEDASTIC_STDS),
+        completed_levels=tuple(float(value) for value in COMPLETED_HOMOSKEDASTIC_STDS),
+        new_levels=tuple(float(value) for value in NEW_HOMOSKEDASTIC_STDS),
     ),
     "heteroskedastic": NoiseFamily(
         name="heteroskedastic",
         level_key="growth",
-        levels=tuple(float(value) for value in HETEROSKEDASTIC_GROWTHS),
+        completed_levels=tuple(float(value) for value in COMPLETED_HETEROSKEDASTIC_GROWTHS),
+        new_levels=tuple(float(value) for value in NEW_HETEROSKEDASTIC_GROWTHS),
     ),
 }
 FAMILY_GROUPS: dict[str, tuple[NoiseFamilyName, ...]] = {
@@ -168,7 +177,7 @@ def _variants(families: Sequence[NoiseFamilyName]) -> list[SweepVariant]:
     variants: list[SweepVariant] = []
     for family_name in families:
         family = NOISE_FAMILIES[family_name]
-        for level in family.levels:
+        for level in family.new_levels:
             variants.append(
                 SweepVariant(
                     name=_variant_name(FINITE_DIFFERENCE, family, level, None),
@@ -178,6 +187,18 @@ def _variants(families: Sequence[NoiseFamilyName]) -> list[SweepVariant]:
                     n_grad_samples=None,
                 )
             )
+        for level in family.completed_levels:
+            for n_grad_samples in NEW_STEIN_N_GRAD_SAMPLES:
+                variants.append(
+                    SweepVariant(
+                        name=_variant_name(STEIN_DIFFERENCE, family, level, int(n_grad_samples)),
+                        estimator=STEIN_DIFFERENCE,
+                        noise_family=family.name,
+                        noise_level=float(level),
+                        n_grad_samples=int(n_grad_samples),
+                    )
+                )
+        for level in family.new_levels:
             for n_grad_samples in STEIN_N_GRAD_SAMPLES:
                 variants.append(
                     SweepVariant(

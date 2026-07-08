@@ -230,6 +230,10 @@ supports fixed full-batch GLM runs for `first_order`, `finite_difference`,
 `gauss_stein`, `spsa`, and `stein_difference` with constant policies plus
 linear or softmax policies over finite materializable feature maps, including
 the built-in linear, quadratic, cubic, and quartic maps and `CallableFeatureMap`.
+`MLPPolicy` is also supported: theta is unpacked into layer weights inside a
+jitted forward pass and value/grad/mean_acceptance flow through autodiff, so MLP
+GLM runs work with every estimator except the action-space `stein_difference`
+(whose policy Jacobian is not materialized for MLP).
 The expanded policy design matrix is materialized once before transfer to JAX,
 so high-order or callable maps increase fixed-batch device memory use. When
 launched through `main.py`, JAX configs are submitted to ORCD GPU Slurm and fail

@@ -4,10 +4,12 @@ Combines the two existing 1D sweeps (theta-offset at fixed noise, noise at
 fixed theta0) into a 2D grid per noise family: for each noise level, vary the
 initialization offset $$\\delta$$ in $$\\theta_0 = \\theta^{FO}_{clean} +
 \\delta\\,\\mathbf{1}$$ (the same scalar added to every coordinate of the saved
-clean first-order truth theta). Run settings are imported from
-``scripts/run_sweep.py`` so new runs stay comparable with the saved sweeps; the
-fixed-noise theta-offset sweeps (homoskedastic std 0.5, heteroskedastic growth
-1.0) are reused as one curve per family instead of being rerun.
+clean first-order truth theta). Run settings are copied from the retired
+planted-noise fill-in sweep driver (the experiment-specific
+``scripts/run_sweep.py`` that predates the generic launcher) so new runs stay
+comparable with the saved sweeps; the fixed-noise theta-offset sweeps
+(homoskedastic std 0.5, heteroskedastic growth 1.0) are reused as one curve per
+family instead of being rerun.
 
 Outputs per family project (``homoskedastic-noise-offset-grid`` /
 ``heteroskedastic-noise-offset-grid``): ``noise_offset_grid_finals.csv`` and,
@@ -15,7 +17,7 @@ per estimator, a two-panel figure (final theta distance to the clean
 first-order truth | clean-objective gap on the reconstructed train batch) with
 one curve per noise level. ``--plots-only`` regenerates outputs from saved
 summaries without running. Serial mode skips variant folders that already
-contain both estimators (like ``run_sweep.py``); per-seed resume is only
+contain both estimators (like the original sweeps); per-seed resume is only
 available through ``--launch slurm --array``.
 """
 
@@ -25,7 +27,7 @@ import argparse
 import csv
 import json
 import sys
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
@@ -38,8 +40,9 @@ for _extra in (str(REPO_ROOT), str(REPO_ROOT / "src")):
     if _extra not in sys.path:
         sys.path.insert(0, _extra)
 
+from experiments.config import CorrectnessSpec  # noqa: E402
 from experiments.configs import get_config  # noqa: E402
-from experiments.execution import execute_experiment_run  # noqa: E402
+from experiments.execution import default_reporter_stack, execute_experiment_run  # noqa: E402
 from experiments.launch import (  # noqa: E402
     LaunchContext,
     LaunchPlan,
@@ -49,26 +52,145 @@ from experiments.launch import (  # noqa: E402
 )
 from experiments.paths import results_root  # noqa: E402
 from experiments.reporting.context import create_run_context  # noqa: E402
+from experiments.reporting.json_summary import JsonReporter  # noqa: E402
 from experiments.seeds import replicate_seed_setup  # noqa: E402
-from experiments.sweep_utils import expand_sweep_overrides  # noqa: E402
+from experiments.sweep_utils import expand_sweep_overrides, run_sweep  # noqa: E402
 from objective.base import sample_states  # noqa: E402
+from objective.noise import (  # noqa: E402
+    HeteroskedasticGaussianNoise,
+    HomoskedasticGaussianNoise,
+    NoisyObjective,
+)
 from objective.objectives import PlantedLogisticObjective  # noqa: E402
 from objective.policy import IdentityFeatureMap, SoftmaxPolicy  # noqa: E402
-from scripts import run_sweep  # noqa: E402
+
+
+# =============================================================================
+# Saved-sweep settings
+# Copied from the retired planted-noise fill-in sweep driver (the
+# experiment-specific ``scripts/run_sweep.py`` that predates the generic
+# launcher). The reused fixed-noise theta-offset curves come from results those
+# sweeps wrote, so these constants must keep matching the saved results
+# directories under ``results_root()``.
+# =============================================================================
+
+BASE_PRESET = "planted_logistic_base"
+REUSED_HOMO_PROJECT_NAME = "homoskedastic-theta-offset-sweep"
+REUSED_HETERO_PROJECT_NAME = "heteroskedastic-theta-offset-sweep"
+# Fixed noise levels of the reused theta-offset sweeps.
+REUSED_NOISE_STD = 0.5
+REUSED_NOISE_GROWTH = 1.0
+# Axes of the saved theta-offset sweeps: the grid offsets/seeds below must stay
+# subsets of these so the reused curves line up with existing per-seed summaries.
+REUSED_SWEEP_THETA_OFFSETS = (
+    0.0,
+    0.0025,
+    0.005,
+    0.0075,
+    0.01,
+    0.025,
+    0.05,
+    0.075,
+    0.1,
+    0.15,
+    0.2,
+    0.25,
+    0.35,
+    0.5,
+    0.75,
+    1.0,
+    1.25,
+    1.5,
+    2.0,
+    3.0,
+    4.0,
+    5.0,
+    7.5,
+    10.0,
+)
+REUSED_SWEEP_RUN_SEEDS: tuple[int, ...] = (7, 8, 9, 10, 11)
+# Data/split/theta stay anchored to ANCHOR_SEED so variants remain comparable;
+# the estimator perturbation streams and the frozen noise field are redrawn per
+# seed, matching the saved sweeps' seed policy.
+ANCHOR_SEED = 7
+VARY: tuple[str, ...] = ("optimizer", "noise")
+FIXED_SEEDS: dict[str, int | None] = {}
+BASE_THETA = np.asarray(
+    [
+        0.4054882808450241,
+        0.00012799868045781167,
+        -4.657524122982136e-05,
+        6.221922280809605e-05,
+    ],
+    dtype=float,
+)
+
+_PLANTED_BASE = get_config(BASE_PRESET)
+# Center the heteroskedastic noise at the planted optimum so the noise floor
+# sits exactly on the global-minimum region.
+U_STAR = float(_PLANTED_BASE.objective.optimal_u())
+
+REQUIRED_ESTIMATORS = ("finite_difference", "stein_difference")
+
+COMMON_OVERRIDES: dict[str, object] = {
+    "enabled_estimators": REQUIRED_ESTIMATORS,
+    "correctness": CorrectnessSpec(gradient_source="denoised_exact"),
+    "perturbation_space": "u",
+    "step_rule": "l-bfgs-b",
+    "t_steps": 1000,
+    "step_size": 0.001,
+    "n_samples": 1000,
+    "sigma": 0.05,
+    "n_grad_samples": 8,
+    "plot": True,
+    "verbose": False,
+    "wandb_enabled": False,
+}
+
+
+def _theta0(offset: float) -> np.ndarray:
+    return BASE_THETA + float(offset)
+
+
+def _noisy_objective(noise_std: float) -> NoisyObjective:
+    return NoisyObjective(
+        base_objective=_PLANTED_BASE.objective,
+        noise=HomoskedasticGaussianNoise(std=float(noise_std)),
+    )
+
+
+def _hetero_noisy_objective(growth: float) -> NoisyObjective:
+    return NoisyObjective(
+        base_objective=_PLANTED_BASE.objective,
+        noise=HeteroskedasticGaussianNoise(
+            base_std=0.0,
+            growth=float(growth),
+            u_center=U_STAR,
+        ),
+    )
+
+
+def _first_order_truth_summary() -> Path:
+    """Path to the saved first-order truth run used as the distance reference."""
+    return (
+        results_root()
+        / "planted_logistic_base"
+        / "first_order_truth_20260701_174139"
+        / "summary.json"
+    )
 
 
 # =============================================================================
 # Grid definition
-# Offsets are a subset of run_sweep.THETA_OFFSETS so the saved fixed-noise
+# Offsets are a subset of REUSED_SWEEP_THETA_OFFSETS so the saved fixed-noise
 # theta-offset sweeps contribute one reused curve per family. Seeds are a
-# subset of run_sweep.RUN_SEEDS for a smaller budget; reused curves are
+# subset of REUSED_SWEEP_RUN_SEEDS for a smaller budget; reused curves are
 # filtered to the same seeds so error bars stay comparable.
 # =============================================================================
 
 LAUNCH_PLAN_NAME = "planted-noise-offset-grid"
 HOMO_PROJECT_NAME = "homoskedastic-noise-offset-grid"
 HETERO_PROJECT_NAME = "heteroskedastic-noise-offset-grid"
-REQUIRED_ESTIMATORS = run_sweep.REQUIRED_ESTIMATORS
 RUN_SEEDS: tuple[int, ...] = (7, 8, 9)
 
 GRID_THETA_OFFSETS = (0.0, 0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0)
@@ -113,8 +235,8 @@ class GridFamily:
 HOMO_FAMILY = GridFamily(
     key="homoskedastic",
     project_name=HOMO_PROJECT_NAME,
-    reused_project_name=run_sweep.THETA_PROJECT_NAME,
-    reused_noise_level=float(run_sweep.NOISE_STD),
+    reused_project_name=REUSED_HOMO_PROJECT_NAME,
+    reused_noise_level=REUSED_NOISE_STD,
     new_noise_levels=HOMO_NEW_NOISE_STDS,
     noise_prefix="noise-std",
     axis_key="noise_std",
@@ -124,13 +246,13 @@ HOMO_FAMILY = GridFamily(
         r"homoskedastic noise $\hat{M}(x,u) = M(x,u) + \varepsilon(x,u)$, "
         r"$\varepsilon \sim \mathcal{N}(0, \sigma^2)$"
     ),
-    noisy_objective=run_sweep._noisy_objective,
+    noisy_objective=_noisy_objective,
 )
 HETERO_FAMILY = GridFamily(
     key="heteroskedastic",
     project_name=HETERO_PROJECT_NAME,
-    reused_project_name=run_sweep.HETERO_THETA_PROJECT_NAME,
-    reused_noise_level=float(run_sweep.NOISE_GROWTH),
+    reused_project_name=REUSED_HETERO_PROJECT_NAME,
+    reused_noise_level=REUSED_NOISE_GROWTH,
     new_noise_levels=HETERO_NEW_NOISE_GROWTHS,
     noise_prefix="noise-growth",
     axis_key="noise_growth",
@@ -140,7 +262,7 @@ HETERO_FAMILY = GridFamily(
         r"heteroskedastic noise, std $\sigma(u) = \gamma\,|u - u^\ast|$ "
         r"(noiseless at the planted optimum $u^\ast$)"
     ),
-    noisy_objective=run_sweep._hetero_noisy_objective,
+    noisy_objective=_hetero_noisy_objective,
 )
 FAMILY_GROUPS: dict[str, tuple[GridFamily, ...]] = {
     "homoskedastic": (HOMO_FAMILY,),
@@ -150,8 +272,8 @@ FAMILY_GROUPS: dict[str, tuple[GridFamily, ...]] = {
 
 
 def _grid_run_name(family: GridFamily, noise_level: float, offset: float) -> str:
-    level_part = run_sweep._format_sweep_value(noise_level)
-    offset_part = run_sweep._format_sweep_value(offset)
+    level_part = _format_sweep_value(noise_level)
+    offset_part = _format_sweep_value(offset)
     return f"{family.noise_prefix}-{level_part}__theta-offset-{offset_part}"
 
 
@@ -171,9 +293,9 @@ def _build_grid_override_list(family: GridFamily) -> list[dict[str, object]]:
     return [
         {
             "_run_name": _grid_run_name(family, noise_level, offset),
-            **run_sweep.COMMON_OVERRIDES,
+            **COMMON_OVERRIDES,
             "objective": family.noisy_objective(noise_level),
-            "theta0": run_sweep._theta0(offset),
+            "theta0": _theta0(offset),
         }
         for noise_level in family.new_noise_levels
         for offset in GRID_THETA_OFFSETS
@@ -181,9 +303,157 @@ def _build_grid_override_list(family: GridFamily) -> list[dict[str, object]]:
 
 
 # =============================================================================
+# Sweep bookkeeping helpers
+# Copied from the retired fill-in sweep driver: results paths, completed-run
+# detection for resume/skipping, missing-variant reruns through
+# ``sweep_utils.run_sweep``, per-seed reporter stacks, and plot axis helpers.
+# =============================================================================
+
+
+def _format_sweep_value(value: object) -> str:
+    try:
+        return f"{float(value):g}"
+    except (TypeError, ValueError):
+        text = str(value)
+        return text.replace(" ", "").replace("/", "-")
+
+
+def _path_part(value: object) -> str:
+    return str(value).replace(" ", "").replace("/", "-")
+
+
+def _project_dir(project_name: str) -> Path:
+    return results_root() / _path_part(project_name)
+
+
+def _variant_dir(project_name: str, variant_name: str) -> Path:
+    return _project_dir(project_name) / _path_part(variant_name)
+
+
+def _summary_paths(variant_dir: Path) -> list[Path]:
+    paths = sorted(variant_dir.glob("summary-seed-*.json"))
+    direct_summary = variant_dir / "summary.json"
+    if direct_summary.exists():
+        paths.append(direct_summary)
+    paths.extend(sorted(variant_dir.glob("seeds/seed-*/summary.json")))
+    paths.extend(sorted(variant_dir.glob("*/summary.json")))
+    deduped: list[Path] = []
+    seen: set[Path] = set()
+    for path in paths:
+        if path not in seen:
+            deduped.append(path)
+            seen.add(path)
+    return deduped
+
+
+def _summary_has_estimators(summary_path: Path, estimators: Sequence[str]) -> bool:
+    try:
+        with summary_path.open("r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        return False
+    estimator_payload = payload.get("estimators", {})
+    return all(name in estimator_payload for name in estimators)
+
+
+def _variant_is_completed(variant_dir: Path, required_estimators: Sequence[str]) -> bool:
+    if not variant_dir.is_dir():
+        return False
+    for summary_path in _summary_paths(variant_dir):
+        if _summary_has_estimators(summary_path, required_estimators):
+            return True
+    return False
+
+
+def _missing_overrides(
+    *,
+    project_name: str,
+    override_list: Sequence[Mapping[str, object]],
+    required_estimators: Sequence[str],
+) -> list[dict[str, object]]:
+    missing: list[dict[str, object]] = []
+    project_dir = _project_dir(project_name)
+    for overrides in override_list:
+        run_name = overrides.get("_run_name")
+        if run_name is None:
+            raise ValueError("Resume/skipping requires each override to include '_run_name'.")
+        if not _variant_is_completed(project_dir / _path_part(run_name), required_estimators):
+            missing.append(dict(overrides))
+    return missing
+
+
+def _run_missing_sweep(
+    *,
+    base_preset: str,
+    project_name: str,
+    override_list: Sequence[Mapping[str, object]],
+    run_seeds: Sequence[int],
+    vary: tuple[str, ...],
+    anchor_seed: int,
+    fixed: Mapping[str, int | None],
+    display_keys: Sequence[str],
+    required_estimators: Sequence[str],
+) -> int:
+    missing = _missing_overrides(
+        project_name=project_name,
+        override_list=override_list,
+        required_estimators=required_estimators,
+    )
+    skipped = len(override_list) - len(missing)
+    if not missing:
+        print(f"No missing variants for '{project_name}' ({skipped} already complete).")
+        return 0
+
+    sweep = run_sweep(
+        base_preset=base_preset,
+        run_seeds=run_seeds,
+        override_list=missing,
+        vary=vary,
+        anchor_seed=anchor_seed,
+        fixed=fixed,
+        project_name=project_name,
+        display_keys=display_keys,
+    )
+    print(
+        f"Completed {len(sweep.run_results)} missing runs for '{project_name}' "
+        f"({len(missing)} variants x {len(run_seeds)} seeds; skipped {skipped})."
+    )
+    return len(sweep.run_results)
+
+
+def _seed_reporter_stack_factory(variant_dir: Path, seed: int):
+    def factory(config):
+        return default_reporter_stack(
+            config,
+            json_reporter=JsonReporter(
+                summary_name=f"summary-seed-{seed}.json",
+                summary_dir=variant_dir,
+            ),
+            include_plots=False,
+        )
+
+    return factory
+
+
+def _theta_from_summary(summary_path: Path, estimator: str) -> np.ndarray:
+    with summary_path.open("r", encoding="utf-8") as handle:
+        summary = json.load(handle)
+    return np.asarray(summary["estimators"][estimator]["theta"], dtype=float)
+
+
+def _set_symlog_ticks(ax: object, values: list[float]) -> None:
+    nonzero = [abs(value) for value in values if value != 0.0]
+    if nonzero:
+        ax.set_xscale("symlog", linthresh=min(nonzero))
+    ax.set_xticks(values)
+    ax.set_xticklabels([f"{value:g}" for value in values], rotation=45, ha="right")
+
+
+# =============================================================================
 # Launch wiring
-# Mirrors run_sweep.py: array tasks run one (family variant, seed), the serial
-# path fills in missing variants, and both paths regenerate the grid plots.
+# Mirrors the retired fill-in sweep driver: array tasks run one (family
+# variant, seed), the serial path fills in missing variants, and both paths
+# regenerate the grid plots.
 # =============================================================================
 
 
@@ -191,7 +461,7 @@ def _task_specs(families: Sequence[GridFamily]) -> list[tuple[str, str, dict[str
     specs: list[tuple[str, str, dict[str, Any], int]] = []
     for family in families:
         variants = expand_sweep_overrides(
-            base_preset=run_sweep.BASE_PRESET,
+            base_preset=BASE_PRESET,
             override_list=_build_grid_override_list(family),
             display_keys=(),
         )
@@ -206,7 +476,7 @@ def _run_grid_task(
 ) -> dict[str, object]:
     del context
     project_name, variant_name, overrides, seed = _task_specs(families)[index]
-    variant_dir = run_sweep._variant_dir(project_name, variant_name)
+    variant_dir = _variant_dir(project_name, variant_name)
     seed_summary = variant_dir / f"summary-seed-{seed}.json"
     payload = {
         "project": project_name,
@@ -215,16 +485,16 @@ def _run_grid_task(
         "run_dir": str(variant_dir / "seeds" / f"seed-{seed}"),
         "summary_json": str(seed_summary),
     }
-    if run_sweep._summary_has_estimators(seed_summary, REQUIRED_ESTIMATORS):
+    if _summary_has_estimators(seed_summary, REQUIRED_ESTIMATORS):
         print(f"Skipping completed task '{variant_name}' seed {seed} in '{project_name}'.")
         return payload
     seed_setup = replicate_seed_setup(
         seed,
-        run_sweep.ANCHOR_SEED,
-        vary=run_sweep.VARY,
-        fixed=run_sweep.FIXED_SEEDS,
+        ANCHOR_SEED,
+        vary=VARY,
+        fixed=FIXED_SEEDS,
     )
-    config = get_config(run_sweep.BASE_PRESET, overrides={**overrides, "seed_setup": seed_setup})
+    config = get_config(BASE_PRESET, overrides={**overrides, "seed_setup": seed_setup})
     run_context = create_run_context(
         variant_name,
         run_dir=variant_dir / "seeds" / f"seed-{seed}",
@@ -233,7 +503,7 @@ def _run_grid_task(
         variant_name,
         config,
         run_context=run_context,
-        reporter_stack_factory=run_sweep._seed_reporter_stack_factory(variant_dir, seed),
+        reporter_stack_factory=_seed_reporter_stack_factory(variant_dir, seed),
     )
     return {**payload, "run_dir": str(executed.run_context.run_dir)}
 
@@ -242,19 +512,19 @@ def _run_grid_serial(context: LaunchContext, *, families: Sequence[GridFamily]) 
     del context
     n_runs = 0
     for family in families:
-        n_runs += run_sweep._run_missing_sweep(
-            base_preset=run_sweep.BASE_PRESET,
+        n_runs += _run_missing_sweep(
+            base_preset=BASE_PRESET,
             project_name=family.project_name,
             override_list=_build_grid_override_list(family),
             run_seeds=RUN_SEEDS,
-            vary=run_sweep.VARY,
-            anchor_seed=run_sweep.ANCHOR_SEED,
-            fixed=run_sweep.FIXED_SEEDS,
+            vary=VARY,
+            anchor_seed=ANCHOR_SEED,
+            fixed=FIXED_SEEDS,
             display_keys=(),
             required_estimators=REQUIRED_ESTIMATORS,
         )
     regenerate_grid_plots(families)
-    print(f"Completed {n_runs} total missing grid runs for preset '{run_sweep.BASE_PRESET}'.")
+    print(f"Completed {n_runs} total missing grid runs for preset '{BASE_PRESET}'.")
 
 
 def _collect_grid_tasks(context: LaunchContext, *, families: Sequence[GridFamily]) -> None:
@@ -395,7 +665,7 @@ def _variant_rows(
 
 def _collect_family_rows(family: GridFamily, truth_theta: np.ndarray) -> list[dict[str, object]]:
     rows: list[dict[str, object]] = []
-    project_dir = run_sweep._project_dir(family.project_name)
+    project_dir = _project_dir(family.project_name)
     if project_dir.is_dir():
         for variant_dir in sorted(project_dir.iterdir()):
             if not variant_dir.is_dir():
@@ -405,10 +675,10 @@ def _collect_family_rows(family: GridFamily, truth_theta: np.ndarray) -> list[di
                 continue
             noise_level, offset = parsed
             rows.extend(_variant_rows(variant_dir, family, noise_level, offset, truth_theta))
-    reused_dir = results_root() / run_sweep._path_part(family.reused_project_name)
+    reused_dir = results_root() / _path_part(family.reused_project_name)
     if reused_dir.is_dir():
         for offset in GRID_THETA_OFFSETS:
-            variant_dir = reused_dir / f"theta-offset-{run_sweep._format_sweep_value(offset)}"
+            variant_dir = reused_dir / f"theta-offset-{_format_sweep_value(offset)}"
             if variant_dir.is_dir():
                 rows.extend(
                     _variant_rows(variant_dir, family, family.reused_noise_level, offset, truth_theta)
@@ -423,17 +693,17 @@ def _collect_family_rows(family: GridFamily, truth_theta: np.ndarray) -> list[di
 
 def regenerate_grid_plots(families: Sequence[GridFamily]) -> None:
     """Rebuild grid CSVs/plots from saved summaries (new grid + reused sweeps)."""
-    truth_summary = run_sweep._first_order_truth_summary()
+    truth_summary = _first_order_truth_summary()
     if not truth_summary.exists():
         print(f"Skipping grid plots; missing truth summary: {truth_summary}")
         return
-    truth_theta = run_sweep._theta_from_summary(truth_summary, "first_order")
+    truth_theta = _theta_from_summary(truth_summary, "first_order")
     for family in families:
         rows = _collect_family_rows(family, truth_theta)
         if not rows:
             print(f"Skipping grid plots for '{family.project_name}'; no summary rows found.")
             continue
-        project_dir = run_sweep._project_dir(family.project_name)
+        project_dir = _project_dir(family.project_name)
         project_dir.mkdir(parents=True, exist_ok=True)
         _write_grid_csv(project_dir / "noise_offset_grid_finals.csv", family, rows)
         for estimator in REQUIRED_ESTIMATORS:
@@ -527,7 +797,7 @@ def _plot_family_estimator(
                 capsize=3.0,
             )
     for ax, (metric, y_label) in zip(axes, metrics):
-        run_sweep._set_symlog_ticks(ax, all_offsets)
+        _set_symlog_ticks(ax, all_offsets)
         metric_values = [float(row[metric]) for row in rows]
         if metric == "theta_distance_to_truth":
             positive = [value for value in metric_values if value > 0.0]

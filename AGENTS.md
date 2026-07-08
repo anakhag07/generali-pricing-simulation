@@ -238,7 +238,8 @@ Guidelines:
 - **`src/objective/objectives/jax_prepared_glm.py`**
   - `JaxPreparedGLMObjective`: fixed-batch JAX version of the prepared GLM objective for SciPy callback use; transfers prepared arrays to device once and exposes NumPy-returning `value()`, `grad()`, value-only action hooks, `mean_acceptance()`, and `mean_acceptance_grad()` methods
   - `JaxPreparedGLMScipyAdapter`: explicit callback adapter with objective, gradient, constraint-margin, and constraint-Jacobian shapes for validation/benchmarking
-  - `prepare_jax_glm_objective(...)`: materializes a GLM-backed `ModelBasedObjective` into a JAX objective after CPU artifact preprocessing; currently supports fixed full-batch first-order and zeroth-order GLM trust-constr runs with constant policies plus linear/softmax policies over finite materializable feature maps, including built-in higher-order maps and `CallableFeatureMap`; the expanded policy design matrix is materialized once before device transfer
+  - `prepare_jax_glm_objective(...)`: materializes a GLM-backed `ModelBasedObjective` into a JAX objective after CPU artifact preprocessing; currently supports fixed full-batch first-order and zeroth-order GLM trust-constr/optax runs with constant policies plus linear/softmax policies over finite materializable feature maps, including built-in higher-order maps and `CallableFeatureMap`; the expanded policy design matrix is materialized once before device transfer
+  - `MLPPolicy` is also supported on the JAX backend: theta is unpacked into `[W1, b1, W2, b2, W3, b3]` inside a jitted forward pass on the mapped features, so value/grad/mean_acceptance flow through autodiff (works with `first_order`, `finite_difference`, `gauss_stein`, `spsa`, `optax-adam`, and `trust-constr`). The action-space policy Jacobian (`policy_grad`/`policy_weighted_grad`, used only by `stein_difference` and diagnostics) is intentionally not materialized for MLP and raises `NotImplementedError`
 
 - **`src/objective/objectives/planted_logistic.py`**
   - `PlantedLogisticObjective`: convex logistic objective with known optimum `u_star`
@@ -308,7 +309,7 @@ Guidelines:
 
 - **`src/optimization/base.py`**
   - `Optimization`: class-based optimization entry point
-  - `Optimization.solve(theta_start)`: dispatches to SciPy `minimize` for `step_rule="l-bfgs-b"` / `"trust-constr"` and to an internal manual gradient loop for `step_rule="constant"` / `"armijo"`; handles mini-batching, trace recording, and optional step-size history for manual rules
+  - `Optimization.solve(theta_start)`: dispatches to SciPy `minimize` for `step_rule="l-bfgs-b"` / `"trust-constr"`, to the optax update loop for `step_rule="optax-adam"` / `"optax-sgd"`, and to an internal manual gradient loop for `step_rule="constant"` / `"armijo"`; handles mini-batching, trace recording, and optional step-size history for manual and optax rules
   - Uses separate RNG streams for mini-batch sampling (`batch_rng`) and stochastic gradient perturbations (`gradient_rng`); `rng` remains a backward-compatible fallback
   - Contains only constructor + solve orchestration; batching/objective helpers live in `src/optimization/helpers.py`
   - Solvers consume theta-level objectives only (`value(theta, x_batch)`, `grad(theta, x_batch)`)
@@ -331,16 +332,21 @@ Guidelines:
   - `run_constant_minimize(...)`, `run_first_order_minimize(...)`, `run_finite_difference_minimize(...)`, `run_gauss_stein_minimize(...)`, `run_stein_difference_minimize(...)`, `run_spsa_minimize(...)`: compatibility wrappers that instantiate `Optimization` with the corresponding gradient object and call `solve(...)`
 
 - **`src/optimization/steps.py`**
-  - `STEP_RULE_LBFGSB`, `STEP_RULE_TRUST_CONSTR`, `STEP_RULE_CONSTANT`, `STEP_RULE_ARMIJO`, `STEP_RULES`
+  - `STEP_RULE_LBFGSB`, `STEP_RULE_TRUST_CONSTR`, `STEP_RULE_CONSTANT`, `STEP_RULE_ARMIJO`, `STEP_RULE_OPTAX_ADAM`, `STEP_RULE_OPTAX_SGD`, `OPTAX_STEP_RULES`, `STEP_RULES`
   - `constant_step_size(step_size)`: returns the step size unchanged
   - `armijo_backtracking_step_size(...)`: Armijo line search utility used by the optimizer's manual `step_rule="armijo"` path
+
+- **`src/optimization/optax_loop.py`**
+  - `optax_step_rule_optimizer(algorithm, step_size)`: maps `"optax-adam"` / `"optax-sgd"` to the optax gradient transformation with `step_size` as learning rate
+  - `run_optax_minimize_loop(...)`: manual optax update loop mirroring the constant/armijo path — mini-batch via `batch_rng`, theta grads from the configured `GradientMethod` (all estimators work), `grad_norm_tol` early stopping, per-step trace recording; deterministic given the gradient stream, so no new seed stream is needed
+  - `optax.lbfgs` is intentionally unsupported: its linesearch requires a JAX-traceable value_fn, which NumPy objectives cannot provide; acceptance floors on optax rules go through the existing penalty/Lagrangian objective paths
 
 #### Experiment Layer (`src/experiments/`)
 
 - **`src/experiments/config.py`**
   - `ExperimentConfig`: frozen dataclass with extensive `__post_init__` validation
   - Primary fields: `objective` (theta objective) and `theta0` (initial theta)
-  - `compute_backend`: `"numpy"` by default; `"jax"` keeps SciPy `trust-constr` as the optimizer but swaps GLM training callbacks to the fixed-batch JAX prepared objective for parity/speed experiments across `first_order`, `finite_difference`, `gauss_stein`, `spsa`, and `stein_difference`; JAX runs require `batch_size=None`
+  - `compute_backend`: `"numpy"` by default; `"jax"` swaps GLM training callbacks to the fixed-batch JAX prepared objective for parity/speed experiments across `first_order`, `finite_difference`, `gauss_stein`, `spsa`, and `stein_difference`; it supports `step_rule="trust-constr"` (SciPy driver) or the optax rules `"optax-adam"` / `"optax-sgd"`; JAX runs require `batch_size=None`
   - `x_fixed: np.ndarray | None = None`: when set, runner uses this 2D array as state batch instead of sampling from N(0, I)
   - `x_fixed_row_indices: np.ndarray | None = None`: source acceptance-CSV row positions for `x_fixed`; real-data configs pass this so observed-`U` reporting uses the same selected rows
   - `train_fraction` / `test_fraction`: deterministic run-level split fractions over selected rows; they must sum to `1.0`, `train_fraction` must be positive, and optimizers fit on train rows only
@@ -499,6 +505,7 @@ Guidelines:
   - Supports `--objective model` to replay the trained model objective and `--objective historical` for the observed-outcome diagnostic; both support `--split train|test|all`, where `all` means all selected run rows before splitting
   - `--u-source historical --acceptance-source historical|model --technical-price-source historical|model` runs script-only historical-`U` diagnostics without optimized policy actions; `--model-type glm|xgb` selects deterministic complete eligible rows unless `--summary-json` is supplied to reuse a saved run sample; `--acceptance-model-historical-u` is a shortcut for model acceptance plus historical technical price
 - `scripts/run_policy_pca_grid.py` runs the GLM policy PCA-dimensionality grid over configured PCA dimensions and policy classes `(constant, linear, quadratic, third_order, fourth_order, softmax_linear, softmax_quadratic, softmax_third_order, softmax_fourth_order, mlp)`; unconstrained is default, `--constrained` uses `trust-constr` with the observed GLM acceptance floor and a 500-step default cap; outputs aggregate CSVs, summary markdown, and headline/spread plots under `results/policy-pca-grid/`; prints per-condition progress by default and supports `--quiet`. It is launch-aware; `--launch slurm --array` runs one `(pca_dim, policy_class, seed)` condition per array task and the collector writes combined grid outputs
+- `scripts/benchmark_optax_vs_trust_constr.py` benchmarks SciPy minimize against the optax step rules: a planted-logistic group (theta dim 200 LinearPolicy; L-BFGS-B vs `optax-adam`/`optax-sgd`) and a real-data GLM group on the fixed JAX prepared batch (trust-constr with the observed acceptance floor vs optax rules on the smooth-penalty formulation of the same floor). Writes `benchmark.csv` under `results/optax-benchmark/`. On shared CPU nodes pin `OMP_NUM_THREADS`/`OPENBLAS_NUM_THREADS` (and `JAX_PLATFORMS=cpu` off-GPU) — JAX import plus OpenBLAS thread oversubscription inside a CPU-limited slice can slow NumPy matmuls by orders of magnitude and wash out solver timings
 - `scripts/benchmark_experiment_speed.py` benchmarks GLM analytical acceptance vs sklearn `predict_proba`, Stein-difference gradient timing/call counts, repeated objective-cache behavior, and full-vs-subsampled contour grid timing; use it to quantify whether performance changes speed up real-data diagnostics without relying on flaky pytest time thresholds
 
 ## Known Issues and Dead Code
@@ -552,6 +559,7 @@ when appropriate.
 | `test_helpers.py` | `_clamp_theta`, `sample_indices`, `x_batch`, `finite_difference_theta_grad` |
 | `test_gradient_methods_math.py` | Gauss-Stein, SPSA, Stein-Difference convergence; FD u-space vs theta-space; SPSA variance |
 | `test_step_rules.py` | Armijo sufficient decrease, edge cases, input validation |
+| `test_optax_step_rule.py` | Optax adam/sgd loop: convergence, determinism, sgd-vs-constant parity, JAX GLM penalty run |
 | `test_finite_difference_gradient.py` | Finite-difference gradient accuracy and determinism |
 | `test_gradient_resampling.py` | Gradient method resampling behavior |
 | `test_jax_trust_constr_callbacks.py` | JAX prepared GLM callbacks and zeroth-order gradients match CPU prepared GLM under SciPy trust-constr |

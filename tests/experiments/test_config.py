@@ -798,6 +798,49 @@ def test_compute_backend_validation() -> None:
         )
 
 
+def test_optax_step_rule_validation() -> None:
+    policy = SoftmaxPolicy()
+    objective = FixedRegressionObjective.from_parameters(
+        policy=policy,
+        beta_1=[0.1],
+        beta_2=-0.5,
+        beta_3=[0.2],
+        beta_4=0.4,
+    )
+
+    adam_config = ExperimentConfig(
+        state_dim=1,
+        objective=objective,
+        theta0=_theta0(1),
+        n_samples=5,
+        step_rule="optax-adam",
+        perturbation_space="theta",
+    )
+    assert adam_config.step_rule == "optax-adam"
+
+    jax_config = ExperimentConfig(
+        state_dim=1,
+        objective=objective,
+        theta0=_theta0(1),
+        n_samples=5,
+        step_rule="optax-adam",
+        perturbation_space="theta",
+        compute_backend="jax",
+    )
+    assert jax_config.compute_backend == "jax"
+
+    with pytest.raises(ValueError, match="ftol is not supported by optax step rules"):
+        ExperimentConfig(
+            state_dim=1,
+            objective=objective,
+            theta0=_theta0(1),
+            n_samples=5,
+            step_rule="optax-sgd",
+            perturbation_space="theta",
+            ftol=1e-6,
+        )
+
+
 def test_grad_norm_tol_validation() -> None:
     policy = SoftmaxPolicy()
     objective = FixedRegressionObjective.from_parameters(

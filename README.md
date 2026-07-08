@@ -132,6 +132,11 @@ Optimization step rules:
   `initial_constr_penalty` is passed through to SciPy when configured.
 - `constant` uses the repo's manual gradient loop with fixed `step_size`.
 - `armijo` uses the same manual loop with Armijo backtracking seeded by `step_size`.
+- `optax-adam` / `optax-sgd` run an optax update loop with `step_size` as the
+  learning rate. Gradients come from the configured estimator, so all gradient
+  methods work; acceptance floors use the penalty or Lagrangian objective paths
+  (there is no constrained optax driver). Compare against SciPy with
+  `scripts/benchmark_optax_vs_trust_constr.py`.
 
 `enabled_estimators=("constant", ...)` optimizes a one-parameter
 `ConstantPolicy` on the same objective/data as the configured policy. This is
@@ -217,11 +222,18 @@ numeric objective/batch pair after raw pandas/artifact preprocessing has run onc
 For GLM `trust-constr` parity experiments, `compute_backend="jax"` keeps SciPy's
 constrained optimizer but evaluates the prepared GLM objective, gradients,
 zeroth-order value queries, mean acceptance, and constraint Jacobian through
-JIT-compiled JAX callbacks. The JAX backend requires `batch_size=None` and
+JIT-compiled JAX callbacks. The same prepared JAX objective also runs under the
+`optax-adam` / `optax-sgd` step rules, replacing the SciPy driver with an optax
+update loop (acceptance floors via the penalty/Lagrangian paths).
+The JAX backend requires `batch_size=None` and
 supports fixed full-batch GLM runs for `first_order`, `finite_difference`,
 `gauss_stein`, `spsa`, and `stein_difference` with constant policies plus
 linear or softmax policies over finite materializable feature maps, including
 the built-in linear, quadratic, cubic, and quartic maps and `CallableFeatureMap`.
+`MLPPolicy` is also supported: theta is unpacked into layer weights inside a
+jitted forward pass and value/grad/mean_acceptance flow through autodiff, so MLP
+GLM runs work with every estimator except the action-space `stein_difference`
+(whose policy Jacobian is not materialized for MLP).
 The expanded policy design matrix is materialized once before transfer to JAX,
 so high-order or callable maps increase fixed-batch device memory use. When
 launched through `main.py`, JAX configs are submitted to ORCD GPU Slurm and fail

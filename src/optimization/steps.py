@@ -10,11 +10,22 @@ STEP_RULE_CONSTANT = "constant"
 STEP_RULE_ARMIJO = "armijo"
 STEP_RULE_LBFGSB = "l-bfgs-b"
 STEP_RULE_TRUST_CONSTR = "trust-constr"
+STEP_RULE_OPTAX_ADAM = "optax-adam"
+STEP_RULE_OPTAX_SGD = "optax-sgd"
+# Optax rules run a manual update loop with grads from the configured
+# GradientMethod. optax.lbfgs is excluded: its zoom linesearch needs a
+# JAX-traceable value_fn, which NumPy objectives cannot provide.
+OPTAX_STEP_RULES = (
+    STEP_RULE_OPTAX_ADAM,
+    STEP_RULE_OPTAX_SGD,
+)
 STEP_RULES = (
     STEP_RULE_CONSTANT,
     STEP_RULE_ARMIJO,
     STEP_RULE_LBFGSB,
     STEP_RULE_TRUST_CONSTR,
+    STEP_RULE_OPTAX_ADAM,
+    STEP_RULE_OPTAX_SGD,
 )
 
 ObjectiveThetaFn = Callable[[np.ndarray], float]

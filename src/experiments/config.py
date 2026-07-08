@@ -22,7 +22,7 @@ from objective.noise import (
 )
 from objective.policy import ConstantPolicy, LinearPolicy, MLPPolicy, SoftmaxPolicy, policy_theta_dim
 from objective.policy_preprocessing import PolicyFeaturePreprocessor
-from optimization.steps import STEP_RULES, STEP_RULE_TRUST_CONSTR
+from optimization.steps import OPTAX_STEP_RULES, STEP_RULES, STEP_RULE_TRUST_CONSTR
 from experiments.seeds import SeedSetup, resolve_seed_setup, seed_setup_from_mapping
 
 
@@ -266,8 +266,13 @@ class ExperimentConfig:
             raise ValueError(f"step_rule must be one of {allowed}.")
         if self.compute_backend not in {"numpy", "jax"}:
             raise ValueError("compute_backend must be 'numpy' or 'jax'.")
-        if self.compute_backend == "jax" and self.step_rule != STEP_RULE_TRUST_CONSTR:
-            raise ValueError("compute_backend='jax' is currently supported only with step_rule='trust-constr'.")
+        if self.compute_backend == "jax" and (
+            self.step_rule != STEP_RULE_TRUST_CONSTR and self.step_rule not in OPTAX_STEP_RULES
+        ):
+            raise ValueError(
+                "compute_backend='jax' is currently supported only with step_rule='trust-constr' "
+                "or an optax step rule."
+            )
         if self.compute_backend == "jax" and self.batch_size is not None:
             raise ValueError("compute_backend='jax' requires batch_size=None because it uses a fixed full batch.")
         if self.step_size <= 0.0:
@@ -282,6 +287,8 @@ class ExperimentConfig:
             raise ValueError("lagrangian_lambda must be nonnegative when provided.")
         if self.step_rule == STEP_RULE_TRUST_CONSTR and self.ftol is not None:
             raise ValueError("ftol is not supported when step_rule='trust-constr'.")
+        if self.step_rule in OPTAX_STEP_RULES and self.ftol is not None:
+            raise ValueError("ftol is not supported by optax step rules; use grad_norm_tol.")
         if self.step_rule != STEP_RULE_TRUST_CONSTR and self.initial_constr_penalty is not None:
             raise ValueError(
                 "initial_constr_penalty is only used by step_rule='trust-constr'."

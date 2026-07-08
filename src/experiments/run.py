@@ -32,6 +32,7 @@ from experiments.results import (
     PolicyEvaluation,
 )
 from experiments.seeds import ResolvedSeedSetup, optimizer_rngs, resolve_seed_setup, rng_from_seed
+from optimization.steps import OPTAX_STEP_RULES
 from optimization.solvers import (
     run_constant_minimize,
     run_finite_difference_minimize,
@@ -197,8 +198,11 @@ def _optimizer_backend_objective(
         return objective, x_samples
     if config.compute_backend != "jax":
         raise ValueError(f"Unsupported compute_backend '{config.compute_backend}'.")
-    if config.step_rule != "trust-constr":
-        raise ValueError("compute_backend='jax' is currently supported only with step_rule='trust-constr'.")
+    if config.step_rule != "trust-constr" and config.step_rule not in OPTAX_STEP_RULES:
+        raise ValueError(
+            "compute_backend='jax' is currently supported only with step_rule='trust-constr' "
+            "or an optax step rule."
+        )
     if config.batch_size is not None:
         raise ValueError("compute_backend='jax' requires batch_size=None because it uses a fixed full batch.")
     unsupported = set(config.enabled_estimators) - _JAX_BACKEND_ESTIMATORS - {"constant"}

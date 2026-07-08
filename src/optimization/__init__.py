@@ -7,7 +7,14 @@ from optimization.gradients import (
     SPSAGradient,
     SteinDifferenceGradient,
 )
-from optimization.steps import STEP_RULE_ARMIJO, STEP_RULE_CONSTANT, STEP_RULES
+from optimization.steps import (
+    OPTAX_STEP_RULES,
+    STEP_RULE_ARMIJO,
+    STEP_RULE_CONSTANT,
+    STEP_RULE_OPTAX_ADAM,
+    STEP_RULE_OPTAX_SGD,
+    STEP_RULES,
+)
 
 __all__ = [
     "Optimization",
@@ -17,7 +24,10 @@ __all__ = [
     "GaussSteinGradient",
     "SPSAGradient",
     "SteinDifferenceGradient",
+    "OPTAX_STEP_RULES",
     "STEP_RULE_ARMIJO",
     "STEP_RULE_CONSTANT",
+    "STEP_RULE_OPTAX_ADAM",
+    "STEP_RULE_OPTAX_SGD",
     "STEP_RULES",
 ]

@@ -19,7 +19,7 @@ from objective.objectives.prepared_glm import (
     _prepared_x_array,
     prepare_glm_batch,
 )
-from objective.policy import ConstantPolicy, LinearPolicy, SoftmaxPolicy
+from objective.policy import ConstantPolicy, LinearPolicy, MLPPolicy, SoftmaxPolicy
 
 jax.config.update("jax_enable_x64", True)
 
@@ -113,14 +113,47 @@ class JaxPreparedGLMObjective(Objective):
         lagrangian_lambda = None if self.lagrangian_lambda is None else float(self.lagrangian_lambda)
         u_bounds = self.u_bounds
 
+        # For MLP policies, the design matrix carries the mapped features and
+        # theta is unpacked into layer weights inside the jitted forward pass.
+        mlp_hidden = int(self.policy.hidden) if policy_kind == "mlp" else 0
+        mlp_d_in = int(design_np.shape[1]) if policy_kind == "mlp" else 0
+        if policy_kind == "constant":
+            theta_dim_value = 1
+        elif policy_kind == "mlp":
+            H = mlp_hidden
+            theta_dim_value = mlp_d_in * H + H + H * H + H + H + 1
+        else:
+            theta_dim_value = int(design_np.shape[1])
+
         def clip_u(u: Any) -> Any:
             if u_bounds is None:
                 return u
             return jnp.clip(u, float(u_bounds[0]), float(u_bounds[1]))
 
+        def mlp_forward(theta: Any, features_arr: Any) -> Any:
+            H = mlp_hidden
+            idx = 0
+            w1 = theta[idx : idx + mlp_d_in * H].reshape(mlp_d_in, H)
+            idx += mlp_d_in * H
+            b1 = theta[idx : idx + H]
+            idx += H
+            w2 = theta[idx : idx + H * H].reshape(H, H)
+            idx += H * H
+            b2 = theta[idx : idx + H]
+            idx += H
+            w3 = theta[idx : idx + H].reshape(H, 1)
+            idx += H
+            b3 = theta[idx : idx + 1]
+            h1 = jnp.tanh(features_arr @ w1 + b1)
+            h2 = jnp.tanh(h1 @ w2 + b2)
+            z3 = (h2 @ w3 + b3).ravel()
+            return 0.5 - jax.nn.sigmoid(z3)
+
         def policy_raw_u(theta: Any, base_logit_arr: Any, design_arr: Any) -> Any:
             if policy_kind == "constant":
                 return jnp.full(base_logit_arr.shape, theta[0], dtype=jnp.float64)
+            if policy_kind == "mlp":
+                return mlp_forward(theta, design_arr)
             score = design_arr @ theta
             if policy_kind == "linear":
                 return score
@@ -216,6 +249,8 @@ class JaxPreparedGLMObjective(Objective):
         object.__setattr__(self, "_policy_kind", policy_kind)
         object.__setattr__(self, "_action_low", action_low)
         object.__setattr__(self, "_action_span", action_span)
+        object.__setattr__(self, "_mlp_hidden", mlp_hidden)
+        object.__setattr__(self, "_theta_dim_value", theta_dim_value)
         object.__setattr__(self, "_policy_u_jit", jax.jit(policy_u))
         object.__setattr__(self, "_raw_objective_jit", jax.jit(raw_objective))
         object.__setattr__(self, "_objective_value_jit", jax.jit(objective))
@@ -334,6 +369,12 @@ class JaxPreparedGLMObjective(Objective):
         """Return policy Jacobian, primarily for API parity diagnostics."""
         self._validate_fixed_batch(x_batch)
         theta_arr = np.asarray(theta, dtype=float)
+        if self._policy_kind == "mlp":
+            raise NotImplementedError(
+                "JAX prepared GLM MLP policies expose value/grad/mean_acceptance via autodiff; "
+                "the action-space policy Jacobian (used only by stein_difference and diagnostics) "
+                "is not materialized for the MLP backend."
+            )
         if self._policy_kind == "constant":
             grad = np.ones((self.x_array.shape[0], 1), dtype=float)
             raw_u = np.full(self.x_array.shape[0], theta_arr[0], dtype=float)
@@ -359,6 +400,11 @@ class JaxPreparedGLMObjective(Objective):
         if weights_arr.shape != (self.x_array.shape[0],):
             raise ValueError("weights must have one value per x_batch row.")
         theta_arr = np.asarray(theta, dtype=float)
+        if self._policy_kind == "mlp":
+            raise NotImplementedError(
+                "JAX prepared GLM MLP policies do not expose weighted_grad; "
+                "theta gradients flow through autodiff on value()/grad()."
+            )
         if self._policy_kind == "constant":
             raw_u = np.full(self.x_array.shape[0], theta_arr[0], dtype=float)
             return np.asarray([np.sum(self._clip_derivative_weights(weights_arr, raw_u))], dtype=float)
@@ -378,9 +424,7 @@ class JaxPreparedGLMObjective(Objective):
     def policy_theta_dim(self, state_dim: int | None = None) -> int:
         """Return theta dimension for the fixed JAX policy representation."""
         del state_dim
-        if self._policy_kind == "constant":
-            return 1
-        return int(self._design_matrix_np.shape[1])
+        return int(self._theta_dim_value)
 
     def value_at_u(self, x_batch: np.ndarray | PreparedGLMBatch, u: float) -> float:
         """Return objective value at a fixed action on this fixed prepared batch."""
@@ -561,7 +605,12 @@ def _policy_backend_spec(policy: Policy) -> tuple[str, float, float]:
         return "linear", 0.0, 0.0
     if isinstance(policy, SoftmaxPolicy):
         return "softmax", float(policy.action_low), float(policy.action_span)
-    raise ValueError("JAX prepared GLM backend currently supports constant, linear, and softmax policies.")
+    if isinstance(policy, MLPPolicy):
+        # Action bounds are fixed by the 0.5 - sigmoid(z) head, so they are unused here.
+        return "mlp", 0.0, 0.0
+    raise ValueError(
+        "JAX prepared GLM backend currently supports constant, linear, softmax, and MLP policies."
+    )
 
 
 def _policy_design_matrix(policy: Policy, features: np.ndarray) -> np.ndarray | None:
@@ -572,6 +621,19 @@ def _policy_design_matrix(policy: Policy, features: np.ndarray) -> np.ndarray | 
         raise ValueError("prepared policy features must be finite.")
     if isinstance(policy, ConstantPolicy):
         return None
+    if isinstance(policy, MLPPolicy):
+        # The MLP consumes the mapped features directly (no intercept column);
+        # theta is unpacked inside the jitted forward pass, not applied linearly.
+        feature_map = getattr(policy, "feature_map", None)
+        transform = getattr(feature_map, "transform", None)
+        if not callable(transform):
+            raise ValueError("JAX prepared GLM MLP policies require a materializable feature_map.")
+        mapped = np.asarray(transform(features_arr), dtype=float)
+        if mapped.ndim != 2 or mapped.shape[0] != features_arr.shape[0]:
+            raise ValueError("policy feature_map must return a 2D array preserving the row count.")
+        if not np.isfinite(mapped).all():
+            raise ValueError("policy feature_map must return finite values.")
+        return mapped
     if isinstance(policy, (LinearPolicy, SoftmaxPolicy)):
         feature_map = getattr(policy, "feature_map", None)
         transform = getattr(feature_map, "transform", None)

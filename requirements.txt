@@ -7,3 +7,4 @@ pyarrow>=14.0
 scikit-learn>=1.0
 xgboost>=1.7
 jax>=0.4.30
+optax>=0.2

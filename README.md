@@ -68,7 +68,7 @@ J(\theta) = \mathbb{E}_x\big[f(\pi_\theta(x); x)\big]
 $$
 
 Pluggable components:
-- **Objectives**: `FixedRegressionObjective`, `PlantedLogisticObjective`, `ModelBasedObjective`, `PreparedGLMObjective`, `JaxPreparedGLMObjective`, plus `NoisyObjective` wrappers
+- **Objectives**: `FixedRegressionObjective`, `PlantedLogisticObjective`, `ModelBasedObjective`, `PreparedGLMObjective`, `JaxPreparedGLMObjective`, plus `NoisyObjective` and `BiasedObjective` wrappers
 - **Policies**: `ConstantPolicy`, `LinearPolicy`, `SoftmaxPolicy`, `MLPPolicy` (2-layer, default hidden=16)
 - **Gradient estimators**: `constant`, `first_order`, `finite_difference`, `gauss_stein`, `stein_difference`, `spsa`
 
@@ -124,6 +124,13 @@ optimizer traces still record the noisy oracle values. For trace diagnostics on 
 `CorrectnessSpec(gradient_source="denoised_exact")` uses the exact gradient of
 the wrapped clean objective, while `gradient_source="exact"` still refers to the
 optimizer-facing noisy objective.
+
+`BiasedObjective` wraps an existing objective with deterministic linear action
+bias $$\hat{M}(x,u)=M(x,u)-\lambda_{bias}u$$. For minimization, positive
+`lambda_bias` makes larger actions look artificially better. The wrapper exposes
+the biased surrogate to the optimizer while `base_value(...)` /
+`base_value_at_u(...)` preserve true-objective reporting. The focused planted-logistic
+experiment is `scripts/run_planted_logistic_action_bias_sweep.py`.
 
 Optimization step rules:
 - `l-bfgs-b` uses `scipy.minimize(method="L-BFGS-B")`.

@@ -3,16 +3,16 @@ from __future__ import annotations
 import numpy as np
 
 from scripts import run_noise_offset_grid as script
-from scripts import run_sweep
 
 
 def test_grid_offsets_and_seeds_reuse_saved_sweeps() -> None:
     # The reused fixed-noise curves come from the saved theta-offset sweeps, so
-    # the grid axes must stay subsets of the original sweep grids.
-    assert set(script.GRID_THETA_OFFSETS) <= {float(o) for o in run_sweep.THETA_OFFSETS}
-    assert set(script.RUN_SEEDS) <= set(run_sweep.RUN_SEEDS)
-    assert script.HOMO_FAMILY.reused_noise_level == run_sweep.NOISE_STD
-    assert script.HETERO_FAMILY.reused_noise_level == run_sweep.NOISE_GROWTH
+    # the grid axes must stay subsets of the original sweep grids and the
+    # reused noise levels must match what those sweeps ran at.
+    assert set(script.GRID_THETA_OFFSETS) <= {float(o) for o in script.REUSED_SWEEP_THETA_OFFSETS}
+    assert set(script.RUN_SEEDS) <= set(script.REUSED_SWEEP_RUN_SEEDS)
+    assert script.HOMO_FAMILY.reused_noise_level == 0.5
+    assert script.HETERO_FAMILY.reused_noise_level == 1.0
 
 
 def test_grid_override_lists_cover_noise_by_offset_product() -> None:
@@ -29,7 +29,7 @@ def test_grid_override_lists_cover_noise_by_offset_product() -> None:
             override_list,
             [(l, o) for l in family.new_noise_levels for o in script.GRID_THETA_OFFSETS],
         ):
-            np.testing.assert_allclose(entry["theta0"], run_sweep.BASE_THETA + float(offset))
+            np.testing.assert_allclose(entry["theta0"], script.BASE_THETA + float(offset))
             noise = entry["objective"].noise
             if family is script.HOMO_FAMILY:
                 assert noise.std == float(level)

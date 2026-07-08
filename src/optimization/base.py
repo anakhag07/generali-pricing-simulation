@@ -16,6 +16,7 @@ from optimization.helpers import (
     x_batch,
 )
 from optimization.steps import (
+    OPTAX_STEP_RULES,
     STEP_RULE_ARMIJO,
     STEP_RULE_CONSTANT,
     STEP_RULE_LBFGSB,
@@ -150,7 +151,10 @@ class Optimization:
         projected_revenue_values: list[float] = []
         theta_values: list[np.ndarray] = []
         step_sizes: list[float] | None = (
-            [] if self.algorithm in {STEP_RULE_CONSTANT, STEP_RULE_ARMIJO} else None
+            []
+            if self.algorithm in {STEP_RULE_CONSTANT, STEP_RULE_ARMIJO}
+            or self.algorithm in OPTAX_STEP_RULES
+            else None
         )
         constraint_violation: float | None = None
         acceptance_multiplier: float | None = None
@@ -364,6 +368,14 @@ class Optimization:
 
                 theta_final = theta_final - step_size * grad_theta
                 record(theta_final, step_size=step_size)
+        elif self.algorithm in OPTAX_STEP_RULES:
+            # Imported lazily so environments without optax can still use the
+            # SciPy and manual step rules.
+            from optimization.optax_loop import run_optax_minimize_loop
+
+            theta_final, optimizer_success, optimizer_status, optimizer_message = (
+                run_optax_minimize_loop(self, theta0, record)
+            )
         else:
             options: dict[str, float | int] = {"maxiter": int(self.t_steps)}
             if self.grad_norm_tol is not None:

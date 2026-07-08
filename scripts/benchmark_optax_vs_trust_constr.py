@@ -51,6 +51,7 @@ FIELDNAMES = [
     "mean_u_gap",
     "mean_acceptance",
     "constraint_violation",
+    "penalty_weight",
 ]
 
 
@@ -60,9 +61,15 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--logistic-rows", type=int, default=4096)
     parser.add_argument("--logistic-steps", type=int, default=300)
     parser.add_argument("--logistic-lr", type=float, default=0.05)
-    parser.add_argument("--glm-rows", type=int, default=20000)
+    parser.add_argument("--glm-rows", type=int, default=20000, help="sampled real-data rows; <= 0 uses all complete eligible rows")
     parser.add_argument("--glm-steps", type=int, default=100)
     parser.add_argument("--glm-adam-lr", type=float, default=0.02)
+    parser.add_argument(
+        "--glm-penalty-weights",
+        type=str,
+        default="1e4",
+        help="comma-separated acceptance_penalty_weight values; optax-adam runs once per weight",
+    )
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--skip-glm", action="store_true", help="skip the real-data GLM group (no artifacts needed)")
     parser.add_argument("--skip-logistic", action="store_true", help="skip the planted-logistic group (e.g. GLM-only GPU scaling runs)")
@@ -120,6 +127,7 @@ def _base_row(group: str, algorithm: str, theta_dim: int, n_rows: int, trace: ob
         "mean_u_gap": "",
         "mean_acceptance": "",
         "constraint_violation": "",
+        "penalty_weight": "",
     }
 
 
@@ -158,10 +166,11 @@ def run_planted_logistic_group(args: argparse.Namespace) -> list[dict]:
 
 
 def run_glm_jax_group(args: argparse.Namespace) -> list[dict]:
+    n_samples = None if args.glm_rows <= 0 else args.glm_rows
     config = get_config(
         "real_data_glm_base",
         overrides={
-            "n_samples": args.glm_rows,
+            "n_samples": n_samples,
             "constraint_mode": "trust_constr",
             "seed": args.seed,
         },
@@ -172,6 +181,7 @@ def run_glm_jax_group(args: argparse.Namespace) -> list[dict]:
         floor_value = getattr(source, "acceptance_floor", None)
     floor = float(floor_value)
     batch = prepare_glm_batch(source, config.x_fixed, row_indices=config.x_fixed_row_indices)
+    n_rows = int(batch.x_array.shape[0])
     shared_kwargs = dict(
         policy=source.policy,
         x_array=batch.x_array,
@@ -180,20 +190,28 @@ def run_glm_jax_group(args: argparse.Namespace) -> list[dict]:
         u_bounds=getattr(source, "u_bounds", None),
         acceptance_floor=floor,
     )
+    penalty_weights = [float(w) for w in args.glm_penalty_weights.split(",")]
     constrained_objective = JaxPreparedGLMObjective(**shared_kwargs)
-    penalty_objective = JaxPreparedGLMObjective(**shared_kwargs, acceptance_penalty_weight=1e4)
+    penalty_objectives = {
+        weight: JaxPreparedGLMObjective(**shared_kwargs, acceptance_penalty_weight=weight)
+        for weight in penalty_weights
+    }
     theta0 = np.asarray(config.theta0, dtype=float)
     constrained_objective.warmup(theta0)
-    penalty_objective.warmup(theta0)
+    for penalty_objective in penalty_objectives.values():
+        penalty_objective.warmup(theta0)
     theta_dim = constrained_objective.policy_theta_dim()
 
-    specs = (
-        ("trust-constr", constrained_objective, config.step_size, config.initial_constr_penalty),
-        ("optax-adam", penalty_objective, args.glm_adam_lr, None),
-        ("optax-sgd", penalty_objective, args.glm_adam_lr, None),
-    )
+    specs = [
+        ("trust-constr", constrained_objective, config.step_size, config.initial_constr_penalty, ""),
+    ]
+    for weight in penalty_weights:
+        specs.append(("optax-adam", penalty_objectives[weight], args.glm_adam_lr, None, weight))
+    # sgd is a reference point only; run it once at the first penalty weight.
+    specs.append(("optax-sgd", penalty_objectives[penalty_weights[0]], args.glm_adam_lr, None, penalty_weights[0]))
+
     rows: list[dict] = []
-    for algorithm, objective, step_size, constr_penalty in specs:
+    for algorithm, objective, step_size, constr_penalty, penalty_weight in specs:
         theta_final, trace, elapsed = _timed_solve(
             objective,
             batch.x_array,
@@ -203,8 +221,9 @@ def run_glm_jax_group(args: argparse.Namespace) -> list[dict]:
             step_size=step_size,
             initial_constr_penalty=constr_penalty,
         )
-        row = _base_row("glm_jax", algorithm, theta_dim, args.glm_rows, trace, elapsed)
+        row = _base_row("glm_jax", algorithm, theta_dim, n_rows, trace, elapsed)
         mean_acceptance = float(objective.mean_acceptance(theta_final, batch.x_array))
+        row["penalty_weight"] = penalty_weight
         row["final_raw_value"] = float(objective.base_value(theta_final, batch.x_array))
         row["mean_acceptance"] = mean_acceptance
         row["constraint_violation"] = max(0.0, floor - mean_acceptance)
@@ -240,6 +259,8 @@ def _print_table(rows: list[dict]) -> None:
             extras.append(f"mean_acceptance={row['mean_acceptance']:.4f}")
             extras.append(f"violation={row['constraint_violation']:.5f}")
             extras.append(f"raw_value={row['final_raw_value']:.4f}")
+        if row["penalty_weight"] != "":
+            extras.append(f"penalty_weight={row['penalty_weight']:.0e}")
         if extras:
             print(f"{'':<32}{'  '.join(extras)}")
 

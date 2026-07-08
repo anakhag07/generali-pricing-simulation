@@ -48,7 +48,10 @@ def test_grid_variant_name_round_trip() -> None:
 
 def test_task_specs_cover_families_variants_and_seeds() -> None:
     specs = script._task_specs(script.FAMILY_GROUPS["all"])
-    assert len(specs) == 2 * 3 * len(script.GRID_THETA_OFFSETS) * len(script.RUN_SEEDS)
+    expected = (
+        len(script.HOMO_FAMILY.new_noise_levels) + len(script.HETERO_FAMILY.new_noise_levels)
+    ) * len(script.GRID_THETA_OFFSETS) * len(script.RUN_SEEDS)
+    assert len(specs) == expected
     projects = {spec[0] for spec in specs}
     assert projects == {script.HOMO_PROJECT_NAME, script.HETERO_PROJECT_NAME}
     seeds = {spec[3] for spec in specs}

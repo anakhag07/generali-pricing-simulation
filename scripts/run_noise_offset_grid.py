@@ -115,12 +115,16 @@ REUSED_SWEEP_RUN_SEEDS: tuple[int, ...] = (7, 8, 9, 10, 11)
 ANCHOR_SEED = 7
 VARY: tuple[str, ...] = ("optimizer", "noise")
 FIXED_SEEDS: dict[str, int | None] = {}
+# Clean first-order optimum from the optax-adam truth run
+# (planted_logistic_base, no noise, step_rule="optax-adam"), Slurm job 17489599.
+# optax-adam converges to the true optimum to machine precision on the near-zero
+# coordinates (vs ~1e-4 for the earlier l-bfgs-b truth).
 BASE_THETA = np.asarray(
     [
-        0.4054882808450241,
-        0.00012799868045781167,
-        -4.657524122982136e-05,
-        6.221922280809605e-05,
+        0.4054651081081646,
+        3.51461037409671e-17,
+        4.671033881466019e-16,
+        -8.373124718006854e-16,
     ],
     dtype=float,
 )
@@ -136,9 +140,9 @@ COMMON_OVERRIDES: dict[str, object] = {
     "enabled_estimators": REQUIRED_ESTIMATORS,
     "correctness": CorrectnessSpec(gradient_source="denoised_exact"),
     "perturbation_space": "u",
-    "step_rule": "l-bfgs-b",
-    "t_steps": 1000,
-    "step_size": 0.001,
+    "step_rule": "optax-adam",
+    "t_steps": 2000,
+    "step_size": 0.05,
     "n_samples": 1000,
     "sigma": 0.05,
     "n_grad_samples": 8,
@@ -171,11 +175,11 @@ def _hetero_noisy_objective(growth: float) -> NoisyObjective:
 
 
 def _first_order_truth_summary() -> Path:
-    """Path to the saved first-order truth run used as the distance reference."""
+    """Path to the optax-adam first-order truth run used as the distance reference."""
     return (
         results_root()
         / "planted_logistic_base"
-        / "first_order_truth_20260701_174139"
+        / "first_order_truth_optax"
         / "summary.json"
     )
 
@@ -188,14 +192,18 @@ def _first_order_truth_summary() -> Path:
 # filtered to the same seeds so error bars stay comparable.
 # =============================================================================
 
-LAUNCH_PLAN_NAME = "planted-noise-offset-grid"
-HOMO_PROJECT_NAME = "homoskedastic-noise-offset-grid"
-HETERO_PROJECT_NAME = "heteroskedastic-noise-offset-grid"
+LAUNCH_PLAN_NAME = "planted-noise-offset-grid-optax"
+# optax-adam minimizer variant: fresh runs into dedicated -optax project dirs so
+# nothing mixes with or overwrites the saved l-bfgs-b grids.
+HOMO_PROJECT_NAME = "homoskedastic-noise-offset-grid-optax"
+HETERO_PROJECT_NAME = "heteroskedastic-noise-offset-grid-optax"
 RUN_SEEDS: tuple[int, ...] = (7, 8, 9)
 
 GRID_THETA_OFFSETS = (0.0, 0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0)
-HOMO_NEW_NOISE_STDS = (0.0, 0.1, 2.0)
-HETERO_NEW_NOISE_GROWTHS = (0.0, 0.25, 4.0)
+# Run every noise level fresh under optax-adam (including the levels the l-bfgs
+# grid reused, 0.5 / 1.0) so no curve comes from a different optimizer.
+HOMO_NEW_NOISE_STDS = (0.0, 0.1, 0.5, 2.0)
+HETERO_NEW_NOISE_GROWTHS = (0.0, 0.25, 1.0, 4.0)
 
 ESTIMATOR_LABELS = {
     "finite_difference": "Finite difference",
@@ -675,14 +683,9 @@ def _collect_family_rows(family: GridFamily, truth_theta: np.ndarray) -> list[di
                 continue
             noise_level, offset = parsed
             rows.extend(_variant_rows(variant_dir, family, noise_level, offset, truth_theta))
-    reused_dir = results_root() / _path_part(family.reused_project_name)
-    if reused_dir.is_dir():
-        for offset in GRID_THETA_OFFSETS:
-            variant_dir = reused_dir / f"theta-offset-{_format_sweep_value(offset)}"
-            if variant_dir.is_dir():
-                rows.extend(
-                    _variant_rows(variant_dir, family, family.reused_noise_level, offset, truth_theta)
-                )
+    # The optax-adam variant runs every noise level fresh (see HOMO/HETERO
+    # noise-level tuples), so the l-bfgs-b reused-sweep collection is disabled to
+    # avoid mixing optimizers.
     return rows
 
 

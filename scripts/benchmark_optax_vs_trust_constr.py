@@ -40,6 +40,7 @@ from optimization import FirstOrderGradient, Optimization  # noqa: E402
 FIELDNAMES = [
     "group",
     "algorithm",
+    "jax_backend",
     "theta_dim",
     "n_rows",
     "wall_time_s",
@@ -64,6 +65,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--glm-adam-lr", type=float, default=0.02)
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--skip-glm", action="store_true", help="skip the real-data GLM group (no artifacts needed)")
+    parser.add_argument("--skip-logistic", action="store_true", help="skip the planted-logistic group (e.g. GLM-only GPU scaling runs)")
     return parser.parse_args(argv)
 
 
@@ -96,11 +98,18 @@ def _timed_solve(
     return theta_final, trace, elapsed
 
 
+def _jax_backend() -> str:
+    import jax
+
+    return jax.default_backend()
+
+
 def _base_row(group: str, algorithm: str, theta_dim: int, n_rows: int, trace: object, elapsed: float) -> dict:
     n_steps = max(len(trace.steps) - 1, 1)
     return {
         "group": group,
         "algorithm": algorithm,
+        "jax_backend": _jax_backend(),
         "theta_dim": theta_dim,
         "n_rows": n_rows,
         "wall_time_s": round(elapsed, 4),
@@ -237,7 +246,8 @@ def _print_table(rows: list[dict]) -> None:
 
 def main(argv: list[str] | None = None) -> None:
     args = _parse_args(argv)
-    rows = run_planted_logistic_group(args)
+    print(f"jax default backend: {_jax_backend()}")
+    rows = [] if args.skip_logistic else run_planted_logistic_group(args)
     if not args.skip_glm:
         rows.extend(run_glm_jax_group(args))
     out_path = _write_outputs(rows)

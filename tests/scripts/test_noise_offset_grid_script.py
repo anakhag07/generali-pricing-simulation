@@ -46,16 +46,21 @@ def test_grid_variant_name_round_trip() -> None:
     assert script._parse_grid_variant(script.HOMO_FAMILY, "noise-growth-1__theta-offset-1") is None
 
 
-def test_task_specs_cover_families_variants_and_seeds() -> None:
-    specs = script._task_specs(script.FAMILY_GROUPS["all"])
-    expected = (
-        len(script.HOMO_FAMILY.new_noise_levels) + len(script.HETERO_FAMILY.new_noise_levels)
-    ) * len(script.GRID_THETA_OFFSETS) * len(script.RUN_SEEDS)
-    assert len(specs) == expected
-    projects = {spec[0] for spec in specs}
+def test_task_groups_are_one_per_family_noise_level() -> None:
+    groups = script._task_groups(script.FAMILY_GROUPS["all"])
+    # one array task per (family, noise-level): 2 families x 4 levels = 8 groups
+    n_levels = len(script.HOMO_FAMILY.new_noise_levels) + len(script.HETERO_FAMILY.new_noise_levels)
+    assert len(groups) == n_levels
+    projects = {family.project_name for family, _, _ in groups}
     assert projects == {script.HOMO_PROJECT_NAME, script.HETERO_PROJECT_NAME}
-    seeds = {spec[3] for spec in specs}
-    assert seeds == set(script.RUN_SEEDS)
+    # each group holds its 9 offset variants; total runs still cover offsets x seeds
+    for _, _, variants in groups:
+        assert len(variants) == len(script.GRID_THETA_OFFSETS)
+    total_runs = sum(len(variants) for _, _, variants in groups) * len(script.RUN_SEEDS)
+    assert total_runs == n_levels * len(script.GRID_THETA_OFFSETS) * len(script.RUN_SEEDS)
+    # noise levels covered per family
+    homo_levels = {lvl for fam, lvl, _ in groups if fam is script.HOMO_FAMILY}
+    assert homo_levels == {float(x) for x in script.HOMO_FAMILY.new_noise_levels}
 
 
 def test_axis_labels_state_offset_and_gap_definitions() -> None:

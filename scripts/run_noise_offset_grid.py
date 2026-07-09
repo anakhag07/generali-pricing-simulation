@@ -19,6 +19,15 @@ one curve per noise level. ``--plots-only`` regenerates outputs from saved
 summaries without running. Serial mode skips variant folders that already
 contain both estimators (like the original sweeps); per-seed resume is only
 available through ``--launch slurm --array``.
+
+Speed note: each planted-logistic run is only ~10s of work but pays a large
+fixed JAX/optax import cost per process, so ``--launch slurm --array`` decomposes
+the grid into one task per (family, noise-level) -- 8 warm tasks that each loop
+their 9 offsets x 3 seeds -- rather than one task per run (which paid the import
+216x). For a quick full-grid (re)generation, ``--launch local`` on an ``salloc``
+compute allocation runs the whole grid warm in a single process (imports once,
+no queue wait); reserve ``--array`` for when individual tasks are expensive, and
+never run the grid on the shared login node.
 """
 
 from __future__ import annotations
@@ -146,7 +155,11 @@ COMMON_OVERRIDES: dict[str, object] = {
     "n_samples": 1000,
     "sigma": 0.05,
     "n_grad_samples": 8,
-    "plot": True,
+    # Per-run figures are unused by the grid (the collector and
+    # plot_noise_offset_grid_extra.py render every aggregate figure from the
+    # summaries), so skipping them drops the matplotlib import + PNG renders
+    # from every task.
+    "plot": False,
     "verbose": False,
     "wandb_enabled": False,
 }
@@ -459,61 +472,76 @@ def _set_symlog_ticks(ax: object, values: list[float]) -> None:
 
 # =============================================================================
 # Launch wiring
-# Mirrors the retired fill-in sweep driver: array tasks run one (family
-# variant, seed), the serial path fills in missing variants, and both paths
-# regenerate the grid plots.
+# Each array task runs one (family, noise-level) group -- all offsets x seeds --
+# in a single warm process so the JAX/optax import is paid once per group
+# (8 groups) instead of once per (variant, seed) run (216 tasks). The serial
+# path fills in missing variants, and both paths regenerate the grid plots.
 # =============================================================================
 
+# (family, noise_level, [(variant_name, overrides), ...]) for the 9 offsets.
+GridGroup = tuple[GridFamily, float, list[tuple[str, dict[str, Any]]]]
 
-def _task_specs(families: Sequence[GridFamily]) -> list[tuple[str, str, dict[str, Any], int]]:
-    specs: list[tuple[str, str, dict[str, Any], int]] = []
+
+def _family_level_override_list(family: GridFamily, noise_level: float) -> list[dict[str, object]]:
+    return [
+        {
+            "_run_name": _grid_run_name(family, noise_level, offset),
+            **COMMON_OVERRIDES,
+            "objective": family.noisy_objective(noise_level),
+            "theta0": _theta0(offset),
+        }
+        for offset in GRID_THETA_OFFSETS
+    ]
+
+
+def _task_groups(families: Sequence[GridFamily]) -> list[GridGroup]:
+    """One group per (family, noise-level); each group holds its 9 offset variants."""
+    groups: list[GridGroup] = []
     for family in families:
-        variants = expand_sweep_overrides(
-            base_preset=BASE_PRESET,
-            override_list=_build_grid_override_list(family),
-            display_keys=(),
-        )
-        for variant_name, overrides in variants:
-            for seed in RUN_SEEDS:
-                specs.append((family.project_name, variant_name, dict(overrides), int(seed)))
-    return specs
+        for noise_level in family.new_noise_levels:
+            variants = expand_sweep_overrides(
+                base_preset=BASE_PRESET,
+                override_list=_family_level_override_list(family, noise_level),
+                display_keys=(),
+            )
+            groups.append((family, float(noise_level), [(name, dict(ov)) for name, ov in variants]))
+    return groups
 
 
 def _run_grid_task(
     index: int, context: LaunchContext, *, families: Sequence[GridFamily]
 ) -> dict[str, object]:
     del context
-    project_name, variant_name, overrides, seed = _task_specs(families)[index]
-    variant_dir = _variant_dir(project_name, variant_name)
-    seed_summary = variant_dir / f"summary-seed-{seed}.json"
-    payload = {
+    family, noise_level, variants = _task_groups(families)[index]
+    project_name = family.project_name
+    subruns: list[dict[str, object]] = []
+    for variant_name, overrides in variants:
+        variant_dir = _variant_dir(project_name, variant_name)
+        for seed in RUN_SEEDS:
+            seed_summary = variant_dir / f"summary-seed-{seed}.json"
+            run_dir = variant_dir / "seeds" / f"seed-{seed}"
+            if _summary_has_estimators(seed_summary, REQUIRED_ESTIMATORS):
+                print(f"Skipping completed '{variant_name}' seed {seed} in '{project_name}'.")
+                subruns.append({"variant": variant_name, "run_seed": seed, "run_dir": str(run_dir)})
+                continue
+            seed_setup = replicate_seed_setup(seed, ANCHOR_SEED, vary=VARY, fixed=FIXED_SEEDS)
+            config = get_config(BASE_PRESET, overrides={**overrides, "seed_setup": seed_setup})
+            run_context = create_run_context(variant_name, run_dir=run_dir)
+            executed = execute_experiment_run(
+                variant_name,
+                config,
+                run_context=run_context,
+                reporter_stack_factory=_seed_reporter_stack_factory(variant_dir, seed),
+            )
+            subruns.append(
+                {"variant": variant_name, "run_seed": seed, "run_dir": str(executed.run_context.run_dir)}
+            )
+    return {
         "project": project_name,
-        "variant": variant_name,
-        "run_seed": seed,
-        "run_dir": str(variant_dir / "seeds" / f"seed-{seed}"),
-        "summary_json": str(seed_summary),
+        "noise_level": noise_level,
+        "n_subruns": len(subruns),
+        "subruns": subruns,
     }
-    if _summary_has_estimators(seed_summary, REQUIRED_ESTIMATORS):
-        print(f"Skipping completed task '{variant_name}' seed {seed} in '{project_name}'.")
-        return payload
-    seed_setup = replicate_seed_setup(
-        seed,
-        ANCHOR_SEED,
-        vary=VARY,
-        fixed=FIXED_SEEDS,
-    )
-    config = get_config(BASE_PRESET, overrides={**overrides, "seed_setup": seed_setup})
-    run_context = create_run_context(
-        variant_name,
-        run_dir=variant_dir / "seeds" / f"seed-{seed}",
-    )
-    executed = execute_experiment_run(
-        variant_name,
-        config,
-        run_context=run_context,
-        reporter_stack_factory=_seed_reporter_stack_factory(variant_dir, seed),
-    )
-    return {**payload, "run_dir": str(executed.run_context.run_dir)}
 
 
 def _run_grid_serial(context: LaunchContext, *, families: Sequence[GridFamily]) -> None:
@@ -537,7 +565,7 @@ def _run_grid_serial(context: LaunchContext, *, families: Sequence[GridFamily]) 
 
 def _collect_grid_tasks(context: LaunchContext, *, families: Sequence[GridFamily]) -> None:
     records = read_task_records(context)
-    expected = len(_task_specs(families))
+    expected = len(_task_groups(families))
     if len(records) != expected:
         raise RuntimeError(
             f"Expected {expected} task records under {context.tasks_dir}, found {len(records)}."
@@ -549,7 +577,7 @@ def _collect_grid_tasks(context: LaunchContext, *, families: Sequence[GridFamily
 def _build_launch_plan(families: Sequence[GridFamily]) -> LaunchPlan:
     return LaunchPlan(
         name=LAUNCH_PLAN_NAME,
-        task_count=len(_task_specs(families)),
+        task_count=len(_task_groups(families)),
         requires_jax=False,
         run_task=partial(_run_grid_task, families=families),
         run_all=partial(_run_grid_serial, families=families),

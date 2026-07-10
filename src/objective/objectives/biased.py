@@ -7,6 +7,7 @@ from typing import Any
 
 import numpy as np
 
+from objective._math import _sigmoid
 from objective.base import Objective, Policy
 from objective.utils import _policy_value, _theta_grad_from_u_grad
 
@@ -299,17 +300,6 @@ def _validate_u_field(u: np.ndarray) -> np.ndarray:
     if not np.isfinite(u_arr).all():
         raise ValueError("u must contain only finite values.")
     return u_arr
-
-
-def _sigmoid(z: np.ndarray) -> np.ndarray:
-    z_arr = np.asarray(z, dtype=float)
-    out = np.empty_like(z_arr, dtype=float)
-    positive = z_arr >= 0.0
-    exp_neg = np.exp(-z_arr[positive])
-    out[positive] = 1.0 / (1.0 + exp_neg)
-    exp_pos = np.exp(z_arr[~positive])
-    out[~positive] = exp_pos / (1.0 + exp_pos)
-    return out
 
 
 __all__ = ["ActionBias", "BiasedObjective", "LinearActionBias", "UpperSupportHingeBias"]

@@ -38,7 +38,7 @@ def test_jax_backend_rewraps_noisy_glm_objective(monkeypatch) -> None:
         prepared.warmup = lambda theta: setattr(prepared, "warmed_theta", np.asarray(theta, dtype=float))
         return prepared, prepared_batch
 
-    monkeypatch.setattr(run_module, "prepare_jax_glm_objective", fake_prepare_jax_glm_objective)
+    monkeypatch.setattr(run_module, "_prepare_jax_glm_objective", fake_prepare_jax_glm_objective)
     config = SimpleNamespace(
         compute_backend="jax",
         step_rule="trust-constr",

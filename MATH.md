@@ -329,10 +329,16 @@ objective in expectation.
 
 ### 3.5 Biased Objective Wrapper
 
-`BiasedObjective` wraps an action-level objective with a deterministic linear
+`BiasedObjective` wraps an action-level objective with a deterministic additive
 action bias:
 
-$$\hat{M}(x, u) = M(x, u) - \lambda_{bias}\,u$$
+$$
+\hat{M}(x, u) = M(x, u) + b(x, u)
+$$
+
+The default `LinearActionBias` preserves the original global linear action bias:
+
+$$b(u) = - \lambda_{bias}\,u$$
 
 and the theta-space value oracle is
 
@@ -349,7 +355,28 @@ $$\frac{\partial \hat{M}}{\partial u} = \frac{\partial M}{\partial u} - \lambda_
 
 $$\nabla_\theta \hat{J}(\theta) = \nabla_\theta J(\theta) - \lambda_{bias}\,\frac{1}{n}\sum_{i=1}^n \nabla_\theta\pi_\theta(x_i)$$
 
-- **Source:** `src/objective/objectives/biased.py` :: `BiasedObjective`
+`UpperSupportHingeBias` instead leaves an upper action-support band exact and
+adds optimism only above support. Let $$h = u_c + r$$ be the upper support
+boundary, where $$u_c$$ is the support center and $$r \ge 0$$ is the support
+radius. The hard hinge is
+
+$$b(u) = -\lambda_{bias}\,(u-h)_+,$$
+
+so the surrogate equals the true objective for $$u \le h$$ and becomes
+optimistic only when actions exceed support. Its action-gradient is
+
+$$\frac{\partial b}{\partial u} = -\lambda_{bias}\,\mathbb{1}\{u > h\}.$$
+
+When `smooth_tau = \tau > 0`, the hinge excess is replaced by
+
+$$\tau\log\left(1 + \exp\left(\frac{u-h}{\tau}\right)\right),$$
+
+with action-gradient
+
+$$\frac{\partial b}{\partial u} = -\lambda_{bias}\,\sigma\left(\frac{u-h}{\tau}\right).$$
+
+- **Source:** `src/objective/objectives/biased.py` :: `ActionBias`,
+  `LinearActionBias`, `UpperSupportHingeBias`, `BiasedObjective`
 - **Notes:** `base_value()` and `base_value_at_u()` expose the wrapped true
   objective for reporting, while optimization uses the biased surrogate through
   `value()` and `grad()`. The bias is deterministic and introduces no new seed

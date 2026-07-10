@@ -181,6 +181,10 @@ Guidelines:
   done rather than deleting it, and drop its `scripts/` docs entries — `scratch/`
   contents are intentionally left out of the AGENTS/README scripts docs. Promote
   back to `scripts/` only if it becomes reusable tooling again.
+- `scratch/plot_planted_logistic_support_bias_diagnostics.py` reads a completed
+  planted-logistic support-bias sweep CSV/summaries and writes post-run true-gap
+  bar charts plus constant-action oracle-vs-biased objective slices; it never
+  reruns optimization.
 - Keep the boundary strict: do not hide reusable pipeline logic inside a script,
   and do not promote analysis-only code into `src/` without a concrete reusable
   integration point.
@@ -215,7 +219,10 @@ Guidelines:
   - `from_parameters` classmethod; batch evaluation via `value()`, `grad()`, `value_at_u()`
 
 - **`src/objective/objectives/biased.py`**
-  - `BiasedObjective`: deterministic wrapper $$\hat{M}(x,u)=M(x,u)-\lambda_{bias}u$$ that exposes biased optimization values/gradients while `base_value()` / `base_value_at_u()` report the wrapped true objective; no additional seed stream is needed
+  - `ActionBias`: action-level deterministic bias interface used by `BiasedObjective`; no additional seed stream is needed
+  - `LinearActionBias`: global optimism wrapper term $$b(u)=-\lambda_{bias}u$$
+  - `UpperSupportHingeBias`: upper-support optimism term $$b(u)=-\lambda_{bias}(u-h)_+$$ with optional smooth hinge; exact inside support and optimistic only above support
+  - `BiasedObjective`: deterministic wrapper $$\hat{M}(x,u)=M(x,u)+b(x,u)$$ that exposes biased optimization values/gradients while `base_value()` / `base_value_at_u()` report the wrapped true objective
 
 - **`src/objective/objectives/model_based.py`**
   - `ModelBasedObjective`: pricing objective $$f(u;x) = a(x,u)(\hat{Y}(x) - (u + 1) \cdot p(x))$$ backed by trained sklearn/XGBoost models
@@ -496,6 +503,7 @@ Guidelines:
 - `scripts/run_noisy_glm_theta_variance_sweep.py` runs the all-data trust-constrained GLM noisy-objective sweeps on GPU/JAX. It defaults to the saved first-order no-noise truth summary at `results/real_data_glm_base__20260706_124627/summary.json`, centers heteroskedastic noise at that run's final mean `u`, sweeps theta starts along the real initialization-to-truth line by L2 distance, sweeps homoskedastic/heteroskedastic noise variance for zeroth-order estimators, writes `noisy_glm_theta_variance_finals.csv` / `noisy_glm_theta_variance_summary.csv`, and regenerates theta-distance/objective-gap plots per grid project.
 - `scripts/run_noise_offset_grid.py` runs the combined noise-level x theta-offset planted-logistic grid: for each noise family (homoskedastic std `sigma in {0, 0.1, 2}` new + `0.5` reused from the saved theta-offset sweep; heteroskedastic growth `gamma in {0, 0.25, 4}` new + `1.0` reused) it varies the init offset `delta` in `theta0 = theta_FO_clean + delta * 1` over 9 offsets with `RUN_SEEDS=(7, 8, 9)`, carrying its own copy of the retired planted-noise fill-in sweep driver's COMMON_OVERRIDES/seed policy (formerly in `scripts/run_sweep.py`) so runs stay comparable with the saved sweeps. Writes `noise_offset_grid_finals.csv` plus per-estimator two-panel figures (final theta distance to first-order truth | clean-objective gap on the reconstructed train batch, curves = noise level) under `results/homoskedastic-noise-offset-grid/` and `results/heteroskedastic-noise-offset-grid/`. `--plots-only` regenerates outputs from saved summaries; `--families` selects the grid group; launch-aware with auto Slurm submit
 - `scripts/run_planted_logistic_action_bias_sweep.py` runs the first planted-logistic deterministic action-bias experiment: optimize `BiasedObjective(M_star, lambda_bias)` for `lambda_bias in {0, 0.01, 0.05, 0.1, 0.2}`, optimize the true `M_star` oracle baseline once on the same sampled train batch, and write `planted_logistic_action_bias_sweep.csv` with true gaps, mean actions, surrogate value, and signed optimism gap `surrogate - true`
+- `scripts/run_planted_logistic_support_bias_sweep.py` runs the planted-logistic upper-support deterministic bias experiment: optimize a surrogate that is exact for `u <= u_star + support_radius` and optimistic only above support, sweep `lambda_bias in {0, 0.01, 0.025, 0.05, 0.1, 0.2}` and `support_radius in {0.02, 0.05, 0.1, 0.2}`, and write `planted_logistic_support_bias_sweep.csv` plus true-gap/support-excess plots
 - `scripts/run_glm_u_coef_sweep.py` runs the softmax/no-PCA/trust-constr GLM setup over 200000 sampled rows and `u_coef in {-4, -5, -8, -10, -20}`, keeps per-run distribution plots enabled, and writes aggregate `glm_u_coef_sweep.csv` plus frontier plots under `results/glm-u-coef-sweep/u_coef_frontier_<timestamp>/`. It is launch-aware but defaults to local execution; `--launch slurm --array` runs one `u_coef` value per array task and a dependent collector combines row payloads into the existing frontier outputs
 - `scripts/run_glm_softmax_alpha_sweep.py` runs the trust-constrained softmax/no-PCA/linear-feature GLM setup over symmetric action bounds `[-alpha, alpha]` for `alpha in {0.5, 0.4, 0.3, 0.2, 0.15, 0.125, 0.1, 0.075}`, saves normal per-alpha policy artifacts, and writes aggregate final objective/profit plots plus artifact-replayed acceptance-threshold and per-alpha `u`-bin expected-profit summaries under `results/glm-softmax-alpha-sweep/alpha_sweep_<timestamp>/`. It is launch-aware; `--launch slurm --array` runs one alpha per array task and a dependent collector combines final-row payloads plus artifact-replayed bin summaries into the existing aggregate outputs
 - `scripts/run_glm_sensitivity_bucket_experiment.py` buckets all complete eligible GLM rows into low/medium/high local price-sensitivity tertiles at median observed `U`, runs the softmax/no-PCA/trust-constr GLM setup on every row in each bucket, keeps per-run distribution plots enabled, and writes aggregate `glm_sensitivity_bucket_experiment.csv` plus comparison plots under `results/glm-sensitivity-buckets/sensitivity_bucket_summary_<timestamp>/`. It is launch-aware; `--launch slurm --array` runs one bucket per array task and the collector recomputes bucket definitions for plots
@@ -548,7 +556,7 @@ when appropriate.
 | `test_objective_batch.py` | Deterministic objective private batch helpers and `value_at_u` |
 | `test_objective_package_exports.py` | objective package API exports remain importable |
 | `test_planted_logistic_objective.py` | Planted logistic gradient at u_star and minimum |
-| `test_biased_objective.py` | Deterministic action-bias wrapper value, action-gradient, theta-gradient, reporting, and serialization |
+| `test_biased_objective.py` | Deterministic linear/support action-bias wrapper value, action-gradient, theta-gradient, reporting, and serialization |
 | `test_noise.py` | Gaussian noise adapters (homoskedastic + heteroskedastic keying, determinism, seed-stream wiring) and `NoisyObjective` behavior |
 | `test_model_based_objective.py` | `value()`, `grad()` shape, `value_at_u()`, analytical vs FD grad agreement |
 | `test_jax_prepared_glm_objective.py` | JAX prepared GLM value, per-row action-value hooks, gradient, policy-u, acceptance, and SciPy adapter parity |
@@ -639,6 +647,7 @@ when appropriate.
 |---|---|
 | `test_noise_offset_grid_script.py` | Combined noise x theta-offset grid constants, variant naming round-trip, task specs, and axis-label definitions |
 | `test_planted_logistic_action_bias_sweep_script.py` | Planted-logistic action-bias sweep constants, row metrics, and CSV writing |
+| `test_planted_logistic_support_bias_sweep_script.py` | Planted-logistic support-bias sweep constants, support metrics, CSV writing, and aggregate plots |
 
 #### `tests/integration/`
 | Test File | Area |

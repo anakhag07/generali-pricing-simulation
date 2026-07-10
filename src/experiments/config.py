@@ -9,10 +9,13 @@ import numpy as np
 
 from objective.base import Objective, Policy
 from objective.objectives import (
+    ActionBias,
     BiasedObjective,
     FixedRegressionObjective,
+    LinearActionBias,
     ModelBasedObjective,
     PlantedLogisticObjective,
+    UpperSupportHingeBias,
 )
 from objective.noise import (
     HeteroskedasticGaussianNoise,
@@ -492,6 +495,7 @@ def _objective_to_dict(objective: Objective) -> dict[str, Any]:
             "type": "BiasedObjective",
             "base_objective": _objective_to_dict(objective.base_objective),
             "lambda_bias": float(objective.lambda_bias),
+            "bias": _action_bias_to_dict(objective.bias),
         }
     if isinstance(objective, FixedRegressionObjective):
         return {
@@ -563,6 +567,25 @@ def _noise_to_dict(noise: ObjectiveNoise) -> dict[str, Any]:
             "seed": int(noise.seed) if noise.seed is not None else None,
         }
     return {"type": type(noise).__name__}
+
+
+def _action_bias_to_dict(bias: ActionBias) -> dict[str, Any]:
+    """Serialize an action-bias term to dictionary."""
+    if isinstance(bias, LinearActionBias):
+        return {
+            "type": "LinearActionBias",
+            "lambda_bias": float(bias.lambda_bias),
+        }
+    if isinstance(bias, UpperSupportHingeBias):
+        return {
+            "type": "UpperSupportHingeBias",
+            "lambda_bias": float(bias.lambda_bias),
+            "support_center": float(bias.support_center),
+            "support_radius": float(bias.support_radius),
+            "support_upper": float(bias.support_upper),
+            "smooth_tau": float(bias.smooth_tau) if bias.smooth_tau is not None else None,
+        }
+    return {"type": type(bias).__name__, "lambda_bias": float(bias.lambda_bias)}
 
 
 def _policy_to_dict(policy: object) -> dict[str, Any]:

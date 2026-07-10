@@ -125,12 +125,16 @@ optimizer traces still record the noisy oracle values. For trace diagnostics on 
 the wrapped clean objective, while `gradient_source="exact"` still refers to the
 optimizer-facing noisy objective.
 
-`BiasedObjective` wraps an existing objective with deterministic linear action
-bias $$\hat{M}(x,u)=M(x,u)-\lambda_{bias}u$$. For minimization, positive
-`lambda_bias` makes larger actions look artificially better. The wrapper exposes
-the biased surrogate to the optimizer while `base_value(...)` /
-`base_value_at_u(...)` preserve true-objective reporting. The focused planted-logistic
-experiment is `scripts/run_planted_logistic_action_bias_sweep.py`.
+`BiasedObjective` wraps an existing objective with deterministic action bias
+$$\hat{M}(x,u)=M(x,u)+b(x,u)$$. `LinearActionBias` uses
+$$b(u)=-\lambda_{bias}u$$, so positive `lambda_bias` makes larger actions look
+artificially better for minimization. `UpperSupportHingeBias` uses
+$$b(u)=-\lambda_{bias}(u-h)_+$$ with `h = support_center + support_radius`, so
+the surrogate is exact inside support and optimistic only above support. The
+wrapper exposes the biased surrogate to the optimizer while `base_value(...)` /
+`base_value_at_u(...)` preserve true-objective reporting. The focused
+planted-logistic experiments are `scripts/run_planted_logistic_action_bias_sweep.py`
+and `scripts/run_planted_logistic_support_bias_sweep.py`.
 
 Optimization step rules:
 - `l-bfgs-b` uses `scipy.minimize(method="L-BFGS-B")`.

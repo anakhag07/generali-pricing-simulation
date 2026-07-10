@@ -19,6 +19,15 @@ one curve per noise level. ``--plots-only`` regenerates outputs from saved
 summaries without running. Serial mode skips variant folders that already
 contain both estimators (like the original sweeps); per-seed resume is only
 available through ``--launch slurm --array``.
+
+Speed note: each planted-logistic run is only ~10s of work but pays a large
+fixed JAX/optax import cost per process, so ``--launch slurm --array`` decomposes
+the grid into one task per (family, noise-level) -- 8 warm tasks that each loop
+their 9 offsets x 3 seeds -- rather than one task per run (which paid the import
+216x). For a quick full-grid (re)generation, ``--launch local`` on an ``salloc``
+compute allocation runs the whole grid warm in a single process (imports once,
+no queue wait); reserve ``--array`` for when individual tasks are expensive, and
+never run the grid on the shared login node.
 """
 
 from __future__ import annotations
@@ -115,12 +124,16 @@ REUSED_SWEEP_RUN_SEEDS: tuple[int, ...] = (7, 8, 9, 10, 11)
 ANCHOR_SEED = 7
 VARY: tuple[str, ...] = ("optimizer", "noise")
 FIXED_SEEDS: dict[str, int | None] = {}
+# Clean first-order optimum from the optax-adam truth run
+# (planted_logistic_base, no noise, step_rule="optax-adam"), Slurm job 17489599.
+# optax-adam converges to the true optimum to machine precision on the near-zero
+# coordinates (vs ~1e-4 for the earlier l-bfgs-b truth).
 BASE_THETA = np.asarray(
     [
-        0.4054882808450241,
-        0.00012799868045781167,
-        -4.657524122982136e-05,
-        6.221922280809605e-05,
+        0.4054651081081646,
+        3.51461037409671e-17,
+        4.671033881466019e-16,
+        -8.373124718006854e-16,
     ],
     dtype=float,
 )
@@ -136,13 +149,17 @@ COMMON_OVERRIDES: dict[str, object] = {
     "enabled_estimators": REQUIRED_ESTIMATORS,
     "correctness": CorrectnessSpec(gradient_source="denoised_exact"),
     "perturbation_space": "u",
-    "step_rule": "l-bfgs-b",
-    "t_steps": 1000,
-    "step_size": 0.001,
+    "step_rule": "optax-adam",
+    "t_steps": 2000,
+    "step_size": 0.05,
     "n_samples": 1000,
     "sigma": 0.05,
     "n_grad_samples": 8,
-    "plot": True,
+    # Per-run figures are unused by the grid (the collector and
+    # plot_noise_offset_grid_extra.py render every aggregate figure from the
+    # summaries), so skipping them drops the matplotlib import + PNG renders
+    # from every task.
+    "plot": False,
     "verbose": False,
     "wandb_enabled": False,
 }
@@ -171,11 +188,11 @@ def _hetero_noisy_objective(growth: float) -> NoisyObjective:
 
 
 def _first_order_truth_summary() -> Path:
-    """Path to the saved first-order truth run used as the distance reference."""
+    """Path to the optax-adam first-order truth run used as the distance reference."""
     return (
         results_root()
         / "planted_logistic_base"
-        / "first_order_truth_20260701_174139"
+        / "first_order_truth_optax"
         / "summary.json"
     )
 
@@ -188,14 +205,18 @@ def _first_order_truth_summary() -> Path:
 # filtered to the same seeds so error bars stay comparable.
 # =============================================================================
 
-LAUNCH_PLAN_NAME = "planted-noise-offset-grid"
-HOMO_PROJECT_NAME = "homoskedastic-noise-offset-grid"
-HETERO_PROJECT_NAME = "heteroskedastic-noise-offset-grid"
+LAUNCH_PLAN_NAME = "planted-noise-offset-grid-optax"
+# optax-adam minimizer variant: fresh runs into dedicated -optax project dirs so
+# nothing mixes with or overwrites the saved l-bfgs-b grids.
+HOMO_PROJECT_NAME = "homoskedastic-noise-offset-grid-optax"
+HETERO_PROJECT_NAME = "heteroskedastic-noise-offset-grid-optax"
 RUN_SEEDS: tuple[int, ...] = (7, 8, 9)
 
 GRID_THETA_OFFSETS = (0.0, 0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0)
-HOMO_NEW_NOISE_STDS = (0.0, 0.1, 2.0)
-HETERO_NEW_NOISE_GROWTHS = (0.0, 0.25, 4.0)
+# Run every noise level fresh under optax-adam (including the levels the l-bfgs
+# grid reused, 0.5 / 1.0) so no curve comes from a different optimizer.
+HOMO_NEW_NOISE_STDS = (0.0, 0.1, 0.5, 2.0)
+HETERO_NEW_NOISE_GROWTHS = (0.0, 0.25, 1.0, 4.0)
 
 ESTIMATOR_LABELS = {
     "finite_difference": "Finite difference",
@@ -451,61 +472,76 @@ def _set_symlog_ticks(ax: object, values: list[float]) -> None:
 
 # =============================================================================
 # Launch wiring
-# Mirrors the retired fill-in sweep driver: array tasks run one (family
-# variant, seed), the serial path fills in missing variants, and both paths
-# regenerate the grid plots.
+# Each array task runs one (family, noise-level) group -- all offsets x seeds --
+# in a single warm process so the JAX/optax import is paid once per group
+# (8 groups) instead of once per (variant, seed) run (216 tasks). The serial
+# path fills in missing variants, and both paths regenerate the grid plots.
 # =============================================================================
 
+# (family, noise_level, [(variant_name, overrides), ...]) for the 9 offsets.
+GridGroup = tuple[GridFamily, float, list[tuple[str, dict[str, Any]]]]
 
-def _task_specs(families: Sequence[GridFamily]) -> list[tuple[str, str, dict[str, Any], int]]:
-    specs: list[tuple[str, str, dict[str, Any], int]] = []
+
+def _family_level_override_list(family: GridFamily, noise_level: float) -> list[dict[str, object]]:
+    return [
+        {
+            "_run_name": _grid_run_name(family, noise_level, offset),
+            **COMMON_OVERRIDES,
+            "objective": family.noisy_objective(noise_level),
+            "theta0": _theta0(offset),
+        }
+        for offset in GRID_THETA_OFFSETS
+    ]
+
+
+def _task_groups(families: Sequence[GridFamily]) -> list[GridGroup]:
+    """One group per (family, noise-level); each group holds its 9 offset variants."""
+    groups: list[GridGroup] = []
     for family in families:
-        variants = expand_sweep_overrides(
-            base_preset=BASE_PRESET,
-            override_list=_build_grid_override_list(family),
-            display_keys=(),
-        )
-        for variant_name, overrides in variants:
-            for seed in RUN_SEEDS:
-                specs.append((family.project_name, variant_name, dict(overrides), int(seed)))
-    return specs
+        for noise_level in family.new_noise_levels:
+            variants = expand_sweep_overrides(
+                base_preset=BASE_PRESET,
+                override_list=_family_level_override_list(family, noise_level),
+                display_keys=(),
+            )
+            groups.append((family, float(noise_level), [(name, dict(ov)) for name, ov in variants]))
+    return groups
 
 
 def _run_grid_task(
     index: int, context: LaunchContext, *, families: Sequence[GridFamily]
 ) -> dict[str, object]:
     del context
-    project_name, variant_name, overrides, seed = _task_specs(families)[index]
-    variant_dir = _variant_dir(project_name, variant_name)
-    seed_summary = variant_dir / f"summary-seed-{seed}.json"
-    payload = {
+    family, noise_level, variants = _task_groups(families)[index]
+    project_name = family.project_name
+    subruns: list[dict[str, object]] = []
+    for variant_name, overrides in variants:
+        variant_dir = _variant_dir(project_name, variant_name)
+        for seed in RUN_SEEDS:
+            seed_summary = variant_dir / f"summary-seed-{seed}.json"
+            run_dir = variant_dir / "seeds" / f"seed-{seed}"
+            if _summary_has_estimators(seed_summary, REQUIRED_ESTIMATORS):
+                print(f"Skipping completed '{variant_name}' seed {seed} in '{project_name}'.")
+                subruns.append({"variant": variant_name, "run_seed": seed, "run_dir": str(run_dir)})
+                continue
+            seed_setup = replicate_seed_setup(seed, ANCHOR_SEED, vary=VARY, fixed=FIXED_SEEDS)
+            config = get_config(BASE_PRESET, overrides={**overrides, "seed_setup": seed_setup})
+            run_context = create_run_context(variant_name, run_dir=run_dir)
+            executed = execute_experiment_run(
+                variant_name,
+                config,
+                run_context=run_context,
+                reporter_stack_factory=_seed_reporter_stack_factory(variant_dir, seed),
+            )
+            subruns.append(
+                {"variant": variant_name, "run_seed": seed, "run_dir": str(executed.run_context.run_dir)}
+            )
+    return {
         "project": project_name,
-        "variant": variant_name,
-        "run_seed": seed,
-        "run_dir": str(variant_dir / "seeds" / f"seed-{seed}"),
-        "summary_json": str(seed_summary),
+        "noise_level": noise_level,
+        "n_subruns": len(subruns),
+        "subruns": subruns,
     }
-    if _summary_has_estimators(seed_summary, REQUIRED_ESTIMATORS):
-        print(f"Skipping completed task '{variant_name}' seed {seed} in '{project_name}'.")
-        return payload
-    seed_setup = replicate_seed_setup(
-        seed,
-        ANCHOR_SEED,
-        vary=VARY,
-        fixed=FIXED_SEEDS,
-    )
-    config = get_config(BASE_PRESET, overrides={**overrides, "seed_setup": seed_setup})
-    run_context = create_run_context(
-        variant_name,
-        run_dir=variant_dir / "seeds" / f"seed-{seed}",
-    )
-    executed = execute_experiment_run(
-        variant_name,
-        config,
-        run_context=run_context,
-        reporter_stack_factory=_seed_reporter_stack_factory(variant_dir, seed),
-    )
-    return {**payload, "run_dir": str(executed.run_context.run_dir)}
 
 
 def _run_grid_serial(context: LaunchContext, *, families: Sequence[GridFamily]) -> None:
@@ -529,7 +565,7 @@ def _run_grid_serial(context: LaunchContext, *, families: Sequence[GridFamily]) 
 
 def _collect_grid_tasks(context: LaunchContext, *, families: Sequence[GridFamily]) -> None:
     records = read_task_records(context)
-    expected = len(_task_specs(families))
+    expected = len(_task_groups(families))
     if len(records) != expected:
         raise RuntimeError(
             f"Expected {expected} task records under {context.tasks_dir}, found {len(records)}."
@@ -541,7 +577,7 @@ def _collect_grid_tasks(context: LaunchContext, *, families: Sequence[GridFamily
 def _build_launch_plan(families: Sequence[GridFamily]) -> LaunchPlan:
     return LaunchPlan(
         name=LAUNCH_PLAN_NAME,
-        task_count=len(_task_specs(families)),
+        task_count=len(_task_groups(families)),
         requires_jax=False,
         run_task=partial(_run_grid_task, families=families),
         run_all=partial(_run_grid_serial, families=families),
@@ -675,14 +711,9 @@ def _collect_family_rows(family: GridFamily, truth_theta: np.ndarray) -> list[di
                 continue
             noise_level, offset = parsed
             rows.extend(_variant_rows(variant_dir, family, noise_level, offset, truth_theta))
-    reused_dir = results_root() / _path_part(family.reused_project_name)
-    if reused_dir.is_dir():
-        for offset in GRID_THETA_OFFSETS:
-            variant_dir = reused_dir / f"theta-offset-{_format_sweep_value(offset)}"
-            if variant_dir.is_dir():
-                rows.extend(
-                    _variant_rows(variant_dir, family, family.reused_noise_level, offset, truth_theta)
-                )
+    # The optax-adam variant runs every noise level fresh (see HOMO/HETERO
+    # noise-level tuples), so the l-bfgs-b reused-sweep collection is disabled to
+    # avoid mixing optimizers.
     return rows
 
 

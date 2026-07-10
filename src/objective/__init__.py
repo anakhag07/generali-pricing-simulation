@@ -6,13 +6,16 @@ This module provides:
 - Concrete policies: ConstantPolicy, LinearPolicy, SoftmaxPolicy, MLPPolicy
 - Policy feature maps: IdentityFeatureMap, QuadraticFeatureMap,
   CubicFeatureMap, QuarticFeatureMap, CallableFeatureMap
-- Concrete objectives: FixedRegressionObjective, PlantedLogisticObjective,
-  ModelBasedObjective, PreparedGLMObjective, JaxPreparedGLMObjective
+- Concrete objectives: FixedRegressionObjective, BiasedObjective,
+  PlantedLogisticObjective, ModelBasedObjective, PreparedGLMObjective,
+  JaxPreparedGLMObjective
 - Objective noise: ObjectiveNoise, NoNoise, HomoskedasticGaussianNoise,
   HeteroskedasticGaussianNoise, NoisyObjective
  - Utility: optimal_u, value_at_constant_u, mean_acceptance_at_constant_u,
    value_for_reporting
 """
+
+from importlib import import_module
 
 from objective.base import (
     Objective,
@@ -21,16 +24,17 @@ from objective.base import (
     sample_states,
 )
 from objective.objectives import (
+    ActionBias,
+    BiasedObjective,
     FixedRegressionObjective,
+    LinearActionBias,
     ModelBasedObjective,
     PlantedLogisticObjective,
     PreparedGLMBatch,
     PreparedGLMObjective,
-    JaxPreparedGLMObjective,
-    JaxPreparedGLMScipyAdapter,
+    UpperSupportHingeBias,
     prepare_glm_batch,
     prepare_glm_objective,
-    prepare_jax_glm_objective,
 )
 from objective.noise import (
     HeteroskedasticGaussianNoise,
@@ -62,6 +66,21 @@ from objective.policy_preprocessing import (
 )
 from objective.utils import mean_acceptance_at_constant_u, optimal_u, value_at_constant_u, value_for_reporting
 
+_JAX_EXPORTS = {
+    "JaxPreparedGLMObjective",
+    "JaxPreparedGLMScipyAdapter",
+    "prepare_jax_glm_objective",
+}
+
+
+def __getattr__(name: str):
+    if name in _JAX_EXPORTS:
+        module = import_module("objective.objectives")
+        value = getattr(module, name)
+        globals()[name] = value
+        return value
+    raise AttributeError(name)
+
 __all__ = [
     # Base interfaces
     "Objective",
@@ -87,11 +106,15 @@ __all__ = [
     "fit_policy_feature_preprocessor",
     "make_policy_features",
     # Concrete objectives
+    "ActionBias",
+    "BiasedObjective",
     "FixedRegressionObjective",
+    "LinearActionBias",
     "ModelBasedObjective",
     "PlantedLogisticObjective",
     "PreparedGLMBatch",
     "PreparedGLMObjective",
+    "UpperSupportHingeBias",
     "JaxPreparedGLMObjective",
     "JaxPreparedGLMScipyAdapter",
     "prepare_glm_batch",

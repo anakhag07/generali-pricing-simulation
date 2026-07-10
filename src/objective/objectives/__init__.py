@@ -1,6 +1,9 @@
 """Concrete objective implementations."""
 
+from importlib import import_module
+
 from objective.objectives.fixed_regression import FixedRegressionObjective
+from objective.objectives.biased import ActionBias, BiasedObjective, LinearActionBias, UpperSupportHingeBias
 from objective.objectives.model_based import ModelBasedObjective
 from objective.objectives.planted_logistic import PlantedLogisticObjective
 from objective.objectives.prepared_glm import (
@@ -9,14 +12,28 @@ from objective.objectives.prepared_glm import (
     prepare_glm_batch,
     prepare_glm_objective,
 )
-from objective.objectives.jax_prepared_glm import (
-    JaxPreparedGLMObjective,
-    JaxPreparedGLMScipyAdapter,
-    prepare_jax_glm_objective,
-)
+
+_JAX_EXPORTS = {
+    "JaxPreparedGLMObjective",
+    "JaxPreparedGLMScipyAdapter",
+    "prepare_jax_glm_objective",
+}
+
+
+def __getattr__(name: str):
+    if name in _JAX_EXPORTS:
+        module = import_module("objective.objectives.jax_prepared_glm")
+        value = getattr(module, name)
+        globals()[name] = value
+        return value
+    raise AttributeError(name)
 
 __all__ = [
+    "ActionBias",
     "FixedRegressionObjective",
+    "BiasedObjective",
+    "LinearActionBias",
+    "UpperSupportHingeBias",
     "ModelBasedObjective",
     "PlantedLogisticObjective",
     "PreparedGLMBatch",

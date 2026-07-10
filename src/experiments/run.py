@@ -10,7 +10,7 @@ import numpy as np
 
 from objective.base import sample_states
 from objective.noise import NoisyObjective
-from objective.objectives import ModelBasedObjective, prepare_jax_glm_objective
+from objective.objectives import ModelBasedObjective
 from objective.policy import ConstantPolicy
 from objective.utils import (
     mean_acceptance_at_constant_u,
@@ -220,7 +220,7 @@ def _optimizer_backend_objective(
     model_type = getattr(source_objective.acceptance_model, "model_type", None)
     if model_type != "glm":
         raise ValueError("compute_backend='jax' currently supports only GLM real-data artifacts.")
-    jax_objective, batch = prepare_jax_glm_objective(
+    jax_objective, batch = _prepare_jax_glm_objective(
         source_objective,
         x_samples,
         row_indices=row_indices,
@@ -229,6 +229,17 @@ def _optimizer_backend_objective(
     if noisy_objective is not None:
         return replace(noisy_objective, base_objective=jax_objective), batch.x_array
     return jax_objective, batch.x_array
+
+
+def _prepare_jax_glm_objective(
+    source_objective: ModelBasedObjective,
+    x_samples: object,
+    *,
+    row_indices: object | None,
+):
+    from objective.objectives import prepare_jax_glm_objective
+
+    return prepare_jax_glm_objective(source_objective, x_samples, row_indices=row_indices)
 
 
 def _solve_estimator(

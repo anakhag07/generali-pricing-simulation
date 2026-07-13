@@ -218,6 +218,10 @@ Guidelines:
   - `FixedRegressionObjective`: pricing objective $$f(u;x) = a(x,u)(\ell(x) - r(u))$$
   - `from_parameters` classmethod; batch evaluation via `value()`, `grad()`, `value_at_u()`
 
+- **`src/objective/objectives/quadratic.py`**
+  - `QuadraticObjective`: policy-free, dimension-configurable benchmark $$J(\theta)=\frac12\|\theta\|_2^2$$ with exact gradient $$\theta$$ and unique `optimal_theta()` at zero
+  - The required `x_batch` argument is shape-validated but ignored; no additional seed stream is needed
+
 - **`src/objective/objectives/biased.py`**
   - `ActionBias`: action-level deterministic bias interface used by `BiasedObjective`; no additional seed stream is needed
   - `LinearActionBias`: global optimism wrapper term $$b(u)=-\lambda_{bias}u$$
@@ -370,7 +374,8 @@ Guidelines:
     `canonical_training_block`, `canonical_runtime_block`, and `build_experiment_config`
 
 - **`src/experiments/configs/`** (preset registry)
-  - `__init__.py`: `get_config(name, overrides=None)` and `list_configs()` registry; real-data configs are exposed only as base presets plus overrides
+  - `__init__.py`: `get_config(name, overrides=None)` and `list_configs()` registry; factory-backed presets accept objective-specific axes before standard `ExperimentConfig` overrides
+  - `quadratic_base.py`: `build_quadratic_config(dimension=...)` creates the policy-free strongly convex benchmark with a fixed-norm start and a fixed dummy state batch; `dimension` is available to generic sweeps
   - `real_data_factory.py`: `build_real_data_config(...)` centralizes GLM/XGB artifact loading, row selection, policy construction, feature-order overrides, softmax action-bound overrides, policy-side no-PCA preprocessing, GLM-only `u_coef` acceptance overrides, acceptance-floor modes, estimator defaults, and theta initialization; omitted or `None` `n_samples` uses all complete eligible rows, while an integer `n_samples` samples without replacement
     - `loss_source="observed"` is an override axis that appends `Y_G_Loss` to the fixed real-data frame and configures `ModelBasedObjective` to use it as the loss term; default `"predicted"` keeps the artifact loss model
   - `first_order_runs_diff_starts.py`: planted-logistic preset configured for comparison runs across different initial starts
@@ -382,7 +387,8 @@ Guidelines:
   - `config_template.py`: copy-first scaffold with `None` placeholders for all `ExperimentConfig` fields plus objective/correctness parameter blocks; not registered as a runnable preset
 
 - **`src/experiments/initialization.py`**
-  - `random_theta0(state_dim, policy, rng)`: generates policy-aware random initial theta when configs request random initialization
+  - `objective_theta_dim(objective, state_dim)`: resolves an objective-owned theta dimension before falling back to policy dimensions
+  - `random_theta0(state_dim, policy, rng, parameter_dim=None)`: generates random initial theta with an optional objective-owned dimension
 
 - **`src/experiments/correctness.py`**
   - `TrueThetaGradFn`: callable type alias for theta-gradient diagnostics
@@ -390,7 +396,8 @@ Guidelines:
   - Uses `optimization.helpers.finite_difference_theta_grad(...)` for correctness-mode numerical theta gradients
 
 - **`src/experiments/run.py`**
-  - `run_experiment(config, step_reporter)`: main runner; uses `config.x_fixed` as state array when set, otherwise samples from N(0, I); applies the train/test split after row selection/sampling; runs enabled estimators on train rows; evaluates final policies on train and optional test rows; returns `ExperimentResult` (pure computation, no I/O)
+  - `run_experiment(config, step_reporter)`: main runner; uses `config.x_fixed` as state array when set, otherwise samples from N(0, I); applies the train/test split after row selection/sampling; runs enabled estimators on train rows; evaluates final objectives and optional policies on train/test rows; returns `ExperimentResult` (pure computation, no I/O)
+  - Policy-free objectives support theta-space estimators and objective/theta reporting; action-only constant estimators, u-space perturbations, and constant-u baselines remain policy/action capabilities
   - Owns estimator dispatch through `_ESTIMATOR_ORDER` / `_ESTIMATOR_SPECS`, which map enabled estimator keys to `optimization.solvers` wrappers
   - `enabled_estimators` may include `"constant"`, which optimizes a one-scalar `ConstantPolicy` copy of the configured objective; `constant_u_baselines` remains fixed-action evaluation only
   - `compute_backend="jax"` converts supported GLM train batches to `JaxPreparedGLMObjective` before optimizer execution and requires `trust-constr` with full batches; `NoisyObjective(ModelBasedObjective(...))` is unwrapped, prepared as JAX GLM, and re-wrapped for zeroth-order noisy value queries
@@ -438,9 +445,9 @@ Guidelines:
   - `write_policy_pca_outputs(...)`: writes aggregate finals/traces CSVs, summary markdown, PCA/richness-gap plots, and final `u`/acceptance spread plots
 
 - **`src/experiments/results.py`**
-  - `OptimizationTrace`: per-step trace with u values, objective values, gradient estimates, optional theta values, step sizes, and model-based mean-acceptance diagnostics
-  - `EstimatorResult`: final theta, u, value, wall-clock time, and optional acceptance-constraint diagnostics
-  - `PolicyEvaluation`: final policy metrics on a split (`objective_value`, `objective_sum`, mean/quantile `u`, and optional acceptance/loss/revenue diagnostics)
+  - `OptimizationTrace`: per-step trace with optional u values, objective values, gradient estimates, optional theta values, step sizes, and model-based mean-acceptance diagnostics
+  - `EstimatorResult`: final theta, optional u, value, wall-clock time, and optional acceptance-constraint diagnostics
+  - `PolicyEvaluation`: final objective metrics on a split plus optional mean/quantile u and acceptance/loss/revenue diagnostics
   - `ExperimentResult`: full result including config, train samples in `x_samples`, optional `x_test`, split row/index metadata, traces, final train/test policy metrics, and optional u_star
 
 - **`src/experiments/seeds/`** (package; replaces the former `seeding.py` module)
@@ -453,7 +460,7 @@ Guidelines:
   - `run_seed_repeats(...)`: runs a preset once per `run_seed`, writes normal per-run outputs plus `seed_repeats.csv` and `seed_repeats_summary.csv`. Prefer `sweep_utils.run_sweep(...)` for new seed-aware sweeps
 
 - **`src/experiments/policy_validation.py`**
-  - Shared optimizer-independent policy validation helpers (`policy_u_values`, `evaluate_policy`) used by both `run_experiment()` and saved policy artifacts
+  - Shared optimizer-independent final evaluation helpers; `evaluate_policy` always reports objective metrics and adds action metrics only when the objective has a policy
 
 - **`src/experiments/policy_artifacts.py`**
   - `PolicyArtifact`: reloadable trained-policy object saved as `policies/<estimator>/policy.json` plus `arrays.npz`
@@ -556,6 +563,7 @@ when appropriate.
 | `test_objective_batch.py` | Deterministic objective private batch helpers and `value_at_u` |
 | `test_objective_package_exports.py` | objective package API exports remain importable |
 | `test_planted_logistic_objective.py` | Planted logistic gradient at u_star and minimum |
+| `test_quadratic_objective.py` | Direct theta-space quadratic value, gradient, finite-difference parity, optimum, dimension validation, and state independence |
 | `test_biased_objective.py` | Deterministic linear/support action-bias wrapper value, action-gradient, theta-gradient, reporting, and serialization |
 | `test_noise.py` | Gaussian noise adapters (homoskedastic + heteroskedastic keying, determinism, seed-stream wiring) and `NoisyObjective` behavior |
 | `test_model_based_objective.py` | `value()`, `grad()` shape, `value_at_u()`, analytical vs FD grad agreement |
@@ -622,6 +630,7 @@ when appropriate.
 | `test_reference_elasticity_bucket_script.py` | Reference-u GLM elasticity bucket script constants and plot outputs |
 | `test_noisy_glm_theta_variance_sweep_script.py` | Noisy GLM theta/variance truth parsing, variant construction, launch plan, and aggregate outputs |
 | `test_policy_pca_grid.py` | Policy PCA grid condition construction and aggregate output writing |
+| `test_policy_free_objective.py` | Policy-free dimension resolution, optimization convergence, optional action metrics, and strict JSON serialization |
 
 #### `tests/reporting/`
 | Test File | Area |

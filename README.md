@@ -54,7 +54,7 @@ pytest -q
 
 ## What This Does
 
-This project optimizes a parameterized policy over random state vectors:
+Most objectives optimize a parameterized policy over state vectors:
 
 $$
 x \sim \mathcal{N}(0, I),\quad \theta \in \mathbb{R}^p,\quad u = \pi_\theta(x)
@@ -67,8 +67,12 @@ $$
 J(\theta) = \mathbb{E}_x\big[f(\pi_\theta(x); x)\big]
 $$
 
+Direct theta-space objectives may instead define $$J(\theta)$$ without a policy.
+`QuadraticObjective(dimension=d)` provides the strongly convex benchmark
+$$J(\theta)=\frac12\|\theta\|_2^2$$ with unique minimizer $$\theta^*=0$$.
+
 Pluggable components:
-- **Objectives**: `FixedRegressionObjective`, `PlantedLogisticObjective`, `ModelBasedObjective`, `PreparedGLMObjective`, `JaxPreparedGLMObjective`, plus `NoisyObjective` and `BiasedObjective` wrappers
+- **Objectives**: `QuadraticObjective`, `FixedRegressionObjective`, `PlantedLogisticObjective`, `ModelBasedObjective`, `PreparedGLMObjective`, `JaxPreparedGLMObjective`, plus `NoisyObjective` and `BiasedObjective` wrappers
 - **Policies**: `ConstantPolicy`, `LinearPolicy`, `SoftmaxPolicy`, `MLPPolicy` (2-layer, default hidden=16)
 - **Gradient estimators**: `constant`, `first_order`, `finite_difference`, `gauss_stein`, `stein_difference`, `spsa`
 
@@ -107,6 +111,17 @@ Core API convention:
 - `Policy.weighted_grad(theta, x_batch, weights)` is the preferred VJP-style
   path for chain-rule gradients because it avoids materializing full
   `(n_samples, theta_dim)` policy Jacobians.
+
+The registered `quadratic_base` preset exposes `dimension` as a factory and
+sweep axis. Its fixed-norm start keeps the initial objective equal to `0.5`
+across dimensions:
+
+```python
+config = get_config("quadratic_base", overrides={"dimension": 50})
+```
+
+Policy-free runs report theta/objective diagnostics normally and leave action
+metrics such as `final_u` and `mean_u` null.
 
 `NoisyObjective` wraps an existing objective with additive deterministic
 action-level noise $$\hat{M}(x,u)=M(x,u)+\delta(x,u)$$. The
@@ -164,10 +179,11 @@ module layer.
 
 ## Data Sources
 
-Real-data experiments use a small set of base presets plus overrides:
+Available base presets include:
 
 | Preset | State source | Objective |
 |---|---|---|
+| `quadratic_base` | Fixed dummy batch (ignored) | `QuadraticObjective` |
 | `fixed_regression_base` | Synthetic N(0, I) | `FixedRegressionObjective` |
 | `real_data_glm_base` | All complete eligible raw acceptance CSV rows by default; seeded `n_samples` draw when set | `ModelBasedObjective` (GLM bundle, analytical grad when supported) |
 | `real_data_xgb_base` | All complete eligible raw acceptance CSV rows by default; seeded `n_samples` draw when set | `ModelBasedObjective` (XGBoost bundle, FD acceptance gradient) |

@@ -7,6 +7,7 @@ from importlib import import_module
 from typing import Any, Mapping
 
 from experiments.config import ExperimentConfig
+from experiments.configs.quadratic_base import build_quadratic_config
 from experiments.configs.real_data_factory import build_real_data_config
 
 _CONFIG_MODULES = {
@@ -20,15 +21,26 @@ _REAL_DATA_BASES: dict[str, dict[str, Any]] = {
     "real_data_xgb_base": {"model_type": "xgb"},
 }
 
+_QUADRATIC_BASES: dict[str, dict[str, Any]] = {
+    "quadratic_base": {},
+}
+
 _CONFIG_CACHE: dict[str, ExperimentConfig] = {}
 
 
 def list_configs() -> tuple[str, ...]:
-    return tuple([*_CONFIG_MODULES.keys(), *_REAL_DATA_BASES.keys()])
+    return tuple([*_CONFIG_MODULES.keys(), *_QUADRATIC_BASES.keys(), *_REAL_DATA_BASES.keys()])
 
 
 def get_config(name: str, overrides: Mapping[str, Any] | None = None) -> ExperimentConfig:
     override_payload = dict(overrides or {})
+    if name in _QUADRATIC_BASES:
+        if not override_payload and name in _CONFIG_CACHE:
+            return _CONFIG_CACHE[name]
+        config = build_quadratic_config(**override_payload)
+        if not override_payload:
+            _CONFIG_CACHE[name] = config
+        return config
     real_data_payload = _real_data_payload(name)
     if real_data_payload is not None:
         real_data_payload.update(override_payload)

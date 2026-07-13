@@ -34,7 +34,7 @@ class FileStepLogger:
         self,
         method: str,
         step: int,
-        u: float,
+        u: float | None,
         value: float,
         grad_norm: float | None = None,
         step_size: float | None = None,
@@ -44,13 +44,14 @@ class FileStepLogger:
     ) -> None:
         if self._file is None:
             return
+        u_str = f"{u:.6f}" if u is not None else ""
         grad_str = f"{grad_norm:.6f}" if grad_norm is not None else ""
         step_str = f"{step_size:.6f}" if step_size is not None else ""
         acceptance_str = f"{mean_acceptance:.6f}" if mean_acceptance is not None else ""
         loss_str = f"{projected_loss:.6f}" if projected_loss is not None else ""
         revenue_str = f"{projected_revenue:.6f}" if projected_revenue is not None else ""
         self._file.write(
-            f"{method},{step},{u:.6f},{value:.6f},{grad_str},{step_str},"
+            f"{method},{step},{u_str},{value:.6f},{grad_str},{step_str},"
             f"{acceptance_str},{loss_str},{revenue_str}\n"
         )
 

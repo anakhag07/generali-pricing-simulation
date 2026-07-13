@@ -21,7 +21,7 @@ from objective.utils import (
 )
 from experiments.config import ExperimentConfig
 from experiments.correctness import TrueThetaGradFn, resolve_true_grad_theta_fn
-from experiments.initialization import random_theta0
+from experiments.initialization import objective_theta_dim, random_theta0
 from experiments.policy_validation import evaluate_policy
 from experiments.reporting.base import StepReporter
 from experiments.results import (
@@ -292,7 +292,7 @@ def _estimator_result(
     mean_acceptance_fn = getattr(objective, "mean_acceptance", None)
     return EstimatorResult(
         theta=theta,
-        u=_mean_action(objective, theta, x_samples) if policy is not None else float("nan"),
+        u=_mean_action(objective, theta, x_samples) if policy is not None else None,
         value=value_for_reporting(objective, theta, x_samples),
         time=elapsed,
         mean_acceptance=(
@@ -323,7 +323,12 @@ def run_experiment(
         theta_state_dim = (
             int(policy_input_dim()) if callable(policy_input_dim) else effective_config.state_dim
         )
-        theta_initial = random_theta0(theta_state_dim, policy, theta0_rng)
+        theta_initial = random_theta0(
+            theta_state_dim,
+            policy,
+            theta0_rng,
+            parameter_dim=objective_theta_dim(objective, effective_config.state_dim),
+        )
         # Persist the resolved theta0 so reporters/plots can access it
         effective_config = replace(effective_config, theta0=theta_initial)
     else:

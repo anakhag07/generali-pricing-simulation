@@ -141,7 +141,7 @@ class Optimization:
         self.gradient.setup(self, theta0)
 
         steps: list[int] = []
-        u_values: list[float] = []
+        u_values: list[float | None] = []
         values: list[float] = []
         u_grad_estimates: list[float] = []
         theta_grad_norms: list[float] = []
@@ -289,7 +289,7 @@ class Optimization:
             if policy is not None:
                 mean_u = _mean_action(self.objective, theta_arr, x_batch_arr)
             else:
-                mean_u = float("nan")
+                mean_u = None
 
             mean_acceptance = None
             projected_loss = None

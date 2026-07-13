@@ -31,7 +31,7 @@ def build_quadratic_config(
     payload: dict[str, Any] = {
         "seed": 7,
         "state_dim": 1,
-        "n_samples": 1,
+        "n_samples": 20,
         "objective": objective,
         "theta0": theta0,
         "step_rule": "l-bfgs-b",
@@ -43,9 +43,7 @@ def build_quadratic_config(
         "enabled_estimators": (
             "first_order",
             "finite_difference",
-            "gauss_stein",
             "stein_difference",
-            "spsa",
         ),
         "plot": True,
         "verbose": False,

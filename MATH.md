@@ -106,7 +106,23 @@ delegating to an inner policy (Constant, Linear, Softmax, or MLP).
 
 ## 3. Objectives
 
-### 3.1 Fixed Regression Objective
+### 3.1 Quadratic Objective
+
+For a configured parameter dimension $$d$$:
+
+$$J(\theta) = \frac{1}{2}\|\theta\|_2^2 = \frac{1}{2}\sum_{j=1}^{d}\theta_j^2$$
+
+**Gradient and Hessian:**
+
+$$\nabla J(\theta) = \theta, \qquad \nabla^2J(\theta) = I_d$$
+
+- **Source:** `src/objective/objectives/quadratic.py` :: `QuadraticObjective`
+- **Notes:** This is a direct theta-space objective and does not compose through
+  a policy. It is 1-strongly convex and 1-smooth, with unique minimizer
+  $$\theta^*=0$$ and minimum value $$J(\theta^*)=0$$. The required `x_batch`
+  argument is ignored.
+
+### 3.2 Fixed Regression Objective
 
 $$f(u;\, x) = a(x, u)\,\bigl(\ell(x) - r(u)\bigr)$$
 
@@ -125,7 +141,7 @@ where $\frac{\partial a}{\partial u} = a(1 - a)\,\beta_2$.
   - `_value_batch()` — per-sample values
   - `_grad_u_batch()` — per-sample $\partial f/\partial u$
 
-### 3.2 Planted Logistic Objective
+### 3.3 Planted Logistic Objective
 
 $$L(u;\, x) = \log(1 + e^z) - p^*(x)\, z$$
 
@@ -143,7 +159,7 @@ $$\frac{\partial L}{\partial u} = \alpha\,\bigl(\sigma(z) - p^*(x)\bigr)$$
   - `_grad_u_batch()` — zero at $u = u^*$ by construction
 - **Notes:** Convex in $u$. Known optimum $u^*$ is planted at construction.
 
-### 3.3 Model-Based Objective
+### 3.4 Model-Based Objective
 
 $$f(u;\, x) = a(x, u)\,\bigl(L(x) - (u + 1)\, p(x)\bigr)$$
 
@@ -286,7 +302,7 @@ $$\nabla_\theta J_{\lambda}(\theta) = \nabla_\theta J(\theta) - \lambda\,\nabla_
 - **Source:** `src/objective/objectives/model_based.py` :: `ModelBasedObjective.value()`, `ModelBasedObjective.grad()`, `ModelBasedObjective._lagrangian_adjustment()`
 - **Notes:** `base_value()` and `base_value_at_u()` keep exposing the raw objective $$J$$ for experiment summaries and sweep frontier plots while optimization uses $$J_\lambda$$.
 
-### 3.4 Noisy Objective Wrapper
+### 3.5 Noisy Objective Wrapper
 
 `NoisyObjective` wraps an action-level objective with additive deterministic
 noise:
@@ -327,7 +343,7 @@ objective in expectation.
   this wrapped-objective gradient for diagnostics, while `"exact"` remains the
   optimizer-facing objective gradient source.
 
-### 3.5 Biased Objective Wrapper
+### 3.6 Biased Objective Wrapper
 
 `BiasedObjective` wraps an action-level objective with a deterministic additive
 action bias:

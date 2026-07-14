@@ -15,6 +15,8 @@ from scratch import run_quadratic_homoskedastic_sweep as script
 def test_full_and_pilot_grid_sizes() -> None:
     full = script._parse_args([])
     pilot = script._parse_args(["--pilot"])
+    optax = script._parse_args(["--optimizer", "optax-adam"])
+    optax_pilot = script._parse_args(["--pilot", "--optimizer", "optax-adam"])
 
     full_noise, full_radii, full_seeds = script._resolved_grid(full)
     pilot_noise, pilot_radii, pilot_seeds = script._resolved_grid(pilot)
@@ -23,6 +25,43 @@ def test_full_and_pilot_grid_sizes() -> None:
     assert len(pilot_noise) * len(pilot_radii) * len(pilot_seeds) == 60
     assert script._project_name(full) == script.PROJECT_NAME
     assert script._project_name(pilot) == script.PILOT_PROJECT_NAME
+    assert script._project_name(optax) == script.OPTAX_PROJECT_NAME
+    assert script._project_name(optax_pilot) == script.OPTAX_PILOT_PROJECT_NAME
+    assert script._resolved_t_steps(full) == 200
+    assert script._resolved_t_steps(optax) == 2000
+
+
+def test_optimizer_cli_overrides_defaults() -> None:
+    args = script._parse_args(
+        ["--optimizer", "optax-adam", "--t-steps", "300", "--step-size", "0.02"]
+    )
+
+    assert args.optimizer == script.OPTAX_ADAM
+    assert script._resolved_t_steps(args) == 300
+    assert args.step_size == pytest.approx(0.02)
+    assert args.array_max_parallel == 2
+
+
+def test_optax_launch_plan_uses_gpu_array_by_grid_cell() -> None:
+    optax = script._parse_args(["--optimizer", "optax-adam"])
+    pilot = script._parse_args(["--optimizer", "optax-adam", "--pilot"])
+    lbfgsb = script._parse_args([])
+
+    assert len(script._task_specs(optax)) == 32
+    assert len(set(script._task_specs(optax))) == 32
+    assert len(script._task_specs(pilot)) == 12
+
+    optax_plan = script._build_launch_plan(optax)
+    assert optax_plan.name == script.OPTAX_PROJECT_NAME
+    assert optax_plan.task_count == 32
+    assert optax_plan.requires_jax is True
+    assert optax_plan.default_launch == "auto"
+    assert optax_plan.default_array is True
+
+    lbfgsb_plan = script._build_launch_plan(lbfgsb)
+    assert lbfgsb_plan.requires_jax is False
+    assert lbfgsb_plan.default_launch == "local"
+    assert lbfgsb_plan.default_array is False
 
 
 def test_variant_name_round_trip() -> None:
@@ -39,6 +78,8 @@ def test_override_list_covers_noise_by_radius_product() -> None:
         noise_stds=(0.0, 1e-4),
         fd_radii=(1e-2, 1e-1),
         t_steps=25,
+        optimizer=script.L_BFGS_B,
+        step_size=0.05,
     )
 
     assert len(overrides) == 4
@@ -55,8 +96,27 @@ def test_override_list_covers_noise_by_radius_product() -> None:
         assert isinstance(objective.noise, HomoskedasticGaussianNoise)
         assert item["enabled_estimators"] == (script.ESTIMATOR,)
         assert item["perturbation_space"] == "theta"
-        assert item["step_rule"] == "l-bfgs-b"
+        assert item["step_rule"] == script.L_BFGS_B
+        assert item["step_size"] == pytest.approx(0.05)
+        assert item["ftol"] == pytest.approx(1e-12)
         assert np.linalg.norm(item["theta0"]) == pytest.approx(1.0)
+
+
+def test_optax_overrides_use_learning_rate_without_ftol() -> None:
+    overrides = script._build_override_list(
+        dimension=2,
+        noise_stds=(1e-4,),
+        fd_radii=(1e-2,),
+        t_steps=2000,
+        optimizer=script.OPTAX_ADAM,
+        step_size=0.05,
+    )
+
+    assert len(overrides) == 1
+    assert overrides[0]["step_rule"] == script.OPTAX_ADAM
+    assert overrides[0]["t_steps"] == 2000
+    assert overrides[0]["step_size"] == pytest.approx(0.05)
+    assert "ftol" not in overrides[0]
 
 
 def test_run_grid_varies_only_noise_seed(monkeypatch, tmp_path) -> None:
@@ -74,7 +134,9 @@ def test_run_grid_varies_only_noise_seed(monkeypatch, tmp_path) -> None:
         noise_stds=(0.0,),
         fd_radii=(0.1,),
         run_seeds=(7, 8),
-        t_steps=10,
+        t_steps=2000,
+        optimizer=script.OPTAX_ADAM,
+        step_size=0.05,
     )
 
     assert project_dir == tmp_path / "project"
@@ -83,6 +145,122 @@ def test_run_grid_varies_only_noise_seed(monkeypatch, tmp_path) -> None:
     assert calls[0]["vary"] == ("noise",)
     assert calls[0]["anchor_seed"] == 7
     assert calls[0]["per_seed_plots"] is False
+    override = calls[0]["override_list"][0]
+    assert override["step_rule"] == script.OPTAX_ADAM
+    assert override["t_steps"] == 2000
+    assert override["step_size"] == pytest.approx(0.05)
+    assert "ftol" not in override
+
+
+def test_grid_task_runs_one_cell_and_returns_seed_summaries(monkeypatch, tmp_path) -> None:
+    args = script._parse_args(
+        [
+            "--optimizer",
+            "optax-adam",
+            "--noise-stds",
+            "0.001",
+            "--fd-radii",
+            "0.01",
+            "--run-seeds",
+            "7",
+            "8",
+        ]
+    )
+    variant = script._variant_name(0.001, 0.01)
+    variant_dir = tmp_path / variant
+    variant_dir.mkdir()
+    for seed in (7, 8):
+        (variant_dir / f"summary-seed-{seed}.json").write_text("{}", encoding="utf-8")
+    calls: list[dict[str, object]] = []
+
+    def fake_run_grid(**kwargs):
+        calls.append(kwargs)
+        return tmp_path
+
+    monkeypatch.setattr(script, "_run_grid", fake_run_grid)
+
+    payload = script._run_grid_task(0, SimpleNamespace(), args=args)
+
+    assert calls[0]["noise_stds"] == (0.001,)
+    assert calls[0]["fd_radii"] == (0.01,)
+    assert calls[0]["run_seeds"] == (7, 8)
+    assert payload["variant_name"] == variant
+    assert len(payload["summary_paths"]) == 2
+
+
+def test_rows_from_task_payloads_reads_exact_summaries(tmp_path) -> None:
+    paths = []
+    for seed in (7, 8):
+        path = tmp_path / f"summary-seed-{seed}.json"
+        path.write_text(json.dumps(_summary_payload(run_seed=seed)), encoding="utf-8")
+        paths.append(str(path))
+
+    rows = script._rows_from_task_payloads(
+        [{"noise_std": 1e-4, "fd_radius": 1e-2, "summary_paths": paths}]
+    )
+
+    assert [row["run_seed"] for row in rows] == [7, 8]
+    assert all(row["noise_to_radius"] == pytest.approx(0.01) for row in rows)
+
+
+def test_collector_rejects_missing_and_failed_tasks(monkeypatch, tmp_path) -> None:
+    args = script._parse_args(
+        ["--noise-stds", "0", "--fd-radii", "0.1", "--run-seeds", "7"]
+    )
+    context = SimpleNamespace(tasks_dir=tmp_path)
+
+    monkeypatch.setattr(script, "read_task_records", lambda unused: [])
+    with pytest.raises(RuntimeError, match="missing task indices=\\[0\\]"):
+        script._collect_grid_tasks(context, args=args)
+
+    monkeypatch.setattr(
+        script,
+        "read_task_records",
+        lambda unused: [{"task_index": 0, "status": "failed", "error": "boom"}],
+    )
+    monkeypatch.setattr(
+        script,
+        "task_payloads",
+        lambda unused: (_ for _ in ()).throw(RuntimeError("Cannot collect failed task records")),
+    )
+    with pytest.raises(RuntimeError, match="Cannot collect failed task records"):
+        script._collect_grid_tasks(context, args=args)
+
+
+def test_main_delegates_optax_to_launch_plan(monkeypatch) -> None:
+    calls: list[dict[str, object]] = []
+
+    def fake_run_launch_plan(plan, **kwargs):
+        calls.append({"plan": plan, **kwargs})
+
+    monkeypatch.setattr(script, "run_launch_plan", fake_run_launch_plan)
+
+    script.main(
+        [
+            "--optimizer",
+            "optax-adam",
+            "--noise-stds",
+            "0",
+            "--fd-radii",
+            "0.1",
+            "--run-seeds",
+            "7",
+        ]
+    )
+
+    assert calls[0]["plan"].requires_jax is True
+    assert calls[0]["plan"].task_count == 1
+    assert calls[0]["cwd"] == script.REPO_ROOT
+    assert calls[0]["argv"][1:] == [
+        "--optimizer",
+        "optax-adam",
+        "--noise-stds",
+        "0",
+        "--fd-radii",
+        "0.1",
+        "--run-seeds",
+        "7",
+    ]
 
 
 def test_summary_row_separates_clean_and_noisy_values(tmp_path) -> None:

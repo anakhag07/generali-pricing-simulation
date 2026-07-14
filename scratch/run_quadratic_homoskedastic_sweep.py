@@ -18,6 +18,14 @@ for _extra in (str(REPO_ROOT), str(REPO_ROOT / "src")):
         sys.path.insert(0, _extra)
 
 from experiments.config import CorrectnessSpec  # noqa: E402
+from experiments.launch import (  # noqa: E402
+    LaunchContext,
+    LaunchPlan,
+    add_launch_args,
+    read_task_records,
+    run_launch_plan,
+    task_payloads,
+)
 from experiments.paths import results_root  # noqa: E402
 from experiments.sweep_utils import run_sweep  # noqa: E402
 from objective.noise import HomoskedasticGaussianNoise, NoisyObjective  # noqa: E402
@@ -27,9 +35,20 @@ from objective.objectives import QuadraticObjective  # noqa: E402
 BASE_PRESET = "quadratic_base"
 PROJECT_NAME = "quadratic-homoskedastic-lbfgsb-sweep"
 PILOT_PROJECT_NAME = "quadratic-homoskedastic-lbfgsb-pilot"
+OPTAX_PROJECT_NAME = "quadratic-homoskedastic-optax-adam-sweep"
+OPTAX_PILOT_PROJECT_NAME = "quadratic-homoskedastic-optax-adam-pilot"
 ESTIMATOR = "finite_difference"
+L_BFGS_B = "l-bfgs-b"
+OPTAX_ADAM = "optax-adam"
+OPTIMIZERS = (L_BFGS_B, OPTAX_ADAM)
 
 DEFAULT_DIMENSION = 10
+DEFAULT_STEP_SIZE = 0.05
+DEFAULT_ARRAY_MAX_PARALLEL = 2
+DEFAULT_T_STEPS = {
+    L_BFGS_B: 200,
+    OPTAX_ADAM: 2000,
+}
 DEFAULT_NOISE_STDS = (0.0, 1e-8, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2)
 DEFAULT_FD_RADII = (1e-4, 1e-3, 1e-2, 1e-1)
 DEFAULT_RUN_SEEDS = tuple(range(7, 27))
@@ -86,8 +105,12 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--noise-stds", type=float, nargs="+", default=None)
     parser.add_argument("--fd-radii", type=float, nargs="+", default=None)
     parser.add_argument("--run-seeds", type=int, nargs="+", default=None)
-    parser.add_argument("--t-steps", type=int, default=200)
+    parser.add_argument("--optimizer", choices=OPTIMIZERS, default=L_BFGS_B)
+    parser.add_argument("--t-steps", type=int, default=None)
+    parser.add_argument("--step-size", type=float, default=DEFAULT_STEP_SIZE)
     parser.add_argument("--project-name", default=None)
+    add_launch_args(parser)
+    parser.set_defaults(array_max_parallel=DEFAULT_ARRAY_MAX_PARALLEL)
     return parser.parse_args(argv)
 
 
@@ -110,7 +133,20 @@ def _resolved_grid(args: argparse.Namespace) -> tuple[tuple[float, ...], tuple[f
 def _project_name(args: argparse.Namespace) -> str:
     if args.project_name:
         return str(args.project_name)
+    if args.optimizer == OPTAX_ADAM:
+        return OPTAX_PILOT_PROJECT_NAME if args.pilot else OPTAX_PROJECT_NAME
     return PILOT_PROJECT_NAME if args.pilot else PROJECT_NAME
+
+
+def _resolved_t_steps(args: argparse.Namespace) -> int:
+    if args.t_steps is not None:
+        return int(args.t_steps)
+    return DEFAULT_T_STEPS[str(args.optimizer)]
+
+
+def _task_specs(args: argparse.Namespace) -> list[tuple[float, float]]:
+    noise_stds, fd_radii, _ = _resolved_grid(args)
+    return [(noise_std, fd_radius) for noise_std in noise_stds for fd_radius in fd_radii]
 
 
 def _variant_name(noise_std: float, fd_radius: float) -> str:
@@ -135,11 +171,17 @@ def _build_override_list(
     noise_stds: Sequence[float],
     fd_radii: Sequence[float],
     t_steps: int,
+    optimizer: str,
+    step_size: float,
 ) -> list[dict[str, object]]:
     if dimension <= 0:
         raise ValueError("dimension must be positive.")
     if t_steps <= 0:
         raise ValueError("t_steps must be positive.")
+    if optimizer not in OPTIMIZERS:
+        raise ValueError(f"optimizer must be one of {OPTIMIZERS}.")
+    if not np.isfinite(step_size) or step_size <= 0.0:
+        raise ValueError("step_size must be finite and positive.")
     theta0 = np.ones(dimension, dtype=float) / np.sqrt(float(dimension))
     base_objective = QuadraticObjective(dimension=dimension)
     return [
@@ -152,12 +194,13 @@ def _build_override_list(
             ),
             "theta0": theta0.copy(),
             "n_samples": 1,
-            "step_rule": "optax-adam",
+            "step_rule": optimizer,
             "perturbation_space": "theta",
             "t_steps": int(t_steps),
+            "step_size": float(step_size),
             "sigma": float(fd_radius),
             "grad_norm_tol": 1e-8,
-            "ftol": 1e-12,
+            **({"ftol": 1e-12} if optimizer == L_BFGS_B else {}),
             "enabled_estimators": (ESTIMATOR,),
             "correctness": CorrectnessSpec(gradient_source="denoised_exact"),
             "plot": False,
@@ -177,6 +220,8 @@ def _run_grid(
     fd_radii: Sequence[float],
     run_seeds: Sequence[int],
     t_steps: int,
+    optimizer: str,
+    step_size: float,
 ) -> Path:
     sweep = run_sweep(
         base_preset=BASE_PRESET,
@@ -186,6 +231,8 @@ def _run_grid(
             noise_stds=noise_stds,
             fd_radii=fd_radii,
             t_steps=t_steps,
+            optimizer=optimizer,
+            step_size=step_size,
         ),
         vary=("noise",),
         anchor_seed=int(run_seeds[0]),
@@ -216,6 +263,134 @@ def _collect_rows(project_dir: Path) -> list[dict[str, object]]:
                 continue
             rows.append(row)
     return sorted(rows, key=lambda row: (float(row["noise_std"]), float(row["fd_radius"]), int(row["run_seed"])))
+
+
+def _run_grid_task(
+    index: int,
+    context: LaunchContext,
+    *,
+    args: argparse.Namespace,
+) -> dict[str, object]:
+    del context
+    noise_std, fd_radius = _task_specs(args)[index]
+    _, _, run_seeds = _resolved_grid(args)
+    project_name = _project_name(args)
+    project_dir = _run_grid(
+        project_name=project_name,
+        dimension=int(args.dimension),
+        noise_stds=(noise_std,),
+        fd_radii=(fd_radius,),
+        run_seeds=run_seeds,
+        t_steps=_resolved_t_steps(args),
+        optimizer=str(args.optimizer),
+        step_size=float(args.step_size),
+    )
+    variant_name = _variant_name(noise_std, fd_radius)
+    summary_paths = [
+        project_dir / variant_name / f"summary-seed-{seed}.json" for seed in run_seeds
+    ]
+    missing = [path for path in summary_paths if not path.is_file()]
+    if missing:
+        raise RuntimeError(
+            f"Task {index} completed without expected summaries: "
+            + ", ".join(str(path) for path in missing)
+        )
+    print(
+        f"Completed quadratic task {index}: {variant_name} "
+        f"({len(summary_paths)} seeds)."
+    )
+    return {
+        "project_name": project_name,
+        "variant_name": variant_name,
+        "noise_std": noise_std,
+        "fd_radius": fd_radius,
+        "summary_paths": [str(path) for path in summary_paths],
+    }
+
+
+def _run_grid_serial(context: LaunchContext, *, args: argparse.Namespace) -> None:
+    del context
+    noise_stds, fd_radii, run_seeds = _resolved_grid(args)
+    project_dir = _run_grid(
+        project_name=_project_name(args),
+        dimension=int(args.dimension),
+        noise_stds=noise_stds,
+        fd_radii=fd_radii,
+        run_seeds=run_seeds,
+        t_steps=_resolved_t_steps(args),
+        optimizer=str(args.optimizer),
+        step_size=float(args.step_size),
+    )
+    rows = _collect_rows(project_dir)
+    if not rows:
+        raise RuntimeError(f"No completed quadratic sweep summaries found under {project_dir}.")
+    _write_outputs(project_dir, rows, optimizer=str(args.optimizer))
+    print(f"Wrote {len(rows)} quadratic sweep rows under {project_dir}.")
+
+
+def _collect_grid_tasks(context: LaunchContext, *, args: argparse.Namespace) -> None:
+    expected_indices = set(range(len(_task_specs(args))))
+    records = read_task_records(context)
+    actual_indices = {int(record["task_index"]) for record in records}
+    if actual_indices != expected_indices:
+        missing = sorted(expected_indices - actual_indices)
+        unexpected = sorted(actual_indices - expected_indices)
+        raise RuntimeError(
+            "Cannot collect incomplete quadratic array: "
+            f"missing task indices={missing}, unexpected task indices={unexpected}."
+        )
+    payloads = task_payloads(context)
+    rows = _rows_from_task_payloads(payloads)
+    if not rows:
+        raise RuntimeError("No completed quadratic sweep rows were produced by array tasks.")
+    project_dir = _project_dir(_project_name(args))
+    _write_outputs(project_dir, rows, optimizer=str(args.optimizer))
+    print(f"Collected {len(payloads)} tasks and wrote {len(rows)} rows under {project_dir}.")
+
+
+def _rows_from_task_payloads(
+    payloads: Sequence[Mapping[str, object]],
+) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    for payload in payloads:
+        noise_std = float(payload["noise_std"])
+        fd_radius = float(payload["fd_radius"])
+        summary_paths = payload.get("summary_paths")
+        if not isinstance(summary_paths, list):
+            raise TypeError("Quadratic task payload must contain a summary_paths list.")
+        for summary_value in summary_paths:
+            summary_path = Path(str(summary_value))
+            summary = _load_json(summary_path)
+            rows.append(
+                _summary_row(
+                    summary,
+                    summary_path,
+                    noise_std=noise_std,
+                    fd_radius=fd_radius,
+                )
+            )
+    return sorted(
+        rows,
+        key=lambda row: (
+            float(row["noise_std"]),
+            float(row["fd_radius"]),
+            int(row["run_seed"]),
+        ),
+    )
+
+
+def _build_launch_plan(args: argparse.Namespace) -> LaunchPlan:
+    use_gpu = str(args.optimizer) == OPTAX_ADAM
+    return LaunchPlan(
+        name=_project_name(args),
+        task_count=len(_task_specs(args)),
+        requires_jax=use_gpu,
+        run_task=lambda index, context: _run_grid_task(index, context, args=args),
+        run_all=lambda context: _run_grid_serial(context, args=args),
+        collect=lambda context: _collect_grid_tasks(context, args=args),
+        default_launch="auto" if use_gpu else "local",
+        default_array=use_gpu,
+    )
 
 
 def _summary_row(
@@ -282,13 +457,19 @@ def _aggregate_rows(rows: Sequence[Mapping[str, object]]) -> list[dict[str, obje
     return output
 
 
-def _write_outputs(project_dir: Path, rows: Sequence[Mapping[str, object]], *, plot: bool = True) -> None:
+def _write_outputs(
+    project_dir: Path,
+    rows: Sequence[Mapping[str, object]],
+    *,
+    optimizer: str = L_BFGS_B,
+    plot: bool = True,
+) -> None:
     project_dir.mkdir(parents=True, exist_ok=True)
     summaries = _aggregate_rows(rows)
     _write_csv(project_dir / "quadratic_homoskedastic_finals.csv", FINAL_FIELDNAMES, rows)
     _write_csv(project_dir / "quadratic_homoskedastic_summary.csv", SUMMARY_FIELDNAMES, summaries)
     if plot and summaries:
-        _write_plots(project_dir / "plots", rows, summaries)
+        _write_plots(project_dir / "plots", rows, summaries, optimizer=optimizer)
 
 
 def _write_csv(path: Path, fieldnames: Sequence[str], rows: Sequence[Mapping[str, object]]) -> None:
@@ -303,6 +484,8 @@ def _write_plots(
     plot_dir: Path,
     final_rows: Sequence[Mapping[str, object]],
     summary_rows: Sequence[Mapping[str, object]],
+    *,
+    optimizer: str,
 ) -> None:
     import matplotlib
 
@@ -322,7 +505,7 @@ def _write_plots(
         plot_dir / "optimizer_success_rate_heatmap.png",
         summary_rows,
         metric="optimizer_success_rate",
-        title="L-BFGS-B success rate",
+        title=f"{_optimizer_label(optimizer)} success rate",
         transform=float,
         colorbar_label="success rate",
         vmin=0.0,
@@ -417,29 +600,38 @@ def _value_label(value: float) -> str:
     return f"{float(value):g}"
 
 
+def _optimizer_label(optimizer: str) -> str:
+    if optimizer == L_BFGS_B:
+        return "L-BFGS-B"
+    if optimizer == OPTAX_ADAM:
+        return "Optax Adam"
+    raise ValueError(f"Unknown optimizer: {optimizer}")
+
+
 def _project_dir(project_name: str) -> Path:
     return results_root() / str(project_name).replace(" ", "").replace("/", "-")
 
 
 def main(argv: list[str] | None = None) -> None:
     args = _parse_args(argv)
-    noise_stds, fd_radii, run_seeds = _resolved_grid(args)
-    project_name = _project_name(args)
-    project_dir = _project_dir(project_name)
-    if not args.plots_only:
-        project_dir = _run_grid(
-            project_name=project_name,
-            dimension=int(args.dimension),
-            noise_stds=noise_stds,
-            fd_radii=fd_radii,
-            run_seeds=run_seeds,
-            t_steps=int(args.t_steps),
-        )
-    rows = _collect_rows(project_dir)
-    if not rows:
-        raise RuntimeError(f"No completed quadratic sweep summaries found under {project_dir}.")
-    _write_outputs(project_dir, rows)
-    print(f"Wrote {len(rows)} quadratic sweep rows under {project_dir}.")
+    if args.plots_only:
+        project_dir = _project_dir(_project_name(args))
+        rows = _collect_rows(project_dir)
+        if not rows:
+            raise RuntimeError(
+                f"No completed quadratic sweep summaries found under {project_dir}."
+            )
+        _write_outputs(project_dir, rows, optimizer=str(args.optimizer))
+        print(f"Wrote {len(rows)} quadratic sweep rows under {project_dir}.")
+        return
+
+    original_argv = [sys.argv[0], *(sys.argv[1:] if argv is None else argv)]
+    run_launch_plan(
+        _build_launch_plan(args),
+        args=args,
+        argv=original_argv,
+        cwd=REPO_ROOT,
+    )
 
 
 if __name__ == "__main__":

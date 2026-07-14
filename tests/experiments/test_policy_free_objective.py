@@ -7,11 +7,13 @@ import json
 import numpy as np
 import pytest
 
-from experiments.config import ExperimentConfig
+from experiments.config import CorrectnessSpec, ExperimentConfig
 from experiments.reporting.context import RunContext
 from experiments.reporting.json_summary import build_summary_payload
 from experiments.run import run_experiment
+from experiments.seeds import SeedSetup
 from objective import QuadraticObjective
+from objective.noise import HomoskedasticGaussianNoise, NoisyObjective
 
 
 def _config(*, dimension: int = 3, theta0: np.ndarray | None = None) -> ExperimentConfig:
@@ -57,6 +59,42 @@ def test_policy_free_quadratic_run_converges_and_reports_no_actions(tmp_path) ->
     assert payload["estimators"]["first_order"]["final_u"] is None
     assert payload["estimators"]["first_order"]["train"]["mean_u"] is None
     json.dumps(payload, allow_nan=False)
+
+
+def test_policy_free_noisy_quadratic_is_seeded_and_deterministic() -> None:
+    base = _config(dimension=3)
+    config = replace(
+        base,
+        objective=NoisyObjective(
+            QuadraticObjective(dimension=3),
+            HomoskedasticGaussianNoise(std=1e-4),
+        ),
+        enabled_estimators=("finite_difference",),
+        correctness=CorrectnessSpec(gradient_source="denoised_exact"),
+        sigma=1e-2,
+        t_steps=5,
+        seed_setup=SeedSetup(
+            run_seed=1,
+            data_seed=2,
+            split_seed=3,
+            theta_seed=4,
+            noise_seed=99,
+            optimizer_seed=5,
+        ),
+    )
+
+    first = run_experiment(config)
+    second = run_experiment(config)
+
+    np.testing.assert_allclose(
+        first.results["finite_difference"].theta,
+        second.results["finite_difference"].theta,
+    )
+    assert isinstance(first.config.objective, NoisyObjective)
+    assert first.config.objective.noise.seed == 99
+    true_norms = first.traces["finite_difference"].true_theta_grad_norms
+    assert true_norms is not None
+    assert true_norms[0] == pytest.approx(1.0)
 
 
 def test_policy_free_objective_dimension_controls_default_initialization() -> None:

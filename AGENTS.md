@@ -208,10 +208,10 @@ Guidelines:
   - `default_rng(seed)`: wrapper around `np.random.default_rng`
 
 - **`src/objective/noise.py`**
-  - `ObjectiveNoise`: interface for deterministic additive action-level noise fields $$\delta(x,u)$$
-  - `HomoskedasticGaussianNoise`: standard/constant-std Gaussian noise keyed by exact `(x, u, seed)`, so repeated evaluations of the same row/action pair return the same noise
+  - `ObjectiveNoise`: interface for deterministic additive action-level fields $$\delta(x,u)$$ plus optional policy-free theta-space queries
+  - `HomoskedasticGaussianNoise`: standard/constant-std Gaussian noise keyed by exact `(x, u, seed)` for policy objectives or exact `(theta, seed)` for policy-free objectives, so repeated evaluations at the same query return the same noise
   - `HeteroskedasticGaussianNoise`: Gaussian noise sharing the same keyed unit-normal field with std $$\sigma_0 + \gamma\,|u - u_c|$$ growing with action distance from `u_center` (typically the planted optimum), so queries near the global minimum stay nearly noiseless; `growth=0` reproduces the homoskedastic adapter exactly
-  - `NoisyObjective`: wraps any objective as $$\hat{M}(x,u)=M(x,u)+\delta(x,u)$$ for value-based optimization; intentionally raises for analytical `grad()` because the noisy objective has no analytical gradient; delegates acceptance metrics/constraints to the base objective and exposes clean `base_value()` / `base_value_at_u()` for reporting
+  - `NoisyObjective`: wraps policy objectives as $$\hat{M}(x,u)=M(x,u)+\delta(x,u)$$ and policy-free objectives with one theta-keyed homoskedastic draw; intentionally raises for analytical `grad()` because the noisy objective has no analytical gradient; delegates acceptance metrics/constraints to the base objective and exposes clean `base_value()` / `base_value_at_u()` for reporting
   - `NoNoise`: zero-noise adapter for tests or disabled noise wiring
 
 - **`src/objective/objectives/fixed_regression.py`** (source of truth for objective math)
@@ -657,6 +657,7 @@ when appropriate.
 | `test_noise_offset_grid_script.py` | Combined noise x theta-offset grid constants, variant naming round-trip, task specs, and axis-label definitions |
 | `test_planted_logistic_action_bias_sweep_script.py` | Planted-logistic action-bias sweep constants, row metrics, and CSV writing |
 | `test_planted_logistic_support_bias_sweep_script.py` | Planted-logistic support-bias sweep constants, support metrics, CSV writing, and aggregate plots |
+| `test_quadratic_homoskedastic_sweep.py` | Scratch quadratic homoskedastic L-BFGS-B grid construction, noise-only seed policy, clean/noisy metric separation, and failed-run aggregation |
 
 #### `tests/integration/`
 | Test File | Area |

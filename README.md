@@ -70,6 +70,8 @@ $$
 Direct theta-space objectives may instead define $$J(\theta)$$ without a policy.
 `QuadraticObjective(dimension=d)` provides the strongly convex benchmark
 $$J(\theta)=\frac12\|\theta\|_2^2$$ with unique minimizer $$\theta^*=0$$.
+`NoisyObjective` can apply reproducible homoskedastic Gaussian noise keyed by
+the exact parameter vector to these policy-free objectives.
 
 Pluggable components:
 - **Objectives**: `QuadraticObjective`, `FixedRegressionObjective`, `PlantedLogisticObjective`, `ModelBasedObjective`, `PreparedGLMObjective`, `JaxPreparedGLMObjective`, plus `NoisyObjective` and `BiasedObjective` wrappers

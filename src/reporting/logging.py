@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 def log_step(
     method: str,
     step: int,
-    u: float,
+    u: float | None,
     value: float,
     grad_norm: float | None = None,
     step_size: float | None = None,
@@ -25,7 +25,10 @@ def log_step(
     projected_revenue: float | None = None,
 ) -> None:
     """Print a single optimization step to console."""
-    parts = [f"[{method}] step={step}", f"u={u:.4f}", f"value={value:.4f}"]
+    parts = [f"[{method}] step={step}"]
+    if u is not None:
+        parts.append(f"u={u:.4f}")
+    parts.append(f"value={value:.4f}")
     if grad_norm is not None:
         parts.append(f"grad_norm={grad_norm:.4f}")
     if step_size is not None:
@@ -153,13 +156,15 @@ def log_summary(result: ExperimentResult) -> None:
     }
     ordered = [name for name in order if name in result.results]
     if ordered:
-        final_u = ", ".join(
-            f"{labels[name]}={float(result.results[name].u):.4f}" for name in ordered
-        )
+        results_with_u = [name for name in ordered if result.results[name].u is not None]
         final_value = ", ".join(
             f"{labels[name]}={float(result.results[name].value):.4f}" for name in ordered
         )
-        print(f"Final u: {final_u}")
+        if results_with_u:
+            final_u = ", ".join(
+                f"{labels[name]}={float(result.results[name].u):.4f}" for name in results_with_u
+            )
+            print(f"Final u: {final_u}")
         print(f"Final objective: {final_value}")
         if result.constant_u_baselines:
             best_baseline = min(result.constant_u_baselines, key=lambda baseline: baseline.value)

@@ -19,7 +19,7 @@ _FLOAT64_DTYPE = np.dtype("<f8")
 
 
 class ObjectiveNoise:
-    r"""Additive action-level noise field $$\delta(x, u)$$ for noisy objectives."""
+    r"""Additive noise field for action-level or policy-free objective queries."""
 
     def values(self, x_batch: Any, u: np.ndarray) -> np.ndarray:
         """Return additive noise with the same shape as ``u``."""
@@ -28,6 +28,11 @@ class ObjectiveNoise:
     def with_seed(self, seed: int) -> "ObjectiveNoise":
         """Return a copy using the supplied experiment noise seed."""
         raise NotImplementedError
+
+    def value_at_theta(self, theta: np.ndarray) -> float:
+        """Return additive noise for a policy-free theta-space query."""
+        del theta
+        raise ValueError(f"{type(self).__name__} does not support policy-free theta-space noise.")
 
 
 @dataclass(frozen=True)
@@ -42,10 +47,14 @@ class NoNoise(ObjectiveNoise):
         del seed
         return self
 
+    def value_at_theta(self, theta: np.ndarray) -> float:
+        _validate_theta_key(theta)
+        return 0.0
+
 
 @dataclass(frozen=True)
 class HomoskedasticGaussianNoise(ObjectiveNoise):
-    """Deterministic Gaussian field with constant standard deviation."""
+    """Deterministic Gaussian field with constant action- or theta-space standard deviation."""
 
     std: float = 1.0
     seed: int | None = None
@@ -69,6 +78,15 @@ class HomoskedasticGaussianNoise(ObjectiveNoise):
         if self.seed is None:
             raise ValueError("HomoskedasticGaussianNoise requires a seed before evaluation.")
         return self.std * _unit_normal_field(self.seed, x_batch, u_arr)
+
+    def value_at_theta(self, theta: np.ndarray) -> float:
+        """Return deterministic $$N(0, \text{std}^2)$$ noise keyed by exact ``theta``."""
+        theta_arr = _validate_theta_key(theta)
+        if self.std == 0.0:
+            return 0.0
+        if self.seed is None:
+            raise ValueError("HomoskedasticGaussianNoise requires a seed before evaluation.")
+        return self.std * _standard_normal_at_theta(self.seed, theta_arr)
 
 
 @dataclass(frozen=True)
@@ -121,10 +139,17 @@ class HeteroskedasticGaussianNoise(ObjectiveNoise):
             raise ValueError("HeteroskedasticGaussianNoise requires a seed before evaluation.")
         return self.std_values(u_arr) * _unit_normal_field(self.seed, x_batch, u_arr)
 
+    def value_at_theta(self, theta: np.ndarray) -> float:
+        del theta
+        raise ValueError(
+            "HeteroskedasticGaussianNoise requires action values and cannot be used "
+            "with a policy-free theta-space objective."
+        )
+
 
 @dataclass(frozen=True)
 class NoisyObjective(Objective):
-    r"""Objective wrapper exposing $$\hat{M}(x,u)=M(x,u)+\delta(x,u)$$ values."""
+    r"""Objective wrapper exposing additive action- or theta-space noisy values."""
 
     base_objective: Objective
     noise: ObjectiveNoise
@@ -152,6 +177,8 @@ class NoisyObjective(Objective):
         """Return mean noisy objective value for ``theta`` on ``x_batch``."""
         theta_arr = np.asarray(theta, dtype=float)
         base_value = float(self.base_objective.value(theta_arr, x_batch))
+        if getattr(self.base_objective, "policy", None) is None:
+            return base_value + float(self.noise.value_at_theta(theta_arr))
         u_arr = self._clip_u(_policy_value(self.base_objective, theta_arr, x_batch))
         return base_value + float(np.mean(self.noise.values(x_batch, u_arr)))
 
@@ -166,7 +193,7 @@ class NoisyObjective(Objective):
         """No analytical gradient exists for hash-keyed noisy objective values."""
         del theta, x_batch
         raise NotImplementedError(
-            "NoisyObjective has no analytical gradient for M_hat = M + delta(x, u). "
+            "NoisyObjective has no analytical gradient for its hash-keyed noisy values. "
             "Use value-based zeroth-order estimators, or call base_objective.grad(...) "
             "to inspect the true non-noisy objective gradient."
         )
@@ -284,6 +311,15 @@ def _validate_u_field(u: np.ndarray) -> np.ndarray:
     return u_arr
 
 
+def _validate_theta_key(theta: np.ndarray) -> np.ndarray:
+    theta_arr = np.asarray(theta, dtype=_FLOAT64_DTYPE)
+    if theta_arr.ndim != 1 or theta_arr.size == 0:
+        raise ValueError("theta must be a nonempty 1D array.")
+    if not np.isfinite(theta_arr).all():
+        raise ValueError("theta must contain only finite values.")
+    return np.ascontiguousarray(theta_arr)
+
+
 def _unit_normal_field(seed: int, x_batch: Any, u_arr: np.ndarray) -> np.ndarray:
     """Unit-normal field shared by the Gaussian noise adapters, keyed by exact (x, u, seed)."""
     row_hashes = _row_fingerprints(x_batch)
@@ -364,6 +400,18 @@ def _standard_normals(seed: int, row_hashes: tuple[bytes, ...], u_arr: np.ndarra
     mantissa = uints >> np.uint64(11)
     uniforms = np.ldexp(mantissa.astype(np.float64) + 0.5, -53)
     return np.asarray(ndtri(uniforms), dtype=float)
+
+
+def _standard_normal_at_theta(seed: int, theta: np.ndarray) -> float:
+    h = hashlib.blake2b(digest_size=8)
+    h.update(b"homoskedastic-gaussian-theta-noise-v1")
+    h.update(int(seed).to_bytes(8, byteorder="little", signed=False))
+    h.update(theta.size.to_bytes(8, byteorder="little", signed=False))
+    h.update(theta.tobytes())
+    uint = int.from_bytes(h.digest(), byteorder="little", signed=False)
+    mantissa = uint >> 11
+    uniform = np.ldexp(float(mantissa) + 0.5, -53)
+    return float(ndtri(uniform))
 
 
 def _noise_uint64(seed: int, row_hash: bytes, u_val: float) -> int:

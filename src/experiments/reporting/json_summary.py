@@ -63,7 +63,7 @@ def build_summary_payload(
             else None
         )
         estimator_payload = {
-            "final_u": float(estimator_result.u),
+            "final_u": float(estimator_result.u) if estimator_result.u is not None else None,
             "final_value": float(estimator_result.value),
             "final_objective_sum": n_objective_terms * float(estimator_result.value),
             "runtime_sec": float(estimator_result.time),
@@ -266,9 +266,9 @@ def _policy_evaluation_to_dict(evaluation: PolicyEvaluation) -> dict[str, float 
         "n_samples": int(evaluation.n_samples),
         "objective_value": float(evaluation.objective_value),
         "objective_sum": float(evaluation.objective_sum),
-        "mean_u": float(evaluation.mean_u),
-        "u_q25": float(evaluation.u_q25),
-        "u_q75": float(evaluation.u_q75),
+        "mean_u": float(evaluation.mean_u) if evaluation.mean_u is not None else None,
+        "u_q25": float(evaluation.u_q25) if evaluation.u_q25 is not None else None,
+        "u_q75": float(evaluation.u_q75) if evaluation.u_q75 is not None else None,
         "mean_acceptance": float(evaluation.mean_acceptance) if evaluation.mean_acceptance is not None else None,
         "projected_loss": float(evaluation.projected_loss) if evaluation.projected_loss is not None else None,
         "projected_revenue": float(evaluation.projected_revenue) if evaluation.projected_revenue is not None else None,

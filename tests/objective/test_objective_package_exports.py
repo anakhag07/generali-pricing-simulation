@@ -16,6 +16,7 @@ from objective import (
     LinearActionBias,
     PreparedGLMBatch,
     PreparedGLMObjective,
+    QuadraticObjective,
     QuadraticFeatureMap,
     QuarticFeatureMap,
     PlantedLogisticObjective,
@@ -72,6 +73,7 @@ def test_objective_package_exports_are_importable() -> None:
     assert PreparedGLMObjective is not None
     assert prepare_glm_batch is not None
     assert prepare_glm_objective is not None
+    assert QuadraticObjective(dimension=2).theta_dim() == 2
     assert "JaxPreparedGLMObjective" in objective_pkg.__all__
     assert "prepare_jax_glm_objective" in objective_pkg.__all__
 

@@ -15,6 +15,7 @@ from objective.objectives import (
     LinearActionBias,
     ModelBasedObjective,
     PlantedLogisticObjective,
+    QuadraticObjective,
     UpperSupportHingeBias,
 )
 from objective.noise import (
@@ -24,21 +25,11 @@ from objective.noise import (
     NoNoise,
     ObjectiveNoise,
 )
-from objective.policy import ConstantPolicy, LinearPolicy, MLPPolicy, SoftmaxPolicy, policy_theta_dim
+from objective.policy import ConstantPolicy, LinearPolicy, MLPPolicy, SoftmaxPolicy
 from objective.policy_preprocessing import PolicyFeaturePreprocessor
 from optimization.steps import OPTAX_STEP_RULES, STEP_RULES, STEP_RULE_TRUST_CONSTR
+from experiments.initialization import objective_theta_dim
 from experiments.seeds import SeedSetup, resolve_seed_setup, seed_setup_from_mapping
-
-
-def _policy_theta_dim_for_objective(objective: object, state_dim: int) -> int | None:
-    """Return the required policy theta dimension when the objective exposes one."""
-    objective_theta_dim = getattr(objective, "policy_theta_dim", None)
-    if callable(objective_theta_dim):
-        return int(objective_theta_dim(state_dim))
-    policy = getattr(objective, "policy", None)
-    if policy is None:
-        return None
-    return policy_theta_dim(policy, state_dim)
 
 
 def _x_fixed_frame_matches_state_dim(objective: object, x_fixed_frame: Any, state_dim: int) -> bool:
@@ -382,12 +373,19 @@ class ExperimentConfig:
                 )
 
         policy = getattr(objective, "policy", None)
+        expected_theta_dim = objective_theta_dim(objective, self.state_dim)
+        if (
+            self.theta0 is not None
+            and expected_theta_dim is not None
+            and theta0_arr.size != expected_theta_dim
+        ):
+            dimension_owner = "policy" if policy is not None else "objective"
+            raise ValueError(
+                f"theta0 has dimension {theta0_arr.size}, but {dimension_owner} requires {expected_theta_dim}."
+            )
+        if "constant" in enabled_estimators and policy is None:
+            raise ValueError("enabled_estimators='constant' requires an objective with a policy.")
         if policy is not None:
-            expected_theta_dim = _policy_theta_dim_for_objective(objective, self.state_dim)
-            if self.theta0 is not None and expected_theta_dim is not None and theta0_arr.size != expected_theta_dim:
-                raise ValueError(
-                    f"theta0 has dimension {theta0_arr.size}, but policy requires {expected_theta_dim}."
-                )
             policy_value = getattr(objective, "policy_value", None)
             policy_grad = getattr(objective, "policy_grad", None)
             if not callable(policy_value):
@@ -399,7 +397,10 @@ class ExperimentConfig:
             # Probe with a single-sample batch
             probe_theta = (
                 theta0_arr if self.theta0 is not None
-                else np.zeros(expected_theta_dim if expected_theta_dim is not None else self.state_dim + 1, dtype=float)
+                else np.zeros(
+                    expected_theta_dim if expected_theta_dim is not None else self.state_dim + 1,
+                    dtype=float,
+                )
             )
             x_probe = np.zeros((1, self.state_dim), dtype=float)
             u_probe_arr = np.asarray(policy_value(probe_theta, x_probe), dtype=float)
@@ -514,6 +515,11 @@ def _objective_to_dict(objective: Objective) -> dict[str, Any]:
             "beta": _as_list(objective.beta),
             "bias": float(objective.bias),
             "u_star": float(objective.u_star),
+        }
+    if isinstance(objective, QuadraticObjective):
+        return {
+            "type": "QuadraticObjective",
+            "dimension": int(objective.dimension),
         }
     if isinstance(objective, ModelBasedObjective):
         return {

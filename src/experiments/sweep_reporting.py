@@ -186,7 +186,7 @@ def collect_seed_grid_final_rows(
                 "run_seed": "" if sweep_result.run_seed is None else int(sweep_result.run_seed),
                 "run_dir": run_dir,
                 "estimator": estimator,
-                "final_u": float(estimator_result.u),
+                "final_u": _optional_float(estimator_result.u),
                 "final_value": float(estimator_result.value),
                 "runtime_sec": float(estimator_result.time),
                 "mean_acceptance": _optional_float(estimator_result.mean_acceptance),
@@ -292,7 +292,7 @@ def _evaluation_fields(prefix: str, evaluation: PolicyEvaluation | None) -> dict
     return {
         f"{prefix}_objective_value": float(evaluation.objective_value),
         f"{prefix}_objective_sum": float(evaluation.objective_sum),
-        f"{prefix}_mean_u": float(evaluation.mean_u),
+        f"{prefix}_mean_u": _optional_float(evaluation.mean_u),
         f"{prefix}_mean_acceptance": _optional_float(evaluation.mean_acceptance),
     }
 

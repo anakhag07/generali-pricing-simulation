@@ -6,6 +6,7 @@ from objective.objectives.fixed_regression import FixedRegressionObjective
 from objective.objectives.biased import ActionBias, BiasedObjective, LinearActionBias, UpperSupportHingeBias
 from objective.objectives.model_based import ModelBasedObjective
 from objective.objectives.planted_logistic import PlantedLogisticObjective
+from objective.objectives.quadratic import QuadraticObjective
 from objective.objectives.prepared_glm import (
     PreparedGLMBatch,
     PreparedGLMObjective,
@@ -36,6 +37,7 @@ __all__ = [
     "UpperSupportHingeBias",
     "ModelBasedObjective",
     "PlantedLogisticObjective",
+    "QuadraticObjective",
     "PreparedGLMBatch",
     "PreparedGLMObjective",
     "JaxPreparedGLMObjective",

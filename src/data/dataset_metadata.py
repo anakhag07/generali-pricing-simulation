@@ -74,9 +74,10 @@ ACCEPTANCE_PROBABILITY_COL = OBSERVED_CHURN_COL
 FEATURE_COLS: tuple[str, ...] = ACCEPTANCE_STATE_COLS
 FEATURE_COLS_GLM: tuple[str, ...] = FEATURE_COLS
 FEATURE_COLS_XGB: tuple[str, ...] = FEATURE_COLS
-MODEL_FEATURE_COLS: dict[Literal["glm", "xgb"], tuple[str, ...]] = {
+MODEL_FEATURE_COLS: dict[Literal["glm", "xgb", "xgb_logit_spline"], tuple[str, ...]] = {
     "glm": FEATURE_COLS_GLM,
     "xgb": FEATURE_COLS_XGB,
+    "xgb_logit_spline": FEATURE_COLS_XGB,
 }
 PREMIUM_COL_INDEX = FEATURE_COLS.index(PREMIUM_COL)
 
@@ -121,7 +122,7 @@ class ModelArtifactSpec(TypedDict):
     loss: ArtifactSpec
 
 
-MODEL_ARTIFACTS: dict[Literal["glm", "xgb"], ModelArtifactSpec] = {
+MODEL_ARTIFACTS: dict[Literal["glm", "xgb", "xgb_logit_spline"], ModelArtifactSpec] = {
     "glm": {
         "acceptance": {
             "path": DATA_DIR / "models" / "linear" / "acceptance_model_linear_cv_20260527_142758.pkl",
@@ -148,6 +149,20 @@ MODEL_ARTIFACTS: dict[Literal["glm", "xgb"], ModelArtifactSpec] = {
             "contains_feature_processor": True,
             "probability_target": "none",
             "description": "First-fold XGBoost financial-loss model with fitted FeatureProcessor.",
+        },
+    },
+    "xgb_logit_spline": {
+        "acceptance": {
+            "path": DATA_DIR / "models" / "xgb_logit_spline" / "acceptance_xgb_logit_spline_20260706_112929.npz",
+            "contains_feature_processor": False,
+            "probability_target": "acceptance",
+            "description": "Per-policy isotonic logit-spline acceptance curves derived from the five-fold XGBoost ensemble.",
+        },
+        "loss": {
+            "path": DATA_DIR / "models" / "linear" / "financial_loss_model_linear_cv_20260527_142758.pkl",
+            "contains_feature_processor": True,
+            "probability_target": "none",
+            "description": "First-fold Ridge financial-loss model paired with spline acceptance.",
         },
     },
 }

@@ -192,7 +192,39 @@ $$\frac{\partial f}{\partial u} = \frac{\partial a}{\partial u}\,(L - (u+1)\,p) 
 Acceptance derivative:
 - **GLM direct acceptance (analytical):** $\frac{\partial a}{\partial u} = a(1-a)\;\beta_u^{\text{eff}}$
 - **Legacy churn artifacts (analytical):** $\frac{\partial a}{\partial u} = -a(1-a)\;\beta_u^{\text{eff}}$
+- **Per-policy XGBoost logit spline (analytical inside support):**
+  $\frac{\partial a_i}{\partial u} = -q_i(1-q_i)S_i'(u)$
 - **XGBoost (numerical):** central FD with $\epsilon = 10^{-4}$
+
+**Per-policy XGBoost logit-spline acceptance:**
+
+For each covered insurance policy $$i$$, the source XGBoost ensemble is evaluated
+on the fixed action grid $$u_j=j/100$$ for $$j=0,\ldots,16$$. Its direct
+acceptance output is converted to churn probability $$q_{ij}=1-a^{XGB}_{ij}$$,
+then projected onto a non-decreasing sequence with weighted isotonic regression.
+A cubic smoothing spline $$S_i(u)$$ is fitted to the clipped logits of that
+sequence. Inside the fitted support $$[u_{min},u_{max}]=[0,0.16]$$:
+
+$$q_i(u)=\sigma(S_i(u)), \qquad a_i(u)=1-q_i(u)$$
+
+and therefore
+
+$$\frac{\partial a_i}{\partial u}
+=-\sigma(S_i(u))\bigl(1-\sigma(S_i(u))\bigr)S_i'(u)
+=-q_i(u)(1-q_i(u))S_i'(u).$$
+
+Below support, churn is held constant at $$q_i(u_{min})$$, so
+$$\partial a_i/\partial u=0$$. Above support, churn uses the source artifact's
+tangent rule
+
+$$q_i(u)=\operatorname{clip}\left(q_i(u_{max})
++s_i^{max}(u-u_{max}),0,1\right),$$
+
+so $$\partial a_i/\partial u=-s_i^{max}$$ while the tangent is unclipped and is
+zero after clipping. The piecewise extension can be nondifferentiable exactly at
+the support boundaries or clipping points; the implementation uses the interior
+derivative at the boundaries and zero on clipped regions. The real-data preset
+keeps policy actions within the fitted support.
 
 **Local price-sensitivity bucket score:**
 

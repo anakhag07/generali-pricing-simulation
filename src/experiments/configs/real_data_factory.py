@@ -44,7 +44,7 @@ from objective.policy import (
 from objective.policy_preprocessing import fit_policy_feature_preprocessor
 from experiments.seeds import SeedSetup, resolve_seed_setup
 
-ModelType = Literal["glm", "xgb"]
+ModelType = Literal["glm", "xgb", "xgb_logit_spline"]
 PolicyKind = Literal["constant", "linear", "softmax", "mlp"]
 FeatureOrder = Literal["linear", "identity", "quadratic", "cubic", "third_order", "quartic", "fourth_order"]
 PolicyPreprocessing = Literal["artifact", "no_pca"]
@@ -109,8 +109,12 @@ def build_real_data_config(
     resolved_seeds = resolve_seed_setup(seed_setup, seed)
     requested_n_samples = _normalize_n_samples(n_samples)
     state_dim = len(_feature_cols(model_type))
+    if model_type == "xgb_logit_spline" and compute_backend != "numpy":
+        raise ValueError("xgb_logit_spline currently supports only compute_backend='numpy'.")
     if u_coef is not None and model_type != "glm":
         raise ValueError("u_coef override is supported only for GLM acceptance artifacts.")
+    if model_type == "xgb_logit_spline" and policy_kind == "softmax" and softmax_action_bounds is None:
+        softmax_action_bounds = (0.0, 0.16)
     if softmax_action_bounds is not None and policy_kind != "softmax":
         raise ValueError("softmax_action_bounds is supported only when policy_kind='softmax'.")
     acceptance_model, loss_model = load_model_artifacts(model_type)
@@ -201,6 +205,8 @@ def build_real_data_config(
     resolved_penalty_temperature = acceptance_penalty_temperature
     resolved_lagrangian_lambda = lagrangian_lambda
     resolved_u_bounds = u_bounds
+    if model_type == "xgb_logit_spline" and resolved_u_bounds is None:
+        resolved_u_bounds = (0.0, 0.16)
 
     if constraint_mode == "trust_constr" and resolved_initial_constr_penalty is None:
         resolved_initial_constr_penalty = 1.0
@@ -287,8 +293,8 @@ def build_real_data_config(
 
 
 def _normalize_model_type(model_type: str) -> ModelType:
-    if model_type not in {"glm", "xgb"}:
-        raise ValueError("model_type must be 'glm' or 'xgb'.")
+    if model_type not in {"glm", "xgb", "xgb_logit_spline"}:
+        raise ValueError("model_type must be 'glm', 'xgb', or 'xgb_logit_spline'.")
     return model_type  # type: ignore[return-value]
 
 

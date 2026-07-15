@@ -189,6 +189,7 @@ Available base presets include:
 | `fixed_regression_base` | Synthetic N(0, I) | `FixedRegressionObjective` |
 | `real_data_glm_base` | All complete eligible raw acceptance CSV rows by default; seeded `n_samples` draw when set | `ModelBasedObjective` (GLM bundle, analytical grad when supported) |
 | `real_data_xgb_base` | All complete eligible raw acceptance CSV rows by default; seeded `n_samples` draw when set | `ModelBasedObjective` (XGBoost bundle, FD acceptance gradient) |
+| `real_data_xgb_logit_spline_base` | 200 canonical rows covered by per-policy splines; seeded `n_samples` subset when set | `ModelBasedObjective` (XGBoost-derived logit splines, analytical acceptance gradient) |
 
 Real-data overrides can select policy, feature order, preprocessing, loss source,
 constraint mode, and runtime knobs without adding a new preset module. Example:
@@ -229,17 +230,28 @@ Real-data source rows now live in the canonical `src/data/dataset.csv` file,
 with schema/path metadata tracked in `src/data/dataset_metadata.py`. The current
 canonical CSV is the 052726 raw single-year export; both GLM/linear and XGB
 real-data loaders sample complete eligible rows from it.
-Model artifacts live under `src/data/models/linear/` and `src/data/models/xgb/`.
+Model artifacts live under `src/data/models/linear/`, `src/data/models/xgb/`,
+and `src/data/models/xgb_logit_spline/`. Rebuild the portable spline artifact
+from the trusted legacy smoothing bundle with
+`python scripts/prepare_xgb_logit_spline_artifact.py`.
 The loader uses the separate acceptance and financial-loss artifacts, selecting
 the first CV fold from each copied artifact. It does not use the combined
 blackbox wrapper pickle.
 The objective keeps raw CSV X rows at the optimization boundary and reuses each
 artifact's saved `FeatureProcessor` internally. The 052726 classifiers expose
 class-1 probability as direct `p_accept(x, u)`, not churn probability.
-Only the model artifact X covariates are passed into the objective. Historical
-`U`, `Y_G_Loss`, `is_churn`, IDs/dates, and the lookahead `X_upcoming_premium`
-column are excluded from objective values; observed `U`/churn are retained only
-for diagnostics and acceptance-floor summaries.
+The `xgb_logit_spline` option instead uses 200 customer-specific acceptance
+curves derived from the five-fold XGBoost ensemble. Each curve freezes one
+covered insurance-policy profile and varies `U` over its fitted `[0, 0.16]`
+support. The preset includes only those 200 canonical rows, carries `id` solely
+for curve lookup, defaults bounded policies to the fitted support, and exposes
+an analytical action derivative for NumPy first-order optimization. Unknown IDs
+raise instead of silently falling back to non-differentiable trees.
+Only the model artifact X covariates are numerical objective/policy inputs.
+Historical `U`, `Y_G_Loss`, `is_churn`, IDs/dates, and the lookahead
+`X_upcoming_premium` column remain excluded from those inputs; the spline preset
+carries `id` only as a curve lookup key. Observed `U`/churn are retained for
+diagnostics and acceptance-floor summaries.
 For GLM/linear artifacts, extractable first-fold coefficients are used for
 array-native acceptance and loss predictions, avoiding repeated sklearn
 prediction calls in value-query gradient estimators. XGBoost and unsupported
@@ -381,6 +393,22 @@ instead of the default 60x60 used for cheaper synthetic objectives.
 `experiments.sweep_utils.run_sweep(...)`. Pass a base preset plus JSON overrides,
 override lists, or override grids; use `--requires-jax` when a sweep should submit
 to the GPU Slurm profile.
+
+To run the dedicated XGB logit-spline convergence and policy experiment, use:
+
+```bash
+python scripts/run_xgb_logit_spline_experiment.py --launch local
+```
+
+By default the script selects all 200 covered profiles, uses a deterministic
+80/20 train/test split, and compares analytical first-order gradients with
+action-space central finite differences from the same bounded softmax start.
+Exact spline gradients are recorded as correctness diagnostics. Normal run
+outputs, including optimizer status, `summary.json`, `steps.csv`, reloadable
+policy artifacts, convergence plots, and train/test policy plots, are written
+under `results/xgb-logit-spline-experiment/`. Use `--help` for sample-count,
+split, seed, iteration, finite-difference, stochastic-gradient sample-budget,
+estimator, and launch overrides.
 
 `scripts/run_fixed_regression_noise_offset_grid.py` runs the synthetic
 fixed-regression homoskedastic/heteroskedastic noise x theta-offset grid. It

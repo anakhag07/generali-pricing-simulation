@@ -19,6 +19,7 @@ _CONFIG_MODULES = {
 _REAL_DATA_BASES: dict[str, dict[str, Any]] = {
     "real_data_glm_base": {"model_type": "glm"},
     "real_data_xgb_base": {"model_type": "xgb"},
+    "real_data_xgb_logit_spline_base": {"model_type": "xgb_logit_spline"},
 }
 
 _QUADRATIC_BASES: dict[str, dict[str, Any]] = {

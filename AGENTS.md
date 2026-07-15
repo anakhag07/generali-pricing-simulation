@@ -533,6 +533,7 @@ Guidelines:
 - `scripts/benchmark_optax_vs_trust_constr.py` benchmarks SciPy minimize against the optax step rules: a planted-logistic group (theta dim 200 LinearPolicy; L-BFGS-B vs `optax-adam`/`optax-sgd`) and a real-data GLM group on the fixed JAX prepared batch (trust-constr with the observed acceptance floor vs optax rules on the smooth-penalty formulation of the same floor). Writes `benchmark.csv` under `results/optax-benchmark/`. On shared CPU nodes pin `OMP_NUM_THREADS`/`OPENBLAS_NUM_THREADS` (and `JAX_PLATFORMS=cpu` off-GPU) — JAX import plus OpenBLAS thread oversubscription inside a CPU-limited slice can slow NumPy matmuls by orders of magnitude and wash out solver timings
 - `scripts/benchmark_experiment_speed.py` benchmarks GLM analytical acceptance vs sklearn `predict_proba`, Stein-difference gradient timing/call counts, repeated objective-cache behavior, and full-vs-subsampled contour grid timing; use it to quantify whether performance changes speed up real-data diagnostics without relying on flaky pytest time thresholds
 - `scripts/prepare_xgb_logit_spline_artifact.py` converts the trusted legacy XGBoost smoothing-wrapper pickle into portable per-policy logit-spline arrays; it batch-scores the 200 covered profiles on `U=0,...,0.16`, resolves their canonical CSV row positions, and writes the gitignored NPZ used by `real_data_xgb_logit_spline_base`
+- `scripts/run_xgb_logit_spline_experiment.py` runs the canonical CPU/NumPy spline convergence check: all 200 covered profiles with a deterministic 80/20 train/test split by default, bounded softmax policy initialized at `u=0.08`, L-BFGS-B, analytical first-order versus action-space finite-difference gradients, and exact-gradient correctness traces. It delegates all artifacts and canonical convergence/train/test policy plots to `execute_experiment_run(...)` under `results/xgb-logit-spline-experiment/` and accepts shared local/Slurm launch flags
 
 ## Known Issues and Dead Code
 
@@ -665,6 +666,7 @@ when appropriate.
 | `test_planted_logistic_action_bias_sweep_script.py` | Planted-logistic action-bias sweep constants, row metrics, and CSV writing |
 | `test_planted_logistic_support_bias_sweep_script.py` | Planted-logistic support-bias sweep constants, support metrics, CSV writing, and aggregate plots |
 | `test_support_bias_noise_grid_script.py` | Support-bias noise grid objective composition, variant naming round-trip, task specs, zeroth-order estimator set, and clean-objective/bias reconstruction |
+| `test_xgb_logit_spline_experiment_script.py` | XGB logit-spline runner defaults, exact-gradient config, convergence rows, and launch delegation |
 
 #### `tests/integration/`
 | Test File | Area |

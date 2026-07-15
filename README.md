@@ -376,6 +376,21 @@ instead of the default 60x60 used for cheaper synthetic objectives.
 override lists, or override grids; use `--requires-jax` when a sweep should submit
 to the GPU Slurm profile.
 
+To run the dedicated XGB logit-spline convergence and policy experiment, use:
+
+```bash
+python scripts/run_xgb_logit_spline_experiment.py --launch local
+```
+
+By default the script selects all 200 covered profiles, uses a deterministic
+80/20 train/test split, and compares analytical first-order gradients with
+action-space central finite differences from the same bounded softmax start.
+Exact spline gradients are recorded as correctness diagnostics. Normal run
+outputs, including optimizer status, `summary.json`, `steps.csv`, reloadable
+policy artifacts, convergence plots, and train/test policy plots, are written
+under `results/xgb-logit-spline-experiment/`. Use `--help` for sample-count,
+split, seed, iteration, finite-difference, estimator, and launch overrides.
+
 `scripts/run_fixed_regression_noise_offset_grid.py` runs the synthetic
 fixed-regression homoskedastic/heteroskedastic noise x theta-offset grid. It
 computes a clean first-order reference, centers heteroskedastic noise at that

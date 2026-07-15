@@ -104,6 +104,66 @@
 
             </li>
             <li>
+                    <a class="class" href="#XGBLogitSplineAcceptance">XGBLogitSplineAcceptance</a>
+                            <ul class="memberlist">
+                        <li>
+                                <a class="function" href="#XGBLogitSplineAcceptance.__init__">XGBLogitSplineAcceptance</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#XGBLogitSplineAcceptance.model_type">model_type</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#XGBLogitSplineAcceptance.role">role</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#XGBLogitSplineAcceptance.probability_target">probability_target</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#XGBLogitSplineAcceptance.source_format">source_format</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#XGBLogitSplineAcceptance.u_cols">u_cols</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#XGBLogitSplineAcceptance.artifact">artifact</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#XGBLogitSplineAcceptance.artifact_path">artifact_path</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#XGBLogitSplineAcceptance.id_col">id_col</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#XGBLogitSplineAcceptance.auxiliary_state_cols">auxiliary_state_cols</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#XGBLogitSplineAcceptance.x_feature_cols">x_feature_cols</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#XGBLogitSplineAcceptance.preprocessor">preprocessor</a>
+                        </li>
+                        <li>
+                                <a class="function" href="#XGBLogitSplineAcceptance.covered_policy_ids">covered_policy_ids</a>
+                        </li>
+                        <li>
+                                <a class="function" href="#XGBLogitSplineAcceptance.covered_row_indices">covered_row_indices</a>
+                        </li>
+                        <li>
+                                <a class="function" href="#XGBLogitSplineAcceptance.policy_feature_dim">policy_feature_dim</a>
+                        </li>
+                        <li>
+                                <a class="function" href="#XGBLogitSplineAcceptance.predict_acceptance">predict_acceptance</a>
+                        </li>
+                        <li>
+                                <a class="function" href="#XGBLogitSplineAcceptance.d_acceptance_du">d_acceptance_du</a>
+                        </li>
+                        <li>
+                                <a class="function" href="#XGBLogitSplineAcceptance.predict_proba">predict_proba</a>
+                        </li>
+                </ul>
+
+            </li>
+            <li>
                     <a class="function" href="#dataset_csv_path">dataset_csv_path</a>
             </li>
             <li>
@@ -111,6 +171,9 @@
             </li>
             <li>
                     <a class="function" href="#load_x_frame">load_x_frame</a>
+            </li>
+            <li>
+                    <a class="function" href="#load_xgb_logit_spline_acceptance">load_xgb_logit_spline_acceptance</a>
             </li>
     </ul>
 
@@ -140,14 +203,17 @@ data    </h1>
 </span><span id="L-3"><a href="#L-3"><span class="linenos"> 3</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">data</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataset_metadata</span>
 </span><span id="L-4"><a href="#L-4"><span class="linenos"> 4</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">data.feature_processor</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeatureProcessor</span>
 </span><span id="L-5"><a href="#L-5"><span class="linenos"> 5</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">data.loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataset_csv_path</span><span class="p">,</span> <span class="n">eligible_csv_row_indices</span><span class="p">,</span> <span class="n">load_x_frame</span>
-</span><span id="L-6"><a href="#L-6"><span class="linenos"> 6</span></a>
-</span><span id="L-7"><a href="#L-7"><span class="linenos"> 7</span></a><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
-</span><span id="L-8"><a href="#L-8"><span class="linenos"> 8</span></a>    <span class="s2">&quot;FeatureProcessor&quot;</span><span class="p">,</span>
-</span><span id="L-9"><a href="#L-9"><span class="linenos"> 9</span></a>    <span class="s2">&quot;dataset_csv_path&quot;</span><span class="p">,</span>
-</span><span id="L-10"><a href="#L-10"><span class="linenos">10</span></a>    <span class="s2">&quot;dataset_metadata&quot;</span><span class="p">,</span>
-</span><span id="L-11"><a href="#L-11"><span class="linenos">11</span></a>    <span class="s2">&quot;eligible_csv_row_indices&quot;</span><span class="p">,</span>
-</span><span id="L-12"><a href="#L-12"><span class="linenos">12</span></a>    <span class="s2">&quot;load_x_frame&quot;</span><span class="p">,</span>
-</span><span id="L-13"><a href="#L-13"><span class="linenos">13</span></a><span class="p">]</span>
+</span><span id="L-6"><a href="#L-6"><span class="linenos"> 6</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">data.xgb_logit_spline</span><span class="w"> </span><span class="kn">import</span> <span class="n">XGBLogitSplineAcceptance</span><span class="p">,</span> <span class="n">load_xgb_logit_spline_acceptance</span>
+</span><span id="L-7"><a href="#L-7"><span class="linenos"> 7</span></a>
+</span><span id="L-8"><a href="#L-8"><span class="linenos"> 8</span></a><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="L-9"><a href="#L-9"><span class="linenos"> 9</span></a>    <span class="s2">&quot;FeatureProcessor&quot;</span><span class="p">,</span>
+</span><span id="L-10"><a href="#L-10"><span class="linenos">10</span></a>    <span class="s2">&quot;XGBLogitSplineAcceptance&quot;</span><span class="p">,</span>
+</span><span id="L-11"><a href="#L-11"><span class="linenos">11</span></a>    <span class="s2">&quot;dataset_csv_path&quot;</span><span class="p">,</span>
+</span><span id="L-12"><a href="#L-12"><span class="linenos">12</span></a>    <span class="s2">&quot;dataset_metadata&quot;</span><span class="p">,</span>
+</span><span id="L-13"><a href="#L-13"><span class="linenos">13</span></a>    <span class="s2">&quot;eligible_csv_row_indices&quot;</span><span class="p">,</span>
+</span><span id="L-14"><a href="#L-14"><span class="linenos">14</span></a>    <span class="s2">&quot;load_x_frame&quot;</span><span class="p">,</span>
+</span><span id="L-15"><a href="#L-15"><span class="linenos">15</span></a>    <span class="s2">&quot;load_xgb_logit_spline_acceptance&quot;</span><span class="p">,</span>
+</span><span id="L-16"><a href="#L-16"><span class="linenos">16</span></a><span class="p">]</span>
 </span></pre></div>
 
 
@@ -155,7 +221,7 @@ data    </h1>
                 <section id="FeatureProcessor">
                             <input id="FeatureProcessor-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr class">
-            
+
     <span class="def">class</span>
     <span class="name">FeatureProcessor</span>:
 
@@ -329,7 +395,7 @@ data    </h1>
                             <div id="FeatureProcessor.__init__" class="classattr">
                                         <input id="FeatureProcessor.__init__-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="name">FeatureProcessor</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">numeric_cols</span><span class="o">=</span><span class="kc">None</span>,</span><span class="param">	<span class="n">categorical_cols</span><span class="o">=</span><span class="kc">None</span>,</span><span class="param">	<span class="n">regularization</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-06</span>,</span><span class="param">	<span class="n">missing_category</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;__MISSING__&#39;</span>,</span><span class="param">	<span class="n">use_pca</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>,</span><span class="param">	<span class="n">n_components</span><span class="o">=</span><span class="kc">None</span>,</span><span class="param">	<span class="n">explained_variance_threshold</span><span class="o">=</span><span class="kc">None</span></span>)</span>
 
                 <label class="view-source-button" for="FeatureProcessor.__init__-view-source"><span>View Source</span></label>
@@ -356,90 +422,90 @@ data    </h1>
 </span></pre></div>
 
 
-    
+
 
                             </div>
                             <div id="FeatureProcessor.numeric_cols" class="classattr">
                                 <div class="attr variable">
             <span class="name">numeric_cols</span>
 
-        
+
     </div>
     <a class="headerlink" href="#FeatureProcessor.numeric_cols"></a>
-    
-    
+
+
 
                             </div>
                             <div id="FeatureProcessor.categorical_cols" class="classattr">
                                 <div class="attr variable">
             <span class="name">categorical_cols</span>
 
-        
+
     </div>
     <a class="headerlink" href="#FeatureProcessor.categorical_cols"></a>
-    
-    
+
+
 
                             </div>
                             <div id="FeatureProcessor.regularization" class="classattr">
                                 <div class="attr variable">
             <span class="name">regularization</span>
 
-        
+
     </div>
     <a class="headerlink" href="#FeatureProcessor.regularization"></a>
-    
-    
+
+
 
                             </div>
                             <div id="FeatureProcessor.missing_category" class="classattr">
                                 <div class="attr variable">
             <span class="name">missing_category</span>
 
-        
+
     </div>
     <a class="headerlink" href="#FeatureProcessor.missing_category"></a>
-    
-    
+
+
 
                             </div>
                             <div id="FeatureProcessor.use_pca" class="classattr">
                                 <div class="attr variable">
             <span class="name">use_pca</span>
 
-        
+
     </div>
     <a class="headerlink" href="#FeatureProcessor.use_pca"></a>
-    
-    
+
+
 
                             </div>
                             <div id="FeatureProcessor.n_components" class="classattr">
                                 <div class="attr variable">
             <span class="name">n_components</span>
 
-        
+
     </div>
     <a class="headerlink" href="#FeatureProcessor.n_components"></a>
-    
-    
+
+
 
                             </div>
                             <div id="FeatureProcessor.explained_variance_threshold" class="classattr">
                                 <div class="attr variable">
             <span class="name">explained_variance_threshold</span>
 
-        
+
     </div>
     <a class="headerlink" href="#FeatureProcessor.explained_variance_threshold"></a>
-    
-    
+
+
 
                             </div>
                             <div id="FeatureProcessor.fit" class="classattr">
                                         <input id="FeatureProcessor.fit-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">fit</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">X</span><span class="p">:</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span></span><span class="return-annotation">) -> <span class="n"><a href="#FeatureProcessor">FeatureProcessor</a></span>:</span></span>
 
@@ -537,13 +603,13 @@ data    </h1>
 </span></pre></div>
 
 
-    
+
 
                             </div>
                             <div id="FeatureProcessor.transform" class="classattr">
                                         <input id="FeatureProcessor.transform-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">transform</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">X</span><span class="p">:</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span></span><span class="return-annotation">) -> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span>:</span></span>
 
@@ -580,13 +646,13 @@ data    </h1>
 </span></pre></div>
 
 
-    
+
 
                             </div>
                             <div id="FeatureProcessor.fit_transform" class="classattr">
                                         <input id="FeatureProcessor.fit_transform-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">fit_transform</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">X</span><span class="p">:</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span></span><span class="return-annotation">) -> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span>:</span></span>
 
@@ -599,13 +665,13 @@ data    </h1>
 </span></pre></div>
 
 
-    
+
 
                             </div>
                             <div id="FeatureProcessor.get_explained_variance_info" class="classattr">
                                         <input id="FeatureProcessor.get_explained_variance_info-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">get_explained_variance_info</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span></span><span class="return-annotation">) -> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]</span>:</span></span>
 
@@ -625,13 +691,13 @@ data    </h1>
 </span></pre></div>
 
 
-    
+
 
                             </div>
                             <div id="FeatureProcessor.inverse_transform_numeric" class="classattr">
                                         <input id="FeatureProcessor.inverse_transform_numeric-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">inverse_transform_numeric</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">X_transformed</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span><span class="return-annotation">) -> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>:</span></span>
 
@@ -649,14 +715,481 @@ data    </h1>
 </span></pre></div>
 
 
-    
+
+
+                            </div>
+                </section>
+                <section id="XGBLogitSplineAcceptance">
+                            <input id="XGBLogitSplineAcceptance-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr class">
+
+    <span class="def">class</span>
+    <span class="name">XGBLogitSplineAcceptance</span>:
+
+                <label class="view-source-button" for="XGBLogitSplineAcceptance-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#XGBLogitSplineAcceptance"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="XGBLogitSplineAcceptance-100"><a href="#XGBLogitSplineAcceptance-100"><span class="linenos">100</span></a><span class="k">class</span><span class="w"> </span><span class="nc">XGBLogitSplineAcceptance</span><span class="p">:</span>
+</span><span id="XGBLogitSplineAcceptance-101"><a href="#XGBLogitSplineAcceptance-101"><span class="linenos">101</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Evaluate portable per-policy acceptance splines and action derivatives.&quot;&quot;&quot;</span>
+</span><span id="XGBLogitSplineAcceptance-102"><a href="#XGBLogitSplineAcceptance-102"><span class="linenos">102</span></a>
+</span><span id="XGBLogitSplineAcceptance-103"><a href="#XGBLogitSplineAcceptance-103"><span class="linenos">103</span></a>    <span class="n">model_type</span> <span class="o">=</span> <span class="s2">&quot;xgb_logit_spline&quot;</span>
+</span><span id="XGBLogitSplineAcceptance-104"><a href="#XGBLogitSplineAcceptance-104"><span class="linenos">104</span></a>    <span class="n">role</span> <span class="o">=</span> <span class="s2">&quot;acceptance&quot;</span>
+</span><span id="XGBLogitSplineAcceptance-105"><a href="#XGBLogitSplineAcceptance-105"><span class="linenos">105</span></a>    <span class="n">probability_target</span> <span class="o">=</span> <span class="s2">&quot;acceptance&quot;</span>
+</span><span id="XGBLogitSplineAcceptance-106"><a href="#XGBLogitSplineAcceptance-106"><span class="linenos">106</span></a>    <span class="n">source_format</span> <span class="o">=</span> <span class="s2">&quot;xgb_logit_spline_npz&quot;</span>
+</span><span id="XGBLogitSplineAcceptance-107"><a href="#XGBLogitSplineAcceptance-107"><span class="linenos">107</span></a>    <span class="n">u_cols</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;U&quot;</span><span class="p">,)</span>
+</span><span id="XGBLogitSplineAcceptance-108"><a href="#XGBLogitSplineAcceptance-108"><span class="linenos">108</span></a>
+</span><span id="XGBLogitSplineAcceptance-109"><a href="#XGBLogitSplineAcceptance-109"><span class="linenos">109</span></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+</span><span id="XGBLogitSplineAcceptance-110"><a href="#XGBLogitSplineAcceptance-110"><span class="linenos">110</span></a>        <span class="bp">self</span><span class="p">,</span>
+</span><span id="XGBLogitSplineAcceptance-111"><a href="#XGBLogitSplineAcceptance-111"><span class="linenos">111</span></a>        <span class="n">artifact</span><span class="p">:</span> <span class="n">XGBLogitSplineArtifactData</span><span class="p">,</span>
+</span><span id="XGBLogitSplineAcceptance-112"><a href="#XGBLogitSplineAcceptance-112"><span class="linenos">112</span></a>        <span class="o">*</span><span class="p">,</span>
+</span><span id="XGBLogitSplineAcceptance-113"><a href="#XGBLogitSplineAcceptance-113"><span class="linenos">113</span></a>        <span class="n">artifact_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="XGBLogitSplineAcceptance-114"><a href="#XGBLogitSplineAcceptance-114"><span class="linenos">114</span></a>        <span class="n">id_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;id&quot;</span><span class="p">,</span>
+</span><span id="XGBLogitSplineAcceptance-115"><a href="#XGBLogitSplineAcceptance-115"><span class="linenos">115</span></a>        <span class="n">x_feature_cols</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">(),</span>
+</span><span id="XGBLogitSplineAcceptance-116"><a href="#XGBLogitSplineAcceptance-116"><span class="linenos">116</span></a>        <span class="n">preprocessor</span><span class="p">:</span> <span class="n">FeatureProcessor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="XGBLogitSplineAcceptance-117"><a href="#XGBLogitSplineAcceptance-117"><span class="linenos">117</span></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="XGBLogitSplineAcceptance-118"><a href="#XGBLogitSplineAcceptance-118"><span class="linenos">118</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">artifact</span> <span class="o">=</span> <span class="n">artifact</span>
+</span><span id="XGBLogitSplineAcceptance-119"><a href="#XGBLogitSplineAcceptance-119"><span class="linenos">119</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">artifact_path</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">artifact_path</span><span class="p">)</span> <span class="k">if</span> <span class="n">artifact_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+</span><span id="XGBLogitSplineAcceptance-120"><a href="#XGBLogitSplineAcceptance-120"><span class="linenos">120</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">id_col</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">id_col</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance-121"><a href="#XGBLogitSplineAcceptance-121"><span class="linenos">121</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">auxiliary_state_cols</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id_col</span><span class="p">,)</span>
+</span><span id="XGBLogitSplineAcceptance-122"><a href="#XGBLogitSplineAcceptance-122"><span class="linenos">122</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">x_feature_cols</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">col</span><span class="p">)</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">x_feature_cols</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance-123"><a href="#XGBLogitSplineAcceptance-123"><span class="linenos">123</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">preprocessor</span> <span class="o">=</span> <span class="n">preprocessor</span>
+</span><span id="XGBLogitSplineAcceptance-124"><a href="#XGBLogitSplineAcceptance-124"><span class="linenos">124</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_policy_index</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="XGBLogitSplineAcceptance-125"><a href="#XGBLogitSplineAcceptance-125"><span class="linenos">125</span></a>            <span class="n">policy_id</span><span class="p">:</span> <span class="n">index</span> <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">policy_id</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">artifact</span><span class="o">.</span><span class="n">policy_ids</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+</span><span id="XGBLogitSplineAcceptance-126"><a href="#XGBLogitSplineAcceptance-126"><span class="linenos">126</span></a>        <span class="p">}</span>
+</span><span id="XGBLogitSplineAcceptance-127"><a href="#XGBLogitSplineAcceptance-127"><span class="linenos">127</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_splines</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
+</span><span id="XGBLogitSplineAcceptance-128"><a href="#XGBLogitSplineAcceptance-128"><span class="linenos">128</span></a>            <span class="n">BSpline</span><span class="p">(</span><span class="n">artifact</span><span class="o">.</span><span class="n">knots</span><span class="p">[</span><span class="n">index</span><span class="p">],</span> <span class="n">artifact</span><span class="o">.</span><span class="n">coefficients</span><span class="p">[</span><span class="n">index</span><span class="p">],</span> <span class="nb">int</span><span class="p">(</span><span class="n">artifact</span><span class="o">.</span><span class="n">degrees</span><span class="p">[</span><span class="n">index</span><span class="p">]))</span>
+</span><span id="XGBLogitSplineAcceptance-129"><a href="#XGBLogitSplineAcceptance-129"><span class="linenos">129</span></a>            <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">artifact</span><span class="o">.</span><span class="n">policy_ids</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance-130"><a href="#XGBLogitSplineAcceptance-130"><span class="linenos">130</span></a>        <span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance-131"><a href="#XGBLogitSplineAcceptance-131"><span class="linenos">131</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_derivative_splines</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">spline</span><span class="o">.</span><span class="n">derivative</span><span class="p">()</span> <span class="k">for</span> <span class="n">spline</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_splines</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance-132"><a href="#XGBLogitSplineAcceptance-132"><span class="linenos">132</span></a>
+</span><span id="XGBLogitSplineAcceptance-133"><a href="#XGBLogitSplineAcceptance-133"><span class="linenos">133</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">covered_policy_ids</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+</span><span id="XGBLogitSplineAcceptance-134"><a href="#XGBLogitSplineAcceptance-134"><span class="linenos">134</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return insurance-policy IDs with a fitted acceptance spline.&quot;&quot;&quot;</span>
+</span><span id="XGBLogitSplineAcceptance-135"><a href="#XGBLogitSplineAcceptance-135"><span class="linenos">135</span></a>        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">artifact</span><span class="o">.</span><span class="n">policy_ids</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+</span><span id="XGBLogitSplineAcceptance-136"><a href="#XGBLogitSplineAcceptance-136"><span class="linenos">136</span></a>
+</span><span id="XGBLogitSplineAcceptance-137"><a href="#XGBLogitSplineAcceptance-137"><span class="linenos">137</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">covered_row_indices</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+</span><span id="XGBLogitSplineAcceptance-138"><a href="#XGBLogitSplineAcceptance-138"><span class="linenos">138</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return canonical dataset row positions aligned with covered policy IDs.&quot;&quot;&quot;</span>
+</span><span id="XGBLogitSplineAcceptance-139"><a href="#XGBLogitSplineAcceptance-139"><span class="linenos">139</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">artifact</span><span class="o">.</span><span class="n">row_indices</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+</span><span id="XGBLogitSplineAcceptance-140"><a href="#XGBLogitSplineAcceptance-140"><span class="linenos">140</span></a>
+</span><span id="XGBLogitSplineAcceptance-141"><a href="#XGBLogitSplineAcceptance-141"><span class="linenos">141</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">policy_feature_dim</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span id="XGBLogitSplineAcceptance-142"><a href="#XGBLogitSplineAcceptance-142"><span class="linenos">142</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the processed state dimension used by the optimization policy.&quot;&quot;&quot;</span>
+</span><span id="XGBLogitSplineAcceptance-143"><a href="#XGBLogitSplineAcceptance-143"><span class="linenos">143</span></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">preprocessor</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="XGBLogitSplineAcceptance-144"><a href="#XGBLogitSplineAcceptance-144"><span class="linenos">144</span></a>            <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x_feature_cols</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance-145"><a href="#XGBLogitSplineAcceptance-145"><span class="linenos">145</span></a>        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">preprocessor</span><span class="p">,</span> <span class="s2">&quot;output_feature_names_&quot;</span><span class="p">,</span> <span class="p">()))</span>
+</span><span id="XGBLogitSplineAcceptance-146"><a href="#XGBLogitSplineAcceptance-146"><span class="linenos">146</span></a>
+</span><span id="XGBLogitSplineAcceptance-147"><a href="#XGBLogitSplineAcceptance-147"><span class="linenos">147</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">predict_acceptance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_frame</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">u</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+</span><span id="XGBLogitSplineAcceptance-148"><a href="#XGBLogitSplineAcceptance-148"><span class="linenos">148</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return direct acceptance probabilities for covered policy IDs.&quot;&quot;&quot;</span>
+</span><span id="XGBLogitSplineAcceptance-149"><a href="#XGBLogitSplineAcceptance-149"><span class="linenos">149</span></a>        <span class="n">policy_indices</span><span class="p">,</span> <span class="n">u_arr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_inputs</span><span class="p">(</span><span class="n">raw_frame</span><span class="p">,</span> <span class="n">u</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance-150"><a href="#XGBLogitSplineAcceptance-150"><span class="linenos">150</span></a>        <span class="n">churn</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_churn_and_derivative</span><span class="p">(</span><span class="n">policy_indices</span><span class="p">,</span> <span class="n">u_arr</span><span class="p">,</span> <span class="n">derivative</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance-151"><a href="#XGBLogitSplineAcceptance-151"><span class="linenos">151</span></a>        <span class="k">return</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">churn</span>
+</span><span id="XGBLogitSplineAcceptance-152"><a href="#XGBLogitSplineAcceptance-152"><span class="linenos">152</span></a>
+</span><span id="XGBLogitSplineAcceptance-153"><a href="#XGBLogitSplineAcceptance-153"><span class="linenos">153</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">d_acceptance_du</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_frame</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">u</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+</span><span id="XGBLogitSplineAcceptance-154"><a href="#XGBLogitSplineAcceptance-154"><span class="linenos">154</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the analytical action derivative of direct acceptance.&quot;&quot;&quot;</span>
+</span><span id="XGBLogitSplineAcceptance-155"><a href="#XGBLogitSplineAcceptance-155"><span class="linenos">155</span></a>        <span class="n">policy_indices</span><span class="p">,</span> <span class="n">u_arr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_inputs</span><span class="p">(</span><span class="n">raw_frame</span><span class="p">,</span> <span class="n">u</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance-156"><a href="#XGBLogitSplineAcceptance-156"><span class="linenos">156</span></a>        <span class="n">_</span><span class="p">,</span> <span class="n">d_churn_du</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_churn_and_derivative</span><span class="p">(</span><span class="n">policy_indices</span><span class="p">,</span> <span class="n">u_arr</span><span class="p">,</span> <span class="n">derivative</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance-157"><a href="#XGBLogitSplineAcceptance-157"><span class="linenos">157</span></a>        <span class="k">if</span> <span class="n">d_churn_du</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># pragma: no cover - derivative=True guarantees an array</span>
+</span><span id="XGBLogitSplineAcceptance-158"><a href="#XGBLogitSplineAcceptance-158"><span class="linenos">158</span></a>            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Spline derivative was not computed.&quot;</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance-159"><a href="#XGBLogitSplineAcceptance-159"><span class="linenos">159</span></a>        <span class="k">return</span> <span class="o">-</span><span class="n">d_churn_du</span>
+</span><span id="XGBLogitSplineAcceptance-160"><a href="#XGBLogitSplineAcceptance-160"><span class="linenos">160</span></a>
+</span><span id="XGBLogitSplineAcceptance-161"><a href="#XGBLogitSplineAcceptance-161"><span class="linenos">161</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">predict_proba</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+</span><span id="XGBLogitSplineAcceptance-162"><a href="#XGBLogitSplineAcceptance-162"><span class="linenos">162</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return sklearn-standard columns ``[P(churn), P(accept)]``.&quot;&quot;&quot;</span>
+</span><span id="XGBLogitSplineAcceptance-163"><a href="#XGBLogitSplineAcceptance-163"><span class="linenos">163</span></a>        <span class="k">if</span> <span class="s2">&quot;U&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">frame</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+</span><span id="XGBLogitSplineAcceptance-164"><a href="#XGBLogitSplineAcceptance-164"><span class="linenos">164</span></a>            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s2">&quot;XGB logit-spline prediction requires column &#39;U&#39;.&quot;</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance-165"><a href="#XGBLogitSplineAcceptance-165"><span class="linenos">165</span></a>        <span class="n">acceptance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">predict_acceptance</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">frame</span><span class="p">[</span><span class="s2">&quot;U&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">))</span>
+</span><span id="XGBLogitSplineAcceptance-166"><a href="#XGBLogitSplineAcceptance-166"><span class="linenos">166</span></a>        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">([</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">acceptance</span><span class="p">,</span> <span class="n">acceptance</span><span class="p">])</span>
+</span><span id="XGBLogitSplineAcceptance-167"><a href="#XGBLogitSplineAcceptance-167"><span class="linenos">167</span></a>
+</span><span id="XGBLogitSplineAcceptance-168"><a href="#XGBLogitSplineAcceptance-168"><span class="linenos">168</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_inputs</span><span class="p">(</span>
+</span><span id="XGBLogitSplineAcceptance-169"><a href="#XGBLogitSplineAcceptance-169"><span class="linenos">169</span></a>        <span class="bp">self</span><span class="p">,</span>
+</span><span id="XGBLogitSplineAcceptance-170"><a href="#XGBLogitSplineAcceptance-170"><span class="linenos">170</span></a>        <span class="n">raw_frame</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+</span><span id="XGBLogitSplineAcceptance-171"><a href="#XGBLogitSplineAcceptance-171"><span class="linenos">171</span></a>        <span class="n">u</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+</span><span id="XGBLogitSplineAcceptance-172"><a href="#XGBLogitSplineAcceptance-172"><span class="linenos">172</span></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+</span><span id="XGBLogitSplineAcceptance-173"><a href="#XGBLogitSplineAcceptance-173"><span class="linenos">173</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw_frame</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+</span><span id="XGBLogitSplineAcceptance-174"><a href="#XGBLogitSplineAcceptance-174"><span class="linenos">174</span></a>            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;XGB logit-spline acceptance requires a DataFrame batch.&quot;</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance-175"><a href="#XGBLogitSplineAcceptance-175"><span class="linenos">175</span></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">id_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">raw_frame</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+</span><span id="XGBLogitSplineAcceptance-176"><a href="#XGBLogitSplineAcceptance-176"><span class="linenos">176</span></a>            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing spline policy-ID column &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id_col</span><span class="si">}</span><span class="s2">&#39;.&quot;</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance-177"><a href="#XGBLogitSplineAcceptance-177"><span class="linenos">177</span></a>        <span class="n">policy_ids</span> <span class="o">=</span> <span class="n">raw_frame</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">id_col</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;string&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance-178"><a href="#XGBLogitSplineAcceptance-178"><span class="linenos">178</span></a>        <span class="n">unknown</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">({</span><span class="n">policy_id</span> <span class="k">for</span> <span class="n">policy_id</span> <span class="ow">in</span> <span class="n">policy_ids</span> <span class="k">if</span> <span class="n">policy_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_policy_index</span><span class="p">})</span>
+</span><span id="XGBLogitSplineAcceptance-179"><a href="#XGBLogitSplineAcceptance-179"><span class="linenos">179</span></a>        <span class="k">if</span> <span class="n">unknown</span><span class="p">:</span>
+</span><span id="XGBLogitSplineAcceptance-180"><a href="#XGBLogitSplineAcceptance-180"><span class="linenos">180</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No fitted acceptance spline for policy IDs: </span><span class="si">{</span><span class="n">unknown</span><span class="p">[:</span><span class="mi">5</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance-181"><a href="#XGBLogitSplineAcceptance-181"><span class="linenos">181</span></a>        <span class="n">policy_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">_policy_index</span><span class="p">[</span><span class="n">policy_id</span><span class="p">]</span> <span class="k">for</span> <span class="n">policy_id</span> <span class="ow">in</span> <span class="n">policy_ids</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance-182"><a href="#XGBLogitSplineAcceptance-182"><span class="linenos">182</span></a>        <span class="n">u_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance-183"><a href="#XGBLogitSplineAcceptance-183"><span class="linenos">183</span></a>        <span class="k">if</span> <span class="n">u_arr</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="p">(</span><span class="n">raw_frame</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],):</span>
+</span><span id="XGBLogitSplineAcceptance-184"><a href="#XGBLogitSplineAcceptance-184"><span class="linenos">184</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;u must contain one action per spline input row.&quot;</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance-185"><a href="#XGBLogitSplineAcceptance-185"><span class="linenos">185</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">u_arr</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+</span><span id="XGBLogitSplineAcceptance-186"><a href="#XGBLogitSplineAcceptance-186"><span class="linenos">186</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Spline actions must be finite.&quot;</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance-187"><a href="#XGBLogitSplineAcceptance-187"><span class="linenos">187</span></a>        <span class="k">return</span> <span class="n">policy_indices</span><span class="p">,</span> <span class="n">u_arr</span>
+</span><span id="XGBLogitSplineAcceptance-188"><a href="#XGBLogitSplineAcceptance-188"><span class="linenos">188</span></a>
+</span><span id="XGBLogitSplineAcceptance-189"><a href="#XGBLogitSplineAcceptance-189"><span class="linenos">189</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_churn_and_derivative</span><span class="p">(</span>
+</span><span id="XGBLogitSplineAcceptance-190"><a href="#XGBLogitSplineAcceptance-190"><span class="linenos">190</span></a>        <span class="bp">self</span><span class="p">,</span>
+</span><span id="XGBLogitSplineAcceptance-191"><a href="#XGBLogitSplineAcceptance-191"><span class="linenos">191</span></a>        <span class="n">policy_indices</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+</span><span id="XGBLogitSplineAcceptance-192"><a href="#XGBLogitSplineAcceptance-192"><span class="linenos">192</span></a>        <span class="n">u</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+</span><span id="XGBLogitSplineAcceptance-193"><a href="#XGBLogitSplineAcceptance-193"><span class="linenos">193</span></a>        <span class="o">*</span><span class="p">,</span>
+</span><span id="XGBLogitSplineAcceptance-194"><a href="#XGBLogitSplineAcceptance-194"><span class="linenos">194</span></a>        <span class="n">derivative</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+</span><span id="XGBLogitSplineAcceptance-195"><a href="#XGBLogitSplineAcceptance-195"><span class="linenos">195</span></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
+</span><span id="XGBLogitSplineAcceptance-196"><a href="#XGBLogitSplineAcceptance-196"><span class="linenos">196</span></a>        <span class="n">churn</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance-197"><a href="#XGBLogitSplineAcceptance-197"><span class="linenos">197</span></a>        <span class="n">d_churn_du</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="n">u</span><span class="p">)</span> <span class="k">if</span> <span class="n">derivative</span> <span class="k">else</span> <span class="kc">None</span>
+</span><span id="XGBLogitSplineAcceptance-198"><a href="#XGBLogitSplineAcceptance-198"><span class="linenos">198</span></a>        <span class="n">u_min</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">artifact</span><span class="o">.</span><span class="n">u_min</span>
+</span><span id="XGBLogitSplineAcceptance-199"><a href="#XGBLogitSplineAcceptance-199"><span class="linenos">199</span></a>        <span class="n">u_max</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">artifact</span><span class="o">.</span><span class="n">u_max</span>
+</span><span id="XGBLogitSplineAcceptance-200"><a href="#XGBLogitSplineAcceptance-200"><span class="linenos">200</span></a>        <span class="k">for</span> <span class="n">policy_index</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">policy_indices</span><span class="p">):</span>
+</span><span id="XGBLogitSplineAcceptance-201"><a href="#XGBLogitSplineAcceptance-201"><span class="linenos">201</span></a>            <span class="n">rows</span> <span class="o">=</span> <span class="n">policy_indices</span> <span class="o">==</span> <span class="n">policy_index</span>
+</span><span id="XGBLogitSplineAcceptance-202"><a href="#XGBLogitSplineAcceptance-202"><span class="linenos">202</span></a>            <span class="n">policy_u</span> <span class="o">=</span> <span class="n">u</span><span class="p">[</span><span class="n">rows</span><span class="p">]</span>
+</span><span id="XGBLogitSplineAcceptance-203"><a href="#XGBLogitSplineAcceptance-203"><span class="linenos">203</span></a>            <span class="n">below</span> <span class="o">=</span> <span class="n">policy_u</span> <span class="o">&lt;</span> <span class="n">u_min</span>
+</span><span id="XGBLogitSplineAcceptance-204"><a href="#XGBLogitSplineAcceptance-204"><span class="linenos">204</span></a>            <span class="n">above</span> <span class="o">=</span> <span class="n">policy_u</span> <span class="o">&gt;</span> <span class="n">u_max</span>
+</span><span id="XGBLogitSplineAcceptance-205"><a href="#XGBLogitSplineAcceptance-205"><span class="linenos">205</span></a>            <span class="n">inside</span> <span class="o">=</span> <span class="o">~</span><span class="p">(</span><span class="n">below</span> <span class="o">|</span> <span class="n">above</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance-206"><a href="#XGBLogitSplineAcceptance-206"><span class="linenos">206</span></a>            <span class="n">policy_churn</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="n">policy_u</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance-207"><a href="#XGBLogitSplineAcceptance-207"><span class="linenos">207</span></a>            <span class="n">policy_churn</span><span class="p">[</span><span class="n">below</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">artifact</span><span class="o">.</span><span class="n">churn_min</span><span class="p">[</span><span class="n">policy_index</span><span class="p">]</span>
+</span><span id="XGBLogitSplineAcceptance-208"><a href="#XGBLogitSplineAcceptance-208"><span class="linenos">208</span></a>            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">inside</span><span class="p">):</span>
+</span><span id="XGBLogitSplineAcceptance-209"><a href="#XGBLogitSplineAcceptance-209"><span class="linenos">209</span></a>                <span class="n">policy_churn</span><span class="p">[</span><span class="n">inside</span><span class="p">]</span> <span class="o">=</span> <span class="n">expit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_splines</span><span class="p">[</span><span class="n">policy_index</span><span class="p">](</span><span class="n">policy_u</span><span class="p">[</span><span class="n">inside</span><span class="p">]))</span>
+</span><span id="XGBLogitSplineAcceptance-210"><a href="#XGBLogitSplineAcceptance-210"><span class="linenos">210</span></a>            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">above</span><span class="p">):</span>
+</span><span id="XGBLogitSplineAcceptance-211"><a href="#XGBLogitSplineAcceptance-211"><span class="linenos">211</span></a>                <span class="n">policy_churn</span><span class="p">[</span><span class="n">above</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span>
+</span><span id="XGBLogitSplineAcceptance-212"><a href="#XGBLogitSplineAcceptance-212"><span class="linenos">212</span></a>                    <span class="bp">self</span><span class="o">.</span><span class="n">artifact</span><span class="o">.</span><span class="n">churn_max</span><span class="p">[</span><span class="n">policy_index</span><span class="p">]</span>
+</span><span id="XGBLogitSplineAcceptance-213"><a href="#XGBLogitSplineAcceptance-213"><span class="linenos">213</span></a>                    <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">artifact</span><span class="o">.</span><span class="n">upper_slopes</span><span class="p">[</span><span class="n">policy_index</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">policy_u</span><span class="p">[</span><span class="n">above</span><span class="p">]</span> <span class="o">-</span> <span class="n">u_max</span><span class="p">),</span>
+</span><span id="XGBLogitSplineAcceptance-214"><a href="#XGBLogitSplineAcceptance-214"><span class="linenos">214</span></a>                    <span class="mf">0.0</span><span class="p">,</span>
+</span><span id="XGBLogitSplineAcceptance-215"><a href="#XGBLogitSplineAcceptance-215"><span class="linenos">215</span></a>                    <span class="mf">1.0</span><span class="p">,</span>
+</span><span id="XGBLogitSplineAcceptance-216"><a href="#XGBLogitSplineAcceptance-216"><span class="linenos">216</span></a>                <span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance-217"><a href="#XGBLogitSplineAcceptance-217"><span class="linenos">217</span></a>            <span class="n">churn</span><span class="p">[</span><span class="n">rows</span><span class="p">]</span> <span class="o">=</span> <span class="n">policy_churn</span>
+</span><span id="XGBLogitSplineAcceptance-218"><a href="#XGBLogitSplineAcceptance-218"><span class="linenos">218</span></a>            <span class="k">if</span> <span class="n">d_churn_du</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="XGBLogitSplineAcceptance-219"><a href="#XGBLogitSplineAcceptance-219"><span class="linenos">219</span></a>                <span class="k">continue</span>
+</span><span id="XGBLogitSplineAcceptance-220"><a href="#XGBLogitSplineAcceptance-220"><span class="linenos">220</span></a>            <span class="n">policy_derivative</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">policy_u</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance-221"><a href="#XGBLogitSplineAcceptance-221"><span class="linenos">221</span></a>            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">inside</span><span class="p">):</span>
+</span><span id="XGBLogitSplineAcceptance-222"><a href="#XGBLogitSplineAcceptance-222"><span class="linenos">222</span></a>                <span class="n">inside_churn</span> <span class="o">=</span> <span class="n">policy_churn</span><span class="p">[</span><span class="n">inside</span><span class="p">]</span>
+</span><span id="XGBLogitSplineAcceptance-223"><a href="#XGBLogitSplineAcceptance-223"><span class="linenos">223</span></a>                <span class="n">policy_derivative</span><span class="p">[</span><span class="n">inside</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="XGBLogitSplineAcceptance-224"><a href="#XGBLogitSplineAcceptance-224"><span class="linenos">224</span></a>                    <span class="n">inside_churn</span>
+</span><span id="XGBLogitSplineAcceptance-225"><a href="#XGBLogitSplineAcceptance-225"><span class="linenos">225</span></a>                    <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">inside_churn</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance-226"><a href="#XGBLogitSplineAcceptance-226"><span class="linenos">226</span></a>                    <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_derivative_splines</span><span class="p">[</span><span class="n">policy_index</span><span class="p">](</span><span class="n">policy_u</span><span class="p">[</span><span class="n">inside</span><span class="p">])</span>
+</span><span id="XGBLogitSplineAcceptance-227"><a href="#XGBLogitSplineAcceptance-227"><span class="linenos">227</span></a>                <span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance-228"><a href="#XGBLogitSplineAcceptance-228"><span class="linenos">228</span></a>            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">above</span><span class="p">):</span>
+</span><span id="XGBLogitSplineAcceptance-229"><a href="#XGBLogitSplineAcceptance-229"><span class="linenos">229</span></a>                <span class="n">raw_churn</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="XGBLogitSplineAcceptance-230"><a href="#XGBLogitSplineAcceptance-230"><span class="linenos">230</span></a>                    <span class="bp">self</span><span class="o">.</span><span class="n">artifact</span><span class="o">.</span><span class="n">churn_max</span><span class="p">[</span><span class="n">policy_index</span><span class="p">]</span>
+</span><span id="XGBLogitSplineAcceptance-231"><a href="#XGBLogitSplineAcceptance-231"><span class="linenos">231</span></a>                    <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">artifact</span><span class="o">.</span><span class="n">upper_slopes</span><span class="p">[</span><span class="n">policy_index</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">policy_u</span><span class="p">[</span><span class="n">above</span><span class="p">]</span> <span class="o">-</span> <span class="n">u_max</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance-232"><a href="#XGBLogitSplineAcceptance-232"><span class="linenos">232</span></a>                <span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance-233"><a href="#XGBLogitSplineAcceptance-233"><span class="linenos">233</span></a>                <span class="n">policy_derivative</span><span class="p">[</span><span class="n">above</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+</span><span id="XGBLogitSplineAcceptance-234"><a href="#XGBLogitSplineAcceptance-234"><span class="linenos">234</span></a>                    <span class="p">(</span><span class="n">raw_churn</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">raw_churn</span> <span class="o">&lt;</span> <span class="mf">1.0</span><span class="p">),</span>
+</span><span id="XGBLogitSplineAcceptance-235"><a href="#XGBLogitSplineAcceptance-235"><span class="linenos">235</span></a>                    <span class="bp">self</span><span class="o">.</span><span class="n">artifact</span><span class="o">.</span><span class="n">upper_slopes</span><span class="p">[</span><span class="n">policy_index</span><span class="p">],</span>
+</span><span id="XGBLogitSplineAcceptance-236"><a href="#XGBLogitSplineAcceptance-236"><span class="linenos">236</span></a>                    <span class="mf">0.0</span><span class="p">,</span>
+</span><span id="XGBLogitSplineAcceptance-237"><a href="#XGBLogitSplineAcceptance-237"><span class="linenos">237</span></a>                <span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance-238"><a href="#XGBLogitSplineAcceptance-238"><span class="linenos">238</span></a>            <span class="n">d_churn_du</span><span class="p">[</span><span class="n">rows</span><span class="p">]</span> <span class="o">=</span> <span class="n">policy_derivative</span>
+</span><span id="XGBLogitSplineAcceptance-239"><a href="#XGBLogitSplineAcceptance-239"><span class="linenos">239</span></a>        <span class="k">return</span> <span class="n">churn</span><span class="p">,</span> <span class="n">d_churn_du</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Evaluate portable per-policy acceptance splines and action derivatives.</p>
+</div>
+
+
+                            <div id="XGBLogitSplineAcceptance.__init__" class="classattr">
+                                        <input id="XGBLogitSplineAcceptance.__init__-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+
+        <span class="name">XGBLogitSplineAcceptance</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">artifact</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">xgb_logit_spline</span><span class="o">.</span><span class="n">XGBLogitSplineArtifactData</span>,</span><span class="param">	<span class="o">*</span>,</span><span class="param">	<span class="n">artifact_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">id_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;id&#39;</span>,</span><span class="param">	<span class="n">x_feature_cols</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>,</span><span class="param">	<span class="n">preprocessor</span><span class="p">:</span> <span class="n"><a href="#FeatureProcessor">FeatureProcessor</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span>)</span>
+
+                <label class="view-source-button" for="XGBLogitSplineAcceptance.__init__-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#XGBLogitSplineAcceptance.__init__"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="XGBLogitSplineAcceptance.__init__-109"><a href="#XGBLogitSplineAcceptance.__init__-109"><span class="linenos">109</span></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+</span><span id="XGBLogitSplineAcceptance.__init__-110"><a href="#XGBLogitSplineAcceptance.__init__-110"><span class="linenos">110</span></a>        <span class="bp">self</span><span class="p">,</span>
+</span><span id="XGBLogitSplineAcceptance.__init__-111"><a href="#XGBLogitSplineAcceptance.__init__-111"><span class="linenos">111</span></a>        <span class="n">artifact</span><span class="p">:</span> <span class="n">XGBLogitSplineArtifactData</span><span class="p">,</span>
+</span><span id="XGBLogitSplineAcceptance.__init__-112"><a href="#XGBLogitSplineAcceptance.__init__-112"><span class="linenos">112</span></a>        <span class="o">*</span><span class="p">,</span>
+</span><span id="XGBLogitSplineAcceptance.__init__-113"><a href="#XGBLogitSplineAcceptance.__init__-113"><span class="linenos">113</span></a>        <span class="n">artifact_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="XGBLogitSplineAcceptance.__init__-114"><a href="#XGBLogitSplineAcceptance.__init__-114"><span class="linenos">114</span></a>        <span class="n">id_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;id&quot;</span><span class="p">,</span>
+</span><span id="XGBLogitSplineAcceptance.__init__-115"><a href="#XGBLogitSplineAcceptance.__init__-115"><span class="linenos">115</span></a>        <span class="n">x_feature_cols</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">(),</span>
+</span><span id="XGBLogitSplineAcceptance.__init__-116"><a href="#XGBLogitSplineAcceptance.__init__-116"><span class="linenos">116</span></a>        <span class="n">preprocessor</span><span class="p">:</span> <span class="n">FeatureProcessor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="XGBLogitSplineAcceptance.__init__-117"><a href="#XGBLogitSplineAcceptance.__init__-117"><span class="linenos">117</span></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="XGBLogitSplineAcceptance.__init__-118"><a href="#XGBLogitSplineAcceptance.__init__-118"><span class="linenos">118</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">artifact</span> <span class="o">=</span> <span class="n">artifact</span>
+</span><span id="XGBLogitSplineAcceptance.__init__-119"><a href="#XGBLogitSplineAcceptance.__init__-119"><span class="linenos">119</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">artifact_path</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">artifact_path</span><span class="p">)</span> <span class="k">if</span> <span class="n">artifact_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+</span><span id="XGBLogitSplineAcceptance.__init__-120"><a href="#XGBLogitSplineAcceptance.__init__-120"><span class="linenos">120</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">id_col</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">id_col</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance.__init__-121"><a href="#XGBLogitSplineAcceptance.__init__-121"><span class="linenos">121</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">auxiliary_state_cols</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id_col</span><span class="p">,)</span>
+</span><span id="XGBLogitSplineAcceptance.__init__-122"><a href="#XGBLogitSplineAcceptance.__init__-122"><span class="linenos">122</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">x_feature_cols</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">col</span><span class="p">)</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">x_feature_cols</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance.__init__-123"><a href="#XGBLogitSplineAcceptance.__init__-123"><span class="linenos">123</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">preprocessor</span> <span class="o">=</span> <span class="n">preprocessor</span>
+</span><span id="XGBLogitSplineAcceptance.__init__-124"><a href="#XGBLogitSplineAcceptance.__init__-124"><span class="linenos">124</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_policy_index</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="XGBLogitSplineAcceptance.__init__-125"><a href="#XGBLogitSplineAcceptance.__init__-125"><span class="linenos">125</span></a>            <span class="n">policy_id</span><span class="p">:</span> <span class="n">index</span> <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">policy_id</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">artifact</span><span class="o">.</span><span class="n">policy_ids</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+</span><span id="XGBLogitSplineAcceptance.__init__-126"><a href="#XGBLogitSplineAcceptance.__init__-126"><span class="linenos">126</span></a>        <span class="p">}</span>
+</span><span id="XGBLogitSplineAcceptance.__init__-127"><a href="#XGBLogitSplineAcceptance.__init__-127"><span class="linenos">127</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_splines</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
+</span><span id="XGBLogitSplineAcceptance.__init__-128"><a href="#XGBLogitSplineAcceptance.__init__-128"><span class="linenos">128</span></a>            <span class="n">BSpline</span><span class="p">(</span><span class="n">artifact</span><span class="o">.</span><span class="n">knots</span><span class="p">[</span><span class="n">index</span><span class="p">],</span> <span class="n">artifact</span><span class="o">.</span><span class="n">coefficients</span><span class="p">[</span><span class="n">index</span><span class="p">],</span> <span class="nb">int</span><span class="p">(</span><span class="n">artifact</span><span class="o">.</span><span class="n">degrees</span><span class="p">[</span><span class="n">index</span><span class="p">]))</span>
+</span><span id="XGBLogitSplineAcceptance.__init__-129"><a href="#XGBLogitSplineAcceptance.__init__-129"><span class="linenos">129</span></a>            <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">artifact</span><span class="o">.</span><span class="n">policy_ids</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance.__init__-130"><a href="#XGBLogitSplineAcceptance.__init__-130"><span class="linenos">130</span></a>        <span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance.__init__-131"><a href="#XGBLogitSplineAcceptance.__init__-131"><span class="linenos">131</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_derivative_splines</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">spline</span><span class="o">.</span><span class="n">derivative</span><span class="p">()</span> <span class="k">for</span> <span class="n">spline</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_splines</span><span class="p">)</span>
+</span></pre></div>
+
+
+
+
+                            </div>
+                            <div id="XGBLogitSplineAcceptance.model_type" class="classattr">
+                                <div class="attr variable">
+            <span class="name">model_type</span>        =
+<span class="default_value">&#39;xgb_logit_spline&#39;</span>
+
+
+    </div>
+    <a class="headerlink" href="#XGBLogitSplineAcceptance.model_type"></a>
+
+
+
+                            </div>
+                            <div id="XGBLogitSplineAcceptance.role" class="classattr">
+                                <div class="attr variable">
+            <span class="name">role</span>        =
+<span class="default_value">&#39;acceptance&#39;</span>
+
+
+    </div>
+    <a class="headerlink" href="#XGBLogitSplineAcceptance.role"></a>
+
+
+
+                            </div>
+                            <div id="XGBLogitSplineAcceptance.probability_target" class="classattr">
+                                <div class="attr variable">
+            <span class="name">probability_target</span>        =
+<span class="default_value">&#39;acceptance&#39;</span>
+
+
+    </div>
+    <a class="headerlink" href="#XGBLogitSplineAcceptance.probability_target"></a>
+
+
+
+                            </div>
+                            <div id="XGBLogitSplineAcceptance.source_format" class="classattr">
+                                <div class="attr variable">
+            <span class="name">source_format</span>        =
+<span class="default_value">&#39;xgb_logit_spline_npz&#39;</span>
+
+
+    </div>
+    <a class="headerlink" href="#XGBLogitSplineAcceptance.source_format"></a>
+
+
+
+                            </div>
+                            <div id="XGBLogitSplineAcceptance.u_cols" class="classattr">
+                                <div class="attr variable">
+            <span class="name">u_cols</span>        =
+<span class="default_value">(&#39;U&#39;,)</span>
+
+
+    </div>
+    <a class="headerlink" href="#XGBLogitSplineAcceptance.u_cols"></a>
+
+
+
+                            </div>
+                            <div id="XGBLogitSplineAcceptance.artifact" class="classattr">
+                                <div class="attr variable">
+            <span class="name">artifact</span>
+
+
+    </div>
+    <a class="headerlink" href="#XGBLogitSplineAcceptance.artifact"></a>
+
+
+
+                            </div>
+                            <div id="XGBLogitSplineAcceptance.artifact_path" class="classattr">
+                                <div class="attr variable">
+            <span class="name">artifact_path</span>
+
+
+    </div>
+    <a class="headerlink" href="#XGBLogitSplineAcceptance.artifact_path"></a>
+
+
+
+                            </div>
+                            <div id="XGBLogitSplineAcceptance.id_col" class="classattr">
+                                <div class="attr variable">
+            <span class="name">id_col</span>
+
+
+    </div>
+    <a class="headerlink" href="#XGBLogitSplineAcceptance.id_col"></a>
+
+
+
+                            </div>
+                            <div id="XGBLogitSplineAcceptance.auxiliary_state_cols" class="classattr">
+                                <div class="attr variable">
+            <span class="name">auxiliary_state_cols</span>
+
+
+    </div>
+    <a class="headerlink" href="#XGBLogitSplineAcceptance.auxiliary_state_cols"></a>
+
+
+
+                            </div>
+                            <div id="XGBLogitSplineAcceptance.x_feature_cols" class="classattr">
+                                <div class="attr variable">
+            <span class="name">x_feature_cols</span>
+
+
+    </div>
+    <a class="headerlink" href="#XGBLogitSplineAcceptance.x_feature_cols"></a>
+
+
+
+                            </div>
+                            <div id="XGBLogitSplineAcceptance.preprocessor" class="classattr">
+                                <div class="attr variable">
+            <span class="name">preprocessor</span>
+
+
+    </div>
+    <a class="headerlink" href="#XGBLogitSplineAcceptance.preprocessor"></a>
+
+
+
+                            </div>
+                            <div id="XGBLogitSplineAcceptance.covered_policy_ids" class="classattr">
+                                        <input id="XGBLogitSplineAcceptance.covered_policy_ids-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+
+        <span class="def">def</span>
+        <span class="name">covered_policy_ids</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span></span><span class="return-annotation">) -> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>:</span></span>
+
+                <label class="view-source-button" for="XGBLogitSplineAcceptance.covered_policy_ids-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#XGBLogitSplineAcceptance.covered_policy_ids"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="XGBLogitSplineAcceptance.covered_policy_ids-133"><a href="#XGBLogitSplineAcceptance.covered_policy_ids-133"><span class="linenos">133</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">covered_policy_ids</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+</span><span id="XGBLogitSplineAcceptance.covered_policy_ids-134"><a href="#XGBLogitSplineAcceptance.covered_policy_ids-134"><span class="linenos">134</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return insurance-policy IDs with a fitted acceptance spline.&quot;&quot;&quot;</span>
+</span><span id="XGBLogitSplineAcceptance.covered_policy_ids-135"><a href="#XGBLogitSplineAcceptance.covered_policy_ids-135"><span class="linenos">135</span></a>        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">artifact</span><span class="o">.</span><span class="n">policy_ids</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Return insurance-policy IDs with a fitted acceptance spline.</p>
+</div>
+
+
+                            </div>
+                            <div id="XGBLogitSplineAcceptance.covered_row_indices" class="classattr">
+                                        <input id="XGBLogitSplineAcceptance.covered_row_indices-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+
+        <span class="def">def</span>
+        <span class="name">covered_row_indices</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span></span><span class="return-annotation">) -> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>:</span></span>
+
+                <label class="view-source-button" for="XGBLogitSplineAcceptance.covered_row_indices-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#XGBLogitSplineAcceptance.covered_row_indices"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="XGBLogitSplineAcceptance.covered_row_indices-137"><a href="#XGBLogitSplineAcceptance.covered_row_indices-137"><span class="linenos">137</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">covered_row_indices</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+</span><span id="XGBLogitSplineAcceptance.covered_row_indices-138"><a href="#XGBLogitSplineAcceptance.covered_row_indices-138"><span class="linenos">138</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return canonical dataset row positions aligned with covered policy IDs.&quot;&quot;&quot;</span>
+</span><span id="XGBLogitSplineAcceptance.covered_row_indices-139"><a href="#XGBLogitSplineAcceptance.covered_row_indices-139"><span class="linenos">139</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">artifact</span><span class="o">.</span><span class="n">row_indices</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Return canonical dataset row positions aligned with covered policy IDs.</p>
+</div>
+
+
+                            </div>
+                            <div id="XGBLogitSplineAcceptance.policy_feature_dim" class="classattr">
+                                        <input id="XGBLogitSplineAcceptance.policy_feature_dim-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+
+        <span class="def">def</span>
+        <span class="name">policy_feature_dim</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span></span><span class="return-annotation">) -> <span class="nb">int</span>:</span></span>
+
+                <label class="view-source-button" for="XGBLogitSplineAcceptance.policy_feature_dim-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#XGBLogitSplineAcceptance.policy_feature_dim"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="XGBLogitSplineAcceptance.policy_feature_dim-141"><a href="#XGBLogitSplineAcceptance.policy_feature_dim-141"><span class="linenos">141</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">policy_feature_dim</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span id="XGBLogitSplineAcceptance.policy_feature_dim-142"><a href="#XGBLogitSplineAcceptance.policy_feature_dim-142"><span class="linenos">142</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the processed state dimension used by the optimization policy.&quot;&quot;&quot;</span>
+</span><span id="XGBLogitSplineAcceptance.policy_feature_dim-143"><a href="#XGBLogitSplineAcceptance.policy_feature_dim-143"><span class="linenos">143</span></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">preprocessor</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="XGBLogitSplineAcceptance.policy_feature_dim-144"><a href="#XGBLogitSplineAcceptance.policy_feature_dim-144"><span class="linenos">144</span></a>            <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x_feature_cols</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance.policy_feature_dim-145"><a href="#XGBLogitSplineAcceptance.policy_feature_dim-145"><span class="linenos">145</span></a>        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">preprocessor</span><span class="p">,</span> <span class="s2">&quot;output_feature_names_&quot;</span><span class="p">,</span> <span class="p">()))</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Return the processed state dimension used by the optimization policy.</p>
+</div>
+
+
+                            </div>
+                            <div id="XGBLogitSplineAcceptance.predict_acceptance" class="classattr">
+                                        <input id="XGBLogitSplineAcceptance.predict_acceptance-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+
+        <span class="def">def</span>
+        <span class="name">predict_acceptance</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">raw_frame</span><span class="p">:</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span>, </span><span class="param"><span class="n">u</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span><span class="return-annotation">) -> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>:</span></span>
+
+                <label class="view-source-button" for="XGBLogitSplineAcceptance.predict_acceptance-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#XGBLogitSplineAcceptance.predict_acceptance"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="XGBLogitSplineAcceptance.predict_acceptance-147"><a href="#XGBLogitSplineAcceptance.predict_acceptance-147"><span class="linenos">147</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">predict_acceptance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_frame</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">u</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+</span><span id="XGBLogitSplineAcceptance.predict_acceptance-148"><a href="#XGBLogitSplineAcceptance.predict_acceptance-148"><span class="linenos">148</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return direct acceptance probabilities for covered policy IDs.&quot;&quot;&quot;</span>
+</span><span id="XGBLogitSplineAcceptance.predict_acceptance-149"><a href="#XGBLogitSplineAcceptance.predict_acceptance-149"><span class="linenos">149</span></a>        <span class="n">policy_indices</span><span class="p">,</span> <span class="n">u_arr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_inputs</span><span class="p">(</span><span class="n">raw_frame</span><span class="p">,</span> <span class="n">u</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance.predict_acceptance-150"><a href="#XGBLogitSplineAcceptance.predict_acceptance-150"><span class="linenos">150</span></a>        <span class="n">churn</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_churn_and_derivative</span><span class="p">(</span><span class="n">policy_indices</span><span class="p">,</span> <span class="n">u_arr</span><span class="p">,</span> <span class="n">derivative</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance.predict_acceptance-151"><a href="#XGBLogitSplineAcceptance.predict_acceptance-151"><span class="linenos">151</span></a>        <span class="k">return</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">churn</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Return direct acceptance probabilities for covered policy IDs.</p>
+</div>
+
+
+                            </div>
+                            <div id="XGBLogitSplineAcceptance.d_acceptance_du" class="classattr">
+                                        <input id="XGBLogitSplineAcceptance.d_acceptance_du-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+
+        <span class="def">def</span>
+        <span class="name">d_acceptance_du</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">raw_frame</span><span class="p">:</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span>, </span><span class="param"><span class="n">u</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span><span class="return-annotation">) -> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>:</span></span>
+
+                <label class="view-source-button" for="XGBLogitSplineAcceptance.d_acceptance_du-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#XGBLogitSplineAcceptance.d_acceptance_du"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="XGBLogitSplineAcceptance.d_acceptance_du-153"><a href="#XGBLogitSplineAcceptance.d_acceptance_du-153"><span class="linenos">153</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">d_acceptance_du</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_frame</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">u</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+</span><span id="XGBLogitSplineAcceptance.d_acceptance_du-154"><a href="#XGBLogitSplineAcceptance.d_acceptance_du-154"><span class="linenos">154</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the analytical action derivative of direct acceptance.&quot;&quot;&quot;</span>
+</span><span id="XGBLogitSplineAcceptance.d_acceptance_du-155"><a href="#XGBLogitSplineAcceptance.d_acceptance_du-155"><span class="linenos">155</span></a>        <span class="n">policy_indices</span><span class="p">,</span> <span class="n">u_arr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_inputs</span><span class="p">(</span><span class="n">raw_frame</span><span class="p">,</span> <span class="n">u</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance.d_acceptance_du-156"><a href="#XGBLogitSplineAcceptance.d_acceptance_du-156"><span class="linenos">156</span></a>        <span class="n">_</span><span class="p">,</span> <span class="n">d_churn_du</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_churn_and_derivative</span><span class="p">(</span><span class="n">policy_indices</span><span class="p">,</span> <span class="n">u_arr</span><span class="p">,</span> <span class="n">derivative</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance.d_acceptance_du-157"><a href="#XGBLogitSplineAcceptance.d_acceptance_du-157"><span class="linenos">157</span></a>        <span class="k">if</span> <span class="n">d_churn_du</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># pragma: no cover - derivative=True guarantees an array</span>
+</span><span id="XGBLogitSplineAcceptance.d_acceptance_du-158"><a href="#XGBLogitSplineAcceptance.d_acceptance_du-158"><span class="linenos">158</span></a>            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Spline derivative was not computed.&quot;</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance.d_acceptance_du-159"><a href="#XGBLogitSplineAcceptance.d_acceptance_du-159"><span class="linenos">159</span></a>        <span class="k">return</span> <span class="o">-</span><span class="n">d_churn_du</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Return the analytical action derivative of direct acceptance.</p>
+</div>
+
+
+                            </div>
+                            <div id="XGBLogitSplineAcceptance.predict_proba" class="classattr">
+                                        <input id="XGBLogitSplineAcceptance.predict_proba-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+
+        <span class="def">def</span>
+        <span class="name">predict_proba</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">frame</span><span class="p">:</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span></span><span class="return-annotation">) -> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>:</span></span>
+
+                <label class="view-source-button" for="XGBLogitSplineAcceptance.predict_proba-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#XGBLogitSplineAcceptance.predict_proba"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="XGBLogitSplineAcceptance.predict_proba-161"><a href="#XGBLogitSplineAcceptance.predict_proba-161"><span class="linenos">161</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">predict_proba</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+</span><span id="XGBLogitSplineAcceptance.predict_proba-162"><a href="#XGBLogitSplineAcceptance.predict_proba-162"><span class="linenos">162</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return sklearn-standard columns ``[P(churn), P(accept)]``.&quot;&quot;&quot;</span>
+</span><span id="XGBLogitSplineAcceptance.predict_proba-163"><a href="#XGBLogitSplineAcceptance.predict_proba-163"><span class="linenos">163</span></a>        <span class="k">if</span> <span class="s2">&quot;U&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">frame</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+</span><span id="XGBLogitSplineAcceptance.predict_proba-164"><a href="#XGBLogitSplineAcceptance.predict_proba-164"><span class="linenos">164</span></a>            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s2">&quot;XGB logit-spline prediction requires column &#39;U&#39;.&quot;</span><span class="p">)</span>
+</span><span id="XGBLogitSplineAcceptance.predict_proba-165"><a href="#XGBLogitSplineAcceptance.predict_proba-165"><span class="linenos">165</span></a>        <span class="n">acceptance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">predict_acceptance</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">frame</span><span class="p">[</span><span class="s2">&quot;U&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">))</span>
+</span><span id="XGBLogitSplineAcceptance.predict_proba-166"><a href="#XGBLogitSplineAcceptance.predict_proba-166"><span class="linenos">166</span></a>        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">([</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">acceptance</span><span class="p">,</span> <span class="n">acceptance</span><span class="p">])</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Return sklearn-standard columns <code>[P(churn), P(accept)]</code>.</p>
+</div>
+
 
                             </div>
                 </section>
                 <section id="dataset_csv_path">
                             <input id="dataset_csv_path-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">dataset_csv_path</span><span class="signature pdoc-code condensed">(<span class="return-annotation">) -> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span>:</span></span>
 
@@ -664,9 +1197,9 @@ data    </h1>
 
     </div>
     <a class="headerlink" href="#dataset_csv_path"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="dataset_csv_path-139"><a href="#dataset_csv_path-139"><span class="linenos">139</span></a><span class="k">def</span><span class="w"> </span><span class="nf">dataset_csv_path</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-</span><span id="dataset_csv_path-140"><a href="#dataset_csv_path-140"><span class="linenos">140</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the canonical 052726 real-data source CSV path.&quot;&quot;&quot;</span>
-</span><span id="dataset_csv_path-141"><a href="#dataset_csv_path-141"><span class="linenos">141</span></a>    <span class="k">return</span> <span class="n">_DATASET_CSV_PATH</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="dataset_csv_path-150"><a href="#dataset_csv_path-150"><span class="linenos">150</span></a><span class="k">def</span><span class="w"> </span><span class="nf">dataset_csv_path</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+</span><span id="dataset_csv_path-151"><a href="#dataset_csv_path-151"><span class="linenos">151</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the canonical 052726 real-data source CSV path.&quot;&quot;&quot;</span>
+</span><span id="dataset_csv_path-152"><a href="#dataset_csv_path-152"><span class="linenos">152</span></a>    <span class="k">return</span> <span class="n">_DATASET_CSV_PATH</span>
 </span></pre></div>
 
 
@@ -678,18 +1211,26 @@ data    </h1>
                 <section id="eligible_csv_row_indices">
                             <input id="eligible_csv_row_indices-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
-        <span class="name">eligible_csv_row_indices</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">model_type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;glm&#39;</span><span class="p">,</span> <span class="s1">&#39;xgb&#39;</span><span class="p">]</span></span><span class="return-annotation">) -> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>:</span></span>
+        <span class="name">eligible_csv_row_indices</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">model_type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;glm&#39;</span><span class="p">,</span> <span class="s1">&#39;xgb&#39;</span><span class="p">,</span> <span class="s1">&#39;xgb_logit_spline&#39;</span><span class="p">]</span></span><span class="return-annotation">) -> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>:</span></span>
 
                 <label class="view-source-button" for="eligible_csv_row_indices-view-source"><span>View Source</span></label>
 
     </div>
     <a class="headerlink" href="#eligible_csv_row_indices"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="eligible_csv_row_indices-233"><a href="#eligible_csv_row_indices-233"><span class="linenos">233</span></a><span class="k">def</span><span class="w"> </span><span class="nf">eligible_csv_row_indices</span><span class="p">(</span><span class="n">model_type</span><span class="p">:</span> <span class="n">ModelType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-</span><span id="eligible_csv_row_indices-234"><a href="#eligible_csv_row_indices-234"><span class="linenos">234</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return complete eligible canonical CSV row positions for a model family.&quot;&quot;&quot;</span>
-</span><span id="eligible_csv_row_indices-235"><a href="#eligible_csv_row_indices-235"><span class="linenos">235</span></a>    <span class="n">model_type</span> <span class="o">=</span> <span class="n">_validate_model_type</span><span class="p">(</span><span class="n">model_type</span><span class="p">)</span>
-</span><span id="eligible_csv_row_indices-236"><a href="#eligible_csv_row_indices-236"><span class="linenos">236</span></a>    <span class="k">return</span> <span class="n">_eligible_row_indices</span><span class="p">(</span><span class="n">_acceptance_csv_path</span><span class="p">(</span><span class="n">model_type</span><span class="p">))</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="eligible_csv_row_indices-246"><a href="#eligible_csv_row_indices-246"><span class="linenos">246</span></a><span class="k">def</span><span class="w"> </span><span class="nf">eligible_csv_row_indices</span><span class="p">(</span><span class="n">model_type</span><span class="p">:</span> <span class="n">ModelType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+</span><span id="eligible_csv_row_indices-247"><a href="#eligible_csv_row_indices-247"><span class="linenos">247</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return complete eligible canonical CSV row positions for a model family.&quot;&quot;&quot;</span>
+</span><span id="eligible_csv_row_indices-248"><a href="#eligible_csv_row_indices-248"><span class="linenos">248</span></a>    <span class="n">model_type</span> <span class="o">=</span> <span class="n">_validate_model_type</span><span class="p">(</span><span class="n">model_type</span><span class="p">)</span>
+</span><span id="eligible_csv_row_indices-249"><a href="#eligible_csv_row_indices-249"><span class="linenos">249</span></a>    <span class="k">if</span> <span class="n">model_type</span> <span class="o">==</span> <span class="s2">&quot;xgb_logit_spline&quot;</span><span class="p">:</span>
+</span><span id="eligible_csv_row_indices-250"><a href="#eligible_csv_row_indices-250"><span class="linenos">250</span></a>        <span class="n">covered</span> <span class="o">=</span> <span class="n">load_xgb_logit_spline_artifact</span><span class="p">(</span>
+</span><span id="eligible_csv_row_indices-251"><a href="#eligible_csv_row_indices-251"><span class="linenos">251</span></a>            <span class="n">_ARTIFACT_PATHS</span><span class="p">[</span><span class="n">model_type</span><span class="p">][</span><span class="s2">&quot;acceptance&quot;</span><span class="p">]</span>
+</span><span id="eligible_csv_row_indices-252"><a href="#eligible_csv_row_indices-252"><span class="linenos">252</span></a>        <span class="p">)</span><span class="o">.</span><span class="n">row_indices</span>
+</span><span id="eligible_csv_row_indices-253"><a href="#eligible_csv_row_indices-253"><span class="linenos">253</span></a>        <span class="n">complete</span> <span class="o">=</span> <span class="n">_eligible_row_indices</span><span class="p">(</span><span class="n">_acceptance_csv_path</span><span class="p">(</span><span class="n">model_type</span><span class="p">))</span>
+</span><span id="eligible_csv_row_indices-254"><a href="#eligible_csv_row_indices-254"><span class="linenos">254</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">covered</span><span class="p">,</span> <span class="n">complete</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+</span><span id="eligible_csv_row_indices-255"><a href="#eligible_csv_row_indices-255"><span class="linenos">255</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Spline artifact contains incomplete canonical dataset rows.&quot;</span><span class="p">)</span>
+</span><span id="eligible_csv_row_indices-256"><a href="#eligible_csv_row_indices-256"><span class="linenos">256</span></a>        <span class="k">return</span> <span class="n">covered</span>
+</span><span id="eligible_csv_row_indices-257"><a href="#eligible_csv_row_indices-257"><span class="linenos">257</span></a>    <span class="k">return</span> <span class="n">_eligible_row_indices</span><span class="p">(</span><span class="n">_acceptance_csv_path</span><span class="p">(</span><span class="n">model_type</span><span class="p">))</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 </span></pre></div>
 
 
@@ -701,37 +1242,73 @@ data    </h1>
                 <section id="load_x_frame">
                             <input id="load_x_frame-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
-        <span class="name">load_x_frame</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">model_type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;glm&#39;</span><span class="p">,</span> <span class="s1">&#39;xgb&#39;</span><span class="p">]</span>,</span><span class="param">	<span class="n">n_rows</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5000</span>,</span><span class="param">	<span class="o">*</span>,</span><span class="param">	<span class="n">row_indices</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">NoneType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span>:</span></span>
+        <span class="name">load_x_frame</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">model_type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;glm&#39;</span><span class="p">,</span> <span class="s1">&#39;xgb&#39;</span><span class="p">,</span> <span class="s1">&#39;xgb_logit_spline&#39;</span><span class="p">]</span>,</span><span class="param">	<span class="n">n_rows</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5000</span>,</span><span class="param">	<span class="o">*</span>,</span><span class="param">	<span class="n">row_indices</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">NoneType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span>:</span></span>
 
                 <label class="view-source-button" for="load_x_frame-view-source"><span>View Source</span></label>
 
     </div>
     <a class="headerlink" href="#load_x_frame"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="load_x_frame-361"><a href="#load_x_frame-361"><span class="linenos">361</span></a><span class="k">def</span><span class="w"> </span><span class="nf">load_x_frame</span><span class="p">(</span>
-</span><span id="load_x_frame-362"><a href="#load_x_frame-362"><span class="linenos">362</span></a>    <span class="n">model_type</span><span class="p">:</span> <span class="n">ModelType</span><span class="p">,</span>
-</span><span id="load_x_frame-363"><a href="#load_x_frame-363"><span class="linenos">363</span></a>    <span class="n">n_rows</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5000</span><span class="p">,</span>
-</span><span id="load_x_frame-364"><a href="#load_x_frame-364"><span class="linenos">364</span></a>    <span class="o">*</span><span class="p">,</span>
-</span><span id="load_x_frame-365"><a href="#load_x_frame-365"><span class="linenos">365</span></a>    <span class="n">row_indices</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="load_x_frame-366"><a href="#load_x_frame-366"><span class="linenos">366</span></a>    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="load_x_frame-367"><a href="#load_x_frame-367"><span class="linenos">367</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-</span><span id="load_x_frame-368"><a href="#load_x_frame-368"><span class="linenos">368</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Load raw 052726 X covariates for optimization, preserving categoricals.&quot;&quot;&quot;</span>
-</span><span id="load_x_frame-369"><a href="#load_x_frame-369"><span class="linenos">369</span></a>    <span class="n">model_type</span> <span class="o">=</span> <span class="n">_validate_model_type</span><span class="p">(</span><span class="n">model_type</span><span class="p">)</span>
-</span><span id="load_x_frame-370"><a href="#load_x_frame-370"><span class="linenos">370</span></a>    <span class="n">csv_path</span> <span class="o">=</span> <span class="n">_acceptance_csv_path</span><span class="p">(</span><span class="n">model_type</span><span class="p">)</span>
-</span><span id="load_x_frame-371"><a href="#load_x_frame-371"><span class="linenos">371</span></a>    <span class="n">feature_cols</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">MODEL_FEATURE_COLS</span><span class="p">[</span><span class="n">model_type</span><span class="p">])</span>
-</span><span id="load_x_frame-372"><a href="#load_x_frame-372"><span class="linenos">372</span></a>    <span class="k">if</span> <span class="n">row_indices</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="load_x_frame-373"><a href="#load_x_frame-373"><span class="linenos">373</span></a>        <span class="n">row_indices</span> <span class="o">=</span> <span class="n">sample_csv_row_indices</span><span class="p">(</span><span class="n">model_type</span><span class="p">,</span> <span class="n">n_rows</span><span class="o">=</span><span class="n">n_rows</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
-</span><span id="load_x_frame-374"><a href="#load_x_frame-374"><span class="linenos">374</span></a>    <span class="k">else</span><span class="p">:</span>
-</span><span id="load_x_frame-375"><a href="#load_x_frame-375"><span class="linenos">375</span></a>        <span class="n">row_indices</span> <span class="o">=</span> <span class="n">_validate_row_indices</span><span class="p">(</span><span class="n">row_indices</span><span class="p">,</span> <span class="n">_csv_row_count</span><span class="p">(</span><span class="n">csv_path</span><span class="p">))</span>
-</span><span id="load_x_frame-376"><a href="#load_x_frame-376"><span class="linenos">376</span></a>    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">csv_path</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;;&quot;</span><span class="p">,</span> <span class="n">usecols</span><span class="o">=</span><span class="n">feature_cols</span><span class="p">)</span>
-</span><span id="load_x_frame-377"><a href="#load_x_frame-377"><span class="linenos">377</span></a>    <span class="n">df</span> <span class="o">=</span> <span class="n">_select_csv_rows</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">row_indices</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">))</span>
-</span><span id="load_x_frame-378"><a href="#load_x_frame-378"><span class="linenos">378</span></a>    <span class="n">_validate_no_missing_required</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">feature_cols</span><span class="p">)</span>
-</span><span id="load_x_frame-379"><a href="#load_x_frame-379"><span class="linenos">379</span></a>    <span class="k">return</span> <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">feature_cols</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="load_x_frame-404"><a href="#load_x_frame-404"><span class="linenos">404</span></a><span class="k">def</span><span class="w"> </span><span class="nf">load_x_frame</span><span class="p">(</span>
+</span><span id="load_x_frame-405"><a href="#load_x_frame-405"><span class="linenos">405</span></a>    <span class="n">model_type</span><span class="p">:</span> <span class="n">ModelType</span><span class="p">,</span>
+</span><span id="load_x_frame-406"><a href="#load_x_frame-406"><span class="linenos">406</span></a>    <span class="n">n_rows</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5000</span><span class="p">,</span>
+</span><span id="load_x_frame-407"><a href="#load_x_frame-407"><span class="linenos">407</span></a>    <span class="o">*</span><span class="p">,</span>
+</span><span id="load_x_frame-408"><a href="#load_x_frame-408"><span class="linenos">408</span></a>    <span class="n">row_indices</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="load_x_frame-409"><a href="#load_x_frame-409"><span class="linenos">409</span></a>    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="load_x_frame-410"><a href="#load_x_frame-410"><span class="linenos">410</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+</span><span id="load_x_frame-411"><a href="#load_x_frame-411"><span class="linenos">411</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Load raw 052726 X covariates for optimization, preserving categoricals.&quot;&quot;&quot;</span>
+</span><span id="load_x_frame-412"><a href="#load_x_frame-412"><span class="linenos">412</span></a>    <span class="n">model_type</span> <span class="o">=</span> <span class="n">_validate_model_type</span><span class="p">(</span><span class="n">model_type</span><span class="p">)</span>
+</span><span id="load_x_frame-413"><a href="#load_x_frame-413"><span class="linenos">413</span></a>    <span class="n">csv_path</span> <span class="o">=</span> <span class="n">_acceptance_csv_path</span><span class="p">(</span><span class="n">model_type</span><span class="p">)</span>
+</span><span id="load_x_frame-414"><a href="#load_x_frame-414"><span class="linenos">414</span></a>    <span class="n">feature_cols</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">MODEL_FEATURE_COLS</span><span class="p">[</span><span class="n">model_type</span><span class="p">])</span>
+</span><span id="load_x_frame-415"><a href="#load_x_frame-415"><span class="linenos">415</span></a>    <span class="n">source_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="o">*</span><span class="n">feature_cols</span><span class="p">]</span> <span class="k">if</span> <span class="n">model_type</span> <span class="o">==</span> <span class="s2">&quot;xgb_logit_spline&quot;</span> <span class="k">else</span> <span class="n">feature_cols</span>
+</span><span id="load_x_frame-416"><a href="#load_x_frame-416"><span class="linenos">416</span></a>    <span class="k">if</span> <span class="n">row_indices</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="load_x_frame-417"><a href="#load_x_frame-417"><span class="linenos">417</span></a>        <span class="n">row_indices</span> <span class="o">=</span> <span class="n">sample_csv_row_indices</span><span class="p">(</span><span class="n">model_type</span><span class="p">,</span> <span class="n">n_rows</span><span class="o">=</span><span class="n">n_rows</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
+</span><span id="load_x_frame-418"><a href="#load_x_frame-418"><span class="linenos">418</span></a>    <span class="k">else</span><span class="p">:</span>
+</span><span id="load_x_frame-419"><a href="#load_x_frame-419"><span class="linenos">419</span></a>        <span class="n">row_indices</span> <span class="o">=</span> <span class="n">_validate_row_indices</span><span class="p">(</span><span class="n">row_indices</span><span class="p">,</span> <span class="n">_csv_row_count</span><span class="p">(</span><span class="n">csv_path</span><span class="p">))</span>
+</span><span id="load_x_frame-420"><a href="#load_x_frame-420"><span class="linenos">420</span></a>    <span class="n">dtype</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">}</span> <span class="k">if</span> <span class="n">model_type</span> <span class="o">==</span> <span class="s2">&quot;xgb_logit_spline&quot;</span> <span class="k">else</span> <span class="kc">None</span>
+</span><span id="load_x_frame-421"><a href="#load_x_frame-421"><span class="linenos">421</span></a>    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">csv_path</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;;&quot;</span><span class="p">,</span> <span class="n">usecols</span><span class="o">=</span><span class="n">source_cols</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+</span><span id="load_x_frame-422"><a href="#load_x_frame-422"><span class="linenos">422</span></a>    <span class="n">df</span> <span class="o">=</span> <span class="n">_select_csv_rows</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">row_indices</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">))</span>
+</span><span id="load_x_frame-423"><a href="#load_x_frame-423"><span class="linenos">423</span></a>    <span class="n">_validate_no_missing_required</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">source_cols</span><span class="p">)</span>
+</span><span id="load_x_frame-424"><a href="#load_x_frame-424"><span class="linenos">424</span></a>    <span class="k">return</span> <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">source_cols</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 </span></pre></div>
 
 
             <div class="docstring"><p>Load raw 052726 X covariates for optimization, preserving categoricals.</p>
+</div>
+
+
+                </section>
+                <section id="load_xgb_logit_spline_acceptance">
+                            <input id="load_xgb_logit_spline_acceptance-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+
+        <span class="def">def</span>
+        <span class="name">load_xgb_logit_spline_acceptance</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span>,</span><span class="param">	<span class="o">*</span>,</span><span class="param">	<span class="n">id_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;id&#39;</span>,</span><span class="param">	<span class="n">x_feature_cols</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>,</span><span class="param">	<span class="n">preprocessor</span><span class="p">:</span> <span class="n"><a href="#FeatureProcessor">FeatureProcessor</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="n"><a href="#XGBLogitSplineAcceptance">XGBLogitSplineAcceptance</a></span>:</span></span>
+
+                <label class="view-source-button" for="load_xgb_logit_spline_acceptance-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#load_xgb_logit_spline_acceptance"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="load_xgb_logit_spline_acceptance-509"><a href="#load_xgb_logit_spline_acceptance-509"><span class="linenos">509</span></a><span class="k">def</span><span class="w"> </span><span class="nf">load_xgb_logit_spline_acceptance</span><span class="p">(</span>
+</span><span id="load_xgb_logit_spline_acceptance-510"><a href="#load_xgb_logit_spline_acceptance-510"><span class="linenos">510</span></a>    <span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span>
+</span><span id="load_xgb_logit_spline_acceptance-511"><a href="#load_xgb_logit_spline_acceptance-511"><span class="linenos">511</span></a>    <span class="o">*</span><span class="p">,</span>
+</span><span id="load_xgb_logit_spline_acceptance-512"><a href="#load_xgb_logit_spline_acceptance-512"><span class="linenos">512</span></a>    <span class="n">id_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;id&quot;</span><span class="p">,</span>
+</span><span id="load_xgb_logit_spline_acceptance-513"><a href="#load_xgb_logit_spline_acceptance-513"><span class="linenos">513</span></a>    <span class="n">x_feature_cols</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">(),</span>
+</span><span id="load_xgb_logit_spline_acceptance-514"><a href="#load_xgb_logit_spline_acceptance-514"><span class="linenos">514</span></a>    <span class="n">preprocessor</span><span class="p">:</span> <span class="n">FeatureProcessor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="load_xgb_logit_spline_acceptance-515"><a href="#load_xgb_logit_spline_acceptance-515"><span class="linenos">515</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">XGBLogitSplineAcceptance</span><span class="p">:</span>
+</span><span id="load_xgb_logit_spline_acceptance-516"><a href="#load_xgb_logit_spline_acceptance-516"><span class="linenos">516</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Load a runtime per-policy spline acceptance model.&quot;&quot;&quot;</span>
+</span><span id="load_xgb_logit_spline_acceptance-517"><a href="#load_xgb_logit_spline_acceptance-517"><span class="linenos">517</span></a>    <span class="k">return</span> <span class="n">XGBLogitSplineAcceptance</span><span class="p">(</span>
+</span><span id="load_xgb_logit_spline_acceptance-518"><a href="#load_xgb_logit_spline_acceptance-518"><span class="linenos">518</span></a>        <span class="n">load_xgb_logit_spline_artifact</span><span class="p">(</span><span class="n">path</span><span class="p">),</span>
+</span><span id="load_xgb_logit_spline_acceptance-519"><a href="#load_xgb_logit_spline_acceptance-519"><span class="linenos">519</span></a>        <span class="n">artifact_path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span>
+</span><span id="load_xgb_logit_spline_acceptance-520"><a href="#load_xgb_logit_spline_acceptance-520"><span class="linenos">520</span></a>        <span class="n">id_col</span><span class="o">=</span><span class="n">id_col</span><span class="p">,</span>
+</span><span id="load_xgb_logit_spline_acceptance-521"><a href="#load_xgb_logit_spline_acceptance-521"><span class="linenos">521</span></a>        <span class="n">x_feature_cols</span><span class="o">=</span><span class="n">x_feature_cols</span><span class="p">,</span>
+</span><span id="load_xgb_logit_spline_acceptance-522"><a href="#load_xgb_logit_spline_acceptance-522"><span class="linenos">522</span></a>        <span class="n">preprocessor</span><span class="o">=</span><span class="n">preprocessor</span><span class="p">,</span>
+</span><span id="load_xgb_logit_spline_acceptance-523"><a href="#load_xgb_logit_spline_acceptance-523"><span class="linenos">523</span></a>    <span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Load a runtime per-policy spline acceptance model.</p>
 </div>
 
 

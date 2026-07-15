@@ -238,6 +238,7 @@ Guidelines:
   - `eval_counts()` also reports prediction/objective timing counters and cache hit/miss counters for performance diagnostics
   - `u_coef` sets the effective GLM acceptance coefficient on generated `U` for both values and analytical gradients; `None` uses the artifact coefficient or central FD for unsupported artifacts
   - `loss_source="observed"` keeps model-predicted acceptance but replaces the loss-model prediction with row-aligned historical `Y_G_Loss` carried on the real-data `x_fixed` DataFrame
+  - Acceptance artifacts may provide `predict_acceptance(raw_frame, u)` and `d_acceptance_du(raw_frame, u)` hooks; the XGBoost logit-spline adapter uses them to retain policy-ID lookup columns and provide analytical gradients
   - `value()`, `grad()`, `value_at_u()`
 
 - **`src/objective/objectives/prepared_glm.py`**
@@ -282,7 +283,7 @@ Guidelines:
 
 - **`src/data/dataset_metadata.py`**
   - Tracked source of truth for the 052726 dataset schema, objective X column groups, excluded target/action/lookahead columns, canonical CSV path, model artifact paths, and artifact/preprocessor notes
-  - `USED_X_COLS` / `ACCEPTANCE_STATE_COLS` / `LOSS_FEATURE_COLS` are the only source covariates allowed into objective computation; `X_upcoming_premium`, historical `U`, `Y_G_Loss`, `is_churn`, IDs, and dates are excluded from objective values
+  - `USED_X_COLS` / `ACCEPTANCE_STATE_COLS` / `LOSS_FEATURE_COLS` are the only numerical source covariates allowed into objective computation; `X_upcoming_premium`, historical `U`, `Y_G_Loss`, `is_churn`, IDs, and dates are excluded from policy/loss features, while the spline preset carries `id` only as a curve lookup key
   - Update this file whenever `src/data/dataset.csv`, model artifacts, model paths, column semantics, or dataset schema changes
   - When updating any `src/data` artifact or schema, confirm `dataset_metadata.py` matches the current CSV columns and model artifact paths, then run data-loader and model-artifact inference tests
 
@@ -291,6 +292,14 @@ Guidelines:
 
 - **`src/data/models/xgb/`**
   - 052726 XGBoost CV artifact pickles: acceptance classifier and financial-loss regressor; loader uses first fold and its fitted `FeatureProcessor`
+
+- **`src/data/models/xgb_logit_spline/`**
+  - Portable NPZ containing 200 per-policy isotonic logit-spline acceptance curves derived from the trusted five-fold XGBoost smoothing bundle
+  - Covers exactly 200 unique canonical `id` rows over fitted action support `[0, 0.16]`; unknown IDs are rejected rather than sent to raw XGBoost
+
+- **`src/data/xgb_logit_spline.py`**
+  - Loads/evaluates the portable spline artifact and computes analytical `d_acceptance_du`; also contains deterministic conversion helpers for the legacy notebook pickle
+  - The converter batch-scores all `200 x 17` profile/action rows with `U` explicitly synchronized to the action grid, avoiding the legacy on-demand wrapper's stale-`U` fitting path
 
 - **`src/data/unused/`**
   - Legacy CSV/notebook exports not used by the current loader; retained only as temporary archive material before deletion
@@ -312,6 +321,7 @@ Guidelines:
   - `load_observed_loss_array(model_type, n_rows=5000, row_indices=None, seed=None)`: loads observed historical `Y_G_Loss` from sampled canonical dataset rows for observed-loss real-data objectives
   - `load_mean_observed_acceptance(model_type)`: computes `1 - is_churn` over complete eligible rows
   - `load_model_artifacts(model_type)`: loads first-fold `(acceptance_artifact, loss_artifact)` bundles from the 052726 CV dictionaries under `src/data/models/linear/` or `src/data/models/xgb/`
+  - `model_type="xgb_logit_spline"` loads the portable spline acceptance adapter with the linear loss artifact, limits eligibility to its 200 covered canonical rows, and carries `id` as a non-policy auxiliary lookup column
   - `ModelArtifactBundle.model_frame(raw_frame)`: converts raw notebook-space columns into the exact model-input frame expected by the bundled estimator
   - `extract_glm_u_coef(glm_pipeline)`: extracts effective d_logit(p_accept)/dU from the inner fitted GLM artifact for analytical gradient computation
 
@@ -379,6 +389,7 @@ Guidelines:
   - `real_data_glm_base`: registry-only base built by `real_data_factory.py`; supports `policy_kind`, `feature_order`, `policy_preprocessing`, `constraint_mode`, GLM acceptance `u_coef`, runtime, and estimator overrides
     - `compute_backend="jax"` keeps `step_rule="trust-constr"` and swaps supported GLM training callbacks to the fixed-batch JAX prepared objective; use with constant/linear/softmax policies, finite materializable linear/softmax feature maps, and supported estimators `first_order`, `finite_difference`, `gauss_stein`, `spsa`, and `stein_difference`
   - `real_data_xgb_base`: registry-only base built by `real_data_factory.py`; supports the same override axes, with XGB defaults excluding `first_order`
+  - `real_data_xgb_logit_spline_base`: NumPy-only registry base over the 200 covered spline rows; defaults softmax/objective action bounds to `[0, 0.16]` and enables `first_order` through analytical spline acceptance derivatives
   - `config_template.py`: copy-first scaffold with `None` placeholders for all `ExperimentConfig` fields plus objective/correctness parameter blocks; not registered as a runnable preset
 
 - **`src/experiments/initialization.py`**
@@ -521,6 +532,7 @@ Guidelines:
 - `scripts/run_policy_pca_grid.py` runs the GLM policy PCA-dimensionality grid over configured PCA dimensions and policy classes `(constant, linear, quadratic, third_order, fourth_order, softmax_linear, softmax_quadratic, softmax_third_order, softmax_fourth_order, mlp)`; unconstrained is default, `--constrained` uses `trust-constr` with the observed GLM acceptance floor and a 500-step default cap; outputs aggregate CSVs, summary markdown, and headline/spread plots under `results/policy-pca-grid/`; prints per-condition progress by default and supports `--quiet`. It is launch-aware; `--launch slurm --array` runs one `(pca_dim, policy_class, seed)` condition per array task and the collector writes combined grid outputs
 - `scripts/benchmark_optax_vs_trust_constr.py` benchmarks SciPy minimize against the optax step rules: a planted-logistic group (theta dim 200 LinearPolicy; L-BFGS-B vs `optax-adam`/`optax-sgd`) and a real-data GLM group on the fixed JAX prepared batch (trust-constr with the observed acceptance floor vs optax rules on the smooth-penalty formulation of the same floor). Writes `benchmark.csv` under `results/optax-benchmark/`. On shared CPU nodes pin `OMP_NUM_THREADS`/`OPENBLAS_NUM_THREADS` (and `JAX_PLATFORMS=cpu` off-GPU) — JAX import plus OpenBLAS thread oversubscription inside a CPU-limited slice can slow NumPy matmuls by orders of magnitude and wash out solver timings
 - `scripts/benchmark_experiment_speed.py` benchmarks GLM analytical acceptance vs sklearn `predict_proba`, Stein-difference gradient timing/call counts, repeated objective-cache behavior, and full-vs-subsampled contour grid timing; use it to quantify whether performance changes speed up real-data diagnostics without relying on flaky pytest time thresholds
+- `scripts/prepare_xgb_logit_spline_artifact.py` converts the trusted legacy XGBoost smoothing-wrapper pickle into portable per-policy logit-spline arrays; it batch-scores the 200 covered profiles on `U=0,...,0.16`, resolves their canonical CSV row positions, and writes the gitignored NPZ used by `real_data_xgb_logit_spline_base`
 
 ## Known Issues and Dead Code
 
@@ -592,6 +604,7 @@ when appropriate.
 | `test_dataset_metadata.py` | Canonical dataset metadata matches CSV schema and artifact metadata |
 | `test_feature_processor.py` | Centering, sphering, PCA whitening, inverse transform, categorical encoding |
 | `test_model_artifact_inference.py` | GLM/XGB artifact inference and model-based objective smoke tests on canonical rows |
+| `test_xgb_logit_spline.py` | Deterministic spline conversion, portable artifact round-trip, boundary behavior, ID coverage, and analytical derivative checks |
 
 #### `tests/experiments/`
 | Test File | Area |

@@ -68,7 +68,7 @@ J(\theta) = \mathbb{E}_x\big[f(\pi_\theta(x); x)\big]
 $$
 
 Pluggable components:
-- **Objectives**: `FixedRegressionObjective`, `PlantedLogisticObjective`, `ModelBasedObjective`, `PreparedGLMObjective`, `JaxPreparedGLMObjective`, plus `NoisyObjective` and `BiasedObjective` wrappers
+- **Objectives**: `FixedRegressionObjective`, `PlantedLogisticObjective`, `ModelBasedObjective`, `PreparedGLMObjective`, `JaxPreparedGLMObjective`, plus `NoisyObjective`, `BiasedObjective`, and `ActionRegularizedObjective` wrappers
 - **Policies**: `ConstantPolicy`, `LinearPolicy`, `SoftmaxPolicy`, `MLPPolicy` (2-layer, default hidden=16)
 - **Gradient estimators**: `constant`, `first_order`, `finite_difference`, `gauss_stein`, `stein_difference`, `spsa`
 
@@ -136,6 +136,16 @@ wrapper exposes the biased surrogate to the optimizer while `base_value(...)` /
 planted-logistic experiments are `scripts/run_planted_logistic_action_bias_sweep.py`
 and `scripts/run_planted_logistic_support_bias_sweep.py`.
 
+`ActionRegularizedObjective` adds optional optimizer-facing action penalties
+without changing raw reporting values. `proximal_weight` anchors actions to a
+row-aligned `u_reference` with $$(u-u_{ref})^2$$, and `support_weight` penalizes
+an injected uncertainty scale `sigma_provider(x, u)`. The wrapper adds
+analytical penalty gradients through `Policy.weighted_grad(...)`, masks clipped
+samples out of those gradients, and also adds the penalties to action-level
+value oracles so U-space zeroth-order estimators see them automatically.
+Experiment summaries and final policy evaluations continue to use the raw
+objective through `base_value(...)`.
+
 Optimization step rules:
 - `l-bfgs-b` uses `scipy.minimize(method="L-BFGS-B")`.
 - `trust-constr` uses `scipy.minimize(method="trust-constr")` and adds the
@@ -202,6 +212,10 @@ but uses row-aligned historical `Y_G_Loss` as the loss term. GLM real-data runs
 also accept a `u_coef` override for counterfactual acceptance sensitivity sweeps;
 it changes only the logistic acceptance coefficient on generated policy `u`, not
 the loss term.
+Action-regularized runs can pass `proximal_weight`, `support_weight`, and
+`sigma_provider`; when `proximal_weight` is set on a real-data config without an
+explicit `u_reference` or constant reference source, the factory uses historical
+observed `U` aligned to the selected source rows.
 
 The objective for real-data configs is $$f(u; x) = a(x,u)(L(x) - (u + 1) \cdot p(x))$$
 where $$a$$ is acceptance probability, $$L$$ is either expected financial loss

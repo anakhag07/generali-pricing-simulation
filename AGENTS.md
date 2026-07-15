@@ -214,6 +214,13 @@ Guidelines:
   - `NoisyObjective`: wraps any objective as $$\hat{M}(x,u)=M(x,u)+\delta(x,u)$$ for value-based optimization; intentionally raises for analytical `grad()` because the noisy objective has no analytical gradient; delegates acceptance metrics/constraints to the base objective and exposes clean `base_value()` / `base_value_at_u()` for reporting
   - `NoNoise`: zero-noise adapter for tests or disabled noise wiring
 
+- **`src/objective/action_regularizers.py`**
+  - `ActionRegularizedObjective`: reusable wrapper for optimizer-facing action-space penalties while delegating `base_value()` / `base_value_at_u()` to the wrapped raw objective for final reporting
+  - Proximal regularization uses `proximal_weight` and row-aligned `u_reference` with $$r(x,u)=(u-u_{ref}(x))^2$$; mini-batch calls must use the optimizer-owned row indices so `u_reference[indices]` stays aligned
+  - Support-aware regularization uses `support_weight` plus a `SigmaProvider` returning `(sigma_values, d_sigma_du)`; `HeteroskedasticNoiseScaleProvider` is the synthetic oracle provider for `HeteroskedasticGaussianNoise.std_values(u)`
+  - Analytical gradients add `policy_weighted_grad(theta, x_batch, weights)` directly from `dr/du`; do not route these terms through acceptance-gradient helpers. Gradient weights are zeroed for clipped actions using the same interior-mask convention as objective clipping.
+  - The wrapper also decorates action-level value hooks (`value_at_u`, `_value_batch`, `_value_batch_many`, and index-aware variants), so value-based zeroth-order estimators see the regularizers automatically.
+
 - **`src/objective/objectives/fixed_regression.py`** (source of truth for objective math)
   - `FixedRegressionObjective`: pricing objective $$f(u;x) = a(x,u)(\ell(x) - r(u))$$
   - `from_parameters` classmethod; batch evaluation via `value()`, `grad()`, `value_at_u()`
@@ -323,12 +330,13 @@ Guidelines:
   - Uses separate RNG streams for mini-batch sampling (`batch_rng`) and stochastic gradient perturbations (`gradient_rng`); `rng` remains a backward-compatible fallback
   - Contains only constructor + solve orchestration; batching/objective helpers live in `src/optimization/helpers.py`
   - Solvers consume theta-level objectives only (`value(theta, x_batch)`, `grad(theta, x_batch)`)
+  - Owns mini-batch index sampling. Objectives that need row-aligned side data should implement optional index-aware hooks (`value_on_indices`, `grad_on_indices`, `step_metrics_on_indices`) instead of sampling batches internally.
 
 - **`src/optimization/helpers.py`**
   - `scipy_method(...)`: maps configured algorithm string to SciPy method name
   - `sample_indices(...)`, `x_batch(...)`: mini-batch index/data helpers
   - `finite_difference_theta_grad(...)`: shared coordinate-wise finite-difference helper for value-only theta gradients
-  - `objective_value_on_indices(...)`, `objective_grad_on_indices(...)`, `mean_action_on_indices(...)`: shared objective evaluation helpers used by optimizer + gradient methods
+  - `objective_value_on_indices(...)`, `objective_grad_on_indices(...)`, `mean_action_on_indices(...)`: shared objective evaluation helpers used by optimizer + gradient methods; the value/grad helpers call optional objective-owned index hooks before slicing away row identity
 
 - **`src/optimization/gradients/methods.py`**
   - `GradientMethod`: base interface for pluggable gradient estimators
@@ -364,6 +372,8 @@ Guidelines:
   - `batch_size: int | None = None` enables stochastic mini-batch optimization when set
   - `acceptance_floor` can be enforced directly with `step_rule="trust-constr"` or via the smooth penalty path using `acceptance_penalty_weight` / `acceptance_penalty_temperature`
   - `lagrangian_lambda` enables the scalarized model-based target $$J(\theta) + \lambda(\text{floor} - \bar{a}(\theta))$$ on unconstrained step rules; experiment summaries still report the raw objective $$J(\theta)$$
+  - `proximal_weight` / `u_reference` / `u_reference_source` / `u_reference_value` configure the action-space proximal regularizer; `u_reference` arrays are aligned to the pre-split selected rows and the runner slices them to train rows
+  - `support_weight` / `sigma_provider` configure the support-aware uncertainty-scale regularizer; if `support_weight` is set and `sigma_provider` is omitted, the objective wrapper tries to infer a provider from a wrapped `ObjectiveNoise`
   - `CorrectnessSpec`: controls how "true" gradients are computed (`"exact"`, `"denoised_exact"`, `"numdiff"`, `"none"`); `denoised_exact` unwraps the full `base_objective` chain to the innermost clean objective, so it references the true first-order gradient through any deterministic wrapper stack (e.g. `NoisyObjective(BiasedObjective(base))`), not just a single `NoisyObjective`
   - `verbose: bool = False` controls terminal output of per-step metrics
   - Preset-composition helpers: `make_*_objective`, `make_softmax_policy`, `make_model_based_objective`,
@@ -371,8 +381,9 @@ Guidelines:
 
 - **`src/experiments/configs/`** (preset registry)
   - `__init__.py`: `get_config(name, overrides=None)` and `list_configs()` registry; real-data configs are exposed only as base presets plus overrides
-  - `real_data_factory.py`: `build_real_data_config(...)` centralizes GLM/XGB artifact loading, row selection, policy construction, feature-order overrides, softmax action-bound overrides, policy-side no-PCA preprocessing, GLM-only `u_coef` acceptance overrides, acceptance-floor modes, estimator defaults, and theta initialization; omitted or `None` `n_samples` uses all complete eligible rows, while an integer `n_samples` samples without replacement
+  - `real_data_factory.py`: `build_real_data_config(...)` centralizes GLM/XGB artifact loading, row selection, policy construction, feature-order overrides, softmax action-bound overrides, policy-side no-PCA preprocessing, GLM-only `u_coef` acceptance overrides, acceptance-floor modes, action-regularizer config, estimator defaults, and theta initialization; omitted or `None` `n_samples` uses all complete eligible rows, while an integer `n_samples` samples without replacement
     - `loss_source="observed"` is an override axis that appends `Y_G_Loss` to the fixed real-data frame and configures `ModelBasedObjective` to use it as the loss term; default `"predicted"` keeps the artifact loss model
+    - `proximal_weight` defaults `u_reference_source` to `"historical"` when no explicit `u_reference` or constant source is supplied; this loads row-aligned historical `U` via `load_observed_u_array(...)` and requires generated rows or caller-provided `x_fixed_row_indices`
   - `first_order_runs_diff_starts.py`: planted-logistic preset configured for comparison runs across different initial starts
   - `fixed_regression_base.py`: base fixed-regression config (4D, L-BFGS-B step rule, W&B enabled)
   - `planted_logistic_base.py`: planted logistic base config (3D, L-BFGS-B step rule, 5000 steps, u*=1.1)
@@ -394,6 +405,7 @@ Guidelines:
   - Owns estimator dispatch through `_ESTIMATOR_ORDER` / `_ESTIMATOR_SPECS`, which map enabled estimator keys to `optimization.solvers` wrappers
   - `enabled_estimators` may include `"constant"`, which optimizes a one-scalar `ConstantPolicy` copy of the configured objective; `constant_u_baselines` remains fixed-action evaluation only
   - `compute_backend="jax"` converts supported GLM train batches to `JaxPreparedGLMObjective` before optimizer execution and requires `trust-constr` with full batches; `NoisyObjective(ModelBasedObjective(...))` is unwrapped, prepared as JAX GLM, and re-wrapped for zeroth-order noisy value queries
+  - Applies `ActionRegularizedObjective` only to the optimizer-facing train objective after the train/test split; final summaries, baselines, and train/test policy evaluations continue to use the raw objective through `base_value()` reporting helpers
 
 - **`src/experiments/paths.py`**
   - `results_root()`: lazy shared external results root, using `GENERALI_RESULTS_ROOT` when set and otherwise `~/projects/generali-pricing/results`; do not derive output defaults from `cwd` or `__file__`
@@ -438,7 +450,7 @@ Guidelines:
   - `write_policy_pca_outputs(...)`: writes aggregate finals/traces CSVs, summary markdown, PCA/richness-gap plots, and final `u`/acceptance spread plots
 
 - **`src/experiments/results.py`**
-  - `OptimizationTrace`: per-step trace with u values, objective values, gradient estimates, optional theta values, step sizes, and model-based mean-acceptance diagnostics
+  - `OptimizationTrace`: per-step trace with u values, objective values, gradient estimates, optional theta values, step sizes, model-based mean-acceptance diagnostics, and optional action-regularizer penalty series
   - `EstimatorResult`: final theta, u, value, wall-clock time, and optional acceptance-constraint diagnostics
   - `PolicyEvaluation`: final policy metrics on a split (`objective_value`, `objective_sum`, mean/quantile `u`, and optional acceptance/loss/revenue diagnostics)
   - `ExperimentResult`: full result including config, train samples in `x_samples`, optional `x_test`, split row/index metadata, traces, final train/test policy metrics, and optional u_star
@@ -465,7 +477,7 @@ Guidelines:
   - `context.py`: `RunContext` and `create_run_context(...)` output-directory helpers; omitted `runs_root` uses `results_root()`, normal run leaves are flat `<slug>__<timestamp>`, caller-fixed `run_dir` is used verbatim for per-seed replicates, and optional `run_metadata` is carried into summaries
   - `base.py`: `StepReporter`, `Reporter`, and `ReporterStack` interfaces/composition
   - `console.py`: `ConsoleReporter` terminal output; per-step output controlled by `verbose`
-  - `step_logger.py`: `FileStepLogger` writes per-step metrics to `plots/optimization/steps.csv`
+  - `step_logger.py`: `FileStepLogger` writes per-step metrics to `plots/optimization/steps.csv`, including `proximal_penalty` and `support_penalty` when present
   - `artifacts.py`: `PolicyArtifactReporter` writes reloadable trained-policy artifacts before `JsonReporter` records their relative paths
   - `json_summary.py`: `JsonReporter` and `build_summary_payload(...)` write `summary.json`, including estimator-level `train` and optional `test` policy metric blocks plus a `preset` block when `run_metadata` is set; `JsonReporter(summary_name=..., summary_dir=...)` parameterizes the filename/location so seed sweeps write `summary-seed-<seed>.json` at the variant root
   - `plots.py`: `PlotReporter` generates optimization and policy diagnostics, writes per-plot timings, and caps model-based theta contour subsampling/grid sizes

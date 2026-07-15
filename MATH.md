@@ -382,6 +382,81 @@ $$\frac{\partial b}{\partial u} = -\lambda_{bias}\,\sigma\left(\frac{u-h}{\tau}\
   `value()` and `grad()`. The bias is deterministic and introduces no new seed
   stream.
 
+### 3.6 Action-Regularized Objective Wrapper
+
+`ActionRegularizedObjective` wraps an optimizer-facing objective with optional
+action-space penalties
+
+$$R(\theta)=\beta\,\frac{1}{n}\sum_{i=1}^n r(x_i,\pi_\theta(x_i)),$$
+
+while keeping `base_value()` / `base_value_at_u()` delegated to the wrapped raw
+objective for experiment summaries and frontier plots. The optimizer value is
+
+$$J_R(\theta)=J(\theta)+R_{\text{prox}}(\theta)+R_{\text{support}}(\theta).$$
+
+For any enabled action penalty with known action derivative
+$$\partial r/\partial u$$, the wrapper adds the theta-gradient through the
+policy directly:
+
+$$
+\nabla_\theta R(\theta)
+=
+\sum_{i=1}^n w_i\,\nabla_\theta\pi_\theta(x_i),
+\qquad
+w_i=\frac{\beta}{n}\left.\frac{\partial r}{\partial u}\right|_{u_i}.
+$$
+
+The implementation uses `policy_weighted_grad(theta, x_batch, w)`. It does not
+route through acceptance-gradient helpers. For objectives with action clipping,
+weights on clipped samples are set to zero before the policy VJP.
+
+**Proximal penalty:**
+
+$$r_{\text{prox}}(x_i,u_i)=(u_i-u^{ref}_i)^2,$$
+
+where the reference vector is row-aligned to the optimizer batch. Therefore
+
+$$
+\frac{\partial r_{\text{prox}}}{\partial u_i}
+=2(u_i-\operatorname{clip}(u^{ref}_i)),
+\qquad
+w_i=\frac{2\beta_{\text{prox}}}{n}
+(u_i-\operatorname{clip}(u^{ref}_i)).
+$$
+
+Real-data configs can use historical `U` as this reference; synthetic configs
+can pass an explicit array or a constant reference source.
+
+**Support-aware penalty:**
+
+$$r_{\text{support}}(x_i,u_i)=\sigma(x_i,u_i),$$
+
+where `sigma_provider.values_and_du_grad(x_batch, u)` returns both
+$$\sigma$$ and $$\partial\sigma/\partial u$$. For the synthetic
+heteroskedastic noise oracle,
+
+$$\sigma(u)=\sigma_0+\gamma\,|u-u_c|,$$
+
+so
+
+$$
+\frac{\partial\sigma}{\partial u}
+=\gamma\,\operatorname{sign}(u-u_c),
+$$
+
+with derivative zero at the kink $$u=u_c$$.
+
+The wrapper also adds the same per-row regularizer terms to action-level value
+oracles (`value_at_u`, `_value_batch`, `_value_batch_many`, and index-aware
+variants). U-space zeroth-order estimators therefore differentiate the
+regularizers through value queries without a separate analytic-gradient path.
+
+- **Source:** `src/objective/action_regularizers.py` :: `ActionRegularizedObjective`, `SigmaProvider`, `HeteroskedasticNoiseScaleProvider`
+- **Source:** `src/optimization/helpers.py` :: `objective_value_on_indices()`, `objective_grad_on_indices()`
+- **Notes:** Mini-batch indices are sampled by the optimizer and passed to
+  optional objective hooks before `x_batch` slicing loses row identity; this is
+  required for row-aligned `u_reference` arrays.
+
 ---
 
 ## 4. Chain Rule (Theta-Gradient from Action-Gradient)

@@ -87,6 +87,18 @@ def test_file_logger_handles_none_grad_norm(run_context: RunContext) -> None:
     assert lines[1] == "test,1,0.500000,0.300000,,0.010000,,,"
 
 
+def test_file_logger_leaves_missing_action_blank(run_context: RunContext) -> None:
+    logger = FileStepLogger()
+    logger.on_start(run_context, config=None)  # type: ignore[arg-type]
+
+    logger.log_step("first-order", 0, None, 0.5, 1.0)
+    logger.on_end(run_context, result=None)  # type: ignore[arg-type]
+
+    csv_path = run_context.plots_dir / "optimization" / "steps.csv"
+    lines = csv_path.read_text().strip().split("\n")
+    assert lines[1] == "first-order,0,,0.500000,1.000000,,,,"
+
+
 def test_file_logger_on_end_closes_file(run_context: RunContext) -> None:
     """FileStepLogger should close the file handle on end."""
     logger = FileStepLogger()

@@ -62,6 +62,18 @@ def test_generate_sweep_runs_from_grid() -> None:
     assert override_2["seed"] == 8
 
 
+def test_generate_sweep_runs_accepts_quadratic_dimension_axis() -> None:
+    runs = generate_sweep_runs(
+        base_preset="quadratic_base",
+        override_grid={"dimension": [2, 5], "plot": [False]},
+        display_keys=("dimension",),
+    )
+
+    assert [run_name for run_name, _, _ in runs] == ["dimension-2", "dimension-5"]
+    assert [config.objective.dimension for _, config, _ in runs] == [2, 5]
+    assert [config.theta0.shape for _, config, _ in runs] == [(2,), (5,)]
+
+
 def test_generate_sweep_runs_accepts_real_data_factory_overrides() -> None:
     runs = generate_sweep_runs(
         base_preset="real_data_glm_base",

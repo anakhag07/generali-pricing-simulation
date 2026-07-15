@@ -21,10 +21,10 @@ class ConstantBaselineResult:
 
 @dataclass(frozen=True)
 class OptimizationTrace:
-    """Per-step trace: u values, objective values, gradient norms, and theta history."""
+    """Per-step trace with optional actions plus objective and theta diagnostics."""
 
     steps: Sequence[int]
-    u_values: Sequence[float]
+    u_values: Sequence[float | None]
     objective_values: Sequence[float]
     u_grad_estimates: Sequence[float]
     u_true_gradients: Optional[Sequence[float]] = None
@@ -47,10 +47,10 @@ class OptimizationTrace:
 
 @dataclass(frozen=True)
 class EstimatorResult:
-    """Final result for one estimator: theta, mean action, objective value, and wall time."""
+    """Final result for one estimator, with mean action when a policy exists."""
 
     theta: np.ndarray
-    u: float
+    u: float | None
     value: float
     time: float
     mean_acceptance: float | None = None
@@ -61,14 +61,14 @@ class EstimatorResult:
 
 @dataclass(frozen=True)
 class PolicyEvaluation:
-    """Final policy metrics evaluated on one data split."""
+    """Final objective metrics and optional policy metrics on one data split."""
 
     n_samples: int
     objective_value: float
     objective_sum: float
-    mean_u: float
-    u_q25: float
-    u_q75: float
+    mean_u: float | None
+    u_q25: float | None
+    u_q75: float | None
     mean_acceptance: float | None = None
     projected_loss: float | None = None
     projected_revenue: float | None = None

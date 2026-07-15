@@ -26,7 +26,7 @@ class ConsoleReporter:
         self,
         method: str,
         step: int,
-        u: float,
+        u: float | None,
         value: float,
         grad_norm: float | None = None,
         step_size: float | None = None,

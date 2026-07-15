@@ -15,7 +15,7 @@ from objective.noise import (
     NoisyObjective,
     NoNoise,
 )
-from objective.objectives import PlantedLogisticObjective
+from objective.objectives import PlantedLogisticObjective, QuadraticObjective
 from objective.policy import ConstantPolicy
 
 
@@ -57,6 +57,43 @@ def test_homoskedastic_gaussian_noise_is_batch_order_independent() -> None:
     permuted = noise.values(x.iloc[order].reset_index(drop=True), u[order])
 
     np.testing.assert_allclose(permuted, values[order])
+
+
+def test_homoskedastic_gaussian_noise_is_keyed_by_exact_theta_and_seed() -> None:
+    theta = np.asarray([0.1, -0.2, 0.3], dtype=float)
+    noise = HomoskedasticGaussianNoise(std=0.5, seed=123)
+
+    first = noise.value_at_theta(theta)
+    second = noise.value_at_theta(theta.copy())
+    changed_theta = noise.value_at_theta(theta + np.asarray([0.0, 0.0, 1e-12]))
+    changed_seed = HomoskedasticGaussianNoise(std=0.5, seed=124).value_at_theta(theta)
+
+    assert first == second
+    assert first != changed_theta
+    assert first != changed_seed
+
+
+def test_noisy_objective_wraps_policy_free_quadratic_with_theta_noise() -> None:
+    base = QuadraticObjective(dimension=3)
+    noise = HomoskedasticGaussianNoise(std=0.25, seed=11)
+    objective = NoisyObjective(base, noise)
+    x = np.zeros((1, 1), dtype=float)
+    theta = np.asarray([0.2, -0.1, 0.3], dtype=float)
+
+    assert objective.value(theta, x) == pytest.approx(
+        base.value(theta, x) + noise.value_at_theta(theta)
+    )
+    assert objective.base_value(theta, x) == pytest.approx(base.value(theta, x))
+
+
+def test_policy_free_noise_rejects_heteroskedastic_adapter() -> None:
+    objective = NoisyObjective(
+        QuadraticObjective(dimension=2),
+        HeteroskedasticGaussianNoise(base_std=0.1, growth=1.0, seed=3),
+    )
+
+    with pytest.raises(ValueError, match="requires action values"):
+        objective.value(np.ones(2), np.zeros((1, 1)))
 
 
 def test_noisy_objective_wraps_value_and_action_batches() -> None:
@@ -107,6 +144,7 @@ def test_no_noise_returns_zero_with_matching_shape() -> None:
 
     np.testing.assert_allclose(noise.values(x, np.asarray([0.1, 0.2])), np.zeros(2))
     np.testing.assert_allclose(noise.values(x, np.asarray([[0.1, 0.2]])), np.zeros((1, 2)))
+    assert noise.value_at_theta(np.asarray([0.1, 0.2])) == 0.0
 
 
 def test_run_experiment_applies_noise_seed_stream() -> None:

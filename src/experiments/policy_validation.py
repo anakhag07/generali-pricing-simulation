@@ -37,7 +37,8 @@ def evaluate_policy(objective: object, theta: np.ndarray, x_samples: object) -> 
     theta_arr = np.asarray(theta, dtype=float)
     n_samples = row_count(x_samples)
     objective_value = value_for_reporting(objective, theta_arr, x_samples)
-    u_values = policy_u_values(objective, theta_arr, x_samples)
+    policy = getattr(objective, "policy", None)
+    u_values = policy_u_values(objective, theta_arr, x_samples) if policy is not None else None
     mean_acceptance_fn = getattr(objective, "mean_acceptance", None)
     mean_acceptance = (
         float(mean_acceptance_fn(theta_arr, x_samples)) if callable(mean_acceptance_fn) else None
@@ -53,14 +54,14 @@ def evaluate_policy(objective: object, theta: np.ndarray, x_samples: object) -> 
             projected_revenue = float(step_metrics["projected_revenue"])
         if mean_acceptance is None and "mean_acceptance" in step_metrics:
             mean_acceptance = float(step_metrics["mean_acceptance"])
-    q25, q75 = np.quantile(u_values, [0.25, 0.75])
+    q25, q75 = np.quantile(u_values, [0.25, 0.75]) if u_values is not None else (None, None)
     return PolicyEvaluation(
         n_samples=n_samples,
         objective_value=objective_value,
         objective_sum=n_samples * objective_value,
-        mean_u=float(np.mean(u_values)),
-        u_q25=float(q25),
-        u_q75=float(q75),
+        mean_u=float(np.mean(u_values)) if u_values is not None else None,
+        u_q25=float(q25) if q25 is not None else None,
+        u_q75=float(q75) if q75 is not None else None,
         mean_acceptance=mean_acceptance,
         projected_loss=projected_loss,
         projected_revenue=projected_revenue,

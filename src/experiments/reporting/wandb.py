@@ -104,7 +104,8 @@ class WandbReporter:
         for name, estimator_result in result.results.items():
             if self._allowlist is not None and name not in self._allowlist:
                 continue
-            final_payload[f"final/{name}/u"] = float(estimator_result.u)
+            if estimator_result.u is not None:
+                final_payload[f"final/{name}/u"] = float(estimator_result.u)
             final_payload[f"final/{name}/value"] = float(estimator_result.value)
             final_payload[f"final/{name}/runtime_sec"] = float(estimator_result.time)
             final_payload[f"final/{name}/theta_l2_norm"] = float(np.linalg.norm(estimator_result.theta))
@@ -130,7 +131,7 @@ class WandbReporter:
         self,
         method: str,
         step: int,
-        u: float,
+        u: float | None,
         value: float,
         grad_norm: float | None = None,
         step_size: float | None = None,
@@ -143,7 +144,9 @@ class WandbReporter:
         if self._allowlist is not None and method not in self._allowlist:
             return
         self._ensure_run(method)
-        payload = {"u": float(u), "objective": float(value)}
+        payload = {"objective": float(value)}
+        if u is not None:
+            payload["u"] = float(u)
         if grad_norm is not None:
             payload["theta_grad_norm"] = float(grad_norm)
         if step_size is not None:

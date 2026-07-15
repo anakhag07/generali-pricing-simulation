@@ -7,6 +7,15 @@ from objective.objectives.biased import ActionBias, BiasedObjective, LinearActio
 from objective.objectives.model_based import ModelBasedObjective
 from objective.objectives.planted_logistic import PlantedLogisticObjective
 from objective.objectives.quadratic import QuadraticObjective
+from objective.objectives.synthetic import (
+    IMPLEMENTED_SYNTHETIC_LADDER,
+    PiecewiseConvex,
+    PiecewiseNonconvexDoubleWell,
+    SmoothedNonconvex,
+    StronglyConvexQuadratic,
+    SYNTHETIC_LADDER,
+    SyntheticFunction,
+)
 from objective.objectives.prepared_glm import (
     PreparedGLMBatch,
     PreparedGLMObjective,
@@ -35,9 +44,16 @@ __all__ = [
     "BiasedObjective",
     "LinearActionBias",
     "UpperSupportHingeBias",
+    "IMPLEMENTED_SYNTHETIC_LADDER",
     "ModelBasedObjective",
+    "PiecewiseConvex",
+    "PiecewiseNonconvexDoubleWell",
     "PlantedLogisticObjective",
     "QuadraticObjective",
+    "SmoothedNonconvex",
+    "StronglyConvexQuadratic",
+    "SYNTHETIC_LADDER",
+    "SyntheticFunction",
     "PreparedGLMBatch",
     "PreparedGLMObjective",
     "JaxPreparedGLMObjective",

@@ -444,6 +444,100 @@ $$\frac{\partial b}{\partial u} = -\lambda_{bias}\,\sigma\left(\frac{u-h}{\tau}\
   `value()` and `grad()`. The bias is deterministic and introduces no new seed
   stream.
 
+### 3.7 Synthetic Ladder Objectives
+
+Direct theta-space benchmark functions over the decision vector $$w = \theta$$
+with globally known minimizers by construction; `x_batch` is ignored and there
+is no policy or action space. Each instance is deterministic given its
+construction seed (`from_seed`), so true-gap metrics
+$$f(w) - f(w^*)$$ and $$\|w - w^*\|_2$$ need no reference runs.
+
+#### 3.7.1 Strongly Convex Quadratic (rung 1)
+
+$$f(w) = \tfrac{1}{2}(w - w^*)^\top A (w - w^*), \qquad
+A = Q\,\mathrm{diag}(\lambda)\,Q^\top,$$
+
+with $$Q$$ a seeded random rotation and eigenvalues log-spaced in
+$$[\mu, \mu\kappa]$$ for condition number $$\kappa$$.
+
+**Gradient:** $$\nabla f(w) = A(w - w^*)$$. The function is
+$$\mu$$-strongly convex and $$\mu\kappa$$-smooth with unique minimizer
+$$w^*$$ and minimum value 0.
+
+- **Source:** `src/objective/objectives/synthetic.py` :: `StronglyConvexQuadratic`
+
+#### 3.7.2 Smoothed Nonconvex With Known Global Minimum (rung 2)
+
+$$f(w) = \tfrac{1}{2}\|w - w^*\|^2
+ - a_0\, e^{-\|w - w^*\|^2/(2 s_0^2)}
+ - \sum_j a_j\, \psi\!\left(\frac{\|w - c_j\|^2}{\rho_j^2}\right),$$
+
+with the compactly supported $$C^\infty$$ mollifier
+$$\psi(s) = e^{1 - 1/(1 - s)}$$ on $$[0, 1)$$ and $$\psi \equiv 0$$ for
+$$s \ge 1$$, so trap $$j$$ affects only $$\{\|w - c_j\| < \rho_j\}$$.
+
+**Gradient:** with $$d = w - w^*$$, $$d_j = w - c_j$$, and
+$$s_j = \|d_j\|^2/\rho_j^2$$,
+
+$$\nabla f(w) = \left(1 + \frac{a_0}{s_0^2}\, e^{-\|d\|^2/(2 s_0^2)}\right) d
+ - \sum_j \frac{2 a_j}{\rho_j^2}\, \psi'(s_j)\, d_j,
+\qquad \psi'(s) = -\frac{\psi(s)}{(1 - s)^2}.$$
+
+**Global-minimum guarantee.** Let
+$$g(r) = \tfrac{1}{2} r^2 - a_0 e^{-r^2/(2 s_0^2)}$$ be the trap-free radial
+profile; $$g'(r) = r\,(1 + (a_0/s_0^2) e^{-r^2/(2 s_0^2)}) > 0$$ for
+$$r > 0$$, so $$g$$ is strictly increasing with unique minimum
+$$g(0) = -a_0$$. Construction enforces:
+
+1. clearance $$\gamma_j = \|c_j - w^*\| - \rho_j > 0$$ (no trap support
+   touches $$w^*$$, hence $$f(w^*) = -a_0$$ exactly and
+   $$\nabla f(w^*) = 0$$);
+2. pairwise disjoint trap supports
+   ($$\|c_i - c_j\| > \rho_i + \rho_j$$), so at most one trap is active at
+   any point;
+3. per-trap depth budget $$a_j < \tfrac{1}{2}\gamma_j^2$$.
+
+For $$w$$ in the support of trap $$j$$, $$r = \|w - w^*\| \ge \gamma_j$$ and
+$$f(w) \ge g(r) - a_j \ge g(0) + \tfrac{1}{2}\gamma_j^2 - a_j > f(w^*)$$;
+outside all supports $$f = g(r) > g(0)$$ for $$r > 0$$. Hence $$w^*$$ is the
+unique global minimizer, while deep traps (depths near the budget) create
+genuine local minima.
+
+- **Source:** `src/objective/objectives/synthetic.py` :: `SmoothedNonconvex`
+
+#### 3.7.3 Piecewise Convex (rung 3, planned — structural stub)
+
+Intended form: with rotated coordinates $$v = Q^\top (w - w^*)$$ (identity
+when unrotated), $$f(w) = \sum_i h_i(v_i)$$ where
+
+$$h_i(v) = \begin{cases}
+ \tfrac{1}{2} c_i v^2 & |v| \le k_i \\
+ \tfrac{1}{2} c_i k_i^2 + m_i (|v| - k_i) & |v| > k_i
+\end{cases}$$
+
+with $$m_i > c_i k_i$$ producing kinks at $$\pm k_i$$; convexity requires
+$$m_i \ge c_i k_i$$. `kink_at_optimum` collapses $$k_i = 0$$ (weighted-L1
+behavior, nonsmooth at the optimum). `grad()` returns the right derivative at
+kinks. `_f`/`_grad_f` raise `NotImplementedError` until implemented.
+
+- **Source:** `src/objective/objectives/synthetic.py` :: `PiecewiseConvex`
+
+#### 3.7.4 Piecewise Nonconvex Double Well (rung 4, planned — structural stub)
+
+Intended form: with rotated coordinates $$v = Q^\top (w - w^*)$$, masked
+coordinates use
+
+$$h_i(v) = \min\!\left(\tfrac{1}{2} c_i v^2,\;
+ \tfrac{1}{2} d_i (v - b_i)^2 + \delta_i\right), \qquad \delta_i > 0,$$
+
+and unmasked coordinates stay purely quadratic. The decoy well at
+$$v = b_i$$ sits $$\delta_i$$ above the true well, so the global minimum is
+$$w^*$$ with value 0 (sum of coordinate-wise minima); the min of two parabolas
+is nonconvex with kinks at the crossing points. `_f`/`_grad_f` raise
+`NotImplementedError` until implemented.
+
+- **Source:** `src/objective/objectives/synthetic.py` :: `PiecewiseNonconvexDoubleWell`
+
 ---
 
 ## 4. Chain Rule (Theta-Gradient from Action-Gradient)

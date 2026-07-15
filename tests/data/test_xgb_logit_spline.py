@@ -7,12 +7,14 @@ import pandas as pd
 import pytest
 
 from data.xgb_logit_spline import (
+    XGBLogitSplineAcceptance,
     canonical_row_indices_for_policy_ids,
     fit_logit_spline_artifact,
     load_xgb_logit_spline_artifact,
     save_xgb_logit_spline_artifact,
     source_churn_grid,
 )
+from scipy.interpolate import BSpline
 
 
 class _UAcceptanceWrapper:
@@ -76,6 +78,60 @@ def test_fit_and_portable_round_trip_are_deterministic(tmp_path) -> None:
     np.testing.assert_allclose(loaded.coefficients, first.coefficients)
     np.testing.assert_allclose(loaded.upper_slopes, first.upper_slopes)
     assert loaded.source_sha256 == "abc123"
+
+
+def test_runtime_acceptance_derivative_matches_finite_difference() -> None:
+    model = XGBLogitSplineAcceptance(_artifact_data())
+    frame = pd.DataFrame({"id": ["101", "202"]})
+    u = np.asarray([0.05, 0.12])
+    eps = 1e-6
+
+    derivative = model.d_acceptance_du(frame, u)
+    derivative_fd = (
+        model.predict_acceptance(frame, u + eps) - model.predict_acceptance(frame, u - eps)
+    ) / (2.0 * eps)
+
+    np.testing.assert_allclose(derivative, derivative_fd, rtol=1e-6, atol=1e-8)
+    assert np.all(derivative < 0.0)
+
+
+def test_runtime_boundary_rules_match_artifact_contract() -> None:
+    artifact = _artifact_data()
+    model = XGBLogitSplineAcceptance(artifact)
+    frame = pd.DataFrame({"id": ["101", "101", "101"]})
+    u = np.asarray([-0.1, 0.08, 0.18])
+
+    acceptance = model.predict_acceptance(frame, u)
+    derivative = model.d_acceptance_du(frame, u)
+
+    assert acceptance[0] == pytest.approx(1.0 - artifact.churn_min[0])
+    assert derivative[0] == 0.0
+    assert derivative[1] < 0.0
+    assert derivative[2] == pytest.approx(-artifact.upper_slopes[0])
+
+
+def test_runtime_values_match_stored_bspline() -> None:
+    artifact = _artifact_data()
+    model = XGBLogitSplineAcceptance(artifact)
+    u = np.asarray([0.03, 0.11])
+    frame = pd.DataFrame({"id": ["101", "202"]})
+
+    expected = []
+    for index, u_value in enumerate(u):
+        spline = BSpline(
+            artifact.knots[index],
+            artifact.coefficients[index],
+            int(artifact.degrees[index]),
+        )
+        expected.append(1.0 / (1.0 + np.exp(float(spline(u_value)))))
+
+    np.testing.assert_allclose(model.predict_acceptance(frame, u), expected)
+
+
+def test_runtime_rejects_uncovered_policy_ids() -> None:
+    model = XGBLogitSplineAcceptance(_artifact_data())
+    with pytest.raises(ValueError, match="No fitted acceptance spline"):
+        model.predict_acceptance(pd.DataFrame({"id": ["999"]}), np.asarray([0.1]))
 
 
 def test_save_refuses_to_overwrite_by_default(tmp_path) -> None:

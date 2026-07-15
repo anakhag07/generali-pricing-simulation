@@ -467,6 +467,20 @@ class ModelBasedObjective(Objective):
         analytical = self._glm_acceptance_proba(x_batch, u_arr)
         if analytical is not None:
             return analytical
+        predict_acceptance = getattr(self.acceptance_model, "predict_acceptance", None)
+        if callable(predict_acceptance):
+            self._record_eval("acceptance_analytic_calls", self._row_count(x_batch))
+            acceptance = np.asarray(
+                predict_acceptance(self._x_frame(x_batch), np.asarray(u_arr, dtype=float)),
+                dtype=float,
+            )
+            if acceptance.shape != (self._row_count(x_batch),):
+                raise ValueError("Acceptance hook must return one probability per row.")
+            if not np.isfinite(acceptance).all() or np.any(
+                (acceptance < 0.0) | (acceptance > 1.0)
+            ):
+                raise ValueError("Acceptance hook probabilities must be finite and lie in [0, 1].")
+            return acceptance
         class1 = self._acceptance_model_class1_proba(x_batch, u_arr)
         if getattr(self.acceptance_model, "probability_target", "churn") == "acceptance":
             return class1
@@ -530,6 +544,17 @@ class ModelBasedObjective(Objective):
             if acceptance is not None
             else self._acceptance_proba(x_batch, u_arr)
         )
+        derivative_fn = getattr(self.acceptance_model, "d_acceptance_du", None)
+        if callable(derivative_fn):
+            derivative = np.asarray(
+                derivative_fn(self._x_frame(x_batch), np.asarray(u_arr, dtype=float)),
+                dtype=float,
+            )
+            if derivative.shape != (self._row_count(x_batch),):
+                raise ValueError("Acceptance derivative hook must return one value per row.")
+            if not np.isfinite(derivative).all():
+                raise ValueError("Acceptance derivative hook must return finite values.")
+            return derivative
         u_coef = self.u_coef
         probability_target = getattr(self.acceptance_model, "probability_target", "acceptance")
         if u_coef is None:

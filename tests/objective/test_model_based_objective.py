@@ -458,6 +458,57 @@ def test_mean_acceptance_grad_matches_fd() -> None:
     np.testing.assert_allclose(grad, grad_fd, rtol=1e-4, atol=1e-6)
 
 
+def test_spline_acceptance_hook_objective_grad_matches_fd() -> None:
+    import pandas as pd
+
+    from data.xgb_logit_spline import XGBLogitSplineAcceptance, fit_logit_spline_artifact
+    from objective.objectives.model_based import ModelBasedObjective
+    from objective.policy import ConstantPolicy
+
+    class ConstantLossModel:
+        def predict(self, frame):
+            return np.full(len(frame), 100.0)
+
+    action_grid = np.linspace(0.0, 0.16, 17)
+    artifact = fit_logit_spline_artifact(
+        policy_ids=["101", "202"],
+        row_indices=[3, 7],
+        action_grid=action_grid,
+        churn_grid=np.vstack([0.08 + 0.4 * action_grid, 0.12 + 0.6 * action_grid]),
+        weights=np.ones(action_grid.size),
+    )
+    acceptance = XGBLogitSplineAcceptance(
+        artifact,
+        x_feature_cols=("x", "premium"),
+    )
+    objective = ModelBasedObjective(
+        policy=ConstantPolicy(),
+        acceptance_model=acceptance,
+        loss_model=ConstantLossModel(),
+        acceptance_state_cols=("x", "premium"),
+        loss_cols=("x",),
+        premium_col="premium",
+    )
+    x = pd.DataFrame(
+        {
+            "id": ["101", "202"],
+            "x": [1.0, 2.0],
+            "premium": [150.0, 200.0],
+        }
+    )
+    theta = np.asarray([0.08])
+
+    grad = objective.grad(theta, x)
+    grad_fd = finite_difference_theta_grad(
+        lambda theta_eval: objective.value(theta_eval, x),
+        theta,
+        method="central",
+        step=1e-6,
+    )
+
+    np.testing.assert_allclose(grad, grad_fd, rtol=1e-6, atol=1e-7)
+
+
 def test_step_metrics_match_objective_components() -> None:
     obj, x, theta_dim = _make_glm_objective(n_rows=30)
     theta = np.array([0.4] + [0.01] * (theta_dim - 1), dtype=float)

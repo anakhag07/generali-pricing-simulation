@@ -19,6 +19,7 @@ def test_default_overrides_run_all_profiles_with_held_out_diagnostics() -> None:
     assert overrides["train_fraction"] == 0.8
     assert overrides["test_fraction"] == 0.2
     assert overrides["initial_u"] == 0.08
+    assert overrides["t_steps"] == 500
     assert overrides["sigma"] == 1e-4
     assert overrides["perturbation_space"] == "u"
     assert overrides["enabled_estimators"] == ("first_order", "finite_difference")

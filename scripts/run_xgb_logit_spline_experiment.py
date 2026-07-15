@@ -23,7 +23,7 @@ DEFAULT_ESTIMATORS = ("first_order", "finite_difference")
 DEFAULT_TEST_FRACTION = 0.2
 DEFAULT_INITIAL_U = 0.08
 DEFAULT_FD_STEP = 1e-4
-DEFAULT_T_STEPS = 200
+DEFAULT_T_STEPS = 500
 
 
 def _positive_int(value: str) -> int:

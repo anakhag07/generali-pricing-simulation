@@ -10,7 +10,7 @@ from typing import Any, Literal, Mapping
 import numpy as np
 
 from data.dataset_metadata import DATASET_SCHEMA_VERSION
-from data.loader import load_model_artifacts, load_observed_loss_array, load_x_frame
+from data.loader import ModelType, load_model_artifacts, load_observed_loss_array, load_x_frame
 from experiments.policy_validation import evaluate_policy, policy_u_values
 from experiments.results import ExperimentResult, PolicyEvaluation
 from objective.noise import NoisyObjective
@@ -236,7 +236,7 @@ class PolicyInputPreprocessingSpec:
 class ObjectiveReplaySpec:
     """Serializable metadata needed to rebuild a model-based objective."""
 
-    model_type: Literal["glm", "xgb"]
+    model_type: ModelType
     acceptance_state_cols: tuple[str, ...]
     loss_cols: tuple[str, ...]
     premium_col: str | int
@@ -322,7 +322,7 @@ class ObjectiveReplaySpec:
 class PolicyDataBinding:
     """Source-row binding for replaying a saved policy on train/test/all splits."""
 
-    model_type: Literal["glm", "xgb"]
+    model_type: ModelType
     train_row_indices: np.ndarray
     test_row_indices: np.ndarray
     selected_row_indices: np.ndarray
@@ -330,7 +330,7 @@ class PolicyDataBinding:
     kind: str = "real_data_rows"
 
     @classmethod
-    def from_result(cls, result: ExperimentResult, model_type: Literal["glm", "xgb"]) -> "PolicyDataBinding":
+    def from_result(cls, result: ExperimentResult, model_type: ModelType) -> "PolicyDataBinding":
         if result.train_row_indices is None:
             raise ValueError("Policy artifacts for real-data objectives require train_row_indices.")
         train_rows = np.asarray(result.train_row_indices, dtype=int)
@@ -588,9 +588,9 @@ def save_policy_artifacts(result: ExperimentResult, output_dir: str | Path) -> d
     return paths
 
 
-def _infer_model_type(objective: ModelBasedObjective) -> Literal["glm", "xgb"]:
+def _infer_model_type(objective: ModelBasedObjective) -> ModelType:
     model_type = getattr(objective.acceptance_model, "model_type", None)
-    if model_type in {"glm", "xgb"}:
+    if model_type in {"glm", "xgb", "xgb_logit_spline"}:
         return model_type
     model = getattr(objective.acceptance_model, "model", objective.acceptance_model)
     module = type(model).__module__.lower()

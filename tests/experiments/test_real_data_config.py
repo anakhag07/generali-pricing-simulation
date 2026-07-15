@@ -65,7 +65,10 @@ def test_real_data_config_uses_all_eligible_rows_when_n_samples_omitted_or_none(
     np.testing.assert_array_equal(cfg.x_fixed_row_indices, eligible)
 
 
-@pytest.mark.parametrize("name", ["real_data_glm_base", "real_data_xgb_base"])
+@pytest.mark.parametrize(
+    "name",
+    ["real_data_glm_base", "real_data_xgb_base", "real_data_xgb_logit_spline_base"],
+)
 def test_real_data_base_configs_load(name):
     cfg = _cfg(name)
     assert cfg is not None
@@ -98,6 +101,42 @@ def test_xgb_base_default_shape_and_no_first_order():
     assert cfg.x_fixed.shape == (cfg.n_samples, 19)
     assert cfg.state_dim == 19
     assert "first_order" not in cfg.enabled_estimators
+
+
+def test_xgb_logit_spline_base_is_covered_bounded_and_first_order() -> None:
+    from objective.policy import SoftmaxPolicy
+
+    cfg = _cfg("real_data_xgb_logit_spline_base")
+
+    assert cfg.x_fixed is not None
+    assert cfg.x_fixed.shape == (cfg.n_samples, 20)
+    assert list(cfg.x_fixed.columns)[0] == "id"
+    assert cfg.state_dim == 19
+    assert cfg.objective.u_bounds == (0.0, 0.16)
+    assert "first_order" in cfg.enabled_estimators
+    assert isinstance(cfg.objective.policy, SoftmaxPolicy)
+    assert cfg.objective.policy.action_low == pytest.approx(0.0)
+    assert cfg.objective.policy.action_high == pytest.approx(0.16)
+    acceptance = cfg.objective.mean_acceptance(cfg.theta0, cfg.x_fixed)
+    assert 0.0 <= acceptance <= 1.0
+
+
+def test_xgb_logit_spline_uses_all_200_covered_rows_by_default() -> None:
+    from experiments.configs import get_config
+
+    cfg = get_config(
+        "real_data_xgb_logit_spline_base",
+        overrides={"plot": False, "verbose": False, "wandb_enabled": False},
+    )
+
+    assert cfg.n_samples == 200
+    assert cfg.x_fixed.shape == (200, 20)
+    assert cfg.x_fixed["id"].nunique() == 200
+
+
+def test_xgb_logit_spline_rejects_jax_backend() -> None:
+    with pytest.raises(ValueError, match="only compute_backend='numpy'"):
+        _cfg("real_data_xgb_logit_spline_base", compute_backend="jax")
 
 
 @pytest.mark.parametrize(

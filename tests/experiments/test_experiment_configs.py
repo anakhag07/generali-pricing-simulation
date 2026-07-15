@@ -23,6 +23,7 @@ def test_list_configs_includes_defaults() -> None:
     assert "planted_logistic_base" in configs
     assert "real_data_glm_base" in configs
     assert "real_data_xgb_base" in configs
+    assert "real_data_xgb_logit_spline_base" in configs
     assert "real_data_glm_softmax_policy_base" not in configs
 
 

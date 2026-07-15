@@ -42,19 +42,21 @@ def _policy_theta_dim_for_objective(objective: object, state_dim: int) -> int | 
 
 
 def _x_fixed_frame_matches_state_dim(objective: object, x_fixed_frame: Any, state_dim: int) -> bool:
-    if getattr(objective, "loss_source", "predicted") != "observed":
-        return x_fixed_frame.shape[1] == state_dim
-    if x_fixed_frame.shape[1] == state_dim:
-        return False
     state_cols = tuple(getattr(objective, "acceptance_state_cols", ()))
-    observed_loss_col = getattr(objective, "observed_loss_col", None)
-    if not state_cols or observed_loss_col is None:
-        return False
-    expected_cols = set(state_cols) | {str(observed_loss_col)}
+    if not state_cols:
+        return x_fixed_frame.shape[1] == state_dim
+    acceptance_model = getattr(objective, "acceptance_model", None)
+    auxiliary_cols = tuple(getattr(acceptance_model, "auxiliary_state_cols", ()))
+    expected_cols = set(state_cols) | set(auxiliary_cols)
+    if getattr(objective, "loss_source", "predicted") == "observed":
+        observed_loss_col = getattr(objective, "observed_loss_col", None)
+        if observed_loss_col is None:
+            return False
+        expected_cols.add(str(observed_loss_col))
     return (
         len(state_cols) == state_dim
         and set(x_fixed_frame.columns) == expected_cols
-        and x_fixed_frame.shape[1] == state_dim + 1
+        and x_fixed_frame.shape[1] == len(expected_cols)
     )
 
 

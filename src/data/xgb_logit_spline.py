@@ -117,6 +117,7 @@ class XGBLogitSplineAcceptance:
         self.artifact = artifact
         self.artifact_path = str(artifact_path) if artifact_path is not None else None
         self.id_col = str(id_col)
+        self.auxiliary_state_cols = (self.id_col,)
         self.x_feature_cols = tuple(str(col) for col in x_feature_cols)
         self.preprocessor = preprocessor
         self._policy_index = {

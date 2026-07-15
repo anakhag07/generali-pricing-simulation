@@ -12,6 +12,10 @@ import numpy as np
 import pandas as pd
 
 from data.feature_processor import FeatureProcessor
+from data.xgb_logit_spline import (
+    load_xgb_logit_spline_acceptance,
+    load_xgb_logit_spline_artifact,
+)
 from data.dataset_metadata import (
     ACCEPTANCE_STATE_COLS as _ACCEPTANCE_STATE_COLS,
     DATA_DIR,
@@ -34,7 +38,7 @@ from data.dataset_metadata import (
     USED_X_COLS,
 )
 
-ModelType = Literal["glm", "xgb"]
+ModelType = Literal["glm", "xgb", "xgb_logit_spline"]
 ProbabilityTarget = Literal["acceptance", "churn", "none"]
 
 # Directory containing model artifacts and CSV datasets
@@ -121,17 +125,24 @@ _ARTIFACT_PATHS: dict[ModelType, dict[str, Path]] = {
         "acceptance": MODEL_ARTIFACTS["xgb"]["acceptance"]["path"],
         "loss": MODEL_ARTIFACTS["xgb"]["loss"]["path"],
     },
+    "xgb_logit_spline": {
+        "acceptance": MODEL_ARTIFACTS["xgb_logit_spline"]["acceptance"]["path"],
+        "loss": MODEL_ARTIFACTS["xgb_logit_spline"]["loss"]["path"],
+    },
 }
 
 _ACCEPTANCE_CSV_PATHS: dict[ModelType, Path] = {
     "glm": _DATASET_CSV_PATH,
     "xgb": _DATASET_CSV_PATH,
+    "xgb_logit_spline": _DATASET_CSV_PATH,
 }
 
 
 def _acceptance_csv_path(model_type: ModelType) -> Path:
     if model_type not in _ACCEPTANCE_CSV_PATHS:
-        raise ValueError(f"model_type must be 'glm' or 'xgb', got '{model_type}'.")
+        raise ValueError(
+            f"model_type must be 'glm', 'xgb', or 'xgb_logit_spline', got '{model_type}'."
+        )
     return _ACCEPTANCE_CSV_PATHS[model_type]
 
 
@@ -160,8 +171,10 @@ def _csv_row_count(csv_path: Path) -> int:
 
 
 def _validate_model_type(model_type: str) -> ModelType:
-    if model_type not in {"glm", "xgb"}:
-        raise ValueError(f"model_type must be 'glm' or 'xgb', got '{model_type}'.")
+    if model_type not in {"glm", "xgb", "xgb_logit_spline"}:
+        raise ValueError(
+            f"model_type must be 'glm', 'xgb', or 'xgb_logit_spline', got '{model_type}'."
+        )
     return model_type  # type: ignore[return-value]
 
 
@@ -219,7 +232,7 @@ def sample_csv_row_indices(
     if n_rows <= 0:
         raise ValueError("n_rows must be positive.")
     csv_path = _acceptance_csv_path(model_type)
-    eligible = _eligible_row_indices(csv_path)
+    eligible = eligible_csv_row_indices(model_type)
     if n_rows > eligible.size:
         raise ValueError(
             f"Cannot sample {n_rows} eligible rows from {csv_path.name}; "
@@ -232,6 +245,14 @@ def sample_csv_row_indices(
 def eligible_csv_row_indices(model_type: ModelType) -> np.ndarray:
     """Return complete eligible canonical CSV row positions for a model family."""
     model_type = _validate_model_type(model_type)
+    if model_type == "xgb_logit_spline":
+        covered = load_xgb_logit_spline_artifact(
+            _ARTIFACT_PATHS[model_type]["acceptance"]
+        ).row_indices
+        complete = _eligible_row_indices(_acceptance_csv_path(model_type))
+        if not np.isin(covered, complete).all():
+            raise ValueError("Spline artifact contains incomplete canonical dataset rows.")
+        return covered
     return _eligible_row_indices(_acceptance_csv_path(model_type)).copy()
 
 
@@ -329,11 +350,33 @@ def unwrap_model_artifact(artifact: Any) -> Any:
     return artifact
 
 
-def load_model_artifacts(model_type: ModelType) -> tuple[ModelArtifactBundle, ModelArtifactBundle]:
+def load_model_artifacts(model_type: ModelType) -> tuple[Any, ModelArtifactBundle]:
     """Load and return first-fold (acceptance_artifact, loss_artifact) bundles."""
     model_type = _validate_model_type(model_type)
     paths = _ARTIFACT_PATHS[model_type]
     specs = MODEL_ARTIFACTS[model_type]
+    if model_type == "xgb_logit_spline":
+        xgb_raw = _normalize_artifact(
+            _load_pickle(_ARTIFACT_PATHS["xgb"]["acceptance"]),
+            probability_target=MODEL_ARTIFACTS["xgb"]["acceptance"]["probability_target"],
+        )
+        acceptance_model = load_xgb_logit_spline_acceptance(
+            paths["acceptance"],
+            id_col="id",
+            x_feature_cols=tuple(ACCEPTANCE_STATE_COLS),
+            preprocessor=xgb_raw.preprocessor,
+        )
+        loss_model = _normalize_artifact(
+            _load_pickle(paths["loss"]),
+            probability_target=specs["loss"].get("probability_target", "none"),
+        )
+        loss_model = replace(
+            loss_model,
+            model_type=model_type,
+            role="loss",
+            artifact_path=str(paths["loss"]),
+        )
+        return acceptance_model, loss_model
     acceptance_model = _normalize_artifact(
         _load_pickle(paths["acceptance"]),
         probability_target=specs["acceptance"].get("probability_target", "acceptance"),
@@ -368,14 +411,16 @@ def load_x_frame(
     model_type = _validate_model_type(model_type)
     csv_path = _acceptance_csv_path(model_type)
     feature_cols = list(MODEL_FEATURE_COLS[model_type])
+    source_cols = ["id", *feature_cols] if model_type == "xgb_logit_spline" else feature_cols
     if row_indices is None:
         row_indices = sample_csv_row_indices(model_type, n_rows=n_rows, seed=seed)
     else:
         row_indices = _validate_row_indices(row_indices, _csv_row_count(csv_path))
-    df = pd.read_csv(csv_path, sep=";", usecols=feature_cols)
+    dtype = {"id": "string"} if model_type == "xgb_logit_spline" else None
+    df = pd.read_csv(csv_path, sep=";", usecols=source_cols, dtype=dtype)
     df = _select_csv_rows(df, np.asarray(row_indices, dtype=int))
-    _validate_no_missing_required(df, feature_cols)
-    return df.loc[:, feature_cols].copy()
+    _validate_no_missing_required(df, source_cols)
+    return df.loc[:, source_cols].copy()
 
 
 def load_x_array(
@@ -455,7 +500,7 @@ def load_mean_observed_acceptance(model_type: ModelType) -> float:
     """Load mean observed acceptance (1 - is_churn) on complete eligible rows."""
     model_type = _validate_model_type(model_type)
     csv_path = _ACCEPTANCE_CSV_PATHS[model_type]
-    row_indices = _eligible_row_indices(csv_path)
+    row_indices = eligible_csv_row_indices(model_type)
     df = pd.read_csv(csv_path, sep=";", usecols=[OBSERVED_CHURN_COL])
     df = _select_csv_rows(df, row_indices)
     return float(1.0 - df[OBSERVED_CHURN_COL].to_numpy(dtype=float).mean())
@@ -570,6 +615,7 @@ __all__ = [
     "LOSS_FEATURE_COLS",
     "ACCEPTANCE_STATE_COLS",
     "ModelArtifactBundle",
+    "ModelType",
     "dataset_column_roles",
     "dataset_csv_path",
     "eligible_csv_row_indices",

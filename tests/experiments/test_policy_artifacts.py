@@ -198,3 +198,34 @@ def test_policy_artifact_reporter_writes_summary_paths(tmp_path, glm_policy_resu
             glm_policy_result.x_samples,
         ),
     )
+
+
+def test_xgb_logit_spline_policy_artifact_replays_id_bound_rows(tmp_path) -> None:
+    config = get_config(
+        "real_data_xgb_logit_spline_base",
+        overrides={
+            "n_samples": 8,
+            "train_fraction": 0.75,
+            "test_fraction": 0.25,
+            "policy_kind": "constant",
+            "initial_u": 0.08,
+            "step_rule": "constant",
+            "step_size": 1e-4,
+            "t_steps": 1,
+            "enabled_estimators": ("first_order",),
+            "grad_norm_tol": None,
+            "plot": False,
+            "verbose": False,
+            "wandb_enabled": False,
+        },
+    )
+    result = run_experiment(config)
+    artifact = build_policy_artifact(result, "first_order")
+    loaded = load_policy_artifact(artifact.save(tmp_path / "policy.json"))
+
+    assert loaded.objective.model_type == "xgb_logit_spline"
+    assert "id" in loaded.load_x(split="train").columns
+    actual = loaded.evaluate(split="train")
+    expected = result.train_metrics["first_order"]
+    assert actual.objective_value == pytest.approx(expected.objective_value)
+    assert actual.mean_acceptance == pytest.approx(expected.mean_acceptance)

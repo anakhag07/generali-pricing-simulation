@@ -23,6 +23,16 @@ def test_load_x_frame_xgb_shape():
     assert x.shape == (50, len(FEATURE_COLS_XGB))
 
 
+def test_load_xgb_logit_spline_frame_includes_covered_policy_id() -> None:
+    from data.loader import FEATURE_COLS_XGB, load_x_frame
+
+    x = load_x_frame("xgb_logit_spline", n_rows=25, seed=123)
+
+    assert x.shape == (25, len(FEATURE_COLS_XGB) + 1)
+    assert list(x.columns) == ["id", *FEATURE_COLS_XGB]
+    assert x["id"].nunique() == 25
+
+
 def test_dataset_column_roles_report_used_and_unused_x():
     from data.loader import dataset_column_roles
 
@@ -122,6 +132,24 @@ def test_load_model_artifacts_types():
     assert isinstance(xgb_loss, ModelArtifactBundle)
     assert isinstance(unwrap_model_artifact(xgb_acc), xgboost.XGBClassifier)
     assert isinstance(unwrap_model_artifact(xgb_loss), xgboost.XGBRegressor)
+
+    spline_acc, spline_loss = load_model_artifacts("xgb_logit_spline")
+    assert spline_acc.model_type == "xgb_logit_spline"
+    assert spline_acc.probability_target == "acceptance"
+    assert spline_acc.preprocessor is not None
+    assert isinstance(unwrap_model_artifact(spline_loss), sklearn.linear_model.Ridge)
+
+
+def test_xgb_logit_spline_eligible_rows_match_covered_artifact() -> None:
+    from data.loader import eligible_csv_row_indices, load_model_artifacts, load_x_frame
+
+    acceptance, _ = load_model_artifacts("xgb_logit_spline")
+    row_indices = eligible_csv_row_indices("xgb_logit_spline")
+    x = load_x_frame("xgb_logit_spline", row_indices=row_indices)
+
+    assert row_indices.shape == (200,)
+    np.testing.assert_array_equal(row_indices, acceptance.covered_row_indices())
+    assert set(x["id"].astype(str)) == set(acceptance.covered_policy_ids())
 
 
 def test_extract_glm_u_coef_is_finite():

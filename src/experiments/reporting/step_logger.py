@@ -21,7 +21,8 @@ class FileStepLogger:
         optimization_dir.mkdir(parents=True, exist_ok=True)
         self._file = (optimization_dir / "steps.csv").open("w", encoding="utf-8")
         self._file.write(
-            "method,step,u,value,grad_norm,step_size,mean_acceptance,projected_loss,projected_revenue\n"
+            "method,step,u,value,grad_norm,step_size,mean_acceptance,projected_loss,"
+            "projected_revenue,proximal_penalty,support_penalty\n"
         )
 
     def on_end(self, run_context: RunContext, result: ExperimentResult) -> None:
@@ -41,6 +42,8 @@ class FileStepLogger:
         mean_acceptance: float | None = None,
         projected_loss: float | None = None,
         projected_revenue: float | None = None,
+        proximal_penalty: float | None = None,
+        support_penalty: float | None = None,
     ) -> None:
         if self._file is None:
             return
@@ -49,9 +52,11 @@ class FileStepLogger:
         acceptance_str = f"{mean_acceptance:.6f}" if mean_acceptance is not None else ""
         loss_str = f"{projected_loss:.6f}" if projected_loss is not None else ""
         revenue_str = f"{projected_revenue:.6f}" if projected_revenue is not None else ""
+        proximal_str = f"{proximal_penalty:.6f}" if proximal_penalty is not None else ""
+        support_str = f"{support_penalty:.6f}" if support_penalty is not None else ""
         self._file.write(
             f"{method},{step},{u:.6f},{value:.6f},{grad_str},{step_str},"
-            f"{acceptance_str},{loss_str},{revenue_str}\n"
+            f"{acceptance_str},{loss_str},{revenue_str},{proximal_str},{support_str}\n"
         )
 
 

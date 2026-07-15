@@ -39,7 +39,11 @@ def resolve_true_grad_theta_fn(
     if correctness.gradient_source == "none":
         return None
     if correctness.gradient_source == "exact":
-        return lambda theta, x_batch: objective.grad(theta, x_batch)
+        def exact_grad(theta: np.ndarray, x_batch: np.ndarray) -> np.ndarray:
+            return objective.grad(theta, x_batch)
+
+        setattr(exact_grad, "_uses_optimizer_objective_grad", True)
+        return exact_grad
     if correctness.gradient_source == "denoised_exact":
         denoised_objective = _innermost_base_objective(objective)
         return lambda theta, x_batch: denoised_objective.grad(theta, x_batch)

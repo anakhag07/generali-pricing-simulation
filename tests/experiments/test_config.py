@@ -4,7 +4,12 @@ import numpy as np
 import pytest
 
 from experiments.config import ExperimentConfig
-from objective import FixedRegressionObjective, QuadraticFeatureMap, SoftmaxPolicy
+from objective import (
+    FixedRegressionObjective,
+    HeteroskedasticNoiseScaleProvider,
+    QuadraticFeatureMap,
+    SoftmaxPolicy,
+)
 from objective.policy import Policy, policy_theta_dim
 
 
@@ -178,6 +183,78 @@ def test_constant_u_baselines_are_serialized() -> None:
 
     assert config.constant_u_baselines == (-0.3, 0.0, 0.2)
     assert config.to_dict()["constant_u_baselines"] == [-0.3, 0.0, 0.2]
+
+
+def test_action_regularizer_config_serializes_knobs() -> None:
+    policy = SoftmaxPolicy()
+    objective = FixedRegressionObjective.from_parameters(
+        policy=policy,
+        beta_1=[0.1],
+        beta_2=-0.5,
+        beta_3=[0.2],
+        beta_4=0.4,
+    )
+    config = ExperimentConfig(
+        state_dim=1,
+        objective=objective,
+        theta0=_theta0(1),
+        n_samples=3,
+        step_rule="constant",
+        perturbation_space="theta",
+        proximal_weight=0.7,
+        u_reference=np.asarray([-0.1, 0.0, 0.2], dtype=float),
+        support_weight=0.3,
+        sigma_provider=HeteroskedasticNoiseScaleProvider(
+            base_std=0.1,
+            growth=0.5,
+            u_center=0.0,
+        ),
+    )
+
+    payload = config.to_dict()
+
+    assert payload["proximal_weight"] == pytest.approx(0.7)
+    assert payload["u_reference_source"] == "array"
+    assert payload["u_reference_shape"] == [3]
+    assert payload["support_weight"] == pytest.approx(0.3)
+    assert payload["sigma_provider"]["type"] == "HeteroskedasticNoiseScaleProvider"
+
+
+def test_proximal_config_requires_aligned_reference_or_constant_source() -> None:
+    policy = SoftmaxPolicy()
+    objective = FixedRegressionObjective.from_parameters(
+        policy=policy,
+        beta_1=[0.1],
+        beta_2=-0.5,
+        beta_3=[0.2],
+        beta_4=0.4,
+    )
+
+    with pytest.raises(ValueError, match="u_reference length must match n_samples"):
+        ExperimentConfig(
+            state_dim=1,
+            objective=objective,
+            theta0=_theta0(1),
+            n_samples=3,
+            step_rule="constant",
+            perturbation_space="theta",
+            proximal_weight=0.7,
+            u_reference=np.asarray([0.0, 0.1], dtype=float),
+        )
+
+    config = ExperimentConfig(
+        state_dim=1,
+        objective=objective,
+        theta0=_theta0(1),
+        n_samples=3,
+        step_rule="constant",
+        perturbation_space="theta",
+        proximal_weight=0.7,
+        u_reference_source="constant",
+        u_reference_value=0.05,
+    )
+    assert config.u_reference_source == "constant"
+    assert config.u_reference_value == pytest.approx(0.05)
 
 
 def test_constant_enabled_estimator_is_accepted() -> None:

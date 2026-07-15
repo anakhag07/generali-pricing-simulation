@@ -65,6 +65,76 @@ def test_real_data_config_uses_all_eligible_rows_when_n_samples_omitted_or_none(
     np.testing.assert_array_equal(cfg.x_fixed_row_indices, eligible)
 
 
+def test_real_data_proximal_defaults_to_historical_observed_actions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import pandas as pd
+
+    import experiments.configs.real_data_factory as factory
+    from data.loader import FEATURE_COLS_GLM
+
+    rows = np.asarray([3, 7, 11], dtype=int)
+    observed_u = np.asarray([-0.1, 0.0, 0.2], dtype=float)
+
+    def fake_load_x_frame(model_type, n_rows=5000, *, row_indices=None, seed=None):
+        del n_rows, seed
+        assert model_type == "glm"
+        np.testing.assert_array_equal(row_indices, rows)
+        return pd.DataFrame(
+            np.zeros((rows.size, len(FEATURE_COLS_GLM)), dtype=float),
+            columns=FEATURE_COLS_GLM,
+        )
+
+    def fake_load_observed_u_array(model_type, *, n_rows=None, row_indices=None, seed=None):
+        del n_rows, seed
+        assert model_type == "glm"
+        np.testing.assert_array_equal(row_indices, rows)
+        return observed_u.copy()
+
+    monkeypatch.setattr(factory, "load_x_frame", fake_load_x_frame)
+    monkeypatch.setattr(factory, "load_observed_u_array", fake_load_observed_u_array)
+    monkeypatch.setattr(factory, "load_model_artifacts", lambda model_type: (object(), object()))
+    monkeypatch.setattr(factory, "extract_glm_u_coef", lambda acceptance_model: -1.0)
+
+    cfg = factory.build_real_data_config(
+        model_type="glm",
+        row_indices=rows,
+        proximal_weight=1.5,
+        plot=False,
+        verbose=False,
+        wandb_enabled=False,
+    )
+
+    assert cfg.u_reference_source == "historical"
+    np.testing.assert_array_equal(cfg.u_reference, observed_u)
+
+
+def test_real_data_historical_reference_requires_source_row_indices(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import pandas as pd
+
+    import experiments.configs.real_data_factory as factory
+    from data.loader import FEATURE_COLS_GLM
+
+    x_fixed = pd.DataFrame(
+        np.zeros((3, len(FEATURE_COLS_GLM)), dtype=float),
+        columns=FEATURE_COLS_GLM,
+    )
+    monkeypatch.setattr(factory, "load_model_artifacts", lambda model_type: (object(), object()))
+    monkeypatch.setattr(factory, "extract_glm_u_coef", lambda acceptance_model: -1.0)
+
+    with pytest.raises(ValueError, match="requires generated rows or x_fixed_row_indices"):
+        factory.build_real_data_config(
+            model_type="glm",
+            x_fixed=x_fixed,
+            proximal_weight=1.5,
+            plot=False,
+            verbose=False,
+            wandb_enabled=False,
+        )
+
+
 @pytest.mark.parametrize("name", ["real_data_glm_base", "real_data_xgb_base"])
 def test_real_data_base_configs_load(name):
     cfg = _cfg(name)

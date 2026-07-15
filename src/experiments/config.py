@@ -7,6 +7,13 @@ from typing import Any, Literal, Mapping, Optional, Sequence
 
 import numpy as np
 
+from objective.action_regularizers import (
+    ActionRegularizedObjective,
+    CallableSigmaProvider,
+    HeteroskedasticNoiseScaleProvider,
+    HomoskedasticNoiseScaleProvider,
+    SigmaProvider,
+)
 from objective.base import Objective, Policy
 from objective.objectives import (
     ActionBias,
@@ -28,6 +35,8 @@ from objective.policy import ConstantPolicy, LinearPolicy, MLPPolicy, SoftmaxPol
 from objective.policy_preprocessing import PolicyFeaturePreprocessor
 from optimization.steps import OPTAX_STEP_RULES, STEP_RULES, STEP_RULE_TRUST_CONSTR
 from experiments.seeds import SeedSetup, resolve_seed_setup, seed_setup_from_mapping
+
+UReferenceSource = Literal["array", "constant", "historical"]
 
 
 def _policy_theta_dim_for_objective(objective: object, state_dim: int) -> int | None:
@@ -113,6 +122,12 @@ class ExperimentConfig:
     acceptance_penalty_weight: float | None = None
     acceptance_penalty_temperature: float = 0.01
     lagrangian_lambda: float | None = None
+    proximal_weight: float | None = None
+    u_reference: np.ndarray | None = None
+    u_reference_source: UReferenceSource | None = None
+    u_reference_value: float | None = None
+    support_weight: float | None = None
+    sigma_provider: SigmaProvider | None = None
     sigma: float = 0.1
     n_grad_samples: int = 64
     verbose: bool = False
@@ -289,6 +304,41 @@ class ExperimentConfig:
             raise ValueError("initial_constr_penalty must be positive when provided.")
         if self.lagrangian_lambda is not None and self.lagrangian_lambda < 0.0:
             raise ValueError("lagrangian_lambda must be nonnegative when provided.")
+        if self.proximal_weight is not None:
+            proximal_weight = float(self.proximal_weight)
+            if not np.isfinite(proximal_weight) or proximal_weight < 0.0:
+                raise ValueError("proximal_weight must be finite and nonnegative when provided.")
+            object.__setattr__(self, "proximal_weight", proximal_weight)
+        if self.support_weight is not None:
+            support_weight = float(self.support_weight)
+            if not np.isfinite(support_weight) or support_weight < 0.0:
+                raise ValueError("support_weight must be finite and nonnegative when provided.")
+            object.__setattr__(self, "support_weight", support_weight)
+        if self.u_reference_source is not None and self.u_reference_source not in {"array", "constant", "historical"}:
+            raise ValueError("u_reference_source must be 'array', 'constant', 'historical', or None.")
+        if self.u_reference is not None:
+            u_reference = np.asarray(self.u_reference, dtype=float)
+            if u_reference.ndim != 1:
+                raise ValueError("u_reference must be a 1D array.")
+            if u_reference.size == 0:
+                raise ValueError("u_reference must contain at least one value.")
+            if not np.isfinite(u_reference).all():
+                raise ValueError("u_reference must contain finite values.")
+            if u_reference.size != self.n_samples:
+                raise ValueError("u_reference length must match n_samples before train/test splitting.")
+            object.__setattr__(self, "u_reference", u_reference.copy())
+            if self.u_reference_source is None:
+                object.__setattr__(self, "u_reference_source", "array")
+        if self.u_reference_value is not None:
+            u_reference_value = float(self.u_reference_value)
+            if not np.isfinite(u_reference_value):
+                raise ValueError("u_reference_value must be finite when provided.")
+            object.__setattr__(self, "u_reference_value", u_reference_value)
+        if self.proximal_weight is not None and self.u_reference is None:
+            if self.u_reference_source != "constant":
+                raise ValueError("proximal_weight requires u_reference or u_reference_source='constant'.")
+            if self.u_reference_value is None:
+                raise ValueError("u_reference_source='constant' requires u_reference_value.")
         if self.step_rule == STEP_RULE_TRUST_CONSTR and self.ftol is not None:
             raise ValueError("ftol is not supported when step_rule='trust-constr'.")
         if self.step_rule in OPTAX_STEP_RULES and self.ftol is not None:
@@ -443,6 +493,31 @@ class ExperimentConfig:
             "lagrangian_lambda": float(self.lagrangian_lambda)
             if self.lagrangian_lambda is not None
             else None,
+            "proximal_weight": float(self.proximal_weight)
+            if self.proximal_weight is not None
+            else None,
+            "u_reference_source": self.u_reference_source,
+            "u_reference_value": float(self.u_reference_value)
+            if self.u_reference_value is not None
+            else None,
+            "u_reference_shape": list(self.u_reference.shape)
+            if self.u_reference is not None
+            else None,
+            "u_reference_min": float(np.min(self.u_reference))
+            if self.u_reference is not None
+            else None,
+            "u_reference_max": float(np.max(self.u_reference))
+            if self.u_reference is not None
+            else None,
+            "u_reference_head": [float(val) for val in self.u_reference[:10]]
+            if self.u_reference is not None
+            else None,
+            "support_weight": float(self.support_weight)
+            if self.support_weight is not None
+            else None,
+            "sigma_provider": _sigma_provider_to_dict(self.sigma_provider)
+            if self.sigma_provider is not None
+            else None,
             "sigma": float(self.sigma),
             "n_grad_samples": int(self.n_grad_samples),
             "verbose": bool(self.verbose),
@@ -484,6 +559,29 @@ class ExperimentConfig:
 
 def _objective_to_dict(objective: Objective) -> dict[str, Any]:
     """Serialize objective to dictionary."""
+    if isinstance(objective, ActionRegularizedObjective):
+        return {
+            "type": "ActionRegularizedObjective",
+            "base_objective": _objective_to_dict(objective.base_objective),
+            "proximal_weight": float(objective.proximal_weight)
+            if objective.proximal_weight is not None
+            else None,
+            "u_reference_shape": list(objective.u_reference.shape)
+            if objective.u_reference is not None
+            else None,
+            "u_reference_min": float(np.min(objective.u_reference))
+            if objective.u_reference is not None
+            else None,
+            "u_reference_max": float(np.max(objective.u_reference))
+            if objective.u_reference is not None
+            else None,
+            "support_weight": float(objective.support_weight)
+            if objective.support_weight is not None
+            else None,
+            "sigma_provider": _sigma_provider_to_dict(objective.sigma_provider)
+            if objective.sigma_provider is not None
+            else None,
+        }
     if isinstance(objective, NoisyObjective):
         return {
             "type": "NoisyObjective",
@@ -567,6 +665,24 @@ def _noise_to_dict(noise: ObjectiveNoise) -> dict[str, Any]:
             "seed": int(noise.seed) if noise.seed is not None else None,
         }
     return {"type": type(noise).__name__}
+
+
+def _sigma_provider_to_dict(provider: SigmaProvider | None) -> dict[str, Any] | None:
+    """Serialize a support-scale provider to dictionary."""
+    if provider is None:
+        return None
+    if isinstance(provider, HomoskedasticNoiseScaleProvider):
+        return {"type": "HomoskedasticNoiseScaleProvider", "std": float(provider.std)}
+    if isinstance(provider, HeteroskedasticNoiseScaleProvider):
+        return {
+            "type": "HeteroskedasticNoiseScaleProvider",
+            "base_std": float(provider.base_std),
+            "growth": float(provider.growth),
+            "u_center": float(provider.u_center),
+        }
+    if isinstance(provider, CallableSigmaProvider):
+        return {"type": "CallableSigmaProvider"}
+    return {"type": type(provider).__name__}
 
 
 def _action_bias_to_dict(bias: ActionBias) -> dict[str, Any]:
@@ -748,6 +864,12 @@ def canonical_training_block(
     acceptance_penalty_weight: float | None = None,
     acceptance_penalty_temperature: float = 0.01,
     lagrangian_lambda: float | None = None,
+    proximal_weight: float | None = None,
+    u_reference: np.ndarray | Sequence[float] | None = None,
+    u_reference_source: UReferenceSource | None = None,
+    u_reference_value: float | None = None,
+    support_weight: float | None = None,
+    sigma_provider: SigmaProvider | None = None,
 ) -> dict[str, Any]:
     """Create a canonical training configuration block."""
     return {
@@ -775,6 +897,12 @@ def canonical_training_block(
         else None,
         "acceptance_penalty_temperature": float(acceptance_penalty_temperature),
         "lagrangian_lambda": float(lagrangian_lambda) if lagrangian_lambda is not None else None,
+        "proximal_weight": float(proximal_weight) if proximal_weight is not None else None,
+        "u_reference": np.asarray(u_reference, dtype=float) if u_reference is not None else None,
+        "u_reference_source": u_reference_source,
+        "u_reference_value": float(u_reference_value) if u_reference_value is not None else None,
+        "support_weight": float(support_weight) if support_weight is not None else None,
+        "sigma_provider": sigma_provider,
     }
 
 

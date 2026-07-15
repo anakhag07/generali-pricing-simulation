@@ -8,6 +8,7 @@ import time
 
 import numpy as np
 
+from objective.action_regularizers import ActionRegularizedObjective
 from objective.base import sample_states
 from objective.noise import NoisyObjective
 from objective.objectives import ModelBasedObjective
@@ -186,6 +187,46 @@ def _source_row_indices(config: ExperimentConfig, indices: np.ndarray) -> np.nda
     return row_indices[indices].copy()
 
 
+def _has_action_regularizers(config: ExperimentConfig) -> bool:
+    return config.proximal_weight is not None or config.support_weight is not None
+
+
+def _training_u_reference(config: ExperimentConfig, train_indices: np.ndarray) -> np.ndarray | None:
+    """Return proximal reference actions aligned to the training rows."""
+    if config.proximal_weight is None:
+        return None
+    train_count = int(train_indices.size)
+    if config.u_reference is not None:
+        reference = np.asarray(config.u_reference, dtype=float).reshape(-1)
+        if reference.shape == (train_count,):
+            return reference.copy()
+        if np.any(train_indices < 0) or np.any(train_indices >= reference.size):
+            raise ValueError("u_reference length does not cover the selected training rows.")
+        return reference[train_indices].copy()
+    if config.u_reference_source == "constant":
+        if config.u_reference_value is None:
+            raise ValueError("u_reference_source='constant' requires u_reference_value.")
+        return np.full(train_count, float(config.u_reference_value), dtype=float)
+    raise ValueError("proximal_weight requires row-aligned u_reference or u_reference_source='constant'.")
+
+
+def _objective_with_action_regularizers(
+    config: ExperimentConfig,
+    objective: object,
+    train_indices: np.ndarray,
+) -> object:
+    """Wrap the optimizer objective with action-space regularizers when configured."""
+    if not _has_action_regularizers(config):
+        return objective
+    return ActionRegularizedObjective(
+        base_objective=objective,
+        proximal_weight=config.proximal_weight,
+        u_reference=_training_u_reference(config, train_indices),
+        support_weight=config.support_weight,
+        sigma_provider=config.sigma_provider,
+    )
+
+
 def _optimizer_backend_objective(
     config: ExperimentConfig,
     objective: object,
@@ -213,6 +254,15 @@ def _optimizer_backend_objective(
             f"compute_backend='jax' does not support enabled estimator(s): {unsupported_names}. "
             f"Supported estimators: {supported}."
         )
+    if isinstance(objective, ActionRegularizedObjective):
+        prepared_base, prepared_x = _optimizer_backend_objective(
+            config,
+            objective.base_objective,
+            x_samples,
+            theta_initial,
+            row_indices,
+        )
+        return replace(objective, base_objective=prepared_base), prepared_x
     noisy_objective = objective if isinstance(objective, NoisyObjective) else None
     source_objective = noisy_objective.base_objective if noisy_objective is not None else objective
     if not isinstance(source_objective, ModelBasedObjective):
@@ -343,6 +393,11 @@ def run_experiment(
     )
     train_row_indices = _source_row_indices(effective_config, train_indices)
     test_row_indices = _source_row_indices(effective_config, test_indices)
+    train_optimizer_objective = _objective_with_action_regularizers(
+        effective_config,
+        objective,
+        train_indices,
+    )
     initial_value = value_for_reporting(objective, theta_initial, x_samples)
     mean_acceptance_fn = getattr(objective, "mean_acceptance", None)
     initial_mean_acceptance = (
@@ -371,7 +426,7 @@ def run_experiment(
 
     optimizer_objective, optimizer_x_samples = _optimizer_backend_objective(
         effective_config,
-        objective,
+        train_optimizer_objective,
         x_samples,
         theta_initial,
         train_row_indices,
@@ -389,7 +444,7 @@ def run_experiment(
             continue
         spec = _ESTIMATOR_SPECS[estimator_name]
         if estimator_name == "constant":
-            estimator_objective = _constant_policy_objective(objective)
+            estimator_objective = _constant_policy_objective(train_optimizer_objective)
             estimator_x_samples = x_samples
             estimator_theta_start = _constant_theta_start(objective, theta_initial, x_samples)
             true_grad_fn = resolve_true_grad_theta_fn(

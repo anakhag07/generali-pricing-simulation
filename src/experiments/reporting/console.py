@@ -33,6 +33,8 @@ class ConsoleReporter:
         mean_acceptance: float | None = None,
         projected_loss: float | None = None,
         projected_revenue: float | None = None,
+        proximal_penalty: float | None = None,
+        support_penalty: float | None = None,
     ) -> None:
         if self._verbose:
             log_step(
@@ -45,6 +47,8 @@ class ConsoleReporter:
                 mean_acceptance,
                 projected_loss,
                 projected_revenue,
+                proximal_penalty,
+                support_penalty,
             )
 
 

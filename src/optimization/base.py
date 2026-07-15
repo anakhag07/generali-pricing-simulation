@@ -10,6 +10,7 @@ from scipy.optimize import NonlinearConstraint, minimize
 from objective.base import Objective
 from objective.utils import _mean_action
 from optimization.helpers import (
+    objective_grad_on_indices,
     objective_value_on_indices,
     sample_indices,
     scipy_method,
@@ -149,6 +150,8 @@ class Optimization:
         mean_acceptance_values: list[float] = []
         projected_loss_values: list[float] = []
         projected_revenue_values: list[float] = []
+        proximal_penalty_values: list[float] = []
+        support_penalty_values: list[float] = []
         theta_values: list[np.ndarray] = []
         step_sizes: list[float] | None = (
             []
@@ -276,10 +279,19 @@ class Optimization:
 
             true_theta_grad_norm = None
             if self.true_grad_theta_fn is not None:
-                grad_true = np.asarray(
-                    self.true_grad_theta_fn(theta_arr, x_batch_arr),
-                    dtype=float,
-                )
+                if bool(getattr(self.true_grad_theta_fn, "_uses_optimizer_objective_grad", False)):
+                    grad_true = objective_grad_on_indices(
+                        self.objective,
+                        self.x_array,
+                        self.n_total,
+                        theta_arr,
+                        indices,
+                    )
+                else:
+                    grad_true = np.asarray(
+                        self.true_grad_theta_fn(theta_arr, x_batch_arr),
+                        dtype=float,
+                    )
                 true_theta_grad_norm = float(np.linalg.norm(grad_true))
 
             step = len(steps)
@@ -294,12 +306,24 @@ class Optimization:
             mean_acceptance = None
             projected_loss = None
             projected_revenue = None
+            proximal_penalty = None
+            support_penalty = None
+            step_metrics_on_indices_fn = getattr(self.objective, "step_metrics_on_indices", None)
             step_metrics_fn = getattr(self.objective, "_step_metrics", None)
-            if callable(step_metrics_fn):
+            if callable(step_metrics_on_indices_fn):
+                metrics = step_metrics_on_indices_fn(theta_arr, self.x_array, indices)
+                mean_acceptance = metrics.get("mean_acceptance")
+                projected_loss = metrics.get("projected_loss")
+                projected_revenue = metrics.get("projected_revenue")
+                proximal_penalty = metrics.get("proximal_penalty")
+                support_penalty = metrics.get("support_penalty")
+            elif callable(step_metrics_fn):
                 metrics = step_metrics_fn(theta_arr, x_batch_arr)
                 mean_acceptance = metrics.get("mean_acceptance")
                 projected_loss = metrics.get("projected_loss")
                 projected_revenue = metrics.get("projected_revenue")
+                proximal_penalty = metrics.get("proximal_penalty")
+                support_penalty = metrics.get("support_penalty")
 
             steps.append(step)
             u_values.append(mean_u)
@@ -317,6 +341,10 @@ class Optimization:
                 projected_loss_values.append(float(projected_loss))
             if projected_revenue is not None:
                 projected_revenue_values.append(float(projected_revenue))
+            if proximal_penalty is not None:
+                proximal_penalty_values.append(float(proximal_penalty))
+            if support_penalty is not None:
+                support_penalty_values.append(float(support_penalty))
             if self.step_reporter is not None:
                 self.step_reporter.log_step(
                     self.method_label,
@@ -328,6 +356,8 @@ class Optimization:
                     mean_acceptance=mean_acceptance,
                     projected_loss=projected_loss,
                     projected_revenue=projected_revenue,
+                    proximal_penalty=proximal_penalty,
+                    support_penalty=support_penalty,
                 )
 
         record(theta0)
@@ -430,6 +460,8 @@ class Optimization:
             mean_acceptance_values=mean_acceptance_values if mean_acceptance_values else None,
             projected_loss_values=projected_loss_values if projected_loss_values else None,
             projected_revenue_values=projected_revenue_values if projected_revenue_values else None,
+            proximal_penalty_values=proximal_penalty_values if proximal_penalty_values else None,
+            support_penalty_values=support_penalty_values if support_penalty_values else None,
             theta_values=theta_values,
             optimizer_success=optimizer_success,
             optimizer_optimality=optimizer_optimality,

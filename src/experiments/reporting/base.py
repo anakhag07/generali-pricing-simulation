@@ -24,6 +24,8 @@ class StepReporter(Protocol):
         mean_acceptance: float | None = None,
         projected_loss: float | None = None,
         projected_revenue: float | None = None,
+        proximal_penalty: float | None = None,
+        support_penalty: float | None = None,
     ) -> None:
         ...
 
@@ -64,6 +66,8 @@ class ReporterStack:
         mean_acceptance: float | None = None,
         projected_loss: float | None = None,
         projected_revenue: float | None = None,
+        proximal_penalty: float | None = None,
+        support_penalty: float | None = None,
     ) -> None:
         for reporter in self._reporters:
             if isinstance(reporter, StepReporter):
@@ -77,6 +81,8 @@ class ReporterStack:
                     mean_acceptance,
                     projected_loss,
                     projected_revenue,
+                    proximal_penalty,
+                    support_penalty,
                 )
 
 

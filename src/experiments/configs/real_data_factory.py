@@ -18,12 +18,15 @@ from data.loader import (
     load_mean_observed_acceptance,
     load_model_artifacts,
     load_observed_loss_array,
+    load_observed_u_array,
     load_x_frame,
     sample_csv_row_indices,
 )
 from experiments.config import (
     CorrectnessSpec,
     ExperimentConfig,
+    SigmaProvider,
+    UReferenceSource,
     build_experiment_config,
     canonical_runtime_block,
     canonical_training_block,
@@ -85,6 +88,12 @@ def build_real_data_config(
     acceptance_penalty_weight: float | None = None,
     acceptance_penalty_temperature: float | None = None,
     lagrangian_lambda: float | None = None,
+    proximal_weight: float | None = None,
+    u_reference: np.ndarray | Sequence[float] | None = None,
+    u_reference_source: UReferenceSource | None = None,
+    u_reference_value: float | None = None,
+    support_weight: float | None = None,
+    sigma_provider: SigmaProvider | None = None,
     u_bounds: tuple[float, float] | None = None,
     u_coef: float | None = None,
     initial_u: float | None = None,
@@ -161,6 +170,25 @@ def build_real_data_config(
         if requested_n_samples is not None
         else int(x_fixed_arr.shape[0])
     )
+    resolved_u_reference_source = u_reference_source
+    resolved_u_reference = (
+        np.asarray(u_reference, dtype=float).reshape(-1)
+        if u_reference is not None
+        else None
+    )
+    if proximal_weight is not None and resolved_u_reference is None and resolved_u_reference_source is None:
+        resolved_u_reference_source = "historical"
+    if resolved_u_reference_source == "historical":
+        if resolved_u_reference is not None:
+            raise ValueError("u_reference_source='historical' cannot be combined with u_reference.")
+        if x_fixed_row_indices_arr is None:
+            raise ValueError(
+                "u_reference_source='historical' requires generated rows or x_fixed_row_indices."
+            )
+        resolved_u_reference = load_observed_u_array(
+            model_type,
+            row_indices=x_fixed_row_indices_arr,
+        )
 
     policy_preprocessor = None
     policy_feature_cols = None
@@ -252,6 +280,12 @@ def build_real_data_config(
         acceptance_penalty_weight=resolved_penalty_weight,
         acceptance_penalty_temperature=float(resolved_penalty_temperature),
         lagrangian_lambda=resolved_lagrangian_lambda,
+        proximal_weight=proximal_weight,
+        u_reference=resolved_u_reference,
+        u_reference_source=resolved_u_reference_source,
+        u_reference_value=u_reference_value,
+        support_weight=support_weight,
+        sigma_provider=sigma_provider,
     )
     runtime = canonical_runtime_block(
         plot=plot,

@@ -137,6 +137,8 @@ class WandbReporter:
         mean_acceptance: float | None = None,
         projected_loss: float | None = None,
         projected_revenue: float | None = None,
+        proximal_penalty: float | None = None,
+        support_penalty: float | None = None,
     ) -> None:
         if not self._enabled or self._wandb is None:
             return
@@ -154,6 +156,10 @@ class WandbReporter:
             payload["projected_loss"] = float(projected_loss)
         if projected_revenue is not None:
             payload["projected_revenue"] = float(projected_revenue)
+        if proximal_penalty is not None:
+            payload["proximal_penalty"] = float(proximal_penalty)
+        if support_penalty is not None:
+            payload["support_penalty"] = float(support_penalty)
         self._current_run.log(payload, step=int(step))
 
 

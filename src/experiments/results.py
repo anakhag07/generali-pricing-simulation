@@ -34,6 +34,8 @@ class OptimizationTrace:
     mean_acceptance_values: Optional[Sequence[float]] = None
     projected_loss_values: Optional[Sequence[float]] = None
     projected_revenue_values: Optional[Sequence[float]] = None
+    proximal_penalty_values: Optional[Sequence[float]] = None
+    support_penalty_values: Optional[Sequence[float]] = None
     theta_values: Optional[Sequence[np.ndarray]] = None
     optimizer_success: Optional[bool] = None
     optimizer_optimality: Optional[float] = None

@@ -34,7 +34,8 @@ def test_file_logger_writes_header(run_context: RunContext) -> None:
     assert csv_path.exists()
     content = csv_path.read_text()
     assert content.startswith(
-        "method,step,u,value,grad_norm,step_size,mean_acceptance,projected_loss,projected_revenue\n"
+        "method,step,u,value,grad_norm,step_size,mean_acceptance,projected_loss,"
+        "projected_revenue,proximal_penalty,support_penalty\n"
     )
 
 
@@ -64,11 +65,12 @@ def test_file_logger_writes_rows(run_context: RunContext) -> None:
 
     assert len(lines) == 4  # header + 3 rows
     assert lines[0] == (
-        "method,step,u,value,grad_norm,step_size,mean_acceptance,projected_loss,projected_revenue"
+        "method,step,u,value,grad_norm,step_size,mean_acceptance,projected_loss,"
+        "projected_revenue,proximal_penalty,support_penalty"
     )
-    assert lines[1] == "first-order,1,0.500000,0.300000,0.010000,0.001000,0.800000,120.000000,0.050000"
-    assert lines[2] == "first-order,2,0.600000,0.250000,0.008000,0.001000,0.750000,120.000000,0.060000"
-    assert lines[3] == "spsa,0,0.500000,0.300000,0.020000,,,,"
+    assert lines[1] == "first-order,1,0.500000,0.300000,0.010000,0.001000,0.800000,120.000000,0.050000,,"
+    assert lines[2] == "first-order,2,0.600000,0.250000,0.008000,0.001000,0.750000,120.000000,0.060000,,"
+    assert lines[3] == "spsa,0,0.500000,0.300000,0.020000,,,,,,"
 
 
 def test_file_logger_handles_none_grad_norm(run_context: RunContext) -> None:
@@ -84,7 +86,7 @@ def test_file_logger_handles_none_grad_norm(run_context: RunContext) -> None:
     lines = csv_path.read_text().strip().split("\n")
 
     assert len(lines) == 2
-    assert lines[1] == "test,1,0.500000,0.300000,,0.010000,,,"
+    assert lines[1] == "test,1,0.500000,0.300000,,0.010000,,,,,"
 
 
 def test_file_logger_on_end_closes_file(run_context: RunContext) -> None:

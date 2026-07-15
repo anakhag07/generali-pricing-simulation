@@ -23,7 +23,13 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 
-def _action_objective_values(objective: object, x_array: np.ndarray, u_array: np.ndarray) -> np.ndarray:
+def _action_objective_values(
+    objective: object,
+    x_array: np.ndarray,
+    u_array: np.ndarray,
+    *,
+    indices: np.ndarray | None = None,
+) -> np.ndarray:
     """Compute per-sample action-level objective values ``M(x_i, u_i)``.
 
     Tries ``objective._value_batch(x_array, u_array)`` first, then falls back to
@@ -32,6 +38,14 @@ def _action_objective_values(objective: object, x_array: np.ndarray, u_array: np
     u_arr = np.asarray(u_array, dtype=float).reshape(-1)
     if u_arr.shape != (x_array.shape[0],):
         raise ValueError("u_array must have shape (n_samples,).")
+
+    if indices is not None:
+        value_batch_on_indices_fn = getattr(objective, "_value_batch_on_indices", None)
+        if callable(value_batch_on_indices_fn):
+            values = np.asarray(value_batch_on_indices_fn(x_array, indices, u_arr), dtype=float)
+            if values.shape != (x_array.shape[0],):
+                raise ValueError("objective._value_batch_on_indices(...) must return shape (n_samples,).")
+            return values
 
     value_batch_fn = getattr(objective, "_value_batch", None)
     if callable(value_batch_fn):
@@ -54,11 +68,25 @@ def _action_objective_values(objective: object, x_array: np.ndarray, u_array: np
     )
 
 
-def _action_objective_values_many(objective: object, x_array: np.ndarray, u_matrix: np.ndarray) -> np.ndarray:
+def _action_objective_values_many(
+    objective: object,
+    x_array: np.ndarray,
+    u_matrix: np.ndarray,
+    *,
+    indices: np.ndarray | None = None,
+) -> np.ndarray:
     """Compute action-level objective values for many action vectors."""
     u_arr = np.asarray(u_matrix, dtype=float)
     if u_arr.ndim != 2 or u_arr.shape[1] != x_array.shape[0]:
         raise ValueError("u_matrix must have shape (n_evaluations, n_samples).")
+
+    if indices is not None:
+        value_batch_many_on_indices_fn = getattr(objective, "_value_batch_many_on_indices", None)
+        if callable(value_batch_many_on_indices_fn):
+            values = np.asarray(value_batch_many_on_indices_fn(x_array, indices, u_arr), dtype=float)
+            if values.shape != u_arr.shape:
+                raise ValueError("objective._value_batch_many_on_indices(...) must return u_matrix shape.")
+            return values
 
     value_batch_many_fn = getattr(objective, "_value_batch_many", None)
     if callable(value_batch_many_fn):
@@ -67,7 +95,7 @@ def _action_objective_values_many(objective: object, x_array: np.ndarray, u_matr
             raise ValueError("objective._value_batch_many(x_array, u_matrix) must return u_matrix shape.")
         return values
 
-    return np.vstack([_action_objective_values(objective, x_array, u_row) for u_row in u_arr])
+    return np.vstack([_action_objective_values(objective, x_array, u_row, indices=indices) for u_row in u_arr])
 
 
 def _u_space_policy_setup(
@@ -196,6 +224,7 @@ class FiniteDifferenceGradient(GradientMethod):
             optimizer.objective,
             x_arr,
             np.vstack([u_arr + sigma, u_arr - sigma]),
+            indices=indices,
         )
         values_plus = values[0]
         values_minus = values[1]
@@ -269,6 +298,7 @@ class GaussSteinGradient(GradientMethod):
             optimizer.objective,
             x_arr,
             u_arr[None, :] + optimizer.sigma * w_samples[:, None],
+            indices=indices,
         )
         grad_u = np.mean(values * w_samples[:, None], axis=0) / max(optimizer.sigma, 1e-8)
         return _theta_grad_from_u_grad(optimizer.objective, theta, x_arr, grad_u)
@@ -351,11 +381,13 @@ class SPSAGradient(GradientMethod):
             optimizer.objective,
             x_arr,
             u_arr[None, :] + optimizer.sigma * delta_samples[:, None],
+            indices=indices,
         )
         values_minus = _action_objective_values_many(
             optimizer.objective,
             x_arr,
             u_arr[None, :] - optimizer.sigma * delta_samples[:, None],
+            indices=indices,
         )
         grad_u = np.mean(
             ((values_plus - values_minus) / (2.0 * optimizer.sigma)) * delta_samples[:, None],
@@ -433,11 +465,13 @@ class SteinDifferenceGradient(GradientMethod):
             optimizer.objective,
             x_arr,
             u_arr[None, :] + sigma * w_samples[:, None],
+            indices=indices,
         )
         values_minus = _action_objective_values_many(
             optimizer.objective,
             x_arr,
             u_arr[None, :] - sigma * w_samples[:, None],
+            indices=indices,
         )
         grad_u = np.mean(((values_plus - values_minus) / (2.0 * sigma)) * w_samples[:, None], axis=0)
         return _theta_grad_from_u_grad(optimizer.objective, theta, x_arr, grad_u)

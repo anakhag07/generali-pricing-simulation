@@ -10,9 +10,13 @@ import objective as objective_pkg
 
 from objective import (
     ActionBias,
+    ActionRegularizedObjective,
     BiasedObjective,
+    CallableSigmaProvider,
     ConstantPolicy,
     CubicFeatureMap,
+    HeteroskedasticNoiseScaleProvider,
+    HomoskedasticNoiseScaleProvider,
     LinearActionBias,
     PreparedGLMBatch,
     PreparedGLMObjective,
@@ -21,6 +25,7 @@ from objective import (
     PlantedLogisticObjective,
     UpperSupportHingeBias,
     default_rng,
+    default_sigma_provider_from_objective,
     mean_acceptance_at_constant_u,
     prepare_glm_batch,
     prepare_glm_objective,
@@ -61,6 +66,11 @@ def test_objective_package_exports_are_importable() -> None:
     assert isinstance(value_at_constant_u(objective, x_batch, u=1.0), float)
     assert isinstance(value_for_reporting(objective, theta, x_batch), float)
     assert BiasedObjective(objective, lambda_bias=0.1).lambda_bias == 0.1
+    assert ActionRegularizedObjective is not None
+    assert CallableSigmaProvider is not None
+    assert HeteroskedasticNoiseScaleProvider(growth=0.0).growth == 0.0
+    assert HomoskedasticNoiseScaleProvider(std=0.0).std == 0.0
+    assert default_sigma_provider_from_objective is not None
     assert ActionBias is not None
     assert LinearActionBias(lambda_bias=0.1).lambda_bias == 0.1
     assert (

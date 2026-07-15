@@ -60,6 +60,9 @@ def objective_value_on_indices(
     indices: np.ndarray,
 ) -> float:
     """Compute objective value on mini-batch."""
+    value_on_indices_fn = getattr(objective, "value_on_indices", None)
+    if callable(value_on_indices_fn):
+        return float(value_on_indices_fn(theta, x_array, indices))
     return float(objective.value(theta, x_batch(x_array, indices, n_total)))
 
 
@@ -71,6 +74,9 @@ def objective_grad_on_indices(
     indices: np.ndarray,
 ) -> np.ndarray:
     """Compute objective gradient on mini-batch."""
+    grad_on_indices_fn = getattr(objective, "grad_on_indices", None)
+    if callable(grad_on_indices_fn):
+        return np.asarray(grad_on_indices_fn(theta, x_array, indices), dtype=float)
     return np.asarray(objective.grad(theta, x_batch(x_array, indices, n_total)), dtype=float)
 
 

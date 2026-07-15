@@ -9,10 +9,11 @@ This module provides:
 - Concrete objectives: FixedRegressionObjective, BiasedObjective,
   PlantedLogisticObjective, ModelBasedObjective, PreparedGLMObjective,
   JaxPreparedGLMObjective
+- Objective wrappers: NoisyObjective, BiasedObjective, ActionRegularizedObjective
 - Objective noise: ObjectiveNoise, NoNoise, HomoskedasticGaussianNoise,
-  HeteroskedasticGaussianNoise, NoisyObjective
- - Utility: optimal_u, value_at_constant_u, mean_acceptance_at_constant_u,
-   value_for_reporting
+  HeteroskedasticGaussianNoise
+- Utility: optimal_u, value_at_constant_u, mean_acceptance_at_constant_u,
+  value_for_reporting
 """
 
 from importlib import import_module
@@ -22,6 +23,14 @@ from objective.base import (
     Policy,
     default_rng,
     sample_states,
+)
+from objective.action_regularizers import (
+    ActionRegularizedObjective,
+    CallableSigmaProvider,
+    HeteroskedasticNoiseScaleProvider,
+    HomoskedasticNoiseScaleProvider,
+    SigmaProvider,
+    default_sigma_provider_from_objective,
 )
 from objective.objectives import (
     ActionBias,
@@ -107,19 +116,25 @@ __all__ = [
     "make_policy_features",
     # Concrete objectives
     "ActionBias",
+    "ActionRegularizedObjective",
     "BiasedObjective",
+    "CallableSigmaProvider",
     "FixedRegressionObjective",
+    "HeteroskedasticNoiseScaleProvider",
+    "HomoskedasticNoiseScaleProvider",
     "LinearActionBias",
     "ModelBasedObjective",
     "PlantedLogisticObjective",
     "PreparedGLMBatch",
     "PreparedGLMObjective",
+    "SigmaProvider",
     "UpperSupportHingeBias",
     "JaxPreparedGLMObjective",
     "JaxPreparedGLMScipyAdapter",
     "prepare_glm_batch",
     "prepare_glm_objective",
     "prepare_jax_glm_objective",
+    "default_sigma_provider_from_objective",
     # Objective noise
     "HeteroskedasticGaussianNoise",
     "HomoskedasticGaussianNoise",

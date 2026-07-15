@@ -382,6 +382,13 @@ instead of the default 60x60 used for cheaper synthetic objectives.
 override lists, or override grids; use `--requires-jax` when a sweep should submit
 to the GPU Slurm profile.
 
+`scripts/run_fixed_regression_noise_offset_grid.py` runs the synthetic
+fixed-regression homoskedastic/heteroskedastic noise x theta-offset grid. It
+computes a clean first-order reference, centers heteroskedastic noise at that
+reference policy's mean `u`, varies `theta0 = theta_clean + delta * 1`, and uses
+the canonical seed-sweep folder convention with warm `(family, noise-level)`
+launch tasks. Outputs land under `results/fixed-regression-*-noise-offset-grid/`.
+
 `scripts/run_noisy_glm_theta_variance_sweep.py` runs the all-data trust-constrained
 GLM noisy-objective sweeps on GPU/JAX. By default it uses the saved no-noise
 first-order run at

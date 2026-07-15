@@ -4,8 +4,12 @@ import numpy as np
 import pytest
 
 from experiments.config import CorrectnessSpec, ExperimentConfig
+from experiments.configs import get_config
 from experiments.correctness import resolve_true_grad_theta_fn
 from objective import FixedRegressionObjective, SoftmaxPolicy
+from objective.base import default_rng, sample_states
+from objective.noise import HomoskedasticGaussianNoise, NoisyObjective
+from objective.objectives import BiasedObjective, UpperSupportHingeBias
 
 
 class DummyThetaObjectiveNoGrad:
@@ -64,6 +68,32 @@ def test_correctness_accepts_denoised_exact_source() -> None:
     correctness = CorrectnessSpec(gradient_source="denoised_exact")
 
     assert correctness.gradient_source == "denoised_exact"
+
+
+def test_denoised_exact_unwraps_full_wrapper_chain_to_clean_objective() -> None:
+    # Layering noise on top of support bias nests two deterministic wrappers:
+    # NoisyObjective(BiasedObjective(planted)). denoised_exact must reference the
+    # innermost clean (unbiased, noise-free) objective -- the first-order truth --
+    # not the biased surrogate one level down.
+    planted = get_config("planted_logistic_base").objective
+    u_star = float(planted.optimal_u())
+    biased = BiasedObjective(
+        base_objective=planted,
+        bias=UpperSupportHingeBias(lambda_bias=0.1, support_center=u_star, support_radius=0.05),
+    )
+    noisy = NoisyObjective(base_objective=biased, noise=HomoskedasticGaussianNoise(std=0.5, seed=0))
+
+    true_grad_fn = resolve_true_grad_theta_fn(noisy, CorrectnessSpec(gradient_source="denoised_exact"))
+    assert true_grad_fn is not None
+
+    # Large intercept pushes every action above the support band so the bias
+    # gradient is active, making the surrogate gradient differ from the truth.
+    theta = np.array([3.0, 0.0, 0.0, 0.0], dtype=float)
+    x_batch = sample_states(default_rng(0), 6, 3)
+
+    grad_true = true_grad_fn(theta, x_batch)
+    assert np.allclose(grad_true, planted.grad(theta, x_batch))
+    assert not np.allclose(grad_true, biased.grad(theta, x_batch))
 
 
 def test_numdiff_batch_is_supported_for_theta_grad() -> None:

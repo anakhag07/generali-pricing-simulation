@@ -21,6 +21,7 @@ def test_default_overrides_run_all_profiles_with_held_out_diagnostics() -> None:
     assert overrides["initial_u"] == 0.08
     assert overrides["t_steps"] == 500
     assert overrides["sigma"] == 1e-4
+    assert overrides["n_grad_samples"] == 50
     assert overrides["perturbation_space"] == "u"
     assert overrides["enabled_estimators"] == ("first_order", "finite_difference")
     assert overrides["constant_u_baselines"] == (0.0, 0.08, 0.16)
@@ -30,7 +31,17 @@ def test_default_overrides_run_all_profiles_with_held_out_diagnostics() -> None:
 
 def test_build_config_enables_exact_gradient_diagnostics() -> None:
     args = script._parse_args(
-        ["--n-samples", "8", "--t-steps", "1", "--estimators", "first_order", "--quiet"]
+        [
+            "--n-samples",
+            "8",
+            "--t-steps",
+            "1",
+            "--n-grad-samples",
+            "8",
+            "--estimators",
+            "first_order",
+            "--quiet",
+        ]
     )
 
     config = script._build_config(args)
@@ -39,6 +50,7 @@ def test_build_config_enables_exact_gradient_diagnostics() -> None:
     assert config.x_fixed.shape[0] == 8
     assert config.train_fraction == 0.8
     assert config.test_fraction == 0.2
+    assert config.n_grad_samples == 8
     assert config.objective.u_bounds == (0.0, 0.16)
     assert config.objective.policy.action_low == 0.0
     assert config.objective.policy.action_high == 0.16

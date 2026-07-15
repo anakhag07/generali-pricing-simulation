@@ -23,6 +23,7 @@ DEFAULT_ESTIMATORS = ("first_order", "finite_difference")
 DEFAULT_TEST_FRACTION = 0.2
 DEFAULT_INITIAL_U = 0.08
 DEFAULT_FD_STEP = 1e-4
+DEFAULT_N_GRAD_SAMPLES = 50
 DEFAULT_T_STEPS = 500
 
 
@@ -81,6 +82,12 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Action-space central finite-difference step (default: 1e-4).",
     )
     parser.add_argument(
+        "--n-grad-samples",
+        type=_positive_int,
+        default=DEFAULT_N_GRAD_SAMPLES,
+        help=f"Perturbation samples per stochastic gradient (default: {DEFAULT_N_GRAD_SAMPLES}).",
+    )
+    parser.add_argument(
         "--estimators",
         nargs="+",
         choices=("first_order", "finite_difference", "spsa", "stein_difference"),
@@ -107,6 +114,7 @@ def _config_overrides(args: argparse.Namespace) -> dict[str, object]:
         "step_rule": "l-bfgs-b",
         "t_steps": int(args.t_steps),
         "sigma": float(args.fd_step),
+        "n_grad_samples": int(args.n_grad_samples),
         "perturbation_space": "u",
         "enabled_estimators": tuple(args.estimators),
         "constant_u_baselines": (0.0, 0.08, 0.16),

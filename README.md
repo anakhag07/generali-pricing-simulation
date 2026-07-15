@@ -389,7 +389,8 @@ Exact spline gradients are recorded as correctness diagnostics. Normal run
 outputs, including optimizer status, `summary.json`, `steps.csv`, reloadable
 policy artifacts, convergence plots, and train/test policy plots, are written
 under `results/xgb-logit-spline-experiment/`. Use `--help` for sample-count,
-split, seed, iteration, finite-difference, estimator, and launch overrides.
+split, seed, iteration, finite-difference, stochastic-gradient sample-budget,
+estimator, and launch overrides.
 
 `scripts/run_fixed_regression_noise_offset_grid.py` runs the synthetic
 fixed-regression homoskedastic/heteroskedastic noise x theta-offset grid. It

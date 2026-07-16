@@ -71,7 +71,7 @@ def build_synthetic_ladder_config(
         "n_samples": 1,
         "objective": objective,
         "theta0": None,
-        "step_rule": "optax-adam",
+        "step_rule": "l-bfgs-b",
         "perturbation_space": "theta",
         "t_steps": 500,
         "step_size": 0.05,

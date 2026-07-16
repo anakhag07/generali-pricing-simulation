@@ -374,7 +374,15 @@ class SmoothedNonconvex(SyntheticFunction):
     ) -> "SmoothedNonconvex":
         """Build a seeded instance with disjoint traps at distance
         ``bump_distance_range`` from $$w^*$$, each at ``depth_fraction`` of its
-        maximum admissible depth (larger distances allow deeper traps)."""
+        maximum admissible depth (larger distances allow deeper traps).
+
+        ``depth_fraction`` controls whether the traps are *real* local minima, and
+        only the budget $$a_j < \\frac{1}{2}\\gamma_j^2$$ (which keeps $$w^*$$ global)
+        is enforced. Shallow traps leave the quadratic pull dominant and descent
+        rolls straight through them: at the default 0.9 every trap is a local
+        minimum, at 0.5-0.3 some are, and by 0.1 none are. Lower it only if a
+        deliberately easier rung is wanted -- otherwise the rung stays labelled
+        nonconvex while behaving unimodally."""
         if dim < 1:
             raise ValueError("dim must be positive.")
         if n_bumps < 1:
@@ -478,7 +486,9 @@ class PiecewiseConvex(SyntheticFunction):
     $$v = Q^\\top (w - w^*)$$ (identity when ``rotation`` is None),
     $$f(w) = \\sum_i h_i(v_i)$$ where $$h_i$$ is quadratic
     $$\\frac{1}{2} c_i v^2$$ for $$|v| \\le k_i$$ and linear with slope
-    $$m_i > c_i k_i$$ beyond, giving kinks at $$\\pm k_i$$ from the optimum.
+    $$m_i \\ge c_i k_i$$ beyond, giving kinks at $$\\pm k_i$$ from the optimum.
+    Convexity needs $$m_i \\ge c_i k_i$$ (what validation enforces); the kink is
+    only genuine when the inequality is strict.
     ``kink_at_optimum`` collapses $$k_i$$ to 0 (weighted-L1 behavior).
     ``grad()`` will return the right derivative at kinks.
     """

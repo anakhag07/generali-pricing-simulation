@@ -41,6 +41,13 @@ def _probe_points(fn, rng: np.random.Generator, n: int = 8) -> list[np.ndarray]:
     return [w_star + scale * rng.normal(size=w_star.size) for scale in scales]
 
 
+def _descend(fn, w: np.ndarray, *, step: float = 0.01, iterations: int = 5000) -> np.ndarray:
+    """Run plain gradient descent from ``w`` and return where it settles."""
+    for _ in range(iterations):
+        w = w - step * fn.grad(w, _X_DUMMY)
+    return w
+
+
 def _central_fd(fn, w: np.ndarray, step: float = 1e-6) -> np.ndarray:
     grad = np.zeros_like(w)
     for i in range(w.size):
@@ -171,3 +178,27 @@ class TestSmoothedNonconvexInvariants:
     def test_optimal_value_is_negative_center_depth(self) -> None:
         fn = SmoothedNonconvex.from_seed(11, dim=4, center_depth=2.5)
         assert fn.optimal_value() == pytest.approx(-2.5, abs=1e-12)
+
+    def test_default_traps_are_genuine_local_minima(self) -> None:
+        """The rung is only a nonconvex benchmark if descent actually gets stuck.
+
+        Construction enforces the depth budget (w* stays global) but not that the
+        traps bite, so assert it at the default depth_fraction.
+        """
+        fn = SmoothedNonconvex.from_seed(11, dim=5, n_bumps=3)
+
+        for center in fn.bump_centers:
+            w = _descend(fn, center.copy())
+            assert np.linalg.norm(fn.grad(w, _X_DUMMY)) < 1e-8
+            assert np.linalg.norm(w - fn.w_star) > 1e-3, "descent escaped to w*"
+            assert fn.value(w, _X_DUMMY) > fn.optimal_value()
+
+    def test_shallow_traps_stop_trapping(self) -> None:
+        """Guards the depth_fraction warning in `SmoothedNonconvex.from_seed`."""
+        fn = SmoothedNonconvex.from_seed(11, dim=5, n_bumps=3, depth_fraction=0.1)
+
+        escaped = sum(
+            np.linalg.norm(_descend(fn, center.copy()) - fn.w_star) < 1e-3
+            for center in fn.bump_centers
+        )
+        assert escaped == len(fn.bump_centers)

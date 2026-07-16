@@ -29,10 +29,10 @@ from experiments.launch import (  # noqa: E402
 from experiments.paths import results_root  # noqa: E402
 from experiments.sweep_utils import run_sweep  # noqa: E402
 from objective.noise import HomoskedasticGaussianNoise, NoisyObjective  # noqa: E402
-from objective.objectives import QuadraticObjective  # noqa: E402
+from objective.objectives import StronglyConvexQuadratic  # noqa: E402
 
 
-BASE_PRESET = "quadratic_base"
+BASE_PRESET = "synthetic_quadratic_base"
 PROJECT_NAME = "quadratic-homoskedastic-lbfgsb-sweep"
 PILOT_PROJECT_NAME = "quadratic-homoskedastic-lbfgsb-pilot"
 OPTAX_PROJECT_NAME = "quadratic-homoskedastic-optax-adam-sweep"
@@ -183,7 +183,7 @@ def _build_override_list(
     if not np.isfinite(step_size) or step_size <= 0.0:
         raise ValueError("step_size must be finite and positive.")
     theta0 = np.ones(dimension, dtype=float) / np.sqrt(float(dimension))
-    base_objective = QuadraticObjective(dimension=dimension)
+    base_objective = StronglyConvexQuadratic.isotropic(dimension)
     return [
         {
             "_run_name": _variant_name(float(noise_std), float(fd_radius)),
@@ -408,7 +408,7 @@ def _summary_row(
     config = summary["config"]
     resolved_seeds = config["resolved_seed_setup"]
     run_seed = int(resolved_seeds["run_seed"])
-    dimension = int(config["objective"]["base_objective"]["dimension"])
+    dimension = len(config["objective"]["base_objective"]["w_star"])
     return {
         "noise_std": float(noise_std),
         "fd_radius": float(fd_radius),

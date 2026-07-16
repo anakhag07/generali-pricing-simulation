@@ -7,8 +7,8 @@ import pytest
 
 pytest.importorskip("jax")
 
-from objective.objectives.jax_prepared_glm import JaxPreparedGLMObjective  # noqa: E402
-from objective.objectives.prepared_glm import PreparedGLMBatch, PreparedGLMObjective  # noqa: E402
+from objective.objectives.generali.jax_prepared_glm import JaxPreparedGLMObjective  # noqa: E402
+from objective.objectives.generali.prepared_glm import PreparedGLMBatch, PreparedGLMObjective  # noqa: E402
 from objective.policy import MLPPolicy, mlp_init_theta  # noqa: E402
 
 

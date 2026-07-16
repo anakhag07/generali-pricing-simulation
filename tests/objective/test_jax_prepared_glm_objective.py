@@ -10,7 +10,7 @@ import pytest
 jax = pytest.importorskip("jax")
 import jax.numpy as jnp  # noqa: E402
 
-import objective.objectives.jax_prepared_glm as jax_glm  # noqa: E402
+import objective.objectives.generali.jax_prepared_glm as jax_glm  # noqa: E402
 from data.loader import (  # noqa: E402
     ACCEPTANCE_STATE_COLS,
     LOSS_FEATURE_COLS,
@@ -19,12 +19,12 @@ from data.loader import (  # noqa: E402
     load_model_artifacts,
     load_x_frame,
 )
-from objective.objectives.jax_prepared_glm import (  # noqa: E402
+from objective.objectives.generali.jax_prepared_glm import (  # noqa: E402
     JaxPreparedGLMObjective,
     prepare_jax_glm_objective,
 )
-from objective.objectives.model_based import ModelBasedObjective  # noqa: E402
-from objective.objectives.prepared_glm import (  # noqa: E402
+from objective.objectives.generali.model_based import ModelBasedObjective  # noqa: E402
+from objective.objectives.generali.prepared_glm import (  # noqa: E402
     PreparedGLMBatch,
     PreparedGLMObjective,
     prepare_glm_objective,

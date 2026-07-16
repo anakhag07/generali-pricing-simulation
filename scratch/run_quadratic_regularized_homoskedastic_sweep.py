@@ -32,7 +32,7 @@ from experiments.paths import results_root  # noqa: E402
 from experiments.sweep_utils import run_sweep  # noqa: E402
 from objective.base import Objective  # noqa: E402
 from objective.noise import HomoskedasticGaussianNoise, NoisyObjective  # noqa: E402
-from objective.objectives import QuadraticObjective  # noqa: E402
+from objective.objectives import StronglyConvexQuadratic  # noqa: E402
 
 
 BASE_PRESET = base_sweep.BASE_PRESET
@@ -393,7 +393,7 @@ def _build_override_list(
         u_center_vector=u_center_vector,
         source=proximal_reference,
     )
-    base_objective = QuadraticObjective(dimension=dimension)
+    base_objective = StronglyConvexQuadratic.isotropic(dimension)
     overrides: list[dict[str, object]] = []
     for regularizer, regularizer_weight in regularizer_specs:
         for noise_std in noise_stds:

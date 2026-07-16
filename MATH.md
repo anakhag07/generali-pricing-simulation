@@ -106,7 +106,7 @@ delegating to an inner policy (Constant, Linear, Softmax, or MLP).
 
 ## 3. Objectives
 
-### 3.1 Quadratic Objective
+### 3.1 Isotropic Quadratic Objective
 
 For a configured parameter dimension $$d$$:
 
@@ -116,11 +116,14 @@ $$J(\theta) = \frac{1}{2}\|\theta\|_2^2 = \frac{1}{2}\sum_{j=1}^{d}\theta_j^2$$
 
 $$\nabla J(\theta) = \theta, \qquad \nabla^2J(\theta) = I_d$$
 
-- **Source:** `src/objective/objectives/quadratic.py` :: `QuadraticObjective`
+- **Source:** `src/objective/objectives/synthetic/ladder.py` ::
+  `StronglyConvexQuadratic.isotropic(dim)`
 - **Notes:** This is a direct theta-space objective and does not compose through
   a policy. It is 1-strongly convex and 1-smooth, with unique minimizer
   $$\theta^*=0$$ and minimum value $$J(\theta^*)=0$$. The required `x_batch`
-  argument is ignored.
+  argument is ignored. It is the $$w^*=0,\, A=I$$ case of ladder rung 1
+  (section 3.7.1), which is why the former standalone `QuadraticObjective` was
+  folded into the ladder.
 
 ### 3.2 Fixed Regression Objective
 
@@ -137,7 +140,7 @@ $$\frac{\partial f}{\partial u} = \frac{\partial a}{\partial u}\,(\ell - r) - a\
 
 where $\frac{\partial a}{\partial u} = a(1 - a)\,\beta_2$.
 
-- **Source:** `src/objective/objectives/fixed_regression.py` :: `FixedRegressionObjective`
+- **Source:** `src/objective/objectives/synthetic/fixed_regression.py` :: `FixedRegressionObjective`
   - `_value_batch()` — per-sample values
   - `_grad_u_batch()` — per-sample $\partial f/\partial u$
 
@@ -154,7 +157,7 @@ where:
 
 $$\frac{\partial L}{\partial u} = \alpha\,\bigl(\sigma(z) - p^*(x)\bigr)$$
 
-- **Source:** `src/objective/objectives/planted_logistic.py` :: `PlantedLogisticObjective`
+- **Source:** `src/objective/objectives/synthetic/planted_logistic.py` :: `PlantedLogisticObjective`
   - `_value_batch()` — uses `np.logaddexp(0, z)` for numerical stability
   - `_grad_u_batch()` — zero at $u = u^*$ by construction
 - **Notes:** Convex in $u$. Known optimum $u^*$ is planted at construction.
@@ -307,15 +310,15 @@ where $g = \text{floor} - \bar{a}(\theta)$ and $\tau$ is temperature.
 
 $$\frac{\partial\,\text{penalty}}{\partial\,\bar{a}} = -2w\,\text{softplus}(g/\tau)\,\sigma(g/\tau)$$
 
-- **Source:** `src/objective/objectives/model_based.py` :: `ModelBasedObjective`
+- **Source:** `src/objective/objectives/generali/model_based.py` :: `ModelBasedObjective`
   - `_value_batch()` — per-sample values
   - `_glm_acceptance_proba()` — coefficient-backed GLM acceptance probability when available
   - `_grad_u_batch()` — per-sample $\partial f/\partial u$
   - `_d_acceptance_du_batch()` — analytical or FD acceptance derivative
   - `_acceptance_penalty()` — penalty value and gradient scale
-- **Source:** `src/objective/objectives/prepared_glm.py` :: `PreparedGLMObjective`, `PreparedGLMBatch`, `prepare_glm_objective()`
+- **Source:** `src/objective/objectives/generali/prepared_glm.py` :: `PreparedGLMObjective`, `PreparedGLMBatch`, `prepare_glm_objective()`
   - Uses the same GLM formulas after materializing `base_logit`, `loss`, `premium`, and policy features into a compact numeric batch.
-- **Source:** `src/objective/objectives/jax_prepared_glm.py` :: `JaxPreparedGLMObjective`, `JaxPreparedGLMScipyAdapter`, `prepare_jax_glm_objective()`
+- **Source:** `src/objective/objectives/generali/jax_prepared_glm.py` :: `JaxPreparedGLMObjective`, `JaxPreparedGLMScipyAdapter`, `prepare_jax_glm_objective()`
   - Uses the same prepared GLM formulas in JAX for fixed-batch SciPy callbacks. The explicit constraint-margin adapter uses $$\bar{a}(\theta) - \alpha$$, equivalent to SciPy's existing lower-bound form $$\bar{a}(\theta) \ge \alpha$$.
 - **Source:** `src/experiments/sensitivity_buckets.py` :: `glm_price_derivative_matrix()`, `glm_price_sensitivity_scores()`, `glm_price_sensitivity_matrix()`, `split_sensitivity_tertiles()`
 - **Source:** `src/reporting/visualization.py` :: `_plot_policy_delta_u_histograms()`, `_plot_policy_delta_u_by_elasticity()`, `_plot_policy_objective_contribution_summary()`
@@ -331,7 +334,7 @@ $$\bar{a}(\theta) = \mathbb{E}[a(x, \pi_\theta(x))]$$.
 
 $$\nabla_\theta J_{\lambda}(\theta) = \nabla_\theta J(\theta) - \lambda\,\nabla_\theta \bar{a}(\theta)$$
 
-- **Source:** `src/objective/objectives/model_based.py` :: `ModelBasedObjective.value()`, `ModelBasedObjective.grad()`, `ModelBasedObjective._lagrangian_adjustment()`
+- **Source:** `src/objective/objectives/generali/model_based.py` :: `ModelBasedObjective.value()`, `ModelBasedObjective.grad()`, `ModelBasedObjective._lagrangian_adjustment()`
 - **Notes:** `base_value()` and `base_value_at_u()` keep exposing the raw objective $$J$$ for experiment summaries and sweep frontier plots while optimization uses $$J_\lambda$$.
 
 ### 3.5 Noisy Objective Wrapper
@@ -354,7 +357,7 @@ noise seed $$s$$, the exact row $$x_i$$, and the exact action $$u_i$$. Therefore
 the same $$(x_i, u_i)$$ pair receives the same noise on every objective call, while
 different actions for the same row generally receive different noise.
 
-For a policy-free theta-space objective such as `QuadraticObjective`, the same
+For a policy-free theta-space objective such as a synthetic ladder rung, the same
 homoskedastic adapter instead provides one scalar noise value per exact
 parameter vector:
 
@@ -443,6 +446,110 @@ $$\frac{\partial b}{\partial u} = -\lambda_{bias}\,\sigma\left(\frac{u-h}{\tau}\
   objective for reporting, while optimization uses the biased surrogate through
   `value()` and `grad()`. The bias is deterministic and introduces no new seed
   stream.
+
+### 3.7 Synthetic Ladder Objectives
+
+Direct theta-space benchmark functions over the decision vector $$w = \theta$$
+with globally known minimizers by construction; `x_batch` is ignored and there
+is no policy or action space. Each instance is deterministic given its
+construction seed (`from_seed`), so true-gap metrics
+$$f(w) - f(w^*)$$ and $$\|w - w^*\|_2$$ need no reference runs.
+
+#### 3.7.1 Strongly Convex Quadratic (rung 1)
+
+$$f(w) = \tfrac{1}{2}(w - w^*)^\top A (w - w^*), \qquad
+A = Q\,\mathrm{diag}(\lambda)\,Q^\top,$$
+
+with $$Q$$ a seeded random rotation and eigenvalues log-spaced in
+$$[\mu, \mu\kappa]$$ for condition number $$\kappa$$.
+
+**Gradient:** $$\nabla f(w) = A(w - w^*)$$. The function is
+$$\mu$$-strongly convex and $$\mu\kappa$$-smooth with unique minimizer
+$$w^*$$ and minimum value 0.
+
+- **Source:** `src/objective/objectives/synthetic/ladder.py` :: `StronglyConvexQuadratic`
+
+#### 3.7.2 Smoothed Nonconvex With Known Global Minimum (rung 2)
+
+$$f(w) = \tfrac{1}{2}\|w - w^*\|^2
+ - a_0\, e^{-\|w - w^*\|^2/(2 s_0^2)}
+ - \sum_j a_j\, \psi\!\left(\frac{\|w - c_j\|^2}{\rho_j^2}\right),$$
+
+with the compactly supported $$C^\infty$$ mollifier
+$$\psi(s) = e^{1 - 1/(1 - s)}$$ on $$[0, 1)$$ and $$\psi \equiv 0$$ for
+$$s \ge 1$$, so trap $$j$$ affects only $$\{\|w - c_j\| < \rho_j\}$$.
+
+**Gradient:** with $$d = w - w^*$$, $$d_j = w - c_j$$, and
+$$s_j = \|d_j\|^2/\rho_j^2$$,
+
+$$\nabla f(w) = \left(1 + \frac{a_0}{s_0^2}\, e^{-\|d\|^2/(2 s_0^2)}\right) d
+ - \sum_j \frac{2 a_j}{\rho_j^2}\, \psi'(s_j)\, d_j,
+\qquad \psi'(s) = -\frac{\psi(s)}{(1 - s)^2}.$$
+
+**Global-minimum guarantee.** Let
+$$g(r) = \tfrac{1}{2} r^2 - a_0 e^{-r^2/(2 s_0^2)}$$ be the trap-free radial
+profile; $$g'(r) = r\,(1 + (a_0/s_0^2) e^{-r^2/(2 s_0^2)}) > 0$$ for
+$$r > 0$$, so $$g$$ is strictly increasing with unique minimum
+$$g(0) = -a_0$$. Construction enforces:
+
+1. clearance $$\gamma_j = \|c_j - w^*\| - \rho_j > 0$$ (no trap support
+   touches $$w^*$$, hence $$f(w^*) = -a_0$$ exactly and
+   $$\nabla f(w^*) = 0$$);
+2. pairwise disjoint trap supports
+   ($$\|c_i - c_j\| > \rho_i + \rho_j$$), so at most one trap is active at
+   any point;
+3. per-trap depth budget $$a_j < \tfrac{1}{2}\gamma_j^2$$.
+
+For $$w$$ in the support of trap $$j$$, $$r = \|w - w^*\| \ge \gamma_j$$ and
+$$f(w) \ge g(r) - a_j \ge g(0) + \tfrac{1}{2}\gamma_j^2 - a_j > f(w^*)$$;
+outside all supports $$f = g(r) > g(0)$$ for $$r > 0$$. Hence $$w^*$$ is the
+unique global minimizer.
+
+**Whether the traps actually trap is a separate, unenforced condition.** The
+budget above only guarantees that $$w^*$$ stays global; it says nothing about a
+trap admitting a local minimum. A trap center is never itself a critical point
+($$\psi'(0)$$ contributes nothing at $$w = c_j$$, leaving
+$$\nabla f(c_j) \propto c_j - w^*\neq 0$$), so a basin exists only when the trap
+is steep enough to overcome the quadratic pull. `from_seed` sets
+$$a_j = \texttt{depth\_fraction} \cdot \tfrac{1}{2}\gamma_j^2$$: empirically at the
+default 0.9 every trap is a genuine local minimum, at 0.5-0.3 only some are, and
+by 0.1 none are and the rung is unimodal despite remaining formally nonconvex.
+Both ends are pinned by tests in `tests/objective/test_synthetic_functions.py`.
+
+- **Source:** `src/objective/objectives/synthetic/ladder.py` :: `SmoothedNonconvex`
+
+#### 3.7.3 Piecewise Convex (rung 3, planned — structural stub)
+
+Intended form: with rotated coordinates $$v = Q^\top (w - w^*)$$ (identity
+when unrotated), $$f(w) = \sum_i h_i(v_i)$$ where
+
+$$h_i(v) = \begin{cases}
+ \tfrac{1}{2} c_i v^2 & |v| \le k_i \\
+ \tfrac{1}{2} c_i k_i^2 + m_i (|v| - k_i) & |v| > k_i
+\end{cases}$$
+
+with $$m_i > c_i k_i$$ producing kinks at $$\pm k_i$$; convexity requires
+$$m_i \ge c_i k_i$$. `kink_at_optimum` collapses $$k_i = 0$$ (weighted-L1
+behavior, nonsmooth at the optimum). `grad()` returns the right derivative at
+kinks. `_f`/`_grad_f` raise `NotImplementedError` until implemented.
+
+- **Source:** `src/objective/objectives/synthetic/ladder.py` :: `PiecewiseConvex`
+
+#### 3.7.4 Piecewise Nonconvex Double Well (rung 4, planned — structural stub)
+
+Intended form: with rotated coordinates $$v = Q^\top (w - w^*)$$, masked
+coordinates use
+
+$$h_i(v) = \min\!\left(\tfrac{1}{2} c_i v^2,\;
+ \tfrac{1}{2} d_i (v - b_i)^2 + \delta_i\right), \qquad \delta_i > 0,$$
+
+and unmasked coordinates stay purely quadratic. The decoy well at
+$$v = b_i$$ sits $$\delta_i$$ above the true well, so the global minimum is
+$$w^*$$ with value 0 (sum of coordinate-wise minima); the min of two parabolas
+is nonconvex with kinks at the crossing points. `_f`/`_grad_f` raise
+`NotImplementedError` until implemented.
+
+- **Source:** `src/objective/objectives/synthetic/ladder.py` :: `PiecewiseNonconvexDoubleWell`
 
 ---
 
@@ -608,8 +715,8 @@ $$
 
 - **Source:** `src/optimization/base.py` :: `Optimization.solve()`
   - `trust_constr_constraint()` builds the SciPy `NonlinearConstraint`
-- **Constraint value source:** `src/objective/objectives/model_based.py` :: `mean_acceptance()`
-- **Constraint gradient source:** `src/objective/objectives/model_based.py` :: `mean_acceptance_grad()`
+- **Constraint value source:** `src/objective/objectives/generali/model_based.py` :: `mean_acceptance()`
+- **Constraint gradient source:** `src/objective/objectives/generali/model_based.py` :: `mean_acceptance_grad()`
 - **Notes:** The repo passes `method="trust-constr"` through `scipy.minimize`
   and enforces the acceptance floor directly as a nonlinear inequality
   constraint, rather than via the smooth penalty path.

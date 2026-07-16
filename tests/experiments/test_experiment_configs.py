@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import numpy as np
 import pytest
 
 from experiments.config import ExperimentConfig
 from experiments.configs import get_config, list_configs
-from objective import QuadraticObjective
 
 
 def test_get_config_returns_config() -> None:
@@ -20,27 +18,21 @@ def test_get_config_unknown_name() -> None:
 
 def test_list_configs_includes_defaults() -> None:
     configs = list_configs()
-    assert "first_order_runs_diff_starts" in configs
     assert "fixed_regression_base" in configs
     assert "planted_logistic_base" in configs
-    assert "quadratic_base" in configs
+    assert "synthetic_quadratic_base" in configs
+    assert "synthetic_smoothed_nonconvex_base" in configs
     assert "real_data_glm_base" in configs
     assert "real_data_xgb_base" in configs
     assert "real_data_xgb_logit_spline_base" in configs
     assert "real_data_glm_softmax_policy_base" not in configs
 
 
-def test_quadratic_config_dimension_override_sets_objective_and_fixed_norm_start() -> None:
-    config = get_config("quadratic_base", overrides={"dimension": 7, "plot": False})
+def test_list_configs_excludes_removed_presets() -> None:
+    configs = list_configs()
+    assert "first_order_runs_diff_starts" not in configs  # dead: no consumers
+    assert "quadratic_base" not in configs  # folded into the ladder
 
-    assert isinstance(config.objective, QuadraticObjective)
-    assert config.objective.dimension == 7
-    assert config.theta0 is not None
-    assert config.theta0.shape == (7,)
-    assert np.linalg.norm(config.theta0) == pytest.approx(1.0)
-    assert config.objective.value(config.theta0, config.x_fixed) == pytest.approx(0.5)
-    assert config.perturbation_space == "theta"
-    assert "constant" not in config.enabled_estimators
 
 
 def test_get_config_accepts_real_data_builder_overrides() -> None:

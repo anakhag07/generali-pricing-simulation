@@ -12,7 +12,7 @@ from experiments.reporting.context import RunContext
 from experiments.reporting.json_summary import build_summary_payload
 from experiments.run import run_experiment
 from experiments.seeds import SeedSetup
-from objective import QuadraticObjective
+from objective import StronglyConvexQuadratic
 from objective.noise import HomoskedasticGaussianNoise, NoisyObjective
 
 
@@ -23,7 +23,7 @@ def _config(*, dimension: int = 3, theta0: np.ndarray | None = None) -> Experime
         state_dim=1,
         n_samples=1,
         x_fixed=np.zeros((1, 1), dtype=float),
-        objective=QuadraticObjective(dimension=dimension),
+        objective=StronglyConvexQuadratic.isotropic(dimension),
         theta0=theta0,
         step_rule="l-bfgs-b",
         perturbation_space="theta",
@@ -66,7 +66,7 @@ def test_policy_free_noisy_quadratic_is_seeded_and_deterministic() -> None:
     config = replace(
         base,
         objective=NoisyObjective(
-            QuadraticObjective(dimension=3),
+            StronglyConvexQuadratic.isotropic(3),
             HomoskedasticGaussianNoise(std=1e-4),
         ),
         enabled_estimators=("finite_difference",),
@@ -117,7 +117,7 @@ def test_policy_free_objective_rejects_action_only_estimators() -> None:
         ExperimentConfig(
             state_dim=1,
             n_samples=1,
-            objective=QuadraticObjective(dimension=2),
+            objective=StronglyConvexQuadratic.isotropic(2),
             theta0=np.ones(2),
             step_rule="l-bfgs-b",
             perturbation_space="theta",
@@ -125,8 +125,13 @@ def test_policy_free_objective_rejects_action_only_estimators() -> None:
         )
 
 
-def test_quadratic_config_serializes_dimension() -> None:
-    assert _config(dimension=5).to_dict()["objective"] == {
-        "type": "QuadraticObjective",
-        "dimension": 5,
-    }
+def test_quadratic_config_serializes_replayable_spec() -> None:
+    payload = _config(dimension=5).to_dict()["objective"]
+
+    assert payload["type"] == "StronglyConvexQuadratic"
+    assert payload["rung"] == "quadratic"
+    assert payload["spec"] == {"factory": "isotropic", "dim": 5}
+    assert payload["w_star"] == [0.0] * 5
+
+    rebuilt = StronglyConvexQuadratic.from_dict(payload)
+    assert rebuilt.theta_dim() == 5

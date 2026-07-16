@@ -214,13 +214,37 @@ Guidelines:
   - `NoisyObjective`: wraps policy objectives as $$\hat{M}(x,u)=M(x,u)+\delta(x,u)$$ and policy-free objectives with one theta-keyed homoskedastic draw; intentionally raises for analytical `grad()` because the noisy objective has no analytical gradient; delegates acceptance metrics/constraints to the base objective and exposes clean `base_value()` / `base_value_at_u()` for reporting
   - `NoNoise`: zero-noise adapter for tests or disabled noise wiring
 
-- **`src/objective/objectives/fixed_regression.py`** (source of truth for objective math)
+#### Objective Package Layout
+
+`src/objective/objectives/` is split by **provenance**, and the boundary is enforced
+by `tests/objective/test_package_boundary.py`:
+
+- `generali/` — bound to the real dataset and trained artifacts under `src/data`
+  (`model_based.py`, `prepared_glm.py`, `jax_prepared_glm.py`)
+- `synthetic/` — self-contained, analytically known optima, **must never import
+  `data`** so they stay usable as fast fixtures and reference benchmarks in a
+  checkout with no artifacts (`ladder.py`, `planted_logistic.py`,
+  `fixed_regression.py`)
+- top level — wrappers that serve both (`biased.py`; `objective/noise.py`)
+
+`objectives/__init__.py` re-exports the full surface, so `from objective import X`
+and `from objective.objectives import X` are unaffected by the layout. Put a new
+objective in the subpackage matching its provenance; if it needs the dataset, it
+belongs under `generali/`.
+
+- **`src/objective/objectives/synthetic/fixed_regression.py`** (source of truth for objective math)
   - `FixedRegressionObjective`: pricing objective $$f(u;x) = a(x,u)(\ell(x) - r(u))$$
   - `from_parameters` classmethod; batch evaluation via `value()`, `grad()`, `value_at_u()`
+  - Also the default policy-based fixture across ~20 test files; see Known Issues before removing
 
-- **`src/objective/objectives/quadratic.py`**
-  - `QuadraticObjective`: policy-free, dimension-configurable benchmark $$J(\theta)=\frac12\|\theta\|_2^2$$ with exact gradient $$\theta$$ and unique `optimal_theta()` at zero
-  - The required `x_batch` argument is shape-validated but ignored; no additional seed stream is needed
+- **`src/objective/objectives/synthetic/ladder.py`**
+  - Synthetic ladder of policy-free theta-space benchmark functions over the decision vector $$w=\theta$$ with globally known minimizers by construction (`from_seed` instances are fully deterministic; true-gap metrics need no reference runs); formulas and global-minimum proofs live in MATH.md section 3.7
+  - `SyntheticFunction`: ladder contract — `optimal_theta()`, `optimal_value()`, `min_kink_distance()` (FD-probe exclusion near kinks), `adversarial_probes()` (global-minimality stress points), and `is_convex` / `is_smooth` metadata flags consumed by contract tests
+  - `to_dict()` / `from_dict()` / `rung_name()`: replayable serialization. Seeded factories record their construction spec via `_record_spec`; `to_dict()` emits `{rung, spec, w_star, fingerprint}` — `w_star` so saved runs report true gaps without rebuilding, and the fingerprint so `from_dict()` fails loudly if a `from_seed` construction ever changes rather than silently replaying a different function. Instances built directly (not via a factory) carry `spec: None` and cannot be replayed
+  - `StronglyConvexQuadratic` (rung 1): seeded rotated quadratic with log-spaced spectrum controlled by `condition_number` and `mu`; `isotropic(dim)` is the unit-conditioned $$\frac12\|w\|_2^2$$ case at $$w^*=0$$ (replaces the former `QuadraticObjective`)
+  - `SmoothedNonconvex` (rung 2): quadratic well deepened at $$w^*$$ plus compactly supported mollifier traps; construction enforces support clearance from $$w^*$$, pairwise disjoint supports, and the per-trap depth budget that keeps $$w^*$$ the unique global minimizer. **`depth_fraction` decides whether the traps are real local minima and is not validated** — 0.9 (default) traps every basin, 0.1 traps none and silently makes the rung unimodal; both ends are pinned by tests
+  - `PiecewiseConvex` / `PiecewiseNonconvexDoubleWell` (rungs 3-4): structural stubs — seeded construction and field validation are locked down, but `_f`/`_grad_f` raise `NotImplementedError` until implemented (intended forms in MATH.md); the registry guard test forces newly implemented rungs into `IMPLEMENTED_SYNTHETIC_LADDER` and thereby into the shared contract tests
+  - `SYNTHETIC_LADDER` / `IMPLEMENTED_SYNTHETIC_LADDER`: rung registry used by contract tests and the ladder config factory
 
 - **`src/objective/objectives/biased.py`**
   - `ActionBias`: action-level deterministic bias interface used by `BiasedObjective`; no additional seed stream is needed
@@ -228,7 +252,7 @@ Guidelines:
   - `UpperSupportHingeBias`: upper-support optimism term $$b(u)=-\lambda_{bias}(u-h)_+$$ with optional smooth hinge; exact inside support and optimistic only above support
   - `BiasedObjective`: deterministic wrapper $$\hat{M}(x,u)=M(x,u)+b(x,u)$$ that exposes biased optimization values/gradients while `base_value()` / `base_value_at_u()` report the wrapped true objective
 
-- **`src/objective/objectives/model_based.py`**
+- **`src/objective/objectives/generali/model_based.py`**
   - `ModelBasedObjective`: pricing objective $$f(u;x) = a(x,u)(\hat{Y}(x) - (u + 1) \cdot p(x))$$ backed by trained sklearn/XGBoost models
   - Takes `acceptance_model` / `loss_model` artifact bundles that can apply saved external preprocessing before calling the inner sklearn/XGBoost model
   - Owns the policy-side raw-to-processed bridge: raw `x_batch` may be a DataFrame and stays at the objective boundary; by default, the acceptance bundle's saved `FeatureProcessor` is reused internally for `u(theta, x)` and `du/dtheta`
@@ -245,18 +269,18 @@ Guidelines:
   - Acceptance artifacts may provide `predict_acceptance(raw_frame, u)` and `d_acceptance_du(raw_frame, u)` hooks; the XGBoost logit-spline adapter uses them to retain policy-ID lookup columns and provide analytical gradients
   - `value()`, `grad()`, `value_at_u()`
 
-- **`src/objective/objectives/prepared_glm.py`**
+- **`src/objective/objectives/generali/prepared_glm.py`**
   - `PreparedGLMBatch`: compact numeric GLM batch with columns `[base_logit, loss, premium, policy_features...]`
   - `PreparedGLMObjective`: pure NumPy GLM objective over prepared batches; no pandas/sklearn calls in the hot path
   - `prepare_glm_batch(...)` / `prepare_glm_objective(...)`: materialize a GLM-backed `ModelBasedObjective` after artifact preprocessing has run once
 
-- **`src/objective/objectives/jax_prepared_glm.py`**
+- **`src/objective/objectives/generali/jax_prepared_glm.py`**
   - `JaxPreparedGLMObjective`: fixed-batch JAX version of the prepared GLM objective for SciPy callback use; transfers prepared arrays to device once and exposes NumPy-returning `value()`, `grad()`, value-only action hooks, `mean_acceptance()`, and `mean_acceptance_grad()` methods
   - `JaxPreparedGLMScipyAdapter`: explicit callback adapter with objective, gradient, constraint-margin, and constraint-Jacobian shapes for validation/benchmarking
   - `prepare_jax_glm_objective(...)`: materializes a GLM-backed `ModelBasedObjective` into a JAX objective after CPU artifact preprocessing; currently supports fixed full-batch first-order and zeroth-order GLM trust-constr/optax runs with constant policies plus linear/softmax policies over finite materializable feature maps, including built-in higher-order maps and `CallableFeatureMap`; the expanded policy design matrix is materialized once before device transfer
   - `MLPPolicy` is also supported on the JAX backend: theta is unpacked into `[W1, b1, W2, b2, W3, b3]` inside a jitted forward pass on the mapped features, so value/grad/mean_acceptance flow through autodiff (works with `first_order`, `finite_difference`, `gauss_stein`, `spsa`, `optax-adam`, and `trust-constr`). The action-space policy Jacobian (`policy_grad`/`policy_weighted_grad`, used only by `stein_difference` and diagnostics) is intentionally not materialized for MLP and raises `NotImplementedError`
 
-- **`src/objective/objectives/planted_logistic.py`**
+- **`src/objective/objectives/synthetic/planted_logistic.py`**
   - `PlantedLogisticObjective`: convex logistic objective with known optimum `u_star`
   - `optimal_u()` method exposes the planted optimum
 
@@ -384,11 +408,10 @@ Guidelines:
     `canonical_training_block`, `canonical_runtime_block`, and `build_experiment_config`
 
 - **`src/experiments/configs/`** (preset registry)
-  - `__init__.py`: `get_config(name, overrides=None)` and `list_configs()` registry; factory-backed presets accept objective-specific axes before standard `ExperimentConfig` overrides
-  - `quadratic_base.py`: `build_quadratic_config(dimension=...)` creates the policy-free strongly convex benchmark with a fixed-norm start and a fixed dummy state batch; `dimension` is available to generic sweeps
+  - `__init__.py`: `get_config(name, overrides=None)` and `list_configs()` registry. Two tables: `_FACTORY_BASES` maps a preset name to `(factory, base payload)` — factories accept objective-specific axes before standard `ExperimentConfig` overrides — and `_MODULE_BASES` maps a name to a module exposing `CONFIG`. Add a factory-backed preset by adding one `_FACTORY_BASES` row
+  - `synthetic_ladder.py`: `build_synthetic_ladder_config(rung=..., dimension=..., function_seed=..., function_params=...)` builds ladder presets over `SYNTHETIC_LADDER` rungs (registry names `synthetic_quadratic_base`, `synthetic_smoothed_nonconvex_base`); defaults to `step_rule="l-bfgs-b"` (the rungs are pure NumPy — do not default these to an optax rule, which drags JAX into every ladder run and test), `theta0=None` (drawn from the theta seed stream), and estimators `first_order`/`finite_difference`/`spsa`/`stein_difference` — `gauss_stein` is excluded by default (one-sided score estimator, too high variance) and `stein_difference` runs in its two-sided theta-space mode; `perturbation_space="u"` and stub rungs are rejected with clear errors
   - `real_data_factory.py`: `build_real_data_config(...)` centralizes GLM/XGB artifact loading, row selection, policy construction, feature-order overrides, softmax action-bound overrides, policy-side no-PCA preprocessing, GLM-only `u_coef` acceptance overrides, acceptance-floor modes, estimator defaults, and theta initialization; omitted or `None` `n_samples` uses all complete eligible rows, while an integer `n_samples` samples without replacement
     - `loss_source="observed"` is an override axis that appends `Y_G_Loss` to the fixed real-data frame and configures `ModelBasedObjective` to use it as the loss term; default `"predicted"` keeps the artifact loss model
-  - `first_order_runs_diff_starts.py`: planted-logistic preset configured for comparison runs across different initial starts
   - `fixed_regression_base.py`: base fixed-regression config (4D, L-BFGS-B step rule, W&B enabled)
   - `planted_logistic_base.py`: planted logistic base config (3D, L-BFGS-B step rule, 5000 steps, u*=1.1)
   - `real_data_glm_base`: registry-only base built by `real_data_factory.py`; supports `policy_kind`, `feature_order`, `policy_preprocessing`, `constraint_mode`, GLM acceptance `u_coef`, runtime, and estimator overrides
@@ -547,7 +570,65 @@ Guidelines:
 These are documented here so agents can account for them and clean them up
 when appropriate.
 
-- _None currently tracked._
+### Ladder rungs 3-4 are unimplemented stubs
+
+`PiecewiseConvex` and `PiecewiseNonconvexDoubleWell` in
+`src/objective/objectives/synthetic/ladder.py` carry seeded construction and full
+field validation, but `_f` / `_grad_f` / `min_kink_distance` raise
+`NotImplementedError`. They are deliberately retained for later implementation;
+intended formulas are in MATH.md 3.7.3 / 3.7.4. `build_synthetic_ladder_config`
+rejects them, and `test_stub_rungs_raise_until_implemented` fails once they are
+implemented, forcing them into `IMPLEMENTED_SYNTHETIC_LADDER` and thereby into the
+shared contract tests. Their validation logic is unexercised and may need revising
+when the math lands.
+
+### Objective serialization is only half-collapsed
+
+`_objective_to_dict` in `src/experiments/config.py` now raises instead of falling
+back to a bare `{"type": ...}` (which silently dropped the parameters a saved run
+needs to rebuild its objective), and the ladder owns `to_dict()`/`from_dict()`.
+The rest is still an isinstance ladder in `config.py`, composed with three more —
+`_policy_to_dict`, `_noise_to_dict`, `_action_bias_to_dict`. Finishing the collapse
+means pushing `to_dict()` onto `Policy` (5 classes), `FeatureMap` (5),
+`ObjectiveNoise` (3), and `ActionBias` (2), because objectives live in `objective/`
+and cannot import from `experiments/`. Deferred as its own change.
+
+### Deferred removals — verify blast radius before acting
+
+Three removals were scoped and then deliberately deferred. In each case the
+*preset* looked dead while the underlying object was load-bearing; measure both
+before deleting.
+
+- **`planted_logistic`** — `planted_logistic_base` is the `BASE_PRESET` for 4
+  active scripts (`run_noise_offset_grid`, `run_planted_logistic_action_bias_sweep`,
+  `run_planted_logistic_support_bias_sweep`, `run_support_bias_noise_grid`), the
+  canonical example in `experiments/manifest.py` docs/tests, and a fixture in ~17
+  test files. `run_support_bias_noise_grid.py` also rebuilds
+  `PlantedLogisticObjective` from saved `summary.json` configs, so removing it
+  makes existing saved runs unscorable.
+- **`fixed_regression`** — `FixedRegressionObjective` is constructed as the fixture
+  in ~20 test files across `tests/optimization/`, `tests/reporting/`, and
+  `tests/experiments/`. It and `planted_logistic` are the only policy-based
+  objectives that need no data artifacts; removing both would leave the entire
+  policy/action layer testable only via `generali/` objectives that require
+  gitignored artifacts.
+- **`real_data_xgb_base`** — removing the preset alone leaves a half-state:
+  `build_real_data_config(model_type="xgb")`, `FEATURE_COLS_XGB`, and
+  `src/data/models/xgb/` all remain, reachable from the factory but not the
+  registry. It also changes what `scripts/query_acceptance_at_u.py --model-type xgb`
+  reports (raw XGB over all eligible rows vs. a spline approximation over 200 rows
+  on `[0, 0.16]`), and several tests assert raw-XGB behavior the spline does not
+  share (`u_coef` rejection, `first_order` exclusion). A real removal spans preset +
+  factory + loader + artifacts + tests.
+
+### The full test suite cannot run on a login node
+
+Tests that initialize JAX abort in `make_cpu_client` on CPU-limited login nodes.
+This is environmental and reproduces on `main` (e.g. `tests/optimization/test_optax_step_rule.py`);
+it is not caused by any recent change. Run the JAX-touching tests on a GPU node, or
+exclude `tests/objective/test_jax_prepared_glm*`, `tests/optimization/test_jax_*`,
+`tests/optimization/test_optax_step_rule.py`, and
+`tests/experiments/test_noisy_objective_backend.py` when validating locally.
 
 ## Testing
 
@@ -578,7 +659,9 @@ when appropriate.
 | `test_objective_batch.py` | Deterministic objective private batch helpers and `value_at_u` |
 | `test_objective_package_exports.py` | objective package API exports remain importable |
 | `test_planted_logistic_objective.py` | Planted logistic gradient at u_star and minimum |
-| `test_quadratic_objective.py` | Direct theta-space quadratic value, gradient, finite-difference parity, optimum, dimension validation, and state independence |
+| `test_synthetic_functions.py` | Synthetic ladder contract: seeded determinism, FD gradient parity (kink-aware), zero gradient at optimum, global minimality on random + adversarial probes, x_batch irrelevance, registry/stub guards, smoothed-nonconvex construction invariants, and that default-`depth_fraction` traps are genuine local minima while shallow ones are not |
+| `test_objective_serialization.py` | Objectives serialize replayably: unregistered objectives raise instead of degrading to a bare `{"type": ...}`; ladder presets round-trip through `to_dict`/`from_dict`; changed constructions and factory-less instances are rejected |
+| `test_package_boundary.py` | Enforces the objective seam: no module under `objectives/synthetic/` may import `data` |
 | `test_biased_objective.py` | Deterministic linear/support action-bias wrapper value, action-gradient, theta-gradient, reporting, and serialization |
 | `test_noise.py` | Gaussian noise adapters (homoskedastic + heteroskedastic keying, determinism, seed-stream wiring) and `NoisyObjective` behavior |
 | `test_model_based_objective.py` | `value()`, `grad()` shape, `value_at_u()`, analytical vs FD grad agreement |
@@ -647,6 +730,7 @@ when appropriate.
 | `test_noisy_glm_theta_variance_sweep_script.py` | Noisy GLM theta/variance truth parsing, variant construction, launch plan, and aggregate outputs |
 | `test_policy_pca_grid.py` | Policy PCA grid condition construction and aggregate output writing |
 | `test_policy_free_objective.py` | Policy-free dimension resolution, optimization convergence, optional action metrics, and strict JSON serialization |
+| `test_synthetic_ladder_config.py` | Synthetic ladder presets: registration, defaults, function-param forwarding, u-space/stub rejection, and deterministic end-to-end smoke runs with true-gap metrics |
 
 #### `tests/reporting/`
 | Test File | Area |

@@ -15,8 +15,8 @@ from data.loader import (
     load_model_artifacts,
     load_x_frame,
 )
-from objective.objectives.model_based import ModelBasedObjective
-from objective.objectives.prepared_glm import (
+from objective.objectives.generali.model_based import ModelBasedObjective
+from objective.objectives.generali.prepared_glm import (
     PreparedGLMBatch,
     PreparedGLMObjective,
     prepare_glm_batch,

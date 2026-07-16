@@ -12,7 +12,7 @@ import jax.numpy as jnp
 
 from objective._math import _sigmoid
 from objective.base import Objective, Policy
-from objective.objectives.prepared_glm import (
+from objective.objectives.generali.prepared_glm import (
     PreparedGLMBatch,
     ProbabilityTarget,
     _N_METADATA_COLS,

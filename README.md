@@ -68,13 +68,20 @@ J(\theta) = \mathbb{E}_x\big[f(\pi_\theta(x); x)\big]
 $$
 
 Direct theta-space objectives may instead define $$J(\theta)$$ without a policy.
-`QuadraticObjective(dimension=d)` provides the strongly convex benchmark
-$$J(\theta)=\frac12\|\theta\|_2^2$$ with unique minimizer $$\theta^*=0$$.
-`NoisyObjective` can apply reproducible homoskedastic Gaussian noise keyed by
-the exact parameter vector to these policy-free objectives.
+`StronglyConvexQuadratic.isotropic(d)` provides the strongly convex benchmark
+$$J(\theta)=\frac12\|\theta\|_2^2$$ with unique minimizer $$\theta^*=0$$, and
+`StronglyConvexQuadratic.from_seed(...)` generalizes it to a seeded rotated
+spectrum with a configurable condition number. `NoisyObjective` can apply
+reproducible homoskedastic Gaussian noise keyed by the exact parameter vector to
+these policy-free objectives.
+
+Objectives are split by provenance under `src/objective/objectives/`:
+`generali/` needs the real dataset and trained artifacts, `synthetic/` is
+self-contained with analytically known optima. Both are re-exported, so
+`from objective import X` works regardless of which side a class lives on.
 
 Pluggable components:
-- **Objectives**: `QuadraticObjective`, `FixedRegressionObjective`, `PlantedLogisticObjective`, `ModelBasedObjective`, `PreparedGLMObjective`, `JaxPreparedGLMObjective`, plus `NoisyObjective` and `BiasedObjective` wrappers
+- **Objectives**: synthetic — the ladder (`StronglyConvexQuadratic`, `SmoothedNonconvex`), `FixedRegressionObjective`, `PlantedLogisticObjective`; generali — `ModelBasedObjective`, `PreparedGLMObjective`, `JaxPreparedGLMObjective`; plus `NoisyObjective` and `BiasedObjective` wrappers
 - **Policies**: `ConstantPolicy`, `LinearPolicy`, `SoftmaxPolicy`, `MLPPolicy` (2-layer, default hidden=16)
 - **Gradient estimators**: `constant`, `first_order`, `finite_difference`, `gauss_stein`, `stein_difference`, `spsa`
 
@@ -114,16 +121,36 @@ Core API convention:
   path for chain-rule gradients because it avoids materializing full
   `(n_samples, theta_dim)` policy Jacobians.
 
-The registered `quadratic_base` preset exposes `dimension` as a factory and
-sweep axis. Its fixed-norm start keeps the initial objective equal to `0.5`
-across dimensions:
-
-```python
-config = get_config("quadratic_base", overrides={"dimension": 50})
-```
-
 Policy-free runs report theta/objective diagnostics normally and leave action
 metrics such as `final_u` and `mean_u` null.
+
+The synthetic ladder provides the policy-free benchmarks: seeded functions whose
+global minimizers are known exactly by construction, so true-gap metrics need no
+reference run (see MATH.md 3.7). `synthetic_quadratic_base` is a rotated
+ill-conditioned quadratic and `synthetic_smoothed_nonconvex_base` a quadratic with
+compactly supported traps, with piecewise convex/nonconvex rungs stubbed for later.
+`dimension` and rung parameters are factory and sweep axes:
+
+```python
+config = get_config(
+    "synthetic_quadratic_base",
+    overrides={"dimension": 50, "function_params": {"condition_number": 1000.0}},
+)
+```
+
+Ladder presets default to `l-bfgs-b` with estimators `first_order`,
+`finite_difference`, `spsa`, and `stein_difference` (theta-space two-sided
+mode); there is no action space, so `perturbation_space="u"` is rejected.
+
+Ladder runs record their construction in `summary.json` as
+`{rung, spec, w_star, fingerprint}`, so a saved run can be replayed with
+`SyntheticFunction.from_dict(...)`. The fingerprint makes a changed `from_seed`
+construction fail loudly rather than silently rebuild a different function.
+
+For `synthetic_smoothed_nonconvex_base`, `function_params={"depth_fraction": ...}`
+controls whether the traps are genuine local minima. The default `0.9` traps every
+basin; lowering it toward `0.1` makes descent roll straight through, leaving the
+rung unimodal despite still being the nonconvex rung.
 
 `NoisyObjective` wraps an existing objective with additive deterministic
 action-level noise $$\hat{M}(x,u)=M(x,u)+\delta(x,u)$$. The
@@ -185,7 +212,8 @@ Available base presets include:
 
 | Preset | State source | Objective |
 |---|---|---|
-| `quadratic_base` | Fixed dummy batch (ignored) | `QuadraticObjective` |
+| `synthetic_quadratic_base` | Fixed dummy batch (ignored) | `StronglyConvexQuadratic` (seeded rotation, configurable condition number) |
+| `synthetic_smoothed_nonconvex_base` | Fixed dummy batch (ignored) | `SmoothedNonconvex` (known global minimum, local-minima traps) |
 | `fixed_regression_base` | Synthetic N(0, I) | `FixedRegressionObjective` |
 | `real_data_glm_base` | All complete eligible raw acceptance CSV rows by default; seeded `n_samples` draw when set | `ModelBasedObjective` (GLM bundle, analytical grad when supported) |
 | `real_data_xgb_base` | All complete eligible raw acceptance CSV rows by default; seeded `n_samples` draw when set | `ModelBasedObjective` (XGBoost bundle, FD acceptance gradient) |

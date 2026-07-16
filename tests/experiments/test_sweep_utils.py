@@ -64,14 +64,15 @@ def test_generate_sweep_runs_from_grid() -> None:
 
 def test_generate_sweep_runs_accepts_quadratic_dimension_axis() -> None:
     runs = generate_sweep_runs(
-        base_preset="quadratic_base",
+        base_preset="synthetic_quadratic_base",
         override_grid={"dimension": [2, 5], "plot": [False]},
         display_keys=("dimension",),
     )
 
     assert [run_name for run_name, _, _ in runs] == ["dimension-2", "dimension-5"]
-    assert [config.objective.dimension for _, config, _ in runs] == [2, 5]
-    assert [config.theta0.shape for _, config, _ in runs] == [(2,), (5,)]
+    assert [config.objective.theta_dim() for _, config, _ in runs] == [2, 5]
+    # Ladder presets leave theta0 unset so the runner draws it from the theta seed stream.
+    assert all(config.theta0 is None for _, config, _ in runs)
 
 
 def test_generate_sweep_runs_accepts_real_data_factory_overrides() -> None:

@@ -550,7 +550,14 @@ def _objective_to_dict(objective: Objective) -> dict[str, Any]:
             if objective.policy_feature_cols is not None
             else None,
         }
-    return {"type": type(objective).__name__}
+    # Never fall back to a bare {"type": ...}: that silently drops the parameters a
+    # saved run needs to rebuild its objective, so gaps and replays become impossible
+    # long after the run finished.
+    raise TypeError(
+        f"{type(objective).__name__} has no serialization branch in _objective_to_dict, so "
+        "its run summary could not record the parameters needed to rebuild it. Add a branch "
+        "here (or a to_dict() on the objective) before running with it."
+    )
 
 
 def _noise_to_dict(noise: ObjectiveNoise) -> dict[str, Any]:

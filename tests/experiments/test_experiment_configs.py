@@ -18,14 +18,20 @@ def test_get_config_unknown_name() -> None:
 
 def test_list_configs_includes_defaults() -> None:
     configs = list_configs()
-    assert "first_order_runs_diff_starts" in configs
     assert "fixed_regression_base" in configs
     assert "planted_logistic_base" in configs
     assert "synthetic_quadratic_base" in configs
+    assert "synthetic_smoothed_nonconvex_base" in configs
     assert "real_data_glm_base" in configs
     assert "real_data_xgb_base" in configs
     assert "real_data_xgb_logit_spline_base" in configs
     assert "real_data_glm_softmax_policy_base" not in configs
+
+
+def test_list_configs_excludes_removed_presets() -> None:
+    configs = list_configs()
+    assert "first_order_runs_diff_starts" not in configs  # dead: no consumers
+    assert "quadratic_base" not in configs  # folded into the ladder
 
 
 

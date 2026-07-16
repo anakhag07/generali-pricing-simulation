@@ -4,6 +4,7 @@ from experiments.config import CorrectnessSpec, ExperimentConfig
 from experiments.configs import get_config, list_configs
 from experiments.execution import ExecutedRun, default_reporter_stack, execute_experiment_run
 from experiments.launch import LaunchContext, LaunchPlan, add_launch_args, run_launch_plan
+from experiments.manifest import ExperimentManifestResult, ManifestSweepResult, run_experiment_manifest
 from experiments.paths import results_root
 from experiments.results import ConstantBaselineResult, EstimatorResult, ExperimentResult, OptimizationTrace, PolicyEvaluation
 from experiments.run import run_experiment
@@ -22,6 +23,9 @@ __all__ = [
     "LaunchPlan",
     "add_launch_args",
     "run_launch_plan",
+    "ExperimentManifestResult",
+    "ManifestSweepResult",
+    "run_experiment_manifest",
     "ConstantBaselineResult",
     "EstimatorResult",
     "ExperimentResult",

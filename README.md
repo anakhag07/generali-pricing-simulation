@@ -394,6 +394,68 @@ instead of the default 60x60 used for cheaper synthetic objectives.
 override lists, or override grids; use `--requires-jax` when a sweep should submit
 to the GPU Slurm profile.
 
+`scripts/run_experiment_manifest.py` runs the same seed-aware sweep machinery from
+a readable JSON manifest. Use it when a run matrix needs named axes, objective
+wrappers, or resumable skip behavior. By default, the runner checks the expected
+`summary-seed-<seed>.json` files for each variant and skips variants whose
+required estimator summaries already exist, so rerunning a completed manifest is
+cheap.
+
+```json
+{
+  "name": "planted-noise-bias-demo",
+  "base_preset": "planted_logistic_base",
+  "project_name": "planted-noise-bias-demo",
+  "run_seeds": [7, 8, 9],
+  "vary": ["optimizer", "noise"],
+  "anchor_seed": 7,
+  "completion": {
+    "required_estimators": ["finite_difference", "stein_difference"]
+  },
+  "defaults": {
+    "n_samples": 1000,
+    "step_rule": "optax-adam",
+    "t_steps": 2000,
+    "step_size": 0.05,
+    "sigma": 0.05,
+    "n_grad_samples": 8,
+    "enabled_estimators": ["finite_difference", "stein_difference"],
+    "correctness": {"gradient_source": "denoised_exact"},
+    "plot": false,
+    "verbose": false,
+    "wandb_enabled": false
+  },
+  "matrix": {
+    "data_ladder": [
+      {"label": "n100", "overrides": {"n_samples": 100}},
+      {"label": "n1000", "overrides": {"n_samples": 1000}}
+    ],
+    "noise": [
+      {"label": "clean", "kind": "none"},
+      {"label": "homo-0p5", "kind": "homoskedastic", "std": 0.5},
+      {"label": "hetero-1", "kind": "heteroskedastic", "growth": 1.0}
+    ],
+    "bias": [
+      {"label": "unbiased", "kind": "none"},
+      {
+        "label": "hinge-0p05",
+        "kind": "upper_support_hinge",
+        "lambda_bias": 0.05,
+        "support_radius": 0.05
+      }
+    ]
+  },
+  "run_name_template": "{data_ladder.label}__{noise.label}__{bias.label}"
+}
+```
+
+Run or inspect it with:
+
+```bash
+python scripts/run_experiment_manifest.py experiment.json --dry-run
+python scripts/run_experiment_manifest.py experiment.json --launch slurm --requires-jax
+```
+
 To run the dedicated XGB logit-spline convergence and policy experiment, use:
 
 ```bash

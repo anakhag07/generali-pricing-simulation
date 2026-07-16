@@ -222,6 +222,14 @@ Guidelines:
   - `QuadraticObjective`: policy-free, dimension-configurable benchmark $$J(\theta)=\frac12\|\theta\|_2^2$$ with exact gradient $$\theta$$ and unique `optimal_theta()` at zero
   - The required `x_batch` argument is shape-validated but ignored; no additional seed stream is needed
 
+- **`src/objective/objectives/synthetic.py`**
+  - Synthetic ladder of policy-free theta-space benchmark functions over the decision vector $$w=\theta$$ with globally known minimizers by construction (`from_seed` instances are fully deterministic; true-gap metrics need no reference runs); formulas and global-minimum proofs live in MATH.md section 3.7
+  - `SyntheticFunction`: ladder contract — `optimal_theta()`, `optimal_value()`, `min_kink_distance()` (FD-probe exclusion near kinks), `adversarial_probes()` (global-minimality stress points), and `is_convex` / `is_smooth` metadata flags consumed by contract tests
+  - `StronglyConvexQuadratic` (rung 1): seeded rotated quadratic with log-spaced spectrum controlled by `condition_number` and `mu`
+  - `SmoothedNonconvex` (rung 2): quadratic well deepened at $$w^*$$ plus compactly supported mollifier traps; construction enforces support clearance from $$w^*$$, pairwise disjoint supports, and the per-trap depth budget that keeps $$w^*$$ the unique global minimizer
+  - `PiecewiseConvex` / `PiecewiseNonconvexDoubleWell` (rungs 3-4): structural stubs — seeded construction and field validation are locked down, but `_f`/`_grad_f` raise `NotImplementedError` until implemented (intended forms in MATH.md); the registry guard test forces newly implemented rungs into `IMPLEMENTED_SYNTHETIC_LADDER` and thereby into the shared contract tests
+  - `SYNTHETIC_LADDER` / `IMPLEMENTED_SYNTHETIC_LADDER`: rung registry used by contract tests and the ladder config factory
+
 - **`src/objective/objectives/biased.py`**
   - `ActionBias`: action-level deterministic bias interface used by `BiasedObjective`; no additional seed stream is needed
   - `LinearActionBias`: global optimism wrapper term $$b(u)=-\lambda_{bias}u$$
@@ -386,6 +394,7 @@ Guidelines:
 - **`src/experiments/configs/`** (preset registry)
   - `__init__.py`: `get_config(name, overrides=None)` and `list_configs()` registry; factory-backed presets accept objective-specific axes before standard `ExperimentConfig` overrides
   - `quadratic_base.py`: `build_quadratic_config(dimension=...)` creates the policy-free strongly convex benchmark with a fixed-norm start and a fixed dummy state batch; `dimension` is available to generic sweeps
+  - `synthetic_ladder.py`: `build_synthetic_ladder_config(rung=..., dimension=..., function_seed=..., function_params=...)` builds ladder presets over `SYNTHETIC_LADDER` rungs (registry names `synthetic_quadratic_base`, `synthetic_smoothed_nonconvex_base`); defaults to `step_rule="optax-adam"`, `theta0=None` (drawn from the theta seed stream), and estimators `first_order`/`finite_difference`/`spsa`/`stein_difference` — `gauss_stein` is excluded by default (one-sided score estimator, too high variance) and `stein_difference` runs in its two-sided theta-space mode; `perturbation_space="u"` and stub rungs are rejected with clear errors
   - `real_data_factory.py`: `build_real_data_config(...)` centralizes GLM/XGB artifact loading, row selection, policy construction, feature-order overrides, softmax action-bound overrides, policy-side no-PCA preprocessing, GLM-only `u_coef` acceptance overrides, acceptance-floor modes, estimator defaults, and theta initialization; omitted or `None` `n_samples` uses all complete eligible rows, while an integer `n_samples` samples without replacement
     - `loss_source="observed"` is an override axis that appends `Y_G_Loss` to the fixed real-data frame and configures `ModelBasedObjective` to use it as the loss term; default `"predicted"` keeps the artifact loss model
   - `first_order_runs_diff_starts.py`: planted-logistic preset configured for comparison runs across different initial starts
@@ -579,6 +588,7 @@ when appropriate.
 | `test_objective_package_exports.py` | objective package API exports remain importable |
 | `test_planted_logistic_objective.py` | Planted logistic gradient at u_star and minimum |
 | `test_quadratic_objective.py` | Direct theta-space quadratic value, gradient, finite-difference parity, optimum, dimension validation, and state independence |
+| `test_synthetic_functions.py` | Synthetic ladder contract: seeded determinism, FD gradient parity (kink-aware), zero gradient at optimum, global minimality on random + adversarial probes, x_batch irrelevance, registry/stub guards, and smoothed-nonconvex construction invariants |
 | `test_biased_objective.py` | Deterministic linear/support action-bias wrapper value, action-gradient, theta-gradient, reporting, and serialization |
 | `test_noise.py` | Gaussian noise adapters (homoskedastic + heteroskedastic keying, determinism, seed-stream wiring) and `NoisyObjective` behavior |
 | `test_model_based_objective.py` | `value()`, `grad()` shape, `value_at_u()`, analytical vs FD grad agreement |
@@ -647,6 +657,7 @@ when appropriate.
 | `test_noisy_glm_theta_variance_sweep_script.py` | Noisy GLM theta/variance truth parsing, variant construction, launch plan, and aggregate outputs |
 | `test_policy_pca_grid.py` | Policy PCA grid condition construction and aggregate output writing |
 | `test_policy_free_objective.py` | Policy-free dimension resolution, optimization convergence, optional action metrics, and strict JSON serialization |
+| `test_synthetic_ladder_config.py` | Synthetic ladder presets: registration, defaults, function-param forwarding, u-space/stub rejection, and deterministic end-to-end smoke runs with true-gap metrics |
 
 #### `tests/reporting/`
 | Test File | Area |

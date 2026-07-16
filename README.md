@@ -125,6 +125,24 @@ config = get_config("quadratic_base", overrides={"dimension": 50})
 Policy-free runs report theta/objective diagnostics normally and leave action
 metrics such as `final_u` and `mean_u` null.
 
+The synthetic ladder extends the policy-free benchmarks with seeded functions
+whose global minimizers are known exactly by construction (see MATH.md 3.7):
+`synthetic_quadratic_base` (rotated ill-conditioned quadratic) and
+`synthetic_smoothed_nonconvex_base` (quadratic with compactly supported traps),
+with piecewise convex/nonconvex rungs stubbed for later. Rung parameters pass
+through `function_params`:
+
+```python
+config = get_config(
+    "synthetic_quadratic_base",
+    overrides={"dimension": 50, "function_params": {"condition_number": 1000.0}},
+)
+```
+
+Ladder presets default to `optax-adam` with estimators `first_order`,
+`finite_difference`, `spsa`, and `stein_difference` (theta-space two-sided
+mode); there is no action space, so `perturbation_space="u"` is rejected.
+
 `NoisyObjective` wraps an existing objective with additive deterministic
 action-level noise $$\hat{M}(x,u)=M(x,u)+\delta(x,u)$$. The
 `HomoskedasticGaussianNoise` adapter (constant std) is keyed by exact
@@ -186,6 +204,8 @@ Available base presets include:
 | Preset | State source | Objective |
 |---|---|---|
 | `quadratic_base` | Fixed dummy batch (ignored) | `QuadraticObjective` |
+| `synthetic_quadratic_base` | Fixed dummy batch (ignored) | `StronglyConvexQuadratic` (seeded rotation, configurable condition number) |
+| `synthetic_smoothed_nonconvex_base` | Fixed dummy batch (ignored) | `SmoothedNonconvex` (known global minimum, local-minima traps) |
 | `fixed_regression_base` | Synthetic N(0, I) | `FixedRegressionObjective` |
 | `real_data_glm_base` | All complete eligible raw acceptance CSV rows by default; seeded `n_samples` draw when set | `ModelBasedObjective` (GLM bundle, analytical grad when supported) |
 | `real_data_xgb_base` | All complete eligible raw acceptance CSV rows by default; seeded `n_samples` draw when set | `ModelBasedObjective` (XGBoost bundle, FD acceptance gradient) |

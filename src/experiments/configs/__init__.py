@@ -7,7 +7,6 @@ from importlib import import_module
 from typing import Any, Mapping
 
 from experiments.config import ExperimentConfig
-from experiments.configs.quadratic_base import build_quadratic_config
 from experiments.configs.real_data_factory import build_real_data_config
 from experiments.configs.synthetic_ladder import build_synthetic_ladder_config
 
@@ -23,10 +22,6 @@ _REAL_DATA_BASES: dict[str, dict[str, Any]] = {
     "real_data_xgb_logit_spline_base": {"model_type": "xgb_logit_spline"},
 }
 
-_QUADRATIC_BASES: dict[str, dict[str, Any]] = {
-    "quadratic_base": {},
-}
-
 _SYNTHETIC_LADDER_BASES: dict[str, dict[str, Any]] = {
     "synthetic_quadratic_base": {"rung": "quadratic"},
     "synthetic_smoothed_nonconvex_base": {"rung": "smoothed_nonconvex"},
@@ -39,7 +34,6 @@ def list_configs() -> tuple[str, ...]:
     return tuple(
         [
             *_CONFIG_MODULES.keys(),
-            *_QUADRATIC_BASES.keys(),
             *_SYNTHETIC_LADDER_BASES.keys(),
             *_REAL_DATA_BASES.keys(),
         ]
@@ -48,13 +42,6 @@ def list_configs() -> tuple[str, ...]:
 
 def get_config(name: str, overrides: Mapping[str, Any] | None = None) -> ExperimentConfig:
     override_payload = dict(overrides or {})
-    if name in _QUADRATIC_BASES:
-        if not override_payload and name in _CONFIG_CACHE:
-            return _CONFIG_CACHE[name]
-        config = build_quadratic_config(**override_payload)
-        if not override_payload:
-            _CONFIG_CACHE[name] = config
-        return config
     if name in _SYNTHETIC_LADDER_BASES:
         if not override_payload and name in _CONFIG_CACHE:
             return _CONFIG_CACHE[name]

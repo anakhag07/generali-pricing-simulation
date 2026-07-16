@@ -15,7 +15,7 @@ from objective.noise import (
     NoisyObjective,
     NoNoise,
 )
-from objective.objectives import PlantedLogisticObjective, QuadraticObjective
+from objective.objectives import PlantedLogisticObjective, StronglyConvexQuadratic
 from objective.policy import ConstantPolicy
 
 
@@ -74,7 +74,7 @@ def test_homoskedastic_gaussian_noise_is_keyed_by_exact_theta_and_seed() -> None
 
 
 def test_noisy_objective_wraps_policy_free_quadratic_with_theta_noise() -> None:
-    base = QuadraticObjective(dimension=3)
+    base = StronglyConvexQuadratic.isotropic(3)
     noise = HomoskedasticGaussianNoise(std=0.25, seed=11)
     objective = NoisyObjective(base, noise)
     x = np.zeros((1, 1), dtype=float)
@@ -88,7 +88,7 @@ def test_noisy_objective_wraps_policy_free_quadratic_with_theta_noise() -> None:
 
 def test_policy_free_noise_rejects_heteroskedastic_adapter() -> None:
     objective = NoisyObjective(
-        QuadraticObjective(dimension=2),
+        StronglyConvexQuadratic.isotropic(2),
         HeteroskedasticGaussianNoise(base_std=0.1, growth=1.0, seed=3),
     )
 

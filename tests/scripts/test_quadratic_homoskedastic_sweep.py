@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 from objective.noise import HomoskedasticGaussianNoise, NoisyObjective
-from objective.objectives import QuadraticObjective
+from objective.objectives import StronglyConvexQuadratic
 from scratch import run_quadratic_homoskedastic_sweep as script
 
 
@@ -92,7 +92,7 @@ def test_override_list_covers_noise_by_radius_product() -> None:
     for item in overrides:
         objective = item["objective"]
         assert isinstance(objective, NoisyObjective)
-        assert isinstance(objective.base_objective, QuadraticObjective)
+        assert isinstance(objective.base_objective, StronglyConvexQuadratic)
         assert isinstance(objective.noise, HomoskedasticGaussianNoise)
         assert item["enabled_estimators"] == (script.ESTIMATOR,)
         assert item["perturbation_space"] == "theta"
@@ -336,7 +336,12 @@ def _summary_payload(
             "resolved_seed_setup": {"run_seed": run_seed},
             "objective": {
                 "type": "NoisyObjective",
-                "base_objective": {"type": "QuadraticObjective", "dimension": 2},
+                "base_objective": {
+                    "type": "StronglyConvexQuadratic",
+                    "rung": "quadratic",
+                    "spec": {"factory": "isotropic", "dim": 2},
+                    "w_star": [0.0, 0.0],
+                },
             },
         },
         "initial_value": 0.5,

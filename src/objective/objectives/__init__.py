@@ -6,7 +6,6 @@ from objective.objectives.fixed_regression import FixedRegressionObjective
 from objective.objectives.biased import ActionBias, BiasedObjective, LinearActionBias, UpperSupportHingeBias
 from objective.objectives.model_based import ModelBasedObjective
 from objective.objectives.planted_logistic import PlantedLogisticObjective
-from objective.objectives.quadratic import QuadraticObjective
 from objective.objectives.synthetic import (
     IMPLEMENTED_SYNTHETIC_LADDER,
     PiecewiseConvex,
@@ -49,7 +48,6 @@ __all__ = [
     "PiecewiseConvex",
     "PiecewiseNonconvexDoubleWell",
     "PlantedLogisticObjective",
-    "QuadraticObjective",
     "SmoothedNonconvex",
     "StronglyConvexQuadratic",
     "SYNTHETIC_LADDER",

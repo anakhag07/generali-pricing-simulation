@@ -15,12 +15,27 @@ are implemented (intended formulas are recorded in MATH.md).
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import numpy as np
 
 from objective.base import Objective, default_rng
+
+
+def _fingerprint(function: "SyntheticFunction") -> str:
+    """Hash $$w^*$$ plus $$f$$ at deterministic probes, identifying the function itself.
+
+    `from_dict` compares this against the rebuilt instance, so a change to any
+    `from_seed` construction fails loudly instead of silently replaying a
+    different function under the same spec.
+    """
+    w_star = np.asarray(function.w_star, dtype=float)
+    probes = w_star + np.random.default_rng(0).normal(size=(4, w_star.size))
+    values = np.array([function._f(probe) for probe in probes], dtype=float)
+    payload = np.concatenate([w_star, values]).astype("<f8").tobytes()
+    return hashlib.sha256(payload).hexdigest()[:16]
 
 
 class SyntheticFunction(Objective):
@@ -65,6 +80,62 @@ class SyntheticFunction(Objective):
         centers). Smooth convex rungs have none.
         """
         return np.empty((0, self.theta_dim()), dtype=float)
+
+    def rung_name(self) -> str:
+        """Return this instance's `SYNTHETIC_LADDER` registry key."""
+        for name, rung_cls in SYNTHETIC_LADDER.items():
+            if type(self) is rung_cls:
+                return name
+        raise ValueError(f"{type(self).__name__} is not registered in SYNTHETIC_LADDER.")
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize the construction spec, $$w^*$$, and a fingerprint.
+
+        `w_star` is recorded directly so saved runs can report true-gap metrics
+        without rebuilding; `spec` is what `from_dict` replays.
+        """
+        spec = getattr(self, "_spec", None)
+        return {
+            "type": type(self).__name__,
+            "rung": self.rung_name(),
+            "spec": dict(spec) if spec is not None else None,
+            "w_star": [float(value) for value in self.optimal_theta()],
+            "fingerprint": _fingerprint(self),
+        }
+
+    @staticmethod
+    def from_dict(payload: dict[str, Any]) -> "SyntheticFunction":
+        """Rebuild the instance recorded by `to_dict`, verifying the fingerprint."""
+        rung = payload["rung"]
+        if rung not in SYNTHETIC_LADDER:
+            raise ValueError(f"Unknown synthetic ladder rung {rung!r}.")
+        spec = payload.get("spec")
+        if spec is None:
+            raise ValueError(
+                f"Rung {rung!r} was built directly rather than through a seeded factory, "
+                "so it carries no replayable spec."
+            )
+        rung_cls = SYNTHETIC_LADDER[rung]
+        factory = spec["factory"]
+        if factory == "from_seed":
+            function = rung_cls.from_seed(
+                int(spec["seed"]), dim=int(spec["dim"]), **dict(spec.get("params") or {})
+            )
+        elif factory == "isotropic":
+            function = rung_cls.isotropic(int(spec["dim"]))
+        else:
+            raise ValueError(f"Unknown synthetic ladder factory {factory!r}.")
+        expected = payload.get("fingerprint")
+        if expected is not None and _fingerprint(function) != expected:
+            raise ValueError(
+                f"Rebuilt rung {rung!r} does not match the recorded fingerprint; the "
+                f"{factory!r} construction has changed since this run was saved."
+            )
+        return function
+
+    def _record_spec(self, **spec: Any) -> None:
+        """Attach the replay spec set by a seeded factory (frozen-dataclass safe)."""
+        object.__setattr__(self, "_spec", spec)
 
     def value(self, theta: np.ndarray, x_batch: np.ndarray) -> float:
         """Return $$f(\\theta)$$; ``x_batch`` is intentionally ignored."""
@@ -169,7 +240,31 @@ class StronglyConvexQuadratic(SyntheticFunction):
         w_star = rng.normal(size=dim) * float(w_star_scale)
         rotation = _seeded_rotation(rng, dim)
         eigenvalues = float(mu) * np.logspace(0.0, np.log10(condition_number), dim)
-        return cls(w_star=w_star, rotation=rotation, eigenvalues=eigenvalues)
+        function = cls(w_star=w_star, rotation=rotation, eigenvalues=eigenvalues)
+        function._record_spec(
+            factory="from_seed",
+            seed=int(seed),
+            dim=int(dim),
+            params={
+                "condition_number": float(condition_number),
+                "mu": float(mu),
+                "w_star_scale": float(w_star_scale),
+            },
+        )
+        return function
+
+    @classmethod
+    def isotropic(cls, dim: int) -> "StronglyConvexQuadratic":
+        """Build the unit-conditioned instance $$f(w) = \\frac{1}{2}\\|w\\|_2^2$$ at $$w^*=0$$."""
+        if dim < 1:
+            raise ValueError("dim must be positive.")
+        function = cls(
+            w_star=np.zeros(dim, dtype=float),
+            rotation=np.eye(dim, dtype=float),
+            eigenvalues=np.ones(dim, dtype=float),
+        )
+        function._record_spec(factory="isotropic", dim=int(dim))
+        return function
 
     def _f(self, w: np.ndarray) -> float:
         diff = w - self.w_star
@@ -318,7 +413,7 @@ class SmoothedNonconvex(SyntheticFunction):
             )
         clearances = np.linalg.norm(centers - w_star, axis=1) - radii
         depths = float(depth_fraction) * 0.5 * clearances**2
-        return cls(
+        function = cls(
             w_star=w_star,
             center_depth=float(center_depth),
             center_width=float(center_width),
@@ -326,6 +421,22 @@ class SmoothedNonconvex(SyntheticFunction):
             bump_depths=depths,
             bump_radii=radii,
         )
+        function._record_spec(
+            factory="from_seed",
+            seed=int(seed),
+            dim=int(dim),
+            params={
+                "n_bumps": int(n_bumps),
+                "center_depth": float(center_depth),
+                "center_width": float(center_width),
+                "bump_distance_range": [distance_lo, distance_hi],
+                "bump_radius_range": [radius_lo, radius_hi],
+                "depth_fraction": float(depth_fraction),
+                "w_star_scale": float(w_star_scale),
+                "max_placement_attempts": int(max_placement_attempts),
+            },
+        )
+        return function
 
     def adversarial_probes(self) -> np.ndarray:
         """Trap centers plus points halfway between each trap center and its support edge."""

@@ -6,9 +6,9 @@ This module provides:
 - Concrete policies: ConstantPolicy, LinearPolicy, SoftmaxPolicy, MLPPolicy
 - Policy feature maps: IdentityFeatureMap, QuadraticFeatureMap,
   CubicFeatureMap, QuarticFeatureMap, CallableFeatureMap
-- Concrete objectives: QuadraticObjective, FixedRegressionObjective,
-  BiasedObjective, PlantedLogisticObjective, ModelBasedObjective,
-  PreparedGLMObjective, JaxPreparedGLMObjective
+- Concrete objectives: FixedRegressionObjective, BiasedObjective,
+  PlantedLogisticObjective, ModelBasedObjective, PreparedGLMObjective,
+  JaxPreparedGLMObjective
 - Synthetic ladder: SyntheticFunction, StronglyConvexQuadratic,
   SmoothedNonconvex, PiecewiseConvex, PiecewiseNonconvexDoubleWell,
   SYNTHETIC_LADDER, IMPLEMENTED_SYNTHETIC_LADDER
@@ -36,7 +36,6 @@ from objective.objectives import (
     PiecewiseConvex,
     PiecewiseNonconvexDoubleWell,
     PlantedLogisticObjective,
-    QuadraticObjective,
     PreparedGLMBatch,
     PreparedGLMObjective,
     SmoothedNonconvex,
@@ -123,7 +122,6 @@ __all__ = [
     "LinearActionBias",
     "ModelBasedObjective",
     "PlantedLogisticObjective",
-    "QuadraticObjective",
     "PreparedGLMBatch",
     "PreparedGLMObjective",
     "UpperSupportHingeBias",

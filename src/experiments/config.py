@@ -15,7 +15,7 @@ from objective.objectives import (
     LinearActionBias,
     ModelBasedObjective,
     PlantedLogisticObjective,
-    QuadraticObjective,
+    SyntheticFunction,
     UpperSupportHingeBias,
 )
 from objective.noise import (
@@ -487,6 +487,8 @@ class ExperimentConfig:
 
 def _objective_to_dict(objective: Objective) -> dict[str, Any]:
     """Serialize objective to dictionary."""
+    if isinstance(objective, SyntheticFunction):
+        return objective.to_dict()
     if isinstance(objective, NoisyObjective):
         return {
             "type": "NoisyObjective",
@@ -517,11 +519,6 @@ def _objective_to_dict(objective: Objective) -> dict[str, Any]:
             "beta": _as_list(objective.beta),
             "bias": float(objective.bias),
             "u_star": float(objective.u_star),
-        }
-    if isinstance(objective, QuadraticObjective):
-        return {
-            "type": "QuadraticObjective",
-            "dimension": int(objective.dimension),
         }
     if isinstance(objective, ModelBasedObjective):
         return {

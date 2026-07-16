@@ -1,10 +1,11 @@
 """Synthetic ladder objectives: benchmark functions over the decision vector w = theta.
 
-Each rung is a direct theta-space objective (like `QuadraticObjective`): the
-optimization variable is the full vector ``w``, ``x_batch`` is validated but
-ignored, and there is no policy or action space. Every instance is
-deterministic given its construction seed and knows its global minimizer
-exactly by construction, so true-gap metrics need no reference runs.
+Each rung is a direct theta-space objective: the optimization variable is the
+full vector ``w``, ``x_batch`` is validated but ignored, and there is no policy
+or action space. Every instance is deterministic given its construction seed and
+knows its global minimizer exactly by construction, so true-gap metrics need no
+reference runs -- `to_dict` records ``w_star`` and a replay spec so that holds
+for saved runs too.
 
 Ladder registry: `SYNTHETIC_LADDER` maps rung names to classes;
 `IMPLEMENTED_SYNTHETIC_LADDER` lists the rungs that are runnable today. The

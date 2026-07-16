@@ -19,7 +19,7 @@ def _make_glm_objective(n_rows=20):
         load_model_artifacts,
         load_x_frame,
     )
-    from objective.objectives.model_based import ModelBasedObjective
+    from objective.objectives.generali.model_based import ModelBasedObjective
     from objective.policy import SoftmaxPolicy
 
     acc_model, loss_model = load_model_artifacts("glm")
@@ -159,7 +159,7 @@ def test_stein_difference_glm_uses_analytical_acceptance_without_predict_calls()
 
 def test_xgb_acceptance_falls_back_to_predict_proba() -> None:
     from data.loader import ACCEPTANCE_STATE_COLS, LOSS_FEATURE_COLS, PREMIUM_COL, load_model_artifacts, load_x_frame
-    from objective.objectives.model_based import ModelBasedObjective
+    from objective.objectives.generali.model_based import ModelBasedObjective
     from objective.policy import LinearPolicy
 
     acc_model, loss_model = load_model_artifacts("xgb")
@@ -226,7 +226,7 @@ def test_value_at_u_consistent_with_value():
         load_model_artifacts,
         load_x_frame,
     )
-    from objective.objectives.model_based import ModelBasedObjective
+    from objective.objectives.generali.model_based import ModelBasedObjective
 
     acc_model, loss_model = load_model_artifacts("glm")
     u_coef = extract_glm_u_coef(acc_model)
@@ -247,7 +247,7 @@ def test_value_at_u_consistent_with_value():
 
 
 def test_value_at_u_uses_shifted_revenue_multiplier() -> None:
-    from objective.objectives.model_based import ModelBasedObjective
+    from objective.objectives.generali.model_based import ModelBasedObjective
     from objective.policy import ConstantPolicy
 
     class ConstantAcceptanceModel:
@@ -290,7 +290,7 @@ def test_analytical_vs_fd_grad_glm():
         load_model_artifacts,
         load_x_frame,
     )
-    from objective.objectives.model_based import ModelBasedObjective
+    from objective.objectives.generali.model_based import ModelBasedObjective
     from objective.policy import SoftmaxPolicy
 
     acc_model, loss_model = load_model_artifacts("glm")
@@ -462,7 +462,7 @@ def test_spline_acceptance_hook_objective_grad_matches_fd() -> None:
     import pandas as pd
 
     from data.xgb_logit_spline import XGBLogitSplineAcceptance, fit_logit_spline_artifact
-    from objective.objectives.model_based import ModelBasedObjective
+    from objective.objectives.generali.model_based import ModelBasedObjective
     from objective.policy import ConstantPolicy
 
     class ConstantLossModel:
@@ -524,7 +524,7 @@ def test_step_metrics_match_objective_components() -> None:
 
 def test_mean_action_uses_clipped_u_when_bounds_present() -> None:
     from data.loader import ACCEPTANCE_STATE_COLS, LOSS_FEATURE_COLS, PREMIUM_COL, load_model_artifacts, load_x_frame
-    from objective.objectives.model_based import ModelBasedObjective
+    from objective.objectives.generali.model_based import ModelBasedObjective
     from objective.policy import LinearPolicy
 
     acc_model, loss_model = load_model_artifacts("xgb")

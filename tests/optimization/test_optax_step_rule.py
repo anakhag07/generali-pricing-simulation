@@ -7,9 +7,9 @@ import pytest
 
 pytest.importorskip("optax")
 
-from objective.objectives.jax_prepared_glm import JaxPreparedGLMObjective  # noqa: E402
-from objective.objectives.planted_logistic import PlantedLogisticObjective  # noqa: E402
-from objective.objectives.prepared_glm import PreparedGLMBatch  # noqa: E402
+from objective.objectives.generali.jax_prepared_glm import JaxPreparedGLMObjective  # noqa: E402
+from objective.objectives.synthetic.planted_logistic import PlantedLogisticObjective  # noqa: E402
+from objective.objectives.generali.prepared_glm import PreparedGLMBatch  # noqa: E402
 from objective.policy import ConstantPolicy, QuadraticFeatureMap, SoftmaxPolicy  # noqa: E402
 from optimization import FiniteDifferenceGradient, FirstOrderGradient, Optimization  # noqa: E402
 from optimization.optax_loop import optax_step_rule_optimizer  # noqa: E402

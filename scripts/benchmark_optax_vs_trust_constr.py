@@ -31,9 +31,9 @@ if str(SRC_DIR) not in sys.path:
 from experiments.configs import get_config  # noqa: E402
 from experiments.paths import results_root  # noqa: E402
 from objective.base import sample_states  # noqa: E402
-from objective.objectives.jax_prepared_glm import JaxPreparedGLMObjective  # noqa: E402
-from objective.objectives.planted_logistic import PlantedLogisticObjective  # noqa: E402
-from objective.objectives.prepared_glm import prepare_glm_batch  # noqa: E402
+from objective.objectives.generali.jax_prepared_glm import JaxPreparedGLMObjective  # noqa: E402
+from objective.objectives.synthetic.planted_logistic import PlantedLogisticObjective  # noqa: E402
+from objective.objectives.generali.prepared_glm import prepare_glm_batch  # noqa: E402
 from objective.policy import LinearPolicy  # noqa: E402
 from optimization import FirstOrderGradient, Optimization  # noqa: E402
 

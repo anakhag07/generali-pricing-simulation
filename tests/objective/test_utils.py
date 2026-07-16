@@ -4,8 +4,8 @@ import numpy as np
 import pytest
 
 from objective.policy import ConstantPolicy, LinearPolicy
-from objective.objectives.fixed_regression import FixedRegressionObjective
-from objective.objectives.planted_logistic import PlantedLogisticObjective
+from objective.objectives.synthetic.fixed_regression import FixedRegressionObjective
+from objective.objectives.synthetic.planted_logistic import PlantedLogisticObjective
 from objective.utils import (
     _theta_grad_from_u_grad,
     _action_value_at_u,

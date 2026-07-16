@@ -1,25 +1,39 @@
-"""Concrete objective implementations."""
+"""Concrete objective implementations.
+
+Split by provenance: `generali` objectives are bound to the real dataset and
+trained artifacts under `src/data`; `synthetic` objectives are self-contained with
+analytically known optima. Wrappers (`biased`, and `objective.noise`) apply to
+both and stay at this level.
+
+This module re-exports the whole surface, so `from objective import X` and
+`from objective.objectives import X` are unaffected by the split.
+"""
 
 from importlib import import_module
 
-from objective.objectives.fixed_regression import FixedRegressionObjective
-from objective.objectives.biased import ActionBias, BiasedObjective, LinearActionBias, UpperSupportHingeBias
-from objective.objectives.model_based import ModelBasedObjective
-from objective.objectives.planted_logistic import PlantedLogisticObjective
-from objective.objectives.synthetic import (
-    IMPLEMENTED_SYNTHETIC_LADDER,
-    PiecewiseConvex,
-    PiecewiseNonconvexDoubleWell,
-    SmoothedNonconvex,
-    StronglyConvexQuadratic,
-    SYNTHETIC_LADDER,
-    SyntheticFunction,
+from objective.objectives.biased import (
+    ActionBias,
+    BiasedObjective,
+    LinearActionBias,
+    UpperSupportHingeBias,
 )
-from objective.objectives.prepared_glm import (
+from objective.objectives.generali import (
+    ModelBasedObjective,
     PreparedGLMBatch,
     PreparedGLMObjective,
     prepare_glm_batch,
     prepare_glm_objective,
+)
+from objective.objectives.synthetic import (
+    FixedRegressionObjective,
+    IMPLEMENTED_SYNTHETIC_LADDER,
+    PiecewiseConvex,
+    PiecewiseNonconvexDoubleWell,
+    PlantedLogisticObjective,
+    SmoothedNonconvex,
+    StronglyConvexQuadratic,
+    SYNTHETIC_LADDER,
+    SyntheticFunction,
 )
 
 _JAX_EXPORTS = {
@@ -31,11 +45,12 @@ _JAX_EXPORTS = {
 
 def __getattr__(name: str):
     if name in _JAX_EXPORTS:
-        module = import_module("objective.objectives.jax_prepared_glm")
+        module = import_module("objective.objectives.generali.jax_prepared_glm")
         value = getattr(module, name)
         globals()[name] = value
         return value
     raise AttributeError(name)
+
 
 __all__ = [
     "ActionBias",

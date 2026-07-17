@@ -2,8 +2,8 @@
 
 Split by provenance: `generali` objectives are bound to the real dataset and
 trained artifacts under `src/data`; `synthetic` objectives are self-contained with
-analytically known optima. Wrappers (`biased`, and `objective.noise`) apply to
-both and stay at this level.
+analytically known optima. Objective-value wrappers now live in
+`objective.modifications` and are re-exported here for compatibility.
 
 This module re-exports the whole surface, so `from objective import X` and
 `from objective.objectives import X` are unaffected by the split.
@@ -11,7 +11,7 @@ This module re-exports the whole surface, so `from objective import X` and
 
 from importlib import import_module
 
-from objective.objectives.biased import (
+from objective.modifications import (
     ActionBias,
     BiasedObjective,
     LinearActionBias,

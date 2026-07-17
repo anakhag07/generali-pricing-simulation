@@ -12,10 +12,10 @@ This module provides:
 - Synthetic ladder: SyntheticFunction, StronglyConvexQuadratic,
   SmoothedNonconvex, PiecewiseConvex, PiecewiseNonconvexDoubleWell,
   SYNTHETIC_LADDER, IMPLEMENTED_SYNTHETIC_LADDER
-- Objective noise: ObjectiveNoise, NoNoise, HomoskedasticGaussianNoise,
-  HeteroskedasticGaussianNoise, NoisyObjective
- - Utility: optimal_u, value_at_constant_u, mean_acceptance_at_constant_u,
-   value_for_reporting
+- Objective modifications: noise, bias, theta regularization, acceptance
+  scalarization, and composition specs
+- Utility: optimal_u, value_at_constant_u, mean_acceptance_at_constant_u,
+  value_for_reporting
 """
 
 from importlib import import_module
@@ -26,12 +26,33 @@ from objective.base import (
     default_rng,
     sample_states,
 )
-from objective.objectives import (
+from objective.modifications import (
+    AcceptanceLagrangianModification,
+    AcceptanceLagrangianObjective,
+    AcceptancePenaltyModification,
+    AcceptancePenaltyObjective,
     ActionBias,
     BiasedObjective,
+    BiasModification,
+    HeteroskedasticGaussianNoise,
+    HomoskedasticGaussianNoise,
+    LinearActionBias,
+    NoiseModification,
+    NoisyObjective,
+    NoNoise,
+    ObjectiveModificationSpec,
+    ObjectiveNoise,
+    ProximalThetaRegularizer,
+    RegularizationModification,
+    RegularizedObjective,
+    SupportThetaRegularizer,
+    ThetaRegularizer,
+    UpperSupportHingeBias,
+    compose_objective,
+)
+from objective.objectives import (
     FixedRegressionObjective,
     IMPLEMENTED_SYNTHETIC_LADDER,
-    LinearActionBias,
     ModelBasedObjective,
     PiecewiseConvex,
     PiecewiseNonconvexDoubleWell,
@@ -42,16 +63,8 @@ from objective.objectives import (
     StronglyConvexQuadratic,
     SYNTHETIC_LADDER,
     SyntheticFunction,
-    UpperSupportHingeBias,
     prepare_glm_batch,
     prepare_glm_objective,
-)
-from objective.noise import (
-    HeteroskedasticGaussianNoise,
-    HomoskedasticGaussianNoise,
-    NoisyObjective,
-    NoNoise,
-    ObjectiveNoise,
 )
 from objective.policy import (
     CallableFeatureMap,
@@ -117,13 +130,25 @@ __all__ = [
     "make_policy_features",
     # Concrete objectives
     "ActionBias",
+    "AcceptanceLagrangianModification",
+    "AcceptanceLagrangianObjective",
+    "AcceptancePenaltyModification",
+    "AcceptancePenaltyObjective",
+    "BiasModification",
     "BiasedObjective",
     "FixedRegressionObjective",
     "LinearActionBias",
     "ModelBasedObjective",
+    "NoiseModification",
     "PlantedLogisticObjective",
     "PreparedGLMBatch",
     "PreparedGLMObjective",
+    "ObjectiveModificationSpec",
+    "ProximalThetaRegularizer",
+    "RegularizationModification",
+    "RegularizedObjective",
+    "SupportThetaRegularizer",
+    "ThetaRegularizer",
     "UpperSupportHingeBias",
     # Synthetic ladder
     "IMPLEMENTED_SYNTHETIC_LADDER",
@@ -144,6 +169,7 @@ __all__ = [
     "NoisyObjective",
     "NoNoise",
     "ObjectiveNoise",
+    "compose_objective",
     # Utility
     "mean_acceptance_at_constant_u",
     "optimal_u",

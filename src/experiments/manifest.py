@@ -559,7 +559,14 @@ def _matrix_variants(
             axis_payload[axis] = entry["value"]
             overrides.update(entry["overrides"])
         if run_name_template is not None:
-            name = str(run_name_template).format(**labels, **axis_payload, index=index)
+            # `labels` and `axis_payload` are both keyed by axis name, so expanding
+            # them together would collide. Expose each axis as `{axis}` (its value)
+            # and `{axis}_label` (its display label) so template keys stay distinct.
+            template_vars: dict[str, Any] = {"index": index}
+            for axis in axes:
+                template_vars[axis] = axis_payload[axis]
+                template_vars[f"{axis}_label"] = labels[axis]
+            name = str(run_name_template).format(**template_vars)
         else:
             name = "__".join(labels[axis] for axis in axes)
         variants.append(

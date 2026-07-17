@@ -140,6 +140,31 @@ def test_manifest_rejects_non_mapping_matrix() -> None:
         parse_experiment_manifest(_manifest_payload(matrix=[]))
 
 
+def test_matrix_run_name_template_exposes_axis_value_label_and_index() -> None:
+    # Each axis is available as `{axis}` (value) and `{axis}_label` (display label),
+    # plus `{index}`. A non-empty matrix previously crashed with TypeError because
+    # value and label shared the axis-name key.
+    manifest = parse_experiment_manifest(
+        _manifest_payload(
+            matrix={
+                "dimension": [2, 3],
+                "noise": [
+                    {"label": "clean", "value": "none"},
+                    {"label": "homo", "value": 0.1},
+                ],
+            },
+            run_name_template="d{dimension}-{noise_label}-{index}",
+        )
+    )
+
+    assert [variant.name for variant in manifest.variants] == [
+        "d2-clean-1",
+        "d2-homo-2",
+        "d3-clean-3",
+        "d3-homo-4",
+    ]
+
+
 def test_variant_complete_and_run_skip_existing_seed_summaries(monkeypatch, tmp_path) -> None:
     manifest = parse_experiment_manifest(_manifest_payload(matrix={}))
     variant = manifest.variants[0]

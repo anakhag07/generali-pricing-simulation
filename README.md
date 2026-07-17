@@ -31,6 +31,7 @@ across Slurm arrays:
 
 ```bash
 python main.py --launch slurm --array
+python scripts/run_experiment_manifest.py path/to/manifest.json
 python scripts/run_sweep.py fixed_regression_base --launch slurm
 python scripts/run_sweep.py real_data_glm_base --requires-jax --launch slurm
 python scripts/run_noisy_glm_theta_variance_sweep.py --launch slurm --array --array-max-parallel 6
@@ -421,6 +422,33 @@ instead of the default 60x60 used for cheaper synthetic objectives.
 `experiments.sweep_utils.run_sweep(...)`. Pass a base preset plus JSON overrides,
 override lists, or override grids; use `--requires-jax` when a sweep should submit
 to the GPU Slurm profile.
+
+`scripts/run_experiment_manifest.py` is the preferred reusable entry point for
+new sweeps. The JSON manifest must explicitly specify the objective preset,
+objective modifications, optimizer, seed policy, truth source, launch mode, and
+array structure. Reruns skip variants whose requested `summary-seed-<seed>.json`
+files already exist unless `--force` is passed. Example:
+
+```json
+{
+  "name": "quadratic-noise-grid",
+  "objective": {"preset": "synthetic_quadratic_base", "overrides": {"dimension": 10}},
+  "objective_modifications": [],
+  "optimizer": {
+    "step_rule": "l-bfgs-b",
+    "compute_backend": "numpy",
+    "t_steps": 100,
+    "step_size": 0.01,
+    "n_grad_samples": 64,
+    "enabled_estimators": ["first_order", "finite_difference"],
+    "plot": true
+  },
+  "seeds": {"run_seeds": [7, 8, 9], "anchor_seed": 7, "vary": ["theta"]},
+  "truth": {"source": "clean_base_objective"},
+  "launch": {"mode": "slurm", "array": "variant", "array_max_parallel": 6},
+  "matrix": {"dimension": [10, 25, 50]}
+}
+```
 
 To run the dedicated XGB logit-spline convergence and policy experiment, use:
 

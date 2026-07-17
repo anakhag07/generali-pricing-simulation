@@ -1,9 +1,20 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 import numpy as np
 import pytest
 
-from experiments.config import ExperimentConfig
+from experiments.config import CorrectnessSpec, ExperimentConfig
+from experiments.configs import get_config
+from objective.modifications import (
+    HomoskedasticGaussianNoise,
+    NoiseModification,
+    NoisyObjective,
+    ProximalThetaRegularizer,
+    RegularizationModification,
+    RegularizedObjective,
+)
 from objective import FixedRegressionObjective, QuadraticFeatureMap, SoftmaxPolicy
 from objective.policy import Policy, policy_theta_dim
 
@@ -1001,3 +1012,36 @@ def test_wandb_config_serialization() -> None:
     assert payload["wandb"]["project"] == "pricing-sim"
     assert payload["wandb"]["tags"] == ["smoke", "wandb"]
     assert payload["wandb"]["estimator_allowlist"] == ["spsa"]
+
+
+def test_objective_modifications_are_composed_serialized_and_not_reapplied() -> None:
+    config = get_config(
+        "synthetic_quadratic_base",
+        overrides={
+            "objective_modifications": (
+                RegularizationModification(
+                    regularizers=(ProximalThetaRegularizer(weight=0.2),)
+                ),
+                NoiseModification(noise=HomoskedasticGaussianNoise(std=0.1, seed=5)),
+            ),
+            "enabled_estimators": ("finite_difference",),
+            "correctness": CorrectnessSpec(gradient_source="none"),
+            "plot": False,
+            "verbose": False,
+        },
+    )
+
+    assert isinstance(config.objective, NoisyObjective)
+    assert isinstance(config.objective.base_objective, RegularizedObjective)
+    payload = config.to_dict()
+    assert [item["type"] for item in payload["objective_modifications"]] == [
+        "RegularizationModification",
+        "NoiseModification",
+    ]
+    assert payload["objective"]["type"] == "NoisyObjective"
+    assert payload["objective"]["base_objective"]["type"] == "RegularizedObjective"
+
+    cloned = replace(config, seed=config.seed + 1)
+    assert isinstance(cloned.objective, NoisyObjective)
+    assert isinstance(cloned.objective.base_objective, RegularizedObjective)
+    assert not isinstance(cloned.objective.base_objective.base_objective, RegularizedObjective)

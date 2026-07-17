@@ -11,16 +11,21 @@ import objective as objective_pkg
 from objective import (
     ActionBias,
     BiasedObjective,
+    BiasModification,
     ConstantPolicy,
     CubicFeatureMap,
     LinearActionBias,
+    NoiseModification,
     PreparedGLMBatch,
     PreparedGLMObjective,
+    ProximalThetaRegularizer,
+    RegularizedObjective,
     StronglyConvexQuadratic,
     QuadraticFeatureMap,
     QuarticFeatureMap,
     PlantedLogisticObjective,
     UpperSupportHingeBias,
+    compose_objective,
     default_rng,
     mean_acceptance_at_constant_u,
     prepare_glm_batch,
@@ -68,6 +73,14 @@ def test_objective_package_exports_are_importable() -> None:
         UpperSupportHingeBias(lambda_bias=0.1, support_center=1.0, support_radius=0.2).support_upper
         == 1.2
     )
+    regularized = RegularizedObjective(
+        StronglyConvexQuadratic.isotropic(2),
+        (ProximalThetaRegularizer(weight=0.1),),
+    )
+    assert regularized.theta_dim() == 2
+    assert BiasModification(lambda_bias=0.1) is not None
+    assert NoiseModification is not None
+    assert compose_objective is not None
     assert mean_acceptance_at_constant_u(objective, x_batch, u=1.0) is None
     assert PreparedGLMBatch is not None
     assert PreparedGLMObjective is not None

@@ -8,6 +8,7 @@ from experiments.configs import get_config
 from experiments.correctness import resolve_true_grad_theta_fn
 from objective import FixedRegressionObjective, SoftmaxPolicy
 from objective.base import default_rng, sample_states
+from objective.modifications import ProximalThetaRegularizer, RegularizedObjective
 from objective.noise import HomoskedasticGaussianNoise, NoisyObjective
 from objective.objectives import BiasedObjective, UpperSupportHingeBias
 
@@ -70,6 +71,12 @@ def test_correctness_accepts_denoised_exact_source() -> None:
     assert correctness.gradient_source == "denoised_exact"
 
 
+def test_correctness_accepts_noise_free_exact_source() -> None:
+    correctness = CorrectnessSpec(gradient_source="noise_free_exact")
+
+    assert correctness.gradient_source == "noise_free_exact"
+
+
 def test_denoised_exact_unwraps_full_wrapper_chain_to_clean_objective() -> None:
     # Layering noise on top of support bias nests two deterministic wrappers:
     # NoisyObjective(BiasedObjective(planted)). denoised_exact must reference the
@@ -94,6 +101,48 @@ def test_denoised_exact_unwraps_full_wrapper_chain_to_clean_objective() -> None:
     grad_true = true_grad_fn(theta, x_batch)
     assert np.allclose(grad_true, planted.grad(theta, x_batch))
     assert not np.allclose(grad_true, biased.grad(theta, x_batch))
+
+
+def test_noise_free_exact_removes_noise_and_preserves_bias_wrapper() -> None:
+    planted = get_config("planted_logistic_base").objective
+    u_star = float(planted.optimal_u())
+    biased = BiasedObjective(
+        base_objective=planted,
+        bias=UpperSupportHingeBias(lambda_bias=0.1, support_center=u_star, support_radius=0.05),
+    )
+    noisy = NoisyObjective(base_objective=biased, noise=HomoskedasticGaussianNoise(std=0.5, seed=0))
+
+    true_grad_fn = resolve_true_grad_theta_fn(noisy, CorrectnessSpec(gradient_source="noise_free_exact"))
+    assert true_grad_fn is not None
+
+    theta = np.array([3.0, 0.0, 0.0, 0.0], dtype=float)
+    x_batch = sample_states(default_rng(0), 6, 3)
+
+    grad_true = true_grad_fn(theta, x_batch)
+    assert np.allclose(grad_true, biased.grad(theta, x_batch))
+    assert not np.allclose(grad_true, planted.grad(theta, x_batch))
+
+
+def test_noise_free_exact_removes_noise_and_preserves_regularization_wrapper() -> None:
+    planted = get_config("planted_logistic_base").objective
+    regularized = RegularizedObjective(
+        planted,
+        regularizers=(ProximalThetaRegularizer(weight=0.2),),
+    )
+    noisy = NoisyObjective(
+        base_objective=regularized,
+        noise=HomoskedasticGaussianNoise(std=0.5, seed=0),
+    )
+
+    true_grad_fn = resolve_true_grad_theta_fn(noisy, CorrectnessSpec(gradient_source="noise_free_exact"))
+    assert true_grad_fn is not None
+
+    theta = np.array([3.0, 0.0, 0.0, 0.0], dtype=float)
+    x_batch = sample_states(default_rng(0), 6, 3)
+
+    grad_true = true_grad_fn(theta, x_batch)
+    assert np.allclose(grad_true, regularized.grad(theta, x_batch))
+    assert not np.allclose(grad_true, planted.grad(theta, x_batch))
 
 
 def test_numdiff_batch_is_supported_for_theta_grad() -> None:

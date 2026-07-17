@@ -568,9 +568,15 @@ def build_policy_artifact(result: ExperimentResult, estimator: str) -> PolicyArt
 
 
 def _unwrap_model_based_objective(objective: object) -> object:
-    if isinstance(objective, NoisyObjective):
-        return objective.base_objective
-    return objective
+    current = objective
+    seen: set[int] = {id(current)}
+    while isinstance(current, NoisyObjective) or hasattr(current, "base_objective"):
+        base = getattr(current, "base_objective", None)
+        if base is None or id(base) in seen:
+            return current
+        seen.add(id(base))
+        current = base
+    return current
 
 
 def load_policy_artifact(path: str | Path) -> PolicyArtifact:

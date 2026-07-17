@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, fields, is_dataclass, replace
 import time
 
 import numpy as np
@@ -93,10 +93,13 @@ def _maybe_apply_acceptance_controls(config: ExperimentConfig) -> ExperimentConf
 
 def _objective_with_acceptance_controls(objective: object, config: ExperimentConfig) -> object:
     """Return ``objective`` with config acceptance controls applied where supported."""
-    if isinstance(objective, NoisyObjective):
-        updated_base = _objective_with_acceptance_controls(objective.base_objective, config)
+    base_objective = getattr(objective, "base_objective", None)
+    if base_objective is not None:
+        updated_base = _objective_with_acceptance_controls(base_objective, config)
+        if updated_base is base_objective:
+            return objective
         return replace(objective, base_objective=updated_base)
-    if not hasattr(objective, "acceptance_floor"):
+    if not _has_dataclass_field(objective, "acceptance_floor"):
         return objective
     return replace(
         objective,
@@ -113,6 +116,12 @@ def _objective_with_acceptance_controls(objective: object, config: ExperimentCon
             else None
         ),
     )
+
+
+def _has_dataclass_field(instance: object, name: str) -> bool:
+    if not is_dataclass(instance) or isinstance(instance, type):
+        return False
+    return any(field.name == name for field in fields(instance))
 
 
 def _maybe_apply_noise_seed(config: ExperimentConfig, noise_seed: int) -> ExperimentConfig:

@@ -16,6 +16,7 @@ TEST_FRACTION = None  # OPTIONAL
 STEP_RULE = None  # REQUIRED
 COMPUTE_BACKEND = None  # OPTIONAL: numpy | jax
 OBJECTIVE = None  # REQUIRED
+OBJECTIVE_MODIFICATIONS = ()  # OPTIONAL: explicit objective wrapper specs, applied in order
 THETA0 = None  # REQUIRED
 BATCH_SIZE = None  # OPTIONAL
 SEED = None  # REQUIRED
@@ -55,7 +56,7 @@ PLANTED_BIAS = None  # REQUIRED for planted logistic
 PLANTED_U_STAR = None  # REQUIRED for planted logistic
 
 # --- CorrectnessSpec parameter placeholders ---
-CORRECTNESS_GRADIENT_SOURCE = None  # OPTIONAL: exact | numdiff | none
+CORRECTNESS_GRADIENT_SOURCE = None  # OPTIONAL: exact | denoised_exact | noise_free_exact | numdiff | none
 CORRECTNESS_NUMDIFF_METHOD = None  # OPTIONAL: central | forward | backward
 CORRECTNESS_NUMDIFF_STEP = None  # OPTIONAL
 CORRECTNESS_NUMDIFF_AGGREGATE = None  # OPTIONAL: per-sample | batch
@@ -136,6 +137,7 @@ CORRECTNESS_NUMDIFF_BOUNDS = None  # OPTIONAL
 #     seed=SEED,
 #     state_dim=STATE_DIM,
 #     objective=OBJECTIVE,
+#     objective_modifications=OBJECTIVE_MODIFICATIONS,
 #     theta0=THETA0,
 #     training=TRAINING,
 #     runtime=RUNTIME,

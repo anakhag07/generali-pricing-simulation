@@ -8,22 +8,25 @@ from typing import Any, Literal, Mapping, Optional, Sequence
 import numpy as np
 
 from objective.base import Objective, Policy
-from objective.objectives import (
-    ActionBias,
+from objective.modifications import (
+    AcceptanceLagrangianObjective,
+    AcceptancePenaltyObjective,
     BiasedObjective,
+    RegularizedObjective,
+    action_bias_to_dict,
+    coerce_objective_modification,
+    compose_objective,
+    modification_to_dict,
+    noise_to_dict,
+    regularizer_to_dict,
+)
+from objective.modifications.composition import ObjectiveModificationSpec
+from objective.modifications.noise import NoisyObjective
+from objective.objectives import (
     FixedRegressionObjective,
-    LinearActionBias,
     ModelBasedObjective,
     PlantedLogisticObjective,
     SyntheticFunction,
-    UpperSupportHingeBias,
-)
-from objective.noise import (
-    HeteroskedasticGaussianNoise,
-    HomoskedasticGaussianNoise,
-    NoisyObjective,
-    NoNoise,
-    ObjectiveNoise,
 )
 from objective.policy import ConstantPolicy, LinearPolicy, MLPPolicy, SoftmaxPolicy
 from objective.policy_preprocessing import PolicyFeaturePreprocessor
@@ -55,16 +58,17 @@ def _x_fixed_frame_matches_state_dim(objective: object, x_fixed_frame: Any, stat
 class CorrectnessSpec:
     """Controls how "true" gradients are computed for diagnostics."""
 
-    gradient_source: Literal["exact", "denoised_exact", "numdiff", "none"] = "exact"
+    gradient_source: Literal["exact", "denoised_exact", "noise_free_exact", "numdiff", "none"] = "exact"
     numdiff_method: Literal["central", "forward", "backward"] = "central"
     numdiff_step: float = 1e-4
     numdiff_aggregate: Literal["per-sample", "batch"] = "batch"
     numdiff_bounds: Optional[tuple[float, float]] = None
 
     def __post_init__(self) -> None:
-        if self.gradient_source not in {"exact", "denoised_exact", "numdiff", "none"}:
+        if self.gradient_source not in {"exact", "denoised_exact", "noise_free_exact", "numdiff", "none"}:
             raise ValueError(
-                "gradient_source must be 'exact', 'denoised_exact', 'numdiff', or 'none'."
+                "gradient_source must be 'exact', 'denoised_exact', 'noise_free_exact', "
+                "'numdiff', or 'none'."
             )
         if self.numdiff_method not in {"central", "forward", "backward"}:
             raise ValueError("numdiff_method must be 'central', 'forward', or 'backward'.")
@@ -90,6 +94,7 @@ class ExperimentConfig:
     step_rule: str
     objective: Objective
     perturbation_space: Literal["theta", "u"]
+    objective_modifications: tuple[ObjectiveModificationSpec | Mapping[str, Any], ...] = ()
     compute_backend: Literal["numpy", "jax"] = "numpy"
     train_fraction: float = 1.0
     test_fraction: float = 0.0
@@ -124,8 +129,22 @@ class ExperimentConfig:
     correctness: CorrectnessSpec = field(default_factory=CorrectnessSpec)
     x_fixed: Any | None = None  # real data rows; replaces sample_states when set
     x_fixed_row_indices: np.ndarray | None = None  # source CSV row positions for x_fixed
+    _objective_modifications_applied: bool = field(default=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
+        objective_modifications = tuple(
+            coerce_objective_modification(modification)
+            for modification in self.objective_modifications
+        )
+        object.__setattr__(self, "objective_modifications", objective_modifications)
+        if objective_modifications and not self._objective_modifications_applied:
+            object.__setattr__(
+                self,
+                "objective",
+                compose_objective(self.objective, objective_modifications),
+            )
+            object.__setattr__(self, "_objective_modifications_applied", True)
+
         object.__setattr__(self, "seed", int(self.seed))
         if self.seed_setup is not None:
             object.__setattr__(self, "seed_setup", seed_setup_from_mapping(self.seed_setup))
@@ -454,6 +473,10 @@ class ExperimentConfig:
             "constant_u_baselines": [float(u) for u in self.constant_u_baselines],
             "perturbation_space": self.perturbation_space,
             "theta0": _as_list(self.theta0) if self.theta0 is not None else None,
+            "objective_modifications": [
+                modification_to_dict(modification)
+                for modification in self.objective_modifications
+            ],
             "objective": _objective_to_dict(self.objective),
             "wandb": {
                 "enabled": bool(self.wandb_enabled),
@@ -493,14 +516,38 @@ def _objective_to_dict(objective: Objective) -> dict[str, Any]:
         return {
             "type": "NoisyObjective",
             "base_objective": _objective_to_dict(objective.base_objective),
-            "noise": _noise_to_dict(objective.noise),
+            "noise": noise_to_dict(objective.noise),
         }
     if isinstance(objective, BiasedObjective):
         return {
             "type": "BiasedObjective",
             "base_objective": _objective_to_dict(objective.base_objective),
             "lambda_bias": float(objective.lambda_bias),
-            "bias": _action_bias_to_dict(objective.bias),
+            "bias": action_bias_to_dict(objective.bias),
+        }
+    if isinstance(objective, RegularizedObjective):
+        return {
+            "type": "RegularizedObjective",
+            "base_objective": _objective_to_dict(objective.base_objective),
+            "regularizers": [
+                regularizer_to_dict(regularizer)
+                for regularizer in objective.regularizers
+            ],
+        }
+    if isinstance(objective, AcceptancePenaltyObjective):
+        return {
+            "type": "AcceptancePenaltyObjective",
+            "base_objective": _objective_to_dict(objective.base_objective),
+            "acceptance_floor": float(objective.acceptance_floor),
+            "acceptance_penalty_weight": float(objective.acceptance_penalty_weight),
+            "acceptance_penalty_temperature": float(objective.acceptance_penalty_temperature),
+        }
+    if isinstance(objective, AcceptanceLagrangianObjective):
+        return {
+            "type": "AcceptanceLagrangianObjective",
+            "base_objective": _objective_to_dict(objective.base_objective),
+            "acceptance_floor": float(objective.acceptance_floor),
+            "lagrangian_lambda": float(objective.lagrangian_lambda),
         }
     if isinstance(objective, FixedRegressionObjective):
         return {
@@ -558,46 +605,6 @@ def _objective_to_dict(objective: Objective) -> dict[str, Any]:
         "its run summary could not record the parameters needed to rebuild it. Add a branch "
         "here (or a to_dict() on the objective) before running with it."
     )
-
-
-def _noise_to_dict(noise: ObjectiveNoise) -> dict[str, Any]:
-    """Serialize objective noise to dictionary."""
-    if isinstance(noise, NoNoise):
-        return {"type": "NoNoise"}
-    if isinstance(noise, HomoskedasticGaussianNoise):
-        return {
-            "type": "HomoskedasticGaussianNoise",
-            "std": float(noise.std),
-            "seed": int(noise.seed) if noise.seed is not None else None,
-        }
-    if isinstance(noise, HeteroskedasticGaussianNoise):
-        return {
-            "type": "HeteroskedasticGaussianNoise",
-            "base_std": float(noise.base_std),
-            "growth": float(noise.growth),
-            "u_center": float(noise.u_center),
-            "seed": int(noise.seed) if noise.seed is not None else None,
-        }
-    return {"type": type(noise).__name__}
-
-
-def _action_bias_to_dict(bias: ActionBias) -> dict[str, Any]:
-    """Serialize an action-bias term to dictionary."""
-    if isinstance(bias, LinearActionBias):
-        return {
-            "type": "LinearActionBias",
-            "lambda_bias": float(bias.lambda_bias),
-        }
-    if isinstance(bias, UpperSupportHingeBias):
-        return {
-            "type": "UpperSupportHingeBias",
-            "lambda_bias": float(bias.lambda_bias),
-            "support_center": float(bias.support_center),
-            "support_radius": float(bias.support_radius),
-            "support_upper": float(bias.support_upper),
-            "smooth_tau": float(bias.smooth_tau) if bias.smooth_tau is not None else None,
-        }
-    return {"type": type(bias).__name__, "lambda_bias": float(bias.lambda_bias)}
 
 
 def _policy_to_dict(policy: object) -> dict[str, Any]:
@@ -828,6 +835,7 @@ def build_experiment_config(
     seed_setup: SeedSetup | Mapping[str, int | None] | None = None,
     state_dim: int,
     objective: Objective,
+    objective_modifications: Sequence[ObjectiveModificationSpec | Mapping[str, Any]] = (),
     theta0: np.ndarray | None = None,
     training: Mapping[str, Any],
     runtime: Mapping[str, Any] | None = None,
@@ -845,6 +853,7 @@ def build_experiment_config(
         "seed_setup": seed_setup,
         "state_dim": int(state_dim),
         "objective": objective,
+        "objective_modifications": tuple(objective_modifications),
         "theta0": np.asarray(theta0, dtype=float) if theta0 is not None else None,
     }
     payload.update(dict(training))

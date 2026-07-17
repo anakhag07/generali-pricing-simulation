@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import replace
 
 import numpy as np
 
 from experiments.config import CorrectnessSpec
 from objective.base import Objective
+from objective.modifications import NoisyObjective
 from optimization.helpers import finite_difference_theta_grad
 
 
@@ -31,6 +33,26 @@ def _innermost_base_objective(objective: Objective) -> Objective:
         current = base
 
 
+def _noise_free_objective(objective: Objective) -> Objective:
+    """Return a copy with only noise wrappers removed.
+
+    Deterministic wrappers such as bias or regularization are preserved by
+    replacing their ``base_objective`` with the recursively noise-free base.
+    """
+    if isinstance(objective, NoisyObjective):
+        return _noise_free_objective(objective.base_objective)
+    base = getattr(objective, "base_objective", None)
+    if base is None:
+        return objective
+    noise_free_base = _noise_free_objective(base)
+    if noise_free_base is base:
+        return objective
+    try:
+        return replace(objective, base_objective=noise_free_base)
+    except TypeError:
+        return objective
+
+
 def resolve_true_grad_theta_fn(
     objective: Objective,
     correctness: CorrectnessSpec,
@@ -43,6 +65,9 @@ def resolve_true_grad_theta_fn(
     if correctness.gradient_source == "denoised_exact":
         denoised_objective = _innermost_base_objective(objective)
         return lambda theta, x_batch: denoised_objective.grad(theta, x_batch)
+    if correctness.gradient_source == "noise_free_exact":
+        noise_free_objective = _noise_free_objective(objective)
+        return lambda theta, x_batch: noise_free_objective.grad(theta, x_batch)
     if correctness.gradient_source == "numdiff":
         return lambda theta, x_batch: finite_difference_theta_grad(
             lambda theta_eval: objective.value(theta_eval, x_batch),

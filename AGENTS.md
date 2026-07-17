@@ -194,6 +194,115 @@ Guidelines:
 - Prefer consistency with existing naming and folder conventions.
 - When files or folders are added, moved, removed, or repurposed, record the change in `AGENTS.md`.
 
+### Manifest Sweep Methodology
+
+For any new request to run a sweep or grid of experiments, start from a JSON
+manifest and `scripts/run_experiment_manifest.py` unless the user explicitly asks
+for a one-off exploratory script. The manifest is the orchestration source of
+truth; do not hide sweep axes, seed policy, optimizer choices, truth references,
+or Slurm behavior in Python constants when they can be expressed in the manifest.
+
+Required manifest fields:
+- `name`: project/result directory slug.
+- `objective.preset`: registered config preset. Optional `objective.overrides`
+  are the base objective/data-ladder overrides.
+- `objective_modifications`: explicit ordered list of objective wrappers, even
+  when the list is empty. Use this for denoising/noise/bias/regularization
+  toggles instead of hand-building wrapper chains in scripts.
+- `optimizer`: explicit optimizer config and at minimum `step_rule`; include
+  `compute_backend`, `t_steps`, `step_size`, `n_grad_samples`,
+  `enabled_estimators`, and constraint/penalty knobs as needed.
+- `seeds`: explicit `run_seeds`, `anchor_seed`, and `vary`; optional `fixed`
+  pins individual seed streams. There is no implicit seed-vary policy in a
+  manifest.
+- `truth`: explicit source of derived metrics. Allowed `source` values are
+  `clean_base_objective` (the denoised/debiased base objective after stripping
+  manifest objective modifications) and `summary_json` with explicit `path` and
+  `estimator`. Do not invent a default truth run.
+- `launch`: explicit `mode` (`local`, `slurm`, or `auto`) and `array`
+  (`none` or `variant`). Optional `array_max_parallel` and `requires_jax`
+  document Slurm behavior; `requires_jax` may be inferred from `compute_backend`
+  but should be set when the manifest must force GPU submission.
+
+Variant axes belong under `matrix` or `variants`. Scalar matrix entries override
+the same config key; labeled entries may provide nested `overrides`, which is
+the preferred way to toggle noise/bias objective modifications or data-ladder
+settings while keeping names readable.
+
+Manifest reruns are completion-aware: a variant is skipped unless `--force` is
+passed when every requested `summary-seed-<seed>.json` exists at the variant
+root. This makes rerunning a manifest cheap while preserving normal
+`run_sweep(...)` outputs for missing work.
+
+Default artifact structure:
+- Project root: `results/<manifest-name>/EXPERIMENT.md`, project-level
+  `seed_grid_finals.csv`, `seed_grid_summary.csv`, optional
+  `derived_metrics.csv`, and project-level seed-grid plots for multi-variant
+  manifests.
+- Variant root: `summary-seed-<seed>.json`, `seed_grid_finals.csv`,
+  `seed_grid_summary.csv`, seed metric bar plots, seed frontier plot, and seed
+  loss bands.
+- Seed run leaves: `seeds/seed-<seed>/` with the normal reporter artifacts.
+  Heavy per-seed plots are off unless `per_seed_plots: true` is in the manifest.
+
+Default launch array structure:
+- `launch.array: "variant"` creates `LaunchPlan.task_count = len(variants)` and
+  maps task index `i` to variant `i`; each task runs all requested seeds for
+  that variant. Slurm `--array` submits `0..task_count-1` and a dependent
+  collector rebuilds project-level CSVs/plots from saved summaries.
+- `launch.array: "none"` creates one task that runs all variants and seeds
+  serially, then collects outputs in the same process/job.
+
+Minimal manifest shape:
+
+```json
+{
+  "name": "quadratic-noise-grid",
+  "objective": {
+    "preset": "synthetic_quadratic_base",
+    "overrides": {"dimension": 10}
+  },
+  "objective_modifications": [],
+  "optimizer": {
+    "step_rule": "l-bfgs-b",
+    "compute_backend": "numpy",
+    "t_steps": 100,
+    "step_size": 0.01,
+    "n_grad_samples": 64,
+    "enabled_estimators": ["first_order", "finite_difference", "stein_difference"],
+    "plot": true
+  },
+  "seeds": {
+    "run_seeds": [7, 8, 9],
+    "anchor_seed": 7,
+    "vary": ["theta", "optimizer", "noise"]
+  },
+  "truth": {"source": "clean_base_objective"},
+  "launch": {"mode": "slurm", "array": "variant", "array_max_parallel": 6},
+  "matrix": {
+    "noise": [
+      {"label": "clean", "value": "none", "overrides": {"objective_modifications": []}},
+      {
+        "label": "homo-0.1",
+        "value": 0.1,
+        "overrides": {
+          "objective_modifications": [
+            {
+              "type": "noise",
+              "noise": {
+                "type": "HomoskedasticGaussianNoise",
+                "std": 0.1,
+                "seed": 11
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
+```
+
 ### Key Components
 
 #### Objective Layer (`src/objective/`)
@@ -461,6 +570,18 @@ belongs under `generali/`.
   - `run_sweep(...)`: **canonical seed-aware sweep.** Replicates every variant across `run_seeds`, building each run's `SeedSetup` with `replicate_seed_setup(seed, anchor_seed, vary=..., fixed=...)`; by default `vary=("theta",)` keeps data/split/noise identical across replicates and only reinitializes policy `theta`. Per-seed runs share one variant folder (`summary-seed-<seed>.json` at the variant root, heavy artifacts under `seeds/seed-<seed>/`); writes per-variant and cross-variant aggregate error-bar plots plus `seed_grid_summary.csv`. Returns `SweepResult(project_dir, run_results, summary_rows)`. A plain seed sweep is the no-axis case (`override_list`/`override_grid` omitted). **Pitfall:** with `vary=("theta",)` the stochastic estimators (`stein_difference`/`spsa`/`gauss_stein`) reuse one perturbation stream across replicates, so their error bars capture init sensitivity only; add `"optimizer"` to `vary` to also capture estimator stochasticity.
   - `run_preset_sweep(...)`: legacy single-seed axis sweep; same `override_grid`/`override_list` signature as `generate_sweep_runs(...)`; executes variants through `execute_experiment_run(...)` and returns `SweepRunResult` records (each now also carries `run_seed`, `None` for single-seed sweeps)
 
+- **`src/experiments/manifest.py`**
+  - Manifest parser/planner for reusable sweep orchestration. It validates the
+    explicit JSON contract, expands `matrix`/`variants` into named override
+    payloads, writes `EXPERIMENT.md`, skips completed variants unless forced,
+    delegates actual optimization to `sweep_utils.run_sweep(...)`, and rebuilds
+    project-level `seed_grid_*.csv` plus `derived_metrics.csv` from saved
+    `summary-seed-*.json` files
+  - Truth sources are intentionally narrow: `clean_base_objective` strips
+    objective modifications before looking for known optimum metadata, while
+    `summary_json` requires an explicit path and estimator and compares learned
+    theta against that saved reference
+
 - **`src/experiments/sweep_reporting.py`**
   - Aggregate sweep-output helpers for recurring scripts: timestamped aggregate directories, final estimator row collection for scalar config sweeps, CSV writing, and standard action/acceptance plus Pareto frontier plots
   - Cross-seed aggregation (home of the generalized `seed_repeats._summary_rows`): `collect_seed_grid_final_rows(...)` / `aggregate_seed_grid_rows(...)` group per-(variant, estimator) finals to mean/std/min/max over seeds; `write_seed_grid_outputs(...)` writes `seed_grid_finals.csv` + `seed_grid_summary.csv` and the aggregate error-bar plots; `objective_traces_by_estimator(...)` groups per-seed traces for loss-band plots
@@ -540,6 +661,11 @@ belongs under `generali/`.
 - CPU-only specs submit to ORCD `mit_normal`; specs with `compute_backend="jax"` submit to `mit_normal_gpu` with one L40S GPU and fail fast if JAX reports only CPU in the child job
 - For each config spec: delegates the run lifecycle to `experiments.execution.execute_experiment_run(...)`, which creates `RunContext`, assembles the default `ReporterStack`, calls `run_experiment()`, finalizes reporters, and stores preset/override metadata in `summary.json`
 - All I/O is handled by reporters, not by the runner
+- `scripts/run_experiment_manifest.py` is the default reusable sweep entry point.
+  It loads a JSON manifest, uses the manifest's explicit launch policy as the
+  default `LaunchPlan`, maps `launch.array: "variant"` to one task per variant,
+  and maps `launch.array: "none"` to one serial task. It supports `--force` to
+  rerun completed variants and `--runs-root` for alternate result roots.
 - `scripts/run_sweep.py` is a minimal generic seed-aware preset sweep launcher around `experiments.sweep_utils.run_sweep(...)`. It accepts a base preset plus JSON override mapping/list/grid inputs, optional seed-vary/fixed-stream arguments, and `--requires-jax` to force the GPU Slurm profile. It should stay experiment-agnostic; dedicated scientific grids belong in their own scripts.
 - `scripts/run_noisy_glm_theta_variance_sweep.py` runs the all-data trust-constrained GLM noisy-objective sweeps on GPU/JAX. It defaults to the saved first-order no-noise truth summary at `results/real_data_glm_base__20260706_124627/summary.json`, centers heteroskedastic noise at that run's final mean `u`, sweeps theta starts along the real initialization-to-truth line by L2 distance, sweeps homoskedastic/heteroskedastic noise variance for zeroth-order estimators, writes `noisy_glm_theta_variance_finals.csv` / `noisy_glm_theta_variance_summary.csv`, and regenerates theta-distance/objective-gap plots per grid project.
 - `scripts/run_noise_offset_grid.py` runs the combined noise-level x theta-offset planted-logistic grid: for each noise family (homoskedastic std `sigma in {0, 0.1, 2}` new + `0.5` reused from the saved theta-offset sweep; heteroskedastic growth `gamma in {0, 0.25, 4}` new + `1.0` reused) it varies the init offset `delta` in `theta0 = theta_FO_clean + delta * 1` over 9 offsets with `RUN_SEEDS=(7, 8, 9)`, carrying its own copy of the retired planted-noise fill-in sweep driver's COMMON_OVERRIDES/seed policy (formerly in `scripts/run_sweep.py`) so runs stay comparable with the saved sweeps. Writes `noise_offset_grid_finals.csv` plus per-estimator two-panel figures (final theta distance to first-order truth | clean-objective gap on the reconstructed train batch, curves = noise level) under `results/homoskedastic-noise-offset-grid/` and `results/heteroskedastic-noise-offset-grid/`. `--plots-only` regenerates outputs from saved summaries; `--families` selects the grid group; launch-aware with auto Slurm submit
@@ -712,8 +838,10 @@ exclude `tests/objective/test_jax_prepared_glm*`, `tests/optimization/test_jax_*
 | `test_baseline_test.py` | End-to-end smoke test with fixed_regression_base overrides |
 | `test_paths.py` | shared results-root environment override and default path |
 | `test_launch.py` | Shared launch-plan local execution, Slurm array submission, collector dependency, and array-child task selection |
+| `test_manifest.py` | Manifest parsing, explicit truth/seed/optimizer/launch validation, completion skipping, and summary-derived metrics |
 | `test_run_context.py` | default results-root output directory, readable run leaves, run metadata, and verbatim run_dir paths |
 | `test_noisy_objective_backend.py` | Noisy objective acceptance-control propagation and JAX GLM backend re-wrapping |
+| `test_run_experiment_manifest_script.py` | Manifest runner argument parsing and launch-plan wiring |
 | `test_run_sweep_script.py` | Generic `scripts/run_sweep.py` argument parsing, JAX launch flag detection, and launcher delegation |
 | `test_slurm_launcher.py` | ORCD Slurm profile selection, command construction, array/dependency flags, autosubmit skips, and JAX GPU preflight |
 | `test_train_test_split.py` | Runner train/test split, held-out policy metrics, and summary payloads |

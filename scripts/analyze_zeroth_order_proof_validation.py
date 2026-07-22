@@ -415,28 +415,27 @@ def _estimator_rows(rows: Sequence[Mapping[str, object]], sweep: str, estimator:
 
 
 def _plot_sigma_landmarks(rows: Sequence[Mapping[str, object]], output: Path) -> None:
-    fig, axes = plt.subplots(2, 2, figsize=(12, 8), sharex="col")
-    for column, estimator in enumerate(("finite_difference", "stein_difference")):
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.8), sharey=True)
+    for axis, estimator in zip(axes, ("finite_difference", "stein_difference"), strict=True):
         subset = _estimator_rows(rows, "sigma", estimator)
-        x = np.asarray([float(row["sigma"]) for row in subset])
-        for axis in axes[:, column]:
-            axis.axhline(float(subset[0]["x0"]), color="0.65", linestyle=":", label="$x_0$")
-            axis.axhline(0.0, color="black", linewidth=1.0, label="$x^*$")
-            axis.plot(x, [float(row["x_estimator_star"]) for row in subset], "--", label="$x^*_{est}$")
-            mean = np.asarray([float(row["mean_x_k"]) for row in subset])
-            low = np.asarray([float(row["ci95_low"]) for row in subset])
-            high = np.asarray([float(row["ci95_high"]) for row in subset])
-            axis.plot(x, mean, "o-", label="$x_K$")
-            axis.fill_between(x, low, high, alpha=0.2)
-            axis.grid(alpha=0.25)
-        axes[0, column].set_title(ESTIMATOR_LABELS[estimator])
-        zoom_values = [0.0, *[float(row["x_estimator_star"]) for row in subset], *[float(row["ci95_low"]) for row in subset], *[float(row["ci95_high"]) for row in subset]]
-        margin = max(1e-4, 0.15 * (max(zoom_values) - min(zoom_values)))
-        axes[1, column].set_ylim(min(zoom_values) - margin, max(zoom_values) + margin)
-        axes[1, column].set_xlabel("Perturbation radius $\\sigma$")
-    axes[0, 0].set_ylabel("Position (full range)")
-    axes[1, 0].set_ylabel("Position (near optimum)")
-    axes[0, 0].legend(ncol=2, fontsize=9)
+        sigma = np.asarray([float(row["sigma"]) for row in subset])
+        x_star = np.asarray([float(row["x_star"]) for row in subset])
+        mean_error = np.asarray([float(row["mean_x_k"]) for row in subset]) - x_star
+        low_error = np.asarray([float(row["ci95_low"]) for row in subset]) - x_star
+        high_error = np.asarray([float(row["ci95_high"]) for row in subset]) - x_star
+        root_error = np.asarray([float(row["x_estimator_star"]) for row in subset]) - x_star
+
+        axis.axhline(0.0, color="black", linewidth=0.9)
+        axis.plot(sigma, root_error, "--", label="$x^*_{\\sigma,\\mathrm{est}}-x^*$")
+        axis.plot(sigma, mean_error, "o-", label="$\\mathbb{E}[x_K]-x^*$")
+        axis.fill_between(sigma, low_error, high_error, alpha=0.2, label="95% CI")
+        axis.set_title(ESTIMATOR_LABELS[estimator])
+        axis.set_xlabel("Perturbation radius $\\sigma$")
+        axis.grid(alpha=0.25)
+        axis.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+    axes[0].set_ylabel("Signed final error $x_K-x^*$")
+    axes[0].legend(fontsize=9)
+    fig.suptitle("Experiment 1: final error as the perturbation radius changes")
     fig.tight_layout()
     fig.savefig(output / "sigma_landmarks.png", dpi=180)
     plt.close(fig)
@@ -470,32 +469,49 @@ def _plot_sigma_decomposition(rows: Sequence[Mapping[str, object]], output: Path
 def _plot_m(rows: Sequence[Mapping[str, object]], output: Path) -> None:
     subset = _estimator_rows(rows, "m", "stein_difference")
     m = np.asarray([int(row["m"]) for row in subset])
-    mean = np.asarray([float(row["mean_x_k"]) for row in subset])
-    low = np.asarray([float(row["ci95_low"]) for row in subset])
-    high = np.asarray([float(row["ci95_high"]) for row in subset])
-    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
-    for axis in axes:
-        axis.axhline(0.0, color="black", label="$x^*$")
-        axis.axhline(float(subset[0]["x_estimator_star"]), linestyle="--", label="$x^*_{est}$")
-        axis.plot(m, mean, "o-", label="$x_K$")
-        axis.fill_between(m, low, high, alpha=0.2)
-        axis.set_xscale("log", base=2)
-        axis.set_xlabel("Stein samples $m$")
-        axis.grid(alpha=0.25)
-    axes[0].axhline(float(subset[0]["x0"]), color="0.65", linestyle=":", label="$x_0$")
-    axes[0].set_title("Full range")
-    zoom = [0.0, float(subset[0]["x_estimator_star"]), *low, *high]
-    margin = 0.15 * (max(zoom) - min(zoom))
-    axes[1].set_ylim(min(zoom) - margin, max(zoom) + margin)
-    axes[1].set_title("Near optimum")
-    axes[0].set_ylabel("Position")
-    axes[0].legend(fontsize=9)
+    x_star = np.asarray([float(row["x_star"]) for row in subset])
+    mean_error = np.asarray([float(row["mean_x_k"]) for row in subset]) - x_star
+    low_error = np.asarray([float(row["ci95_low"]) for row in subset]) - x_star
+    high_error = np.asarray([float(row["ci95_high"]) for row in subset]) - x_star
+    ci_yerr = np.vstack((mean_error - low_error, high_error - mean_error))
+    root_error = np.asarray([float(row["x_estimator_star"]) for row in subset]) - x_star
+    variance = np.asarray([float(row["variance_x_k"]) for row in subset])
+
+    fig, axes = plt.subplots(2, 1, figsize=(8.5, 8), sharex=True)
+    error_axis, variance_axis = axes
+    error_axis.axhline(0.0, color="black", linewidth=0.9)
+    error_axis.plot(m, root_error, "--", color="tab:blue", label="$x^*_{\\sigma,\\mathrm{SD}}-x^*$")
+    error_axis.errorbar(
+        m,
+        mean_error,
+        yerr=ci_yerr,
+        fmt="o-",
+        color="tab:orange",
+        capsize=4,
+        label="$\\mathbb{E}[x_K]-x^*$ (95% CI)",
+    )
+    error_axis.set_ylabel("Signed final error $x_K-x^*$")
+    error_axis.set_title("Final error and population smoothing floor")
+    error_axis.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+    error_axis.grid(alpha=0.25)
+    error_axis.legend(fontsize=9)
+
+    variance_axis.loglog(m, variance, "o-", color="tab:blue", label="$\\mathrm{Var}(x_K)$")
+    variance_axis.loglog(m, variance[0] * m[0] / m, "k:", linewidth=2.0, label="Expected $1/m$")
+    variance_axis.set_ylabel("Across-seed variance $\\mathrm{Var}(x_K)$")
+    variance_axis.set_title("Monte Carlo variance")
+    variance_axis.grid(alpha=0.25, which="both")
+    variance_axis.legend(fontsize=9)
+
+    variance_axis.set_xscale("log", base=2)
+    variance_axis.set_xticks(m, [str(value) for value in m])
+    variance_axis.set_xlabel("Stein samples per gradient estimate $m$")
+    fig.suptitle("Experiment 1: effect of Stein sample count $m$")
     fig.tight_layout()
     fig.savefig(output / "m_landmarks.png", dpi=180)
     plt.close(fig)
 
     fig, axis = plt.subplots(figsize=(7, 5))
-    variance = np.asarray([float(row["variance_x_k"]) for row in subset])
     axis.loglog(m, [float(row["smoothing_abs"]) ** 2 for row in subset], "o-", label="population smoothing squared")
     axis.loglog(m, variance, "o-", label="across-seed variance")
     axis.loglog(m, [float(row["total_mse"]) for row in subset], "o-", label="total MSE")
@@ -516,29 +532,37 @@ def _bias_rows(rows: Sequence[Mapping[str, object]], form: str, estimator: str) 
 def _plot_bias_landmarks(rows: Sequence[Mapping[str, object]], output: Path) -> None:
     forms = ("linear", "arctan", "remainder")
     estimators = ("finite_difference", "stein_difference")
+    titles = {
+        "linear": r"$b(x)=\alpha x$",
+        "arctan": r"$b(x)=\alpha\arctan x$",
+        "remainder": r"$b(x)=\alpha(x-\arctan x)$",
+    }
     fig, axes = plt.subplots(2, 3, figsize=(15, 8), sharex="col")
     for row_idx, estimator in enumerate(estimators):
         for col_idx, form in enumerate(forms):
             subset = _bias_rows(rows, form, estimator)
             alpha = np.asarray([float(row["alpha"]) for row in subset])
             axis = axes[row_idx, col_idx]
-            axis.axhline(float(subset[0]["x0"]), color="0.7", linestyle=":", label="$x_0$")
-            axis.axhline(0.0, color="black", linewidth=1.0, label="$x^*$")
-            axis.plot(alpha, [float(row["x_b_star"]) for row in subset], "s--", label="$x_b^*$")
-            axis.plot(alpha, [float(row["x_estimator_star"]) for row in subset], "^--", label="$x_{est}^*$")
-            mean = np.asarray([float(row["mean_x_k"]) for row in subset])
-            low = np.asarray([float(row["ci95_low"]) for row in subset])
-            high = np.asarray([float(row["ci95_high"]) for row in subset])
-            axis.plot(alpha, mean, "o-", label="$x_K$")
-            axis.fill_between(alpha, low, high, alpha=0.2)
+            x_star = np.asarray([float(row["x_star"]) for row in subset])
+            biased_error = np.asarray([float(row["x_b_star"]) for row in subset]) - x_star
+            estimator_error = np.asarray([float(row["x_estimator_star"]) for row in subset]) - x_star
+            mean_error = np.asarray([float(row["mean_x_k"]) for row in subset]) - x_star
+            low_error = np.asarray([float(row["ci95_low"]) for row in subset]) - x_star
+            high_error = np.asarray([float(row["ci95_high"]) for row in subset]) - x_star
+            axis.axhline(0.0, color="black", linewidth=0.9)
+            axis.plot(alpha, biased_error, "s--", label="$x_b^*-x^*$")
+            axis.plot(alpha, estimator_error, "^--", label="$x^*_{\\sigma,\\mathrm{est}}-x^*$")
+            axis.plot(alpha, mean_error, "o-", label="$\\mathbb{E}[x_K]-x^*$")
+            axis.fill_between(alpha, low_error, high_error, alpha=0.2, label="95% CI")
             axis.grid(alpha=0.25)
             if row_idx == 0:
-                axis.set_title(form)
+                axis.set_title(titles[form])
             if col_idx == 0:
-                axis.set_ylabel(f"{ESTIMATOR_LABELS[estimator]}\nposition")
+                axis.set_ylabel(f"{ESTIMATOR_LABELS[estimator]}\nsigned displacement from $x^*$")
             if row_idx == 1:
-                axis.set_xlabel("Bias strength $\\alpha$")
+                axis.set_xlabel("Bias-gradient bound $\\alpha=\\|b'\\|_\\infty$")
     axes[0, 0].legend(ncol=2, fontsize=8)
+    fig.suptitle("Biased objective: minimizer, estimator root, and final-iterate displacement")
     fig.tight_layout()
     fig.savefig(output / "bias_landmarks.png", dpi=180)
     plt.close(fig)
@@ -547,6 +571,11 @@ def _plot_bias_landmarks(rows: Sequence[Mapping[str, object]], output: Path) -> 
 def _plot_bias_decomposition(rows: Sequence[Mapping[str, object]], output: Path) -> None:
     forms = ("linear", "arctan", "remainder")
     estimators = ("finite_difference", "stein_difference")
+    titles = {
+        "linear": r"$b(x)=\alpha x$",
+        "arctan": r"$b(x)=\alpha\arctan x$",
+        "remainder": r"$b(x)=\alpha(x-\arctan x)$",
+    }
     fig, axes = plt.subplots(4, 3, figsize=(15, 14), sharex=False)
     for estimator_idx, estimator in enumerate(estimators):
         for col_idx, form in enumerate(forms):
@@ -555,34 +584,42 @@ def _plot_bias_decomposition(rows: Sequence[Mapping[str, object]], output: Path)
             signed_axis = axes[2 * estimator_idx, col_idx]
             absolute_axis = axes[2 * estimator_idx + 1, col_idx]
             signed_axis.axhline(0.0, color="black", linewidth=0.8)
-            signed_axis.plot(alpha, [float(row["functional_bias_signed"]) for row in subset], "o-", label="functional bias")
-            signed_axis.plot(alpha, [float(row["smoothing_signed"]) for row in subset], "o-", label="smoothing")
-            signed_axis.plot(alpha, [float(row["mean_finite_run_signed"]) for row in subset], "o-", label="finite-run mean")
-            signed_axis.plot(alpha, [float(row["mean_truth_error_signed"]) for row in subset], "o-", label="total truth error")
+            signed_axis.plot(alpha, [float(row["functional_bias_signed"]) for row in subset], "o-", label="$x_b^*-x^*$")
+            signed_axis.plot(alpha, [float(row["smoothing_signed"]) for row in subset], "o-", label="$x^*_{\\sigma,\\mathrm{est}}-x_b^*$")
+            signed_axis.plot(alpha, [float(row["mean_finite_run_signed"]) for row in subset], "o-", label="$\\mathbb{E}[x_K]-x^*_{\\sigma,\\mathrm{est}}$")
+            signed_axis.plot(alpha, [float(row["mean_truth_error_signed"]) for row in subset], "o-", label="$\\mathbb{E}[x_K]-x^*$")
             signed_axis.grid(alpha=0.25)
 
             positive = [row for row in subset if float(row["alpha"]) > 0.0]
             positive_alpha = [float(row["alpha"]) for row in positive]
-            absolute_axis.loglog(positive_alpha, [float(row["functional_bias_abs"]) for row in positive], "o-", label="functional bias")
-            absolute_axis.loglog(positive_alpha, [float(row["smoothing_abs"]) for row in positive], "o-", label="smoothing")
-            absolute_axis.loglog(positive_alpha, [float(row["finite_run_rmse"]) for row in positive], "o-", label="finite-run RMS")
-            absolute_axis.loglog(positive_alpha, [np.sqrt(float(row["total_mse"])) for row in positive], "o-", label="truth RMSE")
+            absolute_axis.loglog(positive_alpha, [float(row["functional_bias_abs"]) for row in positive], "o-", label="$|x_b^*-x^*|$")
+            absolute_axis.loglog(positive_alpha, [float(row["smoothing_abs"]) for row in positive], "o-", label="$|x^*_{\\sigma,\\mathrm{est}}-x_b^*|$")
+            absolute_axis.loglog(positive_alpha, [float(row["finite_run_rmse"]) for row in positive], "o-", label="$\\sqrt{\\mathbb{E}[(x_K-x^*_{\\sigma,\\mathrm{est}})^2]}$")
+            absolute_axis.loglog(positive_alpha, [np.sqrt(float(row["total_mse"])) for row in positive], "o-", label="$\\sqrt{\\mathbb{E}[(x_K-x^*)^2]}$")
             absolute_axis.grid(alpha=0.25, which="both")
 
             if estimator_idx == 0:
-                signed_axis.set_title(form)
+                signed_axis.set_title(titles[form])
             if col_idx == 0:
-                signed_axis.set_ylabel(f"{ESTIMATOR_LABELS[estimator]}\nsigned")
-                absolute_axis.set_ylabel("absolute/RMS")
-            absolute_axis.set_xlabel("Bias strength $\\alpha$")
+                signed_axis.set_ylabel(f"{ESTIMATOR_LABELS[estimator]}\nsigned displacement")
+                absolute_axis.set_ylabel("Magnitude of difference or root-mean-square difference")
+            absolute_axis.set_xlabel("Bias-gradient bound $\\alpha=\\|b'\\|_\\infty$")
     axes[0, 0].legend(fontsize=8)
     axes[1, 0].legend(fontsize=8)
+    axes[2, 0].legend(fontsize=8)
+    axes[3, 0].legend(fontsize=8)
+    fig.suptitle("Exact decomposition of $x_K-x^*$ under functional bias")
     fig.tight_layout()
     fig.savefig(output / "bias_displacement_decomposition.png", dpi=180)
     plt.close(fig)
 
 
 def _plot_bias_bounds(rows: Sequence[Mapping[str, object]], output: Path) -> None:
+    titles = {
+        "linear": r"$b(x)=\alpha x$",
+        "arctan": r"$b(x)=\alpha\arctan x$",
+        "remainder": r"$b(x)=\alpha(x-\arctan x)$",
+    }
     fig, axes = plt.subplots(2, 3, figsize=(15, 8), sharex="col")
     for row_idx, estimator in enumerate(("finite_difference", "stein_difference")):
         for col_idx, form in enumerate(("linear", "arctan", "remainder")):
@@ -591,36 +628,75 @@ def _plot_bias_bounds(rows: Sequence[Mapping[str, object]], output: Path) -> Non
             observed = [float(row["theorem_observed"]) for row in subset]
             bound = [float(row["theorem_bound"]) for row in subset]
             axis = axes[row_idx, col_idx]
-            axis.plot(alpha, observed, "o-", label="observed")
-            axis.plot(alpha, bound, "--", label="theorem bound")
+            if estimator == "finite_difference":
+                observed_label = "$|\\mathbb{E}[x_{K,\\mathrm{FD}}]-x^*|$"
+                bound_label = "$B_{\\mathrm{FD}}(\\alpha)$"
+            else:
+                observed_label = "$\\mathbb{E}[(x_{K,\\mathrm{SD}}-x^*)^2]$"
+                bound_label = "$B_{\\mathrm{SD}}(\\alpha)$"
+            axis.plot(alpha, observed, "o-", label=observed_label)
+            axis.plot(alpha, bound, "--", label=bound_label)
             axis.set_yscale("log")
             axis.grid(alpha=0.25, which="both")
             if row_idx == 0:
-                axis.set_title(form)
+                axis.set_title(titles[form])
             if col_idx == 0:
-                metric = "absolute error" if estimator == "finite_difference" else "MSE"
+                metric = "$|\\mathbb{E}[x_K]-x^*|$" if estimator == "finite_difference" else "$\\mathbb{E}[(x_K-x^*)^2]$"
                 axis.set_ylabel(f"{ESTIMATOR_LABELS[estimator]}\n{metric}")
             if row_idx == 1:
-                axis.set_xlabel("Bias strength $\\alpha$")
+                axis.set_xlabel("Bias-gradient bound $\\alpha=\\|b'\\|_\\infty$")
     axes[0, 0].legend(fontsize=9)
+    axes[1, 0].legend(fontsize=9)
+    fig.suptitle("Observed final error versus the corresponding proof bound")
     fig.tight_layout()
     fig.savefig(output / "bias_proof_bounds.png", dpi=180)
     plt.close(fig)
 
 
 def _plot_scaling(fits: Sequence[Mapping[str, object]], output: Path) -> None:
-    valid = [fit for fit in fits if fit["slope"] != ""]
-    y = np.arange(len(valid))
-    slopes = [float(fit["slope"]) for fit in valid]
-    expected = [float(fit["expected"]) for fit in valid]
-    fig, axis = plt.subplots(figsize=(10, max(5, 0.55 * len(valid))))
-    axis.barh(y - 0.18, slopes, height=0.36, label="fitted")
-    axis.barh(y + 0.18, expected, height=0.36, alpha=0.45, label="expected")
-    axis.set_yticks(y, [str(fit["name"]) for fit in valid])
-    axis.axvline(0.0, color="black", linewidth=0.8)
-    axis.set_xlabel("Log-log exponent")
-    axis.grid(alpha=0.25, axis="x")
-    axis.legend()
+    fit_by_name = {str(fit["name"]): fit for fit in fits}
+    experiment_1 = (
+        ("finite_difference: population displacement vs sigma", r"$|x^*_{\sigma,\mathrm{FD}}-x^*|\;\propto\;\sigma^p$"),
+        ("stein_difference: population displacement vs sigma", r"$|x^*_{\sigma,\mathrm{SD}}-x^*|\;\propto\;\sigma^p$"),
+        ("finite_difference: final error vs sigma", r"$|\mathbb{E}[x_{K,\mathrm{FD}}]-x^*|\;\propto\;\sigma^p$"),
+        ("stein_difference: MSE vs sigma", r"$\mathbb{E}[(x_{K,\mathrm{SD}}-x^*)^2]\;\propto\;\sigma^p$"),
+        ("stein_difference: variance vs m", r"$\mathrm{Var}(x_{K,\mathrm{SD}})\;\propto\;m^p$"),
+    )
+    experiment_2 = (
+        ("linear: functional displacement vs alpha", r"$|x^*_{b,\mathrm{linear}}-x^*|\;\propto\;\alpha^p$"),
+        ("arctan: functional displacement vs alpha", r"$|x^*_{b,\arctan}-x^*|\;\propto\;\alpha^p$"),
+        ("remainder/finite_difference: estimator-root change vs alpha", r"$|x^*_{\sigma,\mathrm{FD}}(\alpha)-x^*_{\sigma,\mathrm{FD}}(0)|\;\propto\;\alpha^p$"),
+        ("remainder/stein_difference: estimator-root change vs alpha", r"$|x^*_{\sigma,\mathrm{SD}}(\alpha)-x^*_{\sigma,\mathrm{SD}}(0)|\;\propto\;\alpha^p$"),
+    )
+
+    fig, axes = plt.subplots(1, 2, figsize=(17, 7), sharex=True)
+    for axis, title, specifications in zip(
+        axes,
+        ("Experiment 1: smoothing and Monte Carlo scaling", "Experiment 2: functional-bias scaling"),
+        (experiment_1, experiment_2),
+        strict=True,
+    ):
+        selected = [(fit_by_name[name], label) for name, label in specifications]
+        y = np.arange(len(selected))
+        fitted = np.asarray([float(fit["slope"]) for fit, _ in selected])
+        expected = np.asarray([float(fit["expected"]) for fit, _ in selected])
+        axis.barh(y - 0.18, fitted, height=0.36, color="tab:blue", label="Fitted exponent $\\hat p$")
+        axis.barh(y + 0.18, expected, height=0.36, color="tab:orange", alpha=0.65, label="Expected exponent $p_0$")
+        axis.set_yticks(y, [label for _, label in selected])
+        axis.invert_yaxis()
+        axis.axvline(0.0, color="black", linewidth=0.8)
+        axis.set_title(title)
+        axis.grid(alpha=0.25, axis="x")
+        axis.set_axisbelow(True)
+        for row, value in enumerate(fitted):
+            offset = 0.06 if value >= 0.0 else -0.06
+            alignment = "left" if value >= 0.0 else "right"
+            axis.text(value + offset, row - 0.18, f"{value:.3f}", va="center", ha=alignment, fontsize=9)
+
+    axes[0].legend(fontsize=9, loc="lower right")
+    for axis in axes:
+        axis.set_xlabel(r"Exponent $p$ in $y\propto s^p$ (least-squares fit in log--log coordinates)")
+    fig.suptitle("Zeroth-order proof-validation scaling summary")
     fig.tight_layout()
     fig.savefig(output / "scaling_summary.png", dpi=180)
     plt.close(fig)

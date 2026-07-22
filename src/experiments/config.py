@@ -13,12 +13,14 @@ from objective.modifications import (
     AcceptancePenaltyObjective,
     BiasedObjective,
     RegularizedObjective,
+    ThetaBiasedObjective,
     action_bias_to_dict,
     coerce_objective_modification,
     compose_objective,
     modification_to_dict,
     noise_to_dict,
     regularizer_to_dict,
+    theta_bias_to_dict,
 )
 from objective.modifications.composition import ObjectiveModificationSpec
 from objective.modifications.noise import NoisyObjective
@@ -27,6 +29,7 @@ from objective.objectives import (
     ModelBasedObjective,
     PlantedLogisticObjective,
     SyntheticFunction,
+    ZerothOrderProofObjective,
 )
 from objective.policy import ConstantPolicy, LinearPolicy, MLPPolicy, SoftmaxPolicy
 from objective.policy_preprocessing import PolicyFeaturePreprocessor
@@ -510,6 +513,8 @@ class ExperimentConfig:
 
 def _objective_to_dict(objective: Objective) -> dict[str, Any]:
     """Serialize objective to dictionary."""
+    if isinstance(objective, ZerothOrderProofObjective):
+        return objective.to_dict()
     if isinstance(objective, SyntheticFunction):
         return objective.to_dict()
     if isinstance(objective, NoisyObjective):
@@ -524,6 +529,12 @@ def _objective_to_dict(objective: Objective) -> dict[str, Any]:
             "base_objective": _objective_to_dict(objective.base_objective),
             "lambda_bias": float(objective.lambda_bias),
             "bias": action_bias_to_dict(objective.bias),
+        }
+    if isinstance(objective, ThetaBiasedObjective):
+        return {
+            "type": "ThetaBiasedObjective",
+            "base_objective": _objective_to_dict(objective.base_objective),
+            "bias": theta_bias_to_dict(objective.bias),
         }
     if isinstance(objective, RegularizedObjective):
         return {

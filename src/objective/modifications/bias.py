@@ -27,6 +27,123 @@ class ActionBias:
 
 
 @dataclass(frozen=True)
+class ThetaBiasBounds:
+    """Global derivative bounds used by the strongly-convex bias proofs."""
+
+    beta: float
+    kappa_minus: float
+    kappa_plus: float
+    rho: float
+
+
+class ThetaBias:
+    """Deterministic scalar bias over a one-dimensional theta vector."""
+
+    alpha: float
+
+    def value(self, theta: np.ndarray) -> float:
+        raise NotImplementedError
+
+    def grad(self, theta: np.ndarray) -> np.ndarray:
+        raise NotImplementedError
+
+    def derivative_bounds(self) -> ThetaBiasBounds:
+        raise NotImplementedError
+
+
+@dataclass(frozen=True)
+class LinearThetaBias(ThetaBias):
+    r"""Linear theta bias $$b(x)=\alpha x$$."""
+
+    alpha: float
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "alpha", _finite_alpha(self.alpha))
+
+    def value(self, theta: np.ndarray) -> float:
+        return self.alpha * _theta_scalar(theta)
+
+    def grad(self, theta: np.ndarray) -> np.ndarray:
+        _theta_scalar(theta)
+        return np.asarray([self.alpha], dtype=float)
+
+    def derivative_bounds(self) -> ThetaBiasBounds:
+        return ThetaBiasBounds(abs(self.alpha), 0.0, 0.0, 0.0)
+
+
+@dataclass(frozen=True)
+class ArctanThetaBias(ThetaBias):
+    r"""Saturating theta bias $$b(x)=\alpha\arctan x$$."""
+
+    alpha: float
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "alpha", _finite_alpha(self.alpha))
+
+    def value(self, theta: np.ndarray) -> float:
+        return float(self.alpha * np.arctan(_theta_scalar(theta)))
+
+    def grad(self, theta: np.ndarray) -> np.ndarray:
+        x = _theta_scalar(theta)
+        return np.asarray([self.alpha / (1.0 + x * x)], dtype=float)
+
+    def derivative_bounds(self) -> ThetaBiasBounds:
+        curvature = 3.0 * np.sqrt(3.0) * abs(self.alpha) / 8.0
+        return ThetaBiasBounds(abs(self.alpha), curvature, curvature, 2.0 * abs(self.alpha))
+
+
+@dataclass(frozen=True)
+class ArctanRemainderThetaBias(ThetaBias):
+    r"""Cubic-near-zero bias $$b(x)=\alpha(x-\arctan x)$$."""
+
+    alpha: float
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "alpha", _finite_alpha(self.alpha))
+
+    def value(self, theta: np.ndarray) -> float:
+        x = _theta_scalar(theta)
+        return float(self.alpha * (x - np.arctan(x)))
+
+    def grad(self, theta: np.ndarray) -> np.ndarray:
+        x = _theta_scalar(theta)
+        return np.asarray([self.alpha * x * x / (1.0 + x * x)], dtype=float)
+
+    def derivative_bounds(self) -> ThetaBiasBounds:
+        curvature = 3.0 * np.sqrt(3.0) * abs(self.alpha) / 8.0
+        return ThetaBiasBounds(abs(self.alpha), curvature, curvature, 2.0 * abs(self.alpha))
+
+
+@dataclass(frozen=True)
+class ThetaBiasedObjective(Objective):
+    r"""Policy-free wrapper $$\widetilde J(\theta)=J(\theta)+b(\theta)$$."""
+
+    base_objective: Objective
+    bias: ThetaBias
+
+    def value(self, theta: np.ndarray, x_batch: Any) -> float:
+        return float(self.base_objective.value(theta, x_batch)) + self.bias.value(theta)
+
+    def base_value(self, theta: np.ndarray, x_batch: Any) -> float:
+        base_value_fn = getattr(self.base_objective, "base_value", None)
+        if callable(base_value_fn):
+            return float(base_value_fn(theta, x_batch))
+        return float(self.base_objective.value(theta, x_batch))
+
+    def grad(self, theta: np.ndarray, x_batch: Any) -> np.ndarray:
+        return np.asarray(self.base_objective.grad(theta, x_batch), dtype=float) + self.bias.grad(theta)
+
+    def with_noise_seed(self, seed: int) -> "ThetaBiasedObjective":
+        with_noise_seed = getattr(self.base_objective, "with_noise_seed", None)
+        if not callable(with_noise_seed):
+            return self
+        return replace(self, base_objective=with_noise_seed(int(seed)))
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.base_objective, name)
+
+
+@dataclass(frozen=True)
 class LinearActionBias(ActionBias):
     r"""Linear optimism term $$b(u)=-\lambda_{bias}u$$."""
 
@@ -302,4 +419,29 @@ def _validate_u_field(u: np.ndarray) -> np.ndarray:
     return u_arr
 
 
-__all__ = ["ActionBias", "BiasedObjective", "LinearActionBias", "UpperSupportHingeBias"]
+def _finite_alpha(alpha: float) -> float:
+    value = float(alpha)
+    if not np.isfinite(value):
+        raise ValueError("alpha must be finite.")
+    return value
+
+
+def _theta_scalar(theta: np.ndarray) -> float:
+    theta_arr = np.asarray(theta, dtype=float)
+    if theta_arr.shape != (1,) or not np.isfinite(theta_arr).all():
+        raise ValueError("theta bias requires a finite theta vector with shape (1,).")
+    return float(theta_arr[0])
+
+
+__all__ = [
+    "ActionBias",
+    "ArctanRemainderThetaBias",
+    "ArctanThetaBias",
+    "BiasedObjective",
+    "LinearActionBias",
+    "LinearThetaBias",
+    "ThetaBias",
+    "ThetaBiasBounds",
+    "ThetaBiasedObjective",
+    "UpperSupportHingeBias",
+]

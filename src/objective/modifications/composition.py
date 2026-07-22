@@ -12,8 +12,13 @@ from objective.modifications.acceptance import (
 )
 from objective.modifications.bias import (
     ActionBias,
+    ArctanRemainderThetaBias,
+    ArctanThetaBias,
     BiasedObjective,
     LinearActionBias,
+    LinearThetaBias,
+    ThetaBias,
+    ThetaBiasedObjective,
     UpperSupportHingeBias,
 )
 from objective.modifications.noise import (
@@ -59,6 +64,22 @@ class BiasModification(ObjectiveModificationSpec):
             "type": "BiasModification",
             "lambda_bias": None if self.lambda_bias is None else float(self.lambda_bias),
             "bias": None if self.bias is None else action_bias_to_dict(_coerce_action_bias(self.bias)),
+        }
+
+
+@dataclass(frozen=True)
+class ThetaBiasModification(ObjectiveModificationSpec):
+    """Apply a deterministic bias directly in one-dimensional theta space."""
+
+    bias: ThetaBias | Mapping[str, Any]
+
+    def apply(self, objective: Objective) -> Objective:
+        return ThetaBiasedObjective(base_objective=objective, bias=_coerce_theta_bias(self.bias))
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "type": "ThetaBiasModification",
+            "bias": theta_bias_to_dict(_coerce_theta_bias(self.bias)),
         }
 
 
@@ -173,6 +194,8 @@ def coerce_objective_modification(
             ),
             bias=modification.get("bias"),
         )
+    if kind in {"ThetaBiasModification", "theta_bias"}:
+        return ThetaBiasModification(bias=_mapping_value(modification, "bias"))
     if kind in {"NoiseModification", "noise"}:
         return NoiseModification(noise=_mapping_value(modification, "noise"))
     if kind in {"RegularizationModification", "regularization"}:
@@ -274,6 +297,26 @@ def action_bias_from_dict(payload: Mapping[str, Any]) -> ActionBias:
     raise ValueError(f"Unknown action-bias type: {kind!r}.")
 
 
+def theta_bias_to_dict(bias: ThetaBias) -> dict[str, Any]:
+    """Serialize a one-dimensional theta-bias term."""
+    if isinstance(bias, (LinearThetaBias, ArctanThetaBias, ArctanRemainderThetaBias)):
+        return {"type": type(bias).__name__, "alpha": float(bias.alpha)}
+    raise TypeError(f"Unsupported theta-bias type: {type(bias).__name__}.")
+
+
+def theta_bias_from_dict(payload: Mapping[str, Any]) -> ThetaBias:
+    """Build a one-dimensional theta-bias term from a config payload."""
+    kind = str(payload.get("type") or payload.get("kind") or "")
+    bias_types: dict[str, type[ThetaBias]] = {
+        "LinearThetaBias": LinearThetaBias,
+        "ArctanThetaBias": ArctanThetaBias,
+        "ArctanRemainderThetaBias": ArctanRemainderThetaBias,
+    }
+    if kind not in bias_types:
+        raise ValueError(f"Unknown theta-bias type: {kind!r}.")
+    return bias_types[kind](alpha=float(_mapping_value(payload, "alpha")))
+
+
 def _coerce_noise(noise: ObjectiveNoise | Mapping[str, Any]) -> ObjectiveNoise:
     if isinstance(noise, ObjectiveNoise):
         return noise
@@ -288,6 +331,14 @@ def _coerce_action_bias(bias: ActionBias | Mapping[str, Any]) -> ActionBias:
     if isinstance(bias, Mapping):
         return action_bias_from_dict(bias)
     raise TypeError(f"Unsupported action-bias term: {type(bias).__name__}.")
+
+
+def _coerce_theta_bias(bias: ThetaBias | Mapping[str, Any]) -> ThetaBias:
+    if isinstance(bias, ThetaBias):
+        return bias
+    if isinstance(bias, Mapping):
+        return theta_bias_from_dict(bias)
+    raise TypeError(f"Unsupported theta-bias term: {type(bias).__name__}.")
 
 
 def _coerce_regularizer(regularizer: ThetaRegularizer | Mapping[str, Any]) -> ThetaRegularizer:
@@ -311,6 +362,7 @@ __all__ = [
     "NoiseModification",
     "ObjectiveModificationSpec",
     "RegularizationModification",
+    "ThetaBiasModification",
     "action_bias_from_dict",
     "action_bias_to_dict",
     "coerce_objective_modification",
@@ -318,4 +370,6 @@ __all__ = [
     "modification_to_dict",
     "noise_from_dict",
     "noise_to_dict",
+    "theta_bias_from_dict",
+    "theta_bias_to_dict",
 ]

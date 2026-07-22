@@ -547,25 +547,36 @@ def _plot_bias_landmarks(rows: Sequence[Mapping[str, object]], output: Path) -> 
 def _plot_bias_decomposition(rows: Sequence[Mapping[str, object]], output: Path) -> None:
     forms = ("linear", "arctan", "remainder")
     estimators = ("finite_difference", "stein_difference")
-    fig, axes = plt.subplots(2, 3, figsize=(15, 8), sharex="col")
-    for row_idx, estimator in enumerate(estimators):
+    fig, axes = plt.subplots(4, 3, figsize=(15, 14), sharex=False)
+    for estimator_idx, estimator in enumerate(estimators):
         for col_idx, form in enumerate(forms):
             subset = _bias_rows(rows, form, estimator)
             alpha = [float(row["alpha"]) for row in subset]
-            axis = axes[row_idx, col_idx]
-            axis.axhline(0.0, color="black", linewidth=0.8)
-            axis.plot(alpha, [float(row["functional_bias_signed"]) for row in subset], "o-", label="functional bias")
-            axis.plot(alpha, [float(row["smoothing_signed"]) for row in subset], "o-", label="smoothing")
-            axis.plot(alpha, [float(row["mean_finite_run_signed"]) for row in subset], "o-", label="finite-run mean")
-            axis.plot(alpha, [float(row["mean_truth_error_signed"]) for row in subset], "o-", label="total truth error")
-            axis.grid(alpha=0.25)
-            if row_idx == 0:
-                axis.set_title(form)
+            signed_axis = axes[2 * estimator_idx, col_idx]
+            absolute_axis = axes[2 * estimator_idx + 1, col_idx]
+            signed_axis.axhline(0.0, color="black", linewidth=0.8)
+            signed_axis.plot(alpha, [float(row["functional_bias_signed"]) for row in subset], "o-", label="functional bias")
+            signed_axis.plot(alpha, [float(row["smoothing_signed"]) for row in subset], "o-", label="smoothing")
+            signed_axis.plot(alpha, [float(row["mean_finite_run_signed"]) for row in subset], "o-", label="finite-run mean")
+            signed_axis.plot(alpha, [float(row["mean_truth_error_signed"]) for row in subset], "o-", label="total truth error")
+            signed_axis.grid(alpha=0.25)
+
+            positive = [row for row in subset if float(row["alpha"]) > 0.0]
+            positive_alpha = [float(row["alpha"]) for row in positive]
+            absolute_axis.loglog(positive_alpha, [float(row["functional_bias_abs"]) for row in positive], "o-", label="functional bias")
+            absolute_axis.loglog(positive_alpha, [float(row["smoothing_abs"]) for row in positive], "o-", label="smoothing")
+            absolute_axis.loglog(positive_alpha, [float(row["finite_run_rmse"]) for row in positive], "o-", label="finite-run RMS")
+            absolute_axis.loglog(positive_alpha, [np.sqrt(float(row["total_mse"])) for row in positive], "o-", label="truth RMSE")
+            absolute_axis.grid(alpha=0.25, which="both")
+
+            if estimator_idx == 0:
+                signed_axis.set_title(form)
             if col_idx == 0:
-                axis.set_ylabel(ESTIMATOR_LABELS[estimator])
-            if row_idx == 1:
-                axis.set_xlabel("Bias strength $\\alpha$")
+                signed_axis.set_ylabel(f"{ESTIMATOR_LABELS[estimator]}\nsigned")
+                absolute_axis.set_ylabel("absolute/RMS")
+            absolute_axis.set_xlabel("Bias strength $\\alpha$")
     axes[0, 0].legend(fontsize=8)
+    axes[1, 0].legend(fontsize=8)
     fig.tight_layout()
     fig.savefig(output / "bias_displacement_decomposition.png", dpi=180)
     plt.close(fig)

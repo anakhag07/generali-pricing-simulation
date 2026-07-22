@@ -83,7 +83,7 @@ def _root(fn: Callable[[float], float]) -> float:
 
 
 def biased_optimum(bias: ThetaBias | None) -> float:
-    """Return $$x_b^\star$$, the root of the biased analytical gradient."""
+    r"""Return $$x_b^\star$$, the root of the biased analytical gradient."""
     return _root(lambda x: float(_base_grad(x) + _bias_grad(bias, x)))
 
 

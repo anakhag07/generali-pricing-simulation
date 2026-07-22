@@ -181,6 +181,31 @@ wrapper exposes the biased surrogate to the optimizer while `base_value(...)` /
 planted-logistic experiments are `scripts/run_planted_logistic_action_bias_sweep.py`
 and `scripts/run_planted_logistic_support_bias_sweep.py`.
 
+Policy-free objectives can instead use `ThetaBiasModification`. The built-in
+one-dimensional fields are `LinearThetaBias` ($$\alpha x$$),
+`ArctanThetaBias` ($$\alpha\arctan x$$), and
+`ArctanRemainderThetaBias` ($$\alpha(x-\arctan x)$$).
+
+### Zeroth-Order Proof Validation
+
+The `zeroth_order_proof_base` preset implements the globally strongly convex
+objective $$f(x)=x^2+\frac12(\sin x-x)$$ with known $$x^*=0$$. Two committed
+manifests check the predicted finite-difference and Stein-difference dependence
+on perturbation radius, Stein sample count, and deterministic functional bias:
+
+```bash
+python scripts/run_experiment_manifest.py manifests/zeroth_order_baseline.json
+python scripts/run_experiment_manifest.py manifests/zeroth_order_functional_bias.json
+python scripts/analyze_zeroth_order_proof_validation.py \
+  --baseline-manifest manifests/zeroth_order_baseline.json \
+  --bias-manifest manifests/zeroth_order_functional_bias.json
+```
+
+The analyzer records $$x_0$$, the clean and biased optima, each estimator's
+population fixed point, and $$x_K$$. It writes sweep-level displacement,
+bias/variance/MSE, theorem-bound, and fitted-scaling tables and plots under
+`results/zeroth-order-proof-validation-analysis/`.
+
 Optimization step rules:
 - `l-bfgs-b` uses `scipy.minimize(method="L-BFGS-B")`.
 - `trust-constr` uses `scipy.minimize(method="trust-constr")` and adds the
@@ -215,6 +240,7 @@ Available base presets include:
 |---|---|---|
 | `synthetic_quadratic_base` | Fixed dummy batch (ignored) | `StronglyConvexQuadratic` (seeded rotation, configurable condition number) |
 | `synthetic_smoothed_nonconvex_base` | Fixed dummy batch (ignored) | `SmoothedNonconvex` (known global minimum, local-minima traps) |
+| `zeroth_order_proof_base` | Fixed dummy batch (ignored) | One-dimensional strongly convex sine-perturbed quadratic with known minimum |
 | `fixed_regression_base` | Synthetic N(0, I) | `FixedRegressionObjective` |
 | `real_data_glm_base` | All complete eligible raw acceptance CSV rows by default; seeded `n_samples` draw when set | `ModelBasedObjective` (GLM bundle, analytical grad when supported) |
 | `real_data_xgb_base` | All complete eligible raw acceptance CSV rows by default; seeded `n_samples` draw when set | `ModelBasedObjective` (XGBoost bundle, FD acceptance gradient) |

@@ -13,8 +13,13 @@ from importlib import import_module
 
 from objective.modifications import (
     ActionBias,
+    ArctanRemainderThetaBias,
+    ArctanThetaBias,
     BiasedObjective,
     LinearActionBias,
+    LinearThetaBias,
+    ThetaBias,
+    ThetaBiasedObjective,
     UpperSupportHingeBias,
 )
 from objective.objectives.generali import (
@@ -34,6 +39,7 @@ from objective.objectives.synthetic import (
     StronglyConvexQuadratic,
     SYNTHETIC_LADDER,
     SyntheticFunction,
+    ZerothOrderProofObjective,
 )
 
 _JAX_EXPORTS = {
@@ -54,9 +60,12 @@ def __getattr__(name: str):
 
 __all__ = [
     "ActionBias",
+    "ArctanRemainderThetaBias",
+    "ArctanThetaBias",
     "FixedRegressionObjective",
     "BiasedObjective",
     "LinearActionBias",
+    "LinearThetaBias",
     "UpperSupportHingeBias",
     "IMPLEMENTED_SYNTHETIC_LADDER",
     "ModelBasedObjective",
@@ -67,6 +76,9 @@ __all__ = [
     "StronglyConvexQuadratic",
     "SYNTHETIC_LADDER",
     "SyntheticFunction",
+    "ThetaBias",
+    "ThetaBiasedObjective",
+    "ZerothOrderProofObjective",
     "PreparedGLMBatch",
     "PreparedGLMObjective",
     "JaxPreparedGLMObjective",

@@ -20,6 +20,7 @@ from objective.objectives.synthetic.ladder import (
     SyntheticFunction,
 )
 from objective.objectives.synthetic.planted_logistic import PlantedLogisticObjective
+from objective.objectives.synthetic.proof_validation import ZerothOrderProofObjective
 
 __all__ = [
     "FixedRegressionObjective",
@@ -31,4 +32,5 @@ __all__ = [
     "StronglyConvexQuadratic",
     "SYNTHETIC_LADDER",
     "SyntheticFunction",
+    "ZerothOrderProofObjective",
 ]

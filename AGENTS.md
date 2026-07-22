@@ -333,7 +333,7 @@ by `tests/objective/test_package_boundary.py`:
 - `synthetic/` — self-contained, analytically known optima, **must never import
   `data`** so they stay usable as fast fixtures and reference benchmarks in a
   checkout with no artifacts (`ladder.py`, `planted_logistic.py`,
-  `fixed_regression.py`)
+  `fixed_regression.py`, `proof_validation.py`)
 - top level — wrappers that serve both (`biased.py`; `objective/noise.py`)
 
 `objectives/__init__.py` re-exports the full surface, so `from objective import X`
@@ -355,11 +355,20 @@ belongs under `generali/`.
   - `PiecewiseConvex` / `PiecewiseNonconvexDoubleWell` (rungs 3-4): structural stubs — seeded construction and field validation are locked down, but `_f`/`_grad_f` raise `NotImplementedError` until implemented (intended forms in MATH.md); the registry guard test forces newly implemented rungs into `IMPLEMENTED_SYNTHETIC_LADDER` and thereby into the shared contract tests
   - `SYNTHETIC_LADDER` / `IMPLEMENTED_SYNTHETIC_LADDER`: rung registry used by contract tests and the ladder config factory
 
+- **`src/objective/objectives/synthetic/proof_validation.py`**
+  - `ZerothOrderProofObjective`: one-dimensional policy-free benchmark
+    $$f(x)=x^2+\frac12(\sin x-x)$$ with $$x^*=0$$, $$\mu=1.5$$,
+    $$L=2.5$$, and $$\rho=0.5$$; used by the committed zeroth-order proof manifests
+
 - **`src/objective/objectives/biased.py`**
   - `ActionBias`: action-level deterministic bias interface used by `BiasedObjective`; no additional seed stream is needed
   - `LinearActionBias`: global optimism wrapper term $$b(u)=-\lambda_{bias}u$$
   - `UpperSupportHingeBias`: upper-support optimism term $$b(u)=-\lambda_{bias}(u-h)_+$$ with optional smooth hinge; exact inside support and optimistic only above support
   - `BiasedObjective`: deterministic wrapper $$\hat{M}(x,u)=M(x,u)+b(x,u)$$ that exposes biased optimization values/gradients while `base_value()` / `base_value_at_u()` report the wrapped true objective
+  - Canonical implementations now live in `src/objective/modifications/bias.py`,
+    which also provides policy-free `ThetaBiasedObjective` plus
+    `LinearThetaBias`, `ArctanThetaBias`, and `ArctanRemainderThetaBias`; all use
+    the existing optimizer seed stream because their fields are deterministic
 
 - **`src/objective/objectives/generali/model_based.py`**
   - `ModelBasedObjective`: pricing objective $$f(u;x) = a(x,u)(\hat{Y}(x) - (u + 1) \cdot p(x))$$ backed by trained sklearn/XGBoost models
@@ -523,6 +532,8 @@ belongs under `generali/`.
     - `loss_source="observed"` is an override axis that appends `Y_G_Loss` to the fixed real-data frame and configures `ModelBasedObjective` to use it as the loss term; default `"predicted"` keeps the artifact loss model
   - `fixed_regression_base.py`: base fixed-regression config (4D, L-BFGS-B step rule, W&B enabled)
   - `planted_logistic_base.py`: planted logistic base config (3D, L-BFGS-B step rule, 5000 steps, u*=1.1)
+  - `zeroth_order_proof_base.py`: one-dimensional constant-step NumPy preset
+    with fixed `theta0=[1]` for finite-difference/Stein proof checks
   - `real_data_glm_base`: registry-only base built by `real_data_factory.py`; supports `policy_kind`, `feature_order`, `policy_preprocessing`, `constraint_mode`, GLM acceptance `u_coef`, runtime, and estimator overrides
     - `compute_backend="jax"` keeps `step_rule="trust-constr"` and swaps supported GLM training callbacks to the fixed-batch JAX prepared objective; use with constant/linear/softmax policies, finite materializable linear/softmax feature maps, and supported estimators `first_order`, `finite_difference`, `gauss_stein`, `spsa`, and `stein_difference`
   - `real_data_xgb_base`: registry-only base built by `real_data_factory.py`; supports the same override axes, with XGB defaults excluding `first_order`
@@ -666,6 +677,14 @@ belongs under `generali/`.
   default `LaunchPlan`, maps `launch.array: "variant"` to one task per variant,
   and maps `launch.array: "none"` to one serial task. It supports `--force` to
   rerun completed variants and `--runs-root` for alternate result roots.
+- `manifests/zeroth_order_baseline.json` and
+  `manifests/zeroth_order_functional_bias.json` are the source of truth for the
+  small perturbation/sample-count and functional-bias proof grids.
+- `scripts/analyze_zeroth_order_proof_validation.py` reads those completed
+  summaries without rerunning optimization; it calculates clean/biased/
+  estimator-root/final landmarks, signed displacement decompositions,
+  Stein bias-variance-MSE, theorem checks, scaling fits, and the eight canonical
+  sweep plots under `results/zeroth-order-proof-validation-analysis/`.
 - `scripts/run_sweep.py` is a minimal generic seed-aware preset sweep launcher around `experiments.sweep_utils.run_sweep(...)`. It accepts a base preset plus JSON override mapping/list/grid inputs, optional seed-vary/fixed-stream arguments, and `--requires-jax` to force the GPU Slurm profile. It should stay experiment-agnostic; dedicated scientific grids belong in their own scripts.
 - `scripts/run_noisy_glm_theta_variance_sweep.py` runs the all-data trust-constrained GLM noisy-objective sweeps on GPU/JAX. It defaults to the saved first-order no-noise truth summary at `results/real_data_glm_base__20260706_124627/summary.json`, centers heteroskedastic noise at that run's final mean `u`, sweeps theta starts along the real initialization-to-truth line by L2 distance, sweeps homoskedastic/heteroskedastic noise variance for zeroth-order estimators, writes `noisy_glm_theta_variance_finals.csv` / `noisy_glm_theta_variance_summary.csv`, and regenerates theta-distance/objective-gap plots per grid project.
 - `scripts/run_noise_offset_grid.py` runs the combined noise-level x theta-offset planted-logistic grid: for each noise family (homoskedastic std `sigma in {0, 0.1, 2}` new + `0.5` reused from the saved theta-offset sweep; heteroskedastic growth `gamma in {0, 0.25, 4}` new + `1.0` reused) it varies the init offset `delta` in `theta0 = theta_FO_clean + delta * 1` over 9 offsets with `RUN_SEEDS=(7, 8, 9)`, carrying its own copy of the retired planted-noise fill-in sweep driver's COMMON_OVERRIDES/seed policy (formerly in `scripts/run_sweep.py`) so runs stay comparable with the saved sweeps. Writes `noise_offset_grid_finals.csv` plus per-estimator two-panel figures (final theta distance to first-order truth | clean-objective gap on the reconstructed train batch, curves = noise level) under `results/homoskedastic-noise-offset-grid/` and `results/heteroskedastic-noise-offset-grid/`. `--plots-only` regenerates outputs from saved summaries; `--families` selects the grid group; launch-aware with auto Slurm submit
@@ -797,6 +816,7 @@ exclude `tests/objective/test_jax_prepared_glm*`, `tests/optimization/test_jax_*
 | `test_jax_prepared_glm_objective.py` | JAX prepared GLM value, per-row action-value hooks, gradient, policy-u, acceptance, and SciPy adapter parity |
 | `test_policy_preprocessing.py` | Policy-side standardization, whitening, PCA dimensionality, and transform validation |
 | `test_policy_u_histograms.py` | Policy u-distribution visualization |
+| `test_zeroth_order_proof_objective.py` | Strongly convex proof objective, theta-bias formulas/bounds, composition, and serialization |
 
 #### `tests/optimization/`
 | Test File | Area |
@@ -859,6 +879,7 @@ exclude `tests/objective/test_jax_prepared_glm*`, `tests/optimization/test_jax_*
 | `test_policy_pca_grid.py` | Policy PCA grid condition construction and aggregate output writing |
 | `test_policy_free_objective.py` | Policy-free dimension resolution, optimization convergence, optional action metrics, and strict JSON serialization |
 | `test_synthetic_ladder_config.py` | Synthetic ladder presets: registration, defaults, function-param forwarding, u-space/stub rejection, and deterministic end-to-end smoke runs with true-gap metrics |
+| `test_zeroth_order_proof_manifests.py` | Proof preset registration, baseline/bias manifest grids, seed policy, and FD/Stein smoke execution |
 
 #### `tests/reporting/`
 | Test File | Area |
@@ -889,6 +910,7 @@ exclude `tests/objective/test_jax_prepared_glm*`, `tests/optimization/test_jax_*
 | `test_quadratic_homoskedastic_sweep.py` | Scratch quadratic homoskedastic L-BFGS-B grid construction, noise-only seed policy, clean/noisy metric separation, and failed-run aggregation |
 | `test_support_bias_noise_grid_script.py` | Support-bias noise grid objective composition, variant naming round-trip, task specs, zeroth-order estimator set, and clean-objective/bias reconstruction |
 | `test_xgb_logit_spline_experiment_script.py` | XGB logit-spline runner defaults, exact-gradient config, convergence rows, and launch delegation |
+| `test_analyze_zeroth_order_proof_validation.py` | Proof-objective population roots, bias landmarks, exact MSE decomposition, and complete analysis plot/table outputs |
 
 #### `tests/integration/`
 | Test File | Area |

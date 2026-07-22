@@ -10,8 +10,14 @@ from objective.modifications.acceptance import (
 )
 from objective.modifications.bias import (
     ActionBias,
+    ArctanRemainderThetaBias,
+    ArctanThetaBias,
     BiasedObjective,
     LinearActionBias,
+    LinearThetaBias,
+    ThetaBias,
+    ThetaBiasBounds,
+    ThetaBiasedObjective,
     UpperSupportHingeBias,
 )
 from objective.modifications.composition import (
@@ -21,6 +27,7 @@ from objective.modifications.composition import (
     NoiseModification,
     ObjectiveModificationSpec,
     RegularizationModification,
+    ThetaBiasModification,
     action_bias_from_dict,
     action_bias_to_dict,
     coerce_objective_modification,
@@ -28,6 +35,8 @@ from objective.modifications.composition import (
     modification_to_dict,
     noise_from_dict,
     noise_to_dict,
+    theta_bias_from_dict,
+    theta_bias_to_dict,
 )
 from objective.modifications.noise import (
     HeteroskedasticGaussianNoise,
@@ -51,11 +60,14 @@ __all__ = [
     "AcceptancePenaltyModification",
     "AcceptancePenaltyObjective",
     "ActionBias",
+    "ArctanRemainderThetaBias",
+    "ArctanThetaBias",
     "BiasModification",
     "BiasedObjective",
     "HeteroskedasticGaussianNoise",
     "HomoskedasticGaussianNoise",
     "LinearActionBias",
+    "LinearThetaBias",
     "NoiseModification",
     "NoisyObjective",
     "NoNoise",
@@ -66,6 +78,10 @@ __all__ = [
     "RegularizedObjective",
     "SupportThetaRegularizer",
     "ThetaRegularizer",
+    "ThetaBias",
+    "ThetaBiasBounds",
+    "ThetaBiasedObjective",
+    "ThetaBiasModification",
     "UpperSupportHingeBias",
     "action_bias_from_dict",
     "action_bias_to_dict",
@@ -74,6 +90,8 @@ __all__ = [
     "modification_to_dict",
     "noise_from_dict",
     "noise_to_dict",
+    "theta_bias_from_dict",
+    "theta_bias_to_dict",
     "regularizer_from_dict",
     "regularizer_to_dict",
 ]

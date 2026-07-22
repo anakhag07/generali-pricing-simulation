@@ -1,0 +1,45 @@
+{
+  "name": "zeroth-order-proof-functional-bias",
+  "objective": {"preset": "zeroth_order_proof_base"},
+  "objective_modifications": [],
+  "optimizer": {
+    "step_rule": "constant",
+    "compute_backend": "numpy",
+    "t_steps": 1500,
+    "step_size": 0.01,
+    "sigma": 0.15,
+    "n_grad_samples": 128,
+    "enabled_estimators": ["finite_difference", "stein_difference"],
+    "plot": false,
+    "verbose": false
+  },
+  "seeds": {
+    "run_seeds": [101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116],
+    "anchor_seed": 101,
+    "vary": ["optimizer"]
+  },
+  "truth": {"source": "clean_base_objective"},
+  "launch": {"mode": "local", "array": "variant"},
+  "per_seed_plots": false,
+  "matrix": {
+    "bias": [
+      {"label": "linear-alpha-0", "value": "linear:0", "overrides": {"objective_modifications": [{"type": "theta_bias", "bias": {"type": "LinearThetaBias", "alpha": 0.0}}]}},
+      {"label": "linear-alpha-0.025", "value": "linear:0.025", "overrides": {"objective_modifications": [{"type": "theta_bias", "bias": {"type": "LinearThetaBias", "alpha": 0.025}}]}},
+      {"label": "linear-alpha-0.05", "value": "linear:0.05", "overrides": {"objective_modifications": [{"type": "theta_bias", "bias": {"type": "LinearThetaBias", "alpha": 0.05}}]}},
+      {"label": "linear-alpha-0.1", "value": "linear:0.1", "overrides": {"objective_modifications": [{"type": "theta_bias", "bias": {"type": "LinearThetaBias", "alpha": 0.1}}]}},
+      {"label": "linear-alpha-0.2", "value": "linear:0.2", "overrides": {"objective_modifications": [{"type": "theta_bias", "bias": {"type": "LinearThetaBias", "alpha": 0.2}}]}},
+
+      {"label": "arctan-alpha-0", "value": "arctan:0", "overrides": {"objective_modifications": [{"type": "theta_bias", "bias": {"type": "ArctanThetaBias", "alpha": 0.0}}]}},
+      {"label": "arctan-alpha-0.025", "value": "arctan:0.025", "overrides": {"objective_modifications": [{"type": "theta_bias", "bias": {"type": "ArctanThetaBias", "alpha": 0.025}}]}},
+      {"label": "arctan-alpha-0.05", "value": "arctan:0.05", "overrides": {"objective_modifications": [{"type": "theta_bias", "bias": {"type": "ArctanThetaBias", "alpha": 0.05}}]}},
+      {"label": "arctan-alpha-0.1", "value": "arctan:0.1", "overrides": {"objective_modifications": [{"type": "theta_bias", "bias": {"type": "ArctanThetaBias", "alpha": 0.1}}]}},
+      {"label": "arctan-alpha-0.2", "value": "arctan:0.2", "overrides": {"objective_modifications": [{"type": "theta_bias", "bias": {"type": "ArctanThetaBias", "alpha": 0.2}}]}},
+
+      {"label": "remainder-alpha-0", "value": "remainder:0", "overrides": {"objective_modifications": [{"type": "theta_bias", "bias": {"type": "ArctanRemainderThetaBias", "alpha": 0.0}}]}},
+      {"label": "remainder-alpha-0.025", "value": "remainder:0.025", "overrides": {"objective_modifications": [{"type": "theta_bias", "bias": {"type": "ArctanRemainderThetaBias", "alpha": 0.025}}]}},
+      {"label": "remainder-alpha-0.05", "value": "remainder:0.05", "overrides": {"objective_modifications": [{"type": "theta_bias", "bias": {"type": "ArctanRemainderThetaBias", "alpha": 0.05}}]}},
+      {"label": "remainder-alpha-0.1", "value": "remainder:0.1", "overrides": {"objective_modifications": [{"type": "theta_bias", "bias": {"type": "ArctanRemainderThetaBias", "alpha": 0.1}}]}},
+      {"label": "remainder-alpha-0.2", "value": "remainder:0.2", "overrides": {"objective_modifications": [{"type": "theta_bias", "bias": {"type": "ArctanRemainderThetaBias", "alpha": 0.2}}]}}
+    ]
+  }
+}

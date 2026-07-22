@@ -447,6 +447,38 @@ $$\frac{\partial b}{\partial u} = -\lambda_{bias}\,\sigma\left(\frac{u-h}{\tau}\
   `value()` and `grad()`. The bias is deterministic and introduces no new seed
   stream.
 
+#### 3.6.1 Policy-Free Theta Biases
+
+`ThetaBiasedObjective` adds a deterministic scalar bias directly to a
+one-dimensional theta-space objective:
+
+$$\widetilde J(x)=J(x)+b(x), \qquad
+\widetilde J'(x)=J'(x)+b'(x).$$
+
+The zeroth-order proof-validation experiment uses three bias fields:
+
+$$b_{\rm linear}(x)=\alpha x, \qquad b'_{\rm linear}(x)=\alpha,$$
+
+$$b_{\rm arctan}(x)=\alpha\arctan x, \qquad
+b'_{\rm arctan}(x)=\frac{\alpha}{1+x^2},$$
+
+$$b_{\rm remainder}(x)=\alpha(x-\arctan x), \qquad
+b'_{\rm remainder}(x)=\frac{\alpha x^2}{1+x^2}.$$
+
+The remainder is cubic near the clean minimum because
+$$x-\arctan x=x^3/3+O(x^5)$$. All three obey
+$$\sup_x|b'(x)|\le |\alpha|$$. For the two nonlinear fields,
+
+$$\sup_x|b''(x)|=\frac{3\sqrt3}{8}|\alpha|, \qquad
+\sup_x|b'''(x)|=2|\alpha|.$$
+
+- **Source:** `src/objective/modifications/bias.py` :: `ThetaBias`,
+  `LinearThetaBias`, `ArctanThetaBias`, `ArctanRemainderThetaBias`,
+  `ThetaBiasedObjective`
+- **Notes:** Theta biases are separate from action biases: they apply to direct
+  theta-space objectives without requiring a policy. `base_value()` preserves
+  clean-objective reporting, and no new seed stream is introduced.
+
 ### 3.7 Synthetic Ladder Objectives
 
 Direct theta-space benchmark functions over the decision vector $$w = \theta$$
@@ -550,6 +582,42 @@ is nonconvex with kinks at the crossing points. `_f`/`_grad_f` raise
 `NotImplementedError` until implemented.
 
 - **Source:** `src/objective/objectives/synthetic/ladder.py` :: `PiecewiseNonconvexDoubleWell`
+
+### 3.8 Zeroth-Order Proof-Validation Objective
+
+The one-dimensional policy-free objective is
+
+$$f(x)=x^2+\frac12(\sin x-x).$$
+
+Its first three derivatives are
+
+$$f'(x)=2x+\frac12(\cos x-1),$$
+
+$$f''(x)=2-\frac12\sin x \in [1.5,2.5],$$
+
+$$f'''(x)=-\frac12\cos x, \qquad |f'''(x)|\le0.5.$$
+
+Thus $$f$$ is globally $$\mu=1.5$$ strongly convex and $$L=2.5$$ smooth,
+with unique minimizer $$x^\star=0$$ and third-derivative bound $$\rho=0.5$$.
+For central finite difference,
+
+$$D_\sigma f(x)=2x+\frac12\left(\frac{\sin\sigma}{\sigma}\cos x-1\right).$$
+
+For the two-sided Gaussian Stein-difference estimator, its population mean is
+
+$$\mathbb E_W\!\left[
+\frac{f(x+\sigma W)-f(x-\sigma W)}{2\sigma}W
+\right]
+=2x+\frac12\left(e^{-\sigma^2/2}\cos x-1\right),
+\qquad W\sim N(0,1).$$
+
+The corresponding estimator fixed point $$x^\star_{\rm est}$$ is the unique
+root of the appropriate population-gradient equation. Both roots move
+$$O(\sigma^2)$$ from $$x^\star$$, so their squared displacement is
+$$O(\sigma^4)$$.
+
+- **Source:** `src/objective/objectives/synthetic/proof_validation.py` ::
+  `ZerothOrderProofObjective`
 
 ---
 

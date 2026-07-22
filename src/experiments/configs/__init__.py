@@ -31,6 +31,7 @@ _FACTORY_BASES: dict[str, tuple[Callable[..., ExperimentConfig], dict[str, Any]]
 _MODULE_BASES = {
     "fixed_regression_base": "experiments.configs.fixed_regression_base",
     "planted_logistic_base": "experiments.configs.planted_logistic_base",
+    "zeroth_order_proof_base": "experiments.configs.zeroth_order_proof_base",
 }
 
 _CONFIG_CACHE: dict[str, ExperimentConfig] = {}

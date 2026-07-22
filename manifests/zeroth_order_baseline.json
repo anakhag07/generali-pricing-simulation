@@ -1,0 +1,75 @@
+{
+  "name": "zeroth-order-proof-baseline",
+  "objective": {"preset": "zeroth_order_proof_base"},
+  "objective_modifications": [],
+  "optimizer": {
+    "step_rule": "constant",
+    "compute_backend": "numpy",
+    "t_steps": 1500,
+    "step_size": 0.01,
+    "n_grad_samples": 128,
+    "enabled_estimators": ["finite_difference", "stein_difference"],
+    "plot": false,
+    "verbose": false
+  },
+  "seeds": {
+    "run_seeds": [101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116],
+    "anchor_seed": 101,
+    "vary": ["optimizer"]
+  },
+  "truth": {"source": "clean_base_objective"},
+  "launch": {"mode": "local", "array": "variant"},
+  "per_seed_plots": false,
+  "variants": [
+    {
+      "name": "sigma-0.05",
+      "axes": {"sweep": "sigma", "sigma": 0.05, "m": 128},
+      "overrides": {"sigma": 0.05, "n_grad_samples": 128}
+    },
+    {
+      "name": "sigma-0.075",
+      "axes": {"sweep": "sigma", "sigma": 0.075, "m": 128},
+      "overrides": {"sigma": 0.075, "n_grad_samples": 128}
+    },
+    {
+      "name": "sigma-0.1125",
+      "axes": {"sweep": "sigma", "sigma": 0.1125, "m": 128},
+      "overrides": {"sigma": 0.1125, "n_grad_samples": 128}
+    },
+    {
+      "name": "sigma-0.16875",
+      "axes": {"sweep": "sigma", "sigma": 0.16875, "m": 128},
+      "overrides": {"sigma": 0.16875, "n_grad_samples": 128}
+    },
+    {
+      "name": "sigma-0.253125",
+      "axes": {"sweep": "sigma", "sigma": 0.253125, "m": 128},
+      "overrides": {"sigma": 0.253125, "n_grad_samples": 128}
+    },
+    {
+      "name": "m-4",
+      "axes": {"sweep": "m", "sigma": 0.2, "m": 4},
+      "overrides": {"sigma": 0.2, "n_grad_samples": 4, "enabled_estimators": ["stein_difference"]}
+    },
+    {
+      "name": "m-8",
+      "axes": {"sweep": "m", "sigma": 0.2, "m": 8},
+      "overrides": {"sigma": 0.2, "n_grad_samples": 8, "enabled_estimators": ["stein_difference"]}
+    },
+    {
+      "name": "m-16",
+      "axes": {"sweep": "m", "sigma": 0.2, "m": 16},
+      "overrides": {"sigma": 0.2, "n_grad_samples": 16, "enabled_estimators": ["stein_difference"]}
+    },
+    {
+      "name": "m-32",
+      "axes": {"sweep": "m", "sigma": 0.2, "m": 32},
+      "overrides": {"sigma": 0.2, "n_grad_samples": 32, "enabled_estimators": ["stein_difference"]}
+    },
+    {
+      "name": "m-64",
+      "axes": {"sweep": "m", "sigma": 0.2, "m": 64},
+      "overrides": {"sigma": 0.2, "n_grad_samples": 64, "enabled_estimators": ["stein_difference"]}
+    }
+  ]
+}

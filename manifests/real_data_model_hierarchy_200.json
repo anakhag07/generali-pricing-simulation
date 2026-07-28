@@ -21,7 +21,7 @@
   "optimizer": {
     "step_rule": "l-bfgs-b",
     "compute_backend": "numpy",
-    "t_steps": 150,
+    "t_steps": 30,
     "step_size": 0.01,
     "sigma": 0.0001,
     "n_grad_samples": 50,

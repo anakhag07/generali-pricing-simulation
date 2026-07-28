@@ -29,7 +29,7 @@
     "perturbation_space": "u",
     "grad_norm_tol": 1e-6,
     "ftol": 1e-9,
-    "plot": true,
+    "plot": false,
     "verbose": false
   },
   "seeds": {
@@ -39,7 +39,7 @@
   },
   "truth": {"source": "clean_base_objective"},
   "launch": {"mode": "local", "array": "none", "requires_jax": false},
-  "per_seed_plots": true,
+  "per_seed_plots": false,
   "variants": [
     {
       "name": "acceptance-glm__loss-glm",

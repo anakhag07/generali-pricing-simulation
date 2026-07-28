@@ -229,6 +229,24 @@ the support boundaries or clipping points; the implementation uses the interior
 derivative at the boundaries and zero on clipped regions. The real-data preset
 keeps policy actions within the fitted support.
 
+**Per-policy shifted-sigmoid XGBoost acceptance:**
+
+For each policy $$i$$ covered by the 20260728 smoothing artifact, the fitted
+churn curve is
+
+$$q_i(u)=\operatorname{clip}\left(
+d_i+\sigma\left(k_i(u-m_i)\right),0,1
+\right), \qquad a_i(u)=1-q_i(u).$$
+
+Writing $$s_i(u)=\sigma(k_i(u-m_i))$$, the acceptance derivative is
+
+$$\frac{\partial a_i}{\partial u}
+=-k_i s_i(u)(1-s_i(u))$$
+
+while the unclipped churn value lies strictly inside $$(0,1)$$, and zero where
+the probability is clipped. The 20260728 hierarchy presets constrain actions to
+the fitted interval $$[0,0.16]$$ and reject policies absent from the artifact.
+
 **Local price-sensitivity bucket score:**
 
 For GLM sensitivity-bucket experiments, customers are ranked by local acceptance

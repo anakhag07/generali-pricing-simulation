@@ -585,6 +585,24 @@ with the observed GLM acceptance floor and a default 500-step cap. It accepts th
 shared launch flags; `--launch slurm --array` runs one `(pca_dim, policy_class,
 seed)` condition per array task.
 
+To compare a candidate real-data CSV and its XGBoost artifacts with the
+canonical dataset plus current GLM/XGBoost/spline models, use:
+
+```bash
+python scripts/analyze_real_data_model_artifacts.py \
+  --candidate-dataset /path/to/df_raw_single_year_with_predictions_tp.csv \
+  --candidate-artifact-dir /path/to/model_processing/artifacts
+```
+
+The analysis uses stored out-of-fold metrics as its primary performance
+evidence and a deterministic 20,000-row common sample for descriptive
+prediction and counterfactual-action diagnostics. It decodes covered sigmoid
+curves from the trusted legacy smoothing pickle without invoking its
+NumPy-incompatible inference method. Outputs include seven CSV tables, three
+diagnostic plots, and `eda_summary.md` under a timestamped
+`results/real-data-model-eda/` directory. This is analysis-only tooling: it
+does not copy artifacts or change the runtime model registry.
+
 To query the existing acceptance model at fixed constant actions without
 running optimization, use:
 

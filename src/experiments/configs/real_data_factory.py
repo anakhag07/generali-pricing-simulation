@@ -60,6 +60,7 @@ def build_real_data_config(
     model_type: ModelType | None = None,
     acceptance_model_type: AcceptanceModelType | None = None,
     loss_model_type: LossModelType | None = None,
+    row_cohort_model_type: AcceptanceModelType | None = None,
     policy_kind: PolicyKind = "softmax",
     feature_order: FeatureOrder = "linear",
     policy_preprocessing: PolicyPreprocessing = "artifact",
@@ -116,6 +117,7 @@ def build_real_data_config(
         acceptance_model_type=acceptance_model_type,
         loss_model_type=loss_model_type,
     )
+    data_model_type = row_cohort_model_type or acceptance_model_type
     constraint_mode = _normalize_constraint_mode(constraint_mode)
     loss_source = _normalize_loss_source(loss_source)
     resolved_seeds = resolve_seed_setup(seed_setup, seed)
@@ -142,10 +144,10 @@ def build_real_data_config(
     if x_fixed is None:
         if row_indices is None:
             if requested_n_samples is None:
-                row_indices = eligible_csv_row_indices(acceptance_model_type)
+                row_indices = eligible_csv_row_indices(data_model_type)
             else:
                 row_indices = sample_csv_row_indices(
-                    acceptance_model_type,
+                    data_model_type,
                     n_rows=requested_n_samples,
                     seed=resolved_seeds.data_seed,
                 )
@@ -154,7 +156,7 @@ def build_real_data_config(
         if loss_source == "observed":
             x_fixed_arr = x_fixed_arr.copy()
             x_fixed_arr[LOSS_TARGET_COL] = load_observed_loss_array(
-                acceptance_model_type,
+                data_model_type,
                 row_indices=x_fixed_row_indices_arr,
             )
     else:
@@ -174,7 +176,7 @@ def build_real_data_config(
                     )
                 x_fixed_arr = x_fixed_arr.copy()
                 x_fixed_arr[LOSS_TARGET_COL] = load_observed_loss_array(
-                    acceptance_model_type,
+                    data_model_type,
                     row_indices=x_fixed_row_indices_arr,
                 )
 
@@ -211,7 +213,7 @@ def build_real_data_config(
 
     floor = acceptance_floor
     if constraint_mode != "none" and floor is None:
-        floor = load_mean_observed_acceptance(acceptance_model_type)
+        floor = load_mean_observed_acceptance(data_model_type)
 
     resolved_step_rule = step_rule or _default_step_rule(constraint_mode)
     resolved_t_steps = int(t_steps if t_steps is not None else (500 if constraint_mode == "trust_constr" else 1000))
@@ -222,7 +224,11 @@ def build_real_data_config(
     resolved_penalty_weight = acceptance_penalty_weight
     resolved_penalty_temperature = acceptance_penalty_temperature
     resolved_lagrangian_lambda = lagrangian_lambda
-    resolved_u_bounds = u_bounds
+    resolved_u_bounds = (
+        tuple(float(value) for value in u_bounds)
+        if u_bounds is not None
+        else None
+    )
     if _is_curve_acceptance(acceptance_model_type) and resolved_u_bounds is None:
         resolved_u_bounds = (0.0, 0.16)
 

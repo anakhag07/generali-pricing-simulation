@@ -180,6 +180,38 @@ def test_20260728_hierarchy_presets_select_independent_artifacts(
     assert cfg.objective.loss_model.artifact_id == loss_id
 
 
+def test_hierarchy_presets_can_share_the_exact_sigmoid_200_row_cohort() -> None:
+    from experiments.configs import get_config
+
+    names = (
+        "real_data_glm_glm_20260728_base",
+        "real_data_smoothed_glm_20260728_base",
+        "real_data_xgb_glm_20260728_base",
+        "real_data_xgb_xgb_20260728_base",
+    )
+    configs = [
+        get_config(
+            name,
+            overrides={
+                "row_cohort_model_type": "xgb_sigmoid_20260728",
+                "plot": False,
+                "verbose": False,
+                "wandb_enabled": False,
+            },
+        )
+        for name in names
+    ]
+
+    expected = configs[0].x_fixed_row_indices
+    assert expected.shape == (200,)
+    for cfg in configs:
+        np.testing.assert_array_equal(cfg.x_fixed_row_indices, expected)
+        expected_columns = 20 if hasattr(
+            cfg.objective.acceptance_model, "covered_policy_ids"
+        ) else 19
+        assert cfg.x_fixed.shape == (200, expected_columns)
+
+
 def test_xgb_logit_spline_rejects_jax_backend() -> None:
     with pytest.raises(ValueError, match="only compute_backend='numpy'"):
         _cfg("real_data_xgb_logit_spline_base", compute_backend="jax")

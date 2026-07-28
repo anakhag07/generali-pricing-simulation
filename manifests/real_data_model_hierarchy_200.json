@@ -1,0 +1,89 @@
+{
+  "name": "real-data-model-hierarchy-200",
+  "objective": {
+    "preset": "real_data_glm_glm_20260728_base",
+    "overrides": {
+      "row_cohort_model_type": "xgb_sigmoid_20260728",
+      "policy_kind": "softmax",
+      "policy_preprocessing": "no_pca",
+      "feature_order": "linear",
+      "constraint_mode": "none",
+      "train_fraction": 0.8,
+      "test_fraction": 0.2,
+      "initial_u": 0.08,
+      "softmax_action_bounds": [0.0, 0.16],
+      "u_bounds": [0.0, 0.16],
+      "constant_u_baselines": [0.0, 0.08, 0.16],
+      "wandb_enabled": false
+    }
+  },
+  "objective_modifications": [],
+  "optimizer": {
+    "step_rule": "l-bfgs-b",
+    "compute_backend": "numpy",
+    "t_steps": 150,
+    "step_size": 0.01,
+    "sigma": 0.0001,
+    "n_grad_samples": 50,
+    "enabled_estimators": ["finite_difference"],
+    "perturbation_space": "u",
+    "grad_norm_tol": 1e-6,
+    "ftol": 1e-9,
+    "plot": true,
+    "verbose": false
+  },
+  "seeds": {
+    "run_seeds": [20260728],
+    "anchor_seed": 20260728,
+    "vary": ["optimizer"]
+  },
+  "truth": {"source": "clean_base_objective"},
+  "launch": {"mode": "local", "array": "none", "requires_jax": false},
+  "per_seed_plots": true,
+  "variants": [
+    {
+      "name": "acceptance-glm__loss-glm",
+      "axes": {
+        "acceptance_model_type": "glm_20260527",
+        "loss_model_type": "glm_20260527"
+      },
+      "overrides": {
+        "acceptance_model_type": "glm_20260527",
+        "loss_model_type": "glm_20260527"
+      }
+    },
+    {
+      "name": "acceptance-smoothed__loss-glm",
+      "axes": {
+        "acceptance_model_type": "xgb_sigmoid_20260728",
+        "loss_model_type": "glm_20260527"
+      },
+      "overrides": {
+        "acceptance_model_type": "xgb_sigmoid_20260728",
+        "loss_model_type": "glm_20260527"
+      }
+    },
+    {
+      "name": "acceptance-xgb__loss-glm",
+      "axes": {
+        "acceptance_model_type": "xgb_20260728",
+        "loss_model_type": "glm_20260527"
+      },
+      "overrides": {
+        "acceptance_model_type": "xgb_20260728",
+        "loss_model_type": "glm_20260527"
+      }
+    },
+    {
+      "name": "acceptance-xgb__loss-xgb",
+      "axes": {
+        "acceptance_model_type": "xgb_20260728",
+        "loss_model_type": "xgb_20260728"
+      },
+      "overrides": {
+        "acceptance_model_type": "xgb_20260728",
+        "loss_model_type": "xgb_20260728"
+      }
+    }
+  ]
+}

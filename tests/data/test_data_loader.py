@@ -140,6 +140,93 @@ def test_load_model_artifacts_types():
     assert isinstance(unwrap_model_artifact(spline_loss), sklearn.linear_model.Ridge)
 
 
+def test_selected_best_fold_artifacts_normalize_nested_preprocessor() -> None:
+    from data.loader import _normalize_artifact
+
+    marker = object()
+    model = object()
+    artifact = _normalize_artifact(
+        {
+            "model": model,
+            "preprocessor": {
+                "preprocessor": marker,
+                "x_feature_cols": ["x1", "x2"],
+                "u_cols": ["U"],
+            },
+            "best_fold": 3,
+            "model_features": ["x1", "x2", "U"],
+            "target": "acceptance",
+        }
+    )
+
+    assert artifact.model is model
+    assert artifact.preprocessor is marker
+    assert artifact.x_feature_cols == ("x1", "x2")
+    assert artifact.u_cols == ("U",)
+    assert artifact.source_format == "selected_best_fold"
+    assert artifact.probability_target == "acceptance"
+
+
+def test_new_versioned_artifacts_load_and_predict() -> None:
+    import xgboost
+
+    from data.loader import (
+        load_model_artifact_pair,
+        load_x_frame,
+        unwrap_model_artifact,
+    )
+
+    acceptance, loss = load_model_artifact_pair("xgb_20260728", "xgb_20260728")
+    x = load_x_frame("xgb_20260728", n_rows=5, seed=123)
+    acceptance_frame = x.copy()
+    acceptance_frame["U"] = 0.08
+
+    acceptance_prediction = acceptance.model.predict_proba(
+        acceptance.model_frame(acceptance_frame)
+    )
+    loss_prediction = loss.model.predict(loss.model_frame(x))
+
+    assert acceptance.source_format == "selected_best_fold"
+    assert loss.source_format == "selected_best_fold"
+    assert isinstance(unwrap_model_artifact(acceptance), xgboost.XGBClassifier)
+    assert isinstance(unwrap_model_artifact(loss), xgboost.XGBRegressor)
+    assert np.isfinite(acceptance_prediction).all()
+    assert np.isfinite(loss_prediction).all()
+
+
+def test_xgb_sigmoid_eligible_rows_match_covered_artifact() -> None:
+    from data.loader import (
+        eligible_csv_row_indices,
+        load_acceptance_artifact,
+        load_x_frame,
+    )
+
+    acceptance = load_acceptance_artifact("xgb_sigmoid_20260728")
+    row_indices = eligible_csv_row_indices("xgb_sigmoid_20260728")
+    x = load_x_frame("xgb_sigmoid_20260728", row_indices=row_indices)
+
+    assert row_indices.shape == (200,)
+    np.testing.assert_array_equal(row_indices, acceptance.covered_row_indices())
+    assert set(x["id"].astype(str)) == set(acceptance.covered_policy_ids())
+
+
+def test_legacy_model_pair_resolution_is_unchanged() -> None:
+    from data.loader import resolve_model_artifact_ids
+
+    assert resolve_model_artifact_ids(model_type="glm") == (
+        "glm_20260527",
+        "glm_20260527",
+    )
+    assert resolve_model_artifact_ids(model_type="xgb") == (
+        "xgb_20260527",
+        "xgb_20260527",
+    )
+    assert resolve_model_artifact_ids(model_type="xgb_logit_spline") == (
+        "xgb_logit_spline_20260706",
+        "glm_20260527",
+    )
+
+
 def test_xgb_logit_spline_eligible_rows_match_covered_artifact() -> None:
     from data.loader import eligible_csv_row_indices, load_model_artifacts, load_x_frame
 

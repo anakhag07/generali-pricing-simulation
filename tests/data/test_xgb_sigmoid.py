@@ -14,6 +14,7 @@ from data.xgb_sigmoid import (
     canonical_row_indices_for_policy_ids,
     extract_sigmoid_parameters,
     load_xgb_sigmoid_artifact,
+    load_legacy_sigmoid_wrapper,
     save_xgb_sigmoid_artifact,
 )
 
@@ -98,3 +99,34 @@ def test_canonical_rows_resolve_in_requested_order(tmp_path) -> None:
     pd.DataFrame({"id": ["202", "999", "101"]}).to_csv(dataset, sep=";", index=False)
     rows = canonical_row_indices_for_policy_ids(dataset, np.asarray(["101", "202"]))
     np.testing.assert_array_equal(rows, [2, 0])
+
+
+def test_real_portable_artifact_matches_all_legacy_curves_on_action_grid() -> None:
+    from data.dataset_metadata import ACCEPTANCE_MODEL_ARTIFACTS
+
+    portable_path = ACCEPTANCE_MODEL_ARTIFACTS["xgb_sigmoid_20260728"]["path"]
+    source_path = (
+        portable_path.parents[1]
+        / "spline_acceptance"
+        / "acceptance_smoothing_wrapper.pkl"
+    )
+    portable = load_xgb_sigmoid_artifact(portable_path)
+    wrapper = load_legacy_sigmoid_wrapper(source_path)
+    policy_ids, parameters = extract_sigmoid_parameters(wrapper)
+    action_grid = np.linspace(0.0, 0.16, 17)
+
+    np.testing.assert_array_equal(portable.policy_ids, policy_ids)
+    np.testing.assert_allclose(portable.parameters, parameters)
+    model = XGBSigmoidAcceptance(portable)
+    expanded_ids = np.repeat(policy_ids, action_grid.size)
+    expanded_actions = np.tile(action_grid, policy_ids.size)
+    actual = model.predict_acceptance(
+        pd.DataFrame({"id": expanded_ids}), expanded_actions
+    ).reshape(policy_ids.size, action_grid.size)
+    k = parameters[:, 0, None]
+    m = parameters[:, 1, None]
+    d = parameters[:, 2, None]
+    expected = 1.0 - np.clip(
+        d + 1.0 / (1.0 + np.exp(-k * (action_grid - m))), 0.0, 1.0
+    )
+    np.testing.assert_allclose(actual, expected, rtol=0.0, atol=1e-15)

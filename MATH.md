@@ -479,6 +479,111 @@ $$\sup_x|b''(x)|=\frac{3\sqrt3}{8}|\alpha|, \qquad
   theta-space objectives without requiring a policy. `base_value()` preserves
   clean-objective reporting, and no new seed stream is introduced.
 
+#### 3.6.2 Policy-Free Support Envelopes
+
+For the proof objective
+
+$$f(u)=u^2+\frac12(\sin u-u), \qquad u^\star=0,$$
+
+let $$C=[\ell,h]$$ be the covered interval and
+$$d(u,C)=\max(\ell-u,0,u-h)$$. The envelope sweep optimizes the upper objective
+
+$$F(u)=f(u)+\phi(u)$$
+
+for three deterministic envelope forms.
+
+The constant control is
+
+$$\phi_{\mathrm{const}}(u)=A, \qquad
+\phi_{\mathrm{const}}'(u)=0.$$
+
+It shifts every value equally and therefore leaves the exact and zeroth-order
+trajectories unchanged. In particular, it does not identify a unique envelope
+minimum: every $$u$$ minimizes the envelope, while $$F$$ retains the clean
+minimum.
+
+The constant-derivative increasing envelope is the interval-distance penalty
+
+$$\phi_{\mathrm{lin}}(u)=\lambda d(u,C), \qquad
+\phi_{\mathrm{lin}}'(u)=
+\begin{cases}
+-\lambda,&u<\ell,\\
+0,&\ell<u<h,\\
+\lambda,&u>h.
+\end{cases}$$
+
+When the clean minimum lies below coverage, as here, the exact minimizer solves
+$$f'(u)=\lambda$$ below $$\ell$$ while $$\lambda<f'(\ell)$$ and is pinned to
+the left coverage boundary $$u=\ell$$ once $$\lambda\ge f'(\ell)$$. Thus the
+upper objective selects the truth-favorable edge of the envelope's flat
+minimum, not an arbitrary interior point.
+
+The smooth saturating envelope is zero on coverage and increases monotonically
+with distance outside it:
+
+$$
+\phi_{\mathrm{nc}}(u)=
+\begin{cases}
+0,&d(u,C)=0,\\
+A\exp\left[-\left(\frac{s}{d(u,C)}\right)^2\right],&d(u,C)>0.
+\end{cases}
+$$
+
+This function is $$C^\infty$$ at the interval boundary and bounded above by
+$$A$$. For $$d>0$$ its derivative magnitude is
+
+$$
+\left|\phi_{\mathrm{nc}}'(u)\right|
+=\frac{2A}{s}\left(\frac{s}{d}\right)^3
+\exp\left[-\left(\frac{s}{d}\right)^2\right].
+$$
+
+It reaches its maximum at $$s/d=\sqrt{3/2}$$:
+
+$$
+\max_u|\phi_{\mathrm{nc}}'(u)|
+=2(3/2)^{3/2}e^{-3/2}\frac{A}{s}
+\approx 0.8198326\frac{A}{s}.
+$$
+
+Although $$\phi_{\mathrm{nc}}$$ is monotone in distance, its slope first grows
+and then decays, so the envelope and the resulting upper objective need not be
+convex. The sweep matches the linear slope to this maximum,
+$$\lambda=0.8198326A/s$$, and uses $$C=[0.75,1.25]$$, $$s=0.25$$, and
+$$A\in\{0,0.25,0.35,0.42,0.60,0.70\}$$. These values cross the creation of a
+truth-side minimum/maximum pair, the global-minimum switch between truth- and
+coverage-side basins, and the later disappearance of the outer basin.
+
+The estimator population landscapes used by the analyzer are
+
+$$
+F_{\mathrm{FD},\sigma}'(u)
+=\frac{F(u+\sigma)-F(u-\sigma)}{2\sigma}
+$$
+
+and
+
+$$
+F_{\mathrm{Stein},\sigma}'(u)
+=\mathbb E\left[F'(u+\sigma Z)\right],
+\qquad Z\sim N(0,1).
+$$
+
+The former is the derivative of a uniform convolution and the latter of a
+Gaussian convolution. Comparing their stationary points with finite-run
+$$u_K$$ separates deterministic envelope geometry, zeroth-order smoothing,
+initialization-dependent basin selection, and finite-sample optimizer noise.
+
+- **Source:** `src/objective/modifications/regularization.py` ::
+  `ConstantThetaRegularizer`, `IntervalDistanceThetaRegularizer`,
+  `SmoothSaturatingIntervalThetaRegularizer`, `RegularizedObjective`;
+  `manifests/zeroth_order_envelopes.json`;
+  `scripts/analyze_zeroth_order_envelopes.py`
+- **Notes:** These regularizers are reusable theta-space objective
+  modifications. The scalar stationary-point and convolution tooling is kept
+  experiment-side because it is specific to one-dimensional landscape
+  analysis.
+
 ### 3.7 Synthetic Ladder Objectives
 
 Direct theta-space benchmark functions over the decision vector $$w = \theta$$

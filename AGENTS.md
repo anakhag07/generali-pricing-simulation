@@ -370,6 +370,20 @@ belongs under `generali/`.
     `LinearThetaBias`, `ArctanThetaBias`, and `ArctanRemainderThetaBias`; all use
     the existing optimizer seed stream because their fields are deterministic
 
+- **`src/objective/modifications/regularization.py`**
+  - `ThetaRegularizer`: deterministic additive theta-space regularizer
+    interface used by `RegularizedObjective`
+  - `ConstantThetaRegularizer`: constant-value trajectory-invariance control
+  - `IntervalDistanceThetaRegularizer`: linear distance from a covered interval,
+    with a constant derivative outside coverage and zero value inside
+  - `SmoothSaturatingIntervalThetaRegularizer`: bounded $$C^\infty$$ envelope
+    that is zero on a covered interval and increases monotonically but
+    nonconvexly with distance outside it
+  - All regularizers are replayably serializable through
+    `regularizer_to_dict(...)` / `regularizer_from_dict(...)`; keep generally
+    reusable envelope math here, while scalar root finding and sweep-specific
+    calibration remain under `scripts/`
+
 - **`src/objective/objectives/generali/model_based.py`**
   - `ModelBasedObjective`: pricing objective $$f(u;x) = a(x,u)(\hat{Y}(x) - (u + 1) \cdot p(x))$$ backed by trained sklearn/XGBoost models
   - Takes `acceptance_model` / `loss_model` artifact bundles that can apply saved external preprocessing before calling the inner sklearn/XGBoost model
@@ -685,6 +699,19 @@ belongs under `generali/`.
   estimator-root/final landmarks, signed displacement decompositions,
   Stein bias-variance-MSE, theorem checks, scaling fits, and the eight canonical
   sweep plots under `results/zeroth-order-proof-validation-analysis/`.
+- `manifests/zeroth_order_envelopes.json` is the source of truth for the
+  54-variant support-envelope sweep over constant, matched-slope interval
+  distance, and smooth saturating nonconvex forms. It holds the conditional
+  grid explicitly: controls use `sigma=0.15`, while the nonconvex form also
+  sweeps `sigma in {0.05,0.15,0.30}` and both truth-/coverage-side starts.
+- `scripts/analyze_zeroth_order_envelopes.py` reads completed envelope summaries
+  without rerunning optimization. It reconstructs exact and estimator-
+  population landscapes, assigns final iterates to basins, writes final-
+  distance/regret/aggregate tables, and produces envelope-geometry,
+  nonconvex-bifurcation, basin-rate, and true-regret plots under
+  `results/zeroth-order-envelope-analysis/`. Its pure one-dimensional
+  stationary-point and convolution helpers live in
+  `scripts/zeroth_order_landscape.py`.
 - `scripts/run_sweep.py` is a minimal generic seed-aware preset sweep launcher around `experiments.sweep_utils.run_sweep(...)`. It accepts a base preset plus JSON override mapping/list/grid inputs, optional seed-vary/fixed-stream arguments, and `--requires-jax` to force the GPU Slurm profile. It should stay experiment-agnostic; dedicated scientific grids belong in their own scripts.
 - `scripts/run_noisy_glm_theta_variance_sweep.py` runs the all-data trust-constrained GLM noisy-objective sweeps on GPU/JAX. It defaults to the saved first-order no-noise truth summary at `results/real_data_glm_base__20260706_124627/summary.json`, centers heteroskedastic noise at that run's final mean `u`, sweeps theta starts along the real initialization-to-truth line by L2 distance, sweeps homoskedastic/heteroskedastic noise variance for zeroth-order estimators, writes `noisy_glm_theta_variance_finals.csv` / `noisy_glm_theta_variance_summary.csv`, and regenerates theta-distance/objective-gap plots per grid project.
 - `scripts/run_noise_offset_grid.py` runs the combined noise-level x theta-offset planted-logistic grid: for each noise family (homoskedastic std `sigma in {0, 0.1, 2}` new + `0.5` reused from the saved theta-offset sweep; heteroskedastic growth `gamma in {0, 0.25, 4}` new + `1.0` reused) it varies the init offset `delta` in `theta0 = theta_FO_clean + delta * 1` over 9 offsets with `RUN_SEEDS=(7, 8, 9)`, carrying its own copy of the retired planted-noise fill-in sweep driver's COMMON_OVERRIDES/seed policy (formerly in `scripts/run_sweep.py`) so runs stay comparable with the saved sweeps. Writes `noise_offset_grid_finals.csv` plus per-estimator two-panel figures (final theta distance to first-order truth | clean-objective gap on the reconstructed train batch, curves = noise level) under `results/homoskedastic-noise-offset-grid/` and `results/heteroskedastic-noise-offset-grid/`. `--plots-only` regenerates outputs from saved summaries; `--families` selects the grid group; launch-aware with auto Slurm submit
@@ -816,6 +843,7 @@ exclude `tests/objective/test_jax_prepared_glm*`, `tests/optimization/test_jax_*
 | `test_jax_prepared_glm_objective.py` | JAX prepared GLM value, per-row action-value hooks, gradient, policy-u, acceptance, and SciPy adapter parity |
 | `test_policy_preprocessing.py` | Policy-side standardization, whitening, PCA dimensionality, and transform validation |
 | `test_policy_u_histograms.py` | Policy u-distribution visualization |
+| `test_objective_modifications.py` | Objective modification composition, support-envelope formulas/gradients, serialization, and compatibility validation |
 | `test_zeroth_order_proof_objective.py` | Strongly convex proof objective, theta-bias formulas/bounds, composition, and serialization |
 
 #### `tests/optimization/`
@@ -879,7 +907,7 @@ exclude `tests/objective/test_jax_prepared_glm*`, `tests/optimization/test_jax_*
 | `test_policy_pca_grid.py` | Policy PCA grid condition construction and aggregate output writing |
 | `test_policy_free_objective.py` | Policy-free dimension resolution, optimization convergence, optional action metrics, and strict JSON serialization |
 | `test_synthetic_ladder_config.py` | Synthetic ladder presets: registration, defaults, function-param forwarding, u-space/stub rejection, and deterministic end-to-end smoke runs with true-gap metrics |
-| `test_zeroth_order_proof_manifests.py` | Proof preset registration, baseline/bias manifest grids, seed policy, and FD/Stein smoke execution |
+| `test_zeroth_order_proof_manifests.py` | Proof preset registration, baseline/bias/envelope manifest grids, seed policy, and FD/Stein smoke execution |
 
 #### `tests/reporting/`
 | Test File | Area |
@@ -911,6 +939,7 @@ exclude `tests/objective/test_jax_prepared_glm*`, `tests/optimization/test_jax_*
 | `test_support_bias_noise_grid_script.py` | Support-bias noise grid objective composition, variant naming round-trip, task specs, zeroth-order estimator set, and clean-objective/bias reconstruction |
 | `test_xgb_logit_spline_experiment_script.py` | XGB logit-spline runner defaults, exact-gradient config, convergence rows, and launch delegation |
 | `test_analyze_zeroth_order_proof_validation.py` | Proof-objective population roots, bias landmarks, exact MSE decomposition, and complete analysis plot/table outputs |
+| `test_analyze_zeroth_order_envelopes.py` | Envelope population-gradient helpers, smooth/kinked stationary points, calibrated nonconvex bifurcation/global switch, linear boundary threshold, and envelope diagnostic output |
 
 #### `tests/integration/`
 | Test File | Area |

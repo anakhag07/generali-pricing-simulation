@@ -27,6 +27,30 @@ class ThetaRegularizer:
 
 
 @dataclass(frozen=True)
+class ConstantThetaRegularizer(ThetaRegularizer):
+    """Constant theta offset $$\phi(\theta)=h$$."""
+
+    height: float
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "height", _nonnegative(self.height, "height"))
+
+    def value(self, theta: np.ndarray) -> float:
+        _validate_theta(theta)
+        return float(self.height)
+
+    def grad(self, theta: np.ndarray) -> np.ndarray:
+        theta_arr = _validate_theta(theta)
+        return np.zeros_like(theta_arr, dtype=float)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "type": "ConstantThetaRegularizer",
+            "height": float(self.height),
+        }
+
+
+@dataclass(frozen=True)
 class ProximalThetaRegularizer(ThetaRegularizer):
     """Mean-squared proximal penalty ``weight * mean((theta - reference)^2)``."""
 
@@ -105,6 +129,104 @@ class SupportThetaRegularizer(ThetaRegularizer):
             "weight": float(self.weight),
             "support_center": float(self.support_center),
             "support_growth": float(self.support_growth),
+        }
+
+
+@dataclass(frozen=True)
+class IntervalDistanceThetaRegularizer(ThetaRegularizer):
+    r"""Linear distance penalty $$\phi(\theta)=\lambda\,d(\theta,[\ell,h])$$."""
+
+    slope: float
+    lower: float
+    upper: float
+
+    def __post_init__(self) -> None:
+        lower, upper = _interval(self.lower, self.upper)
+        object.__setattr__(self, "slope", _nonnegative(self.slope, "slope"))
+        object.__setattr__(self, "lower", lower)
+        object.__setattr__(self, "upper", upper)
+
+    def value(self, theta: np.ndarray) -> float:
+        theta_arr = _validate_theta(theta)
+        distance, _ = _interval_distance_and_direction(theta_arr, self.lower, self.upper)
+        return float(self.slope) * float(np.mean(distance))
+
+    def grad(self, theta: np.ndarray) -> np.ndarray:
+        theta_arr = _validate_theta(theta)
+        _, direction = _interval_distance_and_direction(theta_arr, self.lower, self.upper)
+        return (float(self.slope) / float(theta_arr.size)) * direction
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "type": "IntervalDistanceThetaRegularizer",
+            "slope": float(self.slope),
+            "lower": float(self.lower),
+            "upper": float(self.upper),
+        }
+
+
+@dataclass(frozen=True)
+class SmoothSaturatingIntervalThetaRegularizer(ThetaRegularizer):
+    r"""Bounded $$C^\infty$$ support envelope increasing outside $$[\ell,h]$$.
+
+    For distance $$d=d(\theta,[\ell,h])$$, the per-coordinate term is zero
+    inside the interval and
+    $$A\exp[-(s/d)^2]$$ outside it.
+    """
+
+    amplitude: float
+    transition_width: float
+    lower: float
+    upper: float
+
+    def __post_init__(self) -> None:
+        lower, upper = _interval(self.lower, self.upper)
+        amplitude = _nonnegative(self.amplitude, "amplitude")
+        transition_width = float(self.transition_width)
+        if not np.isfinite(transition_width) or transition_width <= 0.0:
+            raise ValueError("transition_width must be finite and positive.")
+        object.__setattr__(self, "amplitude", amplitude)
+        object.__setattr__(self, "transition_width", transition_width)
+        object.__setattr__(self, "lower", lower)
+        object.__setattr__(self, "upper", upper)
+
+    def value(self, theta: np.ndarray) -> float:
+        theta_arr = _validate_theta(theta)
+        distance, _ = _interval_distance_and_direction(theta_arr, self.lower, self.upper)
+        return float(self.amplitude) * float(
+            np.mean(_smooth_support_escape(distance, self.transition_width))
+        )
+
+    def grad(self, theta: np.ndarray) -> np.ndarray:
+        theta_arr = _validate_theta(theta)
+        distance, direction = _interval_distance_and_direction(
+            theta_arr, self.lower, self.upper
+        )
+        slope = np.zeros_like(distance, dtype=float)
+        outside = distance > 0.0
+        if np.any(outside) and self.amplitude > 0.0:
+            z = float(self.transition_width) / distance[outside]
+            # For z >= 40 the exact double-precision slope underflows to zero.
+            active = z < 40.0
+            active_z = z[active]
+            outside_slope = np.zeros_like(z, dtype=float)
+            outside_slope[active] = (
+                2.0
+                * float(self.amplitude)
+                / float(self.transition_width)
+                * active_z**3
+                * np.exp(-(active_z**2))
+            )
+            slope[outside] = outside_slope
+        return direction * slope / float(theta_arr.size)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "type": "SmoothSaturatingIntervalThetaRegularizer",
+            "amplitude": float(self.amplitude),
+            "transition_width": float(self.transition_width),
+            "lower": float(self.lower),
+            "upper": float(self.upper),
         }
 
 
@@ -232,6 +354,24 @@ def regularizer_from_dict(payload: dict[str, Any]) -> ThetaRegularizer:
             weight=float(payload["weight"]),
             reference=payload.get("reference"),
         )
+    if kind in {"ConstantThetaRegularizer", "constant"}:
+        return ConstantThetaRegularizer(height=float(payload["height"]))
+    if kind in {"IntervalDistanceThetaRegularizer", "interval_distance"}:
+        return IntervalDistanceThetaRegularizer(
+            slope=float(payload["slope"]),
+            lower=float(payload["lower"]),
+            upper=float(payload["upper"]),
+        )
+    if kind in {
+        "SmoothSaturatingIntervalThetaRegularizer",
+        "smooth_saturating_interval",
+    }:
+        return SmoothSaturatingIntervalThetaRegularizer(
+            amplitude=float(payload["amplitude"]),
+            transition_width=float(payload["transition_width"]),
+            lower=float(payload["lower"]),
+            upper=float(payload["upper"]),
+        )
     if kind in {"SupportThetaRegularizer", "support"}:
         return SupportThetaRegularizer(
             weight=float(payload["weight"]),
@@ -265,9 +405,47 @@ def _nonnegative(value: float, name: str) -> float:
     return value_float
 
 
+def _interval(lower: float, upper: float) -> tuple[float, float]:
+    lower_float = float(lower)
+    upper_float = float(upper)
+    if not np.isfinite(lower_float) or not np.isfinite(upper_float):
+        raise ValueError("lower and upper must be finite.")
+    if lower_float >= upper_float:
+        raise ValueError("lower must be strictly less than upper.")
+    return lower_float, upper_float
+
+
+def _interval_distance_and_direction(
+    theta: np.ndarray,
+    lower: float,
+    upper: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    below = theta < float(lower)
+    above = theta > float(upper)
+    distance = np.where(
+        below,
+        float(lower) - theta,
+        np.where(above, theta - float(upper), 0.0),
+    )
+    direction = np.where(below, -1.0, np.where(above, 1.0, 0.0))
+    return distance, direction
+
+
+def _smooth_support_escape(distance: np.ndarray, transition_width: float) -> np.ndarray:
+    values = np.zeros_like(distance, dtype=float)
+    outside = distance > 0.0
+    if np.any(outside):
+        z = float(transition_width) / distance[outside]
+        values[outside] = np.exp(-(np.minimum(z, 40.0) ** 2))
+    return values
+
+
 __all__ = [
+    "ConstantThetaRegularizer",
+    "IntervalDistanceThetaRegularizer",
     "ProximalThetaRegularizer",
     "RegularizedObjective",
+    "SmoothSaturatingIntervalThetaRegularizer",
     "SupportThetaRegularizer",
     "ThetaRegularizer",
     "regularizer_from_dict",

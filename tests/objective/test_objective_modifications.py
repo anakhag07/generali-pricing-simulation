@@ -12,13 +12,16 @@ from objective.modifications import (
     AcceptancePenaltyObjective,
     BiasModification,
     BiasedObjective,
+    ConstantThetaRegularizer,
     HomoskedasticGaussianNoise,
+    IntervalDistanceThetaRegularizer,
     LinearActionBias,
     NoiseModification,
     NoisyObjective,
     ProximalThetaRegularizer,
     RegularizationModification,
     RegularizedObjective,
+    SmoothSaturatingIntervalThetaRegularizer,
     SupportThetaRegularizer,
     UpperSupportHingeBias,
     compose_objective,
@@ -120,6 +123,113 @@ def test_regularized_objective_adds_theta_value_and_gradient_terms() -> None:
 
     assert objective.value(theta, x_batch) == pytest.approx(16.5)
     np.testing.assert_allclose(objective.grad(theta, x_batch), np.asarray([5.5, -9.5]))
+
+
+def test_interval_envelope_regularizers_match_values_and_gradients() -> None:
+    theta = np.asarray([0.0, 1.0, 1.5], dtype=float)
+
+    constant = ConstantThetaRegularizer(height=0.4)
+    linear = IntervalDistanceThetaRegularizer(slope=2.0, lower=0.75, upper=1.25)
+    smooth = SmoothSaturatingIntervalThetaRegularizer(
+        amplitude=0.6,
+        transition_width=0.25,
+        lower=0.75,
+        upper=1.25,
+    )
+
+    assert constant.value(theta) == pytest.approx(0.4)
+    np.testing.assert_allclose(constant.grad(theta), np.zeros(3))
+    assert linear.value(theta) == pytest.approx(2.0 * np.mean([0.75, 0.0, 0.25]))
+    np.testing.assert_allclose(linear.grad(theta), np.asarray([-2.0, 0.0, 2.0]) / 3.0)
+
+    expected_terms = 0.6 * np.asarray(
+        [np.exp(-((0.25 / 0.75) ** 2)), 0.0, np.exp(-1.0)]
+    )
+    assert smooth.value(theta) == pytest.approx(float(np.mean(expected_terms)))
+    assert smooth.grad(theta)[0] < 0.0
+    assert smooth.grad(theta)[1] == 0.0
+    assert smooth.grad(theta)[2] > 0.0
+
+
+def test_smooth_interval_envelope_is_flat_at_bounds_and_matches_numdiff() -> None:
+    regularizer = SmoothSaturatingIntervalThetaRegularizer(
+        amplitude=0.7,
+        transition_width=0.25,
+        lower=0.75,
+        upper=1.25,
+    )
+    for boundary in (0.75, 1.25):
+        theta = np.asarray([boundary], dtype=float)
+        assert regularizer.value(theta) == 0.0
+        np.testing.assert_allclose(regularizer.grad(theta), np.zeros(1))
+
+    for value in (0.1, 0.5, 1.5, 2.0):
+        theta = np.asarray([value], dtype=float)
+        step = 1e-6
+        numerical = (
+            regularizer.value(theta + step) - regularizer.value(theta - step)
+        ) / (2.0 * step)
+        assert regularizer.grad(theta)[0] == pytest.approx(numerical, abs=1e-8)
+
+
+def test_smooth_interval_envelope_is_bounded_monotone_and_nonconvex() -> None:
+    regularizer = SmoothSaturatingIntervalThetaRegularizer(
+        amplitude=0.8,
+        transition_width=0.25,
+        lower=0.75,
+        upper=1.25,
+    )
+    distance = np.linspace(0.0, 3.0, 500)
+    values = np.asarray(
+        [regularizer.value(np.asarray([0.75 - value])) for value in distance]
+    )
+
+    assert values[0] == 0.0
+    assert np.all(np.diff(values) >= 0.0)
+    assert np.all(values <= 0.8)
+    curvature = np.diff(values, n=2)
+    assert np.any(curvature > 0.0)
+    assert np.any(curvature < 0.0)
+
+
+@pytest.mark.parametrize(
+    "regularizer",
+    [
+        ConstantThetaRegularizer(height=0.4),
+        IntervalDistanceThetaRegularizer(slope=1.2, lower=0.75, upper=1.25),
+        SmoothSaturatingIntervalThetaRegularizer(
+            amplitude=0.6,
+            transition_width=0.25,
+            lower=0.75,
+            upper=1.25,
+        ),
+    ],
+)
+def test_interval_envelope_regularizers_round_trip(regularizer) -> None:
+    from objective.modifications import regularizer_from_dict
+
+    assert regularizer_from_dict(regularizer.to_dict()) == regularizer
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"type": "constant", "height": -0.1},
+        {"type": "interval_distance", "slope": 1.0, "lower": 1.0, "upper": 1.0},
+        {
+            "type": "smooth_saturating_interval",
+            "amplitude": 0.5,
+            "transition_width": 0.0,
+            "lower": 0.75,
+            "upper": 1.25,
+        },
+    ],
+)
+def test_interval_envelope_regularizers_reject_invalid_parameters(payload) -> None:
+    from objective.modifications import regularizer_from_dict
+
+    with pytest.raises(ValueError):
+        regularizer_from_dict(payload)
 
 
 def test_regularized_objective_serializes_and_forwards_noise_seed() -> None:

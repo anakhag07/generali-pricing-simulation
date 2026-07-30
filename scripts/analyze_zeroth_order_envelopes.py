@@ -28,8 +28,6 @@ from objective import (
 )
 from scripts.zeroth_order_landscape import (
     StationaryPoint,
-    estimator_population_gradient,
-    estimator_population_value,
     find_stationary_points,
     global_minimum,
 )
@@ -150,26 +148,150 @@ def exact_landscape(
 
 
 def population_landscape(
-    objective: object,
     metadata: Mapping[str, object],
     estimator: str,
     sigma: float,
+    *,
+    quadrature_order: int = 80,
+    grid_size: int = 2401,
 ) -> list[StationaryPoint]:
     """Return stationary points of an estimator's population-smoothed objective."""
-    value_fn = _value_fn(objective)
-    grad_fn = _grad_fn(objective)
-    population_grad = lambda x: estimator_population_gradient(
-        estimator, value_fn, grad_fn, x, sigma
+    population_grad_array, population_value_array = _population_functions(
+        metadata,
+        estimator,
+        sigma,
+        quadrature_order=quadrature_order,
     )
-    population_value = lambda x: estimator_population_value(
-        estimator, value_fn, x, sigma
-    )
+    population_grad = lambda x: float(population_grad_array(np.asarray(x)))
+    population_value = lambda x: float(population_value_array(np.asarray(x)))
     return find_stationary_points(
         population_value,
         population_grad,
         domain=DOMAIN,
-        grid_size=6001,
+        grid_size=grid_size,
+        vectorized_grad_fn=population_grad_array,
     )
+
+
+def _population_functions(
+    metadata: Mapping[str, object],
+    estimator: str,
+    sigma: float,
+    *,
+    quadrature_order: int,
+):
+    sigma_float = float(sigma)
+    if not np.isfinite(sigma_float) or sigma_float <= 0.0:
+        raise ValueError("sigma must be finite and positive.")
+    if int(quadrature_order) < 2:
+        raise ValueError("quadrature_order must be at least 2.")
+    if estimator == "finite_difference":
+        nodes, weights = np.polynomial.legendre.leggauss(int(quadrature_order))
+
+        def gradient(x):
+            x_arr = np.asarray(x, dtype=float)
+            return (
+                _landscape_value(metadata, x_arr + sigma_float)
+                - _landscape_value(metadata, x_arr - sigma_float)
+            ) / (2.0 * sigma_float)
+
+        def value(x):
+            x_arr = np.asarray(x, dtype=float)
+            samples = x_arr[..., None] + sigma_float * nodes
+            return 0.5 * np.sum(
+                _landscape_value(metadata, samples) * weights,
+                axis=-1,
+            )
+
+        return gradient, value
+    if estimator == "stein_difference":
+        nodes, weights = np.polynomial.hermite.hermgauss(int(quadrature_order))
+        normal_nodes = np.sqrt(2.0) * nodes
+        normal_weights = weights / np.sqrt(np.pi)
+
+        def gradient(x):
+            x_arr = np.asarray(x, dtype=float)
+            samples = x_arr[..., None] + sigma_float * normal_nodes
+            return np.sum(
+                _landscape_gradient(metadata, samples) * normal_weights,
+                axis=-1,
+            )
+
+        def value(x):
+            x_arr = np.asarray(x, dtype=float)
+            samples = x_arr[..., None] + sigma_float * normal_nodes
+            return np.sum(
+                _landscape_value(metadata, samples) * normal_weights,
+                axis=-1,
+            )
+
+        return gradient, value
+    raise ValueError(f"Unsupported estimator {estimator!r}.")
+
+
+def _landscape_value(
+    metadata: Mapping[str, object],
+    x: np.ndarray,
+) -> np.ndarray:
+    x_arr = np.asarray(x, dtype=float)
+    clean = x_arr**2 + 0.5 * (np.sin(x_arr) - x_arr)
+    form = str(metadata["form"])
+    if form == "constant":
+        return clean + float(metadata["amplitude"])
+    distance = np.maximum.reduce(
+        (
+            float(metadata["lower"]) - x_arr,
+            np.zeros_like(x_arr),
+            x_arr - float(metadata["upper"]),
+        )
+    )
+    if form == "linear":
+        return clean + float(metadata["slope"]) * distance
+    if form == "smooth_nonconvex":
+        envelope = np.zeros_like(x_arr)
+        outside = distance > 0.0
+        if np.any(outside) and float(metadata["amplitude"]) > 0.0:
+            z = float(metadata["transition_width"]) / distance[outside]
+            envelope[outside] = float(metadata["amplitude"]) * np.exp(-(z**2))
+        return clean + envelope
+    raise ValueError(f"Unsupported envelope form {form!r}.")
+
+
+def _landscape_gradient(
+    metadata: Mapping[str, object],
+    x: np.ndarray,
+) -> np.ndarray:
+    x_arr = np.asarray(x, dtype=float)
+    clean_grad = 2.0 * x_arr + 0.5 * (np.cos(x_arr) - 1.0)
+    form = str(metadata["form"])
+    if form == "constant":
+        return clean_grad
+    lower = float(metadata["lower"])
+    upper = float(metadata["upper"])
+    direction = np.where(x_arr < lower, -1.0, np.where(x_arr > upper, 1.0, 0.0))
+    if form == "linear":
+        return clean_grad + float(metadata["slope"]) * direction
+    if form == "smooth_nonconvex":
+        distance = np.maximum.reduce(
+            (lower - x_arr, np.zeros_like(x_arr), x_arr - upper)
+        )
+        envelope_grad = np.zeros_like(x_arr)
+        outside = distance > 0.0
+        if np.any(outside) and float(metadata["amplitude"]) > 0.0:
+            z = float(metadata["transition_width"]) / distance[outside]
+            active = z < 40.0
+            slope = np.zeros_like(z)
+            active_z = z[active]
+            slope[active] = (
+                2.0
+                * float(metadata["amplitude"])
+                / float(metadata["transition_width"])
+                * active_z**3
+                * np.exp(-(active_z**2))
+            )
+            envelope_grad[outside] = direction[outside] * slope
+        return clean_grad + envelope_grad
+    raise ValueError(f"Unsupported envelope form {form!r}.")
 
 
 def collect_rows(
@@ -212,15 +334,17 @@ def collect_rows(
             emitted_exact.add(landscape_key)
 
         populations: dict[str, list[StationaryPoint]] = {}
+        population_globals: dict[str, StationaryPoint] = {}
         for estimator in config.enabled_estimators:
             population_key = (*landscape_key, estimator, float(config.sigma))
             if population_key not in population_cache:
                 population_cache[population_key] = population_landscape(
-                    config.objective, metadata, estimator, float(config.sigma)
+                    metadata, estimator, float(config.sigma)
                 )
             population = population_cache[population_key]
             populations[estimator] = population
             population_global = global_minimum(population)
+            population_globals[estimator] = population_global
             if population_key not in emitted_population:
                 for point in population:
                     stationary_rows.append(
@@ -253,6 +377,7 @@ def collect_rows(
                 assigned_population = min(
                     population_minima, key=lambda point: abs(point.x - x_k)
                 )
+                population_global = population_globals[estimator]
                 clean_value = _clean_value(x_k)
                 run_rows.append(
                     {
@@ -265,8 +390,19 @@ def collect_rows(
                         "exact_global_value": exact_global.value,
                         "assigned_exact_x": assigned_exact.x,
                         "assigned_population_x": assigned_population.x,
+                        "population_global_x": population_global.x,
+                        "population_global_value": population_global.value,
                         "reached_exact_global_basin": assigned_exact == exact_global,
+                        "reached_population_global_basin": (
+                            assigned_population == population_global
+                        ),
                         "distance_to_exact_global": abs(x_k - exact_global.x),
+                        "distance_to_population_global": abs(
+                            x_k - population_global.x
+                        ),
+                        "distance_to_assigned_population": abs(
+                            x_k - assigned_population.x
+                        ),
                         "distance_to_truth": abs(x_k),
                         "distance_to_support": _distance_to_interval(
                             x_k, float(metadata["lower"]), float(metadata["upper"])
@@ -332,6 +468,8 @@ def aggregate_rows(
                         "estimator",
                         "exact_global_x",
                         "exact_global_value",
+                        "population_global_x",
+                        "population_global_value",
                     )
                 },
                 "n_seeds": n,
@@ -342,8 +480,29 @@ def aggregate_rows(
                 "global_basin_rate": float(
                     np.mean([bool(row["reached_exact_global_basin"]) for row in group])
                 ),
+                "population_global_basin_rate": float(
+                    np.mean(
+                        [
+                            bool(row["reached_population_global_basin"])
+                            for row in group
+                        ]
+                    )
+                ),
                 "mean_distance_to_exact_global": float(
                     np.mean([float(row["distance_to_exact_global"]) for row in group])
+                ),
+                "mean_distance_to_population_global": float(
+                    np.mean(
+                        [float(row["distance_to_population_global"]) for row in group]
+                    )
+                ),
+                "mean_distance_to_assigned_population": float(
+                    np.mean(
+                        [
+                            float(row["distance_to_assigned_population"])
+                            for row in group
+                        ]
+                    )
                 ),
                 "mean_distance_to_truth": float(
                     np.mean([float(row["distance_to_truth"]) for row in group])
@@ -693,6 +852,59 @@ def _plot_regret(
     plt.close(fig)
 
 
+def _plot_population_target_error(
+    aggregates: Sequence[Mapping[str, object]],
+    output: Path,
+) -> None:
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.8), sharey=True)
+    for axis, estimator in zip(
+        axes, ("finite_difference", "stein_difference"), strict=True
+    ):
+        subset = [
+            row
+            for row in aggregates
+            if row["form"] == "smooth_nonconvex" and row["estimator"] == estimator
+        ]
+        for (theta0, sigma), color in {
+            (0.0, 0.05): "tab:blue",
+            (0.0, 0.15): "tab:cyan",
+            (0.0, 0.30): "tab:green",
+            (1.0, 0.05): "tab:red",
+            (1.0, 0.15): "tab:orange",
+            (1.0, 0.30): "tab:pink",
+        }.items():
+            rows = sorted(
+                (
+                    row
+                    for row in subset
+                    if np.isclose(float(row["theta0"]), theta0)
+                    and np.isclose(float(row["sigma"]), sigma)
+                ),
+                key=lambda row: float(row["amplitude"]),
+            )
+            axis.plot(
+                [float(row["amplitude"]) for row in rows],
+                [
+                    float(row["mean_distance_to_assigned_population"])
+                    for row in rows
+                ],
+                "o-",
+                color=color,
+                label=f"$u_0={theta0:g}$, $\\sigma={sigma:g}$",
+                markersize=4,
+            )
+        axis.set_title(ESTIMATOR_LABELS[estimator])
+        axis.set_xlabel("Envelope amplitude $A$")
+        axis.set_yscale("symlog", linthresh=1e-5)
+        axis.grid(alpha=0.25)
+    axes[0].set_ylabel("Distance to assigned population stationary point")
+    axes[1].legend(fontsize=7, ncol=2)
+    fig.suptitle("Finite-run convergence error after population basin selection")
+    fig.tight_layout()
+    fig.savefig(output / "population_target_error.png", dpi=180)
+    plt.close(fig)
+
+
 def write_outputs(
     manifest: ExperimentManifest,
     run_rows: Sequence[Mapping[str, object]],
@@ -710,9 +922,15 @@ def write_outputs(
     _plot_bifurcation(stationary_rows, aggregates, output)
     _plot_basin_rates(aggregates, output)
     _plot_regret(aggregates, output)
+    _plot_population_target_error(aggregates, output)
 
     nonconvex = [row for row in aggregates if row["form"] == "smooth_nonconvex"]
-    success = float(np.mean([float(row["global_basin_rate"]) for row in nonconvex]))
+    exact_success = float(
+        np.mean([float(row["global_basin_rate"]) for row in nonconvex])
+    )
+    population_success = float(
+        np.mean([float(row["population_global_basin_rate"]) for row in nonconvex])
+    )
     summary = "\n".join(
         [
             "# Zeroth-Order Support Envelope Analysis",
@@ -720,7 +938,9 @@ def write_outputs(
             f"- Completed final-iterate rows: {len(run_rows)}",
             f"- Aggregate conditions: {len(aggregates)}",
             f"- Classified stationary points: {len(stationary_rows)}",
-            f"- Mean nonconvex global-basin rate: {success:.3f}",
+            f"- Mean nonconvex exact-global-basin rate: {exact_success:.3f}",
+            "- Mean nonconvex population-global-basin rate: "
+            f"{population_success:.3f}",
             "",
             "The constant envelope is the trajectory-invariance control. "
             "The linear envelope tests the coverage-boundary threshold. "

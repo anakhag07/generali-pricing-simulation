@@ -222,8 +222,8 @@ python scripts/analyze_zeroth_order_envelopes.py \
 The 54 variants vary matched envelope strength, initialization, and (for the
 nonconvex form) zeroth-order radius. The analyzer writes exact and
 population-smoothed stationary points, final-iterate/regret tables, basin-rate
-plots, and `envelope_diagnostics.png`, which shows each envelope together with
-the true and upper objectives, under
+and finite-run target-error plots, and `envelope_diagnostics.png`, which shows
+each envelope together with the true and upper objectives, under
 `results/zeroth-order-envelope-analysis/`.
 
 Optimization step rules:

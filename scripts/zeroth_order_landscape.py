@@ -129,6 +129,7 @@ def find_stationary_points(
     domain: tuple[float, float],
     kinks: Iterable[float] = (),
     grid_size: int = 12001,
+    vectorized_grad_fn: Callable[[np.ndarray], np.ndarray] | None = None,
 ) -> list[StationaryPoint]:
     """Find and classify scalar stationary points on an enclosing domain."""
     low, high = (float(value) for value in domain)
@@ -138,7 +139,13 @@ def find_stationary_points(
         raise ValueError("grid_size must be at least 101.")
 
     grid = np.linspace(low, high, int(grid_size))
-    gradients = np.asarray([grad_fn(float(x)) for x in grid], dtype=float)
+    gradients = (
+        np.asarray([grad_fn(float(x)) for x in grid], dtype=float)
+        if vectorized_grad_fn is None
+        else np.asarray(vectorized_grad_fn(grid), dtype=float)
+    )
+    if gradients.shape != grid.shape:
+        raise ValueError("vectorized_grad_fn must preserve the input shape.")
     if not np.all(np.isfinite(gradients)):
         raise ValueError("gradient must be finite across the search domain.")
 

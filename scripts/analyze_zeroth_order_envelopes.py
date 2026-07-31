@@ -13,6 +13,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 import numpy as np
 from scipy.stats import t as student_t
 
@@ -44,6 +45,10 @@ FORM_ORDER = ("constant", "linear", "smooth_nonconvex")
 ESTIMATOR_LABELS = {
     "finite_difference": "Finite difference",
     "stein_difference": "Stein difference",
+}
+INIT_STYLES = {
+    0.0: ("tab:blue", "o"),
+    1.0: ("tab:orange", "^"),
 }
 
 
@@ -905,6 +910,257 @@ def _plot_population_target_error(
     plt.close(fig)
 
 
+def _seed_jitter_map(
+    rows: Sequence[Mapping[str, object]],
+) -> dict[int, float]:
+    seeds = sorted({int(row["run_seed"]) for row in rows})
+    if not seeds:
+        raise ValueError("Seed convergence plots require at least one run row.")
+    offsets = np.linspace(-1.0, 1.0, len(seeds)) if len(seeds) > 1 else np.zeros(1)
+    return dict(zip(seeds, offsets, strict=True))
+
+
+def _reference_series(
+    rows: Sequence[Mapping[str, object]],
+    key: str,
+) -> tuple[list[float], list[float]]:
+    values: dict[float, set[float]] = defaultdict(set)
+    for row in rows:
+        values[float(row["amplitude"])].add(float(row[key]))
+    inconsistent = {
+        amplitude: sorted(points)
+        for amplitude, points in values.items()
+        if len(points) != 1
+    }
+    if inconsistent:
+        raise ValueError(f"Reference {key!r} is inconsistent by amplitude: {inconsistent}.")
+    amplitudes = sorted(values)
+    return amplitudes, [next(iter(values[amplitude])) for amplitude in amplitudes]
+
+
+def _plot_seed_panel(
+    axis: plt.Axes,
+    rows: Sequence[Mapping[str, object]],
+    seed_offsets: Mapping[int, float],
+) -> None:
+    if not rows:
+        raise ValueError("Seed convergence panel received no run rows.")
+    amplitudes = sorted({float(row["amplitude"]) for row in rows})
+    gaps = np.diff(amplitudes)
+    spacing = float(np.min(gaps)) if gaps.size else 0.25
+    init_offset = 0.08 * spacing
+    jitter_scale = 0.045 * spacing
+
+    true_values = {float(row["x_star"]) for row in rows}
+    if len(true_values) != 1:
+        raise ValueError(f"True minima are inconsistent within a panel: {true_values}.")
+    true_minimum = next(iter(true_values))
+    axis.axhline(
+        true_minimum,
+        color="black",
+        linestyle="--",
+        linewidth=1.4,
+        zorder=1,
+    )
+
+    exact_amplitudes, exact_points = _reference_series(rows, "exact_global_x")
+    axis.plot(
+        exact_amplitudes,
+        exact_points,
+        color="tab:red",
+        linestyle="--",
+        marker="x",
+        linewidth=1.3,
+        markersize=6,
+        zorder=3,
+    )
+    population_amplitudes, population_points = _reference_series(
+        rows, "population_global_x"
+    )
+    axis.plot(
+        population_amplitudes,
+        population_points,
+        color="tab:purple",
+        linestyle=":",
+        marker="D",
+        markerfacecolor="none",
+        linewidth=1.4,
+        markersize=5,
+        zorder=3,
+    )
+
+    for theta0, (color, marker) in INIT_STYLES.items():
+        init_rows = [
+            row for row in rows if np.isclose(float(row["theta0"]), theta0)
+        ]
+        if not init_rows:
+            continue
+        mean_x: list[float] = []
+        means: list[float] = []
+        lower_errors: list[float] = []
+        upper_errors: list[float] = []
+        raw_x_all: list[float] = []
+        raw_finals_all: list[float] = []
+        direction = -1.0 if theta0 == 0.0 else 1.0
+        for amplitude in amplitudes:
+            condition_rows = sorted(
+                (
+                    row
+                    for row in init_rows
+                    if np.isclose(float(row["amplitude"]), amplitude)
+                ),
+                key=lambda row: int(row["run_seed"]),
+            )
+            if not condition_rows:
+                continue
+            finals = np.asarray(
+                [float(row["x_k"]) for row in condition_rows], dtype=float
+            )
+            center = amplitude + direction * init_offset
+            raw_x_all.extend(
+                center + jitter_scale * seed_offsets[int(row["run_seed"])]
+                for row in condition_rows
+            )
+            raw_finals_all.extend(float(value) for value in finals)
+            mean = float(np.mean(finals))
+            mean_x.append(center)
+            means.append(mean)
+            lower_errors.append(mean - float(np.min(finals)))
+            upper_errors.append(float(np.max(finals)) - mean)
+        axis.scatter(
+            raw_x_all,
+            raw_finals_all,
+            color=color,
+            marker=marker,
+            s=23,
+            alpha=0.50,
+            linewidths=0.4,
+            zorder=4,
+        )
+        axis.errorbar(
+            mean_x,
+            means,
+            yerr=np.asarray([lower_errors, upper_errors]),
+            color=color,
+            marker=marker,
+            linestyle="-",
+            linewidth=1.5,
+            markersize=6,
+            capsize=3,
+            zorder=5,
+        )
+
+    axis.set_xlabel("Matched envelope amplitude $A$")
+    axis.grid(alpha=0.25)
+
+
+def _seed_plot_legend() -> list[Line2D]:
+    return [
+        Line2D(
+            [0],
+            [0],
+            color=color,
+            marker=marker,
+            linestyle="-",
+            label=f"Final $u_K$, $u_0={theta0:g}$",
+        )
+        for theta0, (color, marker) in INIT_STYLES.items()
+    ] + [
+        Line2D(
+            [0],
+            [0],
+            color="black",
+            linestyle="--",
+            label=r"True minimum $u^\star$",
+        ),
+        Line2D(
+            [0],
+            [0],
+            color="tab:red",
+            marker="x",
+            linestyle="--",
+            label="Exact upper global minimum",
+        ),
+        Line2D(
+            [0],
+            [0],
+            color="tab:purple",
+            marker="D",
+            markerfacecolor="none",
+            linestyle=":",
+            label="Population global minimum",
+        ),
+    ]
+
+
+def _seed_plot_caption(fig: plt.Figure) -> None:
+    fig.text(
+        0.5,
+        0.012,
+        "Small jittered marks are individual optimizer seeds; large marks and "
+        "whiskers are mean and min–max. The CSV's assigned population stationary "
+        "point is the closest population local minimum to each final mark; the "
+        "purple diamonds show the population global minimum.",
+        ha="center",
+        va="bottom",
+        fontsize=8,
+        wrap=True,
+    )
+
+
+def _plot_seed_convergence(
+    run_rows: Sequence[Mapping[str, object]],
+    output: Path,
+    *,
+    dpi: int = 180,
+) -> None:
+    seed_offsets = _seed_jitter_map(run_rows)
+    legend = _seed_plot_legend()
+    for form in ("constant", "linear"):
+        fig, axes = plt.subplots(1, 2, figsize=(13, 5.2), sharex=True, sharey=True)
+        for axis, estimator in zip(
+            axes, ("finite_difference", "stein_difference"), strict=True
+        ):
+            panel_rows = [
+                row
+                for row in run_rows
+                if row["form"] == form and row["estimator"] == estimator
+            ]
+            _plot_seed_panel(axis, panel_rows, seed_offsets)
+            axis.set_title(ESTIMATOR_LABELS[estimator])
+        axes[0].set_ylabel("Final parameter $u_K$")
+        axes[1].legend(handles=legend, fontsize=7, loc="best")
+        fig.suptitle(f"Seed-level convergence: {FORM_LABELS[form]} envelope")
+        _seed_plot_caption(fig)
+        fig.tight_layout(rect=(0.0, 0.10, 1.0, 0.96))
+        fig.savefig(output / f"seed_convergence_{form}.png", dpi=dpi)
+        plt.close(fig)
+
+    fig, axes = plt.subplots(2, 3, figsize=(16, 9), sharex=True, sharey=True)
+    estimators = ("finite_difference", "stein_difference")
+    sigmas = (0.05, 0.15, 0.30)
+    for row_index, estimator in enumerate(estimators):
+        for column, sigma in enumerate(sigmas):
+            axis = axes[row_index, column]
+            panel_rows = [
+                row
+                for row in run_rows
+                if row["form"] == "smooth_nonconvex"
+                and row["estimator"] == estimator
+                and np.isclose(float(row["sigma"]), sigma)
+            ]
+            _plot_seed_panel(axis, panel_rows, seed_offsets)
+            axis.set_title(f"{ESTIMATOR_LABELS[estimator]}, $\\sigma={sigma:g}$")
+    for axis in axes[:, 0]:
+        axis.set_ylabel("Final parameter $u_K$")
+    axes[0, 2].legend(handles=legend, fontsize=7, loc="best")
+    fig.suptitle("Seed-level convergence: smooth nonconvex envelope")
+    _seed_plot_caption(fig)
+    fig.tight_layout(rect=(0.0, 0.075, 1.0, 0.96))
+    fig.savefig(output / "seed_convergence_smooth_nonconvex.png", dpi=dpi)
+    plt.close(fig)
+
+
 def write_outputs(
     manifest: ExperimentManifest,
     run_rows: Sequence[Mapping[str, object]],
@@ -923,6 +1179,7 @@ def write_outputs(
     _plot_basin_rates(aggregates, output)
     _plot_regret(aggregates, output)
     _plot_population_target_error(aggregates, output)
+    _plot_seed_convergence(run_rows, output)
 
     nonconvex = [row for row in aggregates if row["form"] == "smooth_nonconvex"]
     exact_success = float(
@@ -946,6 +1203,14 @@ def write_outputs(
             "The linear envelope tests the coverage-boundary threshold. "
             "The smooth nonconvex envelope tests basin selection and whether "
             "zeroth-order smoothing removes competing stationary points.",
+            "Seeds 101–108 vary only the optimizer RNG; finite difference is "
+            "therefore coincident across seeds, while Stein uses different "
+            "Gaussian perturbation streams. Initializations are separate "
+            "conditions. The true target (`x_star`) is the clean-objective "
+            "minimum; `exact_global_x` is the exact upper-objective global "
+            "minimum; `population_global_x` is the estimator-smoothed global "
+            "minimum; and `assigned_population_x` is the closest local "
+            "population minimum to the final iterate.",
             "",
         ]
     )

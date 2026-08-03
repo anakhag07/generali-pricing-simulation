@@ -38,7 +38,7 @@ def test_real_data_config_uses_all_eligible_rows_when_n_samples_omitted_or_none(
 
     def fake_load_x_frame(model_type, n_rows=5000, *, row_indices=None, seed=None):
         del n_rows, seed
-        assert model_type == "glm"
+        assert model_type == "glm_20260527"
         np.testing.assert_array_equal(row_indices, eligible)
         return pd.DataFrame(
             np.zeros((eligible.size, len(FEATURE_COLS_GLM)), dtype=float),
@@ -48,7 +48,11 @@ def test_real_data_config_uses_all_eligible_rows_when_n_samples_omitted_or_none(
     monkeypatch.setattr(factory, "eligible_csv_row_indices", lambda model_type: eligible.copy())
     monkeypatch.setattr(factory, "sample_csv_row_indices", fail_sample)
     monkeypatch.setattr(factory, "load_x_frame", fake_load_x_frame)
-    monkeypatch.setattr(factory, "load_model_artifacts", lambda model_type: (object(), object()))
+    monkeypatch.setattr(
+        factory,
+        "load_model_artifact_pair",
+        lambda acceptance_model_type, loss_model_type: (object(), object()),
+    )
     monkeypatch.setattr(factory, "extract_glm_u_coef", lambda acceptance_model: -1.0)
 
     cfg = factory.build_real_data_config(
@@ -67,7 +71,15 @@ def test_real_data_config_uses_all_eligible_rows_when_n_samples_omitted_or_none(
 
 @pytest.mark.parametrize(
     "name",
-    ["real_data_glm_base", "real_data_xgb_base", "real_data_xgb_logit_spline_base"],
+    [
+        "real_data_glm_base",
+        "real_data_xgb_base",
+        "real_data_xgb_logit_spline_base",
+        "real_data_glm_glm_20260728_base",
+        "real_data_smoothed_glm_20260728_base",
+        "real_data_xgb_glm_20260728_base",
+        "real_data_xgb_xgb_20260728_base",
+    ],
 )
 def test_real_data_base_configs_load(name):
     cfg = _cfg(name)
@@ -132,6 +144,72 @@ def test_xgb_logit_spline_uses_all_200_covered_rows_by_default() -> None:
     assert cfg.n_samples == 200
     assert cfg.x_fixed.shape == (200, 20)
     assert cfg.x_fixed["id"].nunique() == 200
+
+
+def test_20260728_smoothed_preset_uses_exact_covered_cohort_and_current_glm_loss() -> None:
+    from experiments.configs import get_config
+
+    cfg = get_config(
+        "real_data_smoothed_glm_20260728_base",
+        overrides={"plot": False, "verbose": False, "wandb_enabled": False},
+    )
+
+    assert cfg.n_samples == 200
+    assert cfg.x_fixed.shape == (200, 20)
+    assert cfg.x_fixed["id"].nunique() == 200
+    assert cfg.objective.acceptance_model.artifact_id == "xgb_sigmoid_20260728"
+    assert cfg.objective.loss_model.artifact_id == "glm_20260527"
+    assert cfg.objective.u_bounds == (0.0, 0.16)
+    assert "first_order" in cfg.enabled_estimators
+
+
+@pytest.mark.parametrize(
+    ("name", "acceptance_id", "loss_id"),
+    [
+        ("real_data_glm_glm_20260728_base", "glm_20260527", "glm_20260527"),
+        ("real_data_xgb_glm_20260728_base", "xgb_20260728", "glm_20260527"),
+        ("real_data_xgb_xgb_20260728_base", "xgb_20260728", "xgb_20260728"),
+    ],
+)
+def test_20260728_hierarchy_presets_select_independent_artifacts(
+    name: str, acceptance_id: str, loss_id: str
+) -> None:
+    cfg = _cfg(name)
+
+    assert cfg.objective.acceptance_model.artifact_id == acceptance_id
+    assert cfg.objective.loss_model.artifact_id == loss_id
+
+
+def test_hierarchy_presets_can_share_the_exact_sigmoid_200_row_cohort() -> None:
+    from experiments.configs import get_config
+
+    names = (
+        "real_data_glm_glm_20260728_base",
+        "real_data_smoothed_glm_20260728_base",
+        "real_data_xgb_glm_20260728_base",
+        "real_data_xgb_xgb_20260728_base",
+    )
+    configs = [
+        get_config(
+            name,
+            overrides={
+                "row_cohort_model_type": "xgb_sigmoid_20260728",
+                "plot": False,
+                "verbose": False,
+                "wandb_enabled": False,
+            },
+        )
+        for name in names
+    ]
+
+    expected = configs[0].x_fixed_row_indices
+    assert expected.shape == (200,)
+    for cfg in configs:
+        np.testing.assert_array_equal(cfg.x_fixed_row_indices, expected)
+        expected_columns = 20 if hasattr(
+            cfg.objective.acceptance_model, "covered_policy_ids"
+        ) else 19
+        assert cfg.x_fixed.shape == (200, expected_columns)
 
 
 def test_xgb_logit_spline_rejects_jax_backend() -> None:

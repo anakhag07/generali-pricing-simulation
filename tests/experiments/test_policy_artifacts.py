@@ -229,3 +229,37 @@ def test_xgb_logit_spline_policy_artifact_replays_id_bound_rows(tmp_path) -> Non
     expected = result.train_metrics["first_order"]
     assert actual.objective_value == pytest.approx(expected.objective_value)
     assert actual.mean_acceptance == pytest.approx(expected.mean_acceptance)
+
+
+def test_new_smoothed_policy_replay_records_independent_model_ids(tmp_path) -> None:
+    config = get_config(
+        "real_data_smoothed_glm_20260728_base",
+        overrides={
+            "n_samples": 8,
+            "train_fraction": 1.0,
+            "test_fraction": 0.0,
+            "policy_kind": "constant",
+            "initial_u": 0.08,
+            "step_rule": "constant",
+            "t_steps": 1,
+            "enabled_estimators": ("first_order",),
+            "grad_norm_tol": None,
+            "plot": False,
+            "verbose": False,
+            "wandb_enabled": False,
+        },
+    )
+    result = run_experiment(config)
+    artifact = build_policy_artifact(result, "first_order")
+    policy_json = artifact.save(tmp_path / "policy.json")
+    loaded = load_policy_artifact(policy_json)
+    payload = json.loads(policy_json.read_text(encoding="utf-8"))
+
+    assert loaded.objective.model_type is None
+    assert loaded.objective.acceptance_model_type == "xgb_sigmoid_20260728"
+    assert loaded.objective.loss_model_type == "glm_20260527"
+    assert payload["schema_version"] == 2
+    assert "id" in loaded.load_x(split="train").columns
+    assert loaded.evaluate(split="train").objective_value == pytest.approx(
+        result.train_metrics["first_order"].objective_value
+    )

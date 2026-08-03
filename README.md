@@ -245,6 +245,10 @@ Available base presets include:
 | `real_data_glm_base` | All complete eligible raw acceptance CSV rows by default; seeded `n_samples` draw when set | `ModelBasedObjective` (GLM bundle, analytical grad when supported) |
 | `real_data_xgb_base` | All complete eligible raw acceptance CSV rows by default; seeded `n_samples` draw when set | `ModelBasedObjective` (XGBoost bundle, FD acceptance gradient) |
 | `real_data_xgb_logit_spline_base` | 200 canonical rows covered by per-policy splines; seeded `n_samples` subset when set | `ModelBasedObjective` (XGBoost-derived logit splines, analytical acceptance gradient) |
+| `real_data_glm_glm_20260728_base` | Complete canonical rows | 20260527 GLM acceptance + 20260527 GLM loss |
+| `real_data_smoothed_glm_20260728_base` | Exact 200 rows covered by the supplied sigmoids | 20260728 shifted-sigmoid acceptance + 20260527 GLM loss |
+| `real_data_xgb_glm_20260728_base` | Complete canonical rows | 20260728 XGB acceptance + 20260527 GLM loss |
+| `real_data_xgb_xgb_20260728_base` | Complete canonical rows | 20260728 XGB acceptance + 20260728 XGB loss |
 
 Real-data overrides can select policy, feature order, preprocessing, loss source,
 constraint mode, and runtime knobs without adding a new preset module. Example:
@@ -286,12 +290,16 @@ with schema/path metadata tracked in `src/data/dataset_metadata.py`. The current
 canonical CSV is the 052726 raw single-year export; both GLM/linear and XGB
 real-data loaders sample complete eligible rows from it.
 Model artifacts live under `src/data/models/linear/`, `src/data/models/xgb/`,
-and `src/data/models/xgb_logit_spline/`. Rebuild the portable spline artifact
+`src/data/models/xgb_logit_spline/`, and `src/data/models/xgb_sigmoid/`.
+Rebuild the portable spline artifact
 from the trusted legacy smoothing bundle with
 `python scripts/prepare_xgb_logit_spline_artifact.py`.
-The loader uses the separate acceptance and financial-loss artifacts, selecting
-the first CV fold from each copied artifact. It does not use the combined
-blackbox wrapper pickle.
+Convert the supplied 20260728 shifted-sigmoid wrapper with
+`python scripts/prepare_xgb_sigmoid_artifact.py`; runtime loads only the
+validated NPZ and never invokes the legacy pickle. The loader exposes independent
+versioned `acceptance_model_type` and `loss_model_type` selectors. Historical
+presets retain their original paired artifacts, while the 20260728 best-fold
+bundles are opt-in.
 The objective keeps raw CSV X rows at the optimization boundary and reuses each
 artifact's saved `FeatureProcessor` internally. The 052726 classifiers expose
 class-1 probability as direct `p_accept(x, u)`, not churn probability.
@@ -492,6 +500,19 @@ under `results/xgb-logit-spline-experiment/`. Use `--help` for sample-count,
 split, seed, iteration, finite-difference, stochastic-gradient sample-budget,
 estimator, and launch overrides.
 
+To compare all four 20260728 hierarchy choices on the exact same 200-policy
+sigmoid cohort, run:
+
+```bash
+python scripts/run_experiment_manifest.py \
+  manifests/real_data_model_hierarchy_200.json
+```
+
+The manifest fixes the data, split, bounded softmax policy, `no_pca`
+preprocessing policy, optimizer seed, and action-space finite-difference
+estimator. Only the acceptance/loss artifact pair changes between variants.
+Outputs land under `results/real-data-model-hierarchy-200/`.
+
 `scripts/run_fixed_regression_noise_offset_grid.py` runs the synthetic
 fixed-regression homoskedastic/heteroskedastic noise x theta-offset grid. It
 computes a clean first-order reference, centers heteroskedastic noise at that
@@ -584,6 +605,24 @@ and MLP policies. The script prints per-condition progress by default; pass
 with the observed GLM acceptance floor and a default 500-step cap. It accepts the
 shared launch flags; `--launch slurm --array` runs one `(pca_dim, policy_class,
 seed)` condition per array task.
+
+To compare a candidate real-data CSV and its XGBoost artifacts with the
+canonical dataset plus current GLM/XGBoost/spline models, use:
+
+```bash
+python scripts/analyze_real_data_model_artifacts.py \
+  --candidate-dataset /path/to/df_raw_single_year_with_predictions_tp.csv \
+  --candidate-artifact-dir /path/to/model_processing/artifacts
+```
+
+The analysis uses stored out-of-fold metrics as its primary performance
+evidence and a deterministic 20,000-row common sample for descriptive
+prediction and counterfactual-action diagnostics. It decodes covered sigmoid
+curves from the trusted legacy smoothing pickle without invoking its
+NumPy-incompatible inference method. Outputs include seven CSV tables, three
+diagnostic plots, and `eda_summary.md` under a timestamped
+`results/real-data-model-eda/` directory. This is analysis-only tooling: it
+does not copy artifacts or change the runtime model registry.
 
 To query the existing acceptance model at fixed constant actions without
 running optimization, use:

@@ -16,8 +16,14 @@ from data.xgb_logit_spline import (
     load_xgb_logit_spline_acceptance,
     load_xgb_logit_spline_artifact,
 )
+from data.xgb_sigmoid import (
+    load_xgb_sigmoid_acceptance,
+    load_xgb_sigmoid_artifact,
+)
 from data.dataset_metadata import (
+    ACCEPTANCE_MODEL_ARTIFACTS,
     ACCEPTANCE_STATE_COLS as _ACCEPTANCE_STATE_COLS,
+    AcceptanceModelType,
     DATA_DIR,
     DATASET_PATH,
     FEATURE_COLS as _FEATURE_COLS,
@@ -26,8 +32,8 @@ from data.dataset_metadata import (
     LOOKAHEAD_X_COLS,
     LOSS_TARGET_COL,
     LOSS_FEATURE_COLS as _LOSS_FEATURE_COLS,
-    MODEL_ARTIFACTS,
-    MODEL_FEATURE_COLS,
+    LOSS_MODEL_ARTIFACTS,
+    LossModelType,
     OBJECTIVE_EXCLUDED_COLS,
     OBSERVED_CHURN_COL,
     OBSERVED_U_COL,
@@ -39,6 +45,7 @@ from data.dataset_metadata import (
 )
 
 ModelType = Literal["glm", "xgb", "xgb_logit_spline"]
+AcceptanceSelection = ModelType | AcceptanceModelType
 ProbabilityTarget = Literal["acceptance", "churn", "none"]
 
 # Directory containing model artifacts and CSV datasets
@@ -65,7 +72,8 @@ class ModelArtifactBundle:
     x_feature_cols: tuple[str, ...]
     probability_target: ProbabilityTarget = "none"
     source_format: str = "single_model"
-    model_type: ModelType | None = None
+    model_type: str | None = None
+    artifact_id: str | None = None
     role: str | None = None
     artifact_path: str | None = None
 
@@ -116,34 +124,22 @@ class _ArtifactUnpickler(pickle.Unpickler):
         return super().find_class(module, name)
 
 
-_ARTIFACT_PATHS: dict[ModelType, dict[str, Path]] = {
-    "glm": {
-        "acceptance": MODEL_ARTIFACTS["glm"]["acceptance"]["path"],
-        "loss": MODEL_ARTIFACTS["glm"]["loss"]["path"],
-    },
-    "xgb": {
-        "acceptance": MODEL_ARTIFACTS["xgb"]["acceptance"]["path"],
-        "loss": MODEL_ARTIFACTS["xgb"]["loss"]["path"],
-    },
-    "xgb_logit_spline": {
-        "acceptance": MODEL_ARTIFACTS["xgb_logit_spline"]["acceptance"]["path"],
-        "loss": MODEL_ARTIFACTS["xgb_logit_spline"]["loss"]["path"],
-    },
+LEGACY_MODEL_PAIRS: dict[ModelType, tuple[AcceptanceModelType, LossModelType]] = {
+    "glm": ("glm_20260527", "glm_20260527"),
+    "xgb": ("xgb_20260527", "xgb_20260527"),
+    "xgb_logit_spline": ("xgb_logit_spline_20260706", "glm_20260527"),
 }
 
-_ACCEPTANCE_CSV_PATHS: dict[ModelType, Path] = {
-    "glm": _DATASET_CSV_PATH,
-    "xgb": _DATASET_CSV_PATH,
-    "xgb_logit_spline": _DATASET_CSV_PATH,
+_CURVE_ACCEPTANCE_TYPES = {
+    "xgb_logit_spline",
+    "xgb_logit_spline_20260706",
+    "xgb_sigmoid_20260728",
 }
 
 
-def _acceptance_csv_path(model_type: ModelType) -> Path:
-    if model_type not in _ACCEPTANCE_CSV_PATHS:
-        raise ValueError(
-            f"model_type must be 'glm', 'xgb', or 'xgb_logit_spline', got '{model_type}'."
-        )
-    return _ACCEPTANCE_CSV_PATHS[model_type]
+def _acceptance_csv_path(model_type: AcceptanceSelection) -> Path:
+    _validate_acceptance_selection(model_type)
+    return _DATASET_CSV_PATH
 
 
 def dataset_csv_path() -> Path:
@@ -176,6 +172,50 @@ def _validate_model_type(model_type: str) -> ModelType:
             f"model_type must be 'glm', 'xgb', or 'xgb_logit_spline', got '{model_type}'."
         )
     return model_type  # type: ignore[return-value]
+
+
+def _validate_acceptance_model_type(model_type: str) -> AcceptanceModelType:
+    if model_type not in ACCEPTANCE_MODEL_ARTIFACTS:
+        available = ", ".join(sorted(ACCEPTANCE_MODEL_ARTIFACTS))
+        raise ValueError(f"Unknown acceptance_model_type '{model_type}'. Available: {available}.")
+    return model_type  # type: ignore[return-value]
+
+
+def _validate_loss_model_type(model_type: str) -> LossModelType:
+    if model_type not in LOSS_MODEL_ARTIFACTS:
+        available = ", ".join(sorted(LOSS_MODEL_ARTIFACTS))
+        raise ValueError(f"Unknown loss_model_type '{model_type}'. Available: {available}.")
+    return model_type  # type: ignore[return-value]
+
+
+def _validate_acceptance_selection(model_type: str) -> AcceptanceSelection:
+    if model_type in LEGACY_MODEL_PAIRS:
+        return model_type  # type: ignore[return-value]
+    return _validate_acceptance_model_type(model_type)
+
+
+def resolve_model_artifact_ids(
+    *,
+    model_type: ModelType | None = None,
+    acceptance_model_type: AcceptanceModelType | None = None,
+    loss_model_type: LossModelType | None = None,
+) -> tuple[AcceptanceModelType, LossModelType]:
+    """Resolve legacy paired selection or explicit independent artifact IDs."""
+    if model_type is not None:
+        legacy = LEGACY_MODEL_PAIRS[_validate_model_type(model_type)]
+        if acceptance_model_type is not None and acceptance_model_type != legacy[0]:
+            raise ValueError("model_type conflicts with acceptance_model_type.")
+        if loss_model_type is not None and loss_model_type != legacy[1]:
+            raise ValueError("model_type conflicts with loss_model_type.")
+        return legacy
+    if acceptance_model_type is None or loss_model_type is None:
+        raise ValueError(
+            "Specify model_type or both acceptance_model_type and loss_model_type."
+        )
+    return (
+        _validate_acceptance_model_type(acceptance_model_type),
+        _validate_loss_model_type(loss_model_type),
+    )
 
 
 def _validate_row_indices(row_indices: np.ndarray | Sequence[int], total_rows: int) -> np.ndarray:
@@ -222,12 +262,12 @@ def _validate_no_missing_required(df: pd.DataFrame, columns: Sequence[str]) -> N
 
 
 def sample_csv_row_indices(
-    model_type: ModelType,
+    model_type: AcceptanceSelection,
     n_rows: int,
     seed: int | None = None,
 ) -> np.ndarray:
     """Sample complete 052726 CSV row positions without replacement."""
-    model_type = _validate_model_type(model_type)
+    model_type = _validate_acceptance_selection(model_type)
     n_rows = int(n_rows)
     if n_rows <= 0:
         raise ValueError("n_rows must be positive.")
@@ -242,16 +282,19 @@ def sample_csv_row_indices(
     return rng.choice(eligible, size=n_rows, replace=False).astype(int)
 
 
-def eligible_csv_row_indices(model_type: ModelType) -> np.ndarray:
+def eligible_csv_row_indices(model_type: AcceptanceSelection) -> np.ndarray:
     """Return complete eligible canonical CSV row positions for a model family."""
-    model_type = _validate_model_type(model_type)
-    if model_type == "xgb_logit_spline":
-        covered = load_xgb_logit_spline_artifact(
-            _ARTIFACT_PATHS[model_type]["acceptance"]
-        ).row_indices
+    model_type = _validate_acceptance_selection(model_type)
+    if model_type in _CURVE_ACCEPTANCE_TYPES:
+        if model_type in {"xgb_logit_spline", "xgb_logit_spline_20260706"}:
+            path = ACCEPTANCE_MODEL_ARTIFACTS["xgb_logit_spline_20260706"]["path"]
+            covered = load_xgb_logit_spline_artifact(path).row_indices
+        else:
+            path = ACCEPTANCE_MODEL_ARTIFACTS["xgb_sigmoid_20260728"]["path"]
+            covered = load_xgb_sigmoid_artifact(path).row_indices
         complete = _eligible_row_indices(_acceptance_csv_path(model_type))
         if not np.isin(covered, complete).all():
-            raise ValueError("Spline artifact contains incomplete canonical dataset rows.")
+            raise ValueError("Curve artifact contains incomplete canonical dataset rows.")
         return covered
     return _eligible_row_indices(_acceptance_csv_path(model_type)).copy()
 
@@ -325,12 +368,37 @@ def _normalize_artifact(
     if isinstance(raw_artifact, dict) and "trained_models" in raw_artifact:
         return _first_fold_artifact(raw_artifact, probability_target=probability_target)
     if isinstance(raw_artifact, dict) and "model" in raw_artifact:
+        preprocessor_payload = raw_artifact.get("preprocessor")
+        preprocessor = preprocessor_payload
+        u_cols: Sequence[str] = raw_artifact.get("u_cols", ())
+        x_feature_cols: Sequence[str] = raw_artifact.get("x_feature_cols", ())
+        if isinstance(preprocessor_payload, dict):
+            preprocessor = preprocessor_payload.get("preprocessor")
+            u_cols = preprocessor_payload.get("u_cols", u_cols)
+            x_feature_cols = preprocessor_payload.get(
+                "x_feature_cols",
+                preprocessor_payload.get("feature_cols", x_feature_cols),
+            )
+        model_features = tuple(raw_artifact.get("model_features", ()))
+        if not u_cols and "U" in model_features:
+            u_cols = ("U",)
+        if not x_feature_cols:
+            x_feature_cols = tuple(
+                column for column in model_features if column not in set(u_cols)
+            )
+        if not x_feature_cols:
+            raise ValueError("Could not resolve x_feature_cols from single-model artifact.")
         return ModelArtifactBundle(
             model=raw_artifact["model"],
-            preprocessor=raw_artifact.get("preprocessor"),
-            u_cols=tuple(raw_artifact.get("u_cols", ())),
-            x_feature_cols=tuple(raw_artifact.get("x_feature_cols", ())),
+            preprocessor=preprocessor,
+            u_cols=tuple(u_cols),
+            x_feature_cols=tuple(x_feature_cols),
             probability_target=probability_target,
+            source_format=(
+                "selected_best_fold"
+                if "best_fold" in raw_artifact
+                else "single_model"
+            ),
         )
     model = raw_artifact
     feature_names = tuple(getattr(model, "feature_names_in_", ()))
@@ -350,73 +418,100 @@ def unwrap_model_artifact(artifact: Any) -> Any:
     return artifact
 
 
-def load_model_artifacts(model_type: ModelType) -> tuple[Any, ModelArtifactBundle]:
-    """Load and return first-fold (acceptance_artifact, loss_artifact) bundles."""
-    model_type = _validate_model_type(model_type)
-    paths = _ARTIFACT_PATHS[model_type]
-    specs = MODEL_ARTIFACTS[model_type]
-    if model_type == "xgb_logit_spline":
+def load_acceptance_artifact(model_type: AcceptanceModelType) -> Any:
+    """Load one versioned acceptance artifact."""
+    model_type = _validate_acceptance_model_type(model_type)
+    spec = ACCEPTANCE_MODEL_ARTIFACTS[model_type]
+    path = spec["path"]
+    if model_type == "xgb_logit_spline_20260706":
         xgb_raw = _normalize_artifact(
-            _load_pickle(_ARTIFACT_PATHS["xgb"]["acceptance"]),
-            probability_target=MODEL_ARTIFACTS["xgb"]["acceptance"]["probability_target"],
+            _load_pickle(ACCEPTANCE_MODEL_ARTIFACTS["xgb_20260527"]["path"]),
+            probability_target="acceptance",
         )
-        acceptance_model = load_xgb_logit_spline_acceptance(
-            paths["acceptance"],
+        return load_xgb_logit_spline_acceptance(
+            path,
             id_col="id",
             x_feature_cols=tuple(ACCEPTANCE_STATE_COLS),
             preprocessor=xgb_raw.preprocessor,
         )
-        loss_model = _normalize_artifact(
-            _load_pickle(paths["loss"]),
-            probability_target=specs["loss"].get("probability_target", "none"),
+    if model_type == "xgb_sigmoid_20260728":
+        xgb_raw = _normalize_artifact(
+            _load_pickle(ACCEPTANCE_MODEL_ARTIFACTS["xgb_20260728"]["path"]),
+            probability_target="acceptance",
         )
-        loss_model = replace(
-            loss_model,
-            model_type=model_type,
-            role="loss",
-            artifact_path=str(paths["loss"]),
+        return load_xgb_sigmoid_acceptance(
+            path,
+            id_col="id",
+            x_feature_cols=tuple(ACCEPTANCE_STATE_COLS),
+            preprocessor=xgb_raw.preprocessor,
         )
-        return acceptance_model, loss_model
     acceptance_model = _normalize_artifact(
-        _load_pickle(paths["acceptance"]),
-        probability_target=specs["acceptance"].get("probability_target", "acceptance"),
+        _load_pickle(path),
+        probability_target=spec.get("probability_target", "acceptance"),
     )
-    loss_model = _normalize_artifact(
-        _load_pickle(paths["loss"]),
-        probability_target=specs["loss"].get("probability_target", "none"),
-    )
-    acceptance_model = replace(
+    return replace(
         acceptance_model,
         model_type=model_type,
+        artifact_id=model_type,
         role="acceptance",
-        artifact_path=str(paths["acceptance"]),
+        artifact_path=str(path),
     )
-    loss_model = replace(
+
+
+def load_loss_artifact(model_type: LossModelType) -> ModelArtifactBundle:
+    """Load one versioned financial-loss artifact."""
+    model_type = _validate_loss_model_type(model_type)
+    spec = LOSS_MODEL_ARTIFACTS[model_type]
+    path = spec["path"]
+    loss_model = _normalize_artifact(
+        _load_pickle(path),
+        probability_target=spec.get("probability_target", "none"),
+    )
+    return replace(
         loss_model,
         model_type=model_type,
+        artifact_id=model_type,
         role="loss",
-        artifact_path=str(paths["loss"]),
+        artifact_path=str(path),
     )
-    return acceptance_model, loss_model
+
+
+def load_model_artifact_pair(
+    acceptance_model_type: AcceptanceModelType,
+    loss_model_type: LossModelType,
+) -> tuple[Any, ModelArtifactBundle]:
+    """Load independently selected acceptance and financial-loss artifacts."""
+    return (
+        load_acceptance_artifact(acceptance_model_type),
+        load_loss_artifact(loss_model_type),
+    )
+
+
+def load_model_artifacts(model_type: ModelType) -> tuple[Any, ModelArtifactBundle]:
+    """Load a legacy paired artifact preset without changing its historical models."""
+    acceptance_model_type, loss_model_type = resolve_model_artifact_ids(
+        model_type=model_type
+    )
+    return load_model_artifact_pair(acceptance_model_type, loss_model_type)
 
 
 def load_x_frame(
-    model_type: ModelType,
+    model_type: AcceptanceSelection,
     n_rows: int = 5000,
     *,
     row_indices: np.ndarray | Sequence[int] | None = None,
     seed: int | None = None,
 ) -> pd.DataFrame:
     """Load raw 052726 X covariates for optimization, preserving categoricals."""
-    model_type = _validate_model_type(model_type)
+    model_type = _validate_acceptance_selection(model_type)
     csv_path = _acceptance_csv_path(model_type)
-    feature_cols = list(MODEL_FEATURE_COLS[model_type])
-    source_cols = ["id", *feature_cols] if model_type == "xgb_logit_spline" else feature_cols
+    feature_cols = list(_FEATURE_COLS)
+    source_cols = ["id", *feature_cols] if model_type in _CURVE_ACCEPTANCE_TYPES else feature_cols
     if row_indices is None:
         row_indices = sample_csv_row_indices(model_type, n_rows=n_rows, seed=seed)
     else:
         row_indices = _validate_row_indices(row_indices, _csv_row_count(csv_path))
-    dtype = {"id": "string"} if model_type == "xgb_logit_spline" else None
+    dtype = {"id": "string"} if model_type in _CURVE_ACCEPTANCE_TYPES else None
     df = pd.read_csv(csv_path, sep=";", usecols=source_cols, dtype=dtype)
     df = _select_csv_rows(df, np.asarray(row_indices, dtype=int))
     _validate_no_missing_required(df, source_cols)
@@ -424,7 +519,7 @@ def load_x_frame(
 
 
 def load_x_array(
-    model_type: ModelType,
+    model_type: AcceptanceSelection,
     n_rows: int = 5000,
     *,
     row_indices: np.ndarray | Sequence[int] | None = None,
@@ -440,14 +535,14 @@ def load_x_array(
 
 
 def load_observed_u_array(
-    model_type: ModelType,
+    model_type: AcceptanceSelection,
     n_rows: int | None = 5000,
     *,
     row_indices: np.ndarray | Sequence[int] | None = None,
     seed: int | None = None,
 ) -> np.ndarray:
     """Load historical pricing actions from sampled complete 052726 rows."""
-    model_type = _validate_model_type(model_type)
+    model_type = _validate_acceptance_selection(model_type)
     csv_path = _acceptance_csv_path(model_type)
     if row_indices is None:
         if n_rows is None:
@@ -463,14 +558,14 @@ def load_observed_u_array(
 
 
 def load_observed_loss_array(
-    model_type: ModelType,
+    model_type: AcceptanceSelection,
     n_rows: int | None = 5000,
     *,
     row_indices: np.ndarray | Sequence[int] | None = None,
     seed: int | None = None,
 ) -> np.ndarray:
     """Load observed historical financial loss from sampled complete 052726 rows."""
-    model_type = _validate_model_type(model_type)
+    model_type = _validate_acceptance_selection(model_type)
     csv_path = _acceptance_csv_path(model_type)
     if row_indices is None:
         if n_rows is None:
@@ -486,7 +581,7 @@ def load_observed_loss_array(
 
 
 def _load_observed_u_array(
-    model_type: ModelType,
+    model_type: AcceptanceSelection,
     n_rows: int | None = 5000,
     *,
     row_indices: np.ndarray | Sequence[int] | None = None,
@@ -496,10 +591,10 @@ def _load_observed_u_array(
     return load_observed_u_array(model_type, n_rows=n_rows, row_indices=row_indices, seed=seed)
 
 
-def load_mean_observed_acceptance(model_type: ModelType) -> float:
+def load_mean_observed_acceptance(model_type: AcceptanceSelection) -> float:
     """Load mean observed acceptance (1 - is_churn) on complete eligible rows."""
-    model_type = _validate_model_type(model_type)
-    csv_path = _ACCEPTANCE_CSV_PATHS[model_type]
+    model_type = _validate_acceptance_selection(model_type)
+    csv_path = _acceptance_csv_path(model_type)
     row_indices = eligible_csv_row_indices(model_type)
     df = pd.read_csv(csv_path, sep=";", usecols=[OBSERVED_CHURN_COL])
     df = _select_csv_rows(df, row_indices)
@@ -609,6 +704,8 @@ def extract_model_based_coefficients(acceptance_model: Any, loss_model: Any) -> 
 
 
 __all__ = [
+    "AcceptanceModelType",
+    "AcceptanceSelection",
     "FEATURE_COLS",
     "FEATURE_COLS_GLM",
     "FEATURE_COLS_XGB",
@@ -616,16 +713,21 @@ __all__ = [
     "ACCEPTANCE_STATE_COLS",
     "ModelArtifactBundle",
     "ModelType",
+    "LossModelType",
     "dataset_column_roles",
     "dataset_csv_path",
     "eligible_csv_row_indices",
     "sample_csv_row_indices",
+    "load_acceptance_artifact",
+    "load_loss_artifact",
+    "load_model_artifact_pair",
     "load_model_artifacts",
     "load_x_frame",
     "load_x_array",
     "load_observed_u_array",
     "load_observed_loss_array",
     "load_mean_observed_acceptance",
+    "resolve_model_artifact_ids",
     "unwrap_model_artifact",
     "extract_glm_u_coef",
     "extract_glm_acceptance_coefficients",

@@ -10,7 +10,15 @@ from typing import Any, Literal, Mapping
 import numpy as np
 
 from data.dataset_metadata import DATASET_SCHEMA_VERSION
-from data.loader import ModelType, load_model_artifacts, load_observed_loss_array, load_x_frame
+from data.loader import (
+    AcceptanceModelType,
+    LossModelType,
+    ModelType,
+    load_model_artifact_pair,
+    load_observed_loss_array,
+    load_x_frame,
+    resolve_model_artifact_ids,
+)
 from experiments.policy_validation import evaluate_policy, policy_u_values
 from experiments.results import ExperimentResult, PolicyEvaluation
 from objective.noise import NoisyObjective
@@ -29,7 +37,7 @@ from objective.policy import (
 from objective.policy_preprocessing import PolicyFeaturePreprocessor
 
 SplitName = Literal["train", "test", "all"]
-_ARTIFACT_SCHEMA_VERSION = 1
+_ARTIFACT_SCHEMA_VERSION = 2
 _ARRAY_FILE = "arrays.npz"
 _PREPROCESSOR_PREFIX = "policy_preprocessor__"
 
@@ -236,10 +244,12 @@ class PolicyInputPreprocessingSpec:
 class ObjectiveReplaySpec:
     """Serializable metadata needed to rebuild a model-based objective."""
 
-    model_type: ModelType
+    model_type: ModelType | None
     acceptance_state_cols: tuple[str, ...]
     loss_cols: tuple[str, ...]
     premium_col: str | int
+    acceptance_model_type: AcceptanceModelType | None = None
+    loss_model_type: LossModelType | None = None
     loss_source: Literal["predicted", "observed"] = "predicted"
     observed_loss_col: str = "Y_G_Loss"
     u_coef: float | None = None
@@ -253,11 +263,16 @@ class ObjectiveReplaySpec:
 
     @classmethod
     def from_objective(cls, objective: ModelBasedObjective) -> "ObjectiveReplaySpec":
+        acceptance_model_type, loss_model_type = _infer_artifact_ids(objective)
         return cls(
-            model_type=_infer_model_type(objective),
+            model_type=_infer_model_type(
+                acceptance_model_type, loss_model_type
+            ),
             acceptance_state_cols=tuple(objective.acceptance_state_cols),
             loss_cols=tuple(objective.loss_cols),
             premium_col=objective.premium_col,
+            acceptance_model_type=acceptance_model_type,
+            loss_model_type=loss_model_type,
             loss_source=objective.loss_source,
             observed_loss_col=objective.observed_loss_col,
             u_coef=float(objective.u_coef) if objective.u_coef is not None else None,
@@ -281,11 +296,24 @@ class ObjectiveReplaySpec:
     @classmethod
     def from_dict(cls, payload: Mapping[str, object]) -> "ObjectiveReplaySpec":
         u_bounds = payload.get("u_bounds")
+        legacy_model_type = _optional_str(payload.get("model_type"))
+        acceptance_model_type = _optional_str(payload.get("acceptance_model_type"))
+        loss_model_type = _optional_str(payload.get("loss_model_type"))
+        if acceptance_model_type is None or loss_model_type is None:
+            if legacy_model_type is None:
+                raise ValueError(
+                    "Policy objective must record independent artifact IDs or model_type."
+                )
+            acceptance_model_type, loss_model_type = resolve_model_artifact_ids(
+                model_type=legacy_model_type  # type: ignore[arg-type]
+            )
         return cls(
-            model_type=str(payload["model_type"]),  # type: ignore[arg-type]
+            model_type=legacy_model_type,  # type: ignore[arg-type]
             acceptance_state_cols=tuple(str(col) for col in payload["acceptance_state_cols"]),
             loss_cols=tuple(str(col) for col in payload["loss_cols"]),
             premium_col=payload["premium_col"],
+            acceptance_model_type=acceptance_model_type,  # type: ignore[arg-type]
+            loss_model_type=loss_model_type,  # type: ignore[arg-type]
             loss_source=str(payload.get("loss_source", "predicted")),  # type: ignore[arg-type]
             observed_loss_col=str(payload.get("observed_loss_col", "Y_G_Loss")),
             u_coef=_optional_float(payload.get("u_coef")),
@@ -302,6 +330,8 @@ class ObjectiveReplaySpec:
         return {
             "type": "ModelBasedObjective",
             "model_type": self.model_type,
+            "acceptance_model_type": self.acceptance_model_type,
+            "loss_model_type": self.loss_model_type,
             "acceptance_state_cols": list(self.acceptance_state_cols),
             "loss_cols": list(self.loss_cols),
             "premium_col": self.premium_col,
@@ -322,15 +352,21 @@ class ObjectiveReplaySpec:
 class PolicyDataBinding:
     """Source-row binding for replaying a saved policy on train/test/all splits."""
 
-    model_type: ModelType
+    model_type: str
     train_row_indices: np.ndarray
     test_row_indices: np.ndarray
     selected_row_indices: np.ndarray
+    acceptance_model_type: AcceptanceModelType | None = None
     dataset_schema_version: str = DATASET_SCHEMA_VERSION
     kind: str = "real_data_rows"
 
     @classmethod
-    def from_result(cls, result: ExperimentResult, model_type: ModelType) -> "PolicyDataBinding":
+    def from_result(
+        cls,
+        result: ExperimentResult,
+        model_type: ModelType | None,
+        acceptance_model_type: AcceptanceModelType,
+    ) -> "PolicyDataBinding":
         if result.train_row_indices is None:
             raise ValueError("Policy artifacts for real-data objectives require train_row_indices.")
         train_rows = np.asarray(result.train_row_indices, dtype=int)
@@ -345,10 +381,11 @@ class PolicyDataBinding:
             else np.concatenate([train_rows, test_rows]).astype(int)
         )
         return cls(
-            model_type=model_type,
+            model_type=model_type or acceptance_model_type,
             train_row_indices=train_rows,
             test_row_indices=test_rows,
             selected_row_indices=selected_rows,
+            acceptance_model_type=acceptance_model_type,
         )
 
     @classmethod
@@ -358,6 +395,11 @@ class PolicyDataBinding:
             train_row_indices=np.asarray(arrays["train_row_indices"], dtype=int),
             test_row_indices=np.asarray(arrays["test_row_indices"], dtype=int),
             selected_row_indices=np.asarray(arrays["selected_row_indices"], dtype=int),
+            acceptance_model_type=(
+                str(payload["acceptance_model_type"])  # type: ignore[arg-type]
+                if payload.get("acceptance_model_type") is not None
+                else None
+            ),
             dataset_schema_version=str(payload.get("dataset_schema_version", DATASET_SCHEMA_VERSION)),
             kind=str(payload.get("kind", "real_data_rows")),
         )
@@ -371,6 +413,7 @@ class PolicyDataBinding:
         return {
             "kind": self.kind,
             "model_type": self.model_type,
+            "acceptance_model_type": self.acceptance_model_type,
             "dataset_schema_version": self.dataset_schema_version,
             "train_n_samples": int(self.train_row_indices.size),
             "test_n_samples": int(self.test_row_indices.size),
@@ -410,7 +453,15 @@ class PolicyArtifact:
 
     def build_objective(self) -> ModelBasedObjective:
         """Rebuild the model-based objective used to replay this policy."""
-        acceptance_model, loss_model = load_model_artifacts(self.objective.model_type)
+        if (
+            self.objective.acceptance_model_type is None
+            or self.objective.loss_model_type is None
+        ):
+            raise ValueError("Policy artifact is missing independent model artifact IDs.")
+        acceptance_model, loss_model = load_model_artifact_pair(
+            self.objective.acceptance_model_type,
+            self.objective.loss_model_type,
+        )
         return ModelBasedObjective(
             policy=self.build_policy(),
             acceptance_model=acceptance_model,
@@ -437,11 +488,16 @@ class PolicyArtifact:
     def load_x(self, split: SplitName = "train") -> object:
         """Load raw source-space rows bound to the saved split."""
         row_indices = self.row_indices(split)
-        x_frame = load_x_frame(self.objective.model_type, row_indices=row_indices)
+        acceptance_model_type = (
+            self.objective.acceptance_model_type
+            or self.data_binding.acceptance_model_type
+            or self.data_binding.model_type
+        )
+        x_frame = load_x_frame(acceptance_model_type, row_indices=row_indices)
         if self.objective.loss_source == "observed":
             x_frame = x_frame.copy()
             x_frame[self.objective.observed_loss_col] = load_observed_loss_array(
-                self.objective.model_type,
+                acceptance_model_type,
                 row_indices=row_indices,
             )
         return x_frame
@@ -523,7 +579,7 @@ class PolicyArtifact:
         json_path = Path(path)
         with json_path.open("r", encoding="utf-8") as handle:
             payload = json.load(handle)
-        if int(payload.get("schema_version", -1)) != _ARTIFACT_SCHEMA_VERSION:
+        if int(payload.get("schema_version", -1)) not in {1, _ARTIFACT_SCHEMA_VERSION}:
             raise ValueError("Unsupported policy artifact schema_version.")
         arrays_path = json_path.with_name(str(payload.get("array_file", _ARRAY_FILE)))
         with np.load(arrays_path, allow_pickle=False) as loaded:
@@ -561,7 +617,11 @@ def build_policy_artifact(result: ExperimentResult, estimator: str) -> PolicyArt
         feature_map=PolicyFeatureMapSpec.from_policy(policy),
         policy_head=PolicyHeadSpec.from_policy(policy),
         objective=objective_spec,
-        data_binding=PolicyDataBinding.from_result(result, objective_spec.model_type),
+        data_binding=PolicyDataBinding.from_result(
+            result,
+            objective_spec.model_type,
+            objective_spec.acceptance_model_type,
+        ),
         train_metrics=result.train_metrics.get(estimator),
         test_metrics=result.test_metrics.get(estimator),
     )
@@ -594,18 +654,30 @@ def save_policy_artifacts(result: ExperimentResult, output_dir: str | Path) -> d
     return paths
 
 
-def _infer_model_type(objective: ModelBasedObjective) -> ModelType:
-    model_type = getattr(objective.acceptance_model, "model_type", None)
-    if model_type in {"glm", "xgb", "xgb_logit_spline"}:
-        return model_type
-    model = getattr(objective.acceptance_model, "model", objective.acceptance_model)
-    module = type(model).__module__.lower()
-    name = type(model).__name__.lower()
-    if "xgboost" in module or "xgb" in name:
-        return "xgb"
-    if "sklearn" in module or "logistic" in name:
-        return "glm"
-    raise ValueError("Could not infer real-data model_type from objective artifacts.")
+def _infer_artifact_ids(
+    objective: ModelBasedObjective,
+) -> tuple[AcceptanceModelType, LossModelType]:
+    acceptance_model_type = getattr(objective.acceptance_model, "artifact_id", None)
+    loss_model_type = getattr(objective.loss_model, "artifact_id", None)
+    if acceptance_model_type is None or loss_model_type is None:
+        raise ValueError(
+            "Could not infer independent artifact IDs from objective artifacts."
+        )
+    return acceptance_model_type, loss_model_type
+
+
+def _infer_model_type(
+    acceptance_model_type: AcceptanceModelType,
+    loss_model_type: LossModelType,
+) -> ModelType | None:
+    legacy_pairs: dict[
+        tuple[AcceptanceModelType, LossModelType], ModelType
+    ] = {
+        ("glm_20260527", "glm_20260527"): "glm",
+        ("xgb_20260527", "xgb_20260527"): "xgb",
+        ("xgb_logit_spline_20260706", "glm_20260527"): "xgb_logit_spline",
+    }
+    return legacy_pairs.get((acceptance_model_type, loss_model_type))
 
 
 def _evaluation_to_dict(evaluation: PolicyEvaluation | None) -> dict[str, object] | None:

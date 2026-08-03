@@ -100,6 +100,7 @@ class XGBLogitSplineAcceptance:
     """Evaluate portable per-policy acceptance splines and action derivatives."""
 
     model_type = "xgb_logit_spline"
+    artifact_id = "xgb_logit_spline_20260706"
     role = "acceptance"
     probability_target = "acceptance"
     source_format = "xgb_logit_spline_npz"

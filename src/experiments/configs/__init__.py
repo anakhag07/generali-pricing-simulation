@@ -25,6 +25,34 @@ _FACTORY_BASES: dict[str, tuple[Callable[..., ExperimentConfig], dict[str, Any]]
         build_real_data_config,
         {"model_type": "xgb_logit_spline"},
     ),
+    "real_data_glm_glm_20260728_base": (
+        build_real_data_config,
+        {
+            "acceptance_model_type": "glm_20260527",
+            "loss_model_type": "glm_20260527",
+        },
+    ),
+    "real_data_smoothed_glm_20260728_base": (
+        build_real_data_config,
+        {
+            "acceptance_model_type": "xgb_sigmoid_20260728",
+            "loss_model_type": "glm_20260527",
+        },
+    ),
+    "real_data_xgb_glm_20260728_base": (
+        build_real_data_config,
+        {
+            "acceptance_model_type": "xgb_20260728",
+            "loss_model_type": "glm_20260527",
+        },
+    ),
+    "real_data_xgb_xgb_20260728_base": (
+        build_real_data_config,
+        {
+            "acceptance_model_type": "xgb_20260728",
+            "loss_model_type": "xgb_20260728",
+        },
+    ),
 }
 
 # Module-backed presets exposing a module-level CONFIG.

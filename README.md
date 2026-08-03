@@ -206,6 +206,26 @@ population fixed point, and $$x_K$$. It writes sweep-level displacement,
 bias/variance/MSE, theorem-bound, and fitted-scaling tables and plots under
 `results/zeroth-order-proof-validation-analysis/`.
 
+### Zeroth-Order Support Envelopes
+
+The committed support-envelope sweep reuses the same strongly convex proof
+objective and compares a constant control, a constant-derivative distance
+envelope, and a smooth monotone-but-nonconvex saturating envelope outside the
+covered interval $$[0.75,1.25]$$:
+
+```bash
+python scripts/run_experiment_manifest.py manifests/zeroth_order_envelopes.json
+python scripts/analyze_zeroth_order_envelopes.py \
+  --manifest manifests/zeroth_order_envelopes.json
+```
+
+The 54 variants vary matched envelope strength, initialization, and (for the
+nonconvex form) zeroth-order radius. The analyzer writes exact and
+population-smoothed stationary points, final-iterate/regret tables, basin-rate
+and finite-run target-error plots, and `envelope_diagnostics.png`, which shows
+each envelope together with the true and upper objectives, under
+`results/zeroth-order-envelope-analysis/`.
+
 Optimization step rules:
 - `l-bfgs-b` uses `scipy.minimize(method="L-BFGS-B")`.
 - `trust-constr` uses `scipy.minimize(method="trust-constr")` and adds the

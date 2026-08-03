@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 from pathlib import Path
 
 import numpy as np
@@ -7,12 +8,20 @@ import numpy as np
 from experiments.configs import get_config, list_configs
 from experiments.manifest import load_experiment_manifest
 from experiments.run import run_experiment
-from objective import ThetaBiasedObjective, ZerothOrderProofObjective
+from objective import (
+    ConstantThetaRegularizer,
+    IntervalDistanceThetaRegularizer,
+    RegularizedObjective,
+    SmoothSaturatingIntervalThetaRegularizer,
+    ThetaBiasedObjective,
+    ZerothOrderProofObjective,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BASELINE_PATH = REPO_ROOT / "manifests" / "zeroth_order_baseline.json"
 BIAS_PATH = REPO_ROOT / "manifests" / "zeroth_order_functional_bias.json"
+ENVELOPE_PATH = REPO_ROOT / "manifests" / "zeroth_order_envelopes.json"
 
 
 def test_proof_preset_is_registered_with_fixed_initial_point() -> None:
@@ -65,6 +74,54 @@ def test_proof_preset_runs_small_fd_and_stein_smoke() -> None:
             "t_steps": 3,
             "n_grad_samples": 4,
             "enabled_estimators": ("finite_difference", "stein_difference"),
+        },
+    )
+    result = run_experiment(config)
+
+    assert set(result.results) == {"finite_difference", "stein_difference"}
+    assert all(item.theta.shape == (1,) for item in result.results.values())
+
+
+def test_envelope_manifest_has_calibrated_conditional_sweep() -> None:
+    manifest = load_experiment_manifest(ENVELOPE_PATH)
+
+    assert len(manifest.variants) == 54
+    assert Counter(variant.axes["form"] for variant in manifest.variants) == {
+        "constant": 6,
+        "linear": 12,
+        "smooth_nonconvex": 36,
+    }
+    assert manifest.seeds.run_seeds == tuple(range(101, 109))
+    assert manifest.seeds.vary == ("optimizer",)
+    assert manifest.optimizer["t_steps"] == 1000
+    assert manifest.optimizer["n_grad_samples"] == 64
+
+    observed_types = set()
+    for variant in manifest.variants:
+        config = get_config(manifest.base_preset, overrides=variant.overrides)
+        assert isinstance(config.objective, RegularizedObjective)
+        assert len(config.objective.regularizers) == 1
+        observed_types.add(type(config.objective.regularizers[0]))
+    assert observed_types == {
+        ConstantThetaRegularizer,
+        IntervalDistanceThetaRegularizer,
+        SmoothSaturatingIntervalThetaRegularizer,
+    }
+
+
+def test_envelope_manifest_runs_small_fd_and_stein_smoke() -> None:
+    manifest = load_experiment_manifest(ENVELOPE_PATH)
+    variant = next(
+        variant
+        for variant in manifest.variants
+        if variant.name == "smooth-nonconvex-a-0p42-init-0-sigma-0p15"
+    )
+    config = get_config(
+        manifest.base_preset,
+        overrides={
+            **variant.overrides,
+            "t_steps": 3,
+            "n_grad_samples": 4,
         },
     )
     result = run_experiment(config)

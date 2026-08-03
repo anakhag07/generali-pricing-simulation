@@ -179,3 +179,107 @@ def test_envelope_diagnostic_writes_true_and_upper_objective_plot(
 
     assert image.exists()
     assert image.stat().st_size > 10_000
+
+
+def test_seed_convergence_plots_show_all_saved_conditions(tmp_path: Path) -> None:
+    rows = _synthetic_seed_rows()
+
+    script._plot_seed_convergence(rows, tmp_path, dpi=72)
+
+    expected = {
+        "seed_convergence_constant.png",
+        "seed_convergence_linear.png",
+        "seed_convergence_smooth_nonconvex.png",
+    }
+    assert expected <= {path.name for path in tmp_path.iterdir()}
+    assert all((tmp_path / name).stat().st_size > 10_000 for name in expected)
+    assert len(rows) == 864
+    assert {int(row["run_seed"]) for row in rows} == set(range(101, 109))
+    assert {float(row["theta0"]) for row in rows} == {0.0, 1.0}
+
+    jitter = script._seed_jitter_map(rows)
+    assert list(jitter) == list(range(101, 109))
+    assert jitter[101] == pytest.approx(-1.0)
+    assert jitter[108] == pytest.approx(1.0)
+
+    panel = [
+        row
+        for row in rows
+        if row["form"] == "linear"
+        and row["estimator"] == "finite_difference"
+    ]
+    amplitudes, exact = script._reference_series(panel, "exact_global_x")
+    _, population = script._reference_series(panel, "population_global_x")
+    assert amplitudes == [0.0, 0.25, 0.35, 0.42, 0.6, 0.7]
+    assert exact == pytest.approx([min(0.75, amplitude) for amplitude in amplitudes])
+    assert population == pytest.approx(
+        [min(0.70, amplitude + 0.01) for amplitude in amplitudes]
+    )
+
+    finite_difference_groups = {}
+    stein_groups = {}
+    for row in rows:
+        key = (
+            row["form"],
+            row["amplitude"],
+            row["theta0"],
+            row["sigma"],
+        )
+        target = (
+            finite_difference_groups
+            if row["estimator"] == "finite_difference"
+            else stein_groups
+        )
+        target.setdefault(key, set()).add(float(row["x_k"]))
+    assert all(len(values) == 1 for values in finite_difference_groups.values())
+    assert all(len(values) == 8 for values in stein_groups.values())
+
+
+def _synthetic_seed_rows() -> list[dict[str, object]]:
+    forms = {
+        "constant": ([0.0, 0.42, 0.7], [0.15]),
+        "linear": ([0.0, 0.25, 0.35, 0.42, 0.6, 0.7], [0.15]),
+        "smooth_nonconvex": (
+            [0.0, 0.25, 0.35, 0.42, 0.6, 0.7],
+            [0.05, 0.15, 0.30],
+        ),
+    }
+    rows: list[dict[str, object]] = []
+    for form, (amplitudes, sigmas) in forms.items():
+        for amplitude in amplitudes:
+            exact_global = 0.0 if form == "constant" else min(0.75, amplitude)
+            for sigma in sigmas:
+                for estimator in ("finite_difference", "stein_difference"):
+                    population_global = (
+                        exact_global
+                        if form == "constant"
+                        else min(
+                            0.70,
+                            amplitude
+                            + (0.01 if estimator == "finite_difference" else 0.02),
+                        )
+                    )
+                    for theta0 in (0.0, 1.0):
+                        for seed in range(101, 109):
+                            seed_shift = (
+                                0.0
+                                if estimator == "finite_difference"
+                                else (seed - 104.5) * 0.001
+                            )
+                            rows.append(
+                                {
+                                    "form": form,
+                                    "amplitude": amplitude,
+                                    "theta0": theta0,
+                                    "sigma": sigma,
+                                    "run_seed": seed,
+                                    "estimator": estimator,
+                                    "x_k": population_global
+                                    + 0.01 * theta0
+                                    + seed_shift,
+                                    "x_star": 0.0,
+                                    "exact_global_x": exact_global,
+                                    "population_global_x": population_global,
+                                }
+                            )
+    return rows

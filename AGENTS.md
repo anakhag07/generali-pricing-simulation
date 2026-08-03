@@ -708,8 +708,8 @@ belongs under `generali/`.
   without rerunning optimization. It reconstructs exact and estimator-
   population landscapes, assigns final iterates to basins, writes final-
   distance/regret/aggregate tables, and produces envelope-geometry,
-  nonconvex-bifurcation, basin-rate, population-target-error, and true-regret
-  plots under
+  nonconvex-bifurcation, basin-rate, population-target-error, seed-level
+  convergence (one plot per envelope form), and true-regret plots under
   `results/zeroth-order-envelope-analysis/`. Its pure one-dimensional
   stationary-point and convolution helpers live in
   `scripts/zeroth_order_landscape.py`.

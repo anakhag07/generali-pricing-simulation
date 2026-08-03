@@ -226,6 +226,17 @@ and finite-run target-error plots, and `envelope_diagnostics.png`, which shows
 each envelope together with the true and upper objectives, under
 `results/zeroth-order-envelope-analysis/`.
 
+The three `seed_convergence_*.png` plots show every final $$u_K$$ across seeds
+against the true minimum, exact upper-objective global minimum, and estimator
+population-global minimum. Seeds vary only the optimizer RNG: finite difference
+is coincident across seeds, while Stein uses a different Gaussian perturbation
+stream. The two initializations are distinct sweep conditions. In the CSVs,
+`x_star` is the clean-objective minimum, `exact_global_x` is the exact
+upper-objective global minimum, and `population_global_x` is the
+estimator-smoothed global minimum. The assigned population stationary point
+(`assigned_population_x`) is the closest population local minimum to a final
+iterate; it need not be population-global.
+
 Optimization step rules:
 - `l-bfgs-b` uses `scipy.minimize(method="L-BFGS-B")`.
 - `trust-constr` uses `scipy.minimize(method="trust-constr")` and adds the

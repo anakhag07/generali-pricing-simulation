@@ -229,23 +229,32 @@ the support boundaries or clipping points; the implementation uses the interior
 derivative at the boundaries and zero on clipped regions. The real-data preset
 keeps policy actions within the fitted support.
 
-**Per-policy shifted-sigmoid XGBoost acceptance:**
+**Per-policy monotone PCHIP XGBoost acceptance:**
 
-For each policy $$i$$ covered by the 20260728 smoothing artifact, the fitted
-churn curve is
+For each covered policy $$i$$, the 20260728 artifact stores the coefficients of
+a shape-preserving cubic Hermite interpolator $$P_i(u)$$ fitted to a
+non-decreasing churn curve on a shared action grid. On the fitted support,
 
-$$q_i(u)=\operatorname{clip}\left(
-d_i+\sigma\left(k_i(u-m_i)\right),0,1
-\right), \qquad a_i(u)=1-q_i(u).$$
+$$q_i(u)=P_i(u), \qquad a_i(u)=1-q_i(u),
+\qquad u\in[u_{min},u_{max}].$$
 
-Writing $$s_i(u)=\sigma(k_i(u-m_i))$$, the acceptance derivative is
+The stored artifact is validated at its knots and within every interval: churn
+must remain in $$[0,1]$$ and must be non-decreasing. Consequently acceptance is
+bounded in $$[0,1]$$ and non-increasing on the fitted support. Its derivative is
 
-$$\frac{\partial a_i}{\partial u}
-=-k_i s_i(u)(1-s_i(u))$$
+$$\frac{\partial a_i}{\partial u}=-P_i'(u).$$
 
-while the unclipped churn value lies strictly inside $$(0,1)$$, and zero where
-the probability is clipped. The 20260728 hierarchy presets constrain actions to
-the fitted interval $$[0,0.16]$$ and reject policies absent from the artifact.
+Below support, churn is held constant at $$q_i(u_{min})$$. Above support, it uses
+the stored non-negative upper tangent $$s_i^{max}$$:
+
+$$q_i(u)=\operatorname{clip}\left(q_i(u_{max})
++s_i^{max}(u-u_{max}),0,1\right).$$
+
+Thus $$\partial a_i/\partial u=0$$ below support, and equals
+$$-s_i^{max}$$ above support while the tangent is strictly inside $$(0,1)$$,
+then zero after clipping. At the support boundaries the implementation uses the
+interior derivative. The hierarchy preset constrains actions to $$[0,0.16]$$ and
+rejects policies absent from the artifact.
 
 **Local price-sensitivity bucket score:**
 

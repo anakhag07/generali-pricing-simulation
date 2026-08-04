@@ -1,9 +1,9 @@
 {
-  "name": "real-data-model-hierarchy-200",
+  "name": "real-data-monotone-model-hierarchy-199",
   "objective": {
     "preset": "real_data_glm_glm_20260728_base",
     "overrides": {
-      "row_cohort_model_type": "xgb_sigmoid_20260728",
+      "row_cohort_model_type": "xgb_monotone_spline_20260728",
       "policy_kind": "softmax",
       "policy_preprocessing": "no_pca",
       "feature_order": "linear",
@@ -53,13 +53,13 @@
       }
     },
     {
-      "name": "acceptance-smoothed__loss-glm",
+      "name": "acceptance-monotone-spline__loss-glm",
       "axes": {
-        "acceptance_model_type": "xgb_sigmoid_20260728",
+        "acceptance_model_type": "xgb_monotone_spline_20260728",
         "loss_model_type": "glm_20260527"
       },
       "overrides": {
-        "acceptance_model_type": "xgb_sigmoid_20260728",
+        "acceptance_model_type": "xgb_monotone_spline_20260728",
         "loss_model_type": "glm_20260527"
       }
     },

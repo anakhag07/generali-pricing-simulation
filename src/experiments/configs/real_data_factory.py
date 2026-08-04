@@ -366,7 +366,7 @@ def _is_raw_xgb_acceptance(model_type: AcceptanceModelType) -> bool:
 def _is_curve_acceptance(model_type: AcceptanceModelType) -> bool:
     return model_type in {
         "xgb_logit_spline_20260706",
-        "xgb_sigmoid_20260728",
+        "xgb_monotone_spline_20260728",
     }
 
 

@@ -131,40 +131,6 @@ def test_pairwise_metrics_and_action_summary_are_exact() -> None:
     np.testing.assert_allclose(summary["mean_acceptance"], [0.8, 0.7])
 
 
-def test_sigmoid_parameter_extraction_and_portable_evaluation() -> None:
-    wrapper = SimpleNamespace(
-        _function_name="sigmoid_with_shift",
-        _curves={
-            "b": SimpleNamespace(params=np.asarray([10.0, 0.1, 0.0])),
-            "a": SimpleNamespace(params=np.asarray([20.0, 0.2, 0.1])),
-        },
-    )
-    policy_ids, parameters = script.extract_sigmoid_parameters(wrapper)
-    predictions = script.sigmoid_acceptance_matrix(
-        parameters, np.asarray([0.0, 0.1, 0.2])
-    )
-
-    assert policy_ids.tolist() == ["a", "b"]
-    assert predictions.shape == (2, 3)
-    assert np.all(np.diff(predictions, axis=1) <= 0.0)
-
-
-@pytest.mark.parametrize(
-    "wrapper",
-    [
-        SimpleNamespace(_function_name="other", _curves={"a": object()}),
-        SimpleNamespace(_function_name="sigmoid_with_shift", _curves={}),
-        SimpleNamespace(
-            _function_name="sigmoid_with_shift",
-            _curves={"a": SimpleNamespace(params=np.asarray([1.0, 2.0]))},
-        ),
-    ],
-)
-def test_sigmoid_parameter_extraction_rejects_unsupported_artifacts(wrapper) -> None:
-    with pytest.raises(ValueError):
-        script.extract_sigmoid_parameters(wrapper)
-
-
 def test_write_outputs_creates_complete_report_bundle(tmp_path: Path) -> None:
     dataset_summary = pd.DataFrame(
         [
@@ -270,8 +236,8 @@ def test_write_outputs_creates_complete_report_bundle(tmp_path: Path) -> None:
                 predictions=np.asarray([[0.9, 0.8], [0.8, 0.7]]),
             ),
             script.summarize_action_predictions(
-                model_name="candidate_xgb_smoothed",
-                cohort="candidate_200_covered_ids",
+                model_name="xgb_monotone_spline",
+                cohort="xgb_monotone_spline_covered_ids",
                 action_grid=np.asarray([0.0, 0.1]),
                 predictions=np.asarray([[0.95, 0.85], [0.85, 0.75]]),
             ),
@@ -281,7 +247,7 @@ def test_write_outputs_creates_complete_report_bundle(tmp_path: Path) -> None:
     smoothing_coverage = pd.DataFrame(
         [
             {
-                "artifact": "candidate_xgb_smoothed",
+                "artifact": "xgb_monotone_spline",
                 "metric": metric,
                 "value": value,
                 "detail": "",
@@ -289,10 +255,11 @@ def test_write_outputs_creates_complete_report_bundle(tmp_path: Path) -> None:
             for metric, value in {
                 "covered_policy_ids": 200,
                 "coverage_fraction": 0.001,
-                "current_cohort_id_intersection": 0,
-                "smooth_vs_embedded_raw_mae": 0.02,
-                "embedded_raw_same_booster_as_saved_candidate": False,
-                "legacy_numpy_scalar_conversion_breaks": True,
+                "mean_acceptance_u_0": 0.9,
+                "mean_acceptance_u_max": 0.8,
+                "pct_curves_monotone_nonincreasing": 100.0,
+                "min_acceptance": 0.75,
+                "max_acceptance": 0.95,
             }.items()
         ]
     )
@@ -302,9 +269,8 @@ def test_write_outputs_creates_complete_report_bundle(tmp_path: Path) -> None:
         "candidate_xgb_loss": np.asarray([92.0, 112.0]),
     }
     smoothing_matrices = {
-        "candidate_smooth_minus_embedded_raw": np.asarray(
-            [[-0.01, 0.02], [0.01, -0.02]]
-        )
+        "xgb_logit_spline": np.asarray([[0.90, 0.80], [0.85, 0.75]]),
+        "xgb_monotone_spline": np.asarray([[0.95, 0.85], [0.85, 0.75]]),
     }
 
     script.write_outputs(
@@ -337,8 +303,8 @@ def test_write_outputs_creates_complete_report_bundle(tmp_path: Path) -> None:
     }
     assert expected == {path.name for path in tmp_path.iterdir()}
     report = (tmp_path / "eda_summary.md").read_text(encoding="utf-8")
-    assert "Integration handoff" in report
-    assert "No runtime integration was performed" in report
+    assert "Runtime hierarchy" in report
+    assert "runtime inference never unpickles" in report
 
 
 def _candidate_artifact_dir() -> Path | None:
@@ -353,7 +319,7 @@ def _candidate_artifact_dir() -> Path | None:
     _candidate_artifact_dir() is None,
     reason="candidate model_processing artifacts are unavailable",
 )
-def test_real_candidate_artifacts_and_smoothing_ids_smoke() -> None:
+def test_real_candidate_artifacts_smoke() -> None:
     artifact_dir = _candidate_artifact_dir()
     assert artifact_dir is not None
     acceptance = script.load_artifact_view(
@@ -368,21 +334,5 @@ def test_real_candidate_artifacts_and_smoothing_ids_smoke() -> None:
         family="xgb",
         role="loss",
     )
-    smoothing = script._load_pickle(
-        artifact_dir / "acceptance_smoothing_wrapper.pkl"
-    )
-    policy_ids, parameters = script.extract_sigmoid_parameters(smoothing)
-
     assert acceptance.source_format == "selected_best_fold"
     assert loss.source_format == "selected_best_fold"
-    assert policy_ids.size == 200
-    assert parameters.shape == (200, 3)
-
-    id_frame = pd.read_csv(
-        script.DATASET_PATH,
-        sep=";",
-        usecols=["id"],
-        dtype={"id": "string"},
-    )
-    counts = id_frame["id"].astype(str).value_counts()
-    assert all(counts.get(policy_id, 0) == 1 for policy_id in policy_ids)

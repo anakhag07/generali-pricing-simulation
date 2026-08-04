@@ -32,10 +32,10 @@ _FACTORY_BASES: dict[str, tuple[Callable[..., ExperimentConfig], dict[str, Any]]
             "loss_model_type": "glm_20260527",
         },
     ),
-    "real_data_smoothed_glm_20260728_base": (
+    "real_data_monotone_spline_glm_20260728_base": (
         build_real_data_config,
         {
-            "acceptance_model_type": "xgb_sigmoid_20260728",
+            "acceptance_model_type": "xgb_monotone_spline_20260728",
             "loss_model_type": "glm_20260527",
         },
     ),

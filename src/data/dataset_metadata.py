@@ -127,7 +127,7 @@ AcceptanceModelType = Literal[
     "xgb_20260527",
     "xgb_20260728",
     "xgb_logit_spline_20260706",
-    "xgb_sigmoid_20260728",
+    "xgb_monotone_spline_20260728",
 ]
 LossModelType = Literal["glm_20260527", "xgb_20260527", "xgb_20260728"]
 
@@ -156,11 +156,11 @@ ACCEPTANCE_MODEL_ARTIFACTS: dict[AcceptanceModelType, ArtifactSpec] = {
         "probability_target": "acceptance",
         "description": "Portable per-policy isotonic logit splines derived from xgb_20260527.",
     },
-    "xgb_sigmoid_20260728": {
-        "path": DATA_DIR / "models" / "xgb_sigmoid" / "acceptance_xgb_sigmoid_20260728.npz",
+    "xgb_monotone_spline_20260728": {
+        "path": DATA_DIR / "models" / "xgb_monotone_spline" / "acceptance_xgb_monotone_spline_20260728.npz",
         "contains_feature_processor": False,
         "probability_target": "acceptance",
-        "description": "Portable per-policy shifted sigmoids derived from xgb_20260728.",
+        "description": "Portable per-policy monotone PCHIP curves derived from xgb_20260728.",
     },
 }
 

@@ -76,7 +76,7 @@ def test_real_data_config_uses_all_eligible_rows_when_n_samples_omitted_or_none(
         "real_data_xgb_base",
         "real_data_xgb_logit_spline_base",
         "real_data_glm_glm_20260728_base",
-        "real_data_smoothed_glm_20260728_base",
+        "real_data_monotone_spline_glm_20260728_base",
         "real_data_xgb_glm_20260728_base",
         "real_data_xgb_xgb_20260728_base",
     ],
@@ -146,18 +146,18 @@ def test_xgb_logit_spline_uses_all_200_covered_rows_by_default() -> None:
     assert cfg.x_fixed["id"].nunique() == 200
 
 
-def test_20260728_smoothed_preset_uses_exact_covered_cohort_and_current_glm_loss() -> None:
+def test_20260728_monotone_preset_uses_exact_covered_cohort_and_current_glm_loss() -> None:
     from experiments.configs import get_config
 
     cfg = get_config(
-        "real_data_smoothed_glm_20260728_base",
+        "real_data_monotone_spline_glm_20260728_base",
         overrides={"plot": False, "verbose": False, "wandb_enabled": False},
     )
 
-    assert cfg.n_samples == 200
-    assert cfg.x_fixed.shape == (200, 20)
-    assert cfg.x_fixed["id"].nunique() == 200
-    assert cfg.objective.acceptance_model.artifact_id == "xgb_sigmoid_20260728"
+    assert cfg.n_samples == 199
+    assert cfg.x_fixed.shape == (199, 20)
+    assert cfg.x_fixed["id"].nunique() == 199
+    assert cfg.objective.acceptance_model.artifact_id == "xgb_monotone_spline_20260728"
     assert cfg.objective.loss_model.artifact_id == "glm_20260527"
     assert cfg.objective.u_bounds == (0.0, 0.16)
     assert "first_order" in cfg.enabled_estimators
@@ -180,12 +180,12 @@ def test_20260728_hierarchy_presets_select_independent_artifacts(
     assert cfg.objective.loss_model.artifact_id == loss_id
 
 
-def test_hierarchy_presets_can_share_the_exact_sigmoid_200_row_cohort() -> None:
+def test_hierarchy_presets_can_share_the_exact_monotone_199_row_cohort() -> None:
     from experiments.configs import get_config
 
     names = (
         "real_data_glm_glm_20260728_base",
-        "real_data_smoothed_glm_20260728_base",
+        "real_data_monotone_spline_glm_20260728_base",
         "real_data_xgb_glm_20260728_base",
         "real_data_xgb_xgb_20260728_base",
     )
@@ -193,7 +193,7 @@ def test_hierarchy_presets_can_share_the_exact_sigmoid_200_row_cohort() -> None:
         get_config(
             name,
             overrides={
-                "row_cohort_model_type": "xgb_sigmoid_20260728",
+                "row_cohort_model_type": "xgb_monotone_spline_20260728",
                 "plot": False,
                 "verbose": False,
                 "wandb_enabled": False,
@@ -203,18 +203,25 @@ def test_hierarchy_presets_can_share_the_exact_sigmoid_200_row_cohort() -> None:
     ]
 
     expected = configs[0].x_fixed_row_indices
-    assert expected.shape == (200,)
+    assert expected.shape == (199,)
     for cfg in configs:
         np.testing.assert_array_equal(cfg.x_fixed_row_indices, expected)
         expected_columns = 20 if hasattr(
             cfg.objective.acceptance_model, "covered_policy_ids"
         ) else 19
-        assert cfg.x_fixed.shape == (200, expected_columns)
+        assert cfg.x_fixed.shape == (199, expected_columns)
 
 
-def test_xgb_logit_spline_rejects_jax_backend() -> None:
+@pytest.mark.parametrize(
+    "preset",
+    [
+        "real_data_xgb_logit_spline_base",
+        "real_data_monotone_spline_glm_20260728_base",
+    ],
+)
+def test_xgb_spline_presets_reject_jax_backend(preset: str) -> None:
     with pytest.raises(ValueError, match="only compute_backend='numpy'"):
-        _cfg("real_data_xgb_logit_spline_base", compute_backend="jax")
+        _cfg(preset, compute_backend="jax")
 
 
 @pytest.mark.parametrize(

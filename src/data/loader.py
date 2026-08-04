@@ -16,9 +16,9 @@ from data.xgb_logit_spline import (
     load_xgb_logit_spline_acceptance,
     load_xgb_logit_spline_artifact,
 )
-from data.xgb_sigmoid import (
-    load_xgb_sigmoid_acceptance,
-    load_xgb_sigmoid_artifact,
+from data.xgb_monotone_spline import (
+    load_xgb_monotone_spline_acceptance,
+    load_xgb_monotone_spline_artifact,
 )
 from data.dataset_metadata import (
     ACCEPTANCE_MODEL_ARTIFACTS,
@@ -133,7 +133,7 @@ LEGACY_MODEL_PAIRS: dict[ModelType, tuple[AcceptanceModelType, LossModelType]] =
 _CURVE_ACCEPTANCE_TYPES = {
     "xgb_logit_spline",
     "xgb_logit_spline_20260706",
-    "xgb_sigmoid_20260728",
+    "xgb_monotone_spline_20260728",
 }
 
 
@@ -283,19 +283,20 @@ def sample_csv_row_indices(
 
 
 def eligible_csv_row_indices(model_type: AcceptanceSelection) -> np.ndarray:
-    """Return complete eligible canonical CSV row positions for a model family."""
+    """Return complete canonical rows, intersected with curve coverage when needed."""
     model_type = _validate_acceptance_selection(model_type)
     if model_type in _CURVE_ACCEPTANCE_TYPES:
         if model_type in {"xgb_logit_spline", "xgb_logit_spline_20260706"}:
             path = ACCEPTANCE_MODEL_ARTIFACTS["xgb_logit_spline_20260706"]["path"]
             covered = load_xgb_logit_spline_artifact(path).row_indices
         else:
-            path = ACCEPTANCE_MODEL_ARTIFACTS["xgb_sigmoid_20260728"]["path"]
-            covered = load_xgb_sigmoid_artifact(path).row_indices
+            path = ACCEPTANCE_MODEL_ARTIFACTS["xgb_monotone_spline_20260728"]["path"]
+            covered = load_xgb_monotone_spline_artifact(path).row_indices
         complete = _eligible_row_indices(_acceptance_csv_path(model_type))
-        if not np.isin(covered, complete).all():
-            raise ValueError("Curve artifact contains incomplete canonical dataset rows.")
-        return covered
+        eligible = covered[np.isin(covered, complete)]
+        if eligible.size == 0:
+            raise ValueError("Curve artifact has no complete canonical dataset rows.")
+        return eligible
     return _eligible_row_indices(_acceptance_csv_path(model_type)).copy()
 
 
@@ -434,12 +435,12 @@ def load_acceptance_artifact(model_type: AcceptanceModelType) -> Any:
             x_feature_cols=tuple(ACCEPTANCE_STATE_COLS),
             preprocessor=xgb_raw.preprocessor,
         )
-    if model_type == "xgb_sigmoid_20260728":
+    if model_type == "xgb_monotone_spline_20260728":
         xgb_raw = _normalize_artifact(
             _load_pickle(ACCEPTANCE_MODEL_ARTIFACTS["xgb_20260728"]["path"]),
             probability_target="acceptance",
         )
-        return load_xgb_sigmoid_acceptance(
+        return load_xgb_monotone_spline_acceptance(
             path,
             id_col="id",
             x_feature_cols=tuple(ACCEPTANCE_STATE_COLS),

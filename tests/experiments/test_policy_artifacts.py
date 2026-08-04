@@ -231,9 +231,9 @@ def test_xgb_logit_spline_policy_artifact_replays_id_bound_rows(tmp_path) -> Non
     assert actual.mean_acceptance == pytest.approx(expected.mean_acceptance)
 
 
-def test_new_smoothed_policy_replay_records_independent_model_ids(tmp_path) -> None:
+def test_monotone_policy_replay_records_independent_model_ids(tmp_path) -> None:
     config = get_config(
-        "real_data_smoothed_glm_20260728_base",
+        "real_data_monotone_spline_glm_20260728_base",
         overrides={
             "n_samples": 8,
             "train_fraction": 1.0,
@@ -256,7 +256,7 @@ def test_new_smoothed_policy_replay_records_independent_model_ids(tmp_path) -> N
     payload = json.loads(policy_json.read_text(encoding="utf-8"))
 
     assert loaded.objective.model_type is None
-    assert loaded.objective.acceptance_model_type == "xgb_sigmoid_20260728"
+    assert loaded.objective.acceptance_model_type == "xgb_monotone_spline_20260728"
     assert loaded.objective.loss_model_type == "glm_20260527"
     assert payload["schema_version"] == 2
     assert "id" in loaded.load_x(split="train").columns

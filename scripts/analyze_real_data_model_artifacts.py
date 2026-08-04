@@ -27,6 +27,7 @@ from sklearn.metrics import brier_score_loss, log_loss, mean_absolute_error, roc
 from data.dataset_metadata import DATASET_PATH, REQUIRED_DATASET_COLUMNS
 from data.feature_processor import FeatureProcessor
 from data.xgb_logit_spline import load_xgb_logit_spline_acceptance
+from data.xgb_monotone_spline import load_xgb_monotone_spline_acceptance
 from experiments.paths import results_root
 
 
@@ -76,45 +77,12 @@ class ArtifactView:
     selected_fold: int
 
 
-class _LegacyParametricCurve:
-    """Compatibility target for the legacy pickled parametric curves."""
-
-    def __call__(self, values: np.ndarray) -> np.ndarray:
-        return self.func(np.asarray(values, dtype=float), *self.params)
-
-
-class _LegacySmoothedXGBoostWrapper:
-    """Compatibility target exposing only the state needed for EDA."""
-
-    def covered_policies(self) -> set[str]:
-        return set(self._curves)
-
-
-def _legacy_sigmoid_with_shift(
-    x: np.ndarray,
-    k: float,
-    m: float,
-    d: float,
-) -> np.ndarray:
-    return np.clip(d + 1.0 / (1.0 + np.exp(-k * (x - m))), 0.0, 1.0)
-
-
 class _AnalysisUnpickler(pickle.Unpickler):
-    """Map trusted source-repository classes onto local compatibility targets."""
+    """Map trusted model-preprocessor classes onto local runtime classes."""
 
     def find_class(self, module: str, name: str) -> Any:
         if name == "FeatureProcessor" and module in {"__main__", "preprocessing"}:
             return FeatureProcessor
-        if name == "SmoothedXGBoostWrapper" and module in {
-            "__main__",
-            "black_box_objective",
-            "smoothing_wrapper",
-        }:
-            return _LegacySmoothedXGBoostWrapper
-        if name == "_ParametricCurve" and module.endswith("curve_specifications"):
-            return _LegacyParametricCurve
-        if name == "_sigmoid_with_shift" and module.endswith("curve_specifications"):
-            return _legacy_sigmoid_with_shift
         return super().find_class(module, name)
 
 
@@ -739,90 +707,6 @@ def raw_acceptance_action_grid(
     return pd.concat(summaries, ignore_index=True), matrices
 
 
-def extract_sigmoid_parameters(
-    wrapper: Any,
-) -> tuple[np.ndarray, np.ndarray]:
-    """Extract sorted policy IDs and ``(k, m, d)`` from a legacy wrapper."""
-    if getattr(wrapper, "_function_name", None) != "sigmoid_with_shift":
-        raise ValueError("Only sigmoid_with_shift smoothing artifacts are supported.")
-    curves = getattr(wrapper, "_curves", None)
-    if not isinstance(curves, Mapping) or not curves:
-        raise ValueError("Smoothing artifact must contain a non-empty _curves mapping.")
-    policy_ids = np.asarray(sorted(str(policy_id) for policy_id in curves), dtype=str)
-    parameters = []
-    for policy_id in policy_ids:
-        curve = curves[policy_id]
-        values = np.asarray(getattr(curve, "params", ()), dtype=float)
-        if values.shape != (3,) or not np.isfinite(values).all():
-            raise ValueError(f"Policy {policy_id} has invalid sigmoid parameters.")
-        parameters.append(values)
-    return policy_ids, np.stack(parameters)
-
-
-def sigmoid_acceptance_matrix(
-    parameters: np.ndarray,
-    action_grid: np.ndarray,
-) -> np.ndarray:
-    """Evaluate direct acceptance for legacy churn sigmoid parameters."""
-    parameters = np.asarray(parameters, dtype=float)
-    action_grid = np.asarray(action_grid, dtype=float)
-    if parameters.ndim != 2 or parameters.shape[1] != 3:
-        raise ValueError("parameters must have shape (n_policies, 3).")
-    k = parameters[:, 0, None]
-    m = parameters[:, 1, None]
-    d = parameters[:, 2, None]
-    churn = np.clip(d + 1.0 / (1.0 + np.exp(-k * (action_grid - m))), 0.0, 1.0)
-    return 1.0 - churn
-
-
-def _unique_rows_for_policy_ids(
-    frame: pd.DataFrame,
-    policy_ids: np.ndarray,
-) -> tuple[pd.DataFrame, list[str], list[str]]:
-    id_values = frame[_ID_COLUMN].astype("string").astype(str)
-    positions: dict[str, list[int]] = {}
-    requested = set(policy_ids.tolist())
-    for position, policy_id in enumerate(id_values):
-        if policy_id in requested:
-            positions.setdefault(policy_id, []).append(position)
-    missing = [policy_id for policy_id in policy_ids if policy_id not in positions]
-    duplicate = [
-        policy_id for policy_id in policy_ids if len(positions.get(policy_id, ())) != 1
-    ]
-    valid = [
-        frame.iloc[positions[policy_id][0]]
-        for policy_id in policy_ids
-        if policy_id in positions and len(positions[policy_id]) == 1
-    ]
-    return pd.DataFrame(valid).reset_index(drop=True), missing, duplicate
-
-
-def _embedded_raw_acceptance(
-    wrapper: Any,
-    frame: pd.DataFrame,
-) -> np.ndarray:
-    bundle = getattr(wrapper, "_prep", None)
-    model = getattr(wrapper, "_model", None)
-    if not isinstance(bundle, Mapping) or model is None:
-        raise ValueError("Smoothing wrapper lacks its embedded raw XGB state.")
-    preprocessor = bundle.get("preprocessor")
-    x_feature_cols = bundle.get("x_feature_cols")
-    if not isinstance(preprocessor, FeatureProcessor) or not x_feature_cols:
-        raise ValueError("Smoothing wrapper has invalid embedded preprocessing state.")
-    transformed = preprocessor.transform(frame.loc[:, list(x_feature_cols)]).reset_index(
-        drop=True
-    )
-    transformed = pd.concat(
-        [transformed, frame.loc[:, [_ACTION_COLUMN]].reset_index(drop=True)],
-        axis=1,
-    )
-    if hasattr(model, "feature_names_in_"):
-        transformed = transformed.reindex(
-            columns=[str(value) for value in model.feature_names_in_]
-        )
-    return np.asarray(model.predict_proba(transformed)[:, 1], dtype=float)
-
-
 def _metric_rows(
     artifact: str,
     metrics: Mapping[str, Any],
@@ -842,168 +726,84 @@ def _metric_rows(
 
 def smoothing_analysis(
     *,
-    candidate_smoothing_path: Path,
-    candidate_dataset: pd.DataFrame,
     reference_dataset: pd.DataFrame,
-    current_spline_path: Path,
-    candidate_acceptance: ArtifactView,
+    logit_spline_path: Path,
+    monotone_spline_path: Path,
     action_grid: np.ndarray,
     eligible_population: int,
 ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, np.ndarray]]:
-    """Analyze new sigmoid curves and the current portable spline cohort."""
-    wrapper = _load_pickle(candidate_smoothing_path)
-    policy_ids, parameters = extract_sigmoid_parameters(wrapper)
-    covered_rows, missing_ids, duplicate_ids = _unique_rows_for_policy_ids(
-        candidate_dataset, policy_ids
-    )
-    if missing_ids or duplicate_ids:
-        raise ValueError(
-            "Candidate smoothing IDs must resolve uniquely: "
-            f"missing={missing_ids[:5]}, duplicate={duplicate_ids[:5]}"
-        )
-    candidate_smooth = sigmoid_acceptance_matrix(parameters, action_grid)
-
-    expanded = covered_rows.iloc[
-        np.repeat(np.arange(covered_rows.shape[0]), action_grid.size)
-    ].reset_index(drop=True)
-    expanded[_ACTION_COLUMN] = np.tile(action_grid, covered_rows.shape[0])
-    embedded_raw = _embedded_raw_acceptance(wrapper, expanded).reshape(
-        covered_rows.shape[0], action_grid.size
-    )
-    candidate_saved_raw = predict_artifact(
-        candidate_acceptance,
-        expanded,
-    ).reshape(covered_rows.shape[0], action_grid.size)
-
-    current_spline = load_xgb_logit_spline_acceptance(current_spline_path)
-    current_rows = reference_dataset.iloc[
-        current_spline.covered_row_indices()
-    ].reset_index(drop=True)
-    current_expanded = current_rows.iloc[
-        np.repeat(np.arange(current_rows.shape[0]), action_grid.size)
-    ].reset_index(drop=True)
-    tiled_action = np.tile(action_grid, current_rows.shape[0])
-    current_smooth = current_spline.predict_acceptance(
-        current_expanded, tiled_action
-    ).reshape(current_rows.shape[0], action_grid.size)
-
-    current_ids = set(current_rows[_ID_COLUMN].astype(str))
-    candidate_ids = set(policy_ids.tolist())
-    smooth_minus_raw = candidate_smooth - embedded_raw
-    embedded_minus_saved = embedded_raw - candidate_saved_raw
-    legacy_float_breaks = False
-    try:
-        float(np.asarray(wrapper._curves[policy_ids[0]](np.asarray([0.08]))))
-    except TypeError:
-        legacy_float_breaks = True
-
-    coverage_rows: list[dict[str, object]] = []
-    coverage_rows.extend(
-        _metric_rows(
-            "candidate_xgb_smoothed",
-            {
-                "covered_policy_ids": policy_ids.size,
-                "matching_dataset_rows": covered_rows.shape[0],
-                "missing_policy_ids": len(missing_ids),
-                "duplicate_policy_ids": len(duplicate_ids),
-                "eligible_population": eligible_population,
-                "coverage_fraction": policy_ids.size / eligible_population,
-                "current_cohort_id_intersection": len(candidate_ids & current_ids),
-                "mean_acceptance_u_0": float(candidate_smooth[:, 0].mean()),
-                "mean_acceptance_u_max": float(candidate_smooth[:, -1].mean()),
-                "mean_delta_u_max_minus_0": float(
-                    np.mean(candidate_smooth[:, -1] - candidate_smooth[:, 0])
-                ),
-                "pct_curves_monotone_nonincreasing": float(
-                    np.mean(np.all(np.diff(candidate_smooth, axis=1) <= 1e-12, axis=1))
-                    * 100.0
-                ),
-                "smooth_vs_embedded_raw_mae": float(
-                    np.mean(np.abs(smooth_minus_raw))
-                ),
-                "smooth_vs_embedded_raw_rmse": float(
-                    np.sqrt(np.mean(np.square(smooth_minus_raw)))
-                ),
-                "smooth_vs_embedded_raw_max_abs": float(
-                    np.max(np.abs(smooth_minus_raw))
-                ),
-                "embedded_raw_vs_saved_candidate_mae": float(
-                    np.mean(np.abs(embedded_minus_saved))
-                ),
-                "embedded_raw_vs_saved_candidate_rmse": float(
-                    np.sqrt(np.mean(np.square(embedded_minus_saved)))
-                ),
-                "embedded_raw_same_booster_as_saved_candidate": bool(
-                    wrapper._model.get_booster().save_raw()
-                    == candidate_acceptance.model.get_booster().save_raw()
-                ),
-                "legacy_numpy_scalar_conversion_breaks": legacy_float_breaks,
-            },
-            detail="Candidate cohort; direct portable evaluation of fitted sigmoid parameters.",
-        )
-    )
-    for parameter_index, parameter_name in enumerate(("k", "m", "d")):
-        for quantile in (0.0, 0.01, 0.25, 0.50, 0.75, 0.99, 1.0):
-            coverage_rows.extend(
-                _metric_rows(
-                    "candidate_xgb_smoothed",
-                    {
-                        f"sigmoid_{parameter_name}_q{int(quantile * 100):02d}": float(
-                            np.quantile(parameters[:, parameter_index], quantile)
-                        )
-                    },
-                )
-            )
-    coverage_rows.extend(
-        _metric_rows(
-            "current_xgb_logit_spline",
-            {
-                "covered_policy_ids": current_rows.shape[0],
-                "current_cohort_id_intersection": len(candidate_ids & current_ids),
-                "mean_acceptance_u_0": float(current_smooth[:, 0].mean()),
-                "mean_acceptance_u_max": float(current_smooth[:, -1].mean()),
-                "mean_delta_u_max_minus_0": float(
-                    np.mean(current_smooth[:, -1] - current_smooth[:, 0])
-                ),
-                "pct_curves_monotone_nonincreasing": float(
-                    np.mean(np.all(np.diff(current_smooth, axis=1) <= 1e-12, axis=1))
-                    * 100.0
-                ),
-            },
-            detail="Current portable spline cohort; not customer-aligned with candidate.",
-        )
-    )
-
-    action_summary = pd.concat(
-        [
-            summarize_action_predictions(
-                model_name="candidate_xgb_smoothed",
-                cohort="candidate_200_covered_ids",
-                action_grid=action_grid,
-                predictions=candidate_smooth,
-            ),
-            summarize_action_predictions(
-                model_name="candidate_smoothing_embedded_raw_xgb",
-                cohort="candidate_200_covered_ids",
-                action_grid=action_grid,
-                predictions=embedded_raw,
-            ),
-            summarize_action_predictions(
-                model_name="current_xgb_logit_spline",
-                cohort="current_200_covered_ids",
-                action_grid=action_grid,
-                predictions=current_smooth,
-            ),
-        ],
-        ignore_index=True,
-    )
-    matrices = {
-        "candidate_xgb_smoothed": candidate_smooth,
-        "candidate_smoothing_embedded_raw_xgb": embedded_raw,
-        "current_xgb_logit_spline": current_smooth,
-        "candidate_smooth_minus_embedded_raw": smooth_minus_raw,
+    """Compare the two supported portable per-policy smoothing families."""
+    models = {
+        "xgb_logit_spline": load_xgb_logit_spline_acceptance(logit_spline_path),
+        "xgb_monotone_spline": load_xgb_monotone_spline_acceptance(
+            monotone_spline_path
+        ),
     }
-    return pd.DataFrame(coverage_rows), action_summary, matrices
+    matrices: dict[str, np.ndarray] = {}
+    policy_id_sets: dict[str, set[str]] = {}
+    coverage_rows: list[dict[str, object]] = []
+    action_summaries: list[pd.DataFrame] = []
+
+    for name, model in models.items():
+        covered_rows = reference_dataset.iloc[
+            model.covered_row_indices()
+        ].reset_index(drop=True)
+        expanded = covered_rows.iloc[
+            np.repeat(np.arange(covered_rows.shape[0]), action_grid.size)
+        ].reset_index(drop=True)
+        tiled_action = np.tile(action_grid, covered_rows.shape[0])
+        predictions = model.predict_acceptance(expanded, tiled_action).reshape(
+            covered_rows.shape[0], action_grid.size
+        )
+        policy_ids = set(covered_rows[_ID_COLUMN].astype(str))
+        matrices[name] = predictions
+        policy_id_sets[name] = policy_ids
+        coverage_rows.extend(
+            _metric_rows(
+                name,
+                {
+                    "covered_policy_ids": covered_rows.shape[0],
+                    "eligible_population": eligible_population,
+                    "coverage_fraction": covered_rows.shape[0] / eligible_population,
+                    "mean_acceptance_u_0": float(predictions[:, 0].mean()),
+                    "mean_acceptance_u_max": float(predictions[:, -1].mean()),
+                    "mean_delta_u_max_minus_0": float(
+                        np.mean(predictions[:, -1] - predictions[:, 0])
+                    ),
+                    "pct_curves_monotone_nonincreasing": float(
+                        np.mean(np.all(np.diff(predictions, axis=1) <= 1e-12, axis=1))
+                        * 100.0
+                    ),
+                    "min_acceptance": float(predictions.min()),
+                    "max_acceptance": float(predictions.max()),
+                },
+                detail="Portable runtime artifact evaluated on its own covered cohort.",
+            )
+        )
+        action_summaries.append(
+            summarize_action_predictions(
+                model_name=name,
+                cohort=f"{name}_covered_ids",
+                action_grid=action_grid,
+                predictions=predictions,
+            )
+        )
+
+    intersection = len(
+        policy_id_sets["xgb_logit_spline"]
+        & policy_id_sets["xgb_monotone_spline"]
+    )
+    for row in coverage_rows:
+        if row["metric"] == "covered_policy_ids":
+            row["detail"] = (
+                f"Portable runtime artifact; cross-family cohort intersection={intersection}."
+            )
+
+    return (
+        pd.DataFrame(coverage_rows),
+        pd.concat(action_summaries, ignore_index=True),
+        matrices,
+    )
 
 
 def _plot_acceptance_models(
@@ -1105,13 +905,19 @@ def _plot_smoothing_models(
     axes[0].set_ylabel("Mean predicted acceptance")
     axes[0].legend(fontsize=8)
     axes[0].grid(alpha=0.25)
-    delta = np.asarray(
-        matrices["candidate_smooth_minus_embedded_raw"], dtype=float
-    ).reshape(-1)
-    axes[1].hist(delta, bins=45, color="#5b8db8", alpha=0.8)
+    for name, matrix in matrices.items():
+        endpoint_delta = np.asarray(matrix[:, -1] - matrix[:, 0], dtype=float)
+        axes[1].hist(
+            endpoint_delta,
+            bins=35,
+            histtype="step",
+            linewidth=1.5,
+            label=name,
+        )
     axes[1].axvline(0.0, color="black", linestyle="--")
-    axes[1].set_xlabel("Candidate smoothed − embedded raw acceptance")
-    axes[1].set_ylabel("Policy/action cells")
+    axes[1].set_xlabel("Acceptance at max U − acceptance at min U")
+    axes[1].set_ylabel("Covered policies")
+    axes[1].legend(fontsize=8)
     axes[1].grid(alpha=0.25)
     fig.tight_layout()
     fig.savefig(output_path, dpi=200)
@@ -1158,17 +964,17 @@ def build_markdown_report(
     candidate_loss = metrics[metrics["artifact"] == "candidate_xgb_loss"].iloc[0]
     reference_loss = metrics[metrics["artifact"] == "reference_xgb_loss"].iloc[0]
     coverage = smoothing_coverage[
-        (smoothing_coverage["artifact"] == "candidate_xgb_smoothed")
-        & (smoothing_coverage["metric"].isin(
+        smoothing_coverage["metric"].isin(
             [
                 "covered_policy_ids",
                 "coverage_fraction",
-                "current_cohort_id_intersection",
-                "smooth_vs_embedded_raw_mae",
-                "embedded_raw_same_booster_as_saved_candidate",
-                "legacy_numpy_scalar_conversion_breaks",
+                "mean_acceptance_u_0",
+                "mean_acceptance_u_max",
+                "pct_curves_monotone_nonincreasing",
+                "min_acceptance",
+                "max_acceptance",
             ]
-        ))
+        )
     ]
     report = f"""# Real-Data Model and Dataset EDA
 
@@ -1178,7 +984,7 @@ def build_markdown_report(
 - The canonical objective schema has {json.loads(eligible_row["reference"]):,} complete eligible rows.
 - Candidate XGB artifacts use selected-best-fold dictionaries; reference artifacts use CV dictionaries and the runtime selects their first folds.
 - On the deterministic non-holdout sample, candidate XGB loss MAE is {candidate_loss["mae"]:.4f}, versus {reference_loss["mae"]:.4f} for the reference XGB loss model. Stored OOF metrics remain the primary performance evidence.
-- Candidate smoothing is a customer-specific artifact, not a global smoother. It contains 200 fitted sigmoid curves and must not be described as smoothing the full eligible population.
+- Each spline artifact contains 200 customer-specific curves; neither is one global smoother for the full eligible population.
 
 ## Dataset comparison
 
@@ -1208,21 +1014,23 @@ Sample size: {sample_size:,}; deterministic seed: {seed}. These rows may overlap
 
 {_markdown_table(coverage, ["artifact", "metric", "value", "detail"], 20)}
 
-The current portable spline cohort and candidate sigmoid cohort contain no shared customer IDs, so their aggregate curves are not a customer-level matched comparison. The candidate wrapper also embeds a different raw XGB booster from `acceptance_model_xgb.pkl`. Its source `predict_proba` implementation converts a one-element NumPy array with `float(array)`, which fails under the current NumPy runtime; this report evaluates the stored sigmoid parameters directly.
+The logit-spline and monotone-PCHIP cohorts contain no shared customer IDs, so
+their aggregate curves are not a customer-level matched comparison. Both are
+evaluated from validated portable NPZ artifacts through the same runtime
+acceptance interface.
 
-## Integration handoff
+## Runtime hierarchy
 
-No runtime integration was performed. A future change should:
-
-1. Expose independent `acceptance_model_type` values `glm`, `xgb`, and `xgb_smoothed`, and `loss_model_type` values `glm` and `xgb`, while retaining existing presets as compatibility aliases.
-2. Restrict smoothed runs to IDs covered by the artifact. Falling back over the full dataset would make virtually every row raw XGB rather than smoothed.
-3. Convert the trusted legacy sigmoid parameters into a validated portable repo-native artifact with direct acceptance and derivative interfaces.
-4. Place artifacts under the existing `src/data/models` hierarchy and keep loader/runtime code at the current model seam; do not add a separate `src/models` tree.
+The runtime exposes `glm`, `xgb`, `xgb_logit_spline_20260706`, and
+`xgb_monotone_spline_20260728` acceptance types. Spline runs are restricted to
+their artifact's covered IDs, and runtime inference never unpickles a smoothing
+wrapper. Model-loading code remains under `src/data`; there is no separate
+`src/models` tree.
 
 ## Limitations
 
 - No independent holdout dataset was supplied.
-- The candidate and reference smoothing cohorts are disjoint and may differ in customer mix.
+- The logit-spline and monotone-PCHIP cohorts are disjoint and may differ in customer mix.
 - Pickle metadata describes how artifacts were saved, but cannot establish complete training-data lineage.
 - Candidate loss training sampled 10,000 rows before five-fold fitting; unless the source sampling seed is documented elsewhere, that training sample is not reproducible from the artifact alone.
 """
@@ -1378,24 +1186,19 @@ def run_analysis(
     raw_action_summary, _ = raw_acceptance_action_grid(
         artifacts, sample, action_grid
     )
-    candidate_acceptance = next(
-        artifact
-        for artifact in artifacts
-        if artifact.name == "candidate_xgb_acceptance"
-    )
     smoothing_coverage, smoothing_action_summary, smoothing_matrices = (
         smoothing_analysis(
-            candidate_smoothing_path=(
-                candidate_artifact_dir / "acceptance_smoothing_wrapper.pkl"
-            ),
-            candidate_dataset=candidate_frame,
             reference_dataset=reference_frame,
-            current_spline_path=(
+            logit_spline_path=(
                 reference_model_dir
                 / "xgb_logit_spline"
                 / "acceptance_xgb_logit_spline_20260706_112929.npz"
             ),
-            candidate_acceptance=candidate_acceptance,
+            monotone_spline_path=(
+                reference_model_dir
+                / "xgb_monotone_spline"
+                / "acceptance_xgb_monotone_spline_20260728.npz"
+            ),
             action_grid=action_grid,
             eligible_population=eligible_population,
         )
@@ -1433,8 +1236,8 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--candidate-artifact-dir",
         type=Path,
         required=True,
-        help="Directory containing acceptance_model_xgb.pkl, "
-        "acceptance_smoothing_wrapper.pkl, and financial_loss_model_xgb.pkl.",
+        help="Directory containing acceptance_model_xgb.pkl and "
+        "financial_loss_model_xgb.pkl.",
     )
     parser.add_argument(
         "--reference-dataset",

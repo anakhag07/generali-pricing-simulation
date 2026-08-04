@@ -194,20 +194,21 @@ def test_new_versioned_artifacts_load_and_predict() -> None:
     assert np.isfinite(loss_prediction).all()
 
 
-def test_xgb_sigmoid_eligible_rows_match_covered_artifact() -> None:
+def test_xgb_monotone_spline_eligible_rows_match_covered_artifact() -> None:
     from data.loader import (
         eligible_csv_row_indices,
         load_acceptance_artifact,
         load_x_frame,
     )
 
-    acceptance = load_acceptance_artifact("xgb_sigmoid_20260728")
-    row_indices = eligible_csv_row_indices("xgb_sigmoid_20260728")
-    x = load_x_frame("xgb_sigmoid_20260728", row_indices=row_indices)
+    acceptance = load_acceptance_artifact("xgb_monotone_spline_20260728")
+    row_indices = eligible_csv_row_indices("xgb_monotone_spline_20260728")
+    x = load_x_frame("xgb_monotone_spline_20260728", row_indices=row_indices)
 
-    assert row_indices.shape == (200,)
-    np.testing.assert_array_equal(row_indices, acceptance.covered_row_indices())
-    assert set(x["id"].astype(str)) == set(acceptance.covered_policy_ids())
+    assert acceptance.covered_row_indices().shape == (200,)
+    assert row_indices.shape == (199,)
+    assert np.isin(row_indices, acceptance.covered_row_indices()).all()
+    assert set(x["id"].astype(str)) < set(acceptance.covered_policy_ids())
 
 
 def test_legacy_model_pair_resolution_is_unchanged() -> None:

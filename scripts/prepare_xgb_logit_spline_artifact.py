@@ -23,9 +23,9 @@ from data.xgb_logit_spline import (  # noqa: E402
 _DEFAULT_SOURCE = (
     _SRC_DIR
     / "data"
-    / "models"
-    / "spline_acceptance"
-    / "acceptance_smoothing_wrapper_20260706_112929.pkl"
+    / "model_sources"
+    / "acceptance"
+    / "xgb_logit_spline_20260706.source.pkl"
 )
 _DEFAULT_OUTPUT = (
     _SRC_DIR

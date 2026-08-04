@@ -72,7 +72,8 @@ git worktree add ../worktrees/feature-policy-grid -b feature/policy-grid
 - If the branch already exists, omit `-b` and pass the existing branch name.
 - After entering a worktree, re-read `AGENTS.md`, confirm the branch/status, and
   assume other worktrees may have changed the repo recently.
-- Gitignored data artifacts (`src/data/dataset.csv`, `src/data/models/**/*.pkl`)
+- Gitignored data artifacts (`src/data/dataset.csv`, `src/data/models/`, and
+  `src/data/model_sources/`)
   exist only in the canonical checkout, so real-data tests fail in a fresh
   worktree until they are symlinked in:
 
@@ -398,7 +399,7 @@ belongs under `generali/`.
   - `eval_counts()` also reports prediction/objective timing counters and cache hit/miss counters for performance diagnostics
   - `u_coef` sets the effective GLM acceptance coefficient on generated `U` for both values and analytical gradients; `None` uses the artifact coefficient or central FD for unsupported artifacts
   - `loss_source="observed"` keeps model-predicted acceptance but replaces the loss-model prediction with row-aligned historical `Y_G_Loss` carried on the real-data `x_fixed` DataFrame
-  - Acceptance artifacts may provide `predict_acceptance(raw_frame, u)` and `d_acceptance_du(raw_frame, u)` hooks; the XGBoost logit-spline adapter uses them to retain policy-ID lookup columns and provide analytical gradients
+  - Acceptance artifacts may provide `predict_acceptance(raw_frame, u)` and `d_acceptance_du(raw_frame, u)` hooks; both XGBoost spline adapters use them to retain policy-ID lookup columns and provide analytical gradients
   - `value()`, `grad()`, `value_at_u()`
 
 - **`src/objective/objectives/generali/prepared_glm.py`**
@@ -457,9 +458,21 @@ belongs under `generali/`.
   - Portable NPZ containing 200 per-policy isotonic logit-spline acceptance curves derived from the trusted five-fold XGBoost smoothing bundle
   - Covers exactly 200 unique canonical `id` rows over fitted action support `[0, 0.16]`; unknown IDs are rejected rather than sent to raw XGBoost
 
+- **`src/data/models/xgb_monotone_spline/`**
+  - Portable array-only NPZ containing 200 per-policy monotone PCHIP churn curves derived from the trusted 20260728 XGBoost smoothing wrapper
+  - Runtime validation enforces unique canonical rows, probability bounds, monotone churn, and non-negative upper-tail slopes; acceptance is therefore bounded and non-increasing
+
+- **`src/data/model_sources/acceptance/`**
+  - Gitignored archive for the two trusted source-wrapper pickles used only by explicit conversion scripts; runtime code must never load these pickles
+  - Source files use `.source.pkl` names so provenance is visually distinct from runtime NPZ artifacts
+
 - **`src/data/xgb_logit_spline.py`**
   - Loads/evaluates the portable spline artifact and computes analytical `d_acceptance_du`; also contains deterministic conversion helpers for the legacy notebook pickle
   - The converter batch-scores all `200 x 17` profile/action rows with `U` explicitly synchronized to the action grid, avoiding the legacy on-demand wrapper's stale-`U` fitting path
+
+- **`src/data/xgb_monotone_spline.py`**
+  - Loads/evaluates portable per-policy PCHIP coefficients with direct acceptance and analytical `d_acceptance_du` interfaces
+  - Pickle compatibility classes are conversion-only; conversion verifies that the embedded booster and preprocessor match the canonical `xgb_20260728` base artifact before writing the runtime NPZ
 
 - **`src/data/unused/`**
   - Legacy CSV/notebook exports not used by the current loader; retained only as temporary archive material before deletion
@@ -481,7 +494,7 @@ belongs under `generali/`.
   - `load_observed_loss_array(model_type, n_rows=5000, row_indices=None, seed=None)`: loads observed historical `Y_G_Loss` from sampled canonical dataset rows for observed-loss real-data objectives
   - `load_mean_observed_acceptance(model_type)`: computes `1 - is_churn` over complete eligible rows
   - `load_model_artifacts(model_type)`: loads first-fold `(acceptance_artifact, loss_artifact)` bundles from the 052726 CV dictionaries under `src/data/models/linear/` or `src/data/models/xgb/`
-  - `model_type="xgb_logit_spline"` loads the portable spline acceptance adapter with the linear loss artifact, limits eligibility to its 200 covered canonical rows, and carries `id` as a non-policy auxiliary lookup column
+  - `model_type="xgb_logit_spline"` loads the portable logit-spline acceptance adapter with the linear loss artifact; exact `acceptance_model_type="xgb_monotone_spline_20260728"` loads the monotone-PCHIP adapter. Both carry `id` as a non-policy auxiliary lookup column; the logit artifact has 200 complete covered rows, while monotone experiments use the 199 complete rows among its 200 stored curves
   - `ModelArtifactBundle.model_frame(raw_frame)`: converts raw notebook-space columns into the exact model-input frame expected by the bundled estimator
   - `extract_glm_u_coef(glm_pipeline)`: extracts effective d_logit(p_accept)/dU from the inner fitted GLM artifact for analytical gradient computation
 
@@ -552,6 +565,7 @@ belongs under `generali/`.
     - `compute_backend="jax"` keeps `step_rule="trust-constr"` and swaps supported GLM training callbacks to the fixed-batch JAX prepared objective; use with constant/linear/softmax policies, finite materializable linear/softmax feature maps, and supported estimators `first_order`, `finite_difference`, `gauss_stein`, `spsa`, and `stein_difference`
   - `real_data_xgb_base`: registry-only base built by `real_data_factory.py`; supports the same override axes, with XGB defaults excluding `first_order`
   - `real_data_xgb_logit_spline_base`: NumPy-only registry base over the 200 covered spline rows; defaults softmax/objective action bounds to `[0, 0.16]` and enables `first_order` through analytical spline acceptance derivatives
+  - `real_data_monotone_spline_glm_20260728_base`: NumPy-only registry base using the 199 complete canonical rows among the 200-policy monotone-PCHIP artifact, with the canonical GLM loss model and analytical spline derivatives
   - `config_template.py`: copy-first scaffold with `None` placeholders for all `ExperimentConfig` fields plus objective/correctness parameter blocks; not registered as a runnable preset
 
 - **`src/experiments/initialization.py`**
@@ -727,7 +741,7 @@ belongs under `generali/`.
 - `scripts/plot_glm_sensitivity_distribution.py` computes GLM customer elasticities $$d p_{accept}(x, u) / du$$ over a default `u in [-0.3, 0.3]` grid, writes a mean/quantile elasticity-by-`u` curve, selected-`u` elasticity histograms for `{-0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3}` with default `0.5-99.5%` x-axis clipping marked, and CSV summaries under `results/glm-sensitivity-distribution/`
 - `scripts/plot_policy_acceptance_grid.py` loads a saved policy artifact, scores artifact-bound rows by mean absolute acceptance sensitivity over a simulated `u` grid and by predicted loss, randomly samples clients from low/medium/high tertiles for each score, and writes two three-panel client-level acceptance-curve plots plus `sampled_clients.csv` under `results/policy-acceptance-grid/`; omit `--seed` to resample clients each run
 - `scripts/plot_saved_acceptance_floor_frontier.py` re-plots acceptance-floor Pareto frontiers from a saved `acceptance_floor_sweep.csv` (or the latest matching frontier directory) without rerunning optimization; defaults to `first_order` and writes estimator-suffixed Pareto PNGs
-- `scripts/analyze_real_data_model_artifacts.py` compares a candidate semicolon-delimited real-data CSV and trusted XGBoost/smoothing artifact directory with the canonical dataset and current GLM/XGBoost/spline artifacts. It treats stored OOF metrics as primary performance evidence, uses a deterministic configurable common-row sample for descriptive predictions and `U`-grid diagnostics, decodes legacy per-policy sigmoid parameters without calling the source wrapper, and writes seven CSV tables, three plots, and an integration-handoff Markdown report under `results/real-data-model-eda/`. It is analysis-only and must not mutate the runtime model registry or copy ignored model/data artifacts.
+- `scripts/analyze_real_data_model_artifacts.py` compares a candidate semicolon-delimited real-data CSV and trusted raw XGBoost artifact directory with the canonical dataset and current GLM/XGBoost/spline artifacts. It treats stored OOF metrics as primary performance evidence, uses a deterministic configurable common-row sample for descriptive predictions and `U`-grid diagnostics, compares the portable logit-spline and monotone-PCHIP cohorts through their runtime interfaces, and writes seven CSV tables, three plots, and a hierarchy-aware Markdown report under `results/real-data-model-eda/`. It is analysis-only and must not mutate the runtime model registry or copy ignored model/data artifacts.
 - `scripts/query_acceptance_at_u.py` loads a config preset or default GLM/XGB model type and reports mean acceptance for supplied or evenly sampled constant `u` values without running optimization; writes acceptance-curve and historical-`U` rug plots under `results/acceptance_queries/` by default and optionally writes `u,n,mean_acceptance` CSV output
 - `scripts/evaluate_historical_policy_objective.py` reads a saved run `summary.json`, reconstructs selected CSV row positions from full-eligible mode or seed/`n_samples`, prints the estimator theta used, and evaluates final policy prices under historical acceptance `1 - is_churn` and observed `Y_G_Loss`; writes aggregate `summary.json` and row-level `per_row.csv` under `historical_policy_objective/<estimator>/`
   - Prefer `--policy-artifact results/.../policies/<estimator>/policy.json` for new runs; `--summary-json` remains a legacy fallback for outputs created before policy artifacts existed
@@ -736,9 +750,9 @@ belongs under `generali/`.
 - `scripts/run_policy_pca_grid.py` runs the GLM policy PCA-dimensionality grid over configured PCA dimensions and policy classes `(constant, linear, quadratic, third_order, fourth_order, softmax_linear, softmax_quadratic, softmax_third_order, softmax_fourth_order, mlp)`; unconstrained is default, `--constrained` uses `trust-constr` with the observed GLM acceptance floor and a 500-step default cap; outputs aggregate CSVs, summary markdown, and headline/spread plots under `results/policy-pca-grid/`; prints per-condition progress by default and supports `--quiet`. It is launch-aware; `--launch slurm --array` runs one `(pca_dim, policy_class, seed)` condition per array task and the collector writes combined grid outputs
 - `scripts/benchmark_optax_vs_trust_constr.py` benchmarks SciPy minimize against the optax step rules: a planted-logistic group (theta dim 200 LinearPolicy; L-BFGS-B vs `optax-adam`/`optax-sgd`) and a real-data GLM group on the fixed JAX prepared batch (trust-constr with the observed acceptance floor vs optax rules on the smooth-penalty formulation of the same floor). Writes `benchmark.csv` under `results/optax-benchmark/`. On shared CPU nodes pin `OMP_NUM_THREADS`/`OPENBLAS_NUM_THREADS` (and `JAX_PLATFORMS=cpu` off-GPU) — JAX import plus OpenBLAS thread oversubscription inside a CPU-limited slice can slow NumPy matmuls by orders of magnitude and wash out solver timings
 - `scripts/benchmark_experiment_speed.py` benchmarks GLM analytical acceptance vs sklearn `predict_proba`, Stein-difference gradient timing/call counts, repeated objective-cache behavior, and full-vs-subsampled contour grid timing; use it to quantify whether performance changes speed up real-data diagnostics without relying on flaky pytest time thresholds
-- `scripts/prepare_xgb_logit_spline_artifact.py` converts the trusted legacy XGBoost smoothing-wrapper pickle into portable per-policy logit-spline arrays; it batch-scores the 200 covered profiles on `U=0,...,0.16`, resolves their canonical CSV row positions, and writes the gitignored NPZ used by `real_data_xgb_logit_spline_base`
-- `scripts/prepare_xgb_sigmoid_artifact.py` deterministically extracts the 200 supplied shifted-sigmoid curves into a portable NPZ with canonical row positions and source/embedded-booster hashes; runtime rejects uncovered IDs and never loads the legacy wrapper
-- `manifests/real_data_model_hierarchy_200.json` compares GLM/GLM, smoothed-XGB/GLM, XGB/GLM, and XGB/XGB on the exact same 200-policy cohort with fixed preprocessing, split, action bounds, and optimizer settings
+- `scripts/prepare_xgb_logit_spline_artifact.py` converts the trusted archived XGBoost smoothing-wrapper pickle into portable per-policy logit-spline arrays; it batch-scores the 200 covered profiles on `U=0,...,0.16`, resolves their canonical CSV row positions, and writes the gitignored NPZ used by `real_data_xgb_logit_spline_base`
+- `scripts/prepare_xgb_monotone_spline_artifact.py` converts the trusted 20260728 wrapper into a validated array-only NPZ of per-policy PCHIP coefficients; it verifies source/base booster and preprocessor identity, records provenance hashes, and writes the runtime artifact used by `real_data_monotone_spline_glm_20260728_base`
+- `manifests/real_data_monotone_model_hierarchy_199.json` compares GLM/GLM, monotone-spline/GLM, XGB/GLM, and XGB/XGB on the exact same 199-policy complete monotone cohort with fixed preprocessing, split, action bounds, and optimizer settings
 - `scripts/run_xgb_logit_spline_experiment.py` runs the canonical CPU/NumPy spline convergence check: all 200 covered profiles with a deterministic 80/20 train/test split by default, bounded softmax policy initialized at `u=0.08`, L-BFGS-B, analytical first-order versus action-space finite-difference gradients, and exact-gradient correctness traces. It delegates all artifacts and canonical convergence/train/test policy plots to `execute_experiment_run(...)` under `results/xgb-logit-spline-experiment/`, exposes `--n-grad-samples` for stochastic estimators such as Stein difference, and accepts shared local/Slurm launch flags
 
 ## Known Issues and Dead Code
@@ -875,6 +889,8 @@ exclude `tests/objective/test_jax_prepared_glm*`, `tests/optimization/test_jax_*
 | `test_feature_processor.py` | Centering, sphering, PCA whitening, inverse transform, categorical encoding |
 | `test_model_artifact_inference.py` | GLM/XGB artifact inference and model-based objective smoke tests on canonical rows |
 | `test_xgb_logit_spline.py` | Deterministic spline conversion, portable artifact round-trip, boundary behavior, ID coverage, and analytical derivative checks |
+| `test_xgb_monotone_spline.py` | Trusted-wrapper conversion parity, array-only round-trip, probability/monotonicity validation, boundary behavior, ID coverage, and analytical derivative checks |
+| `test_model_artifact_hierarchy.py` | Runtime/source directory contract, removal of retired model families, unique registered paths/hashes, and source provenance links |
 
 #### `tests/experiments/`
 | Test File | Area |
@@ -944,7 +960,7 @@ exclude `tests/objective/test_jax_prepared_glm*`, `tests/optimization/test_jax_*
 | `test_xgb_logit_spline_experiment_script.py` | XGB logit-spline runner defaults, exact-gradient config, convergence rows, and launch delegation |
 | `test_analyze_zeroth_order_proof_validation.py` | Proof-objective population roots, bias landmarks, exact MSE decomposition, and complete analysis plot/table outputs |
 | `test_analyze_zeroth_order_envelopes.py` | Envelope population-gradient helpers, smooth/kinked stationary points, calibrated nonconvex bifurcation/global switch, linear boundary threshold, and envelope diagnostic output |
-| `test_analyze_real_data_model_artifacts.py` | Dataset identity/difference summaries, CV/best-fold normalization, pairwise/action-grid metrics, portable sigmoid extraction, full report outputs, and real candidate-artifact coverage smoke checks |
+| `test_analyze_real_data_model_artifacts.py` | Dataset identity/difference summaries, CV/best-fold normalization, pairwise/action-grid metrics, portable spline comparison report outputs, and real candidate-artifact smoke checks |
 
 #### `tests/integration/`
 | Test File | Area |

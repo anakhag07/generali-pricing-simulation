@@ -53,10 +53,16 @@
             <h2>API Documentation</h2>
                 <ul class="memberlist">
             <li>
+                    <a class="variable" href="#ACCEPTANCE_MODEL_ARTIFACTS">ACCEPTANCE_MODEL_ARTIFACTS</a>
+            </li>
+            <li>
                     <a class="variable" href="#ACCEPTANCE_PROBABILITY_COL">ACCEPTANCE_PROBABILITY_COL</a>
             </li>
             <li>
                     <a class="variable" href="#ACCEPTANCE_STATE_COLS">ACCEPTANCE_STATE_COLS</a>
+            </li>
+            <li>
+                    <a class="variable" href="#AcceptanceModelType">AcceptanceModelType</a>
             </li>
             <li>
                     <a class="variable" href="#ACTION_COLS">ACTION_COLS</a>
@@ -102,6 +108,12 @@
             </li>
             <li>
                     <a class="variable" href="#LOSS_FEATURE_COLS">LOSS_FEATURE_COLS</a>
+            </li>
+            <li>
+                    <a class="variable" href="#LOSS_MODEL_ARTIFACTS">LOSS_MODEL_ARTIFACTS</a>
+            </li>
+            <li>
+                    <a class="variable" href="#LossModelType">LossModelType</a>
             </li>
             <li>
                     <a class="variable" href="#LOSS_TARGET_COL">LOSS_TARGET_COL</a>
@@ -292,130 +304,181 @@
 </span><span id="L-122"><a href="#L-122"><span class="linenos">122</span></a>    <span class="n">loss</span><span class="p">:</span> <span class="n">ArtifactSpec</span>
 </span><span id="L-123"><a href="#L-123"><span class="linenos">123</span></a>
 </span><span id="L-124"><a href="#L-124"><span class="linenos">124</span></a>
-</span><span id="L-125"><a href="#L-125"><span class="linenos">125</span></a><span class="n">MODEL_ARTIFACTS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;glm&quot;</span><span class="p">,</span> <span class="s2">&quot;xgb&quot;</span><span class="p">,</span> <span class="s2">&quot;xgb_logit_spline&quot;</span><span class="p">],</span> <span class="n">ModelArtifactSpec</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-</span><span id="L-126"><a href="#L-126"><span class="linenos">126</span></a>    <span class="s2">&quot;glm&quot;</span><span class="p">:</span> <span class="p">{</span>
-</span><span id="L-127"><a href="#L-127"><span class="linenos">127</span></a>        <span class="s2">&quot;acceptance&quot;</span><span class="p">:</span> <span class="p">{</span>
-</span><span id="L-128"><a href="#L-128"><span class="linenos">128</span></a>            <span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="n">DATA_DIR</span> <span class="o">/</span> <span class="s2">&quot;models&quot;</span> <span class="o">/</span> <span class="s2">&quot;linear&quot;</span> <span class="o">/</span> <span class="s2">&quot;acceptance_model_linear_cv_20260527_142758.pkl&quot;</span><span class="p">,</span>
-</span><span id="L-129"><a href="#L-129"><span class="linenos">129</span></a>            <span class="s2">&quot;contains_feature_processor&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-</span><span id="L-130"><a href="#L-130"><span class="linenos">130</span></a>            <span class="s2">&quot;probability_target&quot;</span><span class="p">:</span> <span class="s2">&quot;acceptance&quot;</span><span class="p">,</span>
-</span><span id="L-131"><a href="#L-131"><span class="linenos">131</span></a>            <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;First-fold LogisticRegression acceptance model with fitted FeatureProcessor.&quot;</span><span class="p">,</span>
-</span><span id="L-132"><a href="#L-132"><span class="linenos">132</span></a>        <span class="p">},</span>
-</span><span id="L-133"><a href="#L-133"><span class="linenos">133</span></a>        <span class="s2">&quot;loss&quot;</span><span class="p">:</span> <span class="p">{</span>
-</span><span id="L-134"><a href="#L-134"><span class="linenos">134</span></a>            <span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="n">DATA_DIR</span> <span class="o">/</span> <span class="s2">&quot;models&quot;</span> <span class="o">/</span> <span class="s2">&quot;linear&quot;</span> <span class="o">/</span> <span class="s2">&quot;financial_loss_model_linear_cv_20260527_142758.pkl&quot;</span><span class="p">,</span>
-</span><span id="L-135"><a href="#L-135"><span class="linenos">135</span></a>            <span class="s2">&quot;contains_feature_processor&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-</span><span id="L-136"><a href="#L-136"><span class="linenos">136</span></a>            <span class="s2">&quot;probability_target&quot;</span><span class="p">:</span> <span class="s2">&quot;none&quot;</span><span class="p">,</span>
-</span><span id="L-137"><a href="#L-137"><span class="linenos">137</span></a>            <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;First-fold Ridge financial-loss model with fitted FeatureProcessor.&quot;</span><span class="p">,</span>
-</span><span id="L-138"><a href="#L-138"><span class="linenos">138</span></a>        <span class="p">},</span>
-</span><span id="L-139"><a href="#L-139"><span class="linenos">139</span></a>    <span class="p">},</span>
-</span><span id="L-140"><a href="#L-140"><span class="linenos">140</span></a>    <span class="s2">&quot;xgb&quot;</span><span class="p">:</span> <span class="p">{</span>
-</span><span id="L-141"><a href="#L-141"><span class="linenos">141</span></a>        <span class="s2">&quot;acceptance&quot;</span><span class="p">:</span> <span class="p">{</span>
-</span><span id="L-142"><a href="#L-142"><span class="linenos">142</span></a>            <span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="n">DATA_DIR</span> <span class="o">/</span> <span class="s2">&quot;models&quot;</span> <span class="o">/</span> <span class="s2">&quot;xgb&quot;</span> <span class="o">/</span> <span class="s2">&quot;acceptance_model_xgb_cv_20260527_151725.pkl&quot;</span><span class="p">,</span>
-</span><span id="L-143"><a href="#L-143"><span class="linenos">143</span></a>            <span class="s2">&quot;contains_feature_processor&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-</span><span id="L-144"><a href="#L-144"><span class="linenos">144</span></a>            <span class="s2">&quot;probability_target&quot;</span><span class="p">:</span> <span class="s2">&quot;acceptance&quot;</span><span class="p">,</span>
-</span><span id="L-145"><a href="#L-145"><span class="linenos">145</span></a>            <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;First-fold XGBoost acceptance model with fitted FeatureProcessor.&quot;</span><span class="p">,</span>
-</span><span id="L-146"><a href="#L-146"><span class="linenos">146</span></a>        <span class="p">},</span>
-</span><span id="L-147"><a href="#L-147"><span class="linenos">147</span></a>        <span class="s2">&quot;loss&quot;</span><span class="p">:</span> <span class="p">{</span>
-</span><span id="L-148"><a href="#L-148"><span class="linenos">148</span></a>            <span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="n">DATA_DIR</span> <span class="o">/</span> <span class="s2">&quot;models&quot;</span> <span class="o">/</span> <span class="s2">&quot;xgb&quot;</span> <span class="o">/</span> <span class="s2">&quot;financial_loss_model_xgb_cv_20260527_151725.pkl&quot;</span><span class="p">,</span>
-</span><span id="L-149"><a href="#L-149"><span class="linenos">149</span></a>            <span class="s2">&quot;contains_feature_processor&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-</span><span id="L-150"><a href="#L-150"><span class="linenos">150</span></a>            <span class="s2">&quot;probability_target&quot;</span><span class="p">:</span> <span class="s2">&quot;none&quot;</span><span class="p">,</span>
-</span><span id="L-151"><a href="#L-151"><span class="linenos">151</span></a>            <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;First-fold XGBoost financial-loss model with fitted FeatureProcessor.&quot;</span><span class="p">,</span>
-</span><span id="L-152"><a href="#L-152"><span class="linenos">152</span></a>        <span class="p">},</span>
-</span><span id="L-153"><a href="#L-153"><span class="linenos">153</span></a>    <span class="p">},</span>
-</span><span id="L-154"><a href="#L-154"><span class="linenos">154</span></a>    <span class="s2">&quot;xgb_logit_spline&quot;</span><span class="p">:</span> <span class="p">{</span>
-</span><span id="L-155"><a href="#L-155"><span class="linenos">155</span></a>        <span class="s2">&quot;acceptance&quot;</span><span class="p">:</span> <span class="p">{</span>
-</span><span id="L-156"><a href="#L-156"><span class="linenos">156</span></a>            <span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="n">DATA_DIR</span> <span class="o">/</span> <span class="s2">&quot;models&quot;</span> <span class="o">/</span> <span class="s2">&quot;xgb_logit_spline&quot;</span> <span class="o">/</span> <span class="s2">&quot;acceptance_xgb_logit_spline_20260706_112929.npz&quot;</span><span class="p">,</span>
-</span><span id="L-157"><a href="#L-157"><span class="linenos">157</span></a>            <span class="s2">&quot;contains_feature_processor&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
-</span><span id="L-158"><a href="#L-158"><span class="linenos">158</span></a>            <span class="s2">&quot;probability_target&quot;</span><span class="p">:</span> <span class="s2">&quot;acceptance&quot;</span><span class="p">,</span>
-</span><span id="L-159"><a href="#L-159"><span class="linenos">159</span></a>            <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Per-policy isotonic logit-spline acceptance curves derived from the five-fold XGBoost ensemble.&quot;</span><span class="p">,</span>
-</span><span id="L-160"><a href="#L-160"><span class="linenos">160</span></a>        <span class="p">},</span>
-</span><span id="L-161"><a href="#L-161"><span class="linenos">161</span></a>        <span class="s2">&quot;loss&quot;</span><span class="p">:</span> <span class="p">{</span>
-</span><span id="L-162"><a href="#L-162"><span class="linenos">162</span></a>            <span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="n">DATA_DIR</span> <span class="o">/</span> <span class="s2">&quot;models&quot;</span> <span class="o">/</span> <span class="s2">&quot;linear&quot;</span> <span class="o">/</span> <span class="s2">&quot;financial_loss_model_linear_cv_20260527_142758.pkl&quot;</span><span class="p">,</span>
-</span><span id="L-163"><a href="#L-163"><span class="linenos">163</span></a>            <span class="s2">&quot;contains_feature_processor&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-</span><span id="L-164"><a href="#L-164"><span class="linenos">164</span></a>            <span class="s2">&quot;probability_target&quot;</span><span class="p">:</span> <span class="s2">&quot;none&quot;</span><span class="p">,</span>
-</span><span id="L-165"><a href="#L-165"><span class="linenos">165</span></a>            <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;First-fold Ridge financial-loss model paired with spline acceptance.&quot;</span><span class="p">,</span>
-</span><span id="L-166"><a href="#L-166"><span class="linenos">166</span></a>        <span class="p">},</span>
-</span><span id="L-167"><a href="#L-167"><span class="linenos">167</span></a>    <span class="p">},</span>
-</span><span id="L-168"><a href="#L-168"><span class="linenos">168</span></a><span class="p">}</span>
-</span><span id="L-169"><a href="#L-169"><span class="linenos">169</span></a>
-</span><span id="L-170"><a href="#L-170"><span class="linenos">170</span></a><span class="n">DATASET_COLUMN_DESCRIPTIONS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-</span><span id="L-171"><a href="#L-171"><span class="linenos">171</span></a>    <span class="s2">&quot;X_vehicle_value_at_new&quot;</span><span class="p">:</span> <span class="s2">&quot;Vehicle value at new; model X covariate.&quot;</span><span class="p">,</span>
-</span><span id="L-172"><a href="#L-172"><span class="linenos">172</span></a>    <span class="s2">&quot;X_driving_license_years&quot;</span><span class="p">:</span> <span class="s2">&quot;Driving-license tenure; model X covariate.&quot;</span><span class="p">,</span>
-</span><span id="L-173"><a href="#L-173"><span class="linenos">173</span></a>    <span class="s2">&quot;X_vehicle_weight&quot;</span><span class="p">:</span> <span class="s2">&quot;Vehicle weight category; model X covariate.&quot;</span><span class="p">,</span>
-</span><span id="L-174"><a href="#L-174"><span class="linenos">174</span></a>    <span class="s2">&quot;X_vehicle_power&quot;</span><span class="p">:</span> <span class="s2">&quot;Vehicle power category; model X covariate.&quot;</span><span class="p">,</span>
-</span><span id="L-175"><a href="#L-175"><span class="linenos">175</span></a>    <span class="s2">&quot;X_fuel_type_vehicle&quot;</span><span class="p">:</span> <span class="s2">&quot;Fuel type category; model X covariate.&quot;</span><span class="p">,</span>
-</span><span id="L-176"><a href="#L-176"><span class="linenos">176</span></a>    <span class="s2">&quot;X_policy_tenure&quot;</span><span class="p">:</span> <span class="s2">&quot;Policy tenure; model X covariate.&quot;</span><span class="p">,</span>
-</span><span id="L-177"><a href="#L-177"><span class="linenos">177</span></a>    <span class="s2">&quot;X_policy_count&quot;</span><span class="p">:</span> <span class="s2">&quot;Policy count; model X covariate.&quot;</span><span class="p">,</span>
-</span><span id="L-178"><a href="#L-178"><span class="linenos">178</span></a>    <span class="s2">&quot;X_gender&quot;</span><span class="p">:</span> <span class="s2">&quot;Customer gender category; model X covariate.&quot;</span><span class="p">,</span>
-</span><span id="L-179"><a href="#L-179"><span class="linenos">179</span></a>    <span class="s2">&quot;X_ttm_claims&quot;</span><span class="p">:</span> <span class="s2">&quot;Trailing claims count; model X covariate.&quot;</span><span class="p">,</span>
-</span><span id="L-180"><a href="#L-180"><span class="linenos">180</span></a>    <span class="s2">&quot;X_customer_segment&quot;</span><span class="p">:</span> <span class="s2">&quot;Customer segment category; model X covariate.&quot;</span><span class="p">,</span>
-</span><span id="L-181"><a href="#L-181"><span class="linenos">181</span></a>    <span class="s2">&quot;X_installment&quot;</span><span class="p">:</span> <span class="s2">&quot;Installment category; model X covariate.&quot;</span><span class="p">,</span>
-</span><span id="L-182"><a href="#L-182"><span class="linenos">182</span></a>    <span class="s2">&quot;X_bonus_malus_rating&quot;</span><span class="p">:</span> <span class="s2">&quot;Bonus-malus rating; model X covariate.&quot;</span><span class="p">,</span>
-</span><span id="L-183"><a href="#L-183"><span class="linenos">183</span></a>    <span class="s2">&quot;X_vehicle_type&quot;</span><span class="p">:</span> <span class="s2">&quot;Vehicle type category; model X covariate.&quot;</span><span class="p">,</span>
-</span><span id="L-184"><a href="#L-184"><span class="linenos">184</span></a>    <span class="s2">&quot;X_district&quot;</span><span class="p">:</span> <span class="s2">&quot;District code; model X covariate.&quot;</span><span class="p">,</span>
-</span><span id="L-185"><a href="#L-185"><span class="linenos">185</span></a>    <span class="s2">&quot;X_age&quot;</span><span class="p">:</span> <span class="s2">&quot;Customer age; model X covariate.&quot;</span><span class="p">,</span>
-</span><span id="L-186"><a href="#L-186"><span class="linenos">186</span></a>    <span class="s2">&quot;X_distr_channel&quot;</span><span class="p">:</span> <span class="s2">&quot;Distribution channel category; model X covariate.&quot;</span><span class="p">,</span>
-</span><span id="L-187"><a href="#L-187"><span class="linenos">187</span></a>    <span class="s2">&quot;X_claim_tot_value&quot;</span><span class="p">:</span> <span class="s2">&quot;Total claim value feature; model X covariate.&quot;</span><span class="p">,</span>
-</span><span id="L-188"><a href="#L-188"><span class="linenos">188</span></a>    <span class="s2">&quot;X_vehicle_age&quot;</span><span class="p">:</span> <span class="s2">&quot;Vehicle age; model X covariate.&quot;</span><span class="p">,</span>
-</span><span id="L-189"><a href="#L-189"><span class="linenos">189</span></a>    <span class="n">PREMIUM_COL</span><span class="p">:</span> <span class="s2">&quot;Baseline policy premium used for deterministic revenue.&quot;</span><span class="p">,</span>
-</span><span id="L-190"><a href="#L-190"><span class="linenos">190</span></a>    <span class="s2">&quot;X_upcoming_premium&quot;</span><span class="p">:</span> <span class="s2">&quot;Lookahead premium column retained in CSV but excluded from objective X.&quot;</span><span class="p">,</span>
-</span><span id="L-191"><a href="#L-191"><span class="linenos">191</span></a>    <span class="n">OBSERVED_U_COL</span><span class="p">:</span> <span class="s2">&quot;Historical observed pricing action; diagnostics only.&quot;</span><span class="p">,</span>
-</span><span id="L-192"><a href="#L-192"><span class="linenos">192</span></a>    <span class="n">OBSERVED_CHURN_COL</span><span class="p">:</span> <span class="s2">&quot;Observed churn target; diagnostics only.&quot;</span><span class="p">,</span>
-</span><span id="L-193"><a href="#L-193"><span class="linenos">193</span></a>    <span class="n">LOSS_TARGET_COL</span><span class="p">:</span> <span class="s2">&quot;Observed financial-loss target; diagnostics only.&quot;</span><span class="p">,</span>
-</span><span id="L-194"><a href="#L-194"><span class="linenos">194</span></a>    <span class="s2">&quot;dummy_id&quot;</span><span class="p">:</span> <span class="s2">&quot;Source row identifier; excluded from objective X.&quot;</span><span class="p">,</span>
-</span><span id="L-195"><a href="#L-195"><span class="linenos">195</span></a>    <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;Policy/customer identifier; excluded from objective X.&quot;</span><span class="p">,</span>
-</span><span id="L-196"><a href="#L-196"><span class="linenos">196</span></a>    <span class="s2">&quot;start_date&quot;</span><span class="p">:</span> <span class="s2">&quot;Policy start date; excluded from objective X.&quot;</span><span class="p">,</span>
-</span><span id="L-197"><a href="#L-197"><span class="linenos">197</span></a>    <span class="s2">&quot;end_date&quot;</span><span class="p">:</span> <span class="s2">&quot;Policy end date; excluded from objective X.&quot;</span><span class="p">,</span>
-</span><span id="L-198"><a href="#L-198"><span class="linenos">198</span></a>    <span class="s2">&quot;check_date&quot;</span><span class="p">:</span> <span class="s2">&quot;Source check date; excluded from objective X.&quot;</span><span class="p">,</span>
-</span><span id="L-199"><a href="#L-199"><span class="linenos">199</span></a><span class="p">}</span>
-</span><span id="L-200"><a href="#L-200"><span class="linenos">200</span></a>
-</span><span id="L-201"><a href="#L-201"><span class="linenos">201</span></a>
-</span><span id="L-202"><a href="#L-202"><span class="linenos">202</span></a><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
-</span><span id="L-203"><a href="#L-203"><span class="linenos">203</span></a>    <span class="s2">&quot;ACCEPTANCE_PROBABILITY_COL&quot;</span><span class="p">,</span>
-</span><span id="L-204"><a href="#L-204"><span class="linenos">204</span></a>    <span class="s2">&quot;ACCEPTANCE_STATE_COLS&quot;</span><span class="p">,</span>
-</span><span id="L-205"><a href="#L-205"><span class="linenos">205</span></a>    <span class="s2">&quot;ACTION_COLS&quot;</span><span class="p">,</span>
-</span><span id="L-206"><a href="#L-206"><span class="linenos">206</span></a>    <span class="s2">&quot;DATA_DIR&quot;</span><span class="p">,</span>
-</span><span id="L-207"><a href="#L-207"><span class="linenos">207</span></a>    <span class="s2">&quot;DATASET_COLUMN_DESCRIPTIONS&quot;</span><span class="p">,</span>
-</span><span id="L-208"><a href="#L-208"><span class="linenos">208</span></a>    <span class="s2">&quot;DATASET_DESCRIPTION&quot;</span><span class="p">,</span>
-</span><span id="L-209"><a href="#L-209"><span class="linenos">209</span></a>    <span class="s2">&quot;DATASET_FILENAME&quot;</span><span class="p">,</span>
-</span><span id="L-210"><a href="#L-210"><span class="linenos">210</span></a>    <span class="s2">&quot;DATASET_PATH&quot;</span><span class="p">,</span>
-</span><span id="L-211"><a href="#L-211"><span class="linenos">211</span></a>    <span class="s2">&quot;DATASET_SCHEMA_VERSION&quot;</span><span class="p">,</span>
-</span><span id="L-212"><a href="#L-212"><span class="linenos">212</span></a>    <span class="s2">&quot;DATASET_SOURCE&quot;</span><span class="p">,</span>
-</span><span id="L-213"><a href="#L-213"><span class="linenos">213</span></a>    <span class="s2">&quot;DATE_COLS&quot;</span><span class="p">,</span>
-</span><span id="L-214"><a href="#L-214"><span class="linenos">214</span></a>    <span class="s2">&quot;FEATURE_COLS&quot;</span><span class="p">,</span>
-</span><span id="L-215"><a href="#L-215"><span class="linenos">215</span></a>    <span class="s2">&quot;FEATURE_COLS_GLM&quot;</span><span class="p">,</span>
-</span><span id="L-216"><a href="#L-216"><span class="linenos">216</span></a>    <span class="s2">&quot;FEATURE_COLS_XGB&quot;</span><span class="p">,</span>
-</span><span id="L-217"><a href="#L-217"><span class="linenos">217</span></a>    <span class="s2">&quot;ID_COLS&quot;</span><span class="p">,</span>
-</span><span id="L-218"><a href="#L-218"><span class="linenos">218</span></a>    <span class="s2">&quot;LOOKAHEAD_X_COLS&quot;</span><span class="p">,</span>
-</span><span id="L-219"><a href="#L-219"><span class="linenos">219</span></a>    <span class="s2">&quot;LOSS_FEATURE_COLS&quot;</span><span class="p">,</span>
-</span><span id="L-220"><a href="#L-220"><span class="linenos">220</span></a>    <span class="s2">&quot;LOSS_TARGET_COL&quot;</span><span class="p">,</span>
-</span><span id="L-221"><a href="#L-221"><span class="linenos">221</span></a>    <span class="s2">&quot;MODEL_ARTIFACTS&quot;</span><span class="p">,</span>
-</span><span id="L-222"><a href="#L-222"><span class="linenos">222</span></a>    <span class="s2">&quot;MODEL_FEATURE_COLS&quot;</span><span class="p">,</span>
-</span><span id="L-223"><a href="#L-223"><span class="linenos">223</span></a>    <span class="s2">&quot;OBJECTIVE_EXCLUDED_COLS&quot;</span><span class="p">,</span>
-</span><span id="L-224"><a href="#L-224"><span class="linenos">224</span></a>    <span class="s2">&quot;OBJECTIVE_REQUIRED_COLUMNS&quot;</span><span class="p">,</span>
-</span><span id="L-225"><a href="#L-225"><span class="linenos">225</span></a>    <span class="s2">&quot;OBSERVED_CHURN_COL&quot;</span><span class="p">,</span>
-</span><span id="L-226"><a href="#L-226"><span class="linenos">226</span></a>    <span class="s2">&quot;OBSERVED_DIAGNOSTIC_REQUIRED_COLUMNS&quot;</span><span class="p">,</span>
-</span><span id="L-227"><a href="#L-227"><span class="linenos">227</span></a>    <span class="s2">&quot;OBSERVED_U_COL&quot;</span><span class="p">,</span>
-</span><span id="L-228"><a href="#L-228"><span class="linenos">228</span></a>    <span class="s2">&quot;PREMIUM_COL&quot;</span><span class="p">,</span>
-</span><span id="L-229"><a href="#L-229"><span class="linenos">229</span></a>    <span class="s2">&quot;PREMIUM_COL_INDEX&quot;</span><span class="p">,</span>
-</span><span id="L-230"><a href="#L-230"><span class="linenos">230</span></a>    <span class="s2">&quot;REQUIRED_DATASET_COLUMNS&quot;</span><span class="p">,</span>
-</span><span id="L-231"><a href="#L-231"><span class="linenos">231</span></a>    <span class="s2">&quot;TARGET_COLS&quot;</span><span class="p">,</span>
-</span><span id="L-232"><a href="#L-232"><span class="linenos">232</span></a>    <span class="s2">&quot;UNUSED_X_COLS&quot;</span><span class="p">,</span>
-</span><span id="L-233"><a href="#L-233"><span class="linenos">233</span></a>    <span class="s2">&quot;USED_X_COLS&quot;</span><span class="p">,</span>
-</span><span id="L-234"><a href="#L-234"><span class="linenos">234</span></a><span class="p">]</span>
+</span><span id="L-125"><a href="#L-125"><span class="linenos">125</span></a><span class="n">AcceptanceModelType</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span>
+</span><span id="L-126"><a href="#L-126"><span class="linenos">126</span></a>    <span class="s2">&quot;glm_20260527&quot;</span><span class="p">,</span>
+</span><span id="L-127"><a href="#L-127"><span class="linenos">127</span></a>    <span class="s2">&quot;xgb_20260527&quot;</span><span class="p">,</span>
+</span><span id="L-128"><a href="#L-128"><span class="linenos">128</span></a>    <span class="s2">&quot;xgb_20260728&quot;</span><span class="p">,</span>
+</span><span id="L-129"><a href="#L-129"><span class="linenos">129</span></a>    <span class="s2">&quot;xgb_logit_spline_20260706&quot;</span><span class="p">,</span>
+</span><span id="L-130"><a href="#L-130"><span class="linenos">130</span></a>    <span class="s2">&quot;xgb_monotone_spline_20260728&quot;</span><span class="p">,</span>
+</span><span id="L-131"><a href="#L-131"><span class="linenos">131</span></a><span class="p">]</span>
+</span><span id="L-132"><a href="#L-132"><span class="linenos">132</span></a><span class="n">LossModelType</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;glm_20260527&quot;</span><span class="p">,</span> <span class="s2">&quot;xgb_20260527&quot;</span><span class="p">,</span> <span class="s2">&quot;xgb_20260728&quot;</span><span class="p">]</span>
+</span><span id="L-133"><a href="#L-133"><span class="linenos">133</span></a>
+</span><span id="L-134"><a href="#L-134"><span class="linenos">134</span></a><span class="n">ACCEPTANCE_MODEL_ARTIFACTS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="n">AcceptanceModelType</span><span class="p">,</span> <span class="n">ArtifactSpec</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="L-135"><a href="#L-135"><span class="linenos">135</span></a>    <span class="s2">&quot;glm_20260527&quot;</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="L-136"><a href="#L-136"><span class="linenos">136</span></a>        <span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="n">DATA_DIR</span> <span class="o">/</span> <span class="s2">&quot;models&quot;</span> <span class="o">/</span> <span class="s2">&quot;linear&quot;</span> <span class="o">/</span> <span class="s2">&quot;acceptance_model_linear_cv_20260527_142758.pkl&quot;</span><span class="p">,</span>
+</span><span id="L-137"><a href="#L-137"><span class="linenos">137</span></a>        <span class="s2">&quot;contains_feature_processor&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+</span><span id="L-138"><a href="#L-138"><span class="linenos">138</span></a>        <span class="s2">&quot;probability_target&quot;</span><span class="p">:</span> <span class="s2">&quot;acceptance&quot;</span><span class="p">,</span>
+</span><span id="L-139"><a href="#L-139"><span class="linenos">139</span></a>        <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;First-fold LogisticRegression acceptance model with fitted FeatureProcessor.&quot;</span><span class="p">,</span>
+</span><span id="L-140"><a href="#L-140"><span class="linenos">140</span></a>    <span class="p">},</span>
+</span><span id="L-141"><a href="#L-141"><span class="linenos">141</span></a>    <span class="s2">&quot;xgb_20260527&quot;</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="L-142"><a href="#L-142"><span class="linenos">142</span></a>        <span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="n">DATA_DIR</span> <span class="o">/</span> <span class="s2">&quot;models&quot;</span> <span class="o">/</span> <span class="s2">&quot;xgb&quot;</span> <span class="o">/</span> <span class="s2">&quot;acceptance_model_xgb_cv_20260527_151725.pkl&quot;</span><span class="p">,</span>
+</span><span id="L-143"><a href="#L-143"><span class="linenos">143</span></a>        <span class="s2">&quot;contains_feature_processor&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+</span><span id="L-144"><a href="#L-144"><span class="linenos">144</span></a>        <span class="s2">&quot;probability_target&quot;</span><span class="p">:</span> <span class="s2">&quot;acceptance&quot;</span><span class="p">,</span>
+</span><span id="L-145"><a href="#L-145"><span class="linenos">145</span></a>        <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;First-fold XGBoost acceptance model with fitted FeatureProcessor.&quot;</span><span class="p">,</span>
+</span><span id="L-146"><a href="#L-146"><span class="linenos">146</span></a>    <span class="p">},</span>
+</span><span id="L-147"><a href="#L-147"><span class="linenos">147</span></a>    <span class="s2">&quot;xgb_20260728&quot;</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="L-148"><a href="#L-148"><span class="linenos">148</span></a>        <span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="n">DATA_DIR</span> <span class="o">/</span> <span class="s2">&quot;models&quot;</span> <span class="o">/</span> <span class="s2">&quot;xgb&quot;</span> <span class="o">/</span> <span class="s2">&quot;acceptance_model_xgb.pkl&quot;</span><span class="p">,</span>
+</span><span id="L-149"><a href="#L-149"><span class="linenos">149</span></a>        <span class="s2">&quot;contains_feature_processor&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+</span><span id="L-150"><a href="#L-150"><span class="linenos">150</span></a>        <span class="s2">&quot;probability_target&quot;</span><span class="p">:</span> <span class="s2">&quot;acceptance&quot;</span><span class="p">,</span>
+</span><span id="L-151"><a href="#L-151"><span class="linenos">151</span></a>        <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Selected-best-fold XGBoost acceptance model supplied 20260728.&quot;</span><span class="p">,</span>
+</span><span id="L-152"><a href="#L-152"><span class="linenos">152</span></a>    <span class="p">},</span>
+</span><span id="L-153"><a href="#L-153"><span class="linenos">153</span></a>    <span class="s2">&quot;xgb_logit_spline_20260706&quot;</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="L-154"><a href="#L-154"><span class="linenos">154</span></a>        <span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="n">DATA_DIR</span> <span class="o">/</span> <span class="s2">&quot;models&quot;</span> <span class="o">/</span> <span class="s2">&quot;xgb_logit_spline&quot;</span> <span class="o">/</span> <span class="s2">&quot;acceptance_xgb_logit_spline_20260706_112929.npz&quot;</span><span class="p">,</span>
+</span><span id="L-155"><a href="#L-155"><span class="linenos">155</span></a>        <span class="s2">&quot;contains_feature_processor&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+</span><span id="L-156"><a href="#L-156"><span class="linenos">156</span></a>        <span class="s2">&quot;probability_target&quot;</span><span class="p">:</span> <span class="s2">&quot;acceptance&quot;</span><span class="p">,</span>
+</span><span id="L-157"><a href="#L-157"><span class="linenos">157</span></a>        <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Portable per-policy isotonic logit splines derived from xgb_20260527.&quot;</span><span class="p">,</span>
+</span><span id="L-158"><a href="#L-158"><span class="linenos">158</span></a>    <span class="p">},</span>
+</span><span id="L-159"><a href="#L-159"><span class="linenos">159</span></a>    <span class="s2">&quot;xgb_monotone_spline_20260728&quot;</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="L-160"><a href="#L-160"><span class="linenos">160</span></a>        <span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="n">DATA_DIR</span> <span class="o">/</span> <span class="s2">&quot;models&quot;</span> <span class="o">/</span> <span class="s2">&quot;xgb_monotone_spline&quot;</span> <span class="o">/</span> <span class="s2">&quot;acceptance_xgb_monotone_spline_20260728.npz&quot;</span><span class="p">,</span>
+</span><span id="L-161"><a href="#L-161"><span class="linenos">161</span></a>        <span class="s2">&quot;contains_feature_processor&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+</span><span id="L-162"><a href="#L-162"><span class="linenos">162</span></a>        <span class="s2">&quot;probability_target&quot;</span><span class="p">:</span> <span class="s2">&quot;acceptance&quot;</span><span class="p">,</span>
+</span><span id="L-163"><a href="#L-163"><span class="linenos">163</span></a>        <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Portable per-policy monotone PCHIP curves derived from xgb_20260728.&quot;</span><span class="p">,</span>
+</span><span id="L-164"><a href="#L-164"><span class="linenos">164</span></a>    <span class="p">},</span>
+</span><span id="L-165"><a href="#L-165"><span class="linenos">165</span></a><span class="p">}</span>
+</span><span id="L-166"><a href="#L-166"><span class="linenos">166</span></a>
+</span><span id="L-167"><a href="#L-167"><span class="linenos">167</span></a><span class="n">LOSS_MODEL_ARTIFACTS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="n">LossModelType</span><span class="p">,</span> <span class="n">ArtifactSpec</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="L-168"><a href="#L-168"><span class="linenos">168</span></a>    <span class="s2">&quot;glm_20260527&quot;</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="L-169"><a href="#L-169"><span class="linenos">169</span></a>        <span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="n">DATA_DIR</span> <span class="o">/</span> <span class="s2">&quot;models&quot;</span> <span class="o">/</span> <span class="s2">&quot;linear&quot;</span> <span class="o">/</span> <span class="s2">&quot;financial_loss_model_linear_cv_20260527_142758.pkl&quot;</span><span class="p">,</span>
+</span><span id="L-170"><a href="#L-170"><span class="linenos">170</span></a>        <span class="s2">&quot;contains_feature_processor&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+</span><span id="L-171"><a href="#L-171"><span class="linenos">171</span></a>        <span class="s2">&quot;probability_target&quot;</span><span class="p">:</span> <span class="s2">&quot;none&quot;</span><span class="p">,</span>
+</span><span id="L-172"><a href="#L-172"><span class="linenos">172</span></a>        <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;First-fold Ridge financial-loss model with fitted FeatureProcessor.&quot;</span><span class="p">,</span>
+</span><span id="L-173"><a href="#L-173"><span class="linenos">173</span></a>    <span class="p">},</span>
+</span><span id="L-174"><a href="#L-174"><span class="linenos">174</span></a>    <span class="s2">&quot;xgb_20260527&quot;</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="L-175"><a href="#L-175"><span class="linenos">175</span></a>        <span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="n">DATA_DIR</span> <span class="o">/</span> <span class="s2">&quot;models&quot;</span> <span class="o">/</span> <span class="s2">&quot;xgb&quot;</span> <span class="o">/</span> <span class="s2">&quot;financial_loss_model_xgb_cv_20260527_151725.pkl&quot;</span><span class="p">,</span>
+</span><span id="L-176"><a href="#L-176"><span class="linenos">176</span></a>        <span class="s2">&quot;contains_feature_processor&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+</span><span id="L-177"><a href="#L-177"><span class="linenos">177</span></a>        <span class="s2">&quot;probability_target&quot;</span><span class="p">:</span> <span class="s2">&quot;none&quot;</span><span class="p">,</span>
+</span><span id="L-178"><a href="#L-178"><span class="linenos">178</span></a>        <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;First-fold XGBoost financial-loss model with fitted FeatureProcessor.&quot;</span><span class="p">,</span>
+</span><span id="L-179"><a href="#L-179"><span class="linenos">179</span></a>    <span class="p">},</span>
+</span><span id="L-180"><a href="#L-180"><span class="linenos">180</span></a>    <span class="s2">&quot;xgb_20260728&quot;</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="L-181"><a href="#L-181"><span class="linenos">181</span></a>        <span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="n">DATA_DIR</span> <span class="o">/</span> <span class="s2">&quot;models&quot;</span> <span class="o">/</span> <span class="s2">&quot;xgb&quot;</span> <span class="o">/</span> <span class="s2">&quot;financial_loss_model_xgb.pkl&quot;</span><span class="p">,</span>
+</span><span id="L-182"><a href="#L-182"><span class="linenos">182</span></a>        <span class="s2">&quot;contains_feature_processor&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+</span><span id="L-183"><a href="#L-183"><span class="linenos">183</span></a>        <span class="s2">&quot;probability_target&quot;</span><span class="p">:</span> <span class="s2">&quot;none&quot;</span><span class="p">,</span>
+</span><span id="L-184"><a href="#L-184"><span class="linenos">184</span></a>        <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Selected-best-fold XGBoost financial-loss model supplied 20260728.&quot;</span><span class="p">,</span>
+</span><span id="L-185"><a href="#L-185"><span class="linenos">185</span></a>    <span class="p">},</span>
+</span><span id="L-186"><a href="#L-186"><span class="linenos">186</span></a><span class="p">}</span>
+</span><span id="L-187"><a href="#L-187"><span class="linenos">187</span></a>
+</span><span id="L-188"><a href="#L-188"><span class="linenos">188</span></a>
+</span><span id="L-189"><a href="#L-189"><span class="linenos">189</span></a><span class="n">MODEL_ARTIFACTS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;glm&quot;</span><span class="p">,</span> <span class="s2">&quot;xgb&quot;</span><span class="p">,</span> <span class="s2">&quot;xgb_logit_spline&quot;</span><span class="p">],</span> <span class="n">ModelArtifactSpec</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="L-190"><a href="#L-190"><span class="linenos">190</span></a>    <span class="s2">&quot;glm&quot;</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="L-191"><a href="#L-191"><span class="linenos">191</span></a>        <span class="s2">&quot;acceptance&quot;</span><span class="p">:</span> <span class="n">ACCEPTANCE_MODEL_ARTIFACTS</span><span class="p">[</span><span class="s2">&quot;glm_20260527&quot;</span><span class="p">],</span>
+</span><span id="L-192"><a href="#L-192"><span class="linenos">192</span></a>        <span class="s2">&quot;loss&quot;</span><span class="p">:</span> <span class="n">LOSS_MODEL_ARTIFACTS</span><span class="p">[</span><span class="s2">&quot;glm_20260527&quot;</span><span class="p">],</span>
+</span><span id="L-193"><a href="#L-193"><span class="linenos">193</span></a>    <span class="p">},</span>
+</span><span id="L-194"><a href="#L-194"><span class="linenos">194</span></a>    <span class="s2">&quot;xgb&quot;</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="L-195"><a href="#L-195"><span class="linenos">195</span></a>        <span class="s2">&quot;acceptance&quot;</span><span class="p">:</span> <span class="n">ACCEPTANCE_MODEL_ARTIFACTS</span><span class="p">[</span><span class="s2">&quot;xgb_20260527&quot;</span><span class="p">],</span>
+</span><span id="L-196"><a href="#L-196"><span class="linenos">196</span></a>        <span class="s2">&quot;loss&quot;</span><span class="p">:</span> <span class="n">LOSS_MODEL_ARTIFACTS</span><span class="p">[</span><span class="s2">&quot;xgb_20260527&quot;</span><span class="p">],</span>
+</span><span id="L-197"><a href="#L-197"><span class="linenos">197</span></a>    <span class="p">},</span>
+</span><span id="L-198"><a href="#L-198"><span class="linenos">198</span></a>    <span class="s2">&quot;xgb_logit_spline&quot;</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="L-199"><a href="#L-199"><span class="linenos">199</span></a>        <span class="s2">&quot;acceptance&quot;</span><span class="p">:</span> <span class="n">ACCEPTANCE_MODEL_ARTIFACTS</span><span class="p">[</span><span class="s2">&quot;xgb_logit_spline_20260706&quot;</span><span class="p">],</span>
+</span><span id="L-200"><a href="#L-200"><span class="linenos">200</span></a>        <span class="s2">&quot;loss&quot;</span><span class="p">:</span> <span class="n">LOSS_MODEL_ARTIFACTS</span><span class="p">[</span><span class="s2">&quot;glm_20260527&quot;</span><span class="p">],</span>
+</span><span id="L-201"><a href="#L-201"><span class="linenos">201</span></a>    <span class="p">},</span>
+</span><span id="L-202"><a href="#L-202"><span class="linenos">202</span></a><span class="p">}</span>
+</span><span id="L-203"><a href="#L-203"><span class="linenos">203</span></a>
+</span><span id="L-204"><a href="#L-204"><span class="linenos">204</span></a><span class="n">DATASET_COLUMN_DESCRIPTIONS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="L-205"><a href="#L-205"><span class="linenos">205</span></a>    <span class="s2">&quot;X_vehicle_value_at_new&quot;</span><span class="p">:</span> <span class="s2">&quot;Vehicle value at new; model X covariate.&quot;</span><span class="p">,</span>
+</span><span id="L-206"><a href="#L-206"><span class="linenos">206</span></a>    <span class="s2">&quot;X_driving_license_years&quot;</span><span class="p">:</span> <span class="s2">&quot;Driving-license tenure; model X covariate.&quot;</span><span class="p">,</span>
+</span><span id="L-207"><a href="#L-207"><span class="linenos">207</span></a>    <span class="s2">&quot;X_vehicle_weight&quot;</span><span class="p">:</span> <span class="s2">&quot;Vehicle weight category; model X covariate.&quot;</span><span class="p">,</span>
+</span><span id="L-208"><a href="#L-208"><span class="linenos">208</span></a>    <span class="s2">&quot;X_vehicle_power&quot;</span><span class="p">:</span> <span class="s2">&quot;Vehicle power category; model X covariate.&quot;</span><span class="p">,</span>
+</span><span id="L-209"><a href="#L-209"><span class="linenos">209</span></a>    <span class="s2">&quot;X_fuel_type_vehicle&quot;</span><span class="p">:</span> <span class="s2">&quot;Fuel type category; model X covariate.&quot;</span><span class="p">,</span>
+</span><span id="L-210"><a href="#L-210"><span class="linenos">210</span></a>    <span class="s2">&quot;X_policy_tenure&quot;</span><span class="p">:</span> <span class="s2">&quot;Policy tenure; model X covariate.&quot;</span><span class="p">,</span>
+</span><span id="L-211"><a href="#L-211"><span class="linenos">211</span></a>    <span class="s2">&quot;X_policy_count&quot;</span><span class="p">:</span> <span class="s2">&quot;Policy count; model X covariate.&quot;</span><span class="p">,</span>
+</span><span id="L-212"><a href="#L-212"><span class="linenos">212</span></a>    <span class="s2">&quot;X_gender&quot;</span><span class="p">:</span> <span class="s2">&quot;Customer gender category; model X covariate.&quot;</span><span class="p">,</span>
+</span><span id="L-213"><a href="#L-213"><span class="linenos">213</span></a>    <span class="s2">&quot;X_ttm_claims&quot;</span><span class="p">:</span> <span class="s2">&quot;Trailing claims count; model X covariate.&quot;</span><span class="p">,</span>
+</span><span id="L-214"><a href="#L-214"><span class="linenos">214</span></a>    <span class="s2">&quot;X_customer_segment&quot;</span><span class="p">:</span> <span class="s2">&quot;Customer segment category; model X covariate.&quot;</span><span class="p">,</span>
+</span><span id="L-215"><a href="#L-215"><span class="linenos">215</span></a>    <span class="s2">&quot;X_installment&quot;</span><span class="p">:</span> <span class="s2">&quot;Installment category; model X covariate.&quot;</span><span class="p">,</span>
+</span><span id="L-216"><a href="#L-216"><span class="linenos">216</span></a>    <span class="s2">&quot;X_bonus_malus_rating&quot;</span><span class="p">:</span> <span class="s2">&quot;Bonus-malus rating; model X covariate.&quot;</span><span class="p">,</span>
+</span><span id="L-217"><a href="#L-217"><span class="linenos">217</span></a>    <span class="s2">&quot;X_vehicle_type&quot;</span><span class="p">:</span> <span class="s2">&quot;Vehicle type category; model X covariate.&quot;</span><span class="p">,</span>
+</span><span id="L-218"><a href="#L-218"><span class="linenos">218</span></a>    <span class="s2">&quot;X_district&quot;</span><span class="p">:</span> <span class="s2">&quot;District code; model X covariate.&quot;</span><span class="p">,</span>
+</span><span id="L-219"><a href="#L-219"><span class="linenos">219</span></a>    <span class="s2">&quot;X_age&quot;</span><span class="p">:</span> <span class="s2">&quot;Customer age; model X covariate.&quot;</span><span class="p">,</span>
+</span><span id="L-220"><a href="#L-220"><span class="linenos">220</span></a>    <span class="s2">&quot;X_distr_channel&quot;</span><span class="p">:</span> <span class="s2">&quot;Distribution channel category; model X covariate.&quot;</span><span class="p">,</span>
+</span><span id="L-221"><a href="#L-221"><span class="linenos">221</span></a>    <span class="s2">&quot;X_claim_tot_value&quot;</span><span class="p">:</span> <span class="s2">&quot;Total claim value feature; model X covariate.&quot;</span><span class="p">,</span>
+</span><span id="L-222"><a href="#L-222"><span class="linenos">222</span></a>    <span class="s2">&quot;X_vehicle_age&quot;</span><span class="p">:</span> <span class="s2">&quot;Vehicle age; model X covariate.&quot;</span><span class="p">,</span>
+</span><span id="L-223"><a href="#L-223"><span class="linenos">223</span></a>    <span class="n">PREMIUM_COL</span><span class="p">:</span> <span class="s2">&quot;Baseline policy premium used for deterministic revenue.&quot;</span><span class="p">,</span>
+</span><span id="L-224"><a href="#L-224"><span class="linenos">224</span></a>    <span class="s2">&quot;X_upcoming_premium&quot;</span><span class="p">:</span> <span class="s2">&quot;Lookahead premium column retained in CSV but excluded from objective X.&quot;</span><span class="p">,</span>
+</span><span id="L-225"><a href="#L-225"><span class="linenos">225</span></a>    <span class="n">OBSERVED_U_COL</span><span class="p">:</span> <span class="s2">&quot;Historical observed pricing action; diagnostics only.&quot;</span><span class="p">,</span>
+</span><span id="L-226"><a href="#L-226"><span class="linenos">226</span></a>    <span class="n">OBSERVED_CHURN_COL</span><span class="p">:</span> <span class="s2">&quot;Observed churn target; diagnostics only.&quot;</span><span class="p">,</span>
+</span><span id="L-227"><a href="#L-227"><span class="linenos">227</span></a>    <span class="n">LOSS_TARGET_COL</span><span class="p">:</span> <span class="s2">&quot;Observed financial-loss target; diagnostics only.&quot;</span><span class="p">,</span>
+</span><span id="L-228"><a href="#L-228"><span class="linenos">228</span></a>    <span class="s2">&quot;dummy_id&quot;</span><span class="p">:</span> <span class="s2">&quot;Source row identifier; excluded from objective X.&quot;</span><span class="p">,</span>
+</span><span id="L-229"><a href="#L-229"><span class="linenos">229</span></a>    <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;Policy/customer identifier; excluded from objective X.&quot;</span><span class="p">,</span>
+</span><span id="L-230"><a href="#L-230"><span class="linenos">230</span></a>    <span class="s2">&quot;start_date&quot;</span><span class="p">:</span> <span class="s2">&quot;Policy start date; excluded from objective X.&quot;</span><span class="p">,</span>
+</span><span id="L-231"><a href="#L-231"><span class="linenos">231</span></a>    <span class="s2">&quot;end_date&quot;</span><span class="p">:</span> <span class="s2">&quot;Policy end date; excluded from objective X.&quot;</span><span class="p">,</span>
+</span><span id="L-232"><a href="#L-232"><span class="linenos">232</span></a>    <span class="s2">&quot;check_date&quot;</span><span class="p">:</span> <span class="s2">&quot;Source check date; excluded from objective X.&quot;</span><span class="p">,</span>
+</span><span id="L-233"><a href="#L-233"><span class="linenos">233</span></a><span class="p">}</span>
+</span><span id="L-234"><a href="#L-234"><span class="linenos">234</span></a>
+</span><span id="L-235"><a href="#L-235"><span class="linenos">235</span></a>
+</span><span id="L-236"><a href="#L-236"><span class="linenos">236</span></a><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="L-237"><a href="#L-237"><span class="linenos">237</span></a>    <span class="s2">&quot;ACCEPTANCE_MODEL_ARTIFACTS&quot;</span><span class="p">,</span>
+</span><span id="L-238"><a href="#L-238"><span class="linenos">238</span></a>    <span class="s2">&quot;ACCEPTANCE_PROBABILITY_COL&quot;</span><span class="p">,</span>
+</span><span id="L-239"><a href="#L-239"><span class="linenos">239</span></a>    <span class="s2">&quot;ACCEPTANCE_STATE_COLS&quot;</span><span class="p">,</span>
+</span><span id="L-240"><a href="#L-240"><span class="linenos">240</span></a>    <span class="s2">&quot;AcceptanceModelType&quot;</span><span class="p">,</span>
+</span><span id="L-241"><a href="#L-241"><span class="linenos">241</span></a>    <span class="s2">&quot;ACTION_COLS&quot;</span><span class="p">,</span>
+</span><span id="L-242"><a href="#L-242"><span class="linenos">242</span></a>    <span class="s2">&quot;DATA_DIR&quot;</span><span class="p">,</span>
+</span><span id="L-243"><a href="#L-243"><span class="linenos">243</span></a>    <span class="s2">&quot;DATASET_COLUMN_DESCRIPTIONS&quot;</span><span class="p">,</span>
+</span><span id="L-244"><a href="#L-244"><span class="linenos">244</span></a>    <span class="s2">&quot;DATASET_DESCRIPTION&quot;</span><span class="p">,</span>
+</span><span id="L-245"><a href="#L-245"><span class="linenos">245</span></a>    <span class="s2">&quot;DATASET_FILENAME&quot;</span><span class="p">,</span>
+</span><span id="L-246"><a href="#L-246"><span class="linenos">246</span></a>    <span class="s2">&quot;DATASET_PATH&quot;</span><span class="p">,</span>
+</span><span id="L-247"><a href="#L-247"><span class="linenos">247</span></a>    <span class="s2">&quot;DATASET_SCHEMA_VERSION&quot;</span><span class="p">,</span>
+</span><span id="L-248"><a href="#L-248"><span class="linenos">248</span></a>    <span class="s2">&quot;DATASET_SOURCE&quot;</span><span class="p">,</span>
+</span><span id="L-249"><a href="#L-249"><span class="linenos">249</span></a>    <span class="s2">&quot;DATE_COLS&quot;</span><span class="p">,</span>
+</span><span id="L-250"><a href="#L-250"><span class="linenos">250</span></a>    <span class="s2">&quot;FEATURE_COLS&quot;</span><span class="p">,</span>
+</span><span id="L-251"><a href="#L-251"><span class="linenos">251</span></a>    <span class="s2">&quot;FEATURE_COLS_GLM&quot;</span><span class="p">,</span>
+</span><span id="L-252"><a href="#L-252"><span class="linenos">252</span></a>    <span class="s2">&quot;FEATURE_COLS_XGB&quot;</span><span class="p">,</span>
+</span><span id="L-253"><a href="#L-253"><span class="linenos">253</span></a>    <span class="s2">&quot;ID_COLS&quot;</span><span class="p">,</span>
+</span><span id="L-254"><a href="#L-254"><span class="linenos">254</span></a>    <span class="s2">&quot;LOOKAHEAD_X_COLS&quot;</span><span class="p">,</span>
+</span><span id="L-255"><a href="#L-255"><span class="linenos">255</span></a>    <span class="s2">&quot;LOSS_FEATURE_COLS&quot;</span><span class="p">,</span>
+</span><span id="L-256"><a href="#L-256"><span class="linenos">256</span></a>    <span class="s2">&quot;LOSS_MODEL_ARTIFACTS&quot;</span><span class="p">,</span>
+</span><span id="L-257"><a href="#L-257"><span class="linenos">257</span></a>    <span class="s2">&quot;LossModelType&quot;</span><span class="p">,</span>
+</span><span id="L-258"><a href="#L-258"><span class="linenos">258</span></a>    <span class="s2">&quot;LOSS_TARGET_COL&quot;</span><span class="p">,</span>
+</span><span id="L-259"><a href="#L-259"><span class="linenos">259</span></a>    <span class="s2">&quot;MODEL_ARTIFACTS&quot;</span><span class="p">,</span>
+</span><span id="L-260"><a href="#L-260"><span class="linenos">260</span></a>    <span class="s2">&quot;MODEL_FEATURE_COLS&quot;</span><span class="p">,</span>
+</span><span id="L-261"><a href="#L-261"><span class="linenos">261</span></a>    <span class="s2">&quot;OBJECTIVE_EXCLUDED_COLS&quot;</span><span class="p">,</span>
+</span><span id="L-262"><a href="#L-262"><span class="linenos">262</span></a>    <span class="s2">&quot;OBJECTIVE_REQUIRED_COLUMNS&quot;</span><span class="p">,</span>
+</span><span id="L-263"><a href="#L-263"><span class="linenos">263</span></a>    <span class="s2">&quot;OBSERVED_CHURN_COL&quot;</span><span class="p">,</span>
+</span><span id="L-264"><a href="#L-264"><span class="linenos">264</span></a>    <span class="s2">&quot;OBSERVED_DIAGNOSTIC_REQUIRED_COLUMNS&quot;</span><span class="p">,</span>
+</span><span id="L-265"><a href="#L-265"><span class="linenos">265</span></a>    <span class="s2">&quot;OBSERVED_U_COL&quot;</span><span class="p">,</span>
+</span><span id="L-266"><a href="#L-266"><span class="linenos">266</span></a>    <span class="s2">&quot;PREMIUM_COL&quot;</span><span class="p">,</span>
+</span><span id="L-267"><a href="#L-267"><span class="linenos">267</span></a>    <span class="s2">&quot;PREMIUM_COL_INDEX&quot;</span><span class="p">,</span>
+</span><span id="L-268"><a href="#L-268"><span class="linenos">268</span></a>    <span class="s2">&quot;REQUIRED_DATASET_COLUMNS&quot;</span><span class="p">,</span>
+</span><span id="L-269"><a href="#L-269"><span class="linenos">269</span></a>    <span class="s2">&quot;TARGET_COLS&quot;</span><span class="p">,</span>
+</span><span id="L-270"><a href="#L-270"><span class="linenos">270</span></a>    <span class="s2">&quot;UNUSED_X_COLS&quot;</span><span class="p">,</span>
+</span><span id="L-271"><a href="#L-271"><span class="linenos">271</span></a>    <span class="s2">&quot;USED_X_COLS&quot;</span><span class="p">,</span>
+</span><span id="L-272"><a href="#L-272"><span class="linenos">272</span></a><span class="p">]</span>
 </span></pre></div>
 
 
             </section>
+                <section id="ACCEPTANCE_MODEL_ARTIFACTS">
+                    <div class="attr variable">
+            <span class="name">ACCEPTANCE_MODEL_ARTIFACTS</span><span class="annotation">: dict[typing.Literal[&#39;glm_20260527&#39;, &#39;xgb_20260527&#39;, &#39;xgb_20260728&#39;, &#39;xgb_logit_spline_20260706&#39;, &#39;xgb_monotone_spline_20260728&#39;], data.dataset_metadata.ArtifactSpec]</span>        =
+<input id="ACCEPTANCE_MODEL_ARTIFACTS-view-value" class="view-value-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+            <label class="view-value-button pdoc-button" for="ACCEPTANCE_MODEL_ARTIFACTS-view-value"></label><span class="default_value">{&#39;glm_20260527&#39;: {&#39;path&#39;: PosixPath(&#39;/home/anakhag/projects/generali-pricing/worktrees/feature-monotone-spline-artifact/src/data/models/linear/acceptance_model_linear_cv_20260527_142758.pkl&#39;), &#39;contains_feature_processor&#39;: True, &#39;probability_target&#39;: &#39;acceptance&#39;, &#39;description&#39;: &#39;First-fold LogisticRegression acceptance model with fitted FeatureProcessor.&#39;}, &#39;xgb_20260527&#39;: {&#39;path&#39;: PosixPath(&#39;/home/anakhag/projects/generali-pricing/worktrees/feature-monotone-spline-artifact/src/data/models/xgb/acceptance_model_xgb_cv_20260527_151725.pkl&#39;), &#39;contains_feature_processor&#39;: True, &#39;probability_target&#39;: &#39;acceptance&#39;, &#39;description&#39;: &#39;First-fold XGBoost acceptance model with fitted FeatureProcessor.&#39;}, &#39;xgb_20260728&#39;: {&#39;path&#39;: PosixPath(&#39;/home/anakhag/projects/generali-pricing/worktrees/feature-monotone-spline-artifact/src/data/models/xgb/acceptance_model_xgb.pkl&#39;), &#39;contains_feature_processor&#39;: True, &#39;probability_target&#39;: &#39;acceptance&#39;, &#39;description&#39;: &#39;Selected-best-fold XGBoost acceptance model supplied 20260728.&#39;}, &#39;xgb_logit_spline_20260706&#39;: {&#39;path&#39;: PosixPath(&#39;/home/anakhag/projects/generali-pricing/worktrees/feature-monotone-spline-artifact/src/data/models/xgb_logit_spline/acceptance_xgb_logit_spline_20260706_112929.npz&#39;), &#39;contains_feature_processor&#39;: False, &#39;probability_target&#39;: &#39;acceptance&#39;, &#39;description&#39;: &#39;Portable per-policy isotonic logit splines derived from xgb_20260527.&#39;}, &#39;xgb_monotone_spline_20260728&#39;: {&#39;path&#39;: PosixPath(&#39;/home/anakhag/projects/generali-pricing/worktrees/feature-monotone-spline-artifact/src/data/models/xgb_monotone_spline/acceptance_xgb_monotone_spline_20260728.npz&#39;), &#39;contains_feature_processor&#39;: False, &#39;probability_target&#39;: &#39;acceptance&#39;, &#39;description&#39;: &#39;Portable per-policy monotone PCHIP curves derived from xgb_20260728.&#39;}}</span>
+
+        
+    </div>
+    <a class="headerlink" href="#ACCEPTANCE_MODEL_ARTIFACTS"></a>
+    
+    
+
+                </section>
                 <section id="ACCEPTANCE_PROBABILITY_COL">
                     <div class="attr variable">
             <span class="name">ACCEPTANCE_PROBABILITY_COL</span>        =
 <span class="default_value">&#39;is_churn&#39;</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ACCEPTANCE_PROBABILITY_COL"></a>
-
-
+    
+    
 
                 </section>
                 <section id="ACCEPTANCE_STATE_COLS">
@@ -424,11 +487,24 @@
 <input id="ACCEPTANCE_STATE_COLS-view-value" class="view-value-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
             <label class="view-value-button pdoc-button" for="ACCEPTANCE_STATE_COLS-view-value"></label><span class="default_value">(&#39;X_vehicle_value_at_new&#39;, &#39;X_driving_license_years&#39;, &#39;X_vehicle_weight&#39;, &#39;X_vehicle_power&#39;, &#39;X_fuel_type_vehicle&#39;, &#39;X_policy_tenure&#39;, &#39;X_policy_count&#39;, &#39;X_gender&#39;, &#39;X_ttm_claims&#39;, &#39;X_customer_segment&#39;, &#39;X_installment&#39;, &#39;X_bonus_malus_rating&#39;, &#39;X_vehicle_type&#39;, &#39;X_district&#39;, &#39;X_age&#39;, &#39;X_distr_channel&#39;, &#39;X_claim_tot_value&#39;, &#39;X_vehicle_age&#39;, &#39;X_policy_premium&#39;)</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ACCEPTANCE_STATE_COLS"></a>
+    
+    
 
+                </section>
+                <section id="AcceptanceModelType">
+                    <div class="attr variable">
+            <span class="name">AcceptanceModelType</span>        =
+<input id="AcceptanceModelType-view-value" class="view-value-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+            <label class="view-value-button pdoc-button" for="AcceptanceModelType-view-value"></label><span class="default_value">typing.Literal[&#39;glm_20260527&#39;, &#39;xgb_20260527&#39;, &#39;xgb_20260728&#39;, &#39;xgb_logit_spline_20260706&#39;, &#39;xgb_monotone_spline_20260728&#39;]</span>
 
+        
+    </div>
+    <a class="headerlink" href="#AcceptanceModelType"></a>
+    
+    
 
                 </section>
                 <section id="ACTION_COLS">
@@ -436,24 +512,24 @@
             <span class="name">ACTION_COLS</span><span class="annotation">: tuple[str, ...]</span>        =
 <span class="default_value">(&#39;U&#39;,)</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ACTION_COLS"></a>
-
-
+    
+    
 
                 </section>
                 <section id="DATA_DIR">
                     <div class="attr variable">
             <span class="name">DATA_DIR</span>        =
 <input id="DATA_DIR-view-value" class="view-value-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
-            <label class="view-value-button pdoc-button" for="DATA_DIR-view-value"></label><span class="default_value">PosixPath(&#39;/home/anakhag/projects/generali-pricing/worktrees/feature-zeroth-order-envelope-analysis/src/data&#39;)</span>
+            <label class="view-value-button pdoc-button" for="DATA_DIR-view-value"></label><span class="default_value">PosixPath(&#39;/home/anakhag/projects/generali-pricing/worktrees/feature-monotone-spline-artifact/src/data&#39;)</span>
 
-
+        
     </div>
     <a class="headerlink" href="#DATA_DIR"></a>
-
-
+    
+    
 
                 </section>
                 <section id="DATASET_COLUMN_DESCRIPTIONS">
@@ -462,11 +538,11 @@
 <input id="DATASET_COLUMN_DESCRIPTIONS-view-value" class="view-value-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
             <label class="view-value-button pdoc-button" for="DATASET_COLUMN_DESCRIPTIONS-view-value"></label><span class="default_value">{&#39;X_vehicle_value_at_new&#39;: &#39;Vehicle value at new; model X covariate.&#39;, &#39;X_driving_license_years&#39;: &#39;Driving-license tenure; model X covariate.&#39;, &#39;X_vehicle_weight&#39;: &#39;Vehicle weight category; model X covariate.&#39;, &#39;X_vehicle_power&#39;: &#39;Vehicle power category; model X covariate.&#39;, &#39;X_fuel_type_vehicle&#39;: &#39;Fuel type category; model X covariate.&#39;, &#39;X_policy_tenure&#39;: &#39;Policy tenure; model X covariate.&#39;, &#39;X_policy_count&#39;: &#39;Policy count; model X covariate.&#39;, &#39;X_gender&#39;: &#39;Customer gender category; model X covariate.&#39;, &#39;X_ttm_claims&#39;: &#39;Trailing claims count; model X covariate.&#39;, &#39;X_customer_segment&#39;: &#39;Customer segment category; model X covariate.&#39;, &#39;X_installment&#39;: &#39;Installment category; model X covariate.&#39;, &#39;X_bonus_malus_rating&#39;: &#39;Bonus-malus rating; model X covariate.&#39;, &#39;X_vehicle_type&#39;: &#39;Vehicle type category; model X covariate.&#39;, &#39;X_district&#39;: &#39;District code; model X covariate.&#39;, &#39;X_age&#39;: &#39;Customer age; model X covariate.&#39;, &#39;X_distr_channel&#39;: &#39;Distribution channel category; model X covariate.&#39;, &#39;X_claim_tot_value&#39;: &#39;Total claim value feature; model X covariate.&#39;, &#39;X_vehicle_age&#39;: &#39;Vehicle age; model X covariate.&#39;, &#39;X_policy_premium&#39;: &#39;Baseline policy premium used for deterministic revenue.&#39;, &#39;X_upcoming_premium&#39;: &#39;Lookahead premium column retained in CSV but excluded from objective X.&#39;, &#39;U&#39;: &#39;Historical observed pricing action; diagnostics only.&#39;, &#39;is_churn&#39;: &#39;Observed churn target; diagnostics only.&#39;, &#39;Y_G_Loss&#39;: &#39;Observed financial-loss target; diagnostics only.&#39;, &#39;dummy_id&#39;: &#39;Source row identifier; excluded from objective X.&#39;, &#39;id&#39;: &#39;Policy/customer identifier; excluded from objective X.&#39;, &#39;start_date&#39;: &#39;Policy start date; excluded from objective X.&#39;, &#39;end_date&#39;: &#39;Policy end date; excluded from objective X.&#39;, &#39;check_date&#39;: &#39;Source check date; excluded from objective X.&#39;}</span>
 
-
+        
     </div>
     <a class="headerlink" href="#DATASET_COLUMN_DESCRIPTIONS"></a>
-
-
+    
+    
 
                 </section>
                 <section id="DATASET_DESCRIPTION">
@@ -475,11 +551,11 @@
 <input id="DATASET_DESCRIPTION-view-value" class="view-value-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
             <label class="view-value-button pdoc-button" for="DATASET_DESCRIPTION-view-value"></label><span class="default_value">&#39;Canonical 052726 real-data source rows for pricing optimization. The objective uses only the model artifact X covariates and policy-generated U; observed targets/actions are retained only for diagnostics.&#39;</span>
 
-
+        
     </div>
     <a class="headerlink" href="#DATASET_DESCRIPTION"></a>
-
-
+    
+    
 
                 </section>
                 <section id="DATASET_FILENAME">
@@ -487,24 +563,24 @@
             <span class="name">DATASET_FILENAME</span>        =
 <span class="default_value">&#39;dataset.csv&#39;</span>
 
-
+        
     </div>
     <a class="headerlink" href="#DATASET_FILENAME"></a>
-
-
+    
+    
 
                 </section>
                 <section id="DATASET_PATH">
                     <div class="attr variable">
             <span class="name">DATASET_PATH</span>        =
 <input id="DATASET_PATH-view-value" class="view-value-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
-            <label class="view-value-button pdoc-button" for="DATASET_PATH-view-value"></label><span class="default_value">PosixPath(&#39;/home/anakhag/projects/generali-pricing/worktrees/feature-zeroth-order-envelope-analysis/src/data/dataset.csv&#39;)</span>
+            <label class="view-value-button pdoc-button" for="DATASET_PATH-view-value"></label><span class="default_value">PosixPath(&#39;/home/anakhag/projects/generali-pricing/worktrees/feature-monotone-spline-artifact/src/data/dataset.csv&#39;)</span>
 
-
+        
     </div>
     <a class="headerlink" href="#DATASET_PATH"></a>
-
-
+    
+    
 
                 </section>
                 <section id="DATASET_SCHEMA_VERSION">
@@ -512,11 +588,11 @@
             <span class="name">DATASET_SCHEMA_VERSION</span>        =
 <span class="default_value">&#39;generali-052726-v1&#39;</span>
 
-
+        
     </div>
     <a class="headerlink" href="#DATASET_SCHEMA_VERSION"></a>
-
-
+    
+    
 
                 </section>
                 <section id="DATASET_SOURCE">
@@ -524,11 +600,11 @@
             <span class="name">DATASET_SOURCE</span>        =
 <span class="default_value">&#39;Generali 052726 raw single-year export with separate acceptance/loss artifacts.&#39;</span>
 
-
+        
     </div>
     <a class="headerlink" href="#DATASET_SOURCE"></a>
-
-
+    
+    
 
                 </section>
                 <section id="DATE_COLS">
@@ -536,11 +612,11 @@
             <span class="name">DATE_COLS</span><span class="annotation">: tuple[str, ...]</span>        =
 <span class="default_value">(&#39;start_date&#39;, &#39;end_date&#39;, &#39;check_date&#39;)</span>
 
-
+        
     </div>
     <a class="headerlink" href="#DATE_COLS"></a>
-
-
+    
+    
 
                 </section>
                 <section id="FEATURE_COLS">
@@ -549,11 +625,11 @@
 <input id="FEATURE_COLS-view-value" class="view-value-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
             <label class="view-value-button pdoc-button" for="FEATURE_COLS-view-value"></label><span class="default_value">(&#39;X_vehicle_value_at_new&#39;, &#39;X_driving_license_years&#39;, &#39;X_vehicle_weight&#39;, &#39;X_vehicle_power&#39;, &#39;X_fuel_type_vehicle&#39;, &#39;X_policy_tenure&#39;, &#39;X_policy_count&#39;, &#39;X_gender&#39;, &#39;X_ttm_claims&#39;, &#39;X_customer_segment&#39;, &#39;X_installment&#39;, &#39;X_bonus_malus_rating&#39;, &#39;X_vehicle_type&#39;, &#39;X_district&#39;, &#39;X_age&#39;, &#39;X_distr_channel&#39;, &#39;X_claim_tot_value&#39;, &#39;X_vehicle_age&#39;, &#39;X_policy_premium&#39;)</span>
 
-
+        
     </div>
     <a class="headerlink" href="#FEATURE_COLS"></a>
-
-
+    
+    
 
                 </section>
                 <section id="FEATURE_COLS_GLM">
@@ -562,11 +638,11 @@
 <input id="FEATURE_COLS_GLM-view-value" class="view-value-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
             <label class="view-value-button pdoc-button" for="FEATURE_COLS_GLM-view-value"></label><span class="default_value">(&#39;X_vehicle_value_at_new&#39;, &#39;X_driving_license_years&#39;, &#39;X_vehicle_weight&#39;, &#39;X_vehicle_power&#39;, &#39;X_fuel_type_vehicle&#39;, &#39;X_policy_tenure&#39;, &#39;X_policy_count&#39;, &#39;X_gender&#39;, &#39;X_ttm_claims&#39;, &#39;X_customer_segment&#39;, &#39;X_installment&#39;, &#39;X_bonus_malus_rating&#39;, &#39;X_vehicle_type&#39;, &#39;X_district&#39;, &#39;X_age&#39;, &#39;X_distr_channel&#39;, &#39;X_claim_tot_value&#39;, &#39;X_vehicle_age&#39;, &#39;X_policy_premium&#39;)</span>
 
-
+        
     </div>
     <a class="headerlink" href="#FEATURE_COLS_GLM"></a>
-
-
+    
+    
 
                 </section>
                 <section id="FEATURE_COLS_XGB">
@@ -575,11 +651,11 @@
 <input id="FEATURE_COLS_XGB-view-value" class="view-value-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
             <label class="view-value-button pdoc-button" for="FEATURE_COLS_XGB-view-value"></label><span class="default_value">(&#39;X_vehicle_value_at_new&#39;, &#39;X_driving_license_years&#39;, &#39;X_vehicle_weight&#39;, &#39;X_vehicle_power&#39;, &#39;X_fuel_type_vehicle&#39;, &#39;X_policy_tenure&#39;, &#39;X_policy_count&#39;, &#39;X_gender&#39;, &#39;X_ttm_claims&#39;, &#39;X_customer_segment&#39;, &#39;X_installment&#39;, &#39;X_bonus_malus_rating&#39;, &#39;X_vehicle_type&#39;, &#39;X_district&#39;, &#39;X_age&#39;, &#39;X_distr_channel&#39;, &#39;X_claim_tot_value&#39;, &#39;X_vehicle_age&#39;, &#39;X_policy_premium&#39;)</span>
 
-
+        
     </div>
     <a class="headerlink" href="#FEATURE_COLS_XGB"></a>
-
-
+    
+    
 
                 </section>
                 <section id="ID_COLS">
@@ -587,11 +663,11 @@
             <span class="name">ID_COLS</span><span class="annotation">: tuple[str, ...]</span>        =
 <span class="default_value">(&#39;dummy_id&#39;, &#39;id&#39;)</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ID_COLS"></a>
-
-
+    
+    
 
                 </section>
                 <section id="LOOKAHEAD_X_COLS">
@@ -599,11 +675,11 @@
             <span class="name">LOOKAHEAD_X_COLS</span><span class="annotation">: tuple[str, ...]</span>        =
 <span class="default_value">(&#39;X_upcoming_premium&#39;,)</span>
 
-
+        
     </div>
     <a class="headerlink" href="#LOOKAHEAD_X_COLS"></a>
-
-
+    
+    
 
                 </section>
                 <section id="LOSS_FEATURE_COLS">
@@ -612,11 +688,36 @@
 <input id="LOSS_FEATURE_COLS-view-value" class="view-value-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
             <label class="view-value-button pdoc-button" for="LOSS_FEATURE_COLS-view-value"></label><span class="default_value">(&#39;X_vehicle_value_at_new&#39;, &#39;X_driving_license_years&#39;, &#39;X_vehicle_weight&#39;, &#39;X_vehicle_power&#39;, &#39;X_fuel_type_vehicle&#39;, &#39;X_policy_tenure&#39;, &#39;X_policy_count&#39;, &#39;X_gender&#39;, &#39;X_ttm_claims&#39;, &#39;X_customer_segment&#39;, &#39;X_installment&#39;, &#39;X_bonus_malus_rating&#39;, &#39;X_vehicle_type&#39;, &#39;X_district&#39;, &#39;X_age&#39;, &#39;X_distr_channel&#39;, &#39;X_claim_tot_value&#39;, &#39;X_vehicle_age&#39;)</span>
 
-
+        
     </div>
     <a class="headerlink" href="#LOSS_FEATURE_COLS"></a>
+    
+    
 
+                </section>
+                <section id="LOSS_MODEL_ARTIFACTS">
+                    <div class="attr variable">
+            <span class="name">LOSS_MODEL_ARTIFACTS</span><span class="annotation">: dict[typing.Literal[&#39;glm_20260527&#39;, &#39;xgb_20260527&#39;, &#39;xgb_20260728&#39;], data.dataset_metadata.ArtifactSpec]</span>        =
+<input id="LOSS_MODEL_ARTIFACTS-view-value" class="view-value-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+            <label class="view-value-button pdoc-button" for="LOSS_MODEL_ARTIFACTS-view-value"></label><span class="default_value">{&#39;glm_20260527&#39;: {&#39;path&#39;: PosixPath(&#39;/home/anakhag/projects/generali-pricing/worktrees/feature-monotone-spline-artifact/src/data/models/linear/financial_loss_model_linear_cv_20260527_142758.pkl&#39;), &#39;contains_feature_processor&#39;: True, &#39;probability_target&#39;: &#39;none&#39;, &#39;description&#39;: &#39;First-fold Ridge financial-loss model with fitted FeatureProcessor.&#39;}, &#39;xgb_20260527&#39;: {&#39;path&#39;: PosixPath(&#39;/home/anakhag/projects/generali-pricing/worktrees/feature-monotone-spline-artifact/src/data/models/xgb/financial_loss_model_xgb_cv_20260527_151725.pkl&#39;), &#39;contains_feature_processor&#39;: True, &#39;probability_target&#39;: &#39;none&#39;, &#39;description&#39;: &#39;First-fold XGBoost financial-loss model with fitted FeatureProcessor.&#39;}, &#39;xgb_20260728&#39;: {&#39;path&#39;: PosixPath(&#39;/home/anakhag/projects/generali-pricing/worktrees/feature-monotone-spline-artifact/src/data/models/xgb/financial_loss_model_xgb.pkl&#39;), &#39;contains_feature_processor&#39;: True, &#39;probability_target&#39;: &#39;none&#39;, &#39;description&#39;: &#39;Selected-best-fold XGBoost financial-loss model supplied 20260728.&#39;}}</span>
 
+        
+    </div>
+    <a class="headerlink" href="#LOSS_MODEL_ARTIFACTS"></a>
+    
+    
+
+                </section>
+                <section id="LossModelType">
+                    <div class="attr variable">
+            <span class="name">LossModelType</span>        =
+<span class="default_value">typing.Literal[&#39;glm_20260527&#39;, &#39;xgb_20260527&#39;, &#39;xgb_20260728&#39;]</span>
+
+        
+    </div>
+    <a class="headerlink" href="#LossModelType"></a>
+    
+    
 
                 </section>
                 <section id="LOSS_TARGET_COL">
@@ -624,24 +725,24 @@
             <span class="name">LOSS_TARGET_COL</span>        =
 <span class="default_value">&#39;Y_G_Loss&#39;</span>
 
-
+        
     </div>
     <a class="headerlink" href="#LOSS_TARGET_COL"></a>
-
-
+    
+    
 
                 </section>
                 <section id="MODEL_ARTIFACTS">
                     <div class="attr variable">
             <span class="name">MODEL_ARTIFACTS</span><span class="annotation">: dict[typing.Literal[&#39;glm&#39;, &#39;xgb&#39;, &#39;xgb_logit_spline&#39;], data.dataset_metadata.ModelArtifactSpec]</span>        =
 <input id="MODEL_ARTIFACTS-view-value" class="view-value-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
-            <label class="view-value-button pdoc-button" for="MODEL_ARTIFACTS-view-value"></label><span class="default_value">{&#39;glm&#39;: {&#39;acceptance&#39;: {&#39;path&#39;: PosixPath(&#39;/home/anakhag/projects/generali-pricing/worktrees/feature-zeroth-order-envelope-analysis/src/data/models/linear/acceptance_model_linear_cv_20260527_142758.pkl&#39;), &#39;contains_feature_processor&#39;: True, &#39;probability_target&#39;: &#39;acceptance&#39;, &#39;description&#39;: &#39;First-fold LogisticRegression acceptance model with fitted FeatureProcessor.&#39;}, &#39;loss&#39;: {&#39;path&#39;: PosixPath(&#39;/home/anakhag/projects/generali-pricing/worktrees/feature-zeroth-order-envelope-analysis/src/data/models/linear/financial_loss_model_linear_cv_20260527_142758.pkl&#39;), &#39;contains_feature_processor&#39;: True, &#39;probability_target&#39;: &#39;none&#39;, &#39;description&#39;: &#39;First-fold Ridge financial-loss model with fitted FeatureProcessor.&#39;}}, &#39;xgb&#39;: {&#39;acceptance&#39;: {&#39;path&#39;: PosixPath(&#39;/home/anakhag/projects/generali-pricing/worktrees/feature-zeroth-order-envelope-analysis/src/data/models/xgb/acceptance_model_xgb_cv_20260527_151725.pkl&#39;), &#39;contains_feature_processor&#39;: True, &#39;probability_target&#39;: &#39;acceptance&#39;, &#39;description&#39;: &#39;First-fold XGBoost acceptance model with fitted FeatureProcessor.&#39;}, &#39;loss&#39;: {&#39;path&#39;: PosixPath(&#39;/home/anakhag/projects/generali-pricing/worktrees/feature-zeroth-order-envelope-analysis/src/data/models/xgb/financial_loss_model_xgb_cv_20260527_151725.pkl&#39;), &#39;contains_feature_processor&#39;: True, &#39;probability_target&#39;: &#39;none&#39;, &#39;description&#39;: &#39;First-fold XGBoost financial-loss model with fitted FeatureProcessor.&#39;}}, &#39;xgb_logit_spline&#39;: {&#39;acceptance&#39;: {&#39;path&#39;: PosixPath(&#39;/home/anakhag/projects/generali-pricing/worktrees/feature-zeroth-order-envelope-analysis/src/data/models/xgb_logit_spline/acceptance_xgb_logit_spline_20260706_112929.npz&#39;), &#39;contains_feature_processor&#39;: False, &#39;probability_target&#39;: &#39;acceptance&#39;, &#39;description&#39;: &#39;Per-policy isotonic logit-spline acceptance curves derived from the five-fold XGBoost ensemble.&#39;}, &#39;loss&#39;: {&#39;path&#39;: PosixPath(&#39;/home/anakhag/projects/generali-pricing/worktrees/feature-zeroth-order-envelope-analysis/src/data/models/linear/financial_loss_model_linear_cv_20260527_142758.pkl&#39;), &#39;contains_feature_processor&#39;: True, &#39;probability_target&#39;: &#39;none&#39;, &#39;description&#39;: &#39;First-fold Ridge financial-loss model paired with spline acceptance.&#39;}}}</span>
+            <label class="view-value-button pdoc-button" for="MODEL_ARTIFACTS-view-value"></label><span class="default_value">{&#39;glm&#39;: {&#39;acceptance&#39;: {&#39;path&#39;: PosixPath(&#39;/home/anakhag/projects/generali-pricing/worktrees/feature-monotone-spline-artifact/src/data/models/linear/acceptance_model_linear_cv_20260527_142758.pkl&#39;), &#39;contains_feature_processor&#39;: True, &#39;probability_target&#39;: &#39;acceptance&#39;, &#39;description&#39;: &#39;First-fold LogisticRegression acceptance model with fitted FeatureProcessor.&#39;}, &#39;loss&#39;: {&#39;path&#39;: PosixPath(&#39;/home/anakhag/projects/generali-pricing/worktrees/feature-monotone-spline-artifact/src/data/models/linear/financial_loss_model_linear_cv_20260527_142758.pkl&#39;), &#39;contains_feature_processor&#39;: True, &#39;probability_target&#39;: &#39;none&#39;, &#39;description&#39;: &#39;First-fold Ridge financial-loss model with fitted FeatureProcessor.&#39;}}, &#39;xgb&#39;: {&#39;acceptance&#39;: {&#39;path&#39;: PosixPath(&#39;/home/anakhag/projects/generali-pricing/worktrees/feature-monotone-spline-artifact/src/data/models/xgb/acceptance_model_xgb_cv_20260527_151725.pkl&#39;), &#39;contains_feature_processor&#39;: True, &#39;probability_target&#39;: &#39;acceptance&#39;, &#39;description&#39;: &#39;First-fold XGBoost acceptance model with fitted FeatureProcessor.&#39;}, &#39;loss&#39;: {&#39;path&#39;: PosixPath(&#39;/home/anakhag/projects/generali-pricing/worktrees/feature-monotone-spline-artifact/src/data/models/xgb/financial_loss_model_xgb_cv_20260527_151725.pkl&#39;), &#39;contains_feature_processor&#39;: True, &#39;probability_target&#39;: &#39;none&#39;, &#39;description&#39;: &#39;First-fold XGBoost financial-loss model with fitted FeatureProcessor.&#39;}}, &#39;xgb_logit_spline&#39;: {&#39;acceptance&#39;: {&#39;path&#39;: PosixPath(&#39;/home/anakhag/projects/generali-pricing/worktrees/feature-monotone-spline-artifact/src/data/models/xgb_logit_spline/acceptance_xgb_logit_spline_20260706_112929.npz&#39;), &#39;contains_feature_processor&#39;: False, &#39;probability_target&#39;: &#39;acceptance&#39;, &#39;description&#39;: &#39;Portable per-policy isotonic logit splines derived from xgb_20260527.&#39;}, &#39;loss&#39;: {&#39;path&#39;: PosixPath(&#39;/home/anakhag/projects/generali-pricing/worktrees/feature-monotone-spline-artifact/src/data/models/linear/financial_loss_model_linear_cv_20260527_142758.pkl&#39;), &#39;contains_feature_processor&#39;: True, &#39;probability_target&#39;: &#39;none&#39;, &#39;description&#39;: &#39;First-fold Ridge financial-loss model with fitted FeatureProcessor.&#39;}}}</span>
 
-
+        
     </div>
     <a class="headerlink" href="#MODEL_ARTIFACTS"></a>
-
-
+    
+    
 
                 </section>
                 <section id="MODEL_FEATURE_COLS">
@@ -650,11 +751,11 @@
 <input id="MODEL_FEATURE_COLS-view-value" class="view-value-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
             <label class="view-value-button pdoc-button" for="MODEL_FEATURE_COLS-view-value"></label><span class="default_value">{&#39;glm&#39;: (&#39;X_vehicle_value_at_new&#39;, &#39;X_driving_license_years&#39;, &#39;X_vehicle_weight&#39;, &#39;X_vehicle_power&#39;, &#39;X_fuel_type_vehicle&#39;, &#39;X_policy_tenure&#39;, &#39;X_policy_count&#39;, &#39;X_gender&#39;, &#39;X_ttm_claims&#39;, &#39;X_customer_segment&#39;, &#39;X_installment&#39;, &#39;X_bonus_malus_rating&#39;, &#39;X_vehicle_type&#39;, &#39;X_district&#39;, &#39;X_age&#39;, &#39;X_distr_channel&#39;, &#39;X_claim_tot_value&#39;, &#39;X_vehicle_age&#39;, &#39;X_policy_premium&#39;), &#39;xgb&#39;: (&#39;X_vehicle_value_at_new&#39;, &#39;X_driving_license_years&#39;, &#39;X_vehicle_weight&#39;, &#39;X_vehicle_power&#39;, &#39;X_fuel_type_vehicle&#39;, &#39;X_policy_tenure&#39;, &#39;X_policy_count&#39;, &#39;X_gender&#39;, &#39;X_ttm_claims&#39;, &#39;X_customer_segment&#39;, &#39;X_installment&#39;, &#39;X_bonus_malus_rating&#39;, &#39;X_vehicle_type&#39;, &#39;X_district&#39;, &#39;X_age&#39;, &#39;X_distr_channel&#39;, &#39;X_claim_tot_value&#39;, &#39;X_vehicle_age&#39;, &#39;X_policy_premium&#39;), &#39;xgb_logit_spline&#39;: (&#39;X_vehicle_value_at_new&#39;, &#39;X_driving_license_years&#39;, &#39;X_vehicle_weight&#39;, &#39;X_vehicle_power&#39;, &#39;X_fuel_type_vehicle&#39;, &#39;X_policy_tenure&#39;, &#39;X_policy_count&#39;, &#39;X_gender&#39;, &#39;X_ttm_claims&#39;, &#39;X_customer_segment&#39;, &#39;X_installment&#39;, &#39;X_bonus_malus_rating&#39;, &#39;X_vehicle_type&#39;, &#39;X_district&#39;, &#39;X_age&#39;, &#39;X_distr_channel&#39;, &#39;X_claim_tot_value&#39;, &#39;X_vehicle_age&#39;, &#39;X_policy_premium&#39;)}</span>
 
-
+        
     </div>
     <a class="headerlink" href="#MODEL_FEATURE_COLS"></a>
-
-
+    
+    
 
                 </section>
                 <section id="OBJECTIVE_EXCLUDED_COLS">
@@ -663,11 +764,11 @@
 <input id="OBJECTIVE_EXCLUDED_COLS-view-value" class="view-value-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
             <label class="view-value-button pdoc-button" for="OBJECTIVE_EXCLUDED_COLS-view-value"></label><span class="default_value">(&#39;X_upcoming_premium&#39;, &#39;U&#39;, &#39;Y_G_Loss&#39;, &#39;is_churn&#39;, &#39;dummy_id&#39;, &#39;id&#39;, &#39;start_date&#39;, &#39;end_date&#39;, &#39;check_date&#39;)</span>
 
-
+        
     </div>
     <a class="headerlink" href="#OBJECTIVE_EXCLUDED_COLS"></a>
-
-
+    
+    
 
                 </section>
                 <section id="OBJECTIVE_REQUIRED_COLUMNS">
@@ -676,11 +777,11 @@
 <input id="OBJECTIVE_REQUIRED_COLUMNS-view-value" class="view-value-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
             <label class="view-value-button pdoc-button" for="OBJECTIVE_REQUIRED_COLUMNS-view-value"></label><span class="default_value">(&#39;X_vehicle_value_at_new&#39;, &#39;X_driving_license_years&#39;, &#39;X_vehicle_weight&#39;, &#39;X_vehicle_power&#39;, &#39;X_fuel_type_vehicle&#39;, &#39;X_policy_tenure&#39;, &#39;X_policy_count&#39;, &#39;X_gender&#39;, &#39;X_ttm_claims&#39;, &#39;X_customer_segment&#39;, &#39;X_installment&#39;, &#39;X_bonus_malus_rating&#39;, &#39;X_vehicle_type&#39;, &#39;X_district&#39;, &#39;X_age&#39;, &#39;X_distr_channel&#39;, &#39;X_claim_tot_value&#39;, &#39;X_vehicle_age&#39;, &#39;X_policy_premium&#39;)</span>
 
-
+        
     </div>
     <a class="headerlink" href="#OBJECTIVE_REQUIRED_COLUMNS"></a>
-
-
+    
+    
 
                 </section>
                 <section id="OBSERVED_CHURN_COL">
@@ -688,11 +789,11 @@
             <span class="name">OBSERVED_CHURN_COL</span>        =
 <span class="default_value">&#39;is_churn&#39;</span>
 
-
+        
     </div>
     <a class="headerlink" href="#OBSERVED_CHURN_COL"></a>
-
-
+    
+    
 
                 </section>
                 <section id="OBSERVED_DIAGNOSTIC_REQUIRED_COLUMNS">
@@ -700,11 +801,11 @@
             <span class="name">OBSERVED_DIAGNOSTIC_REQUIRED_COLUMNS</span><span class="annotation">: tuple[str, ...]</span>        =
 <span class="default_value">(&#39;U&#39;, &#39;is_churn&#39;)</span>
 
-
+        
     </div>
     <a class="headerlink" href="#OBSERVED_DIAGNOSTIC_REQUIRED_COLUMNS"></a>
-
-
+    
+    
 
                 </section>
                 <section id="OBSERVED_U_COL">
@@ -712,11 +813,11 @@
             <span class="name">OBSERVED_U_COL</span>        =
 <span class="default_value">&#39;U&#39;</span>
 
-
+        
     </div>
     <a class="headerlink" href="#OBSERVED_U_COL"></a>
-
-
+    
+    
 
                 </section>
                 <section id="PREMIUM_COL">
@@ -724,11 +825,11 @@
             <span class="name">PREMIUM_COL</span>        =
 <span class="default_value">&#39;X_policy_premium&#39;</span>
 
-
+        
     </div>
     <a class="headerlink" href="#PREMIUM_COL"></a>
-
-
+    
+    
 
                 </section>
                 <section id="PREMIUM_COL_INDEX">
@@ -736,11 +837,11 @@
             <span class="name">PREMIUM_COL_INDEX</span>        =
 <span class="default_value">18</span>
 
-
+        
     </div>
     <a class="headerlink" href="#PREMIUM_COL_INDEX"></a>
-
-
+    
+    
 
                 </section>
                 <section id="REQUIRED_DATASET_COLUMNS">
@@ -749,11 +850,11 @@
 <input id="REQUIRED_DATASET_COLUMNS-view-value" class="view-value-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
             <label class="view-value-button pdoc-button" for="REQUIRED_DATASET_COLUMNS-view-value"></label><span class="default_value">(&#39;X_vehicle_value_at_new&#39;, &#39;X_driving_license_years&#39;, &#39;X_vehicle_weight&#39;, &#39;X_vehicle_power&#39;, &#39;X_fuel_type_vehicle&#39;, &#39;X_policy_tenure&#39;, &#39;X_policy_count&#39;, &#39;X_gender&#39;, &#39;X_ttm_claims&#39;, &#39;X_customer_segment&#39;, &#39;X_installment&#39;, &#39;X_bonus_malus_rating&#39;, &#39;X_vehicle_type&#39;, &#39;X_district&#39;, &#39;X_age&#39;, &#39;X_distr_channel&#39;, &#39;X_claim_tot_value&#39;, &#39;X_vehicle_age&#39;, &#39;X_policy_premium&#39;, &#39;U&#39;, &#39;Y_G_Loss&#39;, &#39;is_churn&#39;)</span>
 
-
+        
     </div>
     <a class="headerlink" href="#REQUIRED_DATASET_COLUMNS"></a>
-
-
+    
+    
 
                 </section>
                 <section id="TARGET_COLS">
@@ -761,11 +862,11 @@
             <span class="name">TARGET_COLS</span><span class="annotation">: tuple[str, ...]</span>        =
 <span class="default_value">(&#39;Y_G_Loss&#39;, &#39;is_churn&#39;)</span>
 
-
+        
     </div>
     <a class="headerlink" href="#TARGET_COLS"></a>
-
-
+    
+    
 
                 </section>
                 <section id="UNUSED_X_COLS">
@@ -773,11 +874,11 @@
             <span class="name">UNUSED_X_COLS</span><span class="annotation">: tuple[str, ...]</span>        =
 <span class="default_value">(&#39;X_upcoming_premium&#39;,)</span>
 
-
+        
     </div>
     <a class="headerlink" href="#UNUSED_X_COLS"></a>
-
-
+    
+    
 
                 </section>
                 <section id="USED_X_COLS">
@@ -786,11 +887,11 @@
 <input id="USED_X_COLS-view-value" class="view-value-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
             <label class="view-value-button pdoc-button" for="USED_X_COLS-view-value"></label><span class="default_value">(&#39;X_vehicle_value_at_new&#39;, &#39;X_driving_license_years&#39;, &#39;X_vehicle_weight&#39;, &#39;X_vehicle_power&#39;, &#39;X_fuel_type_vehicle&#39;, &#39;X_policy_tenure&#39;, &#39;X_policy_count&#39;, &#39;X_gender&#39;, &#39;X_ttm_claims&#39;, &#39;X_customer_segment&#39;, &#39;X_installment&#39;, &#39;X_bonus_malus_rating&#39;, &#39;X_vehicle_type&#39;, &#39;X_district&#39;, &#39;X_age&#39;, &#39;X_distr_channel&#39;, &#39;X_claim_tot_value&#39;, &#39;X_vehicle_age&#39;, &#39;X_policy_premium&#39;)</span>
 
-
+        
     </div>
     <a class="headerlink" href="#USED_X_COLS"></a>
-
-
+    
+    
 
                 </section>
     </main>

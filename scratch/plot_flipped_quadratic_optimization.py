@@ -104,42 +104,63 @@ def main(argv: list[str] | None = None) -> None:
 
     output_dir = args.output_dir.expanduser().resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
-    plot_path = output_dir / "flipped_quadratic_iterates.png"
-    plot_trajectories(plot_path, trajectories)
-    print(f"Wrote: {plot_path}")
+    plot_specs = {
+        "full_gd": (
+            "full_batch_gradient_ascent.png",
+            "Full-batch Gradient Ascent",
+            {"color": "C0", "marker": "o", "linestyle": "-"},
+        ),
+        "stein_difference_zo": (
+            "zeroth_order_stein_difference.png",
+            "Zeroth Order Method (Stein Difference)",
+            {"color": "C1", "marker": "^", "linestyle": "-"},
+        ),
+        "finite_difference_zo": (
+            "zeroth_order_finite_difference.png",
+            "Zeroth Order Method (Finite Difference)",
+            {"color": "C2", "marker": "s", "linestyle": "--"},
+        ),
+    }
+    for name, (filename, label, style) in plot_specs.items():
+        plot_trajectory(output_dir / filename, trajectories[name], label, style)
+        print(f"Wrote: {output_dir / filename}")
 
 
-def plot_trajectories(path: Path, trajectories: dict[str, np.ndarray]) -> None:
+def plot_trajectory(
+    path: Path,
+    iterates: np.ndarray,
+    label: str,
+    style: dict[str, str],
+) -> None:
     grid = np.linspace(-3.0, 3.0, 151)
     x_grid, y_grid = np.meshgrid(grid, grid)
     z_grid = -(x_grid**2 + y_grid**2)
 
     fig = plt.figure(figsize=(9, 7))
     ax = fig.add_subplot(111, projection="3d")
-    ax.plot_surface(x_grid, y_grid, z_grid, cmap="viridis", alpha=0.62, linewidth=0)
+    ax.plot_surface(x_grid, y_grid, z_grid, cmap="viridis", alpha=0.90, linewidth=0)
 
-    styles = {
-        "full_gd": {"color": "C0", "marker": "o", "linestyle": "-"},
-        "stein_difference_zo": {"color": "C1", "marker": "^", "linestyle": "-"},
-        "finite_difference_zo": {"color": "C2", "marker": "s", "linestyle": "--"},
-    }
-    for name, iterates in trajectories.items():
-        heights = -(iterates[:, 0] ** 2 + iterates[:, 1] ** 2)
-        ax.plot(
-            iterates[:, 0],
-            iterates[:, 1],
-            heights,
-            label=name,
-            markersize=5,
-            linewidth=2,
-            **styles[name],
-        )
+    # A small vertical rendering offset keeps the path visible above the opaque
+    # surface without changing any optimization values.
+    heights = -(iterates[:, 0] ** 2 + iterates[:, 1] ** 2) + 0.15
+    ax.plot(
+        iterates[:, 0],
+        iterates[:, 1],
+        heights,
+        label=label,
+        markersize=6,
+        markeredgecolor="white",
+        markeredgewidth=0.6,
+        linewidth=2.5,
+        zorder=10,
+        **style,
+    )
 
-    ax.scatter([0.0], [0.0], [0.0], color="black", marker="*", s=100, label="maximum")
+    ax.scatter([0.0], [0.0], [0.18], color="black", marker="*", s=100, label="Maximum", depthshade=False)
     ax.set_xlabel("x")
     ax.set_ylabel("y")
     ax.set_zlabel("f(x, y)")
-    ax.set_title(r"Optimization on $f(x,y)=-(x^2+y^2)$")
+    ax.set_title(label)
     ax.view_init(elev=28, azim=-55)
     ax.legend()
     fig.tight_layout()

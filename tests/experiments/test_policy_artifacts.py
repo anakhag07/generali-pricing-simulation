@@ -136,7 +136,7 @@ def test_policy_artifact_unwraps_noisy_model_based_objective(glm_policy_result) 
 
     artifact = build_policy_artifact(noisy_result, "first_order")
 
-    assert artifact.objective.model_type == "glm"
+    assert artifact.objective.model_type == "linear"
     assert artifact.objective.loss_source == glm_policy_result.config.objective.loss_source
 
 
@@ -200,9 +200,9 @@ def test_policy_artifact_reporter_writes_summary_paths(tmp_path, glm_policy_resu
     )
 
 
-def test_xgb_logit_spline_policy_artifact_replays_id_bound_rows(tmp_path) -> None:
+def test_monotone_spline_policy_artifact_replays_id_bound_rows(tmp_path) -> None:
     config = get_config(
-        "real_data_xgb_logit_spline_base",
+        "real_data_monotone_spline_xgb_base",
         overrides={
             "n_samples": 8,
             "train_fraction": 0.75,
@@ -223,43 +223,9 @@ def test_xgb_logit_spline_policy_artifact_replays_id_bound_rows(tmp_path) -> Non
     artifact = build_policy_artifact(result, "first_order")
     loaded = load_policy_artifact(artifact.save(tmp_path / "policy.json"))
 
-    assert loaded.objective.model_type == "xgb_logit_spline"
+    assert loaded.objective.model_type == "monotone_spline_xgb"
     assert "id" in loaded.load_x(split="train").columns
     actual = loaded.evaluate(split="train")
     expected = result.train_metrics["first_order"]
     assert actual.objective_value == pytest.approx(expected.objective_value)
     assert actual.mean_acceptance == pytest.approx(expected.mean_acceptance)
-
-
-def test_monotone_policy_replay_records_independent_model_ids(tmp_path) -> None:
-    config = get_config(
-        "real_data_monotone_spline_glm_20260728_base",
-        overrides={
-            "n_samples": 8,
-            "train_fraction": 1.0,
-            "test_fraction": 0.0,
-            "policy_kind": "constant",
-            "initial_u": 0.08,
-            "step_rule": "constant",
-            "t_steps": 1,
-            "enabled_estimators": ("first_order",),
-            "grad_norm_tol": None,
-            "plot": False,
-            "verbose": False,
-            "wandb_enabled": False,
-        },
-    )
-    result = run_experiment(config)
-    artifact = build_policy_artifact(result, "first_order")
-    policy_json = artifact.save(tmp_path / "policy.json")
-    loaded = load_policy_artifact(policy_json)
-    payload = json.loads(policy_json.read_text(encoding="utf-8"))
-
-    assert loaded.objective.model_type is None
-    assert loaded.objective.acceptance_model_type == "xgb_monotone_spline_20260728"
-    assert loaded.objective.loss_model_type == "glm_20260527"
-    assert payload["schema_version"] == 2
-    assert "id" in loaded.load_x(split="train").columns
-    assert loaded.evaluate(split="train").objective_value == pytest.approx(
-        result.train_metrics["first_order"].objective_value
-    )

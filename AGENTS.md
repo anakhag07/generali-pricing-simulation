@@ -72,8 +72,7 @@ git worktree add ../worktrees/feature-policy-grid -b feature/policy-grid
 - If the branch already exists, omit `-b` and pass the existing branch name.
 - After entering a worktree, re-read `AGENTS.md`, confirm the branch/status, and
   assume other worktrees may have changed the repo recently.
-- Gitignored data artifacts (`src/data/dataset.csv`, `src/data/models/`, and
-  `src/data/model_sources/`)
+- Gitignored data artifacts (`src/data/dataset.csv` and `src/data/models/`)
   exist only in the canonical checkout, so real-data tests fail in a fresh
   worktree until they are symlinked in:
 
@@ -449,30 +448,17 @@ belongs under `generali/`.
   - When updating any `src/data` artifact or schema, confirm `dataset_metadata.py` matches the current CSV columns and model artifact paths, then run data-loader and model-artifact inference tests
 
 - **`src/data/models/linear/`**
-  - 052726 GLM/linear CV artifact pickles: acceptance classifier and financial-loss regressor; loader uses first fold and the fitted `FeatureProcessor`
+  - Date-free `acceptance.pkl` and `loss.pkl` runtime artifacts for the logistic-acceptance and Ridge-loss models
 
 - **`src/data/models/xgb/`**
-  - 052726 XGBoost CV artifact pickles: acceptance classifier and financial-loss regressor; loader uses first fold and its fitted `FeatureProcessor`
+  - Date-free `acceptance.pkl` and `loss.pkl` runtime artifacts exported from fold index 0 of the newest source CV bundles; source filenames, hashes, and fold remain inside artifact metadata
 
-- **`src/data/models/xgb_logit_spline/`**
-  - Portable NPZ containing 200 per-policy isotonic logit-spline acceptance curves derived from the trusted five-fold XGBoost smoothing bundle
-  - Covers exactly 200 unique canonical `id` rows over fitted action support `[0, 0.16]`; unknown IDs are rejected rather than sent to raw XGBoost
+- **`src/data/models/monotone-spline-xgb/`**
+  - Portable `acceptance-curves.npz` cache containing 200 per-policy monotone PCHIP churn curves derived from `models/xgb/acceptance.pkl`
+  - Runtime validation enforces probability bounds, monotone churn, and non-negative upper-tail slopes; unknown IDs fall back to the canonical raw XGB acceptance model
 
-- **`src/data/models/xgb_monotone_spline/`**
-  - Portable array-only NPZ containing 200 per-policy monotone PCHIP churn curves derived from the trusted 20260728 XGBoost smoothing wrapper
-  - Runtime validation enforces unique canonical rows, probability bounds, monotone churn, and non-negative upper-tail slopes; acceptance is therefore bounded and non-increasing
-
-- **`src/data/model_sources/acceptance/`**
-  - Gitignored archive for the two trusted source-wrapper pickles used only by explicit conversion scripts; runtime code must never load these pickles
-  - Source files use `.source.pkl` names so provenance is visually distinct from runtime NPZ artifacts
-
-- **`src/data/xgb_logit_spline.py`**
-  - Loads/evaluates the portable spline artifact and computes analytical `d_acceptance_du`; also contains deterministic conversion helpers for the legacy notebook pickle
-  - The converter batch-scores all `200 x 17` profile/action rows with `U` explicitly synchronized to the action grid, avoiding the legacy on-demand wrapper's stale-`U` fitting path
-
-- **`src/data/xgb_monotone_spline.py`**
-  - Loads/evaluates portable per-policy PCHIP coefficients with direct acceptance and analytical `d_acceptance_du` interfaces
-  - Pickle compatibility classes are conversion-only; conversion verifies that the embedded booster and preprocessor match the canonical `xgb_20260728` base artifact before writing the runtime NPZ
+- **`src/data/monotone_spline_xgb.py`**
+  - Owns curve fitting, portable artifact I/O, cached evaluation, analytical cached-curve derivatives, and raw-XGB fallback behind one acceptance-model interface
 
 - **`src/data/unused/`**
   - Legacy CSV/notebook exports not used by the current loader; retained only as temporary archive material before deletion
@@ -493,8 +479,7 @@ belongs under `generali/`.
   - `load_observed_u_array(model_type, n_rows=5000, row_indices=None, seed=None)`: loads observed pricing multipliers from sampled canonical dataset rows for diagnostics and plots
   - `load_observed_loss_array(model_type, n_rows=5000, row_indices=None, seed=None)`: loads observed historical `Y_G_Loss` from sampled canonical dataset rows for observed-loss real-data objectives
   - `load_mean_observed_acceptance(model_type)`: computes `1 - is_churn` over complete eligible rows
-  - `load_model_artifacts(model_type)`: loads first-fold `(acceptance_artifact, loss_artifact)` bundles from the 052726 CV dictionaries under `src/data/models/linear/` or `src/data/models/xgb/`
-  - `model_type="xgb_logit_spline"` loads the portable logit-spline acceptance adapter with the linear loss artifact; exact `acceptance_model_type="xgb_monotone_spline_20260728"` loads the monotone-PCHIP adapter. Both carry `id` as a non-policy auxiliary lookup column; the logit artifact has 200 complete covered rows, while monotone experiments use the 199 complete rows among its 200 stored curves
+  - `load_model_artifacts(model_type)`: loads one of the three canonical pairs: `linear`, `xgb`, or `monotone_spline_xgb`; the monotone family composes its cached acceptance curves with canonical XGB acceptance and loss artifacts
   - `ModelArtifactBundle.model_frame(raw_frame)`: converts raw notebook-space columns into the exact model-input frame expected by the bundled estimator
   - `extract_glm_u_coef(glm_pipeline)`: extracts effective d_logit(p_accept)/dU from the inner fitted GLM artifact for analytical gradient computation
 
@@ -561,11 +546,10 @@ belongs under `generali/`.
   - `planted_logistic_base.py`: planted logistic base config (3D, L-BFGS-B step rule, 5000 steps, u*=1.1)
   - `zeroth_order_proof_base.py`: one-dimensional constant-step NumPy preset
     with fixed `theta0=[1]` for finite-difference/Stein proof checks
-  - `real_data_glm_base`: registry-only base built by `real_data_factory.py`; supports `policy_kind`, `feature_order`, `policy_preprocessing`, `constraint_mode`, GLM acceptance `u_coef`, runtime, and estimator overrides
+  - `real_data_linear_base`: canonical linear-family base built by `real_data_factory.py`; `real_data_glm_base` remains a compatibility preset name
     - `compute_backend="jax"` keeps `step_rule="trust-constr"` and swaps supported GLM training callbacks to the fixed-batch JAX prepared objective; use with constant/linear/softmax policies, finite materializable linear/softmax feature maps, and supported estimators `first_order`, `finite_difference`, `gauss_stein`, `spsa`, and `stein_difference`
   - `real_data_xgb_base`: registry-only base built by `real_data_factory.py`; supports the same override axes, with XGB defaults excluding `first_order`
-  - `real_data_xgb_logit_spline_base`: NumPy-only registry base over the 200 covered spline rows; defaults softmax/objective action bounds to `[0, 0.16]` and enables `first_order` through analytical spline acceptance derivatives
-  - `real_data_monotone_spline_glm_20260728_base`: NumPy-only registry base using the 199 complete canonical rows among the 200-policy monotone-PCHIP artifact, with the canonical GLM loss model and analytical spline derivatives
+  - `real_data_monotone_spline_xgb_base`: NumPy-only canonical wrapper family over XGB acceptance/loss; uses all complete rows, cached spline derivatives for 200 profiles, raw-XGB fallback elsewhere, and action bounds `[0, 0.16]`
   - `config_template.py`: copy-first scaffold with `None` placeholders for all `ExperimentConfig` fields plus objective/correctness parameter blocks; not registered as a runnable preset
 
 - **`src/experiments/initialization.py`**
@@ -741,7 +725,6 @@ belongs under `generali/`.
 - `scripts/plot_glm_sensitivity_distribution.py` computes GLM customer elasticities $$d p_{accept}(x, u) / du$$ over a default `u in [-0.3, 0.3]` grid, writes a mean/quantile elasticity-by-`u` curve, selected-`u` elasticity histograms for `{-0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3}` with default `0.5-99.5%` x-axis clipping marked, and CSV summaries under `results/glm-sensitivity-distribution/`
 - `scripts/plot_policy_acceptance_grid.py` loads a saved policy artifact, scores artifact-bound rows by mean absolute acceptance sensitivity over a simulated `u` grid and by predicted loss, randomly samples clients from low/medium/high tertiles for each score, and writes two three-panel client-level acceptance-curve plots plus `sampled_clients.csv` under `results/policy-acceptance-grid/`; omit `--seed` to resample clients each run
 - `scripts/plot_saved_acceptance_floor_frontier.py` re-plots acceptance-floor Pareto frontiers from a saved `acceptance_floor_sweep.csv` (or the latest matching frontier directory) without rerunning optimization; defaults to `first_order` and writes estimator-suffixed Pareto PNGs
-- `scripts/analyze_real_data_model_artifacts.py` compares a candidate semicolon-delimited real-data CSV and trusted raw XGBoost artifact directory with the canonical dataset and current GLM/XGBoost/spline artifacts. It treats stored OOF metrics as primary performance evidence, uses a deterministic configurable common-row sample for descriptive predictions and `U`-grid diagnostics, compares the portable logit-spline and monotone-PCHIP cohorts through their runtime interfaces, and writes seven CSV tables, three plots, and a hierarchy-aware Markdown report under `results/real-data-model-eda/`. It is analysis-only and must not mutate the runtime model registry or copy ignored model/data artifacts.
 - `scripts/query_acceptance_at_u.py` loads a config preset or default GLM/XGB model type and reports mean acceptance for supplied or evenly sampled constant `u` values without running optimization; writes acceptance-curve and historical-`U` rug plots under `results/acceptance_queries/` by default and optionally writes `u,n,mean_acceptance` CSV output
 - `scripts/evaluate_historical_policy_objective.py` reads a saved run `summary.json`, reconstructs selected CSV row positions from full-eligible mode or seed/`n_samples`, prints the estimator theta used, and evaluates final policy prices under historical acceptance `1 - is_churn` and observed `Y_G_Loss`; writes aggregate `summary.json` and row-level `per_row.csv` under `historical_policy_objective/<estimator>/`
   - Prefer `--policy-artifact results/.../policies/<estimator>/policy.json` for new runs; `--summary-json` remains a legacy fallback for outputs created before policy artifacts existed
@@ -750,10 +733,7 @@ belongs under `generali/`.
 - `scripts/run_policy_pca_grid.py` runs the GLM policy PCA-dimensionality grid over configured PCA dimensions and policy classes `(constant, linear, quadratic, third_order, fourth_order, softmax_linear, softmax_quadratic, softmax_third_order, softmax_fourth_order, mlp)`; unconstrained is default, `--constrained` uses `trust-constr` with the observed GLM acceptance floor and a 500-step default cap; outputs aggregate CSVs, summary markdown, and headline/spread plots under `results/policy-pca-grid/`; prints per-condition progress by default and supports `--quiet`. It is launch-aware; `--launch slurm --array` runs one `(pca_dim, policy_class, seed)` condition per array task and the collector writes combined grid outputs
 - `scripts/benchmark_optax_vs_trust_constr.py` benchmarks SciPy minimize against the optax step rules: a planted-logistic group (theta dim 200 LinearPolicy; L-BFGS-B vs `optax-adam`/`optax-sgd`) and a real-data GLM group on the fixed JAX prepared batch (trust-constr with the observed acceptance floor vs optax rules on the smooth-penalty formulation of the same floor). Writes `benchmark.csv` under `results/optax-benchmark/`. On shared CPU nodes pin `OMP_NUM_THREADS`/`OPENBLAS_NUM_THREADS` (and `JAX_PLATFORMS=cpu` off-GPU) — JAX import plus OpenBLAS thread oversubscription inside a CPU-limited slice can slow NumPy matmuls by orders of magnitude and wash out solver timings
 - `scripts/benchmark_experiment_speed.py` benchmarks GLM analytical acceptance vs sklearn `predict_proba`, Stein-difference gradient timing/call counts, repeated objective-cache behavior, and full-vs-subsampled contour grid timing; use it to quantify whether performance changes speed up real-data diagnostics without relying on flaky pytest time thresholds
-- `scripts/prepare_xgb_logit_spline_artifact.py` converts the trusted archived XGBoost smoothing-wrapper pickle into portable per-policy logit-spline arrays; it batch-scores the 200 covered profiles on `U=0,...,0.16`, resolves their canonical CSV row positions, and writes the gitignored NPZ used by `real_data_xgb_logit_spline_base`
-- `scripts/prepare_xgb_monotone_spline_artifact.py` converts the trusted 20260728 wrapper into a validated array-only NPZ of per-policy PCHIP coefficients; it verifies source/base booster and preprocessor identity, records provenance hashes, and writes the runtime artifact used by `real_data_monotone_spline_glm_20260728_base`
-- `manifests/real_data_monotone_model_hierarchy_199.json` compares GLM/GLM, monotone-spline/GLM, XGB/GLM, and XGB/XGB on the exact same 199-policy complete monotone cohort with fixed preprocessing, split, action bounds, and optimizer settings
-- `scripts/run_xgb_logit_spline_experiment.py` runs the canonical CPU/NumPy spline convergence check: all 200 covered profiles with a deterministic 80/20 train/test split by default, bounded softmax policy initialized at `u=0.08`, L-BFGS-B, analytical first-order versus action-space finite-difference gradients, and exact-gradient correctness traces. It delegates all artifacts and canonical convergence/train/test policy plots to `execute_experiment_run(...)` under `results/xgb-logit-spline-experiment/`, exposes `--n-grad-samples` for stochastic estimators such as Stein difference, and accepts shared local/Slurm launch flags
+- `scripts/prepare_runtime_model_artifacts.py` exports the selected CV folds into the date-free `linear/` and `xgb/` runtime files, rebuilds the 200-profile monotone curve cache against the exported XGB acceptance model, records provenance metadata, and optionally prunes every non-canonical runtime artifact
 
 ## Known Issues and Dead Code
 
@@ -888,9 +868,8 @@ exclude `tests/objective/test_jax_prepared_glm*`, `tests/optimization/test_jax_*
 | `test_dataset_metadata.py` | Canonical dataset metadata matches CSV schema and artifact metadata |
 | `test_feature_processor.py` | Centering, sphering, PCA whitening, inverse transform, categorical encoding |
 | `test_model_artifact_inference.py` | GLM/XGB artifact inference and model-based objective smoke tests on canonical rows |
-| `test_xgb_logit_spline.py` | Deterministic spline conversion, portable artifact round-trip, boundary behavior, ID coverage, and analytical derivative checks |
-| `test_xgb_monotone_spline.py` | Trusted-wrapper conversion parity, array-only round-trip, probability/monotonicity validation, boundary behavior, ID coverage, and analytical derivative checks |
-| `test_model_artifact_hierarchy.py` | Runtime/source directory contract, removal of retired model families, unique registered paths/hashes, and source provenance links |
+| `test_monotone_spline_xgb.py` | Array-only round-trip, probability/monotonicity validation, cached derivatives, and raw-XGB fallback |
+| `test_model_artifact_hierarchy.py` | Three-family directory contract, fold-0 lineage, and monotone-wrapper base hash |
 
 #### `tests/experiments/`
 | Test File | Area |
@@ -957,10 +936,8 @@ exclude `tests/objective/test_jax_prepared_glm*`, `tests/optimization/test_jax_*
 | `test_planted_logistic_support_bias_sweep_script.py` | Planted-logistic support-bias sweep constants, support metrics, CSV writing, and aggregate plots |
 | `test_quadratic_homoskedastic_sweep.py` | Scratch quadratic homoskedastic L-BFGS-B grid construction, noise-only seed policy, clean/noisy metric separation, and failed-run aggregation |
 | `test_support_bias_noise_grid_script.py` | Support-bias noise grid objective composition, variant naming round-trip, task specs, zeroth-order estimator set, and clean-objective/bias reconstruction |
-| `test_xgb_logit_spline_experiment_script.py` | XGB logit-spline runner defaults, exact-gradient config, convergence rows, and launch delegation |
 | `test_analyze_zeroth_order_proof_validation.py` | Proof-objective population roots, bias landmarks, exact MSE decomposition, and complete analysis plot/table outputs |
 | `test_analyze_zeroth_order_envelopes.py` | Envelope population-gradient helpers, smooth/kinked stationary points, calibrated nonconvex bifurcation/global switch, linear boundary threshold, and envelope diagnostic output |
-| `test_analyze_real_data_model_artifacts.py` | Dataset identity/difference summaries, CV/best-fold normalization, pairwise/action-grid metrics, portable spline comparison report outputs, and real candidate-artifact smoke checks |
 
 #### `tests/integration/`
 | Test File | Area |

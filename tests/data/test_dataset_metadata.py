@@ -15,13 +15,13 @@ def test_dataset_metadata_matches_canonical_csv_columns():
 def test_model_artifact_metadata_paths_are_configured():
     from data.dataset_metadata import MODEL_ARTIFACTS
 
-    assert set(MODEL_ARTIFACTS) == {"glm", "xgb", "xgb_logit_spline"}
+    assert set(MODEL_ARTIFACTS) == {"linear", "xgb", "monotone_spline_xgb"}
     for model_type, spec in MODEL_ARTIFACTS.items():
-        expected_suffix = ".npz" if model_type == "xgb_logit_spline" else ".pkl"
+        expected_suffix = ".npz" if model_type == "monotone_spline_xgb" else ".pkl"
         assert spec["acceptance"]["path"].suffix == expected_suffix
         assert spec["loss"]["path"].suffix == ".pkl"
         assert spec["acceptance"]["contains_feature_processor"] is (
-            model_type != "xgb_logit_spline"
+            model_type != "monotone_spline_xgb"
         )
         assert spec["loss"]["contains_feature_processor"] is True
 

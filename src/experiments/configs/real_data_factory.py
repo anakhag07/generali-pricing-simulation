@@ -47,7 +47,7 @@ from objective.policy import (
 from objective.policy_preprocessing import fit_policy_feature_preprocessor
 from experiments.seeds import SeedSetup, resolve_seed_setup
 
-ModelType = Literal["glm", "xgb", "xgb_logit_spline"]
+ModelType = Literal["linear", "xgb", "monotone_spline_xgb"]
 PolicyKind = Literal["constant", "linear", "softmax", "mlp"]
 FeatureOrder = Literal["linear", "identity", "quadratic", "cubic", "third_order", "quartic", "fourth_order"]
 PolicyPreprocessing = Literal["artifact", "no_pca"]
@@ -319,8 +319,10 @@ def build_real_data_config(
 
 
 def _normalize_model_type(model_type: str) -> ModelType:
-    if model_type not in {"glm", "xgb", "xgb_logit_spline"}:
-        raise ValueError("model_type must be 'glm', 'xgb', or 'xgb_logit_spline'.")
+    if model_type not in {"linear", "xgb", "monotone_spline_xgb"}:
+        raise ValueError(
+            "model_type must be 'linear', 'xgb', or 'monotone_spline_xgb'."
+        )
     return model_type  # type: ignore[return-value]
 
 
@@ -356,18 +358,15 @@ def _feature_cols(model_type: AcceptanceModelType) -> tuple[str, ...]:
 
 
 def _is_glm_acceptance(model_type: AcceptanceModelType) -> bool:
-    return model_type == "glm_20260527"
+    return model_type == "linear"
 
 
 def _is_raw_xgb_acceptance(model_type: AcceptanceModelType) -> bool:
-    return model_type in {"xgb_20260527", "xgb_20260728"}
+    return model_type == "xgb"
 
 
 def _is_curve_acceptance(model_type: AcceptanceModelType) -> bool:
-    return model_type in {
-        "xgb_logit_spline_20260706",
-        "xgb_monotone_spline_20260728",
-    }
+    return model_type == "monotone_spline_xgb"
 
 
 def _feature_map(feature_order: FeatureOrder) -> FeatureMap:

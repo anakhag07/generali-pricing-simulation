@@ -1,0 +1,30 @@
+{
+  "formula": "cost = sum(weight * f_accept * (gross_loss - revenue))",
+  "profit_formula": "expected_profit = -cost",
+  "rendering_grid_size": 241,
+  "csv_grid_size": 61,
+  "optimum": {
+    "segment_a_price_change": 0.1,
+    "segment_b_price_change": 0.11000000000000001,
+    "expected_profit": 225.64796718871216,
+    "cost": -225.64796718871216
+  },
+  "segments": [
+    {
+      "name": "Segment A",
+      "weight": 0.58,
+      "baseline_acceptance": 0.82,
+      "price_elasticity": 8.0,
+      "baseline_premium": 1000.0,
+      "gross_loss": 720.0
+    },
+    {
+      "name": "Segment B",
+      "weight": 0.42,
+      "baseline_acceptance": 0.72,
+      "price_elasticity": 6.2,
+      "baseline_premium": 880.0,
+      "gross_loss": 650.0
+    }
+  ]
+}

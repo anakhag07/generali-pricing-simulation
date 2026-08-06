@@ -137,8 +137,8 @@ def plot_trajectory(
     z_grid = -(x_grid**2 + y_grid**2)
 
     fig = plt.figure(figsize=(9, 7))
-    ax = fig.add_subplot(111, projection="3d")
-    ax.plot_surface(x_grid, y_grid, z_grid, cmap="viridis", alpha=0.90, linewidth=0)
+    ax = fig.add_subplot(111, projection="3d", computed_zorder=False)
+    ax.plot_surface(x_grid, y_grid, z_grid, cmap="viridis", alpha=0.90, linewidth=0, zorder=1)
 
     # A small vertical rendering offset keeps the path visible above the opaque
     # surface without changing any optimization values.
@@ -156,7 +156,19 @@ def plot_trajectory(
         **style,
     )
 
-    ax.scatter([0.0], [0.0], [0.18], color="black", marker="*", s=100, label="Maximum", depthshade=False)
+    ax.scatter(
+        [0.0],
+        [0.0],
+        [0.40],
+        color="black",
+        edgecolor="white",
+        linewidth=1.2,
+        marker="*",
+        s=220,
+        label="Maximum",
+        depthshade=False,
+        zorder=20,
+    )
     ax.set_xlabel("x")
     ax.set_ylabel("y")
     ax.set_zlabel("f(x, y)")

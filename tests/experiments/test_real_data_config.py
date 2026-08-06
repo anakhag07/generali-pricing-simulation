@@ -21,65 +21,9 @@ def _cfg(name: str, **overrides):
     )
 
 
-@pytest.mark.parametrize("kwargs", [{}, {"n_samples": None}])
-def test_real_data_config_uses_all_eligible_rows_when_n_samples_omitted_or_none(
-    monkeypatch: pytest.MonkeyPatch,
-    kwargs: dict[str, object],
-) -> None:
-    import pandas as pd
-
-    import experiments.configs.real_data_factory as factory
-    from data.loader import FEATURE_COLS_GLM
-
-    eligible = np.asarray([4, 1, 8], dtype=int)
-
-    def fail_sample(*args, **kwargs):
-        raise AssertionError("n_samples=None should not call sampled row selection")
-
-    def fake_load_x_frame(model_type, n_rows=5000, *, row_indices=None, seed=None):
-        del n_rows, seed
-        assert model_type == "glm_20260527"
-        np.testing.assert_array_equal(row_indices, eligible)
-        return pd.DataFrame(
-            np.zeros((eligible.size, len(FEATURE_COLS_GLM)), dtype=float),
-            columns=FEATURE_COLS_GLM,
-        )
-
-    monkeypatch.setattr(factory, "eligible_csv_row_indices", lambda model_type: eligible.copy())
-    monkeypatch.setattr(factory, "sample_csv_row_indices", fail_sample)
-    monkeypatch.setattr(factory, "load_x_frame", fake_load_x_frame)
-    monkeypatch.setattr(
-        factory,
-        "load_model_artifact_pair",
-        lambda acceptance_model_type, loss_model_type: (object(), object()),
-    )
-    monkeypatch.setattr(factory, "extract_glm_u_coef", lambda acceptance_model: -1.0)
-
-    cfg = factory.build_real_data_config(
-        model_type="glm",
-        plot=False,
-        verbose=False,
-        wandb_enabled=False,
-        **kwargs,
-    )
-
-    assert cfg.n_samples == eligible.size
-    assert cfg.x_fixed is not None
-    assert cfg.x_fixed.shape == (eligible.size, len(FEATURE_COLS_GLM))
-    np.testing.assert_array_equal(cfg.x_fixed_row_indices, eligible)
-
-
 @pytest.mark.parametrize(
     "name",
-    [
-        "real_data_glm_base",
-        "real_data_xgb_base",
-        "real_data_xgb_logit_spline_base",
-        "real_data_glm_glm_20260728_base",
-        "real_data_smoothed_glm_20260728_base",
-        "real_data_xgb_glm_20260728_base",
-        "real_data_xgb_xgb_20260728_base",
-    ],
+    ["real_data_linear_base", "real_data_xgb_base", "real_data_monotone_spline_xgb_base"],
 )
 def test_real_data_base_configs_load(name):
     cfg = _cfg(name)
@@ -99,8 +43,8 @@ def test_old_real_data_preset_names_are_removed() -> None:
         get_config("real_data_glm_softmax_policy_base")
 
 
-def test_glm_base_default_shape_and_first_order():
-    cfg = _cfg("real_data_glm_base")
+def test_linear_base_default_shape_and_first_order():
+    cfg = _cfg("real_data_linear_base")
     assert cfg.x_fixed is not None
     assert cfg.x_fixed.shape == (cfg.n_samples, 19)
     assert cfg.state_dim == 19
@@ -115,10 +59,10 @@ def test_xgb_base_default_shape_and_no_first_order():
     assert "first_order" not in cfg.enabled_estimators
 
 
-def test_xgb_logit_spline_base_is_covered_bounded_and_first_order() -> None:
+def test_monotone_spline_xgb_base_is_bounded_and_first_order() -> None:
     from objective.policy import SoftmaxPolicy
 
-    cfg = _cfg("real_data_xgb_logit_spline_base")
+    cfg = _cfg("real_data_monotone_spline_xgb_base")
 
     assert cfg.x_fixed is not None
     assert cfg.x_fixed.shape == (cfg.n_samples, 20)
@@ -133,88 +77,25 @@ def test_xgb_logit_spline_base_is_covered_bounded_and_first_order() -> None:
     assert 0.0 <= acceptance <= 1.0
 
 
-def test_xgb_logit_spline_uses_all_200_covered_rows_by_default() -> None:
+def test_monotone_spline_xgb_uses_all_complete_rows_by_default() -> None:
     from experiments.configs import get_config
 
     cfg = get_config(
-        "real_data_xgb_logit_spline_base",
+        "real_data_monotone_spline_xgb_base",
         overrides={"plot": False, "verbose": False, "wandb_enabled": False},
     )
 
-    assert cfg.n_samples == 200
-    assert cfg.x_fixed.shape == (200, 20)
-    assert cfg.x_fixed["id"].nunique() == 200
-
-
-def test_20260728_smoothed_preset_uses_exact_covered_cohort_and_current_glm_loss() -> None:
-    from experiments.configs import get_config
-
-    cfg = get_config(
-        "real_data_smoothed_glm_20260728_base",
-        overrides={"plot": False, "verbose": False, "wandb_enabled": False},
-    )
-
-    assert cfg.n_samples == 200
-    assert cfg.x_fixed.shape == (200, 20)
-    assert cfg.x_fixed["id"].nunique() == 200
-    assert cfg.objective.acceptance_model.artifact_id == "xgb_sigmoid_20260728"
-    assert cfg.objective.loss_model.artifact_id == "glm_20260527"
+    assert cfg.n_samples > 200
+    assert cfg.x_fixed.shape == (cfg.n_samples, 20)
+    assert cfg.objective.acceptance_model.artifact_id == "monotone_spline_xgb"
+    assert cfg.objective.loss_model.artifact_id == "xgb"
     assert cfg.objective.u_bounds == (0.0, 0.16)
     assert "first_order" in cfg.enabled_estimators
 
 
-@pytest.mark.parametrize(
-    ("name", "acceptance_id", "loss_id"),
-    [
-        ("real_data_glm_glm_20260728_base", "glm_20260527", "glm_20260527"),
-        ("real_data_xgb_glm_20260728_base", "xgb_20260728", "glm_20260527"),
-        ("real_data_xgb_xgb_20260728_base", "xgb_20260728", "xgb_20260728"),
-    ],
-)
-def test_20260728_hierarchy_presets_select_independent_artifacts(
-    name: str, acceptance_id: str, loss_id: str
-) -> None:
-    cfg = _cfg(name)
-
-    assert cfg.objective.acceptance_model.artifact_id == acceptance_id
-    assert cfg.objective.loss_model.artifact_id == loss_id
-
-
-def test_hierarchy_presets_can_share_the_exact_sigmoid_200_row_cohort() -> None:
-    from experiments.configs import get_config
-
-    names = (
-        "real_data_glm_glm_20260728_base",
-        "real_data_smoothed_glm_20260728_base",
-        "real_data_xgb_glm_20260728_base",
-        "real_data_xgb_xgb_20260728_base",
-    )
-    configs = [
-        get_config(
-            name,
-            overrides={
-                "row_cohort_model_type": "xgb_sigmoid_20260728",
-                "plot": False,
-                "verbose": False,
-                "wandb_enabled": False,
-            },
-        )
-        for name in names
-    ]
-
-    expected = configs[0].x_fixed_row_indices
-    assert expected.shape == (200,)
-    for cfg in configs:
-        np.testing.assert_array_equal(cfg.x_fixed_row_indices, expected)
-        expected_columns = 20 if hasattr(
-            cfg.objective.acceptance_model, "covered_policy_ids"
-        ) else 19
-        assert cfg.x_fixed.shape == (200, expected_columns)
-
-
-def test_xgb_logit_spline_rejects_jax_backend() -> None:
+def test_monotone_spline_preset_rejects_jax_backend() -> None:
     with pytest.raises(ValueError, match="only compute_backend='numpy'"):
-        _cfg("real_data_xgb_logit_spline_base", compute_backend="jax")
+        _cfg("real_data_monotone_spline_xgb_base", compute_backend="jax")
 
 
 @pytest.mark.parametrize(

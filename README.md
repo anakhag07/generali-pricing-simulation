@@ -273,20 +273,16 @@ Available base presets include:
 | `synthetic_smoothed_nonconvex_base` | Fixed dummy batch (ignored) | `SmoothedNonconvex` (known global minimum, local-minima traps) |
 | `zeroth_order_proof_base` | Fixed dummy batch (ignored) | One-dimensional strongly convex sine-perturbed quadratic with known minimum |
 | `fixed_regression_base` | Synthetic N(0, I) | `FixedRegressionObjective` |
-| `real_data_glm_base` | All complete eligible raw acceptance CSV rows by default; seeded `n_samples` draw when set | `ModelBasedObjective` (GLM bundle, analytical grad when supported) |
+| `real_data_linear_base` | All complete eligible raw acceptance CSV rows by default; seeded `n_samples` draw when set | `ModelBasedObjective` (linear bundle, analytical grad when supported) |
 | `real_data_xgb_base` | All complete eligible raw acceptance CSV rows by default; seeded `n_samples` draw when set | `ModelBasedObjective` (XGBoost bundle, FD acceptance gradient) |
-| `real_data_xgb_logit_spline_base` | 200 canonical rows covered by per-policy splines; seeded `n_samples` subset when set | `ModelBasedObjective` (XGBoost-derived logit splines, analytical acceptance gradient) |
-| `real_data_glm_glm_20260728_base` | Complete canonical rows | 20260527 GLM acceptance + 20260527 GLM loss |
-| `real_data_smoothed_glm_20260728_base` | Exact 200 rows covered by the supplied sigmoids | 20260728 shifted-sigmoid acceptance + 20260527 GLM loss |
-| `real_data_xgb_glm_20260728_base` | Complete canonical rows | 20260728 XGB acceptance + 20260527 GLM loss |
-| `real_data_xgb_xgb_20260728_base` | Complete canonical rows | 20260728 XGB acceptance + 20260728 XGB loss |
+| `real_data_monotone_spline_xgb_base` | All complete rows; 200 deterministic profiles have cached curves | `ModelBasedObjective` (monotone-spline wrapper over the canonical XGB acceptance and loss models) |
 
 Real-data overrides can select policy, feature order, preprocessing, loss source,
 constraint mode, and runtime knobs without adding a new preset module. Example:
 
 ```python
 config = get_config(
-    "real_data_glm_base",
+    "real_data_linear_base",
     overrides={
         "policy_kind": "softmax",
         "softmax_action_bounds": (-0.1, 0.2),
@@ -320,27 +316,22 @@ Real-data source rows now live in the canonical `src/data/dataset.csv` file,
 with schema/path metadata tracked in `src/data/dataset_metadata.py`. The current
 canonical CSV is the 052726 raw single-year export; both GLM/linear and XGB
 real-data loaders sample complete eligible rows from it.
-Model artifacts live under `src/data/models/linear/`, `src/data/models/xgb/`,
-`src/data/models/xgb_logit_spline/`, and `src/data/models/xgb_sigmoid/`.
-Rebuild the portable spline artifact
-from the trusted legacy smoothing bundle with
-`python scripts/prepare_xgb_logit_spline_artifact.py`.
-Convert the supplied 20260728 shifted-sigmoid wrapper with
-`python scripts/prepare_xgb_sigmoid_artifact.py`; runtime loads only the
-validated NPZ and never invokes the legacy pickle. The loader exposes independent
-versioned `acceptance_model_type` and `loss_model_type` selectors. Historical
-presets retain their original paired artifacts, while the 20260728 best-fold
-bundles are opt-in.
+Model artifacts live under exactly `src/data/models/linear/`,
+`src/data/models/xgb/`, and `src/data/models/monotone-spline-xgb/`. See the
+[model artifact hierarchy](docs/model_artifact_hierarchy.md) for lineage and
+fold selection and wrapper composition. Rebuild the hierarchy with
+`python scripts/prepare_runtime_model_artifacts.py ... --fold 0 --prune`.
+Runtime artifact names are date-free; each pickle records its source CV filename,
+SHA-256, and selected fold as metadata.
 The objective keeps raw CSV X rows at the optimization boundary and reuses each
 artifact's saved `FeatureProcessor` internally. The 052726 classifiers expose
 class-1 probability as direct `p_accept(x, u)`, not churn probability.
-The `xgb_logit_spline` option instead uses 200 customer-specific acceptance
-curves derived from the five-fold XGBoost ensemble. Each curve freezes one
-covered insurance-policy profile and varies `U` over its fitted `[0, 0.16]`
-support. The preset includes only those 200 canonical rows, carries `id` solely
-for curve lookup, defaults bounded policies to the fitted support, and exposes
-an analytical action derivative for NumPy first-order optimization. Unknown IDs
-raise instead of silently falling back to non-differentiable trees.
+The `monotone_spline_xgb` acceptance model composes the canonical XGB model with
+200 cached policy-specific PCHIP curves over `U in [0, 0.16]`. Cached curves
+enforce non-decreasing churn and `[0, 1]` probability bounds. Other complete
+policies follow the original wrapper contract and fall back to raw XGB, so the
+cache size is not a limit on inference. Logit-spline and shifted-sigmoid runtime
+families have been removed.
 Only the model artifact X covariates are numerical objective/policy inputs.
 Historical `U`, `Y_G_Loss`, `is_churn`, IDs/dates, and the lookahead
 `X_upcoming_premium` column remain excluded from those inputs; the spline preset
@@ -515,34 +506,9 @@ files already exist unless `--force` is passed. Example:
 }
 ```
 
-To run the dedicated XGB logit-spline convergence and policy experiment, use:
-
-```bash
-python scripts/run_xgb_logit_spline_experiment.py --launch local
-```
-
-By default the script selects all 200 covered profiles, uses a deterministic
-80/20 train/test split, and compares analytical first-order gradients with
-action-space central finite differences from the same bounded softmax start.
-Exact spline gradients are recorded as correctness diagnostics. Normal run
-outputs, including optimizer status, `summary.json`, `steps.csv`, reloadable
-policy artifacts, convergence plots, and train/test policy plots, are written
-under `results/xgb-logit-spline-experiment/`. Use `--help` for sample-count,
-split, seed, iteration, finite-difference, stochastic-gradient sample-budget,
-estimator, and launch overrides.
-
-To compare all four 20260728 hierarchy choices on the exact same 200-policy
-sigmoid cohort, run:
-
-```bash
-python scripts/run_experiment_manifest.py \
-  manifests/real_data_model_hierarchy_200.json
-```
-
-The manifest fixes the data, split, bounded softmax policy, `no_pca`
-preprocessing policy, optimizer seed, and action-space finite-difference
-estimator. Only the acceptance/loss artifact pair changes between variants.
-Outputs land under `results/real-data-model-hierarchy-200/`.
+The monotone-spline family uses the standard experiment runner through the
+`real_data_monotone_spline_xgb_base` preset.
+Outputs land under `results/real-data-monotone-model-hierarchy-199/`.
 
 `scripts/run_fixed_regression_noise_offset_grid.py` runs the synthetic
 fixed-regression homoskedastic/heteroskedastic noise x theta-offset grid. It
@@ -648,10 +614,10 @@ python scripts/analyze_real_data_model_artifacts.py \
 
 The analysis uses stored out-of-fold metrics as its primary performance
 evidence and a deterministic 20,000-row common sample for descriptive
-prediction and counterfactual-action diagnostics. It decodes covered sigmoid
-curves from the trusted legacy smoothing pickle without invoking its
-NumPy-incompatible inference method. Outputs include seven CSV tables, three
-diagnostic plots, and `eda_summary.md` under a timestamped
+prediction and counterfactual-action diagnostics. It compares the portable
+logit-spline and monotone-PCHIP cohorts through their runtime NPZ interfaces;
+the retired shifted-sigmoid wrapper is not loaded. Outputs include seven CSV
+tables, three diagnostic plots, and `eda_summary.md` under a timestamped
 `results/real-data-model-eda/` directory. This is analysis-only tooling: it
 does not copy artifacts or change the runtime model registry.
 

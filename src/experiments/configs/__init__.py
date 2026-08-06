@@ -19,39 +19,13 @@ _FACTORY_BASES: dict[str, tuple[Callable[..., ExperimentConfig], dict[str, Any]]
         build_synthetic_ladder_config,
         {"rung": "smoothed_nonconvex"},
     ),
-    "real_data_glm_base": (build_real_data_config, {"model_type": "glm"}),
+    "real_data_linear_base": (build_real_data_config, {"model_type": "linear"}),
+    # Backward-compatible experiment name; the runtime model family is ``linear``.
+    "real_data_glm_base": (build_real_data_config, {"model_type": "linear"}),
     "real_data_xgb_base": (build_real_data_config, {"model_type": "xgb"}),
-    "real_data_xgb_logit_spline_base": (
+    "real_data_monotone_spline_xgb_base": (
         build_real_data_config,
-        {"model_type": "xgb_logit_spline"},
-    ),
-    "real_data_glm_glm_20260728_base": (
-        build_real_data_config,
-        {
-            "acceptance_model_type": "glm_20260527",
-            "loss_model_type": "glm_20260527",
-        },
-    ),
-    "real_data_smoothed_glm_20260728_base": (
-        build_real_data_config,
-        {
-            "acceptance_model_type": "xgb_sigmoid_20260728",
-            "loss_model_type": "glm_20260527",
-        },
-    ),
-    "real_data_xgb_glm_20260728_base": (
-        build_real_data_config,
-        {
-            "acceptance_model_type": "xgb_20260728",
-            "loss_model_type": "glm_20260527",
-        },
-    ),
-    "real_data_xgb_xgb_20260728_base": (
-        build_real_data_config,
-        {
-            "acceptance_model_type": "xgb_20260728",
-            "loss_model_type": "xgb_20260728",
-        },
+        {"model_type": "monotone_spline_xgb"},
     ),
 }
 

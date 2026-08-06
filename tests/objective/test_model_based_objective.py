@@ -460,8 +460,9 @@ def test_mean_acceptance_grad_matches_fd() -> None:
 
 def test_spline_acceptance_hook_objective_grad_matches_fd() -> None:
     import pandas as pd
+    from scipy.interpolate import PchipInterpolator
 
-    from data.xgb_logit_spline import XGBLogitSplineAcceptance, fit_logit_spline_artifact
+    from data.monotone_spline_xgb import MonotoneSplineArtifactData, MonotoneSplineXGBAcceptance
     from objective.objectives.generali.model_based import ModelBasedObjective
     from objective.policy import ConstantPolicy
 
@@ -469,18 +470,27 @@ def test_spline_acceptance_hook_objective_grad_matches_fd() -> None:
         def predict(self, frame):
             return np.full(len(frame), 100.0)
 
+    class UnusedBaseAcceptance:
+        model = None
+        preprocessor = None
+        x_feature_cols = ("x", "premium")
+
+        def policy_feature_dim(self):
+            return 2
+
     action_grid = np.linspace(0.0, 0.16, 17)
-    artifact = fit_logit_spline_artifact(
+    churn_grid = np.vstack([0.08 + 0.4 * action_grid, 0.12 + 0.6 * action_grid])
+    curves = [PchipInterpolator(action_grid, row) for row in churn_grid]
+    artifact = MonotoneSplineArtifactData(
         policy_ids=["101", "202"],
         row_indices=[3, 7],
         action_grid=action_grid,
-        churn_grid=np.vstack([0.08 + 0.4 * action_grid, 0.12 + 0.6 * action_grid]),
-        weights=np.ones(action_grid.size),
+        coefficients=np.stack([curve.c for curve in curves]),
+        churn_min=churn_grid[:, 0],
+        churn_max=churn_grid[:, -1],
+        upper_slopes=np.asarray([curve.derivative()(action_grid[-1]) for curve in curves]),
     )
-    acceptance = XGBLogitSplineAcceptance(
-        artifact,
-        x_feature_cols=("x", "premium"),
-    )
+    acceptance = MonotoneSplineXGBAcceptance(artifact, UnusedBaseAcceptance())
     objective = ModelBasedObjective(
         policy=ConstantPolicy(),
         acceptance_model=acceptance,

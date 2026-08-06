@@ -74,10 +74,10 @@ ACCEPTANCE_PROBABILITY_COL = OBSERVED_CHURN_COL
 FEATURE_COLS: tuple[str, ...] = ACCEPTANCE_STATE_COLS
 FEATURE_COLS_GLM: tuple[str, ...] = FEATURE_COLS
 FEATURE_COLS_XGB: tuple[str, ...] = FEATURE_COLS
-MODEL_FEATURE_COLS: dict[Literal["glm", "xgb", "xgb_logit_spline"], tuple[str, ...]] = {
-    "glm": FEATURE_COLS_GLM,
+MODEL_FEATURE_COLS: dict[Literal["linear", "xgb", "monotone_spline_xgb"], tuple[str, ...]] = {
+    "linear": FEATURE_COLS_GLM,
     "xgb": FEATURE_COLS_XGB,
-    "xgb_logit_spline": FEATURE_COLS_XGB,
+    "monotone_spline_xgb": FEATURE_COLS_XGB,
 }
 PREMIUM_COL_INDEX = FEATURE_COLS.index(PREMIUM_COL)
 
@@ -122,82 +122,58 @@ class ModelArtifactSpec(TypedDict):
     loss: ArtifactSpec
 
 
-AcceptanceModelType = Literal[
-    "glm_20260527",
-    "xgb_20260527",
-    "xgb_20260728",
-    "xgb_logit_spline_20260706",
-    "xgb_sigmoid_20260728",
-]
-LossModelType = Literal["glm_20260527", "xgb_20260527", "xgb_20260728"]
+AcceptanceModelType = Literal["linear", "xgb", "monotone_spline_xgb"]
+LossModelType = Literal["linear", "xgb"]
 
 ACCEPTANCE_MODEL_ARTIFACTS: dict[AcceptanceModelType, ArtifactSpec] = {
-    "glm_20260527": {
-        "path": DATA_DIR / "models" / "linear" / "acceptance_model_linear_cv_20260527_142758.pkl",
+    "linear": {
+        "path": DATA_DIR / "models" / "linear" / "acceptance.pkl",
         "contains_feature_processor": True,
         "probability_target": "acceptance",
-        "description": "First-fold LogisticRegression acceptance model with fitted FeatureProcessor.",
+        "description": "Runtime LogisticRegression acceptance model with fitted FeatureProcessor.",
     },
-    "xgb_20260527": {
-        "path": DATA_DIR / "models" / "xgb" / "acceptance_model_xgb_cv_20260527_151725.pkl",
+    "xgb": {
+        "path": DATA_DIR / "models" / "xgb" / "acceptance.pkl",
         "contains_feature_processor": True,
         "probability_target": "acceptance",
-        "description": "First-fold XGBoost acceptance model with fitted FeatureProcessor.",
+        "description": "Fold-0 XGBoost acceptance model selected from the latest CV bundle.",
     },
-    "xgb_20260728": {
-        "path": DATA_DIR / "models" / "xgb" / "acceptance_model_xgb.pkl",
-        "contains_feature_processor": True,
-        "probability_target": "acceptance",
-        "description": "Selected-best-fold XGBoost acceptance model supplied 20260728.",
-    },
-    "xgb_logit_spline_20260706": {
-        "path": DATA_DIR / "models" / "xgb_logit_spline" / "acceptance_xgb_logit_spline_20260706_112929.npz",
+    "monotone_spline_xgb": {
+        "path": DATA_DIR / "models" / "monotone-spline-xgb" / "acceptance-curves.npz",
         "contains_feature_processor": False,
         "probability_target": "acceptance",
-        "description": "Portable per-policy isotonic logit splines derived from xgb_20260527.",
-    },
-    "xgb_sigmoid_20260728": {
-        "path": DATA_DIR / "models" / "xgb_sigmoid" / "acceptance_xgb_sigmoid_20260728.npz",
-        "contains_feature_processor": False,
-        "probability_target": "acceptance",
-        "description": "Portable per-policy shifted sigmoids derived from xgb_20260728.",
+        "description": "Monotone acceptance wrapper derived from the canonical XGBoost acceptance model.",
     },
 }
 
 LOSS_MODEL_ARTIFACTS: dict[LossModelType, ArtifactSpec] = {
-    "glm_20260527": {
-        "path": DATA_DIR / "models" / "linear" / "financial_loss_model_linear_cv_20260527_142758.pkl",
+    "linear": {
+        "path": DATA_DIR / "models" / "linear" / "loss.pkl",
         "contains_feature_processor": True,
         "probability_target": "none",
-        "description": "First-fold Ridge financial-loss model with fitted FeatureProcessor.",
+        "description": "Runtime Ridge financial-loss model with fitted FeatureProcessor.",
     },
-    "xgb_20260527": {
-        "path": DATA_DIR / "models" / "xgb" / "financial_loss_model_xgb_cv_20260527_151725.pkl",
+    "xgb": {
+        "path": DATA_DIR / "models" / "xgb" / "loss.pkl",
         "contains_feature_processor": True,
         "probability_target": "none",
-        "description": "First-fold XGBoost financial-loss model with fitted FeatureProcessor.",
-    },
-    "xgb_20260728": {
-        "path": DATA_DIR / "models" / "xgb" / "financial_loss_model_xgb.pkl",
-        "contains_feature_processor": True,
-        "probability_target": "none",
-        "description": "Selected-best-fold XGBoost financial-loss model supplied 20260728.",
+        "description": "Fold-0 XGBoost loss model selected from the latest CV bundle.",
     },
 }
 
 
-MODEL_ARTIFACTS: dict[Literal["glm", "xgb", "xgb_logit_spline"], ModelArtifactSpec] = {
-    "glm": {
-        "acceptance": ACCEPTANCE_MODEL_ARTIFACTS["glm_20260527"],
-        "loss": LOSS_MODEL_ARTIFACTS["glm_20260527"],
+MODEL_ARTIFACTS: dict[Literal["linear", "xgb", "monotone_spline_xgb"], ModelArtifactSpec] = {
+    "linear": {
+        "acceptance": ACCEPTANCE_MODEL_ARTIFACTS["linear"],
+        "loss": LOSS_MODEL_ARTIFACTS["linear"],
     },
     "xgb": {
-        "acceptance": ACCEPTANCE_MODEL_ARTIFACTS["xgb_20260527"],
-        "loss": LOSS_MODEL_ARTIFACTS["xgb_20260527"],
+        "acceptance": ACCEPTANCE_MODEL_ARTIFACTS["xgb"],
+        "loss": LOSS_MODEL_ARTIFACTS["xgb"],
     },
-    "xgb_logit_spline": {
-        "acceptance": ACCEPTANCE_MODEL_ARTIFACTS["xgb_logit_spline_20260706"],
-        "loss": LOSS_MODEL_ARTIFACTS["glm_20260527"],
+    "monotone_spline_xgb": {
+        "acceptance": ACCEPTANCE_MODEL_ARTIFACTS["monotone_spline_xgb"],
+        "loss": LOSS_MODEL_ARTIFACTS["xgb"],
     },
 }
 

@@ -12,14 +12,7 @@ import numpy as np
 import pandas as pd
 
 from data.feature_processor import FeatureProcessor
-from data.xgb_logit_spline import (
-    load_xgb_logit_spline_acceptance,
-    load_xgb_logit_spline_artifact,
-)
-from data.xgb_sigmoid import (
-    load_xgb_sigmoid_acceptance,
-    load_xgb_sigmoid_artifact,
-)
+from data.monotone_spline_xgb import load_monotone_spline_xgb_acceptance
 from data.dataset_metadata import (
     ACCEPTANCE_MODEL_ARTIFACTS,
     ACCEPTANCE_STATE_COLS as _ACCEPTANCE_STATE_COLS,
@@ -44,7 +37,7 @@ from data.dataset_metadata import (
     USED_X_COLS,
 )
 
-ModelType = Literal["glm", "xgb", "xgb_logit_spline"]
+ModelType = Literal["linear", "xgb", "monotone_spline_xgb"]
 AcceptanceSelection = ModelType | AcceptanceModelType
 ProbabilityTarget = Literal["acceptance", "churn", "none"]
 
@@ -124,17 +117,13 @@ class _ArtifactUnpickler(pickle.Unpickler):
         return super().find_class(module, name)
 
 
-LEGACY_MODEL_PAIRS: dict[ModelType, tuple[AcceptanceModelType, LossModelType]] = {
-    "glm": ("glm_20260527", "glm_20260527"),
-    "xgb": ("xgb_20260527", "xgb_20260527"),
-    "xgb_logit_spline": ("xgb_logit_spline_20260706", "glm_20260527"),
+MODEL_PAIRS: dict[ModelType, tuple[AcceptanceModelType, LossModelType]] = {
+    "linear": ("linear", "linear"),
+    "xgb": ("xgb", "xgb"),
+    "monotone_spline_xgb": ("monotone_spline_xgb", "xgb"),
 }
 
-_CURVE_ACCEPTANCE_TYPES = {
-    "xgb_logit_spline",
-    "xgb_logit_spline_20260706",
-    "xgb_sigmoid_20260728",
-}
+_CURVE_ACCEPTANCE_TYPES = {"monotone_spline_xgb"}
 
 
 def _acceptance_csv_path(model_type: AcceptanceSelection) -> Path:
@@ -167,9 +156,12 @@ def _csv_row_count(csv_path: Path) -> int:
 
 
 def _validate_model_type(model_type: str) -> ModelType:
-    if model_type not in {"glm", "xgb", "xgb_logit_spline"}:
+    if model_type == "glm":
+        return "linear"
+    if model_type not in MODEL_PAIRS:
         raise ValueError(
-            f"model_type must be 'glm', 'xgb', or 'xgb_logit_spline', got '{model_type}'."
+            "model_type must be 'linear', 'xgb', or 'monotone_spline_xgb', "
+            f"got '{model_type}'."
         )
     return model_type  # type: ignore[return-value]
 
@@ -189,7 +181,9 @@ def _validate_loss_model_type(model_type: str) -> LossModelType:
 
 
 def _validate_acceptance_selection(model_type: str) -> AcceptanceSelection:
-    if model_type in LEGACY_MODEL_PAIRS:
+    if model_type == "glm":
+        return "linear"
+    if model_type in MODEL_PAIRS:
         return model_type  # type: ignore[return-value]
     return _validate_acceptance_model_type(model_type)
 
@@ -200,14 +194,14 @@ def resolve_model_artifact_ids(
     acceptance_model_type: AcceptanceModelType | None = None,
     loss_model_type: LossModelType | None = None,
 ) -> tuple[AcceptanceModelType, LossModelType]:
-    """Resolve legacy paired selection or explicit independent artifact IDs."""
+    """Resolve a named family or explicit independent artifact IDs."""
     if model_type is not None:
-        legacy = LEGACY_MODEL_PAIRS[_validate_model_type(model_type)]
-        if acceptance_model_type is not None and acceptance_model_type != legacy[0]:
+        pair = MODEL_PAIRS[_validate_model_type(model_type)]
+        if acceptance_model_type is not None and acceptance_model_type != pair[0]:
             raise ValueError("model_type conflicts with acceptance_model_type.")
-        if loss_model_type is not None and loss_model_type != legacy[1]:
+        if loss_model_type is not None and loss_model_type != pair[1]:
             raise ValueError("model_type conflicts with loss_model_type.")
-        return legacy
+        return pair
     if acceptance_model_type is None or loss_model_type is None:
         raise ValueError(
             "Specify model_type or both acceptance_model_type and loss_model_type."
@@ -283,19 +277,8 @@ def sample_csv_row_indices(
 
 
 def eligible_csv_row_indices(model_type: AcceptanceSelection) -> np.ndarray:
-    """Return complete eligible canonical CSV row positions for a model family."""
+    """Return complete canonical rows for every runtime model family."""
     model_type = _validate_acceptance_selection(model_type)
-    if model_type in _CURVE_ACCEPTANCE_TYPES:
-        if model_type in {"xgb_logit_spline", "xgb_logit_spline_20260706"}:
-            path = ACCEPTANCE_MODEL_ARTIFACTS["xgb_logit_spline_20260706"]["path"]
-            covered = load_xgb_logit_spline_artifact(path).row_indices
-        else:
-            path = ACCEPTANCE_MODEL_ARTIFACTS["xgb_sigmoid_20260728"]["path"]
-            covered = load_xgb_sigmoid_artifact(path).row_indices
-        complete = _eligible_row_indices(_acceptance_csv_path(model_type))
-        if not np.isin(covered, complete).all():
-            raise ValueError("Curve artifact contains incomplete canonical dataset rows.")
-        return covered
     return _eligible_row_indices(_acceptance_csv_path(model_type)).copy()
 
 
@@ -394,10 +377,11 @@ def _normalize_artifact(
             u_cols=tuple(u_cols),
             x_feature_cols=tuple(x_feature_cols),
             probability_target=probability_target,
-            source_format=(
-                "selected_best_fold"
-                if "best_fold" in raw_artifact
-                else "single_model"
+            source_format=str(
+                raw_artifact.get(
+                    "source_format",
+                    "selected_best_fold" if "best_fold" in raw_artifact else "single_model",
+                )
             ),
         )
     model = raw_artifact
@@ -419,32 +403,23 @@ def unwrap_model_artifact(artifact: Any) -> Any:
 
 
 def load_acceptance_artifact(model_type: AcceptanceModelType) -> Any:
-    """Load one versioned acceptance artifact."""
+    """Load one canonical acceptance artifact."""
     model_type = _validate_acceptance_model_type(model_type)
     spec = ACCEPTANCE_MODEL_ARTIFACTS[model_type]
     path = spec["path"]
-    if model_type == "xgb_logit_spline_20260706":
+    if model_type == "monotone_spline_xgb":
         xgb_raw = _normalize_artifact(
-            _load_pickle(ACCEPTANCE_MODEL_ARTIFACTS["xgb_20260527"]["path"]),
+            _load_pickle(ACCEPTANCE_MODEL_ARTIFACTS["xgb"]["path"]),
             probability_target="acceptance",
         )
-        return load_xgb_logit_spline_acceptance(
-            path,
-            id_col="id",
-            x_feature_cols=tuple(ACCEPTANCE_STATE_COLS),
-            preprocessor=xgb_raw.preprocessor,
+        xgb_raw = replace(
+            xgb_raw,
+            model_type="xgb",
+            artifact_id="xgb",
+            role="acceptance",
+            artifact_path=str(ACCEPTANCE_MODEL_ARTIFACTS["xgb"]["path"]),
         )
-    if model_type == "xgb_sigmoid_20260728":
-        xgb_raw = _normalize_artifact(
-            _load_pickle(ACCEPTANCE_MODEL_ARTIFACTS["xgb_20260728"]["path"]),
-            probability_target="acceptance",
-        )
-        return load_xgb_sigmoid_acceptance(
-            path,
-            id_col="id",
-            x_feature_cols=tuple(ACCEPTANCE_STATE_COLS),
-            preprocessor=xgb_raw.preprocessor,
-        )
+        return load_monotone_spline_xgb_acceptance(path, xgb_raw)
     acceptance_model = _normalize_artifact(
         _load_pickle(path),
         probability_target=spec.get("probability_target", "acceptance"),
@@ -459,7 +434,7 @@ def load_acceptance_artifact(model_type: AcceptanceModelType) -> Any:
 
 
 def load_loss_artifact(model_type: LossModelType) -> ModelArtifactBundle:
-    """Load one versioned financial-loss artifact."""
+    """Load one canonical financial-loss artifact."""
     model_type = _validate_loss_model_type(model_type)
     spec = LOSS_MODEL_ARTIFACTS[model_type]
     path = spec["path"]
@@ -488,7 +463,7 @@ def load_model_artifact_pair(
 
 
 def load_model_artifacts(model_type: ModelType) -> tuple[Any, ModelArtifactBundle]:
-    """Load a legacy paired artifact preset without changing its historical models."""
+    """Load the acceptance/loss pair for a canonical model family."""
     acceptance_model_type, loss_model_type = resolve_model_artifact_ids(
         model_type=model_type
     )

@@ -670,14 +670,14 @@ def _infer_model_type(
     acceptance_model_type: AcceptanceModelType,
     loss_model_type: LossModelType,
 ) -> ModelType | None:
-    legacy_pairs: dict[
+    model_pairs: dict[
         tuple[AcceptanceModelType, LossModelType], ModelType
     ] = {
-        ("glm_20260527", "glm_20260527"): "glm",
-        ("xgb_20260527", "xgb_20260527"): "xgb",
-        ("xgb_logit_spline_20260706", "glm_20260527"): "xgb_logit_spline",
+        ("linear", "linear"): "linear",
+        ("xgb", "xgb"): "xgb",
+        ("monotone_spline_xgb", "xgb"): "monotone_spline_xgb",
     }
-    return legacy_pairs.get((acceptance_model_type, loss_model_type))
+    return model_pairs.get((acceptance_model_type, loss_model_type))
 
 
 def _evaluation_to_dict(evaluation: PolicyEvaluation | None) -> dict[str, object] | None:

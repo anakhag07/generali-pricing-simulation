@@ -23,8 +23,9 @@ def test_list_configs_includes_defaults() -> None:
     assert "synthetic_quadratic_base" in configs
     assert "synthetic_smoothed_nonconvex_base" in configs
     assert "real_data_glm_base" in configs
+    assert "real_data_linear_base" in configs
     assert "real_data_xgb_base" in configs
-    assert "real_data_xgb_logit_spline_base" in configs
+    assert "real_data_monotone_spline_xgb_base" in configs
     assert "real_data_glm_softmax_policy_base" not in configs
 
 

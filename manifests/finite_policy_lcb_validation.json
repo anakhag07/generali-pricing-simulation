@@ -1,0 +1,23 @@
+{
+  "kind": "finite_policy_lcb",
+  "name": "finite-policy-lcb-validation",
+  "policies": [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+  "true_value": {"type": "identity"},
+  "surrogate": {"type": "policy_scaled_gaussian"},
+  "deltas": [0.5, 0.2, 0.1, 0.05, 0.01],
+  "epsilon": 0.0,
+  "seeds": {
+    "master_noise_seed": 20260807,
+    "run_seeds": [
+      101, 102, 103, 104, 105,
+      106, 107, 108, 109, 110,
+      111, 112, 113, 114, 115,
+      116, 117, 118, 119, 120,
+      121, 122, 123, 124, 125
+    ]
+  },
+  "launch": {
+    "mode": "local",
+    "array": "seed"
+  }
+}

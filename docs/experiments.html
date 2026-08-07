@@ -244,6 +244,87 @@
                     <a class="function" href="#execute_experiment_run">execute_experiment_run</a>
             </li>
             <li>
+                    <a class="class" href="#FinitePolicyLCBManifest">FinitePolicyLCBManifest</a>
+                            <ul class="memberlist">
+                        <li>
+                                <a class="function" href="#FinitePolicyLCBManifest.__init__">FinitePolicyLCBManifest</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#FinitePolicyLCBManifest.name">name</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#FinitePolicyLCBManifest.spec">spec</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#FinitePolicyLCBManifest.launch">launch</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#FinitePolicyLCBManifest.source_path">source_path</a>
+                        </li>
+                        <li>
+                                <a class="function" href="#FinitePolicyLCBManifest.project_dir">project_dir</a>
+                        </li>
+                        <li>
+                                <a class="function" href="#FinitePolicyLCBManifest.seed_result_path">seed_result_path</a>
+                        </li>
+                </ul>
+
+            </li>
+            <li>
+                    <a class="class" href="#FinitePolicyLCBSpec">FinitePolicyLCBSpec</a>
+                            <ul class="memberlist">
+                        <li>
+                                <a class="function" href="#FinitePolicyLCBSpec.__init__">FinitePolicyLCBSpec</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#FinitePolicyLCBSpec.policies">policies</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#FinitePolicyLCBSpec.deltas">deltas</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#FinitePolicyLCBSpec.epsilon">epsilon</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#FinitePolicyLCBSpec.master_noise_seed">master_noise_seed</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#FinitePolicyLCBSpec.run_seeds">run_seeds</a>
+                        </li>
+                </ul>
+
+            </li>
+            <li>
+                    <a class="class" href="#LCBSeedResult">LCBSeedResult</a>
+                            <ul class="memberlist">
+                        <li>
+                                <a class="function" href="#LCBSeedResult.__init__">LCBSeedResult</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#LCBSeedResult.run_seed">run_seed</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#LCBSeedResult.noise_seed">noise_seed</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#LCBSeedResult.z">z</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#LCBSeedResult.policy_results">policy_results</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#LCBSeedResult.selections">selections</a>
+                        </li>
+                </ul>
+
+            </li>
+            <li>
+                    <a class="function" href="#evaluate_finite_policy_lcb_seed">evaluate_finite_policy_lcb_seed</a>
+            </li>
+            <li>
+                    <a class="function" href="#load_finite_policy_lcb_manifest">load_finite_policy_lcb_manifest</a>
+            </li>
+            <li>
                     <a class="function" href="#results_root">results_root</a>
             </li>
             <li>
@@ -631,35 +712,47 @@ experiments    </h1>
 </span><span id="L-3"><a href="#L-3"><span class="linenos"> 3</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">CorrectnessSpec</span><span class="p">,</span> <span class="n">ExperimentConfig</span>
 </span><span id="L-4"><a href="#L-4"><span class="linenos"> 4</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.configs</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_config</span><span class="p">,</span> <span class="n">list_configs</span>
 </span><span id="L-5"><a href="#L-5"><span class="linenos"> 5</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.execution</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExecutedRun</span><span class="p">,</span> <span class="n">default_reporter_stack</span><span class="p">,</span> <span class="n">execute_experiment_run</span>
-</span><span id="L-6"><a href="#L-6"><span class="linenos"> 6</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.launch</span><span class="w"> </span><span class="kn">import</span> <span class="n">LaunchContext</span><span class="p">,</span> <span class="n">LaunchPlan</span><span class="p">,</span> <span class="n">add_launch_args</span><span class="p">,</span> <span class="n">run_launch_plan</span>
-</span><span id="L-7"><a href="#L-7"><span class="linenos"> 7</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.paths</span><span class="w"> </span><span class="kn">import</span> <span class="n">results_root</span>
-</span><span id="L-8"><a href="#L-8"><span class="linenos"> 8</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.results</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConstantBaselineResult</span><span class="p">,</span> <span class="n">EstimatorResult</span><span class="p">,</span> <span class="n">ExperimentResult</span><span class="p">,</span> <span class="n">OptimizationTrace</span><span class="p">,</span> <span class="n">PolicyEvaluation</span>
-</span><span id="L-9"><a href="#L-9"><span class="linenos"> 9</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.run</span><span class="w"> </span><span class="kn">import</span> <span class="n">run_experiment</span>
-</span><span id="L-10"><a href="#L-10"><span class="linenos">10</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.seeds</span><span class="w"> </span><span class="kn">import</span> <span class="n">ResolvedSeedSetup</span><span class="p">,</span> <span class="n">SeedSetup</span><span class="p">,</span> <span class="n">resolve_seed_setup</span>
-</span><span id="L-11"><a href="#L-11"><span class="linenos">11</span></a>
-</span><span id="L-12"><a href="#L-12"><span class="linenos">12</span></a><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
-</span><span id="L-13"><a href="#L-13"><span class="linenos">13</span></a>    <span class="s2">&quot;CorrectnessSpec&quot;</span><span class="p">,</span>
-</span><span id="L-14"><a href="#L-14"><span class="linenos">14</span></a>    <span class="s2">&quot;ExperimentConfig&quot;</span><span class="p">,</span>
-</span><span id="L-15"><a href="#L-15"><span class="linenos">15</span></a>    <span class="s2">&quot;get_config&quot;</span><span class="p">,</span>
-</span><span id="L-16"><a href="#L-16"><span class="linenos">16</span></a>    <span class="s2">&quot;list_configs&quot;</span><span class="p">,</span>
-</span><span id="L-17"><a href="#L-17"><span class="linenos">17</span></a>    <span class="s2">&quot;ExecutedRun&quot;</span><span class="p">,</span>
-</span><span id="L-18"><a href="#L-18"><span class="linenos">18</span></a>    <span class="s2">&quot;default_reporter_stack&quot;</span><span class="p">,</span>
-</span><span id="L-19"><a href="#L-19"><span class="linenos">19</span></a>    <span class="s2">&quot;execute_experiment_run&quot;</span><span class="p">,</span>
-</span><span id="L-20"><a href="#L-20"><span class="linenos">20</span></a>    <span class="s2">&quot;results_root&quot;</span><span class="p">,</span>
-</span><span id="L-21"><a href="#L-21"><span class="linenos">21</span></a>    <span class="s2">&quot;LaunchContext&quot;</span><span class="p">,</span>
-</span><span id="L-22"><a href="#L-22"><span class="linenos">22</span></a>    <span class="s2">&quot;LaunchPlan&quot;</span><span class="p">,</span>
-</span><span id="L-23"><a href="#L-23"><span class="linenos">23</span></a>    <span class="s2">&quot;add_launch_args&quot;</span><span class="p">,</span>
-</span><span id="L-24"><a href="#L-24"><span class="linenos">24</span></a>    <span class="s2">&quot;run_launch_plan&quot;</span><span class="p">,</span>
-</span><span id="L-25"><a href="#L-25"><span class="linenos">25</span></a>    <span class="s2">&quot;ConstantBaselineResult&quot;</span><span class="p">,</span>
-</span><span id="L-26"><a href="#L-26"><span class="linenos">26</span></a>    <span class="s2">&quot;EstimatorResult&quot;</span><span class="p">,</span>
-</span><span id="L-27"><a href="#L-27"><span class="linenos">27</span></a>    <span class="s2">&quot;ExperimentResult&quot;</span><span class="p">,</span>
-</span><span id="L-28"><a href="#L-28"><span class="linenos">28</span></a>    <span class="s2">&quot;OptimizationTrace&quot;</span><span class="p">,</span>
-</span><span id="L-29"><a href="#L-29"><span class="linenos">29</span></a>    <span class="s2">&quot;PolicyEvaluation&quot;</span><span class="p">,</span>
-</span><span id="L-30"><a href="#L-30"><span class="linenos">30</span></a>    <span class="s2">&quot;run_experiment&quot;</span><span class="p">,</span>
-</span><span id="L-31"><a href="#L-31"><span class="linenos">31</span></a>    <span class="s2">&quot;SeedSetup&quot;</span><span class="p">,</span>
-</span><span id="L-32"><a href="#L-32"><span class="linenos">32</span></a>    <span class="s2">&quot;ResolvedSeedSetup&quot;</span><span class="p">,</span>
-</span><span id="L-33"><a href="#L-33"><span class="linenos">33</span></a>    <span class="s2">&quot;resolve_seed_setup&quot;</span><span class="p">,</span>
-</span><span id="L-34"><a href="#L-34"><span class="linenos">34</span></a><span class="p">]</span>
+</span><span id="L-6"><a href="#L-6"><span class="linenos"> 6</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.finite_policy_lcb</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+</span><span id="L-7"><a href="#L-7"><span class="linenos"> 7</span></a>    <span class="n">FinitePolicyLCBManifest</span><span class="p">,</span>
+</span><span id="L-8"><a href="#L-8"><span class="linenos"> 8</span></a>    <span class="n">FinitePolicyLCBSpec</span><span class="p">,</span>
+</span><span id="L-9"><a href="#L-9"><span class="linenos"> 9</span></a>    <span class="n">LCBSeedResult</span><span class="p">,</span>
+</span><span id="L-10"><a href="#L-10"><span class="linenos">10</span></a>    <span class="n">evaluate_finite_policy_lcb_seed</span><span class="p">,</span>
+</span><span id="L-11"><a href="#L-11"><span class="linenos">11</span></a>    <span class="n">load_finite_policy_lcb_manifest</span><span class="p">,</span>
+</span><span id="L-12"><a href="#L-12"><span class="linenos">12</span></a><span class="p">)</span>
+</span><span id="L-13"><a href="#L-13"><span class="linenos">13</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.launch</span><span class="w"> </span><span class="kn">import</span> <span class="n">LaunchContext</span><span class="p">,</span> <span class="n">LaunchPlan</span><span class="p">,</span> <span class="n">add_launch_args</span><span class="p">,</span> <span class="n">run_launch_plan</span>
+</span><span id="L-14"><a href="#L-14"><span class="linenos">14</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.paths</span><span class="w"> </span><span class="kn">import</span> <span class="n">results_root</span>
+</span><span id="L-15"><a href="#L-15"><span class="linenos">15</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.results</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConstantBaselineResult</span><span class="p">,</span> <span class="n">EstimatorResult</span><span class="p">,</span> <span class="n">ExperimentResult</span><span class="p">,</span> <span class="n">OptimizationTrace</span><span class="p">,</span> <span class="n">PolicyEvaluation</span>
+</span><span id="L-16"><a href="#L-16"><span class="linenos">16</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.run</span><span class="w"> </span><span class="kn">import</span> <span class="n">run_experiment</span>
+</span><span id="L-17"><a href="#L-17"><span class="linenos">17</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.seeds</span><span class="w"> </span><span class="kn">import</span> <span class="n">ResolvedSeedSetup</span><span class="p">,</span> <span class="n">SeedSetup</span><span class="p">,</span> <span class="n">resolve_seed_setup</span>
+</span><span id="L-18"><a href="#L-18"><span class="linenos">18</span></a>
+</span><span id="L-19"><a href="#L-19"><span class="linenos">19</span></a><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="L-20"><a href="#L-20"><span class="linenos">20</span></a>    <span class="s2">&quot;CorrectnessSpec&quot;</span><span class="p">,</span>
+</span><span id="L-21"><a href="#L-21"><span class="linenos">21</span></a>    <span class="s2">&quot;ExperimentConfig&quot;</span><span class="p">,</span>
+</span><span id="L-22"><a href="#L-22"><span class="linenos">22</span></a>    <span class="s2">&quot;get_config&quot;</span><span class="p">,</span>
+</span><span id="L-23"><a href="#L-23"><span class="linenos">23</span></a>    <span class="s2">&quot;list_configs&quot;</span><span class="p">,</span>
+</span><span id="L-24"><a href="#L-24"><span class="linenos">24</span></a>    <span class="s2">&quot;ExecutedRun&quot;</span><span class="p">,</span>
+</span><span id="L-25"><a href="#L-25"><span class="linenos">25</span></a>    <span class="s2">&quot;default_reporter_stack&quot;</span><span class="p">,</span>
+</span><span id="L-26"><a href="#L-26"><span class="linenos">26</span></a>    <span class="s2">&quot;execute_experiment_run&quot;</span><span class="p">,</span>
+</span><span id="L-27"><a href="#L-27"><span class="linenos">27</span></a>    <span class="s2">&quot;FinitePolicyLCBManifest&quot;</span><span class="p">,</span>
+</span><span id="L-28"><a href="#L-28"><span class="linenos">28</span></a>    <span class="s2">&quot;FinitePolicyLCBSpec&quot;</span><span class="p">,</span>
+</span><span id="L-29"><a href="#L-29"><span class="linenos">29</span></a>    <span class="s2">&quot;LCBSeedResult&quot;</span><span class="p">,</span>
+</span><span id="L-30"><a href="#L-30"><span class="linenos">30</span></a>    <span class="s2">&quot;evaluate_finite_policy_lcb_seed&quot;</span><span class="p">,</span>
+</span><span id="L-31"><a href="#L-31"><span class="linenos">31</span></a>    <span class="s2">&quot;load_finite_policy_lcb_manifest&quot;</span><span class="p">,</span>
+</span><span id="L-32"><a href="#L-32"><span class="linenos">32</span></a>    <span class="s2">&quot;results_root&quot;</span><span class="p">,</span>
+</span><span id="L-33"><a href="#L-33"><span class="linenos">33</span></a>    <span class="s2">&quot;LaunchContext&quot;</span><span class="p">,</span>
+</span><span id="L-34"><a href="#L-34"><span class="linenos">34</span></a>    <span class="s2">&quot;LaunchPlan&quot;</span><span class="p">,</span>
+</span><span id="L-35"><a href="#L-35"><span class="linenos">35</span></a>    <span class="s2">&quot;add_launch_args&quot;</span><span class="p">,</span>
+</span><span id="L-36"><a href="#L-36"><span class="linenos">36</span></a>    <span class="s2">&quot;run_launch_plan&quot;</span><span class="p">,</span>
+</span><span id="L-37"><a href="#L-37"><span class="linenos">37</span></a>    <span class="s2">&quot;ConstantBaselineResult&quot;</span><span class="p">,</span>
+</span><span id="L-38"><a href="#L-38"><span class="linenos">38</span></a>    <span class="s2">&quot;EstimatorResult&quot;</span><span class="p">,</span>
+</span><span id="L-39"><a href="#L-39"><span class="linenos">39</span></a>    <span class="s2">&quot;ExperimentResult&quot;</span><span class="p">,</span>
+</span><span id="L-40"><a href="#L-40"><span class="linenos">40</span></a>    <span class="s2">&quot;OptimizationTrace&quot;</span><span class="p">,</span>
+</span><span id="L-41"><a href="#L-41"><span class="linenos">41</span></a>    <span class="s2">&quot;PolicyEvaluation&quot;</span><span class="p">,</span>
+</span><span id="L-42"><a href="#L-42"><span class="linenos">42</span></a>    <span class="s2">&quot;run_experiment&quot;</span><span class="p">,</span>
+</span><span id="L-43"><a href="#L-43"><span class="linenos">43</span></a>    <span class="s2">&quot;SeedSetup&quot;</span><span class="p">,</span>
+</span><span id="L-44"><a href="#L-44"><span class="linenos">44</span></a>    <span class="s2">&quot;ResolvedSeedSetup&quot;</span><span class="p">,</span>
+</span><span id="L-45"><a href="#L-45"><span class="linenos">45</span></a>    <span class="s2">&quot;resolve_seed_setup&quot;</span><span class="p">,</span>
+</span><span id="L-46"><a href="#L-46"><span class="linenos">46</span></a><span class="p">]</span>
 </span></pre></div>
 
 
@@ -2059,6 +2152,415 @@ summary target) while keeping its slot; <code>include_plots=False</code> drops t
 <p>Pass <code>run_context</code> to reuse a caller-built output directory (e.g. a per-seed
 replicate under a shared variant folder); otherwise one is created under
 <code>runs_root</code> or the shared external results root when <code>runs_root</code> is omitted.</p>
+</div>
+
+
+                </section>
+                <section id="FinitePolicyLCBManifest">
+                            <input id="FinitePolicyLCBManifest-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr class">
+                    <div class="decorator decorator-dataclass">@dataclass(frozen=True)</div>
+
+    <span class="def">class</span>
+    <span class="name">FinitePolicyLCBManifest</span>:
+
+                <label class="view-source-button" for="FinitePolicyLCBManifest-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#FinitePolicyLCBManifest"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="FinitePolicyLCBManifest-84"><a href="#FinitePolicyLCBManifest-84"><span class="linenos">84</span></a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="FinitePolicyLCBManifest-85"><a href="#FinitePolicyLCBManifest-85"><span class="linenos">85</span></a><span class="k">class</span><span class="w"> </span><span class="nc">FinitePolicyLCBManifest</span><span class="p">:</span>
+</span><span id="FinitePolicyLCBManifest-86"><a href="#FinitePolicyLCBManifest-86"><span class="linenos">86</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolved finite-policy LCB manifest.&quot;&quot;&quot;</span>
+</span><span id="FinitePolicyLCBManifest-87"><a href="#FinitePolicyLCBManifest-87"><span class="linenos">87</span></a>
+</span><span id="FinitePolicyLCBManifest-88"><a href="#FinitePolicyLCBManifest-88"><span class="linenos">88</span></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="FinitePolicyLCBManifest-89"><a href="#FinitePolicyLCBManifest-89"><span class="linenos">89</span></a>    <span class="n">spec</span><span class="p">:</span> <span class="n">FinitePolicyLCBSpec</span>
+</span><span id="FinitePolicyLCBManifest-90"><a href="#FinitePolicyLCBManifest-90"><span class="linenos">90</span></a>    <span class="n">launch</span><span class="p">:</span> <span class="n">FinitePolicyLCBLaunchSpec</span>
+</span><span id="FinitePolicyLCBManifest-91"><a href="#FinitePolicyLCBManifest-91"><span class="linenos">91</span></a>    <span class="n">source_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="FinitePolicyLCBManifest-92"><a href="#FinitePolicyLCBManifest-92"><span class="linenos">92</span></a>
+</span><span id="FinitePolicyLCBManifest-93"><a href="#FinitePolicyLCBManifest-93"><span class="linenos">93</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">project_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">runs_root</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+</span><span id="FinitePolicyLCBManifest-94"><a href="#FinitePolicyLCBManifest-94"><span class="linenos">94</span></a>        <span class="n">root</span> <span class="o">=</span> <span class="n">results_root</span><span class="p">()</span> <span class="k">if</span> <span class="n">runs_root</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">Path</span><span class="p">(</span><span class="n">runs_root</span><span class="p">)</span>
+</span><span id="FinitePolicyLCBManifest-95"><a href="#FinitePolicyLCBManifest-95"><span class="linenos">95</span></a>        <span class="k">return</span> <span class="n">root</span> <span class="o">/</span> <span class="n">_path_part</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+</span><span id="FinitePolicyLCBManifest-96"><a href="#FinitePolicyLCBManifest-96"><span class="linenos">96</span></a>
+</span><span id="FinitePolicyLCBManifest-97"><a href="#FinitePolicyLCBManifest-97"><span class="linenos">97</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">seed_result_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_seed</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">runs_root</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+</span><span id="FinitePolicyLCBManifest-98"><a href="#FinitePolicyLCBManifest-98"><span class="linenos">98</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">project_dir</span><span class="p">(</span><span class="n">runs_root</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;seeds&quot;</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;seed-</span><span class="si">{</span><span class="n">run_seed</span><span class="si">}</span><span class="s2">&quot;</span> <span class="o">/</span> <span class="s2">&quot;result.json&quot;</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Resolved finite-policy LCB manifest.</p>
+</div>
+
+
+                            <div id="FinitePolicyLCBManifest.__init__" class="classattr">
+                                <div class="attr function">
+            
+        <span class="name">FinitePolicyLCBManifest</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">name</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">spec</span><span class="p">:</span> <span class="n"><a href="#FinitePolicyLCBSpec">FinitePolicyLCBSpec</a></span>,</span><span class="param">	<span class="n">launch</span><span class="p">:</span> <span class="n">experiments</span><span class="o">.</span><span class="n">finite_policy_lcb</span><span class="o">.</span><span class="n">FinitePolicyLCBLaunchSpec</span>,</span><span class="param">	<span class="n">source_path</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span>)</span>
+
+        
+    </div>
+    <a class="headerlink" href="#FinitePolicyLCBManifest.__init__"></a>
+    
+    
+
+                            </div>
+                            <div id="FinitePolicyLCBManifest.name" class="classattr">
+                                <div class="attr variable">
+            <span class="name">name</span><span class="annotation">: str</span>
+
+        
+    </div>
+    <a class="headerlink" href="#FinitePolicyLCBManifest.name"></a>
+    
+    
+
+                            </div>
+                            <div id="FinitePolicyLCBManifest.spec" class="classattr">
+                                <div class="attr variable">
+            <span class="name">spec</span><span class="annotation">: <a href="#FinitePolicyLCBSpec">FinitePolicyLCBSpec</a></span>
+
+        
+    </div>
+    <a class="headerlink" href="#FinitePolicyLCBManifest.spec"></a>
+    
+    
+
+                            </div>
+                            <div id="FinitePolicyLCBManifest.launch" class="classattr">
+                                <div class="attr variable">
+            <span class="name">launch</span><span class="annotation">: experiments.finite_policy_lcb.FinitePolicyLCBLaunchSpec</span>
+
+        
+    </div>
+    <a class="headerlink" href="#FinitePolicyLCBManifest.launch"></a>
+    
+    
+
+                            </div>
+                            <div id="FinitePolicyLCBManifest.source_path" class="classattr">
+                                <div class="attr variable">
+            <span class="name">source_path</span><span class="annotation">: pathlib.Path | None</span>        =
+<span class="default_value">None</span>
+
+        
+    </div>
+    <a class="headerlink" href="#FinitePolicyLCBManifest.source_path"></a>
+    
+    
+
+                            </div>
+                            <div id="FinitePolicyLCBManifest.project_dir" class="classattr">
+                                        <input id="FinitePolicyLCBManifest.project_dir-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">project_dir</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">runs_root</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span>:</span></span>
+
+                <label class="view-source-button" for="FinitePolicyLCBManifest.project_dir-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#FinitePolicyLCBManifest.project_dir"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="FinitePolicyLCBManifest.project_dir-93"><a href="#FinitePolicyLCBManifest.project_dir-93"><span class="linenos">93</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">project_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">runs_root</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+</span><span id="FinitePolicyLCBManifest.project_dir-94"><a href="#FinitePolicyLCBManifest.project_dir-94"><span class="linenos">94</span></a>        <span class="n">root</span> <span class="o">=</span> <span class="n">results_root</span><span class="p">()</span> <span class="k">if</span> <span class="n">runs_root</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">Path</span><span class="p">(</span><span class="n">runs_root</span><span class="p">)</span>
+</span><span id="FinitePolicyLCBManifest.project_dir-95"><a href="#FinitePolicyLCBManifest.project_dir-95"><span class="linenos">95</span></a>        <span class="k">return</span> <span class="n">root</span> <span class="o">/</span> <span class="n">_path_part</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+</span></pre></div>
+
+
+    
+
+                            </div>
+                            <div id="FinitePolicyLCBManifest.seed_result_path" class="classattr">
+                                        <input id="FinitePolicyLCBManifest.seed_result_path-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">seed_result_path</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">run_seed</span><span class="p">:</span> <span class="nb">int</span>,</span><span class="param">	<span class="n">runs_root</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span><span class="return-annotation">) -> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span>:</span></span>
+
+                <label class="view-source-button" for="FinitePolicyLCBManifest.seed_result_path-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#FinitePolicyLCBManifest.seed_result_path"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="FinitePolicyLCBManifest.seed_result_path-97"><a href="#FinitePolicyLCBManifest.seed_result_path-97"><span class="linenos">97</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">seed_result_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_seed</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">runs_root</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+</span><span id="FinitePolicyLCBManifest.seed_result_path-98"><a href="#FinitePolicyLCBManifest.seed_result_path-98"><span class="linenos">98</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">project_dir</span><span class="p">(</span><span class="n">runs_root</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;seeds&quot;</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;seed-</span><span class="si">{</span><span class="n">run_seed</span><span class="si">}</span><span class="s2">&quot;</span> <span class="o">/</span> <span class="s2">&quot;result.json&quot;</span>
+</span></pre></div>
+
+
+    
+
+                            </div>
+                </section>
+                <section id="FinitePolicyLCBSpec">
+                            <input id="FinitePolicyLCBSpec-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr class">
+                    <div class="decorator decorator-dataclass">@dataclass(frozen=True)</div>
+
+    <span class="def">class</span>
+    <span class="name">FinitePolicyLCBSpec</span>:
+
+                <label class="view-source-button" for="FinitePolicyLCBSpec-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#FinitePolicyLCBSpec"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="FinitePolicyLCBSpec-30"><a href="#FinitePolicyLCBSpec-30"><span class="linenos">30</span></a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="FinitePolicyLCBSpec-31"><a href="#FinitePolicyLCBSpec-31"><span class="linenos">31</span></a><span class="k">class</span><span class="w"> </span><span class="nc">FinitePolicyLCBSpec</span><span class="p">:</span>
+</span><span id="FinitePolicyLCBSpec-32"><a href="#FinitePolicyLCBSpec-32"><span class="linenos">32</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration for the finite-policy Gaussian LCB validation.&quot;&quot;&quot;</span>
+</span><span id="FinitePolicyLCBSpec-33"><a href="#FinitePolicyLCBSpec-33"><span class="linenos">33</span></a>
+</span><span id="FinitePolicyLCBSpec-34"><a href="#FinitePolicyLCBSpec-34"><span class="linenos">34</span></a>    <span class="n">policies</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+</span><span id="FinitePolicyLCBSpec-35"><a href="#FinitePolicyLCBSpec-35"><span class="linenos">35</span></a>    <span class="n">deltas</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+</span><span id="FinitePolicyLCBSpec-36"><a href="#FinitePolicyLCBSpec-36"><span class="linenos">36</span></a>    <span class="n">epsilon</span><span class="p">:</span> <span class="nb">float</span>
+</span><span id="FinitePolicyLCBSpec-37"><a href="#FinitePolicyLCBSpec-37"><span class="linenos">37</span></a>    <span class="n">master_noise_seed</span><span class="p">:</span> <span class="nb">int</span>
+</span><span id="FinitePolicyLCBSpec-38"><a href="#FinitePolicyLCBSpec-38"><span class="linenos">38</span></a>    <span class="n">run_seeds</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+</span><span id="FinitePolicyLCBSpec-39"><a href="#FinitePolicyLCBSpec-39"><span class="linenos">39</span></a>
+</span><span id="FinitePolicyLCBSpec-40"><a href="#FinitePolicyLCBSpec-40"><span class="linenos">40</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="FinitePolicyLCBSpec-41"><a href="#FinitePolicyLCBSpec-41"><span class="linenos">41</span></a>        <span class="n">policies</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">policies</span><span class="p">)</span>
+</span><span id="FinitePolicyLCBSpec-42"><a href="#FinitePolicyLCBSpec-42"><span class="linenos">42</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="n">policies</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">policies</span><span class="p">)):</span>
+</span><span id="FinitePolicyLCBSpec-43"><a href="#FinitePolicyLCBSpec-43"><span class="linenos">43</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;policies must be a non-empty finite sequence.&quot;</span><span class="p">)</span>
+</span><span id="FinitePolicyLCBSpec-44"><a href="#FinitePolicyLCBSpec-44"><span class="linenos">44</span></a>        <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">value</span> <span class="o">&lt;</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">value</span> <span class="o">&gt;</span> <span class="mf">1.0</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">policies</span><span class="p">):</span>
+</span><span id="FinitePolicyLCBSpec-45"><a href="#FinitePolicyLCBSpec-45"><span class="linenos">45</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;policies must lie in [0, 1].&quot;</span><span class="p">)</span>
+</span><span id="FinitePolicyLCBSpec-46"><a href="#FinitePolicyLCBSpec-46"><span class="linenos">46</span></a>        <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">right</span> <span class="o">&lt;=</span> <span class="n">left</span> <span class="k">for</span> <span class="n">left</span><span class="p">,</span> <span class="n">right</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">policies</span><span class="p">,</span> <span class="n">policies</span><span class="p">[</span><span class="mi">1</span><span class="p">:])):</span>
+</span><span id="FinitePolicyLCBSpec-47"><a href="#FinitePolicyLCBSpec-47"><span class="linenos">47</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;policies must be strictly increasing.&quot;</span><span class="p">)</span>
+</span><span id="FinitePolicyLCBSpec-48"><a href="#FinitePolicyLCBSpec-48"><span class="linenos">48</span></a>
+</span><span id="FinitePolicyLCBSpec-49"><a href="#FinitePolicyLCBSpec-49"><span class="linenos">49</span></a>        <span class="n">deltas</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">deltas</span><span class="p">)</span>
+</span><span id="FinitePolicyLCBSpec-50"><a href="#FinitePolicyLCBSpec-50"><span class="linenos">50</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="n">deltas</span> <span class="ow">or</span> <span class="nb">any</span><span class="p">(</span><span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="mf">0.0</span> <span class="o">&lt;</span> <span class="n">value</span> <span class="o">&lt;</span> <span class="mf">1.0</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">deltas</span><span class="p">):</span>
+</span><span id="FinitePolicyLCBSpec-51"><a href="#FinitePolicyLCBSpec-51"><span class="linenos">51</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;deltas must be finite values in (0, 1).&quot;</span><span class="p">)</span>
+</span><span id="FinitePolicyLCBSpec-52"><a href="#FinitePolicyLCBSpec-52"><span class="linenos">52</span></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">deltas</span><span class="p">))</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">deltas</span><span class="p">):</span>
+</span><span id="FinitePolicyLCBSpec-53"><a href="#FinitePolicyLCBSpec-53"><span class="linenos">53</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;deltas must be unique.&quot;</span><span class="p">)</span>
+</span><span id="FinitePolicyLCBSpec-54"><a href="#FinitePolicyLCBSpec-54"><span class="linenos">54</span></a>
+</span><span id="FinitePolicyLCBSpec-55"><a href="#FinitePolicyLCBSpec-55"><span class="linenos">55</span></a>        <span class="n">epsilon</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">epsilon</span><span class="p">)</span>
+</span><span id="FinitePolicyLCBSpec-56"><a href="#FinitePolicyLCBSpec-56"><span class="linenos">56</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">epsilon</span><span class="p">)</span> <span class="ow">or</span> <span class="n">epsilon</span> <span class="o">!=</span> <span class="mf">0.0</span><span class="p">:</span>
+</span><span id="FinitePolicyLCBSpec-57"><a href="#FinitePolicyLCBSpec-57"><span class="linenos">57</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The exact finite-policy selector requires epsilon=0.&quot;</span><span class="p">)</span>
+</span><span id="FinitePolicyLCBSpec-58"><a href="#FinitePolicyLCBSpec-58"><span class="linenos">58</span></a>
+</span><span id="FinitePolicyLCBSpec-59"><a href="#FinitePolicyLCBSpec-59"><span class="linenos">59</span></a>        <span class="n">master_noise_seed</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">master_noise_seed</span><span class="p">)</span>
+</span><span id="FinitePolicyLCBSpec-60"><a href="#FinitePolicyLCBSpec-60"><span class="linenos">60</span></a>        <span class="k">if</span> <span class="n">master_noise_seed</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="FinitePolicyLCBSpec-61"><a href="#FinitePolicyLCBSpec-61"><span class="linenos">61</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;master_noise_seed must be non-negative.&quot;</span><span class="p">)</span>
+</span><span id="FinitePolicyLCBSpec-62"><a href="#FinitePolicyLCBSpec-62"><span class="linenos">62</span></a>        <span class="n">run_seeds</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span> <span class="k">for</span> <span class="n">seed</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_seeds</span><span class="p">)</span>
+</span><span id="FinitePolicyLCBSpec-63"><a href="#FinitePolicyLCBSpec-63"><span class="linenos">63</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="n">run_seeds</span> <span class="ow">or</span> <span class="nb">any</span><span class="p">(</span><span class="n">seed</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">seed</span> <span class="ow">in</span> <span class="n">run_seeds</span><span class="p">):</span>
+</span><span id="FinitePolicyLCBSpec-64"><a href="#FinitePolicyLCBSpec-64"><span class="linenos">64</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;run_seeds must be a non-empty sequence of non-negative integers.&quot;</span><span class="p">)</span>
+</span><span id="FinitePolicyLCBSpec-65"><a href="#FinitePolicyLCBSpec-65"><span class="linenos">65</span></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">run_seeds</span><span class="p">))</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">run_seeds</span><span class="p">):</span>
+</span><span id="FinitePolicyLCBSpec-66"><a href="#FinitePolicyLCBSpec-66"><span class="linenos">66</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;run_seeds must be unique.&quot;</span><span class="p">)</span>
+</span><span id="FinitePolicyLCBSpec-67"><a href="#FinitePolicyLCBSpec-67"><span class="linenos">67</span></a>
+</span><span id="FinitePolicyLCBSpec-68"><a href="#FinitePolicyLCBSpec-68"><span class="linenos">68</span></a>        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;policies&quot;</span><span class="p">,</span> <span class="n">policies</span><span class="p">)</span>
+</span><span id="FinitePolicyLCBSpec-69"><a href="#FinitePolicyLCBSpec-69"><span class="linenos">69</span></a>        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;deltas&quot;</span><span class="p">,</span> <span class="n">deltas</span><span class="p">)</span>
+</span><span id="FinitePolicyLCBSpec-70"><a href="#FinitePolicyLCBSpec-70"><span class="linenos">70</span></a>        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;epsilon&quot;</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">)</span>
+</span><span id="FinitePolicyLCBSpec-71"><a href="#FinitePolicyLCBSpec-71"><span class="linenos">71</span></a>        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;master_noise_seed&quot;</span><span class="p">,</span> <span class="n">master_noise_seed</span><span class="p">)</span>
+</span><span id="FinitePolicyLCBSpec-72"><a href="#FinitePolicyLCBSpec-72"><span class="linenos">72</span></a>        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;run_seeds&quot;</span><span class="p">,</span> <span class="n">run_seeds</span><span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Configuration for the finite-policy Gaussian LCB validation.</p>
+</div>
+
+
+                            <div id="FinitePolicyLCBSpec.__init__" class="classattr">
+                                <div class="attr function">
+            
+        <span class="name">FinitePolicyLCBSpec</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">policies</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>,</span><span class="param">	<span class="n">deltas</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>,</span><span class="param">	<span class="n">epsilon</span><span class="p">:</span> <span class="nb">float</span>,</span><span class="param">	<span class="n">master_noise_seed</span><span class="p">:</span> <span class="nb">int</span>,</span><span class="param">	<span class="n">run_seeds</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span></span>)</span>
+
+        
+    </div>
+    <a class="headerlink" href="#FinitePolicyLCBSpec.__init__"></a>
+    
+    
+
+                            </div>
+                            <div id="FinitePolicyLCBSpec.policies" class="classattr">
+                                <div class="attr variable">
+            <span class="name">policies</span><span class="annotation">: tuple[float, ...]</span>
+
+        
+    </div>
+    <a class="headerlink" href="#FinitePolicyLCBSpec.policies"></a>
+    
+    
+
+                            </div>
+                            <div id="FinitePolicyLCBSpec.deltas" class="classattr">
+                                <div class="attr variable">
+            <span class="name">deltas</span><span class="annotation">: tuple[float, ...]</span>
+
+        
+    </div>
+    <a class="headerlink" href="#FinitePolicyLCBSpec.deltas"></a>
+    
+    
+
+                            </div>
+                            <div id="FinitePolicyLCBSpec.epsilon" class="classattr">
+                                <div class="attr variable">
+            <span class="name">epsilon</span><span class="annotation">: float</span>
+
+        
+    </div>
+    <a class="headerlink" href="#FinitePolicyLCBSpec.epsilon"></a>
+    
+    
+
+                            </div>
+                            <div id="FinitePolicyLCBSpec.master_noise_seed" class="classattr">
+                                <div class="attr variable">
+            <span class="name">master_noise_seed</span><span class="annotation">: int</span>
+
+        
+    </div>
+    <a class="headerlink" href="#FinitePolicyLCBSpec.master_noise_seed"></a>
+    
+    
+
+                            </div>
+                            <div id="FinitePolicyLCBSpec.run_seeds" class="classattr">
+                                <div class="attr variable">
+            <span class="name">run_seeds</span><span class="annotation">: tuple[int, ...]</span>
+
+        
+    </div>
+    <a class="headerlink" href="#FinitePolicyLCBSpec.run_seeds"></a>
+    
+    
+
+                            </div>
+                </section>
+                <section id="LCBSeedResult">
+                            <input id="LCBSeedResult-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr class">
+                    <div class="decorator decorator-dataclass">@dataclass(frozen=True)</div>
+
+    <span class="def">class</span>
+    <span class="name">LCBSeedResult</span>:
+
+                <label class="view-source-button" for="LCBSeedResult-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#LCBSeedResult"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="LCBSeedResult-143"><a href="#LCBSeedResult-143"><span class="linenos">143</span></a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="LCBSeedResult-144"><a href="#LCBSeedResult-144"><span class="linenos">144</span></a><span class="k">class</span><span class="w"> </span><span class="nc">LCBSeedResult</span><span class="p">:</span>
+</span><span id="LCBSeedResult-145"><a href="#LCBSeedResult-145"><span class="linenos">145</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;All paired-delta results produced from one Gaussian noise vector.&quot;&quot;&quot;</span>
+</span><span id="LCBSeedResult-146"><a href="#LCBSeedResult-146"><span class="linenos">146</span></a>
+</span><span id="LCBSeedResult-147"><a href="#LCBSeedResult-147"><span class="linenos">147</span></a>    <span class="n">run_seed</span><span class="p">:</span> <span class="nb">int</span>
+</span><span id="LCBSeedResult-148"><a href="#LCBSeedResult-148"><span class="linenos">148</span></a>    <span class="n">noise_seed</span><span class="p">:</span> <span class="nb">int</span>
+</span><span id="LCBSeedResult-149"><a href="#LCBSeedResult-149"><span class="linenos">149</span></a>    <span class="n">z</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+</span><span id="LCBSeedResult-150"><a href="#LCBSeedResult-150"><span class="linenos">150</span></a>    <span class="n">policy_results</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">LCBPolicyResult</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+</span><span id="LCBSeedResult-151"><a href="#LCBSeedResult-151"><span class="linenos">151</span></a>    <span class="n">selections</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">LCBSelectionResult</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>All paired-delta results produced from one Gaussian noise vector.</p>
+</div>
+
+
+                            <div id="LCBSeedResult.__init__" class="classattr">
+                                <div class="attr function">
+            
+        <span class="name">LCBSeedResult</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">run_seed</span><span class="p">:</span> <span class="nb">int</span>,</span><span class="param">	<span class="n">noise_seed</span><span class="p">:</span> <span class="nb">int</span>,</span><span class="param">	<span class="n">z</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>,</span><span class="param">	<span class="n">policy_results</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">experiments</span><span class="o">.</span><span class="n">finite_policy_lcb</span><span class="o">.</span><span class="n">LCBPolicyResult</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>,</span><span class="param">	<span class="n">selections</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">experiments</span><span class="o">.</span><span class="n">finite_policy_lcb</span><span class="o">.</span><span class="n">LCBSelectionResult</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span></span>)</span>
+
+        
+    </div>
+    <a class="headerlink" href="#LCBSeedResult.__init__"></a>
+    
+    
+
+                            </div>
+                            <div id="LCBSeedResult.run_seed" class="classattr">
+                                <div class="attr variable">
+            <span class="name">run_seed</span><span class="annotation">: int</span>
+
+        
+    </div>
+    <a class="headerlink" href="#LCBSeedResult.run_seed"></a>
+    
+    
+
+                            </div>
+                            <div id="LCBSeedResult.noise_seed" class="classattr">
+                                <div class="attr variable">
+            <span class="name">noise_seed</span><span class="annotation">: int</span>
+
+        
+    </div>
+    <a class="headerlink" href="#LCBSeedResult.noise_seed"></a>
+    
+    
+
+                            </div>
+                            <div id="LCBSeedResult.z" class="classattr">
+                                <div class="attr variable">
+            <span class="name">z</span><span class="annotation">: tuple[float, ...]</span>
+
+        
+    </div>
+    <a class="headerlink" href="#LCBSeedResult.z"></a>
+    
+    
+
+                            </div>
+                            <div id="LCBSeedResult.policy_results" class="classattr">
+                                <div class="attr variable">
+            <span class="name">policy_results</span><span class="annotation">: tuple[experiments.finite_policy_lcb.LCBPolicyResult, ...]</span>
+
+        
+    </div>
+    <a class="headerlink" href="#LCBSeedResult.policy_results"></a>
+    
+    
+
+                            </div>
+                            <div id="LCBSeedResult.selections" class="classattr">
+                                <div class="attr variable">
+            <span class="name">selections</span><span class="annotation">: tuple[experiments.finite_policy_lcb.LCBSelectionResult, ...]</span>
+
+        
+    </div>
+    <a class="headerlink" href="#LCBSeedResult.selections"></a>
+    
+    
+
+                            </div>
+                </section>
+                <section id="evaluate_finite_policy_lcb_seed">
+                            <input id="evaluate_finite_policy_lcb_seed-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">evaluate_finite_policy_lcb_seed</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">spec</span><span class="p">:</span> <span class="n"><a href="#FinitePolicyLCBSpec">FinitePolicyLCBSpec</a></span>,</span><span class="param">	<span class="n">run_seed</span><span class="p">:</span> <span class="nb">int</span></span><span class="return-annotation">) -> <span class="n"><a href="#LCBSeedResult">LCBSeedResult</a></span>:</span></span>
+
+                <label class="view-source-button" for="evaluate_finite_policy_lcb_seed-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#evaluate_finite_policy_lcb_seed"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="evaluate_finite_policy_lcb_seed-222"><a href="#evaluate_finite_policy_lcb_seed-222"><span class="linenos">222</span></a><span class="k">def</span><span class="w"> </span><span class="nf">evaluate_finite_policy_lcb_seed</span><span class="p">(</span>
+</span><span id="evaluate_finite_policy_lcb_seed-223"><a href="#evaluate_finite_policy_lcb_seed-223"><span class="linenos">223</span></a>    <span class="n">spec</span><span class="p">:</span> <span class="n">FinitePolicyLCBSpec</span><span class="p">,</span>
+</span><span id="evaluate_finite_policy_lcb_seed-224"><a href="#evaluate_finite_policy_lcb_seed-224"><span class="linenos">224</span></a>    <span class="n">run_seed</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+</span><span id="evaluate_finite_policy_lcb_seed-225"><a href="#evaluate_finite_policy_lcb_seed-225"><span class="linenos">225</span></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">LCBSeedResult</span><span class="p">:</span>
+</span><span id="evaluate_finite_policy_lcb_seed-226"><a href="#evaluate_finite_policy_lcb_seed-226"><span class="linenos">226</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Draw one policy-noise vector and evaluate every configured delta.&quot;&quot;&quot;</span>
+</span><span id="evaluate_finite_policy_lcb_seed-227"><a href="#evaluate_finite_policy_lcb_seed-227"><span class="linenos">227</span></a>    <span class="n">noise_seed</span> <span class="o">=</span> <span class="n">noise_seed_for_run</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="n">run_seed</span><span class="p">)</span>
+</span><span id="evaluate_finite_policy_lcb_seed-228"><a href="#evaluate_finite_policy_lcb_seed-228"><span class="linenos">228</span></a>    <span class="n">z</span> <span class="o">=</span> <span class="n">rng_from_seed</span><span class="p">(</span><span class="n">noise_seed</span><span class="p">)</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">policies</span><span class="p">))</span>
+</span><span id="evaluate_finite_policy_lcb_seed-229"><a href="#evaluate_finite_policy_lcb_seed-229"><span class="linenos">229</span></a>    <span class="k">return</span> <span class="n">evaluate_finite_policy_lcb_draw</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="n">run_seed</span><span class="o">=</span><span class="n">run_seed</span><span class="p">,</span> <span class="n">noise_seed</span><span class="o">=</span><span class="n">noise_seed</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="n">z</span><span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Draw one policy-noise vector and evaluate every configured delta.</p>
+</div>
+
+
+                </section>
+                <section id="load_finite_policy_lcb_manifest">
+                            <input id="load_finite_policy_lcb_manifest-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">load_finite_policy_lcb_manifest</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span></span><span class="return-annotation">) -> <span class="n"><a href="#FinitePolicyLCBManifest">FinitePolicyLCBManifest</a></span>:</span></span>
+
+                <label class="view-source-button" for="load_finite_policy_lcb_manifest-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#load_finite_policy_lcb_manifest"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="load_finite_policy_lcb_manifest-154"><a href="#load_finite_policy_lcb_manifest-154"><span class="linenos">154</span></a><span class="k">def</span><span class="w"> </span><span class="nf">load_finite_policy_lcb_manifest</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FinitePolicyLCBManifest</span><span class="p">:</span>
+</span><span id="load_finite_policy_lcb_manifest-155"><a href="#load_finite_policy_lcb_manifest-155"><span class="linenos">155</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Load and validate a ``kind=finite_policy_lcb`` JSON manifest.&quot;&quot;&quot;</span>
+</span><span id="load_finite_policy_lcb_manifest-156"><a href="#load_finite_policy_lcb_manifest-156"><span class="linenos">156</span></a>    <span class="n">manifest_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span id="load_finite_policy_lcb_manifest-157"><a href="#load_finite_policy_lcb_manifest-157"><span class="linenos">157</span></a>    <span class="k">with</span> <span class="n">manifest_path</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">handle</span><span class="p">:</span>
+</span><span id="load_finite_policy_lcb_manifest-158"><a href="#load_finite_policy_lcb_manifest-158"><span class="linenos">158</span></a>        <span class="n">payload</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">handle</span><span class="p">)</span>
+</span><span id="load_finite_policy_lcb_manifest-159"><a href="#load_finite_policy_lcb_manifest-159"><span class="linenos">159</span></a>    <span class="k">return</span> <span class="n">parse_finite_policy_lcb_manifest</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">source_path</span><span class="o">=</span><span class="n">manifest_path</span><span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Load and validate a <code>kind=finite_policy_lcb</code> JSON manifest.</p>
 </div>
 
 

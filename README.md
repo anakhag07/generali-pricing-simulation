@@ -206,6 +206,26 @@ population fixed point, and $$x_K$$. It writes sweep-level displacement,
 bias/variance/MSE, theorem-bound, and fitted-scaling tables and plots under
 `results/zeroth-order-proof-validation-analysis/`.
 
+### Finite-Policy Lower Confidence Bounds
+
+The committed Proposition 11.2 validation evaluates the finite constant-policy
+class $$\Pi=\{0,0.1,\ldots,1.0\}$$ under
+$$V^\pi=\pi$$ and
+$$\widehat V^\pi=\pi+\pi Z^\pi$$. It exhaustively selects the maximum lower
+confidence bound, so there is no gradient method and the optimization error is
+$$\varepsilon=0$$:
+
+```bash
+python scripts/run_experiment_manifest.py \
+  manifests/finite_policy_lcb_validation.json
+```
+
+Each of the 25 noise seeds draws one independent Gaussian vector over policies
+and reuses it for all five confidence levels. The collector writes seed-level
+policy/selection tables, analytic and empirical coverage, oracle-inequality
+checks, and paired seed/aggregate plots under
+`results/finite-policy-lcb-validation/`.
+
 ### Zeroth-Order Support Envelopes
 
 The committed support-envelope sweep reuses the same strongly convex proof

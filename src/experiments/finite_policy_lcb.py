@@ -701,7 +701,8 @@ def _plot_coverage(
     axis.errorbar(
         x,
         empirical,
-        yerr=np.vstack([empirical - low, high - empirical]),
+        # Wilson endpoints can differ from 0/1 by a final floating-point ulp.
+        yerr=np.maximum(0.0, np.vstack([empirical - low, high - empirical])),
         marker="^",
         capsize=4,
         label="Empirical (Wilson 95%)",
@@ -799,7 +800,9 @@ def _wilson_interval(successes: int, trials: int, *, confidence: float = 0.95) -
         * np.sqrt(proportion * (1.0 - proportion) / trials + z_value**2 / (4.0 * trials**2))
         / denominator
     )
-    return float(max(0.0, center - radius)), float(min(1.0, center + radius))
+    low = 0.0 if successes == 0 else max(0.0, center - radius)
+    high = 1.0 if successes == trials else min(1.0, center + radius)
+    return float(low), float(high)
 
 
 def _required_mapping(payload: Mapping[str, Any], key: str) -> Mapping[str, Any]:

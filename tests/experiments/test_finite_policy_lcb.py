@@ -72,6 +72,17 @@ def test_noise_vector_is_paired_across_deltas_and_distinct_across_seeds() -> Non
         assert len({row.surrogate_value for row in rows}) == 1
 
 
+def test_paired_selection_never_increases_as_confidence_strengthens() -> None:
+    spec = _spec()
+
+    for run_seed in spec.run_seeds:
+        selected = [
+            row.selected_policy
+            for row in lcb.evaluate_finite_policy_lcb_seed(spec, run_seed).selections
+        ]
+        assert np.all(np.diff(selected) <= 0.0)
+
+
 def test_exact_selector_uses_smallest_argmax_and_has_zero_gap() -> None:
     spec = _spec()
     quantile = lcb.lcb_quantile(spec.deltas[0], len(spec.policies))
@@ -109,6 +120,13 @@ def test_analytic_joint_coverage_dominates_nominal_coverage() -> None:
         exact = lcb.analytic_joint_coverage(delta, 11)
         assert exact == pytest.approx((1.0 - delta / 11.0) ** 11)
         assert exact >= 1.0 - delta
+
+
+def test_wilson_interval_contains_boundary_empirical_rates() -> None:
+    for successes in (0, 25):
+        low, high = lcb._wilson_interval(successes, 25)
+        empirical = successes / 25
+        assert 0.0 <= low <= empirical <= high <= 1.0
 
 
 def test_gaussian_surrogate_moments_match_construction() -> None:

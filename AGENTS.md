@@ -190,6 +190,9 @@ Guidelines:
   and raw-X prediction-sensitivity rankings. Its row-sampling seed and
   permutation seed are independent, and it deliberately creates no X-feature
   plots.
+- `scripts/plot_model_feature_correlations.py` is the deterministic post-run
+  companion that renders numeric top-feature Spearman heatmaps and cross-model
+  feature-ranking agreement from a collected model-feature analysis sweep.
 - Keep the boundary strict: do not hide reusable pipeline logic inside a script,
   and do not promote analysis-only code into `src/` without a concrete reusable
   integration point.

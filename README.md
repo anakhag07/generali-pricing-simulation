@@ -661,6 +661,21 @@ Matplotlib plots, a comparison plot, and `analysis_config.json`. The feature
 screening step intentionally writes no X-feature plots; use its rankings to
 choose later PDP/ALE axes. Reuse `--sweep-id` to resume completed tasks.
 
+After collection, render customer-level Spearman correlation heatmaps for the
+top-ranked numeric acceptance/loss features and a cross-model feature-ranking
+agreement plot with:
+
+```bash
+python scripts/plot_model_feature_correlations.py \
+  --analysis-dir results/model-acceptance-feature-analysis/sweeps/<sweep-id>
+```
+
+The default deterministic 50,000-row sample uses seed `0` and the union of the
+top eight features per model and target. Categorical features and district code
+are listed in `correlation_analysis.json` but excluded from the numeric
+correlation matrices. The script writes three Matplotlib PNGs and their CSV
+matrices beside the collected sweep outputs.
+
 To benchmark GLM analytical acceptance speed, Stein-difference call counts,
 objective-cache behavior, and contour-subsampling speed on the bundled real-data
 objective, use:

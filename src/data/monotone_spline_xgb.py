@@ -94,6 +94,63 @@ class MonotoneSplineArtifactData:
         return float(self.action_grid[-1])
 
 
+@dataclass(frozen=True)
+class FittedMonotoneChurnCurve:
+    """One probability-space monotone churn curve and its boundary metadata."""
+
+    curve: PchipInterpolator
+    action_grid: np.ndarray
+    churn_min: float
+    churn_max: float
+    upper_slope: float
+
+
+def fit_monotone_churn_curve(
+    action_grid: Sequence[float],
+    churn: Sequence[float],
+    *,
+    weights: Sequence[float] | None = None,
+    dense_grid_size: int = 500,
+) -> FittedMonotoneChurnCurve:
+    """Fit the source wrapper's weighted smoothing-spline/isotonic/PCHIP recipe."""
+    x = np.asarray(action_grid, dtype=float)
+    y = np.asarray(churn, dtype=float)
+    if x.ndim != 1 or x.size < 2 or np.any(np.diff(x) <= 0.0):
+        raise ValueError("action_grid must be a strictly increasing 1D array.")
+    if y.shape != x.shape or not np.isfinite(y).all():
+        raise ValueError("churn must contain one finite value per action.")
+    if int(dense_grid_size) < 2:
+        raise ValueError("dense_grid_size must be at least 2.")
+
+    if weights is None:
+        fit_weights = np.ones_like(y)
+    else:
+        fit_weights = np.asarray(weights, dtype=float)
+        if fit_weights.shape != x.shape or not np.isfinite(fit_weights).all():
+            raise ValueError("weights must contain one finite value per action.")
+        if np.any(fit_weights < 0.0):
+            raise ValueError("weights must be non-negative.")
+    fit_weights = np.where(fit_weights > 0.0, fit_weights, 1e-9)
+
+    dense_grid = np.linspace(x[0], x[-1], int(dense_grid_size))
+    smooth = make_smoothing_spline(x, y, w=fit_weights)
+    dense_churn = np.clip(smooth(dense_grid), 0.0, 1.0)
+    monotone_churn = IsotonicRegression(
+        increasing=True, out_of_bounds="clip"
+    ).fit_transform(dense_grid, dense_churn)
+    bounded_churn = np.clip(monotone_churn, 0.0, 1.0)
+    curve = PchipInterpolator(dense_grid, bounded_churn)
+    h = max((dense_grid[-1] - dense_grid[0]) * 1e-4, 1e-6)
+    slope = float((curve(dense_grid[-1]) - curve(dense_grid[-1] - h)) / h)
+    return FittedMonotoneChurnCurve(
+        curve=curve,
+        action_grid=dense_grid,
+        churn_min=float(curve(dense_grid[0])),
+        churn_max=float(curve(dense_grid[-1])),
+        upper_slope=max(slope, 0.0),
+    )
+
+
 def _validate_curves(
     action_grid: np.ndarray,
     coefficients: np.ndarray,
@@ -165,18 +222,16 @@ def fit_monotone_spline_artifact(
             dtype=float,
         )
         churn = 1.0 - acceptance
-        smooth = make_smoothing_spline(action_fit, churn, w=weights)
-        dense_churn = np.clip(smooth(dense_grid), 0.0, 1.0)
-        monotone_churn = IsotonicRegression(
-            increasing=True, out_of_bounds="clip"
-        ).fit_transform(dense_grid, dense_churn)
-        curve = PchipInterpolator(dense_grid, np.clip(monotone_churn, 0.0, 1.0))
-        h = max((dense_grid[-1] - dense_grid[0]) * 1e-4, 1e-6)
-        slope = float((curve(dense_grid[-1]) - curve(dense_grid[-1] - h)) / h)
-        coefficients.append(curve.c)
-        churn_min.append(float(curve(dense_grid[0])))
-        churn_max.append(float(curve(dense_grid[-1])))
-        upper_slopes.append(max(slope, 0.0))
+        fitted = fit_monotone_churn_curve(
+            action_fit,
+            churn,
+            weights=weights,
+            dense_grid_size=dense_grid_size,
+        )
+        coefficients.append(fitted.curve.c)
+        churn_min.append(fitted.churn_min)
+        churn_max.append(fitted.churn_max)
+        upper_slopes.append(fitted.upper_slope)
 
     return MonotoneSplineArtifactData(
         policy_ids=policy_ids,
@@ -395,10 +450,12 @@ def load_monotone_spline_xgb_acceptance(
 
 __all__ = [
     "ARTIFACT_SCHEMA_VERSION",
+    "FittedMonotoneChurnCurve",
     "MODEL_TYPE",
     "SMOOTHER_NAME",
     "MonotoneSplineArtifactData",
     "MonotoneSplineXGBAcceptance",
+    "fit_monotone_churn_curve",
     "fit_monotone_spline_artifact",
     "load_monotone_spline_artifact",
     "load_monotone_spline_xgb_acceptance",

@@ -7,11 +7,13 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
-from scipy.interpolate import PchipInterpolator
+from scipy.interpolate import PchipInterpolator, make_smoothing_spline
+from sklearn.isotonic import IsotonicRegression
 
 from data.monotone_spline_xgb import (
     MonotoneSplineArtifactData,
     MonotoneSplineXGBAcceptance,
+    fit_monotone_churn_curve,
     load_monotone_spline_artifact,
     save_monotone_spline_artifact,
 )
@@ -50,6 +52,29 @@ def _artifact() -> MonotoneSplineArtifactData:
         base_artifact_sha256="base",
         source_fold=0,
     )
+
+
+def test_curve_helper_matches_source_recipe() -> None:
+    action_grid = np.linspace(0.0, 0.16, 17)
+    churn = np.asarray(
+        [0.10, 0.11, 0.12, 0.115, 0.13, 0.14, 0.145, 0.16, 0.17,
+         0.18, 0.19, 0.205, 0.21, 0.23, 0.24, 0.255, 0.27]
+    )
+    weights = np.linspace(1.0, 2.0, action_grid.size)
+    fitted = fit_monotone_churn_curve(action_grid, churn, weights=weights)
+
+    dense_grid = np.linspace(0.0, 0.16, 500)
+    source_spline = make_smoothing_spline(action_grid, churn, w=weights)
+    source_dense = np.clip(source_spline(dense_grid), 0.0, 1.0)
+    source_monotone = IsotonicRegression(
+        increasing=True, out_of_bounds="clip"
+    ).fit_transform(dense_grid, source_dense)
+    source_curve = PchipInterpolator(dense_grid, np.clip(source_monotone, 0.0, 1.0))
+
+    evaluation_grid = np.linspace(0.0, 0.16, 161)
+    np.testing.assert_allclose(fitted.curve(evaluation_grid), source_curve(evaluation_grid))
+    assert np.all(np.diff(fitted.curve(evaluation_grid)) >= -1e-12)
+    assert np.all((fitted.curve(evaluation_grid) >= 0.0) & (fitted.curve(evaluation_grid) <= 1.0))
 
 
 def test_array_only_round_trip(tmp_path: Path) -> None:

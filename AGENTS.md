@@ -185,6 +185,11 @@ Guidelines:
   planted-logistic support-bias sweep CSV/summaries and writes post-run true-gap
   bar charts plus constant-action oracle-vs-biased objective slices; it never
   reruns optimization.
+- `scripts/analyze_model_acceptance_features.py` is the resumable CPU-array
+  analysis for all-customer GLM/XGBoost/per-customer-spline acceptance curves
+  and raw-X prediction-sensitivity rankings. Its row-sampling seed and
+  permutation seed are independent, and it deliberately creates no X-feature
+  plots.
 - Keep the boundary strict: do not hide reusable pipeline logic inside a script,
   and do not promote analysis-only code into `src/` without a concrete reusable
   integration point.

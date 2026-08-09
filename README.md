@@ -638,6 +638,29 @@ historical-`U` histogram with sampled constant-`u` rug marks under
 to choose a subdirectory under `results/acceptance_queries/`, or pass explicit
 values with `--u -0.3 0.0 0.2` instead of `--u-count`.
 
+For an all-customer comparison of GLM, raw XGBoost, and exact per-customer
+monotone-spline XGBoost acceptance curves, plus raw-X prediction-sensitivity
+rankings for acceptance and financial loss, run:
+
+```bash
+python scripts/analyze_model_acceptance_features.py \
+  --launch slurm \
+  --array \
+  --array-max-parallel 8
+```
+
+The default analysis covers all complete eligible rows on 161 points over
+`u in [0, 0.16]`. Each spline curve is fitted from that customer's 17 raw-XGB
+churn predictions using the production weighted smoothing-spline, isotonic,
+and PCHIP recipe; it does not use the 200-profile runtime cache. Feature
+screening uses an independently seeded 20,000-row sample and three raw-column
+permutation repeats. Outputs under
+`results/model-acceptance-feature-analysis/sweeps/<sweep-id>/` include
+`acceptance_by_u.csv`, `feature_importance.csv`, three model-specific
+Matplotlib plots, a comparison plot, and `analysis_config.json`. The feature
+screening step intentionally writes no X-feature plots; use its rankings to
+choose later PDP/ALE axes. Reuse `--sweep-id` to resume completed tasks.
+
 To benchmark GLM analytical acceptance speed, Stein-difference call counts,
 objective-cache behavior, and contour-subsampling speed on the bundled real-data
 objective, use:

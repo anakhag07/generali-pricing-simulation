@@ -13,7 +13,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from experiments.policy_lcb.common import sample_std, shared_gaussian_coverage, wilson_interval
-from experiments.policy_lcb.continuous import ContinuousLCBSeedResult, ContinuousPolicyLCBSpec
+from experiments.policy_lcb.continuous import (
+    ContinuousLCBSeedResult,
+    ContinuousPolicyLCBSpec,
+    continuous_lcb_loss,
+)
 from experiments.seeds import derive_seed, rng_from_seed
 
 
@@ -49,7 +53,7 @@ def optimizer_summary_rows(
                     "estimator": estimator,
                     "n_seeds": len(group),
                     "converged_count": sum(row.converged for row in group),
-                    "endpoint_match_count": sum(
+                    "analytic_match_count": sum(
                         np.isclose(row.final_policy, row.analytic_policy) for row in group
                     ),
                     "mean_final_policy": float(np.mean(policies)),
@@ -356,8 +360,11 @@ def _plot_seed_diagnostics(
     fig, axes = plt.subplots(1, len(spec.deltas), figsize=(4.2 * len(spec.deltas), 4.3), sharey=True)
     policy_grid = np.linspace(0.0, 1.0, 101)
     for axis, delta in zip(np.atleast_1d(axes), spec.deltas):
-        slope = next(row.quantile - 1.0 - result.z for row in result.best_results if row.delta == delta)
-        axis.plot(policy_grid, policy_grid * slope, color="black", linewidth=1.5, label="negative LCB")
+        losses = [
+            continuous_lcb_loss(policy, result.z, delta, spec.true_value)
+            for policy in policy_grid
+        ]
+        axis.plot(policy_grid, losses, color="black", linewidth=1.5, label="negative LCB")
         for estimator in spec.optimizer.enabled_estimators:
             for start in spec.optimizer.starts:
                 trace = [

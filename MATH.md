@@ -692,15 +692,30 @@ For the continuous class $$\Pi=[0,1]$$, one scalar Gaussian draw is shared by
 every policy within run seed $$s$$:
 
 $$
-V(\pi)=\pi,
+V(\pi)=5\pi-5\pi^2,
 \qquad
-\widehat V_s(\pi)=\pi+\pi Z_s=\pi(1+Z_s),
+\widehat V_s(\pi)=V(\pi)+\pi Z_s,
 \qquad
 Z_s\sim N(0,1).
 $$
 
-Because the same $$Z_s$$ is used throughout the interval, the simultaneous
-two-sided quantile has no finite-class Bonferroni factor:
+The quadratic mean changes the optimizer but not the error process:
+
+$$
+\widehat V_s(\pi)-V(\pi)=\pi Z_s.
+$$
+
+Because the same $$Z_s$$ is used throughout the interval, every positive
+policy has the same standardized error and
+
+$$
+\sup_{\pi\in(0,1]}
+\frac{|\widehat V_s(\pi)-V(\pi)|}{\pi}
+=|Z_s|.
+$$
+
+Consequently, the simultaneous two-sided quantile has no finite-class
+Bonferroni factor:
 
 $$
 q_\delta=\Phi^{-1}(1-\delta/2),
@@ -708,28 +723,36 @@ q_\delta=\Phi^{-1}(1-\delta/2),
 \mathcal E^\pi(\delta)=2\pi q_\delta.
 $$
 
+Continuity itself does not remove the multiplicity correction. The finite
+experiment has $$K$$ distinct Gaussian coordinates and controls their union
+with $$q_{\delta,K}=\Phi^{-1}(1-\delta/(2K))$$. Here the continuum has a
+rank-one error process, so the policy-indexed intersection is exactly the
+single event $$|Z_s|\le q_\delta$$. A nonconstant Gaussian process
+$$Z_s(\pi)$$ would instead require a bound for its supremum, typically involving
+the complexity of the policy class rather than this scalar quantile.
+
 The experiment minimizes the negative lower confidence bound
 
 $$
 F_{s,\delta}(\pi)
 =-\underline V_{s,\delta}(\pi)
-=\pi(q_\delta-1-Z_s),
+=5\pi^2+(q_\delta-5-Z_s)\pi,
 $$
 
-whose exact derivative and smallest exact constrained minimizer are
+whose exact derivative and constrained minimizer are
 
 $$
-F'_{s,\delta}(\pi)=q_\delta-1-Z_s,
+F'_{s,\delta}(\pi)=10\pi+q_\delta-5-Z_s,
 $$
 
 $$
 \pi^*_{s,\delta}
-=
-\begin{cases}
-0, & q_\delta-1-Z_s\ge 0,\\
-1, & q_\delta-1-Z_s<0.
-\end{cases}
+=\operatorname{clip}_{[0,1]}
+\left(\frac{5+Z_s-q_\delta}{10}\right).
 $$
+
+For the configured confidence levels, $$q_\delta\in[0.674,2.576]$$. Thus all
+draws $$Z_s\in[-2,2]$$ have a strictly interior analytic minimizer.
 
 The single event $$|Z_s|\le q_\delta$$ covers every policy simultaneously, so
 
@@ -741,8 +764,9 @@ $$
 $$
 
 Projected first-order, finite-difference, and Stein-difference updates retain
-feasible iterates in $$[0,1]$$. Finite-difference and Stein probes use the
-natural linear extension of $$F_{s,\delta}$$ outside the feasible interval.
+feasible iterates in $$[0,1]$$. Finite-difference and Stein probes evaluate the
+same quadratic formula outside the feasible interval before the updated policy
+is projected.
 If an optimizer returns $$\widehat\pi$$, its measured LCB optimization error is
 
 $$

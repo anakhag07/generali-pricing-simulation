@@ -615,10 +615,17 @@ belongs under `generali/`.
     with independent policy noise, Bonferroni coverage, and exact exhaustive
     selection. Its manifest and result tree are unchanged.
   - The continuous adapter uses $$\Pi=[0,1]$$ and one scalar $$Z_s$$ shared by
-    every policy. It minimizes the linear negative LCB with projected
+    every policy. Its manifest-configurable true-value curves include the
+    identity endpoint fixture and the primary concave quadratic
+    $$V(\pi)=5\pi-5\pi^2$$. It minimizes the convex negative LCB with projected
     first-order, finite-difference, and Stein-difference updates from paired
-    starts, records exact endpoint gaps, and writes per-seed JSON/trajectory
+    starts, records exact analytic gaps, and writes per-seed JSON/trajectory
     leaves plus cross-seed median/IQR and mean/bootstrap-CI plots.
+  - Continuum-wide coverage uses $$q_\delta=\Phi^{-1}(1-\delta/2)$$ because the
+    shared error process has rank one: the event for every positive policy is
+    the same event $$|Z_s|\le q_\delta$$. Continuity alone does not remove
+    multiplicity; a policy-varying Gaussian process would require a supremum or
+    policy-class complexity bound.
   - Continuous problem noise varies across run seeds; the separate Stein stream
     is deliberately fixed across seeds/deltas/starts, and the reporting seed
     controls bootstrap intervals only.
@@ -716,9 +723,9 @@ belongs under `generali/`.
   exact eleven-policy lower-confidence-bound validation, its five delta values,
   and its 25 paired noise seeds.
 - `manifests/continuous_policy_lcb_validation.json` is the source of truth for
-  the shared-Gaussian continuum, projected optimizer settings, three paired
-  starts, five delta values, 25 problem-noise seeds, fixed Stein stream, and
-  reporting-bootstrap seed. Outputs live under
+  the shared-Gaussian continuum with $$a=b=5$$ concave value, projected
+  optimizer settings, three paired starts, five delta values, 25 problem-noise
+  seeds, fixed Stein stream, and reporting-bootstrap seed. Outputs live under
   `results/continuous-policy-lcb-validation/`.
 - `manifests/zeroth_order_baseline.json` and
   `manifests/zeroth_order_functional_bias.json` are the source of truth for the

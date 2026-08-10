@@ -2,7 +2,7 @@
   "kind": "continuous_policy_lcb",
   "name": "continuous-policy-lcb-validation",
   "policy_domain": [0.0, 1.0],
-  "true_value": {"type": "identity"},
+  "true_value": {"type": "concave_quadratic", "a": 5.0, "b": 5.0},
   "surrogate": {"type": "shared_policy_scaled_gaussian"},
   "deltas": [0.5, 0.2, 0.1, 0.05, 0.01],
   "optimizer": {

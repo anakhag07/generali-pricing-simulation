@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 import csv
 from pathlib import Path
 from typing import Any, Literal
@@ -30,6 +30,31 @@ from optimization.helpers import finite_difference_theta_grad, stein_difference_
 
 ContinuousEstimator = Literal["first_order", "finite_difference", "stein_difference"]
 _ALLOWED_ESTIMATORS = {"first_order", "finite_difference", "stein_difference"}
+
+
+@dataclass(frozen=True)
+class ContinuousPolicyValueSpec:
+    """True-value curve used by the continuous policy-LCB adapter."""
+
+    kind: Literal["identity", "concave_quadratic"] = "identity"
+    a: float = 1.0
+    b: float = 0.0
+
+    def __post_init__(self) -> None:
+        a = float(self.a)
+        b = float(self.b)
+        if not np.isfinite(a) or not np.isfinite(b):
+            raise ValueError("true_value coefficients a and b must be finite.")
+        if self.kind == "identity":
+            if a != 1.0 or b != 0.0:
+                raise ValueError("identity true_value requires a=1 and b=0.")
+        elif self.kind == "concave_quadratic":
+            if a <= 0.0 or b <= 0.0:
+                raise ValueError("concave_quadratic true_value requires a>0 and b>0.")
+        else:
+            raise ValueError("true_value.type must be identity or concave_quadratic.")
+        object.__setattr__(self, "a", a)
+        object.__setattr__(self, "b", b)
 
 
 @dataclass(frozen=True)
@@ -83,6 +108,7 @@ class ContinuousPolicyLCBSpec:
     reporting_seed: int
     run_seeds: tuple[int, ...]
     optimizer: ContinuousPolicyLCBOptimizerSpec
+    true_value: ContinuousPolicyValueSpec = field(default_factory=ContinuousPolicyValueSpec)
 
     def __post_init__(self) -> None:
         domain = tuple(float(value) for value in self.policy_domain)
@@ -254,7 +280,18 @@ def parse_continuous_policy_lcb_manifest(
     name = str(payload.get("name") or "").strip()
     if not name:
         raise ValueError("Continuous policy-LCB manifest name must be non-empty.")
-    require_type(payload, "true_value", "identity")
+    true_value_payload = required_mapping(payload, "true_value")
+    true_value_kind = str(true_value_payload.get("type") or "")
+    if true_value_kind == "identity":
+        true_value = ContinuousPolicyValueSpec()
+    elif true_value_kind == "concave_quadratic":
+        true_value = ContinuousPolicyValueSpec(
+            kind="concave_quadratic",
+            a=float(true_value_payload.get("a", np.nan)),
+            b=float(true_value_payload.get("b", np.nan)),
+        )
+    else:
+        raise ValueError("true_value.type must be identity or concave_quadratic.")
     require_type(payload, "surrogate", "shared_policy_scaled_gaussian")
     domain = number_sequence(payload.get("policy_domain"), "policy_domain")
     if len(domain) != 2:
@@ -301,6 +338,7 @@ def parse_continuous_policy_lcb_manifest(
         reporting_seed=int(seeds.get("reporting_seed", -1)),
         run_seeds=tuple(int(seed) for seed in run_seeds_raw),
         optimizer=optimizer,
+        true_value=true_value,
     )
     return ContinuousPolicyLCBManifest(
         name=name,
@@ -319,24 +357,87 @@ def continuous_lcb_quantile(delta: float) -> float:
     return gaussian_lcb_quantile(delta)
 
 
-def continuous_lcb_loss(policy: float, z: float, delta: float) -> float:
-    """Return negative LCB for the shared-Gaussian identity-value model."""
-    return float(policy) * continuous_lcb_slope(z, delta)
+def continuous_true_value(
+    policy: float,
+    value_spec: ContinuousPolicyValueSpec | None = None,
+) -> float:
+    r"""Return $$V(\pi)=a\pi-b\pi^2$$ for the configured value curve."""
+    value = ContinuousPolicyValueSpec() if value_spec is None else value_spec
+    policy_value = float(policy)
+    return value.a * policy_value - value.b * policy_value**2
+
+
+def continuous_surrogate_value(
+    policy: float,
+    z: float,
+    value_spec: ContinuousPolicyValueSpec | None = None,
+) -> float:
+    r"""Return the shared-Gaussian surrogate $$V(\pi)+\pi Z_s$$."""
+    policy_value = float(policy)
+    return continuous_true_value(policy_value, value_spec) + policy_value * float(z)
+
+
+def continuous_lcb_loss(
+    policy: float,
+    z: float,
+    delta: float,
+    value_spec: ContinuousPolicyValueSpec | None = None,
+) -> float:
+    """Return negative LCB for a shared-Gaussian continuous value curve."""
+    policy_value = float(policy)
+    return (
+        -continuous_surrogate_value(policy_value, z, value_spec)
+        + policy_value * continuous_lcb_quantile(delta)
+    )
 
 
 def continuous_lcb_slope(z: float, delta: float) -> float:
-    """Return the exact derivative of the negative LCB with respect to policy."""
+    """Return the constant negative-LCB slope for the legacy identity curve."""
     return continuous_lcb_quantile(delta) - 1.0 - float(z)
 
 
-def continuous_lcb_value(policy: float, z: float, delta: float) -> float:
+def continuous_lcb_gradient(
+    policy: float,
+    z: float,
+    delta: float,
+    value_spec: ContinuousPolicyValueSpec | None = None,
+) -> float:
+    """Return the exact policy derivative of the negative LCB."""
+    value = ContinuousPolicyValueSpec() if value_spec is None else value_spec
+    return 2.0 * value.b * float(policy) + continuous_lcb_quantile(delta) - value.a - float(z)
+
+
+def continuous_lcb_value(
+    policy: float,
+    z: float,
+    delta: float,
+    value_spec: ContinuousPolicyValueSpec | None = None,
+) -> float:
     """Return the lower confidence bound, the negative of the optimized loss."""
-    return -continuous_lcb_loss(policy, z, delta)
+    return -continuous_lcb_loss(policy, z, delta, value_spec)
 
 
-def continuous_analytic_policy(z: float, delta: float) -> float:
-    """Return the smallest exact minimizer over $$[0,1]$$."""
-    return 0.0 if continuous_lcb_slope(z, delta) >= 0.0 else 1.0
+def continuous_analytic_policy(
+    z: float,
+    delta: float,
+    value_spec: ContinuousPolicyValueSpec | None = None,
+) -> float:
+    """Return the smallest exact negative-LCB minimizer over $$[0,1]$$."""
+    value = ContinuousPolicyValueSpec() if value_spec is None else value_spec
+    if value.b == 0.0:
+        return 0.0 if continuous_lcb_gradient(0.0, z, delta, value) >= 0.0 else 1.0
+    unconstrained = (value.a + float(z) - continuous_lcb_quantile(delta)) / (2.0 * value.b)
+    return float(np.clip(unconstrained, 0.0, 1.0))
+
+
+def continuous_true_optimal_policy(
+    value_spec: ContinuousPolicyValueSpec | None = None,
+) -> float:
+    """Return the smallest exact maximizer of the true value over $$[0,1]$$."""
+    value = ContinuousPolicyValueSpec() if value_spec is None else value_spec
+    if value.b == 0.0:
+        return 0.0 if value.a <= 0.0 else 1.0
+    return float(np.clip(value.a / (2.0 * value.b), 0.0, 1.0))
 
 
 def continuous_noise_seed_for_run(spec: ContinuousPolicyLCBSpec, run_seed: int) -> int:
@@ -423,10 +524,24 @@ def continuous_policy_lcb_seed_complete(
     *,
     runs_root: str | Path | None = None,
 ) -> bool:
-    """Return whether both durable outputs for one seed exist."""
-    return manifest.seed_result_path(run_seed, runs_root).exists() and manifest.seed_trajectory_path(
-        run_seed, runs_root
-    ).exists()
+    """Return whether both durable outputs exist and match the current manifest."""
+    result_path = manifest.seed_result_path(run_seed, runs_root)
+    trajectory_path = manifest.seed_trajectory_path(run_seed, runs_root)
+    if not result_path.exists() or not trajectory_path.exists():
+        return False
+    try:
+        payload = read_json(result_path)
+    except (OSError, ValueError):
+        return False
+    spec = manifest.spec
+    return bool(
+        payload.get("model") == _model_metadata(spec)
+        and payload.get("optimizer") == _optimizer_metadata(spec)
+        and payload.get("seed_contract") == _seed_contract_metadata(spec)
+        and payload.get("run_seed") == int(run_seed)
+        and payload.get("noise_seed") == continuous_noise_seed_for_run(spec, run_seed)
+        and payload.get("stein_seed") == continuous_stein_seed(spec)
+    )
 
 
 def run_continuous_policy_lcb_manifest_seed(
@@ -449,8 +564,8 @@ def run_continuous_policy_lcb_manifest_seed(
             "n_condition_runs": 0,
         }
     result = evaluate_continuous_policy_lcb_seed(manifest.spec, run_seed)
-    _write_seed_result(manifest.seed_result_path(run_seed, runs_root), result, manifest.spec)
     _write_seed_trajectories(manifest.seed_trajectory_path(run_seed, runs_root), result)
+    _write_seed_result(manifest.seed_result_path(run_seed, runs_root), result, manifest.spec)
     return {
         "project_dir": str(manifest.project_dir(runs_root)),
         "run_seed": run_seed,
@@ -587,6 +702,7 @@ def write_continuous_policy_lcb_experiment_readme(
 - Reporting seed: `{spec.reporting_seed}`
 - Run seeds: `{list(spec.run_seeds)}`
 - Launch: `{manifest.launch.mode}` / `{manifest.launch.array}`
+- True value: `{spec.true_value.kind}` with `a={spec.true_value.a:g}`, `b={spec.true_value.b:g}`
 
 Each run seed draws one scalar standard normal `Z_s`. The draw is reused for
 every policy in `[0, 1]`, confidence level, estimator, and start. The separate
@@ -594,12 +710,17 @@ Stein perturbation stream is deliberately reinitialized identically for every
 condition so seed-level spread isolates the problem draws.
 
 ```text
-V(pi) = pi
-V_hat_s(pi) = pi * (1 + Z_s)
+V(pi) = {spec.true_value.a:g} * pi - {spec.true_value.b:g} * pi^2
+V_hat_s(pi) = V(pi) + pi * Z_s
 q(delta) = Phi^-1(1 - delta / 2)
 E(pi, delta) = 2 * pi * q(delta)
-loss(pi, delta, s) = -LCB = pi * (q(delta) - 1 - Z_s)
+loss(pi, delta, s) = -LCB
+  = {spec.true_value.b:g} * pi^2 + (q(delta) - {spec.true_value.a:g} - Z_s) * pi
 ```
+
+The absence of a Bonferroni factor is caused by the shared scalar `Z_s`, not by
+continuity alone. For every positive policy, the simultaneous standardized
+error event reduces to the same event `abs(Z_s) <= q(delta)`.
 """
     path.write_text(text, encoding="utf-8")
     return path
@@ -613,20 +734,9 @@ def _write_seed_result(
     write_json_atomic(
         path,
         {
-            "model": {
-                "true_value": "identity",
-                "surrogate": "shared_policy_scaled_gaussian",
-                "optimized_quantity": "negative_lcb",
-                "policy_domain": list(spec.policy_domain),
-                "deltas": list(spec.deltas),
-            },
-            "optimizer": asdict(spec.optimizer),
-            "seed_contract": {
-                "master_noise_seed": spec.master_noise_seed,
-                "master_optimizer_seed": spec.master_optimizer_seed,
-                "reporting_seed": spec.reporting_seed,
-                "stein_stream_varies_across_run_seeds": False,
-            },
+            "model": _model_metadata(spec),
+            "optimizer": _optimizer_metadata(spec),
+            "seed_contract": _seed_contract_metadata(spec),
             "run_seed": result.run_seed,
             "noise_seed": result.noise_seed,
             "stein_seed": result.stein_seed,
@@ -635,6 +745,42 @@ def _write_seed_result(
             "best_results": [asdict(row) for row in result.best_results],
         },
     )
+
+
+def _model_metadata(spec: ContinuousPolicyLCBSpec) -> dict[str, object]:
+    return {
+        "true_value": {
+            "type": spec.true_value.kind,
+            "a": spec.true_value.a,
+            "b": spec.true_value.b,
+        },
+        "surrogate": "shared_policy_scaled_gaussian",
+        "optimized_quantity": "negative_lcb",
+        "policy_domain": list(spec.policy_domain),
+        "deltas": list(spec.deltas),
+    }
+
+
+def _optimizer_metadata(spec: ContinuousPolicyLCBSpec) -> dict[str, object]:
+    optimizer = spec.optimizer
+    return {
+        "step_rule": optimizer.step_rule,
+        "enabled_estimators": list(optimizer.enabled_estimators),
+        "starts": list(optimizer.starts),
+        "t_steps": optimizer.t_steps,
+        "step_size": optimizer.step_size,
+        "sigma": optimizer.sigma,
+        "n_grad_samples": optimizer.n_grad_samples,
+    }
+
+
+def _seed_contract_metadata(spec: ContinuousPolicyLCBSpec) -> dict[str, object]:
+    return {
+        "master_noise_seed": spec.master_noise_seed,
+        "master_optimizer_seed": spec.master_optimizer_seed,
+        "reporting_seed": spec.reporting_seed,
+        "stein_stream_varies_across_run_seeds": False,
+    }
 
 
 def _write_seed_trajectories(path: Path, result: ContinuousLCBSeedResult) -> None:
@@ -701,6 +847,7 @@ def _run_continuous_start(
             policy,
             z,
             None,
+            spec.true_value,
         )
     ]
     epsilon_sequences = rng_from_seed(stein_seed).normal(
@@ -715,6 +862,7 @@ def _run_continuous_start(
             delta=delta,
             sigma=optimizer.sigma,
             epsilon_samples=epsilon_sequences[step - 1],
+            value_spec=spec.true_value,
         )
         next_policy = float(np.clip(policy - optimizer.step_size * gradient, *spec.policy_domain))
         trace.append(
@@ -728,9 +876,10 @@ def _run_continuous_start(
                 next_policy,
                 z,
                 gradient,
+                spec.true_value,
             )
         )
-        if next_policy == policy:
+        if np.isclose(next_policy, policy, rtol=0.0, atol=1e-12):
             converged = True
             policy = next_policy
             break
@@ -747,6 +896,7 @@ def _run_continuous_start(
         final_policy=policy,
         n_steps=len(trace) - 1,
         converged=converged,
+        value_spec=spec.true_value,
     )
     return result, tuple(trace)
 
@@ -759,10 +909,11 @@ def _gradient_estimate(
     delta: float,
     sigma: float,
     epsilon_samples: np.ndarray,
+    value_spec: ContinuousPolicyValueSpec,
 ) -> float:
     if estimator == "first_order":
-        return continuous_lcb_slope(z, delta)
-    value_fn = lambda theta: continuous_lcb_loss(float(theta[0]), z, delta)
+        return continuous_lcb_gradient(policy, z, delta, value_spec)
+    value_fn = lambda theta: continuous_lcb_loss(float(theta[0]), z, delta, value_spec)
     theta = np.asarray([policy], dtype=float)
     if estimator == "finite_difference":
         return float(
@@ -788,8 +939,9 @@ def _trajectory_row(
     policy: float,
     z: float,
     gradient: float | None,
+    value_spec: ContinuousPolicyValueSpec,
 ) -> ContinuousLCBTrajectoryRow:
-    loss = continuous_lcb_loss(policy, z, delta)
+    loss = continuous_lcb_loss(policy, z, delta, value_spec)
     return ContinuousLCBTrajectoryRow(
         run_seed=run_seed,
         noise_seed=noise_seed,
@@ -816,20 +968,35 @@ def _start_result(
     final_policy: float,
     n_steps: int,
     converged: bool,
+    value_spec: ContinuousPolicyValueSpec,
 ) -> ContinuousLCBStartResult:
     quantile = continuous_lcb_quantile(delta)
-    analytic_policy = continuous_analytic_policy(z, delta)
-    analytic_loss = continuous_lcb_loss(analytic_policy, z, delta)
-    final_loss = continuous_lcb_loss(final_policy, z, delta)
+    analytic_policy = continuous_analytic_policy(z, delta, value_spec)
+    analytic_loss = continuous_lcb_loss(analytic_policy, z, delta, value_spec)
+    final_loss = continuous_lcb_loss(final_policy, z, delta, value_spec)
     optimization_error = max(0.0, final_loss - analytic_loss)
     simultaneous = bool(abs(z) <= quantile + ORACLE_TOLERANCE)
     selected_valid = bool(
         abs(final_policy * z) <= final_policy * quantile + ORACLE_TOLERANCE
     )
-    comparator_values = np.asarray(spec_comparators(), dtype=float)
-    comparator_rhs = comparator_values - 2.0 * comparator_values * quantile - optimization_error
-    comparator_slacks = final_policy - comparator_rhs
-    worst_slack = float(np.min(comparator_slacks))
+    worst_comparator = continuous_oracle_comparator_policy(delta, value_spec)
+    true_optimal_policy = continuous_true_optimal_policy(value_spec)
+    final_true_value = continuous_true_value(final_policy, value_spec)
+    worst_slack = _oracle_slack(
+        final_true_value,
+        worst_comparator,
+        quantile,
+        optimization_error,
+        value_spec,
+    )
+    optimal_comparator_slack = _oracle_slack(
+        final_true_value,
+        true_optimal_policy,
+        quantile,
+        optimization_error,
+        value_spec,
+    )
+    true_optimal_value = continuous_true_value(true_optimal_policy, value_spec)
     return ContinuousLCBStartResult(
         run_seed=run_seed,
         noise_seed=noise_seed,
@@ -840,28 +1007,50 @@ def _start_result(
         estimator=estimator,
         start_policy=float(start_policy),
         final_policy=float(final_policy),
-        final_true_value=float(final_policy),
-        final_surrogate_value=float(final_policy * (1.0 + z)),
+        final_true_value=final_true_value,
+        final_surrogate_value=continuous_surrogate_value(final_policy, z, value_spec),
         final_lcb=-final_loss,
         final_loss=final_loss,
         analytic_policy=analytic_policy,
         analytic_lcb=-analytic_loss,
         analytic_loss=analytic_loss,
         optimization_error=optimization_error,
-        regret=1.0 - float(final_policy),
+        regret=max(0.0, true_optimal_value - final_true_value),
         n_steps=int(n_steps),
         converged=bool(converged),
         simultaneous_coverage=simultaneous,
         selected_interval_valid=selected_valid,
         worst_oracle_slack=worst_slack,
-        optimal_comparator_slack=float(comparator_slacks[-1]),
+        optimal_comparator_slack=optimal_comparator_slack,
         oracle_violation=bool(worst_slack < -ORACLE_TOLERANCE),
     )
 
 
-def spec_comparators() -> tuple[float, float]:
-    """Return endpoints sufficient for the linear continuous oracle check."""
-    return (0.0, 1.0)
+def continuous_oracle_comparator_policy(
+    delta: float,
+    value_spec: ContinuousPolicyValueSpec | None = None,
+) -> float:
+    """Return the comparator making the continuum oracle inequality tightest."""
+    value = ContinuousPolicyValueSpec() if value_spec is None else value_spec
+    linear_coefficient = value.a - 2.0 * continuous_lcb_quantile(delta)
+    if value.b == 0.0:
+        return 0.0 if linear_coefficient <= 0.0 else 1.0
+    return float(np.clip(linear_coefficient / (2.0 * value.b), 0.0, 1.0))
+
+
+def _oracle_slack(
+    final_true_value: float,
+    comparator_policy: float,
+    quantile: float,
+    optimization_error: float,
+    value_spec: ContinuousPolicyValueSpec,
+) -> float:
+    comparator_rhs = (
+        continuous_true_value(comparator_policy, value_spec)
+        - 2.0 * comparator_policy * quantile
+        - optimization_error
+    )
+    return float(final_true_value - comparator_rhs)
 
 
 def _best_from_start(row: ContinuousLCBStartResult) -> ContinuousLCBBestResult:
@@ -882,14 +1071,20 @@ __all__ = [
     "ContinuousPolicyLCBManifest",
     "ContinuousPolicyLCBOptimizerSpec",
     "ContinuousPolicyLCBSpec",
+    "ContinuousPolicyValueSpec",
     "collect_continuous_policy_lcb_outputs",
     "continuous_analytic_policy",
+    "continuous_lcb_gradient",
     "continuous_lcb_loss",
     "continuous_lcb_quantile",
     "continuous_lcb_slope",
     "continuous_lcb_value",
     "continuous_noise_seed_for_run",
+    "continuous_oracle_comparator_policy",
+    "continuous_surrogate_value",
     "continuous_stein_seed",
+    "continuous_true_optimal_policy",
+    "continuous_true_value",
     "continuous_policy_lcb_seed_complete",
     "evaluate_continuous_policy_lcb_draw",
     "evaluate_continuous_policy_lcb_seed",

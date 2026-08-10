@@ -9,12 +9,18 @@ import pytest
 from experiments.policy_lcb.continuous import (
     ContinuousPolicyLCBOptimizerSpec,
     ContinuousPolicyLCBSpec,
+    ContinuousPolicyValueSpec,
     continuous_analytic_policy,
+    continuous_lcb_gradient,
     continuous_lcb_loss,
     continuous_lcb_quantile,
     continuous_lcb_slope,
     continuous_noise_seed_for_run,
+    continuous_oracle_comparator_policy,
+    continuous_policy_lcb_seed_complete,
     continuous_stein_seed,
+    continuous_true_optimal_policy,
+    continuous_true_value,
     collect_continuous_policy_lcb_outputs,
     evaluate_continuous_policy_lcb_draw,
     evaluate_continuous_policy_lcb_seed,
@@ -72,6 +78,27 @@ def _manifest_payload() -> dict[str, object]:
     }
 
 
+def _quadratic_spec() -> ContinuousPolicyLCBSpec:
+    return ContinuousPolicyLCBSpec(
+        policy_domain=(0.0, 1.0),
+        deltas=(0.2, 0.05),
+        master_noise_seed=20260807,
+        master_optimizer_seed=20260808,
+        reporting_seed=20260809,
+        run_seeds=(101, 102),
+        optimizer=ContinuousPolicyLCBOptimizerSpec(
+            step_rule="projected_constant",
+            enabled_estimators=("first_order", "finite_difference", "stein_difference"),
+            starts=(0.1, 0.5, 0.9),
+            t_steps=200,
+            step_size=0.05,
+            sigma=0.05,
+            n_grad_samples=128,
+        ),
+        true_value=ContinuousPolicyValueSpec(kind="concave_quadratic", a=5.0, b=5.0),
+    )
+
+
 def test_shared_gaussian_lcb_formula_and_gradient() -> None:
     delta = 0.2
     z = 0.75
@@ -87,6 +114,61 @@ def test_shared_gaussian_lcb_formula_and_gradient() -> None:
 def test_analytic_minimum_is_the_correct_endpoint() -> None:
     assert continuous_analytic_policy(2.0, 0.2) == 1.0
     assert continuous_analytic_policy(-2.0, 0.2) == 0.0
+
+
+def test_quadratic_formula_gradient_and_analytic_interior_minimum() -> None:
+    value = ContinuousPolicyValueSpec(kind="concave_quadratic", a=5.0, b=5.0)
+    policy = 0.4
+    z = 0.75
+    delta = 0.2
+    quantile = continuous_lcb_quantile(delta)
+
+    assert continuous_true_value(policy, value) == pytest.approx(5.0 * policy - 5.0 * policy**2)
+    assert continuous_lcb_loss(policy, z, delta, value) == pytest.approx(
+        5.0 * policy**2 + (quantile - 5.0 - z) * policy
+    )
+    assert continuous_lcb_gradient(policy, z, delta, value) == pytest.approx(
+        10.0 * policy + quantile - 5.0 - z
+    )
+    assert continuous_analytic_policy(z, delta, value) == pytest.approx(
+        (5.0 + z - quantile) / 10.0
+    )
+    assert continuous_true_optimal_policy(value) == pytest.approx(0.5)
+
+
+def test_quadratic_minima_are_interior_for_two_standard_deviation_draws() -> None:
+    value = ContinuousPolicyValueSpec(kind="concave_quadratic", a=5.0, b=5.0)
+    for delta in (0.5, 0.2, 0.1, 0.05, 0.01):
+        for z in (-2.0, 2.0):
+            optimum = continuous_analytic_policy(z, delta, value)
+            assert 0.0 < optimum < 1.0
+
+
+def test_quadratic_continuum_oracle_comparator_is_analytic() -> None:
+    value = ContinuousPolicyValueSpec(kind="concave_quadratic", a=5.0, b=5.0)
+    delta = 0.2
+    comparator = continuous_oracle_comparator_policy(delta, value)
+
+    assert comparator == pytest.approx((5.0 - 2.0 * continuous_lcb_quantile(delta)) / 10.0)
+
+
+def test_all_estimators_converge_to_quadratic_interior_minimum() -> None:
+    spec = _quadratic_spec()
+    result = evaluate_continuous_policy_lcb_draw(
+        spec,
+        run_seed=101,
+        noise_seed=17,
+        z=0.25,
+    )
+
+    assert all(0.0 < row.analytic_policy < 1.0 for row in result.best_results)
+    assert all(row.converged for row in result.best_results)
+    assert all(
+        row.final_policy == pytest.approx(row.analytic_policy, abs=2e-8)
+        for row in result.best_results
+    )
+    assert all(row.optimization_error < 1e-12 for row in result.best_results)
+    assert all(not row.oracle_violation for row in result.best_results)
 
 
 def test_pure_stein_helper_matches_linear_gradient_up_to_sample_second_moment() -> None:
@@ -204,6 +286,11 @@ def test_committed_manifest_matches_the_documented_seed_and_optimizer_contract()
     assert manifest.spec.master_noise_seed == 20260807
     assert manifest.spec.master_optimizer_seed == 20260808
     assert manifest.spec.reporting_seed == 20260809
+    assert manifest.spec.true_value == ContinuousPolicyValueSpec(
+        kind="concave_quadratic",
+        a=5.0,
+        b=5.0,
+    )
     assert manifest.spec.optimizer.enabled_estimators == (
         "first_order",
         "finite_difference",
@@ -212,6 +299,20 @@ def test_committed_manifest_matches_the_documented_seed_and_optimizer_contract()
     assert manifest.spec.optimizer.starts == (0.1, 0.5, 0.9)
     assert manifest.spec.optimizer.t_steps == 500
     assert manifest.launch.array == "seed"
+
+
+def test_completion_marker_is_invalidated_when_the_value_model_changes(tmp_path: Path) -> None:
+    identity_manifest = parse_continuous_policy_lcb_manifest(_manifest_payload())
+    run_continuous_policy_lcb_manifest_seed(identity_manifest, 0, runs_root=tmp_path)
+    changed_payload = _manifest_payload()
+    changed_payload["true_value"] = {"type": "concave_quadratic", "a": 5.0, "b": 5.0}
+    quadratic_manifest = parse_continuous_policy_lcb_manifest(changed_payload)
+
+    assert not continuous_policy_lcb_seed_complete(
+        quadratic_manifest,
+        quadratic_manifest.spec.run_seeds[0],
+        runs_root=tmp_path,
+    )
 
 
 def test_seed_execution_collection_and_exact_output_tree(tmp_path: Path) -> None:
@@ -241,6 +342,7 @@ def test_seed_execution_collection_and_exact_output_tree(tmp_path: Path) -> None
         assert result_path.exists()
         payload = json.loads(result_path.read_text(encoding="utf-8"))
         assert payload["model"]["optimized_quantity"] == "negative_lcb"
+        assert payload["model"]["true_value"] == {"type": "identity", "a": 1.0, "b": 0.0}
         assert payload["seed_contract"]["stein_stream_varies_across_run_seeds"] is False
         assert (project_dir / "seeds" / f"seed-{run_seed}" / "trajectories.csv").exists()
         assert (project_dir / "plots" / "seeds" / f"seed-{run_seed}.png").exists()

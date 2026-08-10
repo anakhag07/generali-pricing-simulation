@@ -14,6 +14,7 @@ from experiments.launch import LaunchContext, LaunchPlan, add_launch_args, run_l
 from experiments.policy_lcb.continuous import (
     ContinuousPolicyLCBManifest,
     ContinuousPolicyLCBSpec,
+    ContinuousPolicyValueSpec,
     evaluate_continuous_policy_lcb_seed,
     load_continuous_policy_lcb_manifest,
 )
@@ -26,6 +27,7 @@ __all__ = [
     "CorrectnessSpec",
     "ContinuousPolicyLCBManifest",
     "ContinuousPolicyLCBSpec",
+    "ContinuousPolicyValueSpec",
     "ExperimentConfig",
     "get_config",
     "list_configs",

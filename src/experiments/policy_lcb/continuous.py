@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Mapping, Sequence
+from dataclasses import asdict, dataclass
+import csv
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import numpy as np
 
@@ -13,10 +15,16 @@ from experiments.policy_lcb.common import (
     ORACLE_TOLERANCE,
     PolicyLCBLaunchSpec,
     gaussian_lcb_quantile,
+    number_sequence,
     path_part,
+    read_json,
+    required_mapping,
+    require_type,
     shared_gaussian_coverage,
+    write_json_atomic,
 )
 from experiments.seeds import derive_seed, rng_from_seed
+from experiments.sweep_reporting import write_rows_csv
 from optimization.helpers import finite_difference_theta_grad, stein_difference_theta_grad
 
 
@@ -224,6 +232,88 @@ class ContinuousLCBSeedResult:
     trajectories: tuple[ContinuousLCBTrajectoryRow, ...]
 
 
+def load_continuous_policy_lcb_manifest(path: str | Path) -> ContinuousPolicyLCBManifest:
+    """Load and validate a ``kind=continuous_policy_lcb`` JSON manifest."""
+    manifest_path = Path(path)
+    return parse_continuous_policy_lcb_manifest(
+        read_json(manifest_path),
+        source_path=manifest_path,
+    )
+
+
+def parse_continuous_policy_lcb_manifest(
+    payload: Mapping[str, Any],
+    *,
+    source_path: str | Path | None = None,
+) -> ContinuousPolicyLCBManifest:
+    """Validate a continuous policy-LCB manifest payload."""
+    if not isinstance(payload, Mapping):
+        raise ValueError("Continuous policy-LCB manifest must be a JSON object.")
+    if payload.get("kind") != "continuous_policy_lcb":
+        raise ValueError("Continuous policy-LCB manifest kind must be 'continuous_policy_lcb'.")
+    name = str(payload.get("name") or "").strip()
+    if not name:
+        raise ValueError("Continuous policy-LCB manifest name must be non-empty.")
+    require_type(payload, "true_value", "identity")
+    require_type(payload, "surrogate", "shared_policy_scaled_gaussian")
+    domain = number_sequence(payload.get("policy_domain"), "policy_domain")
+    if len(domain) != 2:
+        raise ValueError("policy_domain must contain exactly two endpoints.")
+    deltas = number_sequence(payload.get("deltas"), "deltas")
+
+    seeds = required_mapping(payload, "seeds")
+    run_seeds_raw = seeds.get("run_seeds")
+    if not isinstance(run_seeds_raw, Sequence) or isinstance(run_seeds_raw, (str, bytes)):
+        raise ValueError("seeds.run_seeds must be a sequence.")
+
+    optimizer_payload = required_mapping(payload, "optimizer")
+    estimators_raw = optimizer_payload.get("enabled_estimators")
+    if not isinstance(estimators_raw, Sequence) or isinstance(estimators_raw, (str, bytes)):
+        raise ValueError("optimizer.enabled_estimators must be a sequence.")
+    starts = number_sequence(optimizer_payload.get("starts"), "optimizer.starts")
+    optimizer = ContinuousPolicyLCBOptimizerSpec(
+        step_rule=str(optimizer_payload.get("step_rule") or ""),
+        enabled_estimators=tuple(str(value) for value in estimators_raw),  # type: ignore[arg-type]
+        starts=starts,
+        t_steps=int(optimizer_payload.get("t_steps", 0)),
+        step_size=float(optimizer_payload.get("step_size", np.nan)),
+        sigma=float(optimizer_payload.get("sigma", np.nan)),
+        n_grad_samples=int(optimizer_payload.get("n_grad_samples", 0)),
+    )
+
+    launch_payload = required_mapping(payload, "launch")
+    mode = str(launch_payload.get("mode") or "")
+    if mode not in {"auto", "local", "slurm"}:
+        raise ValueError("launch.mode must be auto, local, or slurm.")
+    array = str(launch_payload.get("array") or "")
+    if array not in {"none", "seed"}:
+        raise ValueError("launch.array must be none or seed.")
+    maximum_raw = launch_payload.get("array_max_parallel")
+    maximum = None if maximum_raw is None else int(maximum_raw)
+    if maximum is not None and maximum <= 0:
+        raise ValueError("launch.array_max_parallel must be positive when provided.")
+
+    spec = ContinuousPolicyLCBSpec(
+        policy_domain=(domain[0], domain[1]),
+        deltas=deltas,
+        master_noise_seed=int(seeds.get("master_noise_seed", -1)),
+        master_optimizer_seed=int(seeds.get("master_optimizer_seed", -1)),
+        reporting_seed=int(seeds.get("reporting_seed", -1)),
+        run_seeds=tuple(int(seed) for seed in run_seeds_raw),
+        optimizer=optimizer,
+    )
+    return ContinuousPolicyLCBManifest(
+        name=name,
+        spec=spec,
+        launch=ContinuousPolicyLCBLaunchSpec(
+            mode=mode,  # type: ignore[arg-type]
+            array=array,  # type: ignore[arg-type]
+            array_max_parallel=maximum,
+        ),
+        source_path=None if source_path is None else Path(source_path),
+    )
+
+
 def continuous_lcb_quantile(delta: float) -> float:
     """Return the exact two-sided quantile for one shared Gaussian draw."""
     return gaussian_lcb_quantile(delta)
@@ -323,6 +413,266 @@ def evaluate_continuous_policy_lcb_draw(
         z=z_value,
         start_results=tuple(starts),
         best_results=tuple(best),
+        trajectories=tuple(trajectories),
+    )
+
+
+def continuous_policy_lcb_seed_complete(
+    manifest: ContinuousPolicyLCBManifest,
+    run_seed: int,
+    *,
+    runs_root: str | Path | None = None,
+) -> bool:
+    """Return whether both durable outputs for one seed exist."""
+    return manifest.seed_result_path(run_seed, runs_root).exists() and manifest.seed_trajectory_path(
+        run_seed, runs_root
+    ).exists()
+
+
+def run_continuous_policy_lcb_manifest_seed(
+    manifest: ContinuousPolicyLCBManifest,
+    index: int,
+    *,
+    runs_root: str | Path | None = None,
+    force: bool = False,
+) -> dict[str, object]:
+    """Run one shared-Gaussian seed task and persist its summary and traces."""
+    if index < 0 or index >= len(manifest.spec.run_seeds):
+        raise IndexError(f"Seed task index {index} is out of range.")
+    run_seed = manifest.spec.run_seeds[index]
+    write_continuous_policy_lcb_experiment_readme(manifest, runs_root=runs_root)
+    if continuous_policy_lcb_seed_complete(manifest, run_seed, runs_root=runs_root) and not force:
+        return {
+            "project_dir": str(manifest.project_dir(runs_root)),
+            "run_seed": run_seed,
+            "skipped": True,
+            "n_condition_runs": 0,
+        }
+    result = evaluate_continuous_policy_lcb_seed(manifest.spec, run_seed)
+    _write_seed_result(manifest.seed_result_path(run_seed, runs_root), result, manifest.spec)
+    _write_seed_trajectories(manifest.seed_trajectory_path(run_seed, runs_root), result)
+    return {
+        "project_dir": str(manifest.project_dir(runs_root)),
+        "run_seed": run_seed,
+        "skipped": False,
+        "n_condition_runs": len(result.start_results),
+    }
+
+
+def run_continuous_policy_lcb_manifest_serial(
+    manifest: ContinuousPolicyLCBManifest,
+    *,
+    runs_root: str | Path | None = None,
+    force: bool = False,
+) -> dict[str, object]:
+    """Run every continuous seed serially and collect aggregate outputs."""
+    payloads = [
+        run_continuous_policy_lcb_manifest_seed(
+            manifest,
+            index,
+            runs_root=runs_root,
+            force=force,
+        )
+        for index in range(len(manifest.spec.run_seeds))
+    ]
+    collected = collect_continuous_policy_lcb_outputs(manifest, runs_root=runs_root)
+    return {
+        **collected,
+        "n_condition_runs": sum(int(payload["n_condition_runs"]) for payload in payloads),
+        "n_skipped_seeds": sum(bool(payload["skipped"]) for payload in payloads),
+    }
+
+
+def collect_continuous_policy_lcb_outputs(
+    manifest: ContinuousPolicyLCBManifest,
+    *,
+    runs_root: str | Path | None = None,
+) -> dict[str, object]:
+    """Collect seed outputs into continuous optimizer tables and plots."""
+    from experiments.policy_lcb.continuous_reporting import (
+        coverage_summary_rows,
+        optimizer_summary_rows,
+        oracle_summary_rows,
+        write_continuous_policy_lcb_plots,
+    )
+
+    project_dir = manifest.project_dir(runs_root)
+    write_continuous_policy_lcb_experiment_readme(manifest, runs_root=runs_root)
+    seed_results = [
+        _read_seed_result(
+            manifest.seed_result_path(run_seed, runs_root),
+            manifest.seed_trajectory_path(run_seed, runs_root),
+        )
+        for run_seed in manifest.spec.run_seeds
+    ]
+    draw_rows = [
+        {
+            "run_seed": result.run_seed,
+            "noise_seed": result.noise_seed,
+            "stein_seed": result.stein_seed,
+            "z": result.z,
+        }
+        for result in seed_results
+    ]
+    start_rows = [asdict(row) for result in seed_results for row in result.start_results]
+    best_rows = [asdict(row) for result in seed_results for row in result.best_results]
+    optimizer_rows = optimizer_summary_rows(manifest.spec, seed_results)
+    coverage_rows = coverage_summary_rows(manifest.spec, seed_results)
+    oracle_rows = oracle_summary_rows(manifest.spec, seed_results)
+
+    write_rows_csv(project_dir / "seed_draws.csv", draw_rows, tuple(draw_rows[0]))
+    write_rows_csv(
+        project_dir / "seed_start_results.csv",
+        start_rows,
+        tuple(ContinuousLCBStartResult.__dataclass_fields__),
+    )
+    write_rows_csv(
+        project_dir / "seed_best_results.csv",
+        best_rows,
+        tuple(ContinuousLCBBestResult.__dataclass_fields__),
+    )
+    write_rows_csv(
+        project_dir / "optimizer_summary.csv",
+        optimizer_rows,
+        tuple(optimizer_rows[0]),
+    )
+    write_rows_csv(
+        project_dir / "coverage_summary.csv",
+        coverage_rows,
+        tuple(coverage_rows[0]),
+    )
+    write_rows_csv(
+        project_dir / "oracle_summary.csv",
+        oracle_rows,
+        tuple(oracle_rows[0]),
+    )
+    write_continuous_policy_lcb_plots(
+        manifest.spec,
+        seed_results,
+        optimizer_rows,
+        coverage_rows,
+        project_dir,
+    )
+    return {
+        "project_dir": str(project_dir),
+        "n_seed_results": len(seed_results),
+        "n_start_rows": len(start_rows),
+        "n_best_rows": len(best_rows),
+    }
+
+
+def write_continuous_policy_lcb_experiment_readme(
+    manifest: ContinuousPolicyLCBManifest,
+    *,
+    runs_root: str | Path | None = None,
+) -> Path:
+    """Write the resolved continuous policy-LCB experiment descriptor."""
+    project_dir = manifest.project_dir(runs_root)
+    project_dir.mkdir(parents=True, exist_ok=True)
+    path = project_dir / "EXPERIMENT.md"
+    spec = manifest.spec
+    optimizer = spec.optimizer
+    source = str(manifest.source_path) if manifest.source_path is not None else "inline payload"
+    text = f"""# {manifest.name}
+
+- Manifest source: `{source}`
+- Policy domain: `{list(spec.policy_domain)}`
+- Deltas: `{list(spec.deltas)}`
+- Estimators: `{list(optimizer.enabled_estimators)}`
+- Starts: `{list(optimizer.starts)}`
+- Projected steps / step size: `{optimizer.t_steps}` / `{optimizer.step_size}`
+- Perturbation radius / Stein samples: `{optimizer.sigma}` / `{optimizer.n_grad_samples}`
+- Master problem-noise seed: `{spec.master_noise_seed}`
+- Fixed paired optimizer seed: `{spec.master_optimizer_seed}`
+- Reporting seed: `{spec.reporting_seed}`
+- Run seeds: `{list(spec.run_seeds)}`
+- Launch: `{manifest.launch.mode}` / `{manifest.launch.array}`
+
+Each run seed draws one scalar standard normal `Z_s`. The draw is reused for
+every policy in `[0, 1]`, confidence level, estimator, and start. The separate
+Stein perturbation stream is deliberately reinitialized identically for every
+condition so seed-level spread isolates the problem draws.
+
+```text
+V(pi) = pi
+V_hat_s(pi) = pi * (1 + Z_s)
+q(delta) = Phi^-1(1 - delta / 2)
+E(pi, delta) = 2 * pi * q(delta)
+loss(pi, delta, s) = -LCB = pi * (q(delta) - 1 - Z_s)
+```
+"""
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
+def _write_seed_result(
+    path: Path,
+    result: ContinuousLCBSeedResult,
+    spec: ContinuousPolicyLCBSpec,
+) -> None:
+    write_json_atomic(
+        path,
+        {
+            "model": {
+                "true_value": "identity",
+                "surrogate": "shared_policy_scaled_gaussian",
+                "optimized_quantity": "negative_lcb",
+                "policy_domain": list(spec.policy_domain),
+                "deltas": list(spec.deltas),
+            },
+            "optimizer": asdict(spec.optimizer),
+            "seed_contract": {
+                "master_noise_seed": spec.master_noise_seed,
+                "master_optimizer_seed": spec.master_optimizer_seed,
+                "reporting_seed": spec.reporting_seed,
+                "stein_stream_varies_across_run_seeds": False,
+            },
+            "run_seed": result.run_seed,
+            "noise_seed": result.noise_seed,
+            "stein_seed": result.stein_seed,
+            "z": result.z,
+            "start_results": [asdict(row) for row in result.start_results],
+            "best_results": [asdict(row) for row in result.best_results],
+        },
+    )
+
+
+def _write_seed_trajectories(path: Path, result: ContinuousLCBSeedResult) -> None:
+    rows = [asdict(row) for row in result.trajectories]
+    write_rows_csv(path, rows, tuple(ContinuousLCBTrajectoryRow.__dataclass_fields__))
+
+
+def _read_seed_result(result_path: Path, trajectory_path: Path) -> ContinuousLCBSeedResult:
+    if not result_path.exists():
+        raise FileNotFoundError(f"Missing continuous policy-LCB seed result: {result_path}")
+    if not trajectory_path.exists():
+        raise FileNotFoundError(f"Missing continuous policy-LCB trajectories: {trajectory_path}")
+    payload = read_json(result_path)
+    trajectories: list[ContinuousLCBTrajectoryRow] = []
+    with trajectory_path.open(newline="", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
+            gradient_raw = row["gradient_estimate"]
+            trajectories.append(
+                ContinuousLCBTrajectoryRow(
+                    run_seed=int(row["run_seed"]),
+                    noise_seed=int(row["noise_seed"]),
+                    delta=float(row["delta"]),
+                    estimator=row["estimator"],
+                    start_policy=float(row["start_policy"]),
+                    step=int(row["step"]),
+                    policy=float(row["policy"]),
+                    loss=float(row["loss"]),
+                    lcb=float(row["lcb"]),
+                    gradient_estimate=None if gradient_raw == "" else float(gradient_raw),
+                )
+            )
+    return ContinuousLCBSeedResult(
+        run_seed=int(payload["run_seed"]),
+        noise_seed=int(payload["noise_seed"]),
+        stein_seed=int(payload["stein_seed"]),
+        z=float(payload["z"]),
+        start_results=tuple(ContinuousLCBStartResult(**row) for row in payload["start_results"]),
+        best_results=tuple(ContinuousLCBBestResult(**row) for row in payload["best_results"]),
         trajectories=tuple(trajectories),
     )
 
@@ -532,6 +882,7 @@ __all__ = [
     "ContinuousPolicyLCBManifest",
     "ContinuousPolicyLCBOptimizerSpec",
     "ContinuousPolicyLCBSpec",
+    "collect_continuous_policy_lcb_outputs",
     "continuous_analytic_policy",
     "continuous_lcb_loss",
     "continuous_lcb_quantile",
@@ -539,7 +890,13 @@ __all__ = [
     "continuous_lcb_value",
     "continuous_noise_seed_for_run",
     "continuous_stein_seed",
+    "continuous_policy_lcb_seed_complete",
     "evaluate_continuous_policy_lcb_draw",
     "evaluate_continuous_policy_lcb_seed",
+    "load_continuous_policy_lcb_manifest",
+    "parse_continuous_policy_lcb_manifest",
+    "run_continuous_policy_lcb_manifest_seed",
+    "run_continuous_policy_lcb_manifest_serial",
     "shared_gaussian_coverage",
+    "write_continuous_policy_lcb_experiment_readme",
 ]

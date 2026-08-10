@@ -251,7 +251,7 @@ def _plot_final_policy_bands(
         "Final continuous policy across Gaussian problem draws\n"
         + ("Empirical median and spread" if center == "median" else "Mean and uncertainty in the mean")
     )
-    fig.tight_layout()
+    fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.94))
     fig.savefig(path, dpi=180)
     plt.close(fig)
 

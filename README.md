@@ -226,6 +226,35 @@ policy/selection tables, analytic and empirical coverage, oracle-inequality
 checks, and paired seed/aggregate plots under
 `results/finite-policy-lcb-validation/`.
 
+### Continuous-Policy Lower Confidence Bounds
+
+The continuous companion uses the same manifest launcher and seed-task output
+contract over $$\Pi=[0,1]$$. Each run seed draws one scalar $$Z_s\sim N(0,1)$$
+and reuses it across every policy, confidence level, estimator, and start:
+
+$$
+\widehat V_s(\pi)=\pi(1+Z_s),
+\qquad
+-\underline V_{s,\delta}(\pi)=\pi(q_\delta-1-Z_s).
+$$
+
+The negative LCB is linear, so its analytic constrained minimum is an endpoint.
+Projected first-order, finite-difference, and Stein-difference runs from three
+paired starts measure convergence and LCB optimization error against that exact
+endpoint:
+
+```bash
+python scripts/run_experiment_manifest.py \
+  manifests/continuous_policy_lcb_validation.json
+```
+
+The 25 problem-noise seeds use a separate fixed Stein perturbation stream so
+cross-seed spread isolates the shared Gaussian draws. Outputs under
+`results/continuous-policy-lcb-validation/` include per-start and best-of-start
+tables, replayable seed JSONs, trajectory CSVs, exact/empirical coverage and
+oracle diagnostics, a median/IQR seed-band plot, and a separately labeled
+mean/bootstrap-95% plot.
+
 ### Zeroth-Order Support Envelopes
 
 The committed support-envelope sweep reuses the same strongly convex proof

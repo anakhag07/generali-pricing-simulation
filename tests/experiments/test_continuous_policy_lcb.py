@@ -190,6 +190,30 @@ def test_manifest_parser_validates_continuous_contract(tmp_path: Path) -> None:
         parse_continuous_policy_lcb_manifest(payload)
 
 
+def test_committed_manifest_matches_the_documented_seed_and_optimizer_contract() -> None:
+    manifest_path = (
+        Path(__file__).parents[2]
+        / "manifests"
+        / "continuous_policy_lcb_validation.json"
+    )
+    manifest = load_continuous_policy_lcb_manifest(manifest_path)
+
+    assert manifest.name == "continuous-policy-lcb-validation"
+    assert manifest.spec.policy_domain == (0.0, 1.0)
+    assert manifest.spec.run_seeds == tuple(range(101, 126))
+    assert manifest.spec.master_noise_seed == 20260807
+    assert manifest.spec.master_optimizer_seed == 20260808
+    assert manifest.spec.reporting_seed == 20260809
+    assert manifest.spec.optimizer.enabled_estimators == (
+        "first_order",
+        "finite_difference",
+        "stein_difference",
+    )
+    assert manifest.spec.optimizer.starts == (0.1, 0.5, 0.9)
+    assert manifest.spec.optimizer.t_steps == 500
+    assert manifest.launch.array == "seed"
+
+
 def test_seed_execution_collection_and_exact_output_tree(tmp_path: Path) -> None:
     manifest = parse_continuous_policy_lcb_manifest(_manifest_payload())
     first = run_continuous_policy_lcb_manifest_seed(manifest, 0, runs_root=tmp_path)

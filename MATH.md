@@ -679,7 +679,8 @@ every configured $$\delta$$. This paired design changes only the confidence
 radius within a seed; different run seeds use independently derived noise
 streams.
 
-- **Source:** `src/experiments/finite_policy_lcb.py`;
+- **Source:** `src/experiments/policy_lcb/finite.py` (with compatibility import
+  `src/experiments/finite_policy_lcb.py`);
   `manifests/finite_policy_lcb_validation.json`
 - **Notes:** There is no gradient method, theta initialization, data split, or
   optimizer RNG. Exhaustive policy evaluation is the optimizer, and only the

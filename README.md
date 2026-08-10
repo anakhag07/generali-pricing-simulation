@@ -258,7 +258,9 @@ cross-seed spread isolates the shared Gaussian draws. Outputs under
 `results/continuous-policy-lcb-validation/` include per-start and best-of-start
 tables, replayable seed JSONs, trajectory CSVs, exact/empirical coverage and
 oracle diagnostics, a median/IQR seed-band plot, and a separately labeled
-mean/bootstrap-95% plot.
+mean/bootstrap-95% plot. Two direct objective diagnostics show the negative LCB
+across problem-noise seeds at fixed $$\delta=0.05$$ and across confidence
+levels with the Gaussian draw fixed at $$Z=0$$.
 
 The continuum-wide quantile is $$q_\delta=\Phi^{-1}(1-\delta/2)$$ rather than
 the finite-policy Bonferroni quantile. This is not a consequence of continuity:

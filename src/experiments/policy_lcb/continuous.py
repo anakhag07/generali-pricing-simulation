@@ -721,6 +721,22 @@ loss(pi, delta, s) = -LCB
 The absence of a Bonferroni factor is caused by the shared scalar `Z_s`, not by
 continuity alone. For every positive policy, the simultaneous standardized
 error event reduces to the same event `abs(Z_s) <= q(delta)`.
+
+The coverage plot compares nominal `1 - delta` with the fraction of the 25
+problem draws satisfying that simultaneous event; its error bars are Wilson
+intervals for the empirical fraction. It does not measure optimizer convergence.
+
+For each fitted policy, comparator policy, and delta, oracle slack is
+`V(fitted) - V(comparator) + E(comparator, delta) + optimization_error`. The
+reported value is the minimum over every comparator in `[0, 1]`; a negative
+value would violate the oracle inequality.
+
+Objective diagnostics:
+
+- `plots/negative_lcb_seed_spread.png` holds `delta=0.05` fixed and shows how
+  the Gaussian problem draws shift the minimized negative-LCB curve.
+- `plots/negative_lcb_by_delta_z0.png` holds `Z=0` fixed and shows how changing
+  the confidence level shifts the minimized objective.
 """
     path.write_text(text, encoding="utf-8")
     return path

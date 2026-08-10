@@ -16,6 +16,7 @@ from experiments.policy_lcb.common import sample_std, shared_gaussian_coverage, 
 from experiments.policy_lcb.continuous import (
     ContinuousLCBSeedResult,
     ContinuousPolicyLCBSpec,
+    continuous_analytic_policy,
     continuous_lcb_loss,
 )
 from experiments.seeds import derive_seed, rng_from_seed
@@ -188,6 +189,15 @@ def write_continuous_policy_lcb_plots(
     )
     _plot_coverage(spec, coverage_summary, plots_dir / "coverage.png")
     _plot_oracle_slack(spec, seed_results, plots_dir / "oracle_slack.png")
+    _plot_negative_lcb_seed_spread(
+        spec,
+        seed_results,
+        plots_dir / "negative_lcb_seed_spread.png",
+    )
+    _plot_negative_lcb_by_delta(
+        spec,
+        plots_dir / "negative_lcb_by_delta_z0.png",
+    )
     seed_dir = plots_dir / "seeds"
     seed_dir.mkdir(parents=True, exist_ok=True)
     for seed_result in seed_results:
@@ -315,7 +325,10 @@ def _plot_coverage(
     axis.set_ylim(0.0, 1.05)
     axis.set_xlabel(r"Failure probability $\delta$")
     axis.set_ylabel("Simultaneous continuum coverage")
-    axis.set_title("Shared-Gaussian confidence coverage over [0,1]")
+    axis.set_title(
+        "Confidence band validity over every policy\n"
+        r"Shared-$Z$: simultaneous event is $|Z_s|\leq q_\delta$"
+    )
     axis.legend()
     axis.grid(alpha=0.25)
     fig.tight_layout()
@@ -345,8 +358,124 @@ def _plot_oracle_slack(
         axis.set_title(estimator.replace("_", " "))
         axis.set_xlabel(r"Failure probability $\delta$")
         axis.grid(axis="y", alpha=0.25)
-    np.atleast_1d(axes)[0].set_ylabel("Worst continuous-comparator oracle slack")
-    fig.suptitle("Continuous policy-LCB oracle inequality")
+    np.atleast_1d(axes)[0].set_ylabel("Worst-comparator oracle slack")
+    fig.suptitle(
+        "Continuous policy-LCB oracle inequality across seeds\n"
+        "Values below zero would violate the bound"
+    )
+    fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.92))
+    fig.savefig(path, dpi=180)
+    plt.close(fig)
+
+
+def _plot_negative_lcb_seed_spread(
+    spec: ContinuousPolicyLCBSpec,
+    seed_results: Sequence[ContinuousLCBSeedResult],
+    path: Path,
+) -> None:
+    """Plot how shared Gaussian problem draws shift the objective at fixed delta."""
+    delta = min(spec.deltas, key=lambda value: abs(value - 0.05))
+    policy_grid = np.linspace(*spec.policy_domain, 301)
+    losses = np.asarray(
+        [
+            [
+                continuous_lcb_loss(policy, result.z, delta, spec.true_value)
+                for policy in policy_grid
+            ]
+            for result in seed_results
+        ],
+        dtype=float,
+    )
+    median = np.median(losses, axis=0)
+    q25, q75 = np.quantile(losses, [0.25, 0.75], axis=0)
+
+    fig, axis = plt.subplots(figsize=(8.8, 5.6))
+    for row in losses:
+        axis.plot(policy_grid, row, color="0.6", linewidth=0.75, alpha=0.25)
+    axis.fill_between(
+        policy_grid,
+        q25,
+        q75,
+        color="tab:blue",
+        alpha=0.24,
+        label="Seed IQR",
+    )
+    axis.plot(
+        policy_grid,
+        median,
+        color="tab:blue",
+        linewidth=2.4,
+        label="Seed median",
+    )
+    minima = [
+        next(
+            row.analytic_policy
+            for row in result.best_results
+            if row.delta == delta and row.estimator == spec.optimizer.enabled_estimators[0]
+        )
+        for result in seed_results
+    ]
+    minimum_losses = [
+        continuous_lcb_loss(policy, result.z, delta, spec.true_value)
+        for policy, result in zip(minima, seed_results, strict=True)
+    ]
+    axis.scatter(
+        minima,
+        minimum_losses,
+        color="tab:orange",
+        edgecolor="none",
+        alpha=0.55,
+        s=24,
+        label="Seed-specific analytic minima",
+        zorder=3,
+    )
+    axis.set_xlabel(r"Policy $\pi$")
+    axis.set_ylabel(r"Objective $F_{s,\delta}(\pi)=-\mathrm{LCB}$ (minimize)")
+    axis.set_title(
+        rf"Gaussian-draw shifts of the negative LCB at $\delta={delta:g}$"
+        "\nFaint curves are individual problem-noise seeds"
+    )
+    axis.grid(alpha=0.25)
+    axis.legend()
+    fig.tight_layout()
+    fig.savefig(path, dpi=180)
+    plt.close(fig)
+
+
+def _plot_negative_lcb_by_delta(
+    spec: ContinuousPolicyLCBSpec,
+    path: Path,
+) -> None:
+    """Plot confidence-level shifts of the objective with Gaussian noise fixed at zero."""
+    policy_grid = np.linspace(*spec.policy_domain, 301)
+    fig, axis = plt.subplots(figsize=(8.8, 5.6))
+    for delta in spec.deltas:
+        losses = [
+            continuous_lcb_loss(policy, 0.0, delta, spec.true_value)
+            for policy in policy_grid
+        ]
+        line = axis.plot(
+            policy_grid,
+            losses,
+            linewidth=2.0,
+            label=rf"$\delta={delta:g}$",
+        )[0]
+        analytic = continuous_analytic_policy(0.0, delta, spec.true_value)
+        axis.scatter(
+            [analytic],
+            [continuous_lcb_loss(analytic, 0.0, delta, spec.true_value)],
+            color=line.get_color(),
+            s=30,
+            zorder=3,
+        )
+    axis.set_xlabel(r"Policy $\pi$")
+    axis.set_ylabel(r"Objective $F_{\delta}(\pi)=-\mathrm{LCB}$ (minimize)")
+    axis.set_title(
+        r"Confidence-level shifts of the negative LCB with $Z=0$"
+        "\nMarkers show the analytic minimum of each curve"
+    )
+    axis.grid(alpha=0.25)
+    axis.legend()
     fig.tight_layout()
     fig.savefig(path, dpi=180)
     plt.close(fig)

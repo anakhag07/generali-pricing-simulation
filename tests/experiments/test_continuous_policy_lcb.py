@@ -353,6 +353,8 @@ def test_seed_execution_collection_and_exact_output_tree(tmp_path: Path) -> None
         "convergence_steps.png",
         "coverage.png",
         "oracle_slack.png",
+        "negative_lcb_seed_spread.png",
+        "negative_lcb_by_delta_z0.png",
     ):
         assert (project_dir / "plots" / filename).exists()
     with (project_dir / "seed_best_results.csv").open(newline="", encoding="utf-8") as handle:

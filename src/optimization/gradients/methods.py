@@ -11,6 +11,7 @@ from optimization.helpers import (
     finite_difference_theta_grad,
     objective_grad_on_indices,
     objective_value_on_indices,
+    stein_difference_theta_grad,
     x_batch,
 )
 
@@ -407,18 +408,18 @@ class SteinDifferenceGradient(GradientMethod):
         eps_samples = optimizer.rng.normal(
             0.0, 1.0, size=(optimizer.n_grad_samples, theta.size)
         ).astype(float)
-        grad = np.zeros_like(theta, dtype=float)
-        for eps in eps_samples:
-            value_plus = objective_value_on_indices(
-                optimizer.objective, optimizer.x_array, optimizer.n_total,
-                theta + optimizer.sigma * eps, indices,
-            )
-            value_minus = objective_value_on_indices(
-                optimizer.objective, optimizer.x_array, optimizer.n_total,
-                theta - optimizer.sigma * eps, indices,
-            )
-            grad += ((value_plus - value_minus) / (2.0 * optimizer.sigma)) * eps
-        return grad / float(eps_samples.shape[0])
+        return stein_difference_theta_grad(
+            lambda theta_eval: objective_value_on_indices(
+                optimizer.objective,
+                optimizer.x_array,
+                optimizer.n_total,
+                theta_eval,
+                indices,
+            ),
+            theta,
+            step=optimizer.sigma,
+            epsilon_samples=eps_samples,
+        )
 
     def _u_grad(
         self,

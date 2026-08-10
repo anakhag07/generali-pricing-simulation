@@ -685,6 +685,77 @@ streams.
   optimizer RNG. Exhaustive policy evaluation is the optimizer, and only the
   noise seed varies.
 
+#### 3.6.4 Continuous-Policy Lower Confidence Bounds
+
+For the continuous class $$\Pi=[0,1]$$, one scalar Gaussian draw is shared by
+every policy within run seed $$s$$:
+
+$$
+V(\pi)=\pi,
+\qquad
+\widehat V_s(\pi)=\pi+\pi Z_s=\pi(1+Z_s),
+\qquad
+Z_s\sim N(0,1).
+$$
+
+Because the same $$Z_s$$ is used throughout the interval, the simultaneous
+two-sided quantile has no finite-class Bonferroni factor:
+
+$$
+q_\delta=\Phi^{-1}(1-\delta/2),
+\qquad
+\mathcal E^\pi(\delta)=2\pi q_\delta.
+$$
+
+The experiment minimizes the negative lower confidence bound
+
+$$
+F_{s,\delta}(\pi)
+=-\underline V_{s,\delta}(\pi)
+=\pi(q_\delta-1-Z_s),
+$$
+
+whose exact derivative and smallest exact constrained minimizer are
+
+$$
+F'_{s,\delta}(\pi)=q_\delta-1-Z_s,
+$$
+
+$$
+\pi^*_{s,\delta}
+=
+\begin{cases}
+0, & q_\delta-1-Z_s\ge 0,\\
+1, & q_\delta-1-Z_s<0.
+\end{cases}
+$$
+
+The single event $$|Z_s|\le q_\delta$$ covers every policy simultaneously, so
+
+$$
+\Pr\!\left(
+|\widehat V_s(\pi)-V(\pi)|\le \tfrac12\mathcal E^\pi(\delta)
+\text{ for every }\pi\in[0,1]
+\right)=1-\delta.
+$$
+
+Projected first-order, finite-difference, and Stein-difference updates retain
+feasible iterates in $$[0,1]$$. Finite-difference and Stein probes use the
+natural linear extension of $$F_{s,\delta}$$ outside the feasible interval.
+If an optimizer returns $$\widehat\pi$$, its measured LCB optimization error is
+
+$$
+\varepsilon
+=F_{s,\delta}(\widehat\pi)-F_{s,\delta}(\pi^*_{s,\delta})
+=\underline V_{s,\delta}(\pi^*_{s,\delta})
+-\underline V_{s,\delta}(\widehat\pi)\ge 0.
+$$
+
+- **Source:** `src/experiments/policy_lcb/continuous.py`
+- **Notes:** Problem-noise seeds vary across runs. The Stein perturbation
+  stream is separate and deliberately paired across run seeds, confidence
+  levels, and starts so cross-seed spread isolates the shared Gaussian draw.
+
 ### 3.7 Synthetic Ladder Objectives
 
 Direct theta-space benchmark functions over the decision vector $$w = \theta$$

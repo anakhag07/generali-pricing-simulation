@@ -1,5 +1,21 @@
 """Reusable finite and continuous policy lower-confidence-bound experiments."""
 
+from experiments.policy_lcb.continuous import (
+    ContinuousLCBBestResult,
+    ContinuousLCBSeedResult,
+    ContinuousLCBStartResult,
+    ContinuousLCBTrajectoryRow,
+    ContinuousPolicyLCBLaunchSpec,
+    ContinuousPolicyLCBManifest,
+    ContinuousPolicyLCBOptimizerSpec,
+    ContinuousPolicyLCBSpec,
+    continuous_analytic_policy,
+    continuous_lcb_loss,
+    continuous_lcb_quantile,
+    continuous_lcb_slope,
+    evaluate_continuous_policy_lcb_draw,
+    evaluate_continuous_policy_lcb_seed,
+)
 from experiments.policy_lcb.finite import (
     FinitePolicyLCBLaunchSpec,
     FinitePolicyLCBManifest,
@@ -22,6 +38,14 @@ from experiments.policy_lcb.finite import (
 )
 
 __all__ = [
+    "ContinuousLCBBestResult",
+    "ContinuousLCBSeedResult",
+    "ContinuousLCBStartResult",
+    "ContinuousLCBTrajectoryRow",
+    "ContinuousPolicyLCBLaunchSpec",
+    "ContinuousPolicyLCBManifest",
+    "ContinuousPolicyLCBOptimizerSpec",
+    "ContinuousPolicyLCBSpec",
     "FinitePolicyLCBLaunchSpec",
     "FinitePolicyLCBManifest",
     "FinitePolicyLCBSpec",
@@ -30,6 +54,12 @@ __all__ = [
     "LCBSelectionResult",
     "analytic_joint_coverage",
     "collect_finite_policy_lcb_outputs",
+    "continuous_analytic_policy",
+    "continuous_lcb_loss",
+    "continuous_lcb_quantile",
+    "continuous_lcb_slope",
+    "evaluate_continuous_policy_lcb_draw",
+    "evaluate_continuous_policy_lcb_seed",
     "evaluate_finite_policy_lcb_draw",
     "evaluate_finite_policy_lcb_seed",
     "finite_policy_lcb_seed_complete",

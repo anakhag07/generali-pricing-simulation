@@ -917,8 +917,11 @@ def main(argv: Sequence[str] | None = None) -> Path:
     deltas = tuple(
         float(value)
         for value in np.unique(
-            np.concatenate(
-                [dense_deltas, np.asarray([-args.headline_delta, 0.0, args.headline_delta])]
+            np.round(
+                np.concatenate(
+                    [dense_deltas, np.asarray([-args.headline_delta, 0.0, args.headline_delta])]
+                ),
+                decimals=12,
             )
         )
     )

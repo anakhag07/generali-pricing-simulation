@@ -647,12 +647,21 @@ def plot_combined_policy_outputs(
             linestyle=MODE_STYLES[mode],
             label=f"{_arm_label(model, mode)} (mean={group['acceptance'].mean():.3f})",
         )
-    ax.axvline(acceptance_floor, color="#333333", linestyle=":", linewidth=1.5, label="Mean-acceptance floor")
     ax.set_title("Predicted Acceptance Under the Optimized Policies")
     ax.set_xlabel("Customer Predicted Acceptance Probability")
     ax.set_ylabel("Density")
     ax.grid(alpha=0.25)
     ax.legend(fontsize=8)
+    ax.text(
+        0.99,
+        0.02,
+        f"Cohort mean floor = {acceptance_floor:.3f}\n(not a per-customer threshold)",
+        transform=ax.transAxes,
+        ha="right",
+        va="bottom",
+        fontsize=8,
+        color="#444444",
+    )
     fig.tight_layout()
     fig.savefig(output_dir / "policy_acceptance_histograms.png", dpi=200)
     plt.close(fig)
@@ -701,20 +710,60 @@ def plot_perturbation_effects(
             | np.isclose(group["delta_u"], headline_delta)
             | np.isclose(group["delta_u"], -headline_delta)
         ]
-        fig, axes = plt.subplots(1, 2, figsize=(11.8, 4.5))
+        fig, axes = plt.subplots(2, 2, figsize=(11.8, 8.0))
+        baseline = selected.loc[np.isclose(selected["delta_u"], 0.0)].sort_values("id")
         for delta, delta_group in selected.groupby("delta_u", sort=True):
             label = "Optimized" if np.isclose(delta, 0.0) else f"u {delta:+.4f}"
             color = "#333333" if np.isclose(delta, 0.0) else ("#7570b3" if delta < 0 else "#e7298a")
-            axes[0].hist(delta_group["acceptance"], bins=35, density=True, histtype="step", linewidth=1.8, color=color, label=label)
-            axes[1].hist(delta_group["objective_contribution"], bins=35, density=True, histtype="step", linewidth=1.8, color=color, label=label)
-        axes[0].axvline(acceptance_floor, color="#777777", linestyle=":", linewidth=1.2)
-        axes[0].set_xlabel("Customer Predicted Acceptance")
-        axes[0].set_ylabel("Density")
-        axes[0].set_title("Acceptance Distribution")
-        axes[1].set_xlabel("Customer Objective Contribution (lower is better)")
-        axes[1].set_ylabel("Density")
-        axes[1].set_title("Objective Distribution")
-        for ax in axes:
+            axes[0, 0].hist(delta_group["acceptance"], bins=35, density=True, histtype="step", linewidth=1.8, color=color, label=label)
+            axes[0, 1].hist(delta_group["objective_contribution"], bins=35, density=True, histtype="step", linewidth=1.8, color=color, label=label)
+            if np.isclose(delta, 0.0):
+                continue
+            ordered = delta_group.sort_values("id")
+            axes[1, 0].hist(
+                ordered["acceptance"].to_numpy() - baseline["acceptance"].to_numpy(),
+                bins=35,
+                density=True,
+                histtype="step",
+                linewidth=1.8,
+                color=color,
+                label=label,
+            )
+            axes[1, 1].hist(
+                ordered["objective_contribution"].to_numpy()
+                - baseline["objective_contribution"].to_numpy(),
+                bins=35,
+                density=True,
+                histtype="step",
+                linewidth=1.8,
+                color=color,
+                label=label,
+            )
+        axes[0, 0].set_xlabel("Customer Predicted Acceptance")
+        axes[0, 0].set_ylabel("Density")
+        axes[0, 0].set_title("Acceptance Distribution")
+        axes[0, 0].text(
+            0.99,
+            0.02,
+            f"Mean floor = {acceptance_floor:.3f}\n(not per customer)",
+            transform=axes[0, 0].transAxes,
+            ha="right",
+            va="bottom",
+            fontsize=8,
+            color="#555555",
+        )
+        axes[0, 1].set_xlabel("Customer Objective Contribution (lower is better)")
+        axes[0, 1].set_ylabel("Density")
+        axes[0, 1].set_title("Objective Distribution")
+        axes[1, 0].axvline(0.0, color="#777777", linewidth=1.0)
+        axes[1, 0].set_xlabel("Change in Customer Predicted Acceptance")
+        axes[1, 0].set_ylabel("Density")
+        axes[1, 0].set_title("Per-Customer Acceptance Change")
+        axes[1, 1].axvline(0.0, color="#777777", linewidth=1.0)
+        axes[1, 1].set_xlabel("Change in Customer Objective Contribution")
+        axes[1, 1].set_ylabel("Density")
+        axes[1, 1].set_title("Per-Customer Objective Change")
+        for ax in axes.reshape(-1):
             ax.grid(alpha=0.25)
             ax.legend(fontsize=8)
         fig.suptitle(f"{_arm_label(model, mode)}: Effect of +/-{headline_delta:.4f} in u")

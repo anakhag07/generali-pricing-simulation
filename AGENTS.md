@@ -605,6 +605,17 @@ belongs under `generali/`.
     `summary_json` requires an explicit path and estimator and compares learned
     theta against that saved reference
 
+- **`src/experiments/finite_policy_lcb.py`**
+  - Pure finite-policy Proposition 11.2 validation: manifest parsing, paired
+    Gaussian policy-noise draws, exhaustive maximum-LCB selection, simultaneous
+    coverage/oracle checks, completion-aware per-seed JSONs, aggregate CSVs,
+    Wilson intervals, and seed/aggregate diagnostic plots
+  - The committed construction uses $$V^\pi=\pi$$ and
+    $$\widehat V^\pi=\pi+\pi Z^\pi$$ over eleven constant policies. One noise
+    vector is derived per run seed and reused across all deltas; exhaustive
+    evaluation is the optimizer, so $$\varepsilon=0$$ and there are no
+    data/split/theta/optimizer seed streams
+
 - **`src/experiments/sweep_reporting.py`**
   - Aggregate sweep-output helpers for recurring scripts: timestamped aggregate directories, final estimator row collection for scalar config sweeps, CSV writing, and standard action/acceptance plus Pareto frontier plots
   - Cross-seed aggregation (home of the generalized `seed_repeats._summary_rows`): `collect_seed_grid_final_rows(...)` / `aggregate_seed_grid_rows(...)` group per-(variant, estimator) finals to mean/std/min/max over seeds; `write_seed_grid_outputs(...)` writes `seed_grid_finals.csv` + `seed_grid_summary.csv` and the aggregate error-bar plots; `objective_traces_by_estimator(...)` groups per-seed traces for loss-band plots
@@ -689,6 +700,12 @@ belongs under `generali/`.
   default `LaunchPlan`, maps `launch.array: "variant"` to one task per variant,
   and maps `launch.array: "none"` to one serial task. It supports `--force` to
   rerun completed variants and `--runs-root` for alternate result roots.
+  Manifests with `kind: "finite_policy_lcb"` route to the finite-policy module,
+  where `launch.array: "seed"` maps one paired-delta task to each noise seed;
+  manifests without `kind` retain the optimization-manifest behavior.
+- `manifests/finite_policy_lcb_validation.json` is the source of truth for the
+  exact eleven-policy lower-confidence-bound validation, its five delta values,
+  and its 25 paired noise seeds.
 - `manifests/zeroth_order_baseline.json` and
   `manifests/zeroth_order_functional_bias.json` are the source of truth for the
   small perturbation/sample-count and functional-bias proof grids.
@@ -886,6 +903,7 @@ exclude `tests/objective/test_jax_prepared_glm*`, `tests/optimization/test_jax_*
 | `test_paths.py` | shared results-root environment override and default path |
 | `test_launch.py` | Shared launch-plan local execution, Slurm array submission, collector dependency, and array-child task selection |
 | `test_manifest.py` | Manifest parsing, explicit truth/seed/optimizer/launch validation, completion skipping, and summary-derived metrics |
+| `test_finite_policy_lcb.py` | Finite-policy LCB formulas, paired noise streams, exact selection, oracle inequality, analytic coverage, manifest contract, and aggregate outputs |
 | `test_run_context.py` | default results-root output directory, readable run leaves, run metadata, and verbatim run_dir paths |
 | `test_noisy_objective_backend.py` | Noisy objective acceptance-control propagation and JAX GLM backend re-wrapping |
 | `test_run_experiment_manifest_script.py` | Manifest runner argument parsing and launch-plan wiring |

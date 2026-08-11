@@ -611,6 +611,80 @@ initialization-dependent basin selection, and finite-sample optimizer noise.
   experiment-side because it is specific to one-dimensional landscape
   analysis.
 
+#### 3.6.3 Finite-Policy Lower Confidence Bounds
+
+Let the finite class of constant policies be
+
+$$\Pi=\{0,0.1,\ldots,1.0\},\qquad K=|\Pi|=11,$$
+
+with true value and Gaussian surrogate
+
+$$V^\pi=\pi,$$
+
+$$\widehat V_s^\pi
+=V^\pi+\pi Z_s^\pi
+=\pi+\pi Z_s^\pi,
+\qquad Z_s^\pi\overset{\mathrm{i.i.d.}}{\sim}N(0,1).$$
+
+Thus
+
+$$\mathbb E[\widehat V_s^\pi]=V^\pi,
+\qquad \operatorname{Var}(\widehat V_s^\pi)=\pi^2.$$
+
+For confidence level $$1-\delta$$, define
+
+$$q_\delta
+=\Phi^{-1}\!\left(1-\frac{\delta}{2K}\right),$$
+
+$$\mathcal E^\pi(\delta)=2\pi q_\delta,$$
+
+and the lower confidence bound
+
+$$\underline V_{\delta,s}^\pi
+=\widehat V_s^\pi-\frac12\mathcal E^\pi(\delta)
+=\pi+\pi Z_s^\pi-\pi q_\delta.$$
+
+The Gaussian tail probability and a union bound give
+
+$$\Pr\!\left(
+|\widehat V_s^\pi-V^\pi|
+\le \frac12\mathcal E^\pi(\delta)
+\text{ for every }\pi\in\Pi
+\right)\ge 1-\delta.$$
+
+Because the policy-level Gaussian variables are independent, the exact joint
+coverage is
+
+$$\Pr(A_{\delta,s})
+=\left(1-\frac{\delta}{K}\right)^K
+\ge 1-\delta.$$
+
+The finite optimizer evaluates every policy and selects
+
+$$\widehat\pi_{\delta,s}
+\in\arg\max_{\pi\in\Pi}\underline V_{\delta,s}^\pi.$$
+
+It is exact, so its script-style optimization error is $$\varepsilon=0$$.
+On the simultaneous confidence event, every comparator
+$$\widetilde\pi\in\Pi$$ satisfies the Proposition 11.2 oracle inequality
+
+$$V^{\widehat\pi_{\delta,s}}
+\ge
+V^{\widetilde\pi}
+-\mathcal E^{\widetilde\pi}(\delta)
+-\varepsilon.$$
+
+Each run seed draws one vector $$(Z_s^\pi)_{\pi\in\Pi}$$ and reuses it for
+every configured $$\delta$$. This paired design changes only the confidence
+radius within a seed; different run seeds use independently derived noise
+streams.
+
+- **Source:** `src/experiments/finite_policy_lcb.py`;
+  `manifests/finite_policy_lcb_validation.json`
+- **Notes:** There is no gradient method, theta initialization, data split, or
+  optimizer RNG. Exhaustive policy evaluation is the optimizer, and only the
+  noise seed varies.
+
 ### 3.7 Synthetic Ladder Objectives
 
 Direct theta-space benchmark functions over the decision vector $$w = \theta$$

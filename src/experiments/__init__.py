@@ -3,6 +3,13 @@
 from experiments.config import CorrectnessSpec, ExperimentConfig
 from experiments.configs import get_config, list_configs
 from experiments.execution import ExecutedRun, default_reporter_stack, execute_experiment_run
+from experiments.finite_policy_lcb import (
+    FinitePolicyLCBManifest,
+    FinitePolicyLCBSpec,
+    LCBSeedResult,
+    evaluate_finite_policy_lcb_seed,
+    load_finite_policy_lcb_manifest,
+)
 from experiments.launch import LaunchContext, LaunchPlan, add_launch_args, run_launch_plan
 from experiments.paths import results_root
 from experiments.results import ConstantBaselineResult, EstimatorResult, ExperimentResult, OptimizationTrace, PolicyEvaluation
@@ -17,6 +24,11 @@ __all__ = [
     "ExecutedRun",
     "default_reporter_stack",
     "execute_experiment_run",
+    "FinitePolicyLCBManifest",
+    "FinitePolicyLCBSpec",
+    "LCBSeedResult",
+    "evaluate_finite_policy_lcb_seed",
+    "load_finite_policy_lcb_manifest",
     "results_root",
     "LaunchContext",
     "LaunchPlan",

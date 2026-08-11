@@ -193,6 +193,13 @@ Guidelines:
 - `scripts/plot_model_feature_correlations.py` is the deterministic post-run
   companion that renders numeric top-feature Spearman heatmaps and cross-model
   feature-ranking agreement from a collected model-feature analysis sweep.
+- `scripts/run_policy_cliff_perturbation_diagnostic.py` is the focused one-off
+  policy-output diagnostic for the 200 IDs stored in model_processing's
+  monotone smoothing wrapper. It compares embedded raw-XGB and stored-spline
+  acceptance, with/without the existing mean-acceptance penalty, while sharing
+  the external XGB loss model. It writes direct policy histograms plus clipped
+  additive-`u` replay tables/plots; external artifacts remain read-only and are
+  identified by hashes in `provenance.json`.
 - Keep the boundary strict: do not hide reusable pipeline logic inside a script,
   and do not promote analysis-only code into `src/` without a concrete reusable
   integration point.

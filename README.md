@@ -676,6 +676,27 @@ are listed in `correlation_analysis.json` but excluded from the numeric
 correlation matrices. The script writes three Matplotlib PNGs and their CSV
 matrices beside the collected sweep outputs.
 
+To inspect optimizer price outputs and their local stability on the exact 200
+customers stored in model_processing's monotone smoothing wrapper, run:
+
+```bash
+python scripts/run_policy_cliff_perturbation_diagnostic.py
+```
+
+This runs raw XGBoost and stored monotone-spline acceptance with and without the
+existing smooth mean-acceptance penalty. Both acceptance arms use the XGBoost
+model embedded in the wrapper and all four runs share model_processing's XGBoost
+loss artifact. The raw-tree action derivative is estimated by central
+one-dimensional `u` perturbations (default `0.001`); the stored spline uses its
+analytical piecewise-polynomial derivative. Outputs under
+`results/policy-cliff-perturbation-diagnostic/<timestamp>/` include optimization
+summaries/traces, direct policy-price and predicted-acceptance histograms,
+row-level policy predictions, and replay tables/plots for additive price
+perturbations. The acceptance floor applies to the cohort mean, and the default
+floor is the cohort's historical observed acceptance. External artifact and
+dataset hashes plus any deterministic mean imputations are recorded in
+`provenance.json`.
+
 To benchmark GLM analytical acceptance speed, Stein-difference call counts,
 objective-cache behavior, and contour-subsampling speed on the bundled real-data
 objective, use:

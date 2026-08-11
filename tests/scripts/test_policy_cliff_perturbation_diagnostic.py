@@ -148,4 +148,5 @@ def test_cli_defaults_to_wider_hard_constraint_diagnostic() -> None:
     assert args.initial_u == -0.05
     assert args.t_steps == 500
     assert args.perturbation_count == 161
+    assert args.models == ("xgboost", "spline")
     assert not hasattr(args, "penalty_weight")

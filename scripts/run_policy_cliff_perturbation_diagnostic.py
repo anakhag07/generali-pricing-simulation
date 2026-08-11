@@ -849,7 +849,7 @@ def plot_dense_cliff_diagnostic(
         ordered = group.sort_values("delta_midpoint")
         axes[1].plot(
             100.0 * ordered["delta_midpoint"],
-            ordered["p95_abs_acceptance_step"],
+            ordered["max_abs_acceptance_step"],
             color=MODEL_COLORS[model],
             linewidth=1.8,
             label=_arm_label(model, mode),
@@ -858,8 +858,8 @@ def plot_dense_cliff_diagnostic(
     axes[0].axhline(0.0, color="#777777", linewidth=1.0)
     axes[0].set_title("Objective Relative to the Optimized Policy")
     axes[0].set_ylabel("Change in Mean Objective (lower is better)")
-    axes[1].set_title("Customer-Level Acceptance Movement per Grid Step")
-    axes[1].set_ylabel("95th percentile |adjacent acceptance change|")
+    axes[1].set_title("Largest Customer-Level Acceptance Jump per Grid Step")
+    axes[1].set_ylabel("Maximum |adjacent acceptance change|")
     for ax in axes:
         ax.axvline(0.0, color="#777777", linewidth=1.0, alpha=0.7)
         ax.set_xlabel("Additive Price Perturbation (percentage points)")
@@ -883,6 +883,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--artifact-dir", type=Path, default=DEFAULT_ARTIFACT_DIR)
     parser.add_argument("--dataset", type=Path, default=dataset_csv_path())
     parser.add_argument("--output-dir", type=Path)
+    parser.add_argument(
+        "--models",
+        nargs="+",
+        choices=("xgboost", "spline"),
+        default=("xgboost", "spline"),
+    )
     parser.add_argument("--u-min", type=float, default=-0.1)
     parser.add_argument("--u-max", type=float, default=0.2)
     parser.add_argument("--initial-u", type=float, default=-0.05)
@@ -948,10 +954,12 @@ def main(argv: Sequence[str] | None = None) -> Path:
         raise FileExistsError(f"Refusing to overwrite non-empty output directory: {output_dir}")
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    arm_specs = (
+    all_arm_specs = (
         ("xgboost", "trust_constr", artifacts.raw_acceptance),
         ("spline", "trust_constr", artifacts.spline_acceptance),
     )
+    requested_models = set(args.models)
+    arm_specs = tuple(spec for spec in all_arm_specs if spec[0] in requested_models)
     all_rows: list[pd.DataFrame] = []
     all_perturbation_rows: list[pd.DataFrame] = []
     all_perturbation_summary: list[pd.DataFrame] = []

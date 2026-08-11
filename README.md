@@ -683,19 +683,21 @@ customers stored in model_processing's monotone smoothing wrapper, run:
 python scripts/run_policy_cliff_perturbation_diagnostic.py
 ```
 
-This runs raw XGBoost and stored monotone-spline acceptance with and without the
-existing smooth mean-acceptance penalty. Both acceptance arms use the XGBoost
-model embedded in the wrapper and all four runs share model_processing's XGBoost
-loss artifact. The raw-tree action derivative is estimated by central
-one-dimensional `u` perturbations (default `0.001`); the stored spline uses its
-analytical piecewise-polynomial derivative. Outputs under
-`results/policy-cliff-perturbation-diagnostic/<timestamp>/` include optimization
-summaries/traces, direct policy-price and predicted-acceptance histograms,
-row-level policy predictions, and replay tables/plots for additive price
-perturbations. The acceptance floor applies to the cohort mean, and the default
-floor is the cohort's historical observed acceptance. External artifact and
-dataset hashes plus any deterministic mean imputations are recorded in
-`provenance.json`.
+This runs exactly two arms, raw XGBoost and stored monotone-spline acceptance,
+under SciPy `trust-constr` with the hard inequality
+`mean_predicted_acceptance >= acceptance_floor`. Both use the XGBoost model
+embedded in the wrapper and share model_processing's XGBoost loss artifact. The
+bounded sigmoid policy defaults to `u in [-0.1, 0.2]`, and both models start from
+the feasible constant policy `u=-0.05`. Raw-tree action derivatives use central
+one-dimensional `u` perturbations (default `0.001`); stored splines use their
+analytical piecewise-polynomial derivatives. A default 161-point local replay
+over `delta_u in [-0.01, 0.01]` writes aggregate curves, adjacent-grid
+customer-jump statistics in `cliff_step_summary.csv`, and a dense cliff plot.
+Outputs live under
+`results/policy-cliff-trust-constr-diagnostic/<timestamp>/`. The acceptance
+floor applies to the cohort mean and defaults to historical observed acceptance.
+External artifact/dataset hashes and deterministic mean imputations are recorded
+in `provenance.json`.
 
 To benchmark GLM analytical acceptance speed, Stein-difference call counts,
 objective-cache behavior, and contour-subsampling speed on the bundled real-data

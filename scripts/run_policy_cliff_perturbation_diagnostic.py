@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Run the 200-customer policy-output and local-price perturbation diagnostic.
+"""Run the hard-constrained 200-customer policy and dense-cliff diagnostic.
 
 The cohort is defined by the curves stored in model_processing's monotone
 smoothing wrapper.  The raw and spline acceptance arms share the wrapper's
 embedded XGBoost model, and every arm shares the same XGBoost loss artifact.
+Both arms enforce the cohort-mean acceptance floor through SciPy trust-constr.
 """
 
 from __future__ import annotations
@@ -63,9 +64,8 @@ DEFAULT_ARTIFACT_DIR = (
 )
 DEFAULT_WRAPPER_NAME = "acceptance_smoothing_wrapper_monotone_smoothing_spline.pkl"
 DEFAULT_LOSS_NAME = "financial_loss_model_xgb.pkl"
-DEFAULT_DELTAS = (-0.0025, -0.001, -0.0005, 0.0, 0.0005, 0.001, 0.0025)
 MODEL_COLORS = {"xgboost": "#d95f02", "spline": "#1b9e77"}
-MODE_STYLES = {"unconstrained": "-", "acceptance_penalty": "--"}
+MODE_STYLES = {"trust_constr": "-"}
 
 
 class _PickledState:
@@ -408,18 +408,16 @@ def build_diagnostic_config(
     acceptance_model: Any,
     loss_model: ModelArtifactBundle,
     cohort: Cohort,
-    constrained: bool,
     acceptance_floor: float,
-    penalty_weight: float,
-    penalty_temperature: float,
     u_bounds: tuple[float, float],
     initial_u: float,
     fd_eps: float,
     t_steps: int,
+    initial_constr_penalty: float,
     seed: int,
     verbose: bool,
 ):
-    """Build one run while preserving the repository's standard objective/optimizer path."""
+    """Build one hard mean-acceptance constrained diagnostic run."""
     policy = SoftmaxPolicy(action_low=u_bounds[0], action_high=u_bounds[1])
     objective = make_model_based_objective(
         policy=policy,
@@ -432,10 +430,9 @@ def build_diagnostic_config(
     )
     object.__setattr__(objective, "_fd_eps", float(fd_eps))
     theta0 = _initial_theta(policy, objective.policy_input_dim(), initial_u)
-    floor = acceptance_floor if constrained else None
     training = canonical_training_block(
         n_samples=len(cohort.frame),
-        step_rule="l-bfgs-b",
+        step_rule="trust-constr",
         t_steps=t_steps,
         step_size=0.01,
         sigma=fd_eps,
@@ -443,9 +440,8 @@ def build_diagnostic_config(
         enabled_estimators=("first_order",),
         perturbation_space="u",
         grad_norm_tol=1e-6,
-        acceptance_floor=floor,
-        acceptance_penalty_weight=penalty_weight if constrained else None,
-        acceptance_penalty_temperature=penalty_temperature,
+        initial_constr_penalty=initial_constr_penalty,
+        acceptance_floor=acceptance_floor,
     )
     runtime = canonical_runtime_block(
         plot=False,
@@ -549,6 +545,48 @@ def perturb_policy_actions(
     return row_table, summary
 
 
+def summarize_dense_cliff_steps(rows: pd.DataFrame) -> pd.DataFrame:
+    """Summarize adjacent dense-grid changes to expose customer-level tree jumps."""
+    output: list[dict[str, Any]] = []
+    for (model, mode), group in rows.groupby(["model", "constraint_mode"], sort=False):
+        deltas = np.sort(group["delta_u"].unique())
+        for left_delta, right_delta in zip(deltas[:-1], deltas[1:]):
+            left = group.loc[np.isclose(group["delta_u"], left_delta)].sort_values("id")
+            right = group.loc[np.isclose(group["delta_u"], right_delta)].sort_values("id")
+            if left["id"].tolist() != right["id"].tolist():
+                raise ValueError("Dense perturbation rows must contain identical customer IDs.")
+            acceptance_change = (
+                right["acceptance"].to_numpy(dtype=float)
+                - left["acceptance"].to_numpy(dtype=float)
+            )
+            objective_change = (
+                right["objective_contribution"].to_numpy(dtype=float)
+                - left["objective_contribution"].to_numpy(dtype=float)
+            )
+            output.append(
+                {
+                    "model": model,
+                    "constraint_mode": mode,
+                    "delta_left": float(left_delta),
+                    "delta_right": float(right_delta),
+                    "delta_midpoint": float(0.5 * (left_delta + right_delta)),
+                    "delta_step": float(right_delta - left_delta),
+                    "mean_acceptance_step": float(np.mean(acceptance_change)),
+                    "mean_objective_step": float(np.mean(objective_change)),
+                    "mean_abs_acceptance_step": float(np.mean(np.abs(acceptance_change))),
+                    "p95_abs_acceptance_step": float(np.quantile(np.abs(acceptance_change), 0.95)),
+                    "max_abs_acceptance_step": float(np.max(np.abs(acceptance_change))),
+                    "mean_abs_objective_step": float(np.mean(np.abs(objective_change))),
+                    "p95_abs_objective_step": float(np.quantile(np.abs(objective_change), 0.95)),
+                    "max_abs_objective_step": float(np.max(np.abs(objective_change))),
+                    "fraction_acceptance_changed": float(
+                        np.mean(np.abs(acceptance_change) > 1e-12)
+                    ),
+                }
+            )
+    return pd.DataFrame(output)
+
+
 def _histogram_peak(actions: np.ndarray, u_bounds: tuple[float, float]) -> tuple[float, float]:
     counts, edges = np.histogram(np.asarray(actions, dtype=float), bins=32, range=u_bounds)
     index = int(np.argmax(counts))
@@ -567,6 +605,10 @@ def _arm_summary(
     optimizer_status: int | None,
     optimizer_message: str | None,
     optimizer_steps: int,
+    constraint_violation: float | None,
+    acceptance_multiplier: float | None,
+    trust_constr_merit_penalty: float | None,
+    optimizer_optimality: float | None,
 ) -> dict[str, Any]:
     baseline = perturbation_summary.loc[np.isclose(perturbation_summary["delta_u"], 0.0)].iloc[0]
     plus = perturbation_summary.loc[
@@ -586,6 +628,10 @@ def _arm_summary(
         "optimizer_status": optimizer_status,
         "optimizer_message": optimizer_message,
         "optimizer_steps": int(optimizer_steps),
+        "constraint_violation": constraint_violation,
+        "acceptance_multiplier": acceptance_multiplier,
+        "trust_constr_merit_penalty": trust_constr_merit_penalty,
+        "optimizer_optimality": optimizer_optimality,
         "mean_u": float(np.mean(actions)),
         "u_q05": float(np.quantile(actions, 0.05)),
         "u_q50": float(np.quantile(actions, 0.50)),
@@ -605,8 +651,8 @@ def _arm_summary(
 
 
 def _arm_label(model: str, mode: str) -> str:
-    suffix = "penalized" if mode == "acceptance_penalty" else "unconstrained"
-    return f"{model.title()} — {suffix}"
+    del mode
+    return f"{model.title()} — trust-constr"
 
 
 def plot_combined_policy_outputs(
@@ -780,6 +826,54 @@ def plot_perturbation_effects(
         plt.close(fig)
 
 
+def plot_dense_cliff_diagnostic(
+    summary: pd.DataFrame,
+    step_summary: pd.DataFrame,
+    output_dir: Path,
+) -> None:
+    """Compare centered objectives with adjacent customer-level acceptance jumps."""
+    fig, axes = plt.subplots(1, 2, figsize=(12.4, 4.7))
+    for (model, mode), group in summary.groupby(["model", "constraint_mode"], sort=False):
+        ordered = group.sort_values("delta_u")
+        axes[0].plot(
+            100.0 * ordered["delta_u"],
+            ordered["change_mean_objective"],
+            color=MODEL_COLORS[model],
+            linewidth=2.0,
+            label=_arm_label(model, mode),
+            drawstyle="steps-post" if model == "xgboost" else "default",
+        )
+    for (model, mode), group in step_summary.groupby(
+        ["model", "constraint_mode"], sort=False
+    ):
+        ordered = group.sort_values("delta_midpoint")
+        axes[1].plot(
+            100.0 * ordered["delta_midpoint"],
+            ordered["p95_abs_acceptance_step"],
+            color=MODEL_COLORS[model],
+            linewidth=1.8,
+            label=_arm_label(model, mode),
+            drawstyle="steps-mid" if model == "xgboost" else "default",
+        )
+    axes[0].axhline(0.0, color="#777777", linewidth=1.0)
+    axes[0].set_title("Objective Relative to the Optimized Policy")
+    axes[0].set_ylabel("Change in Mean Objective (lower is better)")
+    axes[1].set_title("Customer-Level Acceptance Movement per Grid Step")
+    axes[1].set_ylabel("95th percentile |adjacent acceptance change|")
+    for ax in axes:
+        ax.axvline(0.0, color="#777777", linewidth=1.0, alpha=0.7)
+        ax.set_xlabel("Additive Price Perturbation (percentage points)")
+        ax.grid(alpha=0.25)
+        ax.legend(fontsize=8)
+    step_size = float(step_summary["delta_step"].median())
+    fig.suptitle(
+        f"Dense Cliff Diagnostic Around Each Policy (grid step={step_size:.6f} in u)"
+    )
+    fig.tight_layout()
+    fig.savefig(output_dir / "dense_cliff_diagnostic.png", dpi=200)
+    plt.close(fig)
+
+
 def _write_json(path: Path, payload: Mapping[str, Any]) -> None:
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
@@ -789,18 +883,19 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--artifact-dir", type=Path, default=DEFAULT_ARTIFACT_DIR)
     parser.add_argument("--dataset", type=Path, default=dataset_csv_path())
     parser.add_argument("--output-dir", type=Path)
-    parser.add_argument("--u-min", type=float, default=0.0)
-    parser.add_argument("--u-max", type=float, default=0.16)
-    parser.add_argument("--initial-u", type=float)
+    parser.add_argument("--u-min", type=float, default=-0.1)
+    parser.add_argument("--u-max", type=float, default=0.2)
+    parser.add_argument("--initial-u", type=float, default=-0.05)
     parser.add_argument("--acceptance-floor", type=float)
-    parser.add_argument("--penalty-weight", type=float, default=1e4)
-    parser.add_argument("--penalty-temperature", type=float, default=0.05)
+    parser.add_argument("--initial-constr-penalty", type=float, default=1.0)
     parser.add_argument("--fd-eps", type=float, default=0.001)
-    parser.add_argument("--t-steps", type=int, default=200)
+    parser.add_argument("--t-steps", type=int, default=500)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--xgb-n-jobs", type=int, default=1)
     parser.add_argument("--headline-delta", type=float, default=0.001)
-    parser.add_argument("--perturbation-deltas", type=float, nargs="+", default=list(DEFAULT_DELTAS))
+    parser.add_argument("--perturbation-min", type=float, default=-0.01)
+    parser.add_argument("--perturbation-max", type=float, default=0.01)
+    parser.add_argument("--perturbation-count", type=int, default=161)
     parser.add_argument("--quiet", action="store_true")
     return parser.parse_args(argv)
 
@@ -810,13 +905,23 @@ def main(argv: Sequence[str] | None = None) -> Path:
     u_bounds = (float(args.u_min), float(args.u_max))
     if not u_bounds[0] < u_bounds[1]:
         raise ValueError("u-min must be less than u-max.")
-    deltas = tuple(float(value) for value in args.perturbation_deltas)
-    if sum(np.isclose(deltas, 0.0)) != 1:
-        raise ValueError("perturbation-deltas must contain zero exactly once.")
-    if not any(np.isclose(deltas, args.headline_delta)) or not any(
-        np.isclose(deltas, -args.headline_delta)
-    ):
-        raise ValueError("perturbation-deltas must contain +/- headline-delta.")
+    if int(args.perturbation_count) < 3:
+        raise ValueError("perturbation-count must be at least 3.")
+    if not float(args.perturbation_min) < 0.0 < float(args.perturbation_max):
+        raise ValueError("The perturbation interval must straddle zero.")
+    dense_deltas = np.linspace(
+        float(args.perturbation_min),
+        float(args.perturbation_max),
+        int(args.perturbation_count),
+    )
+    deltas = tuple(
+        float(value)
+        for value in np.unique(
+            np.concatenate(
+                [dense_deltas, np.asarray([-args.headline_delta, 0.0, args.headline_delta])]
+            )
+        )
+    )
 
     artifacts = load_diagnostic_artifacts(
         args.artifact_dir.resolve(), xgb_n_jobs=int(args.xgb_n_jobs)
@@ -829,48 +934,46 @@ def main(argv: Sequence[str] | None = None) -> Path:
         numeric_imputation_values={str(key): float(value) for key, value in numeric_means.items()},
     )
     floor = float(args.acceptance_floor) if args.acceptance_floor is not None else cohort.observed_acceptance
-    initial_u = (
-        float(args.initial_u)
-        if args.initial_u is not None
-        else float(np.clip(np.mean(cohort.observed_u), u_bounds[0] + 1e-6, u_bounds[1] - 1e-6))
-    )
+    initial_u = float(args.initial_u)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     output_dir = (
         args.output_dir.resolve()
         if args.output_dir is not None
-        else results_root() / "policy-cliff-perturbation-diagnostic" / stamp
+        else results_root() / "policy-cliff-trust-constr-diagnostic" / stamp
     )
     if output_dir.exists() and any(output_dir.iterdir()):
         raise FileExistsError(f"Refusing to overwrite non-empty output directory: {output_dir}")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     arm_specs = (
-        ("xgboost", "unconstrained", artifacts.raw_acceptance, False),
-        ("xgboost", "acceptance_penalty", artifacts.raw_acceptance, True),
-        ("spline", "unconstrained", artifacts.spline_acceptance, False),
-        ("spline", "acceptance_penalty", artifacts.spline_acceptance, True),
+        ("xgboost", "trust_constr", artifacts.raw_acceptance),
+        ("spline", "trust_constr", artifacts.spline_acceptance),
     )
     all_rows: list[pd.DataFrame] = []
     all_perturbation_rows: list[pd.DataFrame] = []
     all_perturbation_summary: list[pd.DataFrame] = []
     arm_summaries: list[dict[str, Any]] = []
-    for model, mode, acceptance_model, constrained in arm_specs:
+    for model, mode, acceptance_model in arm_specs:
         print(f"\n=== {model} / {mode} ===", flush=True)
         config = build_diagnostic_config(
             acceptance_model=acceptance_model,
             loss_model=artifacts.loss,
             cohort=cohort,
-            constrained=constrained,
             acceptance_floor=floor,
-            penalty_weight=float(args.penalty_weight),
-            penalty_temperature=float(args.penalty_temperature),
             u_bounds=u_bounds,
             initial_u=initial_u,
             fd_eps=float(args.fd_eps),
             t_steps=int(args.t_steps),
+            initial_constr_penalty=float(args.initial_constr_penalty),
             seed=int(args.seed),
             verbose=not args.quiet,
         )
+        initial_acceptance = config.objective.mean_acceptance(config.theta0, cohort.frame)
+        if initial_acceptance < floor:
+            raise ValueError(
+                f"Initial u={initial_u:.6f} is infeasible for {model}: "
+                f"mean acceptance {initial_acceptance:.6f} < floor {floor:.6f}."
+            )
         arm_dir = output_dir / "runs" / f"{model}__{mode}"
         context = create_run_context(
             f"policy-cliff-{model}-{mode}",
@@ -924,6 +1027,10 @@ def main(argv: Sequence[str] | None = None) -> Path:
                 optimizer_status=trace.optimizer_status,
                 optimizer_message=trace.optimizer_message,
                 optimizer_steps=len(trace.steps),
+                constraint_violation=trace.constraint_violation,
+                acceptance_multiplier=trace.acceptance_multiplier,
+                trust_constr_merit_penalty=trace.constraint_penalty,
+                optimizer_optimality=trace.optimizer_optimality,
             )
         )
 
@@ -931,9 +1038,11 @@ def main(argv: Sequence[str] | None = None) -> Path:
     perturbation_rows = pd.concat(all_perturbation_rows, ignore_index=True)
     perturbation_summary = pd.concat(all_perturbation_summary, ignore_index=True)
     arm_summary = pd.DataFrame(arm_summaries)
+    cliff_step_summary = summarize_dense_cliff_steps(perturbation_rows)
     policy_rows.to_csv(output_dir / "policy_outputs.csv", index=False)
     perturbation_rows.to_csv(output_dir / "perturbation_rows.csv", index=False)
     perturbation_summary.to_csv(output_dir / "perturbation_summary.csv", index=False)
+    cliff_step_summary.to_csv(output_dir / "cliff_step_summary.csv", index=False)
     arm_summary.to_csv(output_dir / "arm_summary.csv", index=False)
 
     plot_dir = output_dir / "plots"
@@ -951,6 +1060,7 @@ def main(argv: Sequence[str] | None = None) -> Path:
         acceptance_floor=floor,
         headline_delta=float(args.headline_delta),
     )
+    plot_dense_cliff_diagnostic(perturbation_summary, cliff_step_summary, plot_dir)
     provenance = {
         "created_at_utc": datetime.now(timezone.utc).isoformat(),
         "dataset_path": str(args.dataset.resolve()),
@@ -968,22 +1078,24 @@ def main(argv: Sequence[str] | None = None) -> Path:
         "u_bounds": list(u_bounds),
         "initial_u": initial_u,
         "optimizer": {
-            "step_rule": "l-bfgs-b",
+            "step_rule": "trust-constr",
             "gradient": "action derivative chained through the existing policy",
             "raw_xgboost_acceptance_derivative": "central finite difference in one-dimensional u",
             "raw_xgboost_fd_eps": float(args.fd_eps),
             "spline_acceptance_derivative": "stored PPoly analytical derivative",
             "t_steps": int(args.t_steps),
+            "initial_constr_penalty": float(args.initial_constr_penalty),
             "seed": int(args.seed),
             "xgb_n_jobs": int(args.xgb_n_jobs),
         },
         "constraint": {
             "scope": "mean predicted acceptance over the 200-customer cohort",
-            "mode": "existing smooth squared-softplus penalty",
-            "weight": float(args.penalty_weight),
-            "temperature": float(args.penalty_temperature),
+            "mode": "hard nonlinear inequality",
+            "formula": "mean_predicted_acceptance - acceptance_floor >= 0",
+            "objective_penalty": None,
         },
         "perturbation_deltas": list(deltas),
+        "perturbation_grid_requested_count": int(args.perturbation_count),
         "headline_delta": float(args.headline_delta),
         "shared_loss_model_for_all_arms": True,
     }

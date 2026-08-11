@@ -118,3 +118,34 @@ def test_perturbation_replay_reports_changes_slack_and_clipping() -> None:
     assert plus["change_mean_acceptance"] < 0.0
     assert minus["change_mean_acceptance"] > 0.0
     assert bool(baseline["violates_acceptance_floor"])
+
+
+def test_dense_cliff_step_summary_preserves_adjacent_jump_location() -> None:
+    rows = pd.DataFrame(
+        {
+            "model": ["xgboost"] * 6,
+            "constraint_mode": ["trust_constr"] * 6,
+            "id": ["1", "2", "1", "2", "1", "2"],
+            "delta_u": [-0.001, -0.001, 0.0, 0.0, 0.001, 0.001],
+            "acceptance": [0.95, 0.90, 0.95, 0.90, 0.75, 0.90],
+            "objective_contribution": [-2.0, -1.0, -2.1, -1.1, -1.0, -1.2],
+        }
+    )
+
+    summary = MODULE.summarize_dense_cliff_steps(rows)
+
+    assert len(summary) == 2
+    right_step = summary.loc[np.isclose(summary["delta_right"], 0.001)].iloc[0]
+    assert right_step["fraction_acceptance_changed"] == 0.5
+    assert np.isclose(right_step["max_abs_acceptance_step"], 0.20)
+    assert np.isclose(right_step["max_abs_objective_step"], 1.10)
+
+
+def test_cli_defaults_to_wider_hard_constraint_diagnostic() -> None:
+    args = MODULE.parse_args([])
+
+    assert (args.u_min, args.u_max) == (-0.1, 0.2)
+    assert args.initial_u == -0.05
+    assert args.t_steps == 500
+    assert args.perturbation_count == 161
+    assert not hasattr(args, "penalty_weight")

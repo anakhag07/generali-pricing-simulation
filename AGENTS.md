@@ -605,16 +605,30 @@ belongs under `generali/`.
     `summary_json` requires an explicit path and estimator and compares learned
     theta against that saved reference
 
-- **`src/experiments/finite_policy_lcb.py`**
-  - Pure finite-policy Proposition 11.2 validation: manifest parsing, paired
-    Gaussian policy-noise draws, exhaustive maximum-LCB selection, simultaneous
-    coverage/oracle checks, completion-aware per-seed JSONs, aggregate CSVs,
-    Wilson intervals, and seed/aggregate diagnostic plots
-  - The committed construction uses $$V^\pi=\pi$$ and
-    $$\widehat V^\pi=\pi+\pi Z^\pi$$ over eleven constant policies. One noise
-    vector is derived per run seed and reused across all deltas; exhaustive
-    evaluation is the optimizer, so $$\varepsilon=0$$ and there are no
-    data/split/theta/optimizer seed streams
+- **`src/experiments/policy_lcb/`**
+  - Reusable policy-LCB module with shared Gaussian quantiles, coverage/oracle
+    diagnostics, result serialization, seed-array launch dispatch, and two
+    adapters. `experiments.finite_policy_lcb` is a compatibility alias for the
+    finite adapter, including private monkeypatch/test behavior.
+  - The finite adapter preserves the Proposition 11.2 construction
+    $$V^\pi=\pi$$ and $$\widehat V^\pi=\pi+\pi Z^\pi$$ over eleven policies,
+    with independent policy noise, Bonferroni coverage, and exact exhaustive
+    selection. Its manifest and result tree are unchanged.
+  - The continuous adapter uses $$\Pi=[0,1]$$ and one scalar $$Z_s$$ shared by
+    every policy. Its manifest-configurable true-value curves include the
+    identity endpoint fixture and the primary concave quadratic
+    $$V(\pi)=5\pi-5\pi^2$$. It minimizes the convex negative LCB with projected
+    first-order, finite-difference, and Stein-difference updates from paired
+    starts, records exact analytic gaps, and writes per-seed JSON/trajectory
+    leaves plus cross-seed median/IQR and mean/bootstrap-CI plots.
+  - Continuum-wide coverage uses $$q_\delta=\Phi^{-1}(1-\delta/2)$$ because the
+    shared error process has rank one: the event for every positive policy is
+    the same event $$|Z_s|\le q_\delta$$. Continuity alone does not remove
+    multiplicity; a policy-varying Gaussian process would require a supremum or
+    policy-class complexity bound.
+  - Continuous problem noise varies across run seeds; the separate Stein stream
+    is deliberately fixed across seeds/deltas/starts, and the reporting seed
+    controls bootstrap intervals only.
 
 - **`src/experiments/sweep_reporting.py`**
   - Aggregate sweep-output helpers for recurring scripts: timestamped aggregate directories, final estimator row collection for scalar config sweeps, CSV writing, and standard action/acceptance plus Pareto frontier plots
@@ -700,12 +714,19 @@ belongs under `generali/`.
   default `LaunchPlan`, maps `launch.array: "variant"` to one task per variant,
   and maps `launch.array: "none"` to one serial task. It supports `--force` to
   rerun completed variants and `--runs-root` for alternate result roots.
-  Manifests with `kind: "finite_policy_lcb"` route to the finite-policy module,
-  where `launch.array: "seed"` maps one paired-delta task to each noise seed;
-  manifests without `kind` retain the optimization-manifest behavior.
+  Manifests with `kind: "finite_policy_lcb"` or
+  `kind: "continuous_policy_lcb"` route through the shared policy-LCB launch
+  interface, where `launch.array: "seed"` maps one paired-condition task to
+  each problem-noise seed; manifests without `kind` retain the optimization-
+  manifest behavior.
 - `manifests/finite_policy_lcb_validation.json` is the source of truth for the
   exact eleven-policy lower-confidence-bound validation, its five delta values,
   and its 25 paired noise seeds.
+- `manifests/continuous_policy_lcb_validation.json` is the source of truth for
+  the shared-Gaussian continuum with $$a=b=5$$ concave value, projected
+  optimizer settings, three paired starts, five delta values, 25 problem-noise
+  seeds, fixed Stein stream, and reporting-bootstrap seed. Outputs live under
+  `results/continuous-policy-lcb-validation/`.
 - `manifests/zeroth_order_baseline.json` and
   `manifests/zeroth_order_functional_bias.json` are the source of truth for the
   small perturbation/sample-count and functional-bias proof grids.
@@ -904,6 +925,8 @@ exclude `tests/objective/test_jax_prepared_glm*`, `tests/optimization/test_jax_*
 | `test_launch.py` | Shared launch-plan local execution, Slurm array submission, collector dependency, and array-child task selection |
 | `test_manifest.py` | Manifest parsing, explicit truth/seed/optimizer/launch validation, completion skipping, and summary-derived metrics |
 | `test_finite_policy_lcb.py` | Finite-policy LCB formulas, paired noise streams, exact selection, oracle inequality, analytic coverage, manifest contract, and aggregate outputs |
+| `test_continuous_policy_lcb.py` | Shared-Gaussian continuum formulas, projected estimators, seed pairing, endpoint oracle checks, manifest contract, exact output tree, and plots |
+| `test_policy_lcb_common.py` | Shared policy-LCB math and legacy finite-module compatibility |
 | `test_run_context.py` | default results-root output directory, readable run leaves, run metadata, and verbatim run_dir paths |
 | `test_noisy_objective_backend.py` | Noisy objective acceptance-control propagation and JAX GLM backend re-wrapping |
 | `test_run_experiment_manifest_script.py` | Manifest runner argument parsing and launch-plan wiring |

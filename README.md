@@ -226,6 +226,48 @@ policy/selection tables, analytic and empirical coverage, oracle-inequality
 checks, and paired seed/aggregate plots under
 `results/finite-policy-lcb-validation/`.
 
+### Continuous-Policy Lower Confidence Bounds
+
+The continuous companion uses the same manifest launcher and seed-task output
+contract over $$\Pi=[0,1]$$. Each run seed draws one scalar $$Z_s\sim N(0,1)$$
+and reuses it across every policy, confidence level, estimator, and start:
+
+$$
+V(\pi)=5\pi-5\pi^2,
+\qquad
+\widehat V_s(\pi)=V(\pi)+\pi Z_s,
+\qquad
+-\underline V_{s,\delta}(\pi)=5\pi^2+(q_\delta-5-Z_s)\pi.
+$$
+
+The negative LCB is convex, with analytic constrained minimizer
+$$\operatorname{clip}_{[0,1]}((5+Z_s-q_\delta)/10)$$. In particular, all
+Gaussian draws within two standard deviations have interior minima for the
+configured confidence levels.
+Projected first-order, finite-difference, and Stein-difference runs from three
+paired starts measure convergence and LCB optimization error against that exact
+minimum:
+
+```bash
+python scripts/run_experiment_manifest.py \
+  manifests/continuous_policy_lcb_validation.json
+```
+
+The 25 problem-noise seeds use a separate fixed Stein perturbation stream so
+cross-seed spread isolates the shared Gaussian draws. Outputs under
+`results/continuous-policy-lcb-validation/` include per-start and best-of-start
+tables, replayable seed JSONs, trajectory CSVs, exact/empirical coverage and
+oracle diagnostics, a median/IQR seed-band plot, and a separately labeled
+mean/bootstrap-95% plot. Two direct objective diagnostics show the negative LCB
+across problem-noise seeds at fixed $$\delta=0.05$$ and across confidence
+levels with the Gaussian draw fixed at $$Z=0$$.
+
+The continuum-wide quantile is $$q_\delta=\Phi^{-1}(1-\delta/2)$$ rather than
+the finite-policy Bonferroni quantile. This is not a consequence of continuity:
+it follows because the policy-indexed error is rank one,
+$$\widehat V_s(\pi)-V(\pi)=\pi Z_s$$, so simultaneous coverage over every
+$$\pi$$ is exactly the single event $$|Z_s|\le q_\delta$$.
+
 ### Zeroth-Order Support Envelopes
 
 The committed support-envelope sweep reuses the same strongly convex proof

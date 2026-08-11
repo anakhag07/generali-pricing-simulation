@@ -125,6 +125,31 @@ def finite_difference_theta_grad(
     return grad
 
 
+def stein_difference_theta_grad(
+    value_fn: Callable[[np.ndarray], float],
+    theta: np.ndarray,
+    *,
+    step: float,
+    epsilon_samples: np.ndarray,
+) -> np.ndarray:
+    """Estimate a gradient with antithetic Gaussian Stein differences."""
+    theta_arr = np.asarray(theta, dtype=float)
+    eps_arr = np.asarray(epsilon_samples, dtype=float)
+    if step <= 0.0:
+        raise ValueError("Stein-difference step must be positive.")
+    if eps_arr.ndim != 2 or eps_arr.shape[1] != theta_arr.size or eps_arr.shape[0] == 0:
+        raise ValueError("epsilon_samples must have shape (n_samples, theta.size).")
+    if not np.all(np.isfinite(eps_arr)):
+        raise ValueError("epsilon_samples must be finite.")
+
+    grad = np.zeros_like(theta_arr, dtype=float)
+    for epsilon in eps_arr:
+        value_plus = float(value_fn(theta_arr + step * epsilon))
+        value_minus = float(value_fn(theta_arr - step * epsilon))
+        grad += ((value_plus - value_minus) / (2.0 * step)) * epsilon
+    return grad / float(eps_arr.shape[0])
+
+
 def mean_action_on_indices(
     objective: Any,
     x_array: Any,
@@ -146,5 +171,6 @@ __all__ = [
     "objective_value_on_indices",
     "sample_indices",
     "scipy_method",
+    "stein_difference_theta_grad",
     "x_batch",
 ]

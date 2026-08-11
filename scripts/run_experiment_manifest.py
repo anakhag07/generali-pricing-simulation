@@ -10,10 +10,7 @@ from typing import Any
 
 from experiments.finite_policy_lcb import (
     FinitePolicyLCBManifest,
-    collect_finite_policy_lcb_outputs,
     load_finite_policy_lcb_manifest,
-    run_finite_policy_lcb_manifest_seed,
-    run_finite_policy_lcb_manifest_serial,
 )
 from experiments.launch import LaunchContext, LaunchPlan, add_launch_args, run_launch_plan
 from experiments.manifest import (
@@ -22,6 +19,12 @@ from experiments.manifest import (
     load_experiment_manifest,
     run_manifest_serial,
     run_manifest_variant,
+)
+from experiments.policy_lcb.launch import (
+    POLICY_LCB_MANIFEST_KINDS,
+    PolicyLCBManifest,
+    build_policy_lcb_launch_plan,
+    load_policy_lcb_manifest,
 )
 
 
@@ -44,7 +47,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def _apply_manifest_launch_defaults(
     args: argparse.Namespace,
-    manifest: ExperimentManifest | FinitePolicyLCBManifest,
+    manifest: ExperimentManifest | PolicyLCBManifest,
 ) -> None:
     if args.array_max_parallel is None:
         args.array_max_parallel = manifest.launch.array_max_parallel
@@ -122,47 +125,15 @@ def _build_launch_plan(
     )
 
 
-def _run_finite_policy_lcb_task(
-    index: int,
-    context: LaunchContext,
-    *,
-    manifest: FinitePolicyLCBManifest,
+def _build_policy_lcb_launch_plan(
     args: argparse.Namespace,
-) -> dict[str, object]:
-    return run_finite_policy_lcb_manifest_seed(
-        manifest,
-        index,
-        runs_root=context.runs_root,
+    manifest: PolicyLCBManifest | None = None,
+) -> LaunchPlan:
+    resolved_manifest = manifest or load_policy_lcb_manifest(args.manifest)
+    return build_policy_lcb_launch_plan(
+        resolved_manifest,
+        runs_root=args.runs_root,
         force=bool(args.force),
-    )
-
-
-def _run_finite_policy_lcb_all(
-    context: LaunchContext,
-    *,
-    manifest: FinitePolicyLCBManifest,
-    args: argparse.Namespace,
-) -> None:
-    payload = run_finite_policy_lcb_manifest_serial(
-        manifest,
-        runs_root=context.runs_root,
-        force=bool(args.force),
-    )
-    print(
-        f"Completed {payload['n_delta_runs']} finite-policy LCB runs under "
-        f"{payload['project_dir']} ({payload['n_skipped_seeds']} seeds skipped)."
-    )
-
-
-def _collect_finite_policy_lcb(
-    context: LaunchContext,
-    *,
-    manifest: FinitePolicyLCBManifest,
-) -> None:
-    payload = collect_finite_policy_lcb_outputs(manifest, runs_root=context.runs_root)
-    print(
-        f"Collected {payload['n_selection_rows']} selections and "
-        f"{payload['n_policy_rows']} policy rows under {payload['project_dir']}."
     )
 
 
@@ -170,30 +141,9 @@ def _build_finite_policy_lcb_launch_plan(
     args: argparse.Namespace,
     manifest: FinitePolicyLCBManifest | None = None,
 ) -> LaunchPlan:
-    resolved_manifest = manifest or load_finite_policy_lcb_manifest(args.manifest)
-    return LaunchPlan(
-        name=resolved_manifest.name,
-        task_count=len(resolved_manifest.spec.run_seeds),
-        requires_jax=False,
-        run_task=lambda index, context: _run_finite_policy_lcb_task(
-            index,
-            context,
-            manifest=resolved_manifest,
-            args=args,
-        ),
-        run_all=lambda context: _run_finite_policy_lcb_all(
-            context,
-            manifest=resolved_manifest,
-            args=args,
-        ),
-        collect=lambda context: _collect_finite_policy_lcb(
-            context,
-            manifest=resolved_manifest,
-        ),
-        runs_root=args.runs_root,
-        default_launch=resolved_manifest.launch.mode,
-        default_array=resolved_manifest.launch.array == "seed",
-    )
+    """Compatibility wrapper for tests and callers of the finite-only helper."""
+    resolved = manifest or load_finite_policy_lcb_manifest(args.manifest)
+    return _build_policy_lcb_launch_plan(args, resolved)
 
 
 def _manifest_kind(path: str | Path) -> str:
@@ -207,9 +157,9 @@ def _manifest_kind(path: str | Path) -> str:
 def main(argv: list[str] | None = None) -> None:
     args = _parse_args(argv)
     kind = _manifest_kind(args.manifest)
-    if kind == "finite_policy_lcb":
-        manifest = load_finite_policy_lcb_manifest(Path(args.manifest))
-        plan = _build_finite_policy_lcb_launch_plan(args, manifest)
+    if kind in POLICY_LCB_MANIFEST_KINDS:
+        manifest = load_policy_lcb_manifest(Path(args.manifest))
+        plan = _build_policy_lcb_launch_plan(args, manifest)
     elif kind == "optimization":
         manifest = load_experiment_manifest(Path(args.manifest))
         plan = _build_launch_plan(args, manifest)

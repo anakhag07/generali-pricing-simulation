@@ -1,0 +1,33 @@
+{
+  "kind": "continuous_policy_lcb",
+  "name": "continuous-policy-lcb-validation",
+  "policy_domain": [0.0, 1.0],
+  "true_value": {"type": "concave_quadratic", "a": 5.0, "b": 5.0},
+  "surrogate": {"type": "shared_policy_scaled_gaussian"},
+  "deltas": [0.5, 0.2, 0.1, 0.05, 0.01],
+  "optimizer": {
+    "step_rule": "projected_constant",
+    "enabled_estimators": ["first_order", "finite_difference", "stein_difference"],
+    "starts": [0.1, 0.5, 0.9],
+    "t_steps": 500,
+    "step_size": 0.05,
+    "sigma": 0.05,
+    "n_grad_samples": 128
+  },
+  "seeds": {
+    "master_noise_seed": 20260807,
+    "master_optimizer_seed": 20260808,
+    "reporting_seed": 20260809,
+    "run_seeds": [
+      101, 102, 103, 104, 105,
+      106, 107, 108, 109, 110,
+      111, 112, 113, 114, 115,
+      116, 117, 118, 119, 120,
+      121, 122, 123, 124, 125
+    ]
+  },
+  "launch": {
+    "mode": "local",
+    "array": "seed"
+  }
+}

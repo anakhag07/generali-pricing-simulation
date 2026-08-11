@@ -563,6 +563,10 @@ def _arm_summary(
     perturbation_summary: pd.DataFrame,
     u_bounds: tuple[float, float],
     headline_delta: float,
+    optimizer_success: bool | None,
+    optimizer_status: int | None,
+    optimizer_message: str | None,
+    optimizer_steps: int,
 ) -> dict[str, Any]:
     baseline = perturbation_summary.loc[np.isclose(perturbation_summary["delta_u"], 0.0)].iloc[0]
     plus = perturbation_summary.loc[
@@ -578,6 +582,10 @@ def _arm_summary(
         "model": model,
         "constraint_mode": mode,
         "n_customers": int(len(actions)),
+        "optimizer_success": optimizer_success,
+        "optimizer_status": optimizer_status,
+        "optimizer_message": optimizer_message,
+        "optimizer_steps": int(optimizer_steps),
         "mean_u": float(np.mean(actions)),
         "u_q05": float(np.quantile(actions, 0.05)),
         "u_q50": float(np.quantile(actions, 0.50)),
@@ -882,6 +890,7 @@ def main(argv: Sequence[str] | None = None) -> Path:
         )
         result = executed.result
         theta = result.results["first_order"].theta
+        trace = result.traces["first_order"]
         objective = result.config.objective
         optimized_u = np.asarray(objective.policy_value(theta, cohort.frame), dtype=float)
         optimized_rows = evaluate_actions(objective, cohort.frame, optimized_u)
@@ -911,6 +920,10 @@ def main(argv: Sequence[str] | None = None) -> Path:
                 perturbation_summary=perturbation_summary,
                 u_bounds=u_bounds,
                 headline_delta=float(args.headline_delta),
+                optimizer_success=trace.optimizer_success,
+                optimizer_status=trace.optimizer_status,
+                optimizer_message=trace.optimizer_message,
+                optimizer_steps=len(trace.steps),
             )
         )
 

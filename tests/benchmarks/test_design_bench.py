@@ -52,6 +52,15 @@ def _array_record(path: Path, array: np.ndarray) -> dict[str, object]:
     }
 
 
+def _load_legacy_module():
+    path = Path(__file__).resolve().parents[2] / "scripts" / "design_bench_legacy.py"
+    module_spec = importlib.util.spec_from_file_location("design_bench_legacy_test", path)
+    assert module_spec is not None and module_spec.loader is not None
+    module = importlib.util.module_from_spec(module_spec)
+    module_spec.loader.exec_module(module)
+    return module
+
+
 def test_task_spec_supports_only_ant_and_dkitty() -> None:
     assert DesignBenchTaskSpec(ANT_TASK).dimension == 60
     assert DesignBenchTaskSpec(DKITTY_TASK).dimension == 56
@@ -195,12 +204,47 @@ def test_baseline_artifact_preserves_normalized_and_raw_designs(tmp_path: Path) 
     np.testing.assert_array_equal(artifact.raw_candidates, raw)
 
 
+def test_legacy_export_and_evaluation_use_raw_official_task_api(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    module = _load_legacy_module()
+    x, y = _arrays(60)
+    seen: list[np.ndarray] = []
+
+    class FakeTask:
+        def __init__(self):
+            self.x = x
+            self.y = y
+
+        def predict(self, candidates):
+            seen.append(np.asarray(candidates).copy())
+            return np.sum(candidates, axis=1, keepdims=True)
+
+    monkeypatch.setattr(module, "_require_pinned_design_bench", lambda: "2.0.20")
+    monkeypatch.setattr(module, "_make_design_bench_task", lambda task: FakeTask())
+
+    dataset_dir = tmp_path / "dataset"
+    module.export_dataset(ANT_TASK, dataset_dir)
+    dataset = DatasetArtifact.load(dataset_dir)
+    candidates_path = tmp_path / "proposals.npy"
+    candidates = dataset.x[:2].copy()
+    np.save(candidates_path, candidates, allow_pickle=False)
+
+    output = tmp_path / "evaluation"
+    module.evaluate(dataset_dir, candidates_path, output)
+    evaluation = EvaluationArtifact.load(output)
+
+    np.testing.assert_array_equal(seen[0], candidates)
+    np.testing.assert_array_equal(evaluation.candidates, candidates)
+    np.testing.assert_array_equal(
+        evaluation.scores,
+        np.sum(candidates, axis=1, keepdims=True),
+    )
+
+
 def test_legacy_runner_denormalizes_solution_in_task_coordinates() -> None:
-    path = Path(__file__).resolve().parents[2] / "scripts" / "design_bench_legacy.py"
-    module_spec = importlib.util.spec_from_file_location("design_bench_legacy_test", path)
-    assert module_spec is not None and module_spec.loader is not None
-    module = importlib.util.module_from_spec(module_spec)
-    module_spec.loader.exec_module(module)
+    module = _load_legacy_module()
 
     class FakeNormalizedTask:
         def denormalize_x(self, values):

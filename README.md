@@ -332,6 +332,59 @@ enforce non-decreasing churn and `[0, 1]` probability bounds. Other complete
 policies follow the original wrapper contract and fall back to raw XGB, so the
 cache size is not a limit on inference. Logit-spline and shifted-sigmoid runtime
 families have been removed.
+
+A separate versioned analysis cache can materialize the same canonical curve
+for every complete eligible source row without changing the 200-profile runtime
+artifact or anything under `src/data/models/`:
+
+```bash
+# Build 10,000-row shards in a CPU array (72 tasks for 715,023 rows).
+python scripts/build_full_monotone_spline_cache.py \
+  --launch slurm \
+  --array \
+  --array-max-parallel 8 \
+  --sweep-id full-715023-v1
+
+# Resume: rerun the identical command and completed, checksummed shards are skipped.
+python scripts/build_full_monotone_spline_cache.py \
+  --launch slurm --array --array-max-parallel 8 --sweep-id full-715023-v1
+
+# Collect and validate an existing run without submitting a duplicate array.
+python scripts/build_full_monotone_spline_cache.py \
+  --launch local --array --collect --sweep-id full-715023-v1
+```
+
+The output is staged under
+`results/cache/monotone-spline-xgb-full-v1/sweeps/full-715023-v1/`. Its
+`manifest.json` records source hashes, exact row coverage/order, customer IDs,
+the all-customer historical-`U` weights, recipe/configuration, per-shard
+checksums, timing, dtype assessment, failure rows, validation error, and disk
+size. Collection rejects missing, duplicate, overlapping, reordered, or
+out-of-range rows and rechecks every shard checksum. It then compares a seeded
+sample to fresh calls of `fit_monotone_churn_curve`, including derivatives and
+both tails.
+
+The shard format stores the canonical 500 PCHIP knot values and analytical knot
+derivatives as float32 cubic-Hermite data. This is half the curve payload of
+float64 and avoids reconstructing derivatives from quantized values; the
+manifest records measured tight parity errors. The loader memory-maps only the
+shards needed for selected source rows:
+
+```python
+from data.full_monotone_spline_cache import load_full_monotone_spline_cache
+
+cache = load_full_monotone_spline_cache(
+    "results/cache/monotone-spline-xgb-full-v1/sweeps/full-715023-v1",
+    verify_checksums=True,
+)
+row_indices = [10, 25, 100]
+u_grid = [0.0, 0.04, 0.08, 0.12, 0.16]
+acceptance = cache.acceptance(row_indices, u_grid)  # shape (3, 5)
+d_acceptance_du = cache.derivative(row_indices, u_grid)
+pairwise = cache.acceptance(row_indices, [0.02, 0.08, 0.14], pairwise=True)
+customer_ids = cache.customer_ids(row_indices)
+```
+
 Only the model artifact X covariates are numerical objective/policy inputs.
 Historical `U`, `Y_G_Loss`, `is_churn`, IDs/dates, and the lookahead
 `X_upcoming_premium` column remain excluded from those inputs; the spline preset

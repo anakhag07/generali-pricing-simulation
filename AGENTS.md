@@ -190,6 +190,11 @@ Guidelines:
   and raw-X prediction-sensitivity rankings. Its row-sampling seed and
   permutation seed are independent, and it deliberately creates no X-feature
   plots.
+- `scripts/build_full_monotone_spline_cache.py` builds the versioned, resumable
+  full-eligible-row monotone-XGB curve cache under `results/cache/`; it reuses
+  `analyze_model_acceptance_features` for eligible rows, all-customer historical
+  `U` weights, and raw-XGB anchor inference, and never promotes outputs under
+  `src/data/models/`.
 - `scripts/plot_model_feature_correlations.py` is the deterministic post-run
   companion that renders numeric top-feature Spearman heatmaps and cross-model
   feature-ranking agreement from a collected model-feature analysis sweep.
@@ -475,6 +480,11 @@ belongs under `generali/`.
 
 - **`src/data/monotone_spline_xgb.py`**
   - Owns curve fitting, portable artifact I/O, cached evaluation, analytical cached-curve derivatives, and raw-XGB fallback behind one acceptance-model interface
+
+- **`src/data/full_monotone_spline_cache.py`**
+  - Owns the scalable full-customer cache schema, atomic/checksummed shard I/O,
+    shard validation, and lazy vectorized values-plus-derivatives Hermite
+    evaluation keyed by stable canonical dataset row indices
 
 - **`src/data/unused/`**
   - Legacy CSV/notebook exports not used by the current loader; retained only as temporary archive material before deletion

@@ -256,6 +256,25 @@ then zero after clipping. At the support boundaries the implementation uses the
 interior derivative. The hierarchy preset constrains actions to $$[0,0.16]$$ and
 rejects policies absent from the artifact.
 
+The full-customer analysis cache stores the same PCHIP exactly as shared-grid
+cubic Hermite data rather than one Python polynomial object per customer. For
+an interval $$[x_j,x_{j+1}]$$, let
+$$t=(u-x_j)/h_j$$, $$h_j=x_{j+1}-x_j$$, stored knot values
+$$y_j=P_i(x_j)$$, and stored knot derivatives $$m_j=P_i'(x_j)$$. Evaluation is
+
+$$
+P_i(u)=h_{00}(t)y_j+h_{10}(t)h_jm_j
+       +h_{01}(t)y_{j+1}+h_{11}(t)h_jm_{j+1},
+$$
+
+where $$h_{00}=2t^3-3t^2+1$$, $$h_{10}=t^3-2t^2+t$$,
+$$h_{01}=-2t^3+3t^2$$, and $$h_{11}=t^3-t^2$$. Differentiating these four
+basis functions gives the cached analytical derivative. The representation is
+mathematically the same PCHIP returned by the canonical fitter; only float32
+storage introduces approximation, which the cache collector bounds against
+fresh canonical fits for both values and derivatives. Tail equations remain
+the ones above.
+
 **Local price-sensitivity bucket score:**
 
 For GLM sensitivity-bucket experiments, customers are ranked by local acceptance

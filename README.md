@@ -53,6 +53,59 @@ pip install -e ".[dev]"
 pytest -q
 ```
 
+## Design-Bench bridge
+
+Design-Bench is available as an isolated data and evaluation source for the two
+continuous morphology tasks `AntMorphology-Exact-v0` (60 dimensions) and
+`DKittyMorphology-Exact-v0` (56 dimensions). It is deliberately not wired into
+the optimizer or its objective/surrogate classes.
+
+The upstream stack requires Python 3.7, TensorFlow 2.3, and legacy MuJoCo/ROBEL
+packages, so create the pinned environment described in
+`environments/design-baselines/README.md` and expose its Python executable:
+
+```bash
+export DESIGN_BENCH_PYTHON=/path/to/design-baselines/bin/python
+
+python scripts/run_design_bench.py export-dataset \
+  --task AntMorphology-Exact-v0 \
+  --output outputs/design-bench/ant/dataset
+
+python scripts/run_design_bench.py run-gradient-ascent \
+  --dataset outputs/design-bench/ant/dataset \
+  --mode smoke \
+  --seed 7 \
+  --output outputs/design-bench/ant/gradient-ascent-smoke
+
+python scripts/run_design_bench.py evaluate \
+  --dataset outputs/design-bench/ant/dataset \
+  --candidates outputs/design-bench/ant/gradient-ascent-smoke/candidates.npy \
+  --output outputs/design-bench/ant/gradient-ascent-smoke-evaluation
+```
+
+Dataset artifacts preserve raw `task.x` and `task.y` arrays and assign them a
+stable manifest ID derived from task configuration, Design-Bench version,
+shapes, dtypes, and array checksums. Baseline and oracle commands reload the
+task through the official API and reject it if those checksums differ.
+
+The `reference` baseline mode calls the official Design-Baselines gradient
+ascent function with its published Ant/D'Kitty settings. Its f-hat is one
+probabilistic two-layer, width-2048 forward model trained on normalized `x/y`
+with Gaussian negative log likelihood; the top 128 dataset designs are updated
+for 200 steps. `smoke` uses the same implementation and architecture but only
+one epoch, two starting designs, and one solver step. Internal oracle evaluation
+is disabled in both modes: `solution.npy` is retained in normalized coordinates,
+`candidates.npy` is denormalized to raw task coordinates, and only the common
+`evaluate` command queries `task.predict`.
+
+No max/median aggregation, score normalization, repeat protocol, or surrogate
+for this project is defined here. Run the opt-in end-to-end checks with:
+
+```bash
+DESIGN_BENCH_PYTHON=/path/to/design-baselines/bin/python \
+  pytest -q -m design_bench_live tests/benchmarks/test_design_bench_live.py
+```
+
 ## What This Does
 
 Most objectives optimize a parameterized policy over state vectors:

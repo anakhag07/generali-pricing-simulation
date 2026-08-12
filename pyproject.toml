@@ -19,6 +19,9 @@ package-dir = {"" = "src"}
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "design_bench_live: opt-in tests requiring the pinned legacy Design-Bench environment",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

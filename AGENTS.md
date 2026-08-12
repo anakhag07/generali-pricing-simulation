@@ -190,9 +190,22 @@ Guidelines:
   and raw-X prediction-sensitivity rankings. Its row-sampling seed and
   permutation seed are independent, and it deliberately creates no X-feature
   plots.
+- `scripts/build_full_monotone_spline_cache.py` builds the versioned, resumable
+  full-eligible-row monotone-XGB curve cache under `results/cache/`; it reuses
+  `analyze_model_acceptance_features` for eligible rows, all-customer historical
+  `U` weights, and raw-XGB anchor inference, and never promotes outputs under
+  `src/data/models/`.
 - `scripts/plot_model_feature_correlations.py` is the deterministic post-run
   companion that renders numeric top-feature Spearman heatmaps and cross-model
   feature-ranking agreement from a collected model-feature analysis sweep.
+- `scripts/run_policy_cliff_perturbation_diagnostic.py` is the focused one-off
+  policy-output diagnostic for the 200 IDs stored in model_processing's
+  monotone smoothing wrapper. It compares embedded raw-XGB and stored-spline
+  acceptance under a hard SciPy trust-constr cohort-mean acceptance inequality,
+  while sharing the external XGB loss model. It writes direct policy histograms,
+  dense additive-`u` replay tables/plots, and adjacent-grid customer jump
+  statistics; external artifacts remain read-only and are identified by hashes
+  in `provenance.json`.
 - Keep the boundary strict: do not hide reusable pipeline logic inside a script,
   and do not promote analysis-only code into `src/` without a concrete reusable
   integration point.
@@ -467,6 +480,11 @@ belongs under `generali/`.
 
 - **`src/data/monotone_spline_xgb.py`**
   - Owns curve fitting, portable artifact I/O, cached evaluation, analytical cached-curve derivatives, and raw-XGB fallback behind one acceptance-model interface
+
+- **`src/data/full_monotone_spline_cache.py`**
+  - Owns the scalable full-customer cache schema, atomic/checksummed shard I/O,
+    shard validation, and lazy vectorized values-plus-derivatives Hermite
+    evaluation keyed by stable canonical dataset row indices
 
 - **`src/data/unused/`**
   - Legacy CSV/notebook exports not used by the current loader; retained only as temporary archive material before deletion

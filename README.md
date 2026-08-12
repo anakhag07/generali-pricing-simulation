@@ -394,6 +394,59 @@ enforce non-decreasing churn and `[0, 1]` probability bounds. Other complete
 policies follow the original wrapper contract and fall back to raw XGB, so the
 cache size is not a limit on inference. Logit-spline and shifted-sigmoid runtime
 families have been removed.
+
+A separate versioned analysis cache can materialize the same canonical curve
+for every complete eligible source row without changing the 200-profile runtime
+artifact or anything under `src/data/models/`:
+
+```bash
+# Build 10,000-row shards in a CPU array (72 tasks for 715,023 rows).
+python scripts/build_full_monotone_spline_cache.py \
+  --launch slurm \
+  --array \
+  --array-max-parallel 8 \
+  --sweep-id full-715023-v1
+
+# Resume: rerun the identical command and completed, checksummed shards are skipped.
+python scripts/build_full_monotone_spline_cache.py \
+  --launch slurm --array --array-max-parallel 8 --sweep-id full-715023-v1
+
+# Collect and validate an existing run without submitting a duplicate array.
+python scripts/build_full_monotone_spline_cache.py \
+  --launch local --array --collect --sweep-id full-715023-v1
+```
+
+The output is staged under
+`results/cache/monotone-spline-xgb-full-v1/sweeps/full-715023-v1/`. Its
+`manifest.json` records source hashes, exact row coverage/order, customer IDs,
+the all-customer historical-`U` weights, recipe/configuration, per-shard
+checksums, timing, dtype assessment, failure rows, validation error, and disk
+size. Collection rejects missing, duplicate, overlapping, reordered, or
+out-of-range rows and rechecks every shard checksum. It then compares a seeded
+sample to fresh calls of `fit_monotone_churn_curve`, including derivatives and
+both tails.
+
+The shard format stores the canonical 500 PCHIP knot values and analytical knot
+derivatives as float32 cubic-Hermite data. This is half the curve payload of
+float64 and avoids reconstructing derivatives from quantized values; the
+manifest records measured tight parity errors. The loader memory-maps only the
+shards needed for selected source rows:
+
+```python
+from data.full_monotone_spline_cache import load_full_monotone_spline_cache
+
+cache = load_full_monotone_spline_cache(
+    "results/cache/monotone-spline-xgb-full-v1/sweeps/full-715023-v1",
+    verify_checksums=True,
+)
+row_indices = [10, 25, 100]
+u_grid = [0.0, 0.04, 0.08, 0.12, 0.16]
+acceptance = cache.acceptance(row_indices, u_grid)  # shape (3, 5)
+d_acceptance_du = cache.derivative(row_indices, u_grid)
+pairwise = cache.acceptance(row_indices, [0.02, 0.08, 0.14], pairwise=True)
+customer_ids = cache.customer_ids(row_indices)
+```
+
 Only the model artifact X covariates are numerical objective/policy inputs.
 Historical `U`, `Y_G_Loss`, `is_churn`, IDs/dates, and the lookahead
 `X_upcoming_premium` column remain excluded from those inputs; the spline preset
@@ -737,6 +790,29 @@ top eight features per model and target. Categorical features and district code
 are listed in `correlation_analysis.json` but excluded from the numeric
 correlation matrices. The script writes three Matplotlib PNGs and their CSV
 matrices beside the collected sweep outputs.
+
+To inspect optimizer price outputs and their local stability on the exact 200
+customers stored in model_processing's monotone smoothing wrapper, run:
+
+```bash
+python scripts/run_policy_cliff_perturbation_diagnostic.py
+```
+
+This runs exactly two arms, raw XGBoost and stored monotone-spline acceptance,
+under SciPy `trust-constr` with the hard inequality
+`mean_predicted_acceptance >= acceptance_floor`. Both use the XGBoost model
+embedded in the wrapper and share model_processing's XGBoost loss artifact. The
+bounded sigmoid policy defaults to `u in [-0.1, 0.2]`, and both models start from
+the feasible constant policy `u=-0.05`. Raw-tree action derivatives use central
+one-dimensional `u` perturbations (default `0.001`); stored splines use their
+analytical piecewise-polynomial derivatives. A default 161-point local replay
+over `delta_u in [-0.01, 0.01]` writes aggregate curves, adjacent-grid
+customer-jump statistics in `cliff_step_summary.csv`, and a dense cliff plot.
+Outputs live under
+`results/policy-cliff-trust-constr-diagnostic/<timestamp>/`. The acceptance
+floor applies to the cohort mean and defaults to historical observed acceptance.
+External artifact/dataset hashes and deterministic mean imputations are recorded
+in `provenance.json`.
 
 To benchmark GLM analytical acceptance speed, Stein-difference call counts,
 objective-cache behavior, and contour-subsampling speed on the bundled real-data

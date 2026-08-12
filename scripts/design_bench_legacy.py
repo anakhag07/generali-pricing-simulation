@@ -318,11 +318,7 @@ def run_gradient_ascent(dataset, output, mode, seed):
     _, manifest, task_payload, _, _ = _load_dataset_artifact(dataset)
 
     import tensorflow as tf
-    from design_baselines.data import StaticGraphTask
     import design_baselines.gradient_ascent as gradient_ascent_module
-
-    verification_task = StaticGraphTask(task_payload["name"], **task_payload["task_kwargs"])
-    _assert_live_dataset_matches(manifest, task_payload, verification_task)
 
     root = _prepare_output(output)
     _set_baseline_seed(seed, tf)
@@ -333,10 +329,12 @@ def run_gradient_ascent(dataset, output, mode, seed):
     # construction so the exact arrays are verified immediately before its
     # normalization and training code consumes them.
     original_task_class = gradient_ascent_module.StaticGraphTask
+    training_tasks = []
 
     def verified_training_task(task_name, **task_kwargs):
         task = original_task_class(task_name, **task_kwargs)
         _assert_live_dataset_matches(manifest, task_payload, task)
+        training_tasks.append(task)
         return task
 
     gradient_ascent_module.StaticGraphTask = verified_training_task
@@ -349,10 +347,9 @@ def run_gradient_ascent(dataset, output, mode, seed):
     normalized_solution = np.asarray(np.load(str(solution_path), allow_pickle=False))
     _validate_candidates(task_payload, normalized_solution)
 
-    normalization_task = StaticGraphTask(task_payload["name"], **task_payload["task_kwargs"])
-    _assert_live_dataset_matches(manifest, task_payload, normalization_task)
-    normalization_task.map_normalize_x()
-    raw_candidates = _denormalize_solution(normalization_task, normalized_solution)
+    if len(training_tasks) != 1:
+        raise RuntimeError("Expected the gradient-ascent baseline to construct exactly one task.")
+    raw_candidates = _denormalize_solution(training_tasks[0], normalized_solution)
     _validate_candidates(task_payload, raw_candidates)
     np.save(str(root / "candidates.npy"), raw_candidates, allow_pickle=False)
 

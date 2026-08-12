@@ -98,6 +98,11 @@ is disabled in both modes: `solution.npy` is retained in normalized coordinates,
 `candidates.npy` is denormalized to raw task coordinates, and only the common
 `evaluate` command queries `task.predict`.
 
+The required baseline `--seed` is its own research seed: it controls NumPy data
+splitting, bootstrap draws, TensorFlow initialization, and TensorFlow shuffling.
+It is not borrowed from the optimizer's seed streams, and GPU execution is not
+promised to be bitwise identical across different hardware/software stacks.
+
 No max/median aggregation, score normalization, repeat protocol, or surrogate
 for this project is defined here. Run the opt-in end-to-end checks with:
 

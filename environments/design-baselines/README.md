@@ -1,27 +1,23 @@
 # Pinned Design-Bench environment
 
-This environment mirrors the full upstream Design-Baselines environment at
-commit `785dbcfa58107bfcc426257a1c2e69d7f71c3c27`. Its requirements pin
-`design-bench[all]==2.0.20`, `morphing-agents==1.5.1`, TensorFlow 2.3.2, and
-TensorFlow Probability 0.11.0. The final editable upstream package entry was
-replaced by a Git URL pinned to that exact commit.
+Use the upstream Design-Baselines environment at commit
+`785dbcfa58107bfcc426257a1c2e69d7f71c3c27`. The integration does not copy its
+requirements: the checked-out upstream repository remains the source of truth.
 
-Create it from the repository root:
+Create it from a separate checkout:
 
 ```bash
-conda env create -f environments/design-baselines/environment.yml
+git clone https://github.com/brandontrabucco/design-baselines.git
+cd design-baselines
+git checkout 785dbcfa58107bfcc426257a1c2e69d7f71c3c27
+conda env create -f environment.yml
 conda run -n design-baselines python -c \
   "import design_bench, design_baselines, tensorflow"
 ```
 
-Then point the modern bridge at the environment executable:
-
-```bash
-export DESIGN_BENCH_PYTHON="$(conda run -n design-baselines which python)"
-```
-
-This is intentionally a large legacy environment: upstream installs the
-dependencies for every baseline even though this integration invokes only
-`design_baselines.gradient_ascent.gradient_ascent`. MuJoCo/ROBEL may also need
-host-specific system libraries and a compatible GPU driver. Ordinary project
-tests do not create or import this environment.
+The upstream environment is large because `design-bench` and Design-Baselines
+declare broad shared dependencies for all tasks and methods. This repository
+does not add to that dependency set and invokes only
+`design_baselines.gradient_ascent.gradient_ascent`. MuJoCo/ROBEL may still need
+host-specific system libraries. Ordinary project tests never import this
+environment.

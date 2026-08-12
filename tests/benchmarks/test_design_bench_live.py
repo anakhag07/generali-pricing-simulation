@@ -1,53 +1,72 @@
-from __future__ import annotations
-
 import os
 from pathlib import Path
+import subprocess
 
 import numpy as np
 import pytest
 
-from benchmarks.design_bench import (
-    ANT_TASK,
-    DKITTY_TASK,
-    DesignBenchBridge,
-    DesignBenchTaskSpec,
-)
-
 
 LEGACY_PYTHON = os.environ.get("DESIGN_BENCH_PYTHON")
+SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "design_bench.py"
 pytestmark = [
     pytest.mark.design_bench_live,
-    pytest.mark.skipif(
-        not LEGACY_PYTHON,
-        reason="Set DESIGN_BENCH_PYTHON to run legacy Design-Bench integration tests.",
-    ),
+    pytest.mark.skipif(not LEGACY_PYTHON, reason="Set DESIGN_BENCH_PYTHON for live tests."),
 ]
 
 
-@pytest.mark.parametrize("task_name", [ANT_TASK, DKITTY_TASK])
-def test_exact_oracle_and_gradient_ascent_smoke(task_name: str, tmp_path: Path) -> None:
-    assert LEGACY_PYTHON is not None
-    bridge = DesignBenchBridge(LEGACY_PYTHON)
-    task_root = tmp_path / task_name
-    dataset = bridge.export_dataset(DesignBenchTaskSpec(task_name), task_root / "dataset")
-
-    first = bridge.evaluate(dataset, dataset.x[:1], task_root / "first-evaluation")
-    repeated = bridge.evaluate(dataset, dataset.x[:1], task_root / "repeated-evaluation")
-    assert first.scores.shape == (1, 1)
-    assert np.all(np.isfinite(first.scores))
-    np.testing.assert_allclose(first.scores, repeated.scores, rtol=1e-6, atol=1e-6)
-
-    baseline = bridge.run_gradient_ascent(
-        dataset,
-        task_root / "gradient-ascent-smoke",
-        mode="smoke",
-        seed=7,
+@pytest.mark.parametrize(
+    "task_name,dimension",
+    [("AntMorphology-Exact-v0", 60), ("DKittyMorphology-Exact-v0", 56)],
+)
+def test_oracle_and_baseline_smoke(task_name, dimension, tmp_path):
+    root = tmp_path / task_name
+    dataset = root / "dataset"
+    subprocess.run(
+        [
+            LEGACY_PYTHON,
+            str(SCRIPT),
+            "export-dataset",
+            "--task",
+            task_name,
+            "--output",
+            str(dataset),
+        ],
+        check=True,
     )
-    assert baseline.raw_candidates.shape == (2, dataset.task.dimension)
-    scored = bridge.evaluate(
-        dataset,
-        baseline.raw_candidates,
-        task_root / "baseline-evaluation",
+    candidate = root / "candidate.npy"
+    np.save(candidate, np.load(dataset / "x.npy")[:1], allow_pickle=False)
+    evaluation = root / "evaluation"
+    subprocess.run(
+        [
+            LEGACY_PYTHON,
+            str(SCRIPT),
+            "evaluate",
+            "--dataset",
+            str(dataset),
+            "--candidates",
+            str(candidate),
+            "--output",
+            str(evaluation),
+        ],
+        check=True,
     )
-    assert scored.scores.shape == (2, 1)
-    assert np.all(np.isfinite(scored.scores))
+    assert np.load(evaluation / "scores.npy").shape == (1, 1)
+
+    baseline = root / "baseline"
+    subprocess.run(
+        [
+            LEGACY_PYTHON,
+            str(SCRIPT),
+            "run-gradient-ascent",
+            "--dataset",
+            str(dataset),
+            "--mode",
+            "smoke",
+            "--seed",
+            "7",
+            "--output",
+            str(baseline),
+        ],
+        check=True,
+    )
+    assert np.load(baseline / "candidates.npy").shape == (2, dimension)

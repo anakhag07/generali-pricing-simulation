@@ -61,23 +61,21 @@ continuous morphology tasks `AntMorphology-Exact-v0` (60 dimensions) and
 the optimizer or its objective/surrogate classes.
 
 The upstream stack requires Python 3.7, TensorFlow 2.3, and legacy MuJoCo/ROBEL
-packages, so create the pinned environment described in
-`environments/design-baselines/README.md` and expose its Python executable:
+packages, so create the pinned upstream environment described in
+`environments/design-baselines/README.md` and run the thin script inside it:
 
 ```bash
-export DESIGN_BENCH_PYTHON=/path/to/design-baselines/bin/python
-
-python scripts/run_design_bench.py export-dataset \
+conda run -n design-baselines python scripts/design_bench.py export-dataset \
   --task AntMorphology-Exact-v0 \
   --output outputs/design-bench/ant/dataset
 
-python scripts/run_design_bench.py run-gradient-ascent \
+conda run -n design-baselines python scripts/design_bench.py run-gradient-ascent \
   --dataset outputs/design-bench/ant/dataset \
   --mode smoke \
   --seed 7 \
   --output outputs/design-bench/ant/gradient-ascent-smoke
 
-python scripts/run_design_bench.py evaluate \
+conda run -n design-baselines python scripts/design_bench.py evaluate \
   --dataset outputs/design-bench/ant/dataset \
   --candidates outputs/design-bench/ant/gradient-ascent-smoke/candidates.npy \
   --output outputs/design-bench/ant/gradient-ascent-smoke-evaluation

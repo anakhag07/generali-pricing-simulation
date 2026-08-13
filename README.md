@@ -67,9 +67,18 @@ Follow that file rather than upstream's own instructions: `mujoco-py` needs
 undeclared build inputs, and Design-Bench's asset downloads now 404, so a plain
 `conda env create -f environment.yml` does not produce a working environment.
 
-`mujoco_py` resolves its native libraries at import time, so the variables that
-file exports (`LD_LIBRARY_PATH`, `MUJOCO_PY_FORCE_CPU`, and the helper prefix on
-`PATH`) must also be set whenever the commands below run:
+`mujoco_py` resolves its native libraries when it is imported, not only when it
+is built, so export these in every shell, test run, and Slurm job that touches
+the bridge. Omitting them is the most common failure and surfaces as an
+`mujoco_py` import or library-load error, not as a clear message:
+
+```bash
+export PATH="$HOME/.conda/envs/osmesa-provider/bin:$PATH"
+export LD_LIBRARY_PATH="$HOME/.conda/envs/osmesa-provider/lib:$HOME/.mujoco/mujoco200/bin"
+export MUJOCO_PY_FORCE_CPU=1
+```
+
+With those set, the three stages are:
 
 ```bash
 conda run -n design-baselines python scripts/design_bench.py export-dataset \
@@ -108,11 +117,21 @@ splitting, bootstrap draws, TensorFlow initialization, and TensorFlow shuffling.
 It is not borrowed from the optimizer's seed streams, and GPU execution is not
 promised to be bitwise identical across different hardware/software stacks.
 
+Export the dataset once and reuse it across baseline runs: the manifest ID binds
+every downstream result to those exact arrays, and the baseline and oracle
+commands refuse to run if the installed task stops matching.
+
+`smoke` is only a wiring check and runs on a login node in a few minutes.
+`reference` trains for 100 epochs, optimizes 128 designs for 200 solver steps,
+and spends roughly a minute per exact-oracle call, so submit it to a compute node
+with the variables above exported in the job script.
+
 No max/median aggregation, score normalization, repeat protocol, or surrogate
-for this project is defined here. Run the opt-in end-to-end checks with:
+for this project is defined here. Run the opt-in end-to-end checks with the same
+variables exported (add `-k Ant` while D'Kitty's oracle asset is missing):
 
 ```bash
-DESIGN_BENCH_PYTHON=/path/to/design-baselines/bin/python \
+DESIGN_BENCH_PYTHON=$HOME/.conda/envs/design-baselines/bin/python \
   pytest -q -m design_bench_live tests/benchmarks/test_design_bench_live.py
 ```
 

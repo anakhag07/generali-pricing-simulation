@@ -62,7 +62,14 @@ the optimizer or its objective/surrogate classes.
 
 The upstream stack requires Python 3.7, TensorFlow 2.3, and legacy MuJoCo/ROBEL
 packages, so create the pinned upstream environment described in
-`environments/design-baselines/README.md` and run the thin script inside it:
+`environments/design-baselines/README.md` and run the thin script inside it.
+Follow that file rather than upstream's own instructions: `mujoco-py` needs
+undeclared build inputs, and Design-Bench's asset downloads now 404, so a plain
+`conda env create -f environment.yml` does not produce a working environment.
+
+`mujoco_py` resolves its native libraries at import time, so the variables that
+file exports (`LD_LIBRARY_PATH`, `MUJOCO_PY_FORCE_CPU`, and the helper prefix on
+`PATH`) must also be set whenever the commands below run:
 
 ```bash
 conda run -n design-baselines python scripts/design_bench.py export-dataset \

@@ -12,8 +12,16 @@ import hashlib
 import json
 from pathlib import Path
 import random
+import sys
 
 import numpy as np
+
+
+# Running this file directly prepends its own directory to sys.path, where this
+# module's name would shadow the installed ``design_bench`` package and make
+# ``design_bench.make`` unresolvable. Drop that entry before any legacy import.
+_SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path[:] = [p for p in sys.path if Path(p or ".").resolve() != _SCRIPT_DIR]
 
 
 ANT_TASK = "AntMorphology-Exact-v0"

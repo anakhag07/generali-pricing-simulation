@@ -1,6 +1,9 @@
+import ast
 import importlib.util
 import json
 from pathlib import Path
+import subprocess
+import sys
 
 import numpy as np
 import pytest
@@ -100,3 +103,29 @@ def test_load_dataset_rejects_tampered_array(monkeypatch, tmp_path):
     np.save(dataset / "x.npy", changed, allow_pickle=False)
     with pytest.raises(ValueError, match="manifest"):
         design_bench._load_dataset(dataset)
+
+
+def test_direct_execution_does_not_shadow_the_design_bench_package():
+    """Running this script must not make its own file satisfy ``import design_bench``.
+
+    ``scripts/design_bench.py`` shares a name with the installed package it
+    calls, so executing it directly would otherwise resolve ``design_bench`` to
+    itself and lose ``design_bench.make``.
+    """
+    probe = (
+        "import runpy, sys;"
+        "sys.argv = ['design_bench.py'];"
+        "runpy.run_path({script!r}, run_name='not_main');"
+        "print(str(sys.path))"
+    ).format(script=str(SCRIPT))
+    completed = subprocess.run(
+        [sys.executable, "-c", probe],
+        cwd=str(SCRIPT.parent),
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    remaining = ast.literal_eval(completed.stdout.strip())
+    assert all(
+        Path(entry or ".").resolve() != SCRIPT.parent for entry in remaining
+    ), "script directory still on sys.path; import design_bench would self-shadow"

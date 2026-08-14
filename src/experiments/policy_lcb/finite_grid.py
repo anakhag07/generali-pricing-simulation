@@ -8,11 +8,17 @@ condition is a deterministic transformation of that vector.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Literal
 
 import numpy as np
+
+import matplotlib
+
+matplotlib.use("Agg")
+
+import matplotlib.pyplot as plt
 
 from experiments.paths import results_root
 from experiments.policy_lcb.common import (
@@ -23,8 +29,12 @@ from experiments.policy_lcb.common import (
     path_part,
     read_json,
     required_mapping,
+    sample_std,
+    wilson_interval,
+    write_json_atomic,
 )
 from experiments.seeds import derive_seed, rng_from_seed
+from experiments.sweep_reporting import write_rows_csv
 
 
 CalibrationKind = Literal["bonferroni_two_sided", "pointwise_two_sided"]
@@ -509,6 +519,506 @@ def parse_variable_finite_grid_lcb_manifest(
     )
 
 
+def variable_finite_grid_lcb_seed_complete(
+    manifest: VariableFiniteGridLCBManifest,
+    run_seed: int,
+    *,
+    runs_root: str | Path | None = None,
+) -> bool:
+    """Return whether one durable seed result already exists."""
+    return manifest.seed_result_path(run_seed, runs_root).exists()
+
+
+def run_variable_finite_grid_lcb_manifest_seed(
+    manifest: VariableFiniteGridLCBManifest,
+    index: int,
+    *,
+    runs_root: str | Path | None = None,
+    force: bool = False,
+) -> dict[str, object]:
+    """Run one array task and atomically persist its replayable result."""
+    if index < 0 or index >= len(manifest.spec.run_seeds):
+        raise IndexError(f"Seed task index {index} is out of range.")
+    run_seed = manifest.spec.run_seeds[index]
+    write_variable_finite_grid_lcb_experiment_readme(manifest, runs_root=runs_root)
+    path = manifest.seed_result_path(run_seed, runs_root)
+    if path.exists() and not force:
+        return {
+            "project_dir": str(manifest.project_dir(runs_root)),
+            "run_seed": run_seed,
+            "skipped": True,
+            "n_condition_rows": 0,
+            "n_selector_rows": 0,
+        }
+    result = evaluate_variable_finite_grid_lcb_seed(manifest.spec, run_seed)
+    write_json_atomic(path, asdict(result))
+    return {
+        "project_dir": str(manifest.project_dir(runs_root)),
+        "run_seed": run_seed,
+        "skipped": False,
+        "n_condition_rows": len(result.conditions),
+        "n_selector_rows": len(result.selectors),
+    }
+
+
+def run_variable_finite_grid_lcb_manifest_serial(
+    manifest: VariableFiniteGridLCBManifest,
+    *,
+    runs_root: str | Path | None = None,
+    force: bool = False,
+) -> dict[str, object]:
+    """Run every seed serially, then produce aggregate artifacts."""
+    payloads = [
+        run_variable_finite_grid_lcb_manifest_seed(
+            manifest, index, runs_root=runs_root, force=force
+        )
+        for index in range(len(manifest.spec.run_seeds))
+    ]
+    collected = collect_variable_finite_grid_lcb_outputs(manifest, runs_root=runs_root)
+    return {
+        **collected,
+        "n_executed_condition_rows": sum(
+            int(payload["n_condition_rows"]) for payload in payloads
+        ),
+        "n_executed_selector_rows": sum(
+            int(payload["n_selector_rows"]) for payload in payloads
+        ),
+        "n_skipped_seeds": sum(bool(payload["skipped"]) for payload in payloads),
+    }
+
+
+def collect_variable_finite_grid_lcb_outputs(
+    manifest: VariableFiniteGridLCBManifest,
+    *,
+    runs_root: str | Path | None = None,
+) -> dict[str, object]:
+    """Aggregate all expected seed JSONs into raw tables, summaries, and plots."""
+    project_dir = manifest.project_dir(runs_root)
+    write_variable_finite_grid_lcb_experiment_readme(manifest, runs_root=runs_root)
+    results = [
+        _read_variable_seed_result(manifest.seed_result_path(seed, runs_root))
+        for seed in manifest.spec.run_seeds
+    ]
+    condition_rows = [asdict(row) for result in results for row in result.conditions]
+    selector_rows = [asdict(row) for result in results for row in result.selectors]
+    comparison_rows = _comparison_rows(condition_rows, selector_rows)
+
+    simultaneous = [
+        row for row in comparison_rows if row["calibration_type"] == "bonferroni_two_sided"
+    ]
+    experiment_1 = _aggregate_rows(
+        simultaneous,
+        group_fields=("uncertainty_center", "noise_scale"),
+        numeric_fields=(
+            "fraction_covered",
+            "nominal_regret",
+            "variable_lcb_regret",
+            "nominal_minus_variable_regret",
+            "nominal_selected_x",
+            "variable_lcb_selected_x",
+            "nominal_distance_to_optimum",
+            "variable_lcb_distance_to_optimum",
+            "lcb_regret_certificate",
+            "certificate_slack",
+        ),
+        boolean_fields=(
+            "simultaneous_coverage",
+            "nominal_selected_point_covered",
+            "variable_lcb_selected_point_covered",
+            "certificate_event_holds",
+        ),
+    )
+    experiment_2 = _aggregate_rows(
+        comparison_rows,
+        group_fields=("uncertainty_center", "noise_scale", "calibration", "calibration_type"),
+        numeric_fields=(
+            "fraction_covered",
+            "nominal_regret",
+            "variable_lcb_regret",
+            "nominal_minus_variable_regret",
+        ),
+        boolean_fields=(
+            "simultaneous_coverage",
+            "nominal_selected_point_covered",
+            "variable_lcb_selected_point_covered",
+        ),
+    )
+    experiment_3 = _aggregate_rows(
+        simultaneous,
+        group_fields=("uncertainty_center", "noise_scale"),
+        numeric_fields=(
+            "nominal_regret",
+            "uniform_lcb_regret",
+            "variable_lcb_regret",
+            "nominal_selected_x",
+            "uniform_lcb_selected_x",
+            "variable_lcb_selected_x",
+            "average_half_width",
+            "maximum_half_width",
+            "optimum_half_width",
+            "average_full_width",
+            "maximum_full_width",
+            "optimum_full_width",
+            "optimum_lower_bound_gap",
+            "nominal_minus_variable_regret",
+        ),
+        boolean_fields=(),
+    )
+    experiment_4 = _aggregate_rows(
+        simultaneous,
+        group_fields=("uncertainty_center", "noise_scale"),
+        numeric_fields=(
+            "optimum_x",
+            "deterministic_target_x",
+            "nominal_selected_x",
+            "uniform_lcb_selected_x",
+            "variable_lcb_selected_x",
+            "nominal_regret",
+            "uniform_lcb_regret",
+            "variable_lcb_regret",
+            "nominal_minus_variable_regret",
+            "nominal_distance_to_uncertainty_center",
+            "variable_lcb_distance_to_uncertainty_center",
+        ),
+        boolean_fields=(),
+    )
+
+    write_rows_csv(
+        project_dir / "seed_condition_metrics.csv",
+        condition_rows,
+        tuple(GridConditionResult.__dataclass_fields__),
+    )
+    write_rows_csv(
+        project_dir / "seed_selector_metrics.csv",
+        selector_rows,
+        tuple(GridSelectorResult.__dataclass_fields__),
+    )
+    summaries = {
+        "experiment_1_noise_scale_summary.csv": experiment_1,
+        "experiment_2_calibration_summary.csv": experiment_2,
+        "experiment_3_envelope_shape_summary.csv": experiment_3,
+        "experiment_4_center_summary.csv": experiment_4,
+    }
+    for filename, rows in summaries.items():
+        write_rows_csv(project_dir / filename, rows, tuple(rows[0]))
+    _write_variable_grid_plots(
+        manifest.spec,
+        experiment_1,
+        experiment_2,
+        experiment_3,
+        experiment_4,
+        project_dir / "plots",
+    )
+    return {
+        "project_dir": str(project_dir),
+        "n_seed_results": len(results),
+        "n_condition_rows": len(condition_rows),
+        "n_selector_rows": len(selector_rows),
+    }
+
+
+def write_variable_finite_grid_lcb_experiment_readme(
+    manifest: VariableFiniteGridLCBManifest,
+    *,
+    runs_root: str | Path | None = None,
+) -> Path:
+    """Write the resolved formulas and pairing contract beside the outputs."""
+    project_dir = manifest.project_dir(runs_root)
+    project_dir.mkdir(parents=True, exist_ok=True)
+    path = project_dir / "EXPERIMENT.md"
+    source = str(manifest.source_path) if manifest.source_path is not None else "inline payload"
+    spec = manifest.spec
+    text = f"""# {manifest.name}
+
+- Manifest source: `{source}`
+- Grid: `linspace({spec.grid.lower}, {spec.grid.upper}, {spec.grid.count})`
+- Objective: `{spec.true_value.linear} x - {spec.true_value.quadratic} x^2`
+- Noise scales: `{list(spec.noise_scales)}`
+- Uncertainty centers: `{list(spec.uncertainty.centers)}`
+- Envelope failure probability: `{spec.delta}`
+- Master noise seed: `{spec.master_noise_seed}`
+- Run seeds: `{spec.run_seeds[0]}..{spec.run_seeds[-1]}` ({len(spec.run_seeds)} total)
+- Launch: `{manifest.launch.mode}` / `{manifest.launch.array}`
+
+Each seed draws one independent standard-normal vector `Z[x]`. That exact vector is
+reused across every uncertainty center, noise scale, calibration, and selector. The
+uncertainty center `m` is the minimum-uncertainty point; it is distinct from the
+true maximizer `x*` and the deterministic penalized target `x_dagger`.
+
+```text
+f(x) = linear*x - quadratic*x^2
+sigma_m(x) = minimum + (maximum-minimum)*min(|x-m|/ramp_radius, 1)
+f_hat(x) = f(x) + c*sigma_m(x)*Z[x]
+E(x) = c*q*sigma_m(x)
+LCB(x) = f_hat(x) - E(x)
+```
+
+The simultaneous calibration uses the two-sided Bonferroni quantile
+`Phi^-1(1-delta/(2K))`; the pointwise calibration uses `Phi^-1(1-delta/2)`.
+For positive `c` and `sigma`, simultaneous coverage is exactly the same event
+`all(|Z[x]| <= q)` for every center and scale, so no center multiplicity correction
+is introduced. At `c=0`, coverage is deterministically perfect.
+
+The uniform envelope is the constant `max_x E(x)`, hence its exact argmax equals
+the nominal surrogate argmax. Ties are resolved by the lowest grid point. On the
+simultaneous coverage event, variable-LCB regret is certified by `2*E(x*)`.
+"""
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
+def _read_variable_seed_result(path: Path) -> VariableFiniteGridLCBSeedResult:
+    if not path.exists():
+        raise FileNotFoundError(f"Missing variable finite-grid LCB seed result: {path}")
+    payload = read_json(path)
+    return VariableFiniteGridLCBSeedResult(
+        run_seed=int(payload["run_seed"]),
+        noise_seed=int(payload["noise_seed"]),
+        z=tuple(float(value) for value in payload["z"]),
+        conditions=tuple(GridConditionResult(**row) for row in payload["conditions"]),
+        selectors=tuple(GridSelectorResult(**row) for row in payload["selectors"]),
+    )
+
+
+def _comparison_rows(
+    condition_rows: Sequence[Mapping[str, object]],
+    selector_rows: Sequence[Mapping[str, object]],
+) -> list[dict[str, object]]:
+    """Join condition and selector diagnostics at the paired-seed grain."""
+    key_fields = ("run_seed", "noise_scale", "uncertainty_center", "calibration")
+    selector_lookup: dict[tuple[object, ...], Mapping[str, object]] = {}
+    for row in selector_rows:
+        key = tuple(row[field] for field in key_fields) + (row["selector"],)
+        selector_lookup[key] = row
+    joined: list[dict[str, object]] = []
+    for condition in condition_rows:
+        key = tuple(condition[field] for field in key_fields)
+        row = dict(condition)
+        for selector in ("nominal", "uniform_lcb", "variable_lcb"):
+            selected = selector_lookup[key + (selector,)]
+            for field in (
+                "selected_x",
+                "regret",
+                "distance_to_optimum",
+                "distance_to_uncertainty_center",
+                "selected_point_covered",
+            ):
+                row[f"{selector}_{field}"] = selected[field]
+        row["nominal_minus_variable_regret"] = float(row["nominal_regret"]) - float(
+            row["variable_lcb_regret"]
+        )
+        joined.append(row)
+    return joined
+
+
+def _aggregate_rows(
+    rows: Sequence[Mapping[str, object]],
+    *,
+    group_fields: tuple[str, ...],
+    numeric_fields: tuple[str, ...],
+    boolean_fields: tuple[str, ...],
+) -> list[dict[str, object]]:
+    """Return deterministic mean/variability summaries over run seeds."""
+    grouped: dict[tuple[object, ...], list[Mapping[str, object]]] = {}
+    for row in rows:
+        grouped.setdefault(tuple(row[field] for field in group_fields), []).append(row)
+    output: list[dict[str, object]] = []
+    for key in sorted(grouped):
+        group = grouped[key]
+        summary: dict[str, object] = dict(zip(group_fields, key))
+        summary["n_seeds"] = len(group)
+        for field in numeric_fields:
+            values = np.asarray([float(row[field]) for row in group], dtype=float)
+            summary[f"{field}_mean"] = float(np.mean(values))
+            summary[f"{field}_std"] = sample_std(values)
+            summary[f"{field}_q05"] = float(np.quantile(values, 0.05))
+            summary[f"{field}_median"] = float(np.median(values))
+            summary[f"{field}_q95"] = float(np.quantile(values, 0.95))
+        for field in boolean_fields:
+            count = sum(bool(row[field]) for row in group)
+            low, high = wilson_interval(count, len(group))
+            summary[f"{field}_count"] = count
+            summary[f"{field}_rate"] = count / len(group)
+            summary[f"{field}_wilson_95_low"] = low
+            summary[f"{field}_wilson_95_high"] = high
+        output.append(summary)
+    return output
+
+
+def _write_variable_grid_plots(
+    spec: VariableFiniteGridLCBSpec,
+    experiment_1: Sequence[Mapping[str, object]],
+    experiment_2: Sequence[Mapping[str, object]],
+    experiment_3: Sequence[Mapping[str, object]],
+    experiment_4: Sequence[Mapping[str, object]],
+    plots_dir: Path,
+) -> None:
+    plots_dir.mkdir(parents=True, exist_ok=True)
+    _plot_noise_regret(experiment_1, plots_dir / "experiment_1_noise_scale_regret.png")
+    _plot_noise_validity(experiment_1, plots_dir / "experiment_1_validity.png")
+    _plot_calibration_coverage(experiment_2, plots_dir / "experiment_2_calibration_coverage.png")
+    _plot_calibration_regret(experiment_2, plots_dir / "experiment_2_calibration_regret.png")
+    _plot_envelope_shape(experiment_3, plots_dir / "experiment_3_envelope_shape_regret.png")
+    _plot_center_regret(spec, experiment_4, plots_dir / "experiment_4_center_regret.png")
+    _plot_center_selection(spec, experiment_4, plots_dir / "experiment_4_center_selection.png")
+
+
+def _plot_noise_regret(rows: Sequence[Mapping[str, object]], path: Path) -> None:
+    fig, axes = _center_facets(rows, "Regret versus noise scale")
+    for axis, center in axes:
+        group = _rows_for(rows, uncertainty_center=center)
+        x = [float(row["noise_scale"]) for row in group]
+        axis.plot(x, [float(row["nominal_regret_mean"]) for row in group], marker="o", label="Nominal")
+        axis.plot(x, [float(row["variable_lcb_regret_mean"]) for row in group], marker="s", label="Variable LCB")
+        axis.set_title(f"m={center:g}")
+        axis.grid(alpha=0.25)
+    _finish_facets(fig, axes, "Noise scale c", "True regret", path)
+
+
+def _plot_noise_validity(rows: Sequence[Mapping[str, object]], path: Path) -> None:
+    fig, axes = _center_facets(rows, "Bonferroni validity versus noise scale")
+    for axis, center in axes:
+        group = _rows_for(rows, uncertainty_center=center)
+        x = [float(row["noise_scale"]) for row in group]
+        axis.plot(x, [float(row["simultaneous_coverage_rate"]) for row in group], marker="o", label="Simultaneous")
+        axis.plot(x, [float(row["fraction_covered_mean"]) for row in group], marker="s", label="Fraction covered")
+        axis.set_title(f"m={center:g}")
+        axis.set_ylim(0.0, 1.05)
+        axis.grid(alpha=0.25)
+    _finish_facets(fig, axes, "Noise scale c", "Coverage", path)
+
+
+def _plot_calibration_coverage(rows: Sequence[Mapping[str, object]], path: Path) -> None:
+    fig, axis = plt.subplots(figsize=(8.5, 5.4))
+    for calibration in sorted({str(row["calibration"]) for row in rows}):
+        group = [row for row in rows if row["calibration"] == calibration]
+        centers = sorted({float(row["uncertainty_center"]) for row in group})
+        values = [np.mean([float(row["simultaneous_coverage_rate"]) for row in group if float(row["uncertainty_center"]) == center]) for center in centers]
+        axis.plot(centers, values, marker="o", label=calibration)
+    axis.set(xlabel="Uncertainty center m", ylabel="Simultaneous coverage", ylim=(0.0, 1.05), title="Calibration validity")
+    axis.grid(alpha=0.25)
+    axis.legend()
+    _save_figure(fig, path)
+
+
+def _plot_calibration_regret(rows: Sequence[Mapping[str, object]], path: Path) -> None:
+    fig, axis = plt.subplots(figsize=(8.5, 5.4))
+    for calibration in sorted({str(row["calibration"]) for row in rows}):
+        group = [row for row in rows if row["calibration"] == calibration]
+        scales = sorted({float(row["noise_scale"]) for row in group})
+        values = [np.mean([float(row["variable_lcb_regret_mean"]) for row in group if float(row["noise_scale"]) == scale]) for scale in scales]
+        axis.plot(scales, values, marker="o", label=calibration)
+    axis.set(xlabel="Noise scale c", ylabel="Mean true regret", title="LCB regret by calibration")
+    axis.grid(alpha=0.25)
+    axis.legend()
+    _save_figure(fig, path)
+
+
+def _plot_envelope_shape(rows: Sequence[Mapping[str, object]], path: Path) -> None:
+    fig, axis = plt.subplots(figsize=(8.5, 5.4))
+    scales = sorted({float(row["noise_scale"]) for row in rows})
+    for selector in ("nominal", "uniform_lcb", "variable_lcb"):
+        values = [np.mean([float(row[f"{selector}_regret_mean"]) for row in rows if float(row["noise_scale"]) == scale]) for scale in scales]
+        axis.plot(scales, values, marker="o", label=selector.replace("_", " ").title())
+    axis.set(xlabel="Noise scale c", ylabel="Mean true regret", title="Uniform versus variable valid envelope")
+    axis.grid(alpha=0.25)
+    axis.legend()
+    _save_figure(fig, path)
+
+
+def _plot_center_regret(
+    spec: VariableFiniteGridLCBSpec,
+    rows: Sequence[Mapping[str, object]],
+    path: Path,
+) -> None:
+    fig, facets = _scale_facets(spec, "True regret versus uncertainty center")
+    for axis, scale in facets:
+        group = _rows_for(rows, noise_scale=scale)
+        centers = [float(row["uncertainty_center"]) for row in group]
+        for selector, marker in (("nominal", "o"), ("uniform_lcb", "^"), ("variable_lcb", "s")):
+            axis.plot(centers, [float(row[f"{selector}_regret_mean"]) for row in group], marker=marker, label=selector.replace("_", " ").title())
+        axis.set_title(f"c={scale:g}")
+        axis.grid(alpha=0.25)
+    _finish_facets(fig, facets, "Uncertainty center m", "True regret", path)
+
+
+def _plot_center_selection(
+    spec: VariableFiniteGridLCBSpec,
+    rows: Sequence[Mapping[str, object]],
+    path: Path,
+) -> None:
+    fig, facets = _scale_facets(spec, "Selected location versus uncertainty center")
+    for axis, scale in facets:
+        group = _rows_for(rows, noise_scale=scale)
+        centers = [float(row["uncertainty_center"]) for row in group]
+        axis.plot(centers, centers, color="0.45", linestyle=":", label="m")
+        axis.plot(centers, [float(row["optimum_x_mean"]) for row in group], color="black", linestyle="--", label="x*")
+        axis.plot(centers, [float(row["deterministic_target_x_mean"]) for row in group], marker="^", label="x dagger")
+        axis.plot(centers, [float(row["variable_lcb_selected_x_mean"]) for row in group], marker="o", label="Variable LCB")
+        axis.set_title(f"c={scale:g}")
+        axis.set_ylim(spec.grid.lower - 0.03, spec.grid.upper + 0.03)
+        axis.grid(alpha=0.25)
+    _finish_facets(fig, facets, "Uncertainty center m", "Selected x", path)
+
+
+def _center_facets(
+    rows: Sequence[Mapping[str, object]], title: str
+) -> tuple[plt.Figure, list[tuple[plt.Axes, float]]]:
+    centers = sorted({float(row["uncertainty_center"]) for row in rows})
+    columns = min(4, len(centers))
+    row_count = int(np.ceil(len(centers) / columns))
+    fig, raw_axes = plt.subplots(row_count, columns, figsize=(4.2 * columns, 3.4 * row_count), squeeze=False)
+    fig.suptitle(title)
+    axes = list(raw_axes.flat)
+    for axis in axes[len(centers):]:
+        axis.set_visible(False)
+    return fig, list(zip(axes, centers))
+
+
+def _scale_facets(
+    spec: VariableFiniteGridLCBSpec, title: str
+) -> tuple[plt.Figure, list[tuple[plt.Axes, float]]]:
+    scales = list(spec.noise_scales)
+    columns = min(3, len(scales))
+    row_count = int(np.ceil(len(scales) / columns))
+    fig, raw_axes = plt.subplots(row_count, columns, figsize=(4.8 * columns, 3.6 * row_count), squeeze=False)
+    fig.suptitle(title)
+    axes = list(raw_axes.flat)
+    for axis in axes[len(scales):]:
+        axis.set_visible(False)
+    return fig, list(zip(axes, scales))
+
+
+def _rows_for(
+    rows: Sequence[Mapping[str, object]], **criteria: float
+) -> list[Mapping[str, object]]:
+    return sorted(
+        [row for row in rows if all(float(row[key]) == value for key, value in criteria.items())],
+        key=lambda row: (float(row.get("uncertainty_center", 0.0)), float(row.get("noise_scale", 0.0))),
+    )
+
+
+def _finish_facets(
+    fig: plt.Figure,
+    facets: Sequence[tuple[plt.Axes, float]],
+    xlabel: str,
+    ylabel: str,
+    path: Path,
+) -> None:
+    for axis, _ in facets:
+        axis.set_xlabel(xlabel)
+        axis.set_ylabel(ylabel)
+    if facets:
+        facets[0][0].legend(fontsize=8)
+    fig.tight_layout()
+    _save_figure(fig, path)
+
+
+def _save_figure(fig: plt.Figure, path: Path) -> None:
+    fig.savefig(path, dpi=180)
+    plt.close(fig)
+
+
 __all__ = [
     "CalibrationKind",
     "ClippedDistanceRampSpec",
@@ -524,10 +1034,15 @@ __all__ = [
     "VariableFiniteGridLCBSpec",
     "calibration_quantile",
     "clipped_distance_uncertainty",
+    "collect_variable_finite_grid_lcb_outputs",
     "evaluate_variable_finite_grid_lcb_draw",
     "evaluate_variable_finite_grid_lcb_seed",
     "load_variable_finite_grid_lcb_manifest",
     "parse_variable_finite_grid_lcb_manifest",
+    "run_variable_finite_grid_lcb_manifest_seed",
+    "run_variable_finite_grid_lcb_manifest_serial",
     "true_objective",
     "variable_grid_noise_seed",
+    "variable_finite_grid_lcb_seed_complete",
+    "write_variable_finite_grid_lcb_experiment_readme",
 ]

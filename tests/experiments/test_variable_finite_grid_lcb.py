@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import copy
+import csv
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -9,9 +11,12 @@ from experiments.policy_lcb.finite_grid import (
     ClippedDistanceRampSpec,
     calibration_quantile,
     clipped_distance_uncertainty,
+    collect_variable_finite_grid_lcb_outputs,
     evaluate_variable_finite_grid_lcb_draw,
     evaluate_variable_finite_grid_lcb_seed,
     parse_variable_finite_grid_lcb_manifest,
+    run_variable_finite_grid_lcb_manifest_seed,
+    variable_finite_grid_lcb_seed_complete,
 )
 
 
@@ -201,3 +206,51 @@ def test_manifest_validation_resolves_seed_range_and_rejects_invalid_inputs() ->
     ]
     with pytest.raises(ValueError, match="Bonferroni and pointwise"):
         parse_variable_finite_grid_lcb_manifest(payload)
+
+
+def test_seed_persistence_resumability_aggregation_and_plot_generation(
+    tmp_path: Path,
+) -> None:
+    manifest = _manifest()
+
+    first = run_variable_finite_grid_lcb_manifest_seed(
+        manifest, 0, runs_root=tmp_path
+    )
+    skipped = run_variable_finite_grid_lcb_manifest_seed(
+        manifest, 0, runs_root=tmp_path
+    )
+    run_variable_finite_grid_lcb_manifest_seed(manifest, 1, runs_root=tmp_path)
+    collected = collect_variable_finite_grid_lcb_outputs(manifest, runs_root=tmp_path)
+
+    assert first["skipped"] is False
+    assert skipped["skipped"] is True
+    assert variable_finite_grid_lcb_seed_complete(manifest, 101, runs_root=tmp_path)
+    assert collected["n_condition_rows"] == 2 * 3 * 2 * 2
+    assert collected["n_selector_rows"] == 2 * 3 * 2 * 2 * 3
+    project_dir = manifest.project_dir(tmp_path)
+    for filename in (
+        "EXPERIMENT.md",
+        "seed_condition_metrics.csv",
+        "seed_selector_metrics.csv",
+        "experiment_1_noise_scale_summary.csv",
+        "experiment_2_calibration_summary.csv",
+        "experiment_3_envelope_shape_summary.csv",
+        "experiment_4_center_summary.csv",
+    ):
+        assert (project_dir / filename).exists()
+    for filename in (
+        "experiment_1_noise_scale_regret.png",
+        "experiment_1_validity.png",
+        "experiment_2_calibration_coverage.png",
+        "experiment_2_calibration_regret.png",
+        "experiment_3_envelope_shape_regret.png",
+        "experiment_4_center_regret.png",
+        "experiment_4_center_selection.png",
+    ):
+        assert (project_dir / "plots" / filename).stat().st_size > 0
+    with (project_dir / "experiment_4_center_summary.csv").open(
+        newline="", encoding="utf-8"
+    ) as handle:
+        rows = list(csv.DictReader(handle))
+    assert len(rows) == 3 * 2
+    assert {float(row["uncertainty_center"]) for row in rows} == {0.0, 0.5, 1.0}

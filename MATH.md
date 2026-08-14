@@ -800,6 +800,118 @@ $$
   stream is separate and deliberately paired across run seeds, confidence
   levels, and starts so cross-seed spread isolates the shared Gaussian draw.
 
+#### 3.6.5 Variable-Envelope Finite-Grid Lower Confidence Bounds
+
+Let the finite optimization class be the inclusive grid
+
+$$
+\mathcal X=\{x_1,\ldots,x_K\}\subset[0,1]
+$$
+
+with true value and grid optimum
+
+$$
+f(x)=5x-5x^2,
+\qquad
+x^*\in\arg\max_{x\in\mathcal X}f(x).
+$$
+
+For an uncertainty center $$m$$, the clipped distance-ramp scale is
+
+$$
+\sigma_m(x)=\sigma_{\min}
++(\sigma_{\max}-\sigma_{\min})
+\min\!\left(\frac{|x-m|}{r},1\right).
+$$
+
+One run seed draws a vector of independent standard Gaussians and reuses it for
+every noise magnitude, uncertainty center, and envelope calibration:
+
+$$
+Z_{s,x}\overset{\mathrm{i.i.d.}}{\sim}N(0,1),
+\qquad
+\widehat f_{s,c,m}(x)=f(x)+c\sigma_m(x)Z_{s,x}.
+$$
+
+For failure probability $$\delta$$, the simultaneous Bonferroni and pointwise
+two-sided quantiles are
+
+$$
+q_{\mathrm{sim}}=\Phi^{-1}\!\left(1-\frac{\delta}{2K}\right),
+\qquad
+q_{\mathrm{point}}=\Phi^{-1}\!\left(1-\frac{\delta}{2}\right),
+$$
+
+and either calibration defines the half-width and lower confidence bound
+
+$$
+E_{c,m,q}(x)=c q\sigma_m(x),
+\qquad
+\underline f_{s,c,m,q}(x)=\widehat f_{s,c,m}(x)-E_{c,m,q}(x).
+$$
+
+For Bonferroni calibration, a union bound gives
+
+$$
+\Pr\!\left(
+|\widehat f_{s,c,m}(x)-f(x)|\le E_{c,m,q_{\mathrm{sim}}}(x)
+\ \forall x\in\mathcal X
+\right)\ge1-\delta.
+$$
+
+Under the configured independent Gaussian coordinates, its exact coverage is
+$$ (1-\delta/K)^K $$. Pointwise calibration instead covers each fixed point
+with probability $$1-\delta$$, so its expected covered fraction is
+$$1-\delta$$ while its exact simultaneous coverage is $$(1-\delta)^K$$.
+
+The exhaustive selectors are
+
+$$
+\widehat x_{\mathrm{nom}}
+\in\arg\max_x\widehat f_{s,c,m}(x),
+\qquad
+\widehat x_{\mathrm{var}}
+\in\arg\max_x\underline f_{s,c,m,q}(x).
+$$
+
+The uniform half-width $$E_{\mathrm{unif}}=\max_x E_{c,m,q}(x)$$ is constant
+over $$x$$, hence
+
+$$
+\arg\max_x[\widehat f_{s,c,m}(x)-E_{\mathrm{unif}}]
+=\arg\max_x\widehat f_{s,c,m}(x).
+$$
+
+The deterministic penalized target
+
+$$
+x^\dagger_{c,m,q}\in\arg\max_x[f(x)-E_{c,m,q}(x)]
+$$
+
+separates envelope geometry from surrogate randomness. Regret is
+
+$$
+R(\widehat x)=f(x^*)-f(\widehat x).
+$$
+
+On the simultaneous two-sided coverage event, exact variable-LCB maximization
+obeys
+
+$$
+R(\widehat x_{\mathrm{var}})\le 2E_{c,m,q_{\mathrm{sim}}}(x^*).
+$$
+
+Because the same standardized $$Z_{s,x}$$ is paired across positive $$c$$ and
+all $$\sigma_m(x)>0$$, the coverage event reduces to
+$$\{|Z_{s,x}|\le q\ \forall x\}$$ for every configured center and every
+positive noise magnitude. No additional center multiplicity correction is
+needed for this paired construction.
+
+- **Source:** `src/experiments/policy_lcb/finite_grid.py`;
+  `manifests/variable_lcb_envelope_characterization.json`
+- **Notes:** The grid search is exact and has no optimizer or reporting RNG.
+  The master noise seed is the only stochastic stream.
+
 ### 3.7 Synthetic Ladder Objectives
 
 Direct theta-space benchmark functions over the decision vector $$w = \theta$$

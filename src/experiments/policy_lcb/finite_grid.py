@@ -10,15 +10,13 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
-import matplotlib
-
-matplotlib.use("Agg")
-
-import matplotlib.pyplot as plt
+if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+    from matplotlib.figure import Figure
 
 from experiments.paths import results_root
 from experiments.policy_lcb.common import (
@@ -891,6 +889,7 @@ def _plot_noise_validity(rows: Sequence[Mapping[str, object]], path: Path) -> No
 
 
 def _plot_calibration_coverage(rows: Sequence[Mapping[str, object]], path: Path) -> None:
+    plt = _load_pyplot()
     fig, axis = plt.subplots(figsize=(8.5, 5.4))
     for calibration in sorted({str(row["calibration"]) for row in rows}):
         group = [row for row in rows if row["calibration"] == calibration]
@@ -904,6 +903,7 @@ def _plot_calibration_coverage(rows: Sequence[Mapping[str, object]], path: Path)
 
 
 def _plot_calibration_regret(rows: Sequence[Mapping[str, object]], path: Path) -> None:
+    plt = _load_pyplot()
     fig, axis = plt.subplots(figsize=(8.5, 5.4))
     for calibration in sorted({str(row["calibration"]) for row in rows}):
         group = [row for row in rows if row["calibration"] == calibration]
@@ -917,6 +917,7 @@ def _plot_calibration_regret(rows: Sequence[Mapping[str, object]], path: Path) -
 
 
 def _plot_envelope_shape(rows: Sequence[Mapping[str, object]], path: Path) -> None:
+    plt = _load_pyplot()
     fig, axis = plt.subplots(figsize=(8.5, 5.4))
     scales = sorted({float(row["noise_scale"]) for row in rows})
     for selector in ("nominal", "uniform_lcb", "variable_lcb"):
@@ -965,7 +966,8 @@ def _plot_center_selection(
 
 def _center_facets(
     rows: Sequence[Mapping[str, object]], title: str
-) -> tuple[plt.Figure, list[tuple[plt.Axes, float]]]:
+) -> tuple[Figure, list[tuple[Axes, float]]]:
+    plt = _load_pyplot()
     centers = sorted({float(row["uncertainty_center"]) for row in rows})
     columns = min(4, len(centers))
     row_count = int(np.ceil(len(centers) / columns))
@@ -979,7 +981,8 @@ def _center_facets(
 
 def _scale_facets(
     spec: VariableFiniteGridLCBSpec, title: str
-) -> tuple[plt.Figure, list[tuple[plt.Axes, float]]]:
+) -> tuple[Figure, list[tuple[Axes, float]]]:
+    plt = _load_pyplot()
     scales = list(spec.noise_scales)
     columns = min(3, len(scales))
     row_count = int(np.ceil(len(scales) / columns))
@@ -1001,8 +1004,8 @@ def _rows_for(
 
 
 def _finish_facets(
-    fig: plt.Figure,
-    facets: Sequence[tuple[plt.Axes, float]],
+    fig: Figure,
+    facets: Sequence[tuple[Axes, float]],
     xlabel: str,
     ylabel: str,
     path: Path,
@@ -1016,9 +1019,20 @@ def _finish_facets(
     _save_figure(fig, path)
 
 
-def _save_figure(fig: plt.Figure, path: Path) -> None:
+def _save_figure(fig: Figure, path: Path) -> None:
+    plt = _load_pyplot()
     fig.savefig(path, dpi=180)
     plt.close(fig)
+
+
+def _load_pyplot() -> Any:
+    """Load the non-interactive plotting backend only when collection needs it."""
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as pyplot
+
+    return pyplot
 
 
 __all__ = [

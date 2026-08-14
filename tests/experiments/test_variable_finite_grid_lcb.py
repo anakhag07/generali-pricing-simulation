@@ -260,6 +260,7 @@ def test_seed_persistence_resumability_aggregation_and_plot_generation(
         "experiment_2_calibration_regret.png",
         "experiment_2_calibration_regret_by_center.png",
         "experiment_3_envelope_shape_regret.png",
+        "experiment_3_envelope_shape_regret_by_center.png",
         "experiment_4_center_regret.png",
         "experiment_4_center_selection.png",
     ):

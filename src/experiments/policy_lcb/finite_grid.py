@@ -877,6 +877,11 @@ def _write_variable_grid_plots(
     _plot_envelope_shape(
         spec, experiment_3, plots_dir / "experiment_3_envelope_shape_regret.png"
     )
+    _plot_envelope_shape_by_center(
+        spec,
+        experiment_3,
+        plots_dir / "experiment_3_envelope_shape_regret_by_center.png",
+    )
     _plot_center_regret(spec, experiment_4, plots_dir / "experiment_4_center_regret.png")
     _plot_center_selection(spec, experiment_4, plots_dir / "experiment_4_center_selection.png")
 
@@ -1184,6 +1189,59 @@ def _plot_envelope_shape(
         fig,
         path,
         note=f"{_regret_plot_note(spec)}\n{_geometry_plot_note(spec)}",
+    )
+
+
+def _plot_envelope_shape_by_center(
+    spec: VariableFiniteGridLCBSpec,
+    rows: Sequence[Mapping[str, object]],
+    path: Path,
+) -> None:
+    """Show the effect of valid envelope geometry separately for every center."""
+    fig, facets = _center_facets(
+        rows, "Experiment 3: valid envelope geometry by minimum-uncertainty location m"
+    )
+    styles = (
+        (
+            "Nominal = Uniform LCB",
+            "nominal_regret",
+            "black",
+            "o",
+            "--",
+        ),
+        ("Variable LCB", "variable_lcb_regret", "tab:green", "s", "-"),
+    )
+    for axis, center in facets:
+        group = _rows_for(rows, uncertainty_center=center)
+        scales = np.asarray([float(row["noise_scale"]) for row in group])
+        for label, metric, color, marker, linestyle in styles:
+            means = np.asarray([float(row[f"{metric}_mean"]) for row in group])
+            q05 = np.asarray([float(row[f"{metric}_q05"]) for row in group])
+            q95 = np.asarray([float(row[f"{metric}_q95"]) for row in group])
+            axis.fill_between(scales, q05, q95, color=color, alpha=0.10)
+            axis.plot(
+                scales,
+                means,
+                color=color,
+                marker=marker,
+                linestyle=linestyle,
+                linewidth=1.6,
+                label=label,
+            )
+        axis.set_title(f"m={center:g}")
+        axis.set_ylim(bottom=0.0)
+        axis.grid(alpha=0.25)
+    _finish_facets(
+        fig,
+        facets,
+        "Noise/envelope scale c",
+        "Mean true regret R",
+        path,
+        note=(
+            "Both envelopes are Bonferroni-valid; the uniform penalty is constant and "
+            "cannot change the nominal argmax. Shading shows 5th--95th seed percentiles.\n"
+            f"{_regret_plot_note(spec)}  {_geometry_plot_note(spec)}"
+        ),
     )
 
 

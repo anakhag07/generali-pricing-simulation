@@ -854,29 +854,51 @@ def _write_variable_grid_plots(
     plots_dir: Path,
 ) -> None:
     plots_dir.mkdir(parents=True, exist_ok=True)
-    _plot_noise_regret(experiment_1, plots_dir / "experiment_1_noise_scale_regret.png")
-    _plot_noise_validity(experiment_1, plots_dir / "experiment_1_validity.png")
-    _plot_calibration_coverage(experiment_2, plots_dir / "experiment_2_calibration_coverage.png")
-    _plot_calibration_regret(experiment_2, plots_dir / "experiment_2_calibration_regret.png")
-    _plot_envelope_shape(experiment_3, plots_dir / "experiment_3_envelope_shape_regret.png")
+    _plot_noise_regret(spec, experiment_1, plots_dir / "experiment_1_noise_scale_regret.png")
+    _plot_noise_validity(spec, experiment_1, plots_dir / "experiment_1_validity.png")
+    _plot_calibration_coverage(
+        spec, experiment_2, plots_dir / "experiment_2_calibration_coverage.png"
+    )
+    _plot_calibration_regret(
+        spec, experiment_2, plots_dir / "experiment_2_calibration_regret.png"
+    )
+    _plot_envelope_shape(
+        spec, experiment_3, plots_dir / "experiment_3_envelope_shape_regret.png"
+    )
     _plot_center_regret(spec, experiment_4, plots_dir / "experiment_4_center_regret.png")
     _plot_center_selection(spec, experiment_4, plots_dir / "experiment_4_center_selection.png")
 
 
-def _plot_noise_regret(rows: Sequence[Mapping[str, object]], path: Path) -> None:
-    fig, axes = _center_facets(rows, "Regret versus noise scale")
+def _plot_noise_regret(
+    spec: VariableFiniteGridLCBSpec,
+    rows: Sequence[Mapping[str, object]],
+    path: Path,
+) -> None:
+    fig, axes = _center_facets(rows, "True regret versus noise/envelope scale c")
     for axis, center in axes:
         group = _rows_for(rows, uncertainty_center=center)
         x = [float(row["noise_scale"]) for row in group]
         axis.plot(x, [float(row["nominal_regret_mean"]) for row in group], marker="o", label="Nominal")
         axis.plot(x, [float(row["variable_lcb_regret_mean"]) for row in group], marker="s", label="Variable LCB")
         axis.set_title(f"m={center:g}")
+        axis.set_ylim(bottom=0.0)
         axis.grid(alpha=0.25)
-    _finish_facets(fig, axes, "Noise scale c", "True regret", path)
+    _finish_facets(
+        fig,
+        axes,
+        "Noise/envelope scale c",
+        "Mean true regret R",
+        path,
+        note=f"{_regret_plot_note(spec)}\n{_geometry_plot_note(spec)}",
+    )
 
 
-def _plot_noise_validity(rows: Sequence[Mapping[str, object]], path: Path) -> None:
-    fig, axes = _center_facets(rows, "Bonferroni validity versus noise scale")
+def _plot_noise_validity(
+    spec: VariableFiniteGridLCBSpec,
+    rows: Sequence[Mapping[str, object]],
+    path: Path,
+) -> None:
+    fig, axes = _center_facets(rows, "Bonferroni validity versus noise/envelope scale c")
     for axis, center in axes:
         group = _rows_for(rows, uncertainty_center=center)
         x = [float(row["noise_scale"]) for row in group]
@@ -885,10 +907,21 @@ def _plot_noise_validity(rows: Sequence[Mapping[str, object]], path: Path) -> No
         axis.set_title(f"m={center:g}")
         axis.set_ylim(0.0, 1.05)
         axis.grid(alpha=0.25)
-    _finish_facets(fig, axes, "Noise scale c", "Coverage", path)
+    _finish_facets(
+        fig,
+        axes,
+        "Noise/envelope scale c",
+        "Coverage",
+        path,
+        note=_geometry_plot_note(spec),
+    )
 
 
-def _plot_calibration_coverage(rows: Sequence[Mapping[str, object]], path: Path) -> None:
+def _plot_calibration_coverage(
+    spec: VariableFiniteGridLCBSpec,
+    rows: Sequence[Mapping[str, object]],
+    path: Path,
+) -> None:
     plt = _load_pyplot()
     fig, axis = plt.subplots(figsize=(8.5, 5.4))
     for calibration in sorted({str(row["calibration"]) for row in rows}):
@@ -896,13 +929,23 @@ def _plot_calibration_coverage(rows: Sequence[Mapping[str, object]], path: Path)
         centers = sorted({float(row["uncertainty_center"]) for row in group})
         values = [np.mean([float(row["simultaneous_coverage_rate"]) for row in group if float(row["uncertainty_center"]) == center]) for center in centers]
         axis.plot(centers, values, marker="o", label=calibration)
-    axis.set(xlabel="Uncertainty center m", ylabel="Simultaneous coverage", ylim=(0.0, 1.05), title="Calibration validity")
+    axis.set(
+        xlabel="Minimum-uncertainty location m",
+        ylabel="Simultaneous coverage",
+        ylim=(0.0, 1.05),
+        title="Calibration validity (averaged over configured c values)",
+    )
     axis.grid(alpha=0.25)
     axis.legend()
-    _save_figure(fig, path)
+    axis.set_ylim(bottom=0.0)
+    _finish_single_figure(fig, path, note=_geometry_plot_note(spec))
 
 
-def _plot_calibration_regret(rows: Sequence[Mapping[str, object]], path: Path) -> None:
+def _plot_calibration_regret(
+    spec: VariableFiniteGridLCBSpec,
+    rows: Sequence[Mapping[str, object]],
+    path: Path,
+) -> None:
     plt = _load_pyplot()
     fig, axis = plt.subplots(figsize=(8.5, 5.4))
     for calibration in sorted({str(row["calibration"]) for row in rows}):
@@ -910,23 +953,45 @@ def _plot_calibration_regret(rows: Sequence[Mapping[str, object]], path: Path) -
         scales = sorted({float(row["noise_scale"]) for row in group})
         values = [np.mean([float(row["variable_lcb_regret_mean"]) for row in group if float(row["noise_scale"]) == scale]) for scale in scales]
         axis.plot(scales, values, marker="o", label=calibration)
-    axis.set(xlabel="Noise scale c", ylabel="Mean true regret", title="LCB regret by calibration")
+    axis.set(
+        xlabel="Noise/envelope scale c",
+        ylabel="Mean true regret R",
+        title="LCB regret by calibration (averaged over m)",
+    )
     axis.grid(alpha=0.25)
     axis.legend()
-    _save_figure(fig, path)
+    axis.set_ylim(bottom=0.0)
+    _finish_single_figure(
+        fig,
+        path,
+        note=f"{_regret_plot_note(spec)}\n{_geometry_plot_note(spec)}",
+    )
 
 
-def _plot_envelope_shape(rows: Sequence[Mapping[str, object]], path: Path) -> None:
+def _plot_envelope_shape(
+    spec: VariableFiniteGridLCBSpec,
+    rows: Sequence[Mapping[str, object]],
+    path: Path,
+) -> None:
     plt = _load_pyplot()
     fig, axis = plt.subplots(figsize=(8.5, 5.4))
     scales = sorted({float(row["noise_scale"]) for row in rows})
     for selector in ("nominal", "uniform_lcb", "variable_lcb"):
         values = [np.mean([float(row[f"{selector}_regret_mean"]) for row in rows if float(row["noise_scale"]) == scale]) for scale in scales]
-        axis.plot(scales, values, marker="o", label=selector.replace("_", " ").title())
-    axis.set(xlabel="Noise scale c", ylabel="Mean true regret", title="Uniform versus variable valid envelope")
+        axis.plot(scales, values, marker="o", label=_selector_label(selector))
+    axis.set(
+        xlabel="Noise/envelope scale c",
+        ylabel="Mean true regret R",
+        title="Uniform versus variable Bonferroni envelope (averaged over m)",
+    )
     axis.grid(alpha=0.25)
     axis.legend()
-    _save_figure(fig, path)
+    axis.set_ylim(bottom=0.0)
+    _finish_single_figure(
+        fig,
+        path,
+        note=f"{_regret_plot_note(spec)}\n{_geometry_plot_note(spec)}",
+    )
 
 
 def _plot_center_regret(
@@ -934,15 +999,30 @@ def _plot_center_regret(
     rows: Sequence[Mapping[str, object]],
     path: Path,
 ) -> None:
-    fig, facets = _scale_facets(spec, "True regret versus uncertainty center")
+    fig, facets = _scale_facets(
+        spec, "True regret versus minimum-uncertainty location m"
+    )
     for axis, scale in facets:
         group = _rows_for(rows, noise_scale=scale)
         centers = [float(row["uncertainty_center"]) for row in group]
         for selector, marker in (("nominal", "o"), ("uniform_lcb", "^"), ("variable_lcb", "s")):
-            axis.plot(centers, [float(row[f"{selector}_regret_mean"]) for row in group], marker=marker, label=selector.replace("_", " ").title())
+            axis.plot(
+                centers,
+                [float(row[f"{selector}_regret_mean"]) for row in group],
+                marker=marker,
+                label=_selector_label(selector),
+            )
         axis.set_title(f"c={scale:g}")
+        axis.set_ylim(bottom=0.0)
         axis.grid(alpha=0.25)
-    _finish_facets(fig, facets, "Uncertainty center m", "True regret", path)
+    _finish_facets(
+        fig,
+        facets,
+        "Minimum-uncertainty location m",
+        "Mean true regret R",
+        path,
+        note=f"{_regret_plot_note(spec)}\n{_geometry_plot_note(spec)}",
+    )
 
 
 def _plot_center_selection(
@@ -950,7 +1030,9 @@ def _plot_center_selection(
     rows: Sequence[Mapping[str, object]],
     path: Path,
 ) -> None:
-    fig, facets = _scale_facets(spec, "Selected location versus uncertainty center")
+    fig, facets = _scale_facets(
+        spec, "Selected location versus minimum-uncertainty location m"
+    )
     for axis, scale in facets:
         group = _rows_for(rows, noise_scale=scale)
         centers = [float(row["uncertainty_center"]) for row in group]
@@ -961,7 +1043,14 @@ def _plot_center_selection(
         axis.set_title(f"c={scale:g}")
         axis.set_ylim(spec.grid.lower - 0.03, spec.grid.upper + 0.03)
         axis.grid(alpha=0.25)
-    _finish_facets(fig, facets, "Uncertainty center m", "Selected x", path)
+    _finish_facets(
+        fig,
+        facets,
+        "Minimum-uncertainty location m",
+        "Mean selected x",
+        path,
+        note=_geometry_plot_note(spec),
+    )
 
 
 def _center_facets(
@@ -1009,14 +1098,60 @@ def _finish_facets(
     xlabel: str,
     ylabel: str,
     path: Path,
+    *,
+    note: str,
 ) -> None:
     for axis, _ in facets:
         axis.set_xlabel(xlabel)
         axis.set_ylabel(ylabel)
     if facets:
         facets[0][0].legend(fontsize=8)
-    fig.tight_layout()
+    fig.text(0.5, 0.022, note, ha="center", va="bottom", fontsize=9)
+    fig.tight_layout(rect=(0.0, 0.10, 1.0, 0.97))
     _save_figure(fig, path)
+
+
+def _finish_single_figure(fig: Figure, path: Path, *, note: str) -> None:
+    fig.text(0.5, 0.022, note, ha="center", va="bottom", fontsize=9)
+    fig.tight_layout(rect=(0.0, 0.13, 1.0, 1.0))
+    _save_figure(fig, path)
+
+
+def _regret_plot_note(spec: VariableFiniteGridLCBSpec) -> str:
+    """Return the exact true-regret calculation displayed on regret plots."""
+    grid = spec.grid.values()
+    values = true_objective(grid, spec.true_value)
+    optimum_index = int(np.argmax(values))
+    optimum_x = float(grid[optimum_index])
+    optimum_value = float(values[optimum_index])
+    linear = spec.true_value.linear
+    quadratic = spec.true_value.quadratic
+    formula = (
+        rf"$R(\hat{{x}})=f(x^\star)-f(\hat{{x}})="
+        rf"{optimum_value:g}-[{linear:g}\hat{{x}}-{quadratic:g}\hat{{x}}^2]$"
+    )
+    if np.isclose(linear, 2.0 * quadratic * optimum_x) and np.isclose(
+        optimum_value, quadratic * optimum_x**2
+    ):
+        formula += rf" $={quadratic:g}(\hat{{x}}-{optimum_x:g})^2$."
+    return formula
+
+
+def _geometry_plot_note(spec: VariableFiniteGridLCBSpec) -> str:
+    """Define the center and scale axes displayed throughout the report."""
+    return (
+        rf"$m$: location of minimum uncertainty, $\sigma_m(m)="
+        rf"{spec.uncertainty.minimum:g}$; "
+        r"$c$: common scale in $\hat f=f+c\sigma_m Z$ and $E=cq\sigma_m$."
+    )
+
+
+def _selector_label(selector: str) -> str:
+    return {
+        "nominal": "Nominal",
+        "uniform_lcb": "Uniform LCB",
+        "variable_lcb": "Variable LCB",
+    }[selector]
 
 
 def _save_figure(fig: Figure, path: Path) -> None:

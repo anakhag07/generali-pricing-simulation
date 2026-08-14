@@ -304,6 +304,12 @@ center plots distinguish the true optimum $$x^*$$, uncertainty center $$m$$,
 and deterministic penalized target
 $$x^\dagger=\arg\max_x[f(x)-E(x)]$$. The constant uniform envelope is retained
 as a diagnostic and must select exactly the same point as the nominal surrogate.
+Here $$m$$ is specifically the point at which $$\sigma_m(x)$$ is minimized,
+while $$c$$ multiplies both surrogate noise and the calibrated envelope. Every
+reported regret is evaluated on the true objective:
+$$R(\hat x)=f(x^*)-f(\hat x)=1.25-[5\hat x-5\hat x^2]
+=5(\hat x-0.5)^2$$. The aggregate regret plots print this calculation and the
+definitions of $$m$$ and $$c$$ directly below the axes.
 
 ### Zeroth-Order Support Envelopes
 

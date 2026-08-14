@@ -255,6 +255,7 @@ def test_seed_persistence_resumability_aggregation_and_plot_generation(
     for filename in (
         "experiment_1_noise_scale_regret.png",
         "experiment_1_validity.png",
+        "experiment_1_realized_landscapes.png",
         "experiment_2_calibration_coverage.png",
         "experiment_2_calibration_regret.png",
         "experiment_3_envelope_shape_regret.png",

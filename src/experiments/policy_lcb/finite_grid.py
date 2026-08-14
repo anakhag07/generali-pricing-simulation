@@ -707,6 +707,7 @@ def collect_variable_finite_grid_lcb_outputs(
         experiment_2,
         experiment_3,
         experiment_4,
+        results[0],
         project_dir / "plots",
     )
     return {
@@ -851,11 +852,17 @@ def _write_variable_grid_plots(
     experiment_2: Sequence[Mapping[str, object]],
     experiment_3: Sequence[Mapping[str, object]],
     experiment_4: Sequence[Mapping[str, object]],
+    representative_result: VariableFiniteGridLCBSeedResult,
     plots_dir: Path,
 ) -> None:
     plots_dir.mkdir(parents=True, exist_ok=True)
     _plot_noise_regret(spec, experiment_1, plots_dir / "experiment_1_noise_scale_regret.png")
     _plot_noise_validity(spec, experiment_1, plots_dir / "experiment_1_validity.png")
+    _plot_realized_landscapes(
+        spec,
+        representative_result,
+        plots_dir / "experiment_1_realized_landscapes.png",
+    )
     _plot_calibration_coverage(
         spec, experiment_2, plots_dir / "experiment_2_calibration_coverage.png"
     )
@@ -867,6 +874,135 @@ def _write_variable_grid_plots(
     )
     _plot_center_regret(spec, experiment_4, plots_dir / "experiment_4_center_regret.png")
     _plot_center_selection(spec, experiment_4, plots_dir / "experiment_4_center_selection.png")
+
+
+def _plot_realized_landscapes(
+    spec: VariableFiniteGridLCBSpec,
+    result: VariableFiniteGridLCBSeedResult,
+    path: Path,
+) -> None:
+    """Show one paired surrogate draw, confidence band, and selectors across ``c``."""
+    plt = _load_pyplot()
+    grid = spec.grid.values()
+    values = true_objective(grid, spec.true_value)
+    z = np.asarray(result.z, dtype=float)
+    optimum_index = int(np.argmax(values))
+    target_center = spec.grid.lower + 0.25 * (spec.grid.upper - spec.grid.lower)
+    center = min(spec.uncertainty.centers, key=lambda item: abs(item - target_center))
+    sigma = clipped_distance_uncertainty(grid, center, spec.uncertainty)
+    calibration = next(
+        item for item in spec.calibrations if item.kind == "bonferroni_two_sided"
+    )
+    quantile = calibration_quantile(calibration, spec.delta, spec.grid.count)
+
+    columns = min(3, len(spec.noise_scales))
+    row_count = int(np.ceil(len(spec.noise_scales) / columns))
+    fig, raw_axes = plt.subplots(
+        row_count,
+        columns,
+        figsize=(5.2 * columns, 3.9 * row_count),
+        squeeze=False,
+    )
+    axes = list(raw_axes.flat)
+    for axis in axes[len(spec.noise_scales) :]:
+        axis.set_visible(False)
+    fig.suptitle(
+        "One paired surrogate realization as the noise/envelope scale changes\n"
+        f"run seed {result.run_seed}; fixed minimum-uncertainty location m={center:g}; "
+        "simultaneous Bonferroni envelope"
+    )
+
+    for axis, noise_scale in zip(axes, spec.noise_scales):
+        surrogate = values + noise_scale * sigma * z
+        half_width = noise_scale * quantile * sigma
+        lower = surrogate - half_width
+        upper = surrogate + half_width
+        covered = np.abs(surrogate - values) <= half_width + ORACLE_TOLERANCE
+        nominal_index = int(np.argmax(surrogate))
+        variable_index = int(np.argmax(lower))
+
+        axis.fill_between(
+            grid,
+            lower,
+            upper,
+            color="tab:blue",
+            alpha=0.15,
+            label=r"Envelope $\hat f\pm E$",
+        )
+        axis.plot(grid, values, color="black", linewidth=2.0, label=r"True $f$")
+        axis.plot(
+            grid,
+            surrogate,
+            color="tab:blue",
+            linewidth=1.1,
+            alpha=0.9,
+            label=r"Surrogate $\hat f$",
+        )
+        axis.plot(
+            grid,
+            lower,
+            color="tab:orange",
+            linewidth=1.5,
+            label=r"LCB $\hat f-E$",
+        )
+        axis.axvline(center, color="0.45", linestyle=":", linewidth=1.3, label=r"$m$")
+        axis.axvline(
+            grid[optimum_index],
+            color="black",
+            linestyle="--",
+            linewidth=1.2,
+            label=r"$x^*$",
+        )
+        axis.scatter(
+            [grid[nominal_index]],
+            [surrogate[nominal_index]],
+            color="tab:blue",
+            edgecolor="white",
+            linewidth=0.8,
+            s=55,
+            zorder=5,
+            label=r"Nominal $\hat x$",
+        )
+        axis.scatter(
+            [grid[variable_index]],
+            [lower[variable_index]],
+            color="tab:orange",
+            edgecolor="white",
+            marker="s",
+            linewidth=0.8,
+            s=50,
+            zorder=5,
+            label=r"LCB $\hat x$",
+        )
+        validity = "yes" if bool(np.all(covered)) else "no"
+        axis.set_title(
+            f"c={noise_scale:g}; max E={float(np.max(half_width)):.3g}; "
+            f"whole-grid valid: {validity}"
+        )
+        axis.set_xlabel("Grid point x")
+        axis.set_ylabel("Objective value / bound")
+        axis.grid(alpha=0.2)
+
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(
+        handles,
+        labels,
+        loc="upper center",
+        bbox_to_anchor=(0.5, 0.92),
+        ncol=4,
+        fontsize=8,
+    )
+    fig.text(
+        0.5,
+        0.018,
+        r"Shading is the two-sided band $[\hat f-E,\hat f+E]$; its lower edge is the LCB. "
+        r"Nominal maximizes $\hat f$; variable LCB maximizes $\hat f-E$.",
+        ha="center",
+        va="bottom",
+        fontsize=9,
+    )
+    fig.tight_layout(rect=(0.0, 0.06, 1.0, 0.86))
+    _save_figure(fig, path)
 
 
 def _plot_noise_regret(

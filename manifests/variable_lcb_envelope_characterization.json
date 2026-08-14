@@ -1,0 +1,42 @@
+{
+  "kind": "finite_grid_variable_lcb",
+  "name": "variable-lcb-envelope-characterization",
+  "grid": {
+    "type": "linspace",
+    "lower": 0.0,
+    "upper": 1.0,
+    "count": 101
+  },
+  "true_value": {
+    "type": "concave_quadratic",
+    "linear": 5.0,
+    "quadratic": 5.0
+  },
+  "uncertainty": {
+    "type": "clipped_distance_ramp",
+    "centers": [0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0],
+    "minimum": 0.1,
+    "maximum": 1.0,
+    "ramp_radius": 0.5
+  },
+  "surrogate": {
+    "type": "independent_gaussian",
+    "noise_scales": [0.0, 0.1, 0.25, 0.5, 1.0, 2.0]
+  },
+  "confidence": {
+    "delta": 0.05,
+    "calibrations": [
+      {"name": "simultaneous", "type": "bonferroni_two_sided"},
+      {"name": "pointwise", "type": "pointwise_two_sided"}
+    ]
+  },
+  "seeds": {
+    "master_noise_seed": 20260814,
+    "run_seeds": {"type": "range", "start": 101, "count": 2000}
+  },
+  "launch": {
+    "mode": "local",
+    "array": "seed"
+  },
+  "per_seed_plots": false
+}

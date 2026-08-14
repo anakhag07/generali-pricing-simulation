@@ -506,6 +506,8 @@ def parse_variable_finite_grid_lcb_manifest(
     per_seed_plots = payload.get("per_seed_plots", False)
     if not isinstance(per_seed_plots, bool):
         raise ValueError("per_seed_plots must be boolean.")
+    if per_seed_plots:
+        raise ValueError("per_seed_plots=true is not supported by this aggregate-report adapter.")
     return VariableFiniteGridLCBManifest(
         name=name,
         spec=spec,

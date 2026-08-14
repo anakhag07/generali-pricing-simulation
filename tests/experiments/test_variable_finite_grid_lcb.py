@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import csv
+import json
 from pathlib import Path
 
 import numpy as np
@@ -206,6 +207,19 @@ def test_manifest_validation_resolves_seed_range_and_rejects_invalid_inputs() ->
     ]
     with pytest.raises(ValueError, match="Bonferroni and pointwise"):
         parse_variable_finite_grid_lcb_manifest(payload)
+
+
+def test_committed_manifest_matches_the_characterization_cube() -> None:
+    path = Path(__file__).parents[2] / "manifests" / "variable_lcb_envelope_characterization.json"
+    with path.open(encoding="utf-8") as handle:
+        manifest = parse_variable_finite_grid_lcb_manifest(json.load(handle), source_path=path)
+
+    assert manifest.spec.grid.count == 101
+    assert manifest.spec.uncertainty.centers == (0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0)
+    assert manifest.spec.noise_scales == (0.0, 0.1, 0.25, 0.5, 1.0, 2.0)
+    assert manifest.spec.run_seeds[0] == 101
+    assert manifest.spec.run_seeds[-1] == 2100
+    assert len(manifest.spec.run_seeds) == 2000
 
 
 def test_seed_persistence_resumability_aggregation_and_plot_generation(

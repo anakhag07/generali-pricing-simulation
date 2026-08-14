@@ -633,7 +633,7 @@ belongs under `generali/`.
 
 - **`src/experiments/policy_lcb/`**
   - Reusable policy-LCB module with shared Gaussian quantiles, coverage/oracle
-    diagnostics, result serialization, seed-array launch dispatch, and two
+    diagnostics, result serialization, seed-array launch dispatch, and three
     adapters. `experiments.finite_policy_lcb` is a compatibility alias for the
     finite adapter, including private monkeypatch/test behavior.
   - The finite adapter preserves the Proposition 11.2 construction
@@ -647,6 +647,14 @@ belongs under `generali/`.
     first-order, finite-difference, and Stein-difference updates from paired
     starts, records exact analytic gaps, and writes per-seed JSON/trajectory
     leaves plus cross-seed median/IQR and mean/bootstrap-CI plots.
+  - The `finite_grid_variable_lcb` adapter in `finite_grid.py` exactly maximizes
+    a concave quadratic surrogate over a manifest-defined dense grid. It pairs
+    one independent Gaussian vector across uncertainty centers, noise scales,
+    Bonferroni/pointwise calibrations, and nominal/uniform/variable selectors;
+    writes replayable seed JSONs and raw/summary CSVs; and renders aggregate
+    validity, tightness, optimizer-protection, regret, and center-sweep plots.
+    The uncertainty center is the minimum-width point and remains distinct from
+    the true optimum and deterministic penalized target.
   - Continuum-wide coverage uses $$q_\delta=\Phi^{-1}(1-\delta/2)$$ because the
     shared error process has rank one: the event for every positive policy is
     the same event $$|Z_s|\le q_\delta$$. Continuity alone does not remove
@@ -740,8 +748,9 @@ belongs under `generali/`.
   default `LaunchPlan`, maps `launch.array: "variant"` to one task per variant,
   and maps `launch.array: "none"` to one serial task. It supports `--force` to
   rerun completed variants and `--runs-root` for alternate result roots.
-  Manifests with `kind: "finite_policy_lcb"` or
-  `kind: "continuous_policy_lcb"` route through the shared policy-LCB launch
+  Manifests with `kind: "finite_policy_lcb"`,
+  `kind: "continuous_policy_lcb"`, or `kind: "finite_grid_variable_lcb"`
+  route through the shared policy-LCB launch
   interface, where `launch.array: "seed"` maps one paired-condition task to
   each problem-noise seed; manifests without `kind` retain the optimization-
   manifest behavior.
@@ -753,6 +762,11 @@ belongs under `generali/`.
   optimizer settings, three paired starts, five delta values, 25 problem-noise
   seeds, fixed Stein stream, and reporting-bootstrap seed. Outputs live under
   `results/continuous-policy-lcb-validation/`.
+- `manifests/variable_lcb_envelope_characterization.json` is the source of
+  truth for the 101-point concave-quadratic variable-envelope cube over seven
+  uncertainty centers, six noise scales, two calibrations, and 2,000 paired
+  Gaussian vectors. Outputs live under
+  `results/variable-lcb-envelope-characterization/`.
 - `manifests/zeroth_order_baseline.json` and
   `manifests/zeroth_order_functional_bias.json` are the source of truth for the
   small perturbation/sample-count and functional-bias proof grids.
@@ -952,6 +966,7 @@ exclude `tests/objective/test_jax_prepared_glm*`, `tests/optimization/test_jax_*
 | `test_manifest.py` | Manifest parsing, explicit truth/seed/optimizer/launch validation, completion skipping, and summary-derived metrics |
 | `test_finite_policy_lcb.py` | Finite-policy LCB formulas, paired noise streams, exact selection, oracle inequality, analytic coverage, manifest contract, and aggregate outputs |
 | `test_continuous_policy_lcb.py` | Shared-Gaussian continuum formulas, projected estimators, seed pairing, endpoint oracle checks, manifest contract, exact output tree, and plots |
+| `test_variable_finite_grid_lcb.py` | Clipped uncertainty geometry, full-cube noise pairing, Bonferroni invariance, exact selectors and deterministic targets, conditional certificates, symmetry, replay/resume, aggregation, and plots |
 | `test_policy_lcb_common.py` | Shared policy-LCB math and legacy finite-module compatibility |
 | `test_run_context.py` | default results-root output directory, readable run leaves, run metadata, and verbatim run_dir paths |
 | `test_noisy_objective_backend.py` | Noisy objective acceptance-control propagation and JAX GLM backend re-wrapping |

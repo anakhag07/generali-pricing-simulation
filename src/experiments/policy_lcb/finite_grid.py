@@ -869,6 +869,11 @@ def _write_variable_grid_plots(
     _plot_calibration_regret(
         spec, experiment_2, plots_dir / "experiment_2_calibration_regret.png"
     )
+    _plot_calibration_regret_by_center(
+        spec,
+        experiment_2,
+        plots_dir / "experiment_2_calibration_regret_by_center.png",
+    )
     _plot_envelope_shape(
         spec, experiment_3, plots_dir / "experiment_3_envelope_shape_regret.png"
     )
@@ -1101,6 +1106,58 @@ def _plot_calibration_regret(
         fig,
         path,
         note=f"{_regret_plot_note(spec)}\n{_geometry_plot_note(spec)}",
+    )
+
+
+def _plot_calibration_regret_by_center(
+    spec: VariableFiniteGridLCBSpec,
+    rows: Sequence[Mapping[str, object]],
+    path: Path,
+) -> None:
+    """Compare nominal and calibrated LCB regret separately for every center."""
+    fig, facets = _center_facets(
+        rows, "Experiment 2: calibration regret by minimum-uncertainty location m"
+    )
+    styles = (
+        ("Nominal (no envelope)", "nominal_regret", "black", "o", "--"),
+        ("Pointwise LCB", "variable_lcb_regret", "tab:orange", "s", "-"),
+        ("Simultaneous LCB", "variable_lcb_regret", "tab:green", "^", "-"),
+    )
+    for axis, center in facets:
+        center_rows = _rows_for(rows, uncertainty_center=center)
+        pointwise = [row for row in center_rows if row["calibration"] == "pointwise"]
+        simultaneous = [
+            row for row in center_rows if row["calibration"] == "simultaneous"
+        ]
+        for label, metric, color, marker, linestyle in styles:
+            group = pointwise if label != "Simultaneous LCB" else simultaneous
+            scales = np.asarray([float(row["noise_scale"]) for row in group])
+            means = np.asarray([float(row[f"{metric}_mean"]) for row in group])
+            q05 = np.asarray([float(row[f"{metric}_q05"]) for row in group])
+            q95 = np.asarray([float(row[f"{metric}_q95"]) for row in group])
+            axis.fill_between(scales, q05, q95, color=color, alpha=0.10)
+            axis.plot(
+                scales,
+                means,
+                color=color,
+                marker=marker,
+                linestyle=linestyle,
+                linewidth=1.6,
+                label=label,
+            )
+        axis.set_title(f"m={center:g}")
+        axis.set_ylim(bottom=0.0)
+        axis.grid(alpha=0.25)
+    _finish_facets(
+        fig,
+        facets,
+        "Noise/envelope scale c",
+        "Mean true regret R",
+        path,
+        note=(
+            "Shading shows the 5th--95th seed percentiles.  "
+            f"{_regret_plot_note(spec)}\n{_geometry_plot_note(spec)}"
+        ),
     )
 
 

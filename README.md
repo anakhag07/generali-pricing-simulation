@@ -299,7 +299,7 @@ coverage is deterministically perfect.
 
 The outputs under `results/variable-lcb-envelope-characterization/` include
 replayable seed JSONs, raw condition and selector CSVs, summaries for the noise,
-calibration, envelope-shape, and center sweeps, and eight aggregate plots. The
+calibration, envelope-shape, and center sweeps, and nine aggregate plots. The
 center plots distinguish the true optimum $$x^*$$, uncertainty center $$m$$,
 and deterministic penalized target
 $$x^\dagger=\arg\max_x[f(x)-E(x)]$$. The constant uniform envelope is retained
@@ -310,6 +310,9 @@ reported regret is evaluated on the true objective:
 $$R(\hat x)=f(x^*)-f(\hat x)=1.25-[5\hat x-5\hat x^2]
 =5(\hat x-0.5)^2$$. The aggregate regret plots print this calculation and the
 definitions of $$m$$ and $$c$$ directly below the axes.
+The per-center Experiment 2 calibration-regret plot compares nominal,
+pointwise-LCB, and simultaneous-LCB regret as $$c$$ changes, with 5th--95th
+seed-percentile bands in every $$m$$ facet.
 The additional `experiment_1_realized_landscapes.png` diagnostic fixes the
 first run seed and one off-optimum uncertainty center, then shows $$f$$,
 $$\widehat f$$, the two-sided envelope, its LCB edge, and both selected points

@@ -1282,49 +1282,101 @@ def _trajectory_summary(
     runs_root: str | Path | None,
 ) -> list[dict[str, object]]:
     fields = ("uncertainty_center", "noise_scale", "target", "estimator", "start_x", "step")
-    accumulators: dict[tuple[object, ...], list[float]] = {}
+    template: dict[str, np.ndarray] | None = None
+    gap_sum: np.ndarray | None = None
+    gap_sq: np.ndarray | None = None
+    regret_sum: np.ndarray | None = None
+    regret_sq: np.ndarray | None = None
+    success_2: np.ndarray | None = None
+    success_3: np.ndarray | None = None
+    success_4: np.ndarray | None = None
+    x_sum: np.ndarray | None = None
+    count = 0
     for seed in manifest.spec.optimizer_run_seeds:
         path = manifest.seed_trajectory_path(seed, runs_root)
         with np.load(path, allow_pickle=False) as data:
-            for index in range(len(data["step"])):
-                key = (
-                    float(data["uncertainty_center"][index]),
-                    float(data["noise_scale"][index]),
-                    str(data["target"][index]),
-                    str(data["estimator"][index]),
-                    float(data["start_x"][index]),
-                    int(data["step"][index]),
+            current = {field: np.asarray(data[field]) for field in fields}
+            if template is None:
+                template = {field: values.copy() for field, values in current.items()}
+                size = len(template["step"])
+                gap_sum = np.zeros(size, dtype=float)
+                gap_sq = np.zeros(size, dtype=float)
+                regret_sum = np.zeros(size, dtype=float)
+                regret_sq = np.zeros(size, dtype=float)
+                success_2 = np.zeros(size, dtype=float)
+                success_3 = np.zeros(size, dtype=float)
+                success_4 = np.zeros(size, dtype=float)
+                x_sum = np.zeros(size, dtype=float)
+            elif any(
+                current[field].shape != template[field].shape
+                or not np.array_equal(current[field], template[field])
+                for field in fields
+            ):
+                raise ValueError(
+                    f"Optimizer trajectory layout for seed {seed} does not match the first seed."
                 )
-                gap = float(data["optimization_gap"][index])
-                regret = float(data["true_regret"][index])
-                stats = accumulators.setdefault(key, [0.0] * 9)
-                stats[0] += 1.0
-                stats[1] += gap
-                stats[2] += gap * gap
-                stats[3] += regret
-                stats[4] += regret * regret
-                stats[5] += gap <= 1e-2
-                stats[6] += gap <= 1e-3
-                stats[7] += gap <= 1e-4
-                stats[8] += float(data["x"][index])
+
+            gap = np.asarray(data["optimization_gap"], dtype=float)
+            regret = np.asarray(data["true_regret"], dtype=float)
+            selected_x = np.asarray(data["x"], dtype=float)
+            if template is None or gap.shape != template["step"].shape:
+                raise ValueError(f"Optimizer trajectory values for seed {seed} have invalid shape.")
+            assert gap_sum is not None and gap_sq is not None
+            assert regret_sum is not None and regret_sq is not None
+            assert success_2 is not None and success_3 is not None and success_4 is not None
+            assert x_sum is not None
+            gap_sum += gap
+            gap_sq += np.square(gap)
+            regret_sum += regret
+            regret_sq += np.square(regret)
+            success_2 += gap <= 1e-2
+            success_3 += gap <= 1e-3
+            success_4 += gap <= 1e-4
+            x_sum += selected_x
+            count += 1
+
+    if template is None or count == 0:
+        return []
+    assert gap_sum is not None and gap_sq is not None
+    assert regret_sum is not None and regret_sq is not None
+    assert success_2 is not None and success_3 is not None and success_4 is not None
+    assert x_sum is not None
     output: list[dict[str, object]] = []
-    for key in sorted(accumulators, key=lambda item: tuple(str(value) for value in item)):
-        count, gap_sum, gap_sq, regret_sum, regret_sq, success_2, success_3, success_4, x_sum = accumulators[key]
-        gap_var = max(0.0, (gap_sq - gap_sum**2 / count) / (count - 1.0)) if count > 1 else 0.0
-        regret_var = max(0.0, (regret_sq - regret_sum**2 / count) / (count - 1.0)) if count > 1 else 0.0
-        record = dict(zip(fields, key))
+    for index in range(len(template["step"])):
+        gap_var = (
+            max(0.0, (gap_sq[index] - gap_sum[index] ** 2 / count) / (count - 1.0))
+            if count > 1
+            else 0.0
+        )
+        regret_var = (
+            max(
+                0.0,
+                (regret_sq[index] - regret_sum[index] ** 2 / count) / (count - 1.0),
+            )
+            if count > 1
+            else 0.0
+        )
+        record: dict[str, object] = {
+            "uncertainty_center": float(template["uncertainty_center"][index]),
+            "noise_scale": float(template["noise_scale"][index]),
+            "target": str(template["target"][index]),
+            "estimator": str(template["estimator"][index]),
+            "start_x": float(template["start_x"][index]),
+            "step": int(template["step"][index]),
+        }
         record.update(
-            n=int(count),
-            optimization_gap_mean=gap_sum / count,
+            n=count,
+            optimization_gap_mean=gap_sum[index] / count,
             optimization_gap_std=float(np.sqrt(gap_var)),
-            true_regret_mean=regret_sum / count,
+            true_regret_mean=regret_sum[index] / count,
             true_regret_std=float(np.sqrt(regret_var)),
-            selected_x_mean=x_sum / count,
-            success_1e_2_rate=success_2 / count,
-            success_1e_3_rate=success_3 / count,
-            success_1e_4_rate=success_4 / count,
+            selected_x_mean=x_sum[index] / count,
+            success_1e_2_rate=success_2[index] / count,
+            success_1e_3_rate=success_3[index] / count,
+            success_1e_4_rate=success_4[index] / count,
         )
         output.append(record)
+    output.sort(key=lambda row: tuple(str(row[field]) for field in fields))
     return output
 
 
@@ -1531,7 +1583,7 @@ def _write_continuous_gp_plots(
     axis.hist(suprema, bins=min(40, max(5, int(np.sqrt(len(suprema))))), alpha=0.75, color="tab:blue")
     axis.axvline(certificate.quantile, color="tab:red", linewidth=2, label=f"analytic q={certificate.quantile:.3f}")
     coverage = np.mean([bool(row["simultaneous_coverage"]) for row in gp_rows])
-    axis.set(xlabel=r"Certified lower bound for $\sup_x|G_s(x)|$", ylabel="Seeds", title=f"Analytic simultaneous band; empirical coverage={coverage:.3f}")
+    axis.set(xlabel=r"Certified lower bound for $\sup_x|G_s(x)|$", ylabel="Seeds", title=f"Analytic simultaneous band; empirical coverage={coverage:.4f}")
     axis.legend()
     axis.grid(alpha=0.2)
     _save_plot(fig, plot_dir / "simultaneous_coverage.png")
@@ -1552,10 +1604,11 @@ def _write_continuous_gp_plots(
     for axis in axes.ravel()[len(centers):]:
         axis.set_visible(False)
     handles, labels = axes[0, 0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="upper center", ncol=2)
+    fig.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, 0.94), ncol=2)
     fig.supxlabel("Noise and envelope scale c")
     fig.supylabel(r"Mean true regret $R(x)=5(x-0.5)^2$")
-    fig.suptitle("Globally referenced regret by minimum-uncertainty point m", y=1.02)
+    fig.suptitle("Globally referenced regret by minimum-uncertainty point m", y=0.99)
+    fig.subplots_adjust(top=0.82)
     _save_plot(fig, plot_dir / "regret_by_center.png")
 
     fig, axes = plt.subplots(1, len(spec.noise_scales), figsize=(4.0 * len(spec.noise_scales), 3.8), sharey=True, squeeze=False)
@@ -1571,10 +1624,11 @@ def _write_continuous_gp_plots(
         axis.set_title(f"c={current_scale:g}")
         axis.grid(alpha=0.2)
     handles, labels = axes[0, 0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="upper center", ncol=4)
+    fig.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, 0.89), ncol=4)
     fig.supxlabel("Minimum-uncertainty point m")
     fig.supylabel("Mean globally selected x")
-    fig.suptitle("Selection follows function, uncertainty, or their LCB compromise", y=1.05)
+    fig.suptitle("Selection follows function, uncertainty, or their LCB compromise", y=0.99)
+    fig.subplots_adjust(top=0.73)
     _save_plot(fig, plot_dir / "selected_location_by_center.png")
 
     fig, axis = plt.subplots(figsize=(8.5, 5.2))
@@ -1591,7 +1645,13 @@ def _write_continuous_gp_plots(
 
     if optimizer_rows:
         methods = tuple(spec.optimizer.enabled_estimators)
-        fig, axes = plt.subplots(2, len(methods), figsize=(4.2 * len(methods), 7.2), squeeze=False)
+        fig, axes = plt.subplots(
+            2,
+            len(methods),
+            figsize=(4.2 * len(methods), 8.2),
+            squeeze=False,
+            constrained_layout=True,
+        )
         for row_index, target in enumerate(("nominal", "variable_lcb")):
             for column, method in enumerate(methods):
                 axis = axes[row_index, column]

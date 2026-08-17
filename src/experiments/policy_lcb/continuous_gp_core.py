@@ -350,7 +350,7 @@ def _product_terms(
 class DecomposedGPLandscape:
     """Analytic surrogate, lower envelope, or lower-envelope violation."""
 
-    draw: FourierGPDraw
+    draw: FourierGPDraw | None
     uncertainty: SmoothClippedUncertaintySpec
     surrogate_center: float
     surrogate_scale: float
@@ -384,7 +384,7 @@ class DecomposedGPLandscape:
             if self.target == "violation"
             else np.asarray(true_value(x, derivative), dtype=float)
         )
-        if self.surrogate_scale > 0.0:
+        if self.draw is not None and self.surrogate_scale > 0.0:
             result = result + self.surrogate_scale * np.asarray(
                 _product_terms(
                     self.draw,
@@ -408,7 +408,7 @@ class DecomposedGPLandscape:
         sigma1 = uncertainty_derivative_bound(self.uncertainty, 1)
         sigma2 = uncertainty_derivative_bound(self.uncertainty, 2)
         bound = 0.0 if self.target == "violation" else 10.0
-        if self.surrogate_scale > 0.0:
+        if self.draw is not None and self.surrogate_scale > 0.0:
             bound += self.surrogate_scale * (
                 sigma2 * self.draw.derivative_bound(0)
                 + 2.0 * sigma1 * self.draw.derivative_bound(1)

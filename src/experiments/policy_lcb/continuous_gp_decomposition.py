@@ -115,6 +115,20 @@ class DecompositionDesignSpec:
         center_map = dict(self.robustness_envelope_centers)
         if set(center_map) != set(self.surrogate_centers):
             raise ValueError("shape robustness must specify every surrogate center.")
+        if len(center_map) != len(self.robustness_envelope_centers):
+            raise ValueError("shape robustness surrogate centers must be unique.")
+        if any(
+            not centers
+            or tuple(sorted(set(centers))) != centers
+            or not set(centers).issubset(self.envelope_centers)
+            for centers in center_map.values()
+        ):
+            raise ValueError(
+                "shape robustness centers must be non-empty, unique, increasing, "
+                "and included in design.envelope_centers."
+            )
+        if len(set(self.robustness_scale_pairs)) != len(self.robustness_scale_pairs):
+            raise ValueError("shape robustness scale pairs must be unique.")
         if any(cf <= 0.0 or ce <= 0.0 for cf, ce in self.robustness_scale_pairs):
             raise ValueError("shape robustness scale pairs must be positive.")
 
@@ -671,6 +685,8 @@ def parse_continuous_gp_decomposition_manifest(
     if not name:
         raise ValueError("Manifest name must be non-empty.")
     domain = number_sequence(payload.get("domain"), "domain")
+    if len(domain) != 2:
+        raise ValueError("domain must contain exactly two endpoints.")
     objective = required_mapping(payload, "true_value")
     if (
         objective.get("type") != "concave_quadratic"

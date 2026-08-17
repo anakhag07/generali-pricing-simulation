@@ -1083,6 +1083,96 @@ of first-order or zeroth-order iterates.
   zeroth-order probes, while every optimizer iterate is projected onto
   $$[0,1]$$.
 
+#### 3.6.7 Continuous-GP Regret Decomposition
+
+The decomposition experiment retains the objective, analytic Fourier draw,
+uncertainty family, and global-reference construction from Section 3.6.6, but
+separates the surrogate-error and lower-envelope parameters:
+
+$$
+\widehat f(x)=f(x)+c_f\sigma_{m_f}(x)G_s(x),
+\qquad
+\underline f(x)=\widehat f(x)-c_Eq\sigma_{m_E}(x).
+$$
+
+Here $$c_f$$ controls the global magnitude of the frozen surrogate error and
+$$m_f$$ controls its spatial amplitude profile. Independently, $$c_E$$ controls
+the global confidence-correction magnitude and $$m_E$$ controls where that
+correction is narrowest. The standardization of $$\sigma_m$$ remains fixed at
+minimum $$0.1$$ and maximum $$1$$, so the scale and shape parameters are
+identifiable.
+
+For $$c_f>0$$, define the certified shape ratio and effective GP threshold
+
+$$
+r_{\min}(m_f,m_E)=\inf_{x\in[0,1]}
+\frac{\sigma_{m_E}(x)}{\sigma_{m_f}(x)},
+\qquad
+q_{\mathrm{eff}}=q\frac{c_E}{c_f}r_{\min}(m_f,m_E).
+$$
+
+The two-sided event $$\sup_x|G_s(x)|\le q_{\mathrm{eff}}$$ is sufficient for
+$$\underline f(x)\le f(x)$$ everywhere. Its certified probability is obtained
+by inverting the same covering-net construction as Section 3.6.6: for failure
+probability $$\delta'$$,
+
+$$
+q(\delta')=
+\Phi^{-1}\!\left(1-\frac{\delta'}{4N}\right)
++\rho L_\phi\sqrt{\chi^2_{2J,1-\delta'/2}}.
+$$
+
+Thus $$p_{\mathrm{cert}}(t)=1-\delta_t$$ when
+$$q(\delta_t)=t$$. If the threshold is below the smallest value certifiable by
+this construction, the reported lower bound is zero. When $$c_f=0$$ and
+$$c_E\ge0$$ the envelope is deterministically valid, while $$c_E=0<c_f$$ has
+certified level zero. The matched unit-scale case has
+$$q_{\mathrm{eff}}=q(0.05)$$ and therefore certified level $$0.95$$.
+
+For one realized path, envelope validity is checked independently by certifying
+the maximum of
+
+$$
+v(x)=\underline f(x)-f(x)
+=c_f\sigma_{m_f}(x)G_s(x)-c_Eq\sigma_{m_E}(x).
+$$
+
+No value of $$f$$ is used to clip or alter the optimized lower envelope.
+Surrogate error is summarized by the certified quantity
+
+$$
+\|\widehat f-f\|_\infty
+=c_f\sup_{x\in[0,1]}|\sigma_{m_f}(x)G_s(x)|.
+$$
+
+For an optimizer checkpoint $$\widehat x$$, define
+
+$$
+T=f(x^*)-\underline f(x^*),
+\qquad
+\varepsilon=\max_x\underline f(x)-\underline f(\widehat x).
+$$
+
+Whenever the realized lower envelope is valid over the domain,
+
+$$
+R(\widehat x)=f(x^*)-f(\widehat x)
+\le T+\varepsilon.
+$$
+
+Branch-and-bound supplies lower and upper brackets for the global values, so
+the stored surrogate error, realized violation, and optimizer error retain
+their numerical certification gaps rather than being described as exact real
+numbers.
+
+- **Source:** `src/experiments/policy_lcb/continuous_gp_core.py`;
+  `src/experiments/policy_lcb/continuous_gp_decomposition.py`;
+  `manifests/continuous_gp_regret_decomposition.json`
+- **Notes:** Each run seed owns one Fourier coefficient draw reused by every
+  condition. One dedicated optimizer seed fixes the antithetic Stein
+  perturbations across paths, conditions, and starts. Zeroth-order probes use
+  the analytic real-line extension and iterates are projected to $$[0,1]$$.
+
 ### 3.7 Synthetic Ladder Objectives
 
 Direct theta-space benchmark functions over the decision vector $$w = \theta$$

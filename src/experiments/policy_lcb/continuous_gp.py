@@ -596,6 +596,29 @@ def certified_gp_supremum(
     )
 
 
+# The pure analytic interface now lives in ``continuous_gp_core``.  Rebinding
+# here preserves every legacy import and result type while the §3.6.6 adapter
+# continues to own only its manifest, condition cube, persistence, and plots.
+from experiments.policy_lcb.continuous_gp_core import (  # noqa: E402
+    AnalyticUniformCertificate as AnalyticUniformCertificate,
+    FiniteFourierGPSpec as FiniteFourierGPSpec,
+    FourierGPDraw as FourierGPDraw,
+    GPSupremumResult as GPSupremumResult,
+    GlobalMaximumResult as GlobalMaximumResult,
+    GlobalReferenceSpec as GlobalReferenceSpec,
+    SmoothClippedUncertaintySpec as SmoothClippedUncertaintySpec,
+    UniformConfidenceSpec as UniformConfidenceSpec,
+    analytic_uniform_certificate as analytic_uniform_certificate,
+    certified_global_maximum as certified_global_maximum,
+    certified_gp_supremum as certified_gp_supremum,
+    smooth_clipped_uncertainty as smooth_clipped_uncertainty,
+    smoothstep as smoothstep,
+    true_regret as true_regret,
+    true_value as true_value,
+    uncertainty_derivative_bound as uncertainty_derivative_bound,
+)
+
+
 @dataclass(frozen=True)
 class ContinuousGPVariableLCBSpec:
     """Resolved inputs for the paired continuous-GP experiment."""

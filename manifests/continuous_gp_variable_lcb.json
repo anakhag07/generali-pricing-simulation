@@ -1,0 +1,72 @@
+{
+  "kind": "continuous_gp_variable_lcb",
+  "name": "continuous-gp-variable-lcb",
+  "domain": [0.0, 1.0],
+  "true_value": {
+    "type": "concave_quadratic",
+    "linear": 5.0,
+    "quadratic": 5.0
+  },
+  "gp": {
+    "type": "deterministic_spectral_finite_rank",
+    "rank": 32,
+    "lengthscale": 0.2
+  },
+  "uncertainty": {
+    "type": "smooth_clipped_distance_ramp",
+    "centers": [0.0, 0.25, 0.5, 0.75, 1.0],
+    "minimum": 0.1,
+    "maximum": 1.0,
+    "ramp_radius": 0.5
+  },
+  "surrogate": {
+    "type": "scaled_nonstationary_gp",
+    "noise_scales": [0.0, 0.25, 0.5, 1.0, 2.0]
+  },
+  "confidence": {
+    "type": "bonferroni_net_smoothness",
+    "delta": 0.05,
+    "net_count": 129
+  },
+  "global_reference": {
+    "type": "certified_branch_and_bound",
+    "value_tolerance": 1e-6,
+    "max_intervals": 200000,
+    "initial_grid_count": 65
+  },
+  "optimizer": {
+    "step_rule": "projected_constant",
+    "probe_domain": "analytic_real_line_extension",
+    "enabled_estimators": [
+      "first_order",
+      "finite_difference",
+      "stein_difference"
+    ],
+    "starts": [0.1, 0.5, 0.9],
+    "t_steps": 500,
+    "step_size": 0.01,
+    "perturbation_radius": 0.02,
+    "n_stein_perturbations": 64,
+    "checkpoint_every": 10
+  },
+  "seeds": {
+    "master_gp_seed": 20260817,
+    "master_optimizer_seed": 20260818,
+    "reporting_seed": 20260819,
+    "run_seeds": {
+      "type": "range",
+      "start": 101,
+      "count": 2000
+    },
+    "optimizer_run_seeds": {
+      "type": "range",
+      "start": 101,
+      "count": 200
+    }
+  },
+  "launch": {
+    "mode": "auto",
+    "array": "seed",
+    "array_max_parallel": 50
+  }
+}

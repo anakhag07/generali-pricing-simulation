@@ -14,6 +14,13 @@ from experiments.policy_lcb.continuous import (
     run_continuous_policy_lcb_manifest_seed,
     run_continuous_policy_lcb_manifest_serial,
 )
+from experiments.policy_lcb.continuous_gp import (
+    ContinuousGPVariableLCBManifest,
+    collect_continuous_gp_variable_lcb_outputs,
+    parse_continuous_gp_variable_lcb_manifest,
+    run_continuous_gp_variable_lcb_manifest_seed,
+    run_continuous_gp_variable_lcb_manifest_serial,
+)
 from experiments.policy_lcb.finite import (
     FinitePolicyLCBManifest,
     collect_finite_policy_lcb_outputs,
@@ -31,10 +38,18 @@ from experiments.policy_lcb.finite_grid import (
 
 
 PolicyLCBManifest: TypeAlias = (
-    FinitePolicyLCBManifest | ContinuousPolicyLCBManifest | VariableFiniteGridLCBManifest
+    FinitePolicyLCBManifest
+    | ContinuousPolicyLCBManifest
+    | VariableFiniteGridLCBManifest
+    | ContinuousGPVariableLCBManifest
 )
 POLICY_LCB_MANIFEST_KINDS = frozenset(
-    {"finite_policy_lcb", "continuous_policy_lcb", "finite_grid_variable_lcb"}
+    {
+        "finite_policy_lcb",
+        "continuous_policy_lcb",
+        "finite_grid_variable_lcb",
+        "continuous_gp_variable_lcb",
+    }
 )
 
 
@@ -49,6 +64,8 @@ def load_policy_lcb_manifest(path: str | Path) -> PolicyLCBManifest:
         return parse_continuous_policy_lcb_manifest(payload, source_path=manifest_path)
     if kind == "finite_grid_variable_lcb":
         return parse_variable_finite_grid_lcb_manifest(payload, source_path=manifest_path)
+    if kind == "continuous_gp_variable_lcb":
+        return parse_continuous_gp_variable_lcb_manifest(payload, source_path=manifest_path)
     raise ValueError(f"Unsupported policy-LCB manifest kind {kind!r}.")
 
 
@@ -98,6 +115,13 @@ def _run_seed(
             runs_root=context.runs_root,
             force=force,
         )
+    if isinstance(manifest, ContinuousGPVariableLCBManifest):
+        return run_continuous_gp_variable_lcb_manifest_seed(
+            manifest,
+            index,
+            runs_root=context.runs_root,
+            force=force,
+        )
     return run_continuous_policy_lcb_manifest_seed(
         manifest,
         index,
@@ -134,6 +158,17 @@ def _run_serial(
             f"under {payload['project_dir']} ({payload['n_skipped_seeds']} seeds skipped)."
         )
         return
+    if isinstance(manifest, ContinuousGPVariableLCBManifest):
+        payload = run_continuous_gp_variable_lcb_manifest_serial(
+            manifest,
+            runs_root=context.runs_root,
+            force=force,
+        )
+        print(
+            f"Completed {payload['n_seed_results']} continuous-GP seeds under "
+            f"{payload['project_dir']} ({payload['n_skipped_seeds']} seeds skipped)."
+        )
+        return
     payload = run_continuous_policy_lcb_manifest_serial(
         manifest,
         runs_root=context.runs_root,
@@ -160,6 +195,15 @@ def _collect(manifest: PolicyLCBManifest, context: LaunchContext) -> None:
         print(
             f"Collected {payload['n_condition_rows']} condition rows and "
             f"{payload['n_selector_rows']} selector rows under {payload['project_dir']}."
+        )
+        return
+    if isinstance(manifest, ContinuousGPVariableLCBManifest):
+        payload = collect_continuous_gp_variable_lcb_outputs(
+            manifest, runs_root=context.runs_root
+        )
+        print(
+            f"Collected {payload['n_selector_rows']} continuous-GP selector rows and "
+            f"{payload['n_optimizer_rows']} optimizer rows under {payload['project_dir']}."
         )
         return
     payload = collect_continuous_policy_lcb_outputs(manifest, runs_root=context.runs_root)

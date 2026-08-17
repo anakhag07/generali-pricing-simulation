@@ -214,6 +214,7 @@ def test_persistence_resume_collection_and_plots(tmp_path: Path) -> None:
         "selector_summary.csv",
         "optimizer_final_summary.csv",
         "optimizer_trajectory_summary.csv",
+        "coverage_summary.csv",
     ):
         assert (project / filename).exists()
     for filename in (
@@ -231,4 +232,18 @@ def test_persistence_resume_collection_and_plots(tmp_path: Path) -> None:
     assert "trajectories" not in payload
     assert manifest.seed_trajectory_path(101, tmp_path).exists()
     assert not manifest.seed_trajectory_path(102, tmp_path).exists()
-
+    with np.load(manifest.seed_trajectory_path(101, tmp_path), allow_pickle=False) as data:
+        assert len(data["step"]) > 0
+        assert set(data.files) == {
+            "run_seed",
+            "uncertainty_center",
+            "noise_scale",
+            "target",
+            "estimator",
+            "start_x",
+            "step",
+            "x",
+            "target_value",
+            "true_regret",
+            "optimization_gap",
+        }

@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, replace
-import csv
 import heapq
 from pathlib import Path
 from typing import Any, Literal
@@ -664,7 +663,7 @@ class ContinuousGPVariableLCBManifest:
         return self.seed_dir(run_seed, runs_root) / "result.json"
 
     def seed_trajectory_path(self, run_seed: int, runs_root: str | Path | None = None) -> Path:
-        return self.seed_dir(run_seed, runs_root) / "trajectories.csv"
+        return self.seed_dir(run_seed, runs_root) / "trajectories.npz"
 
 
 def continuous_gp_seed_for_run(spec: ContinuousGPVariableLCBSpec, run_seed: int) -> int:
@@ -1154,12 +1153,22 @@ def continuous_gp_variable_lcb_seed_complete(
 
 def _write_trajectory_rows(path: Path, rows: Sequence[GPOptimizerTrajectoryRow]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    fieldnames = tuple(GPOptimizerTrajectoryRow.__dataclass_fields__)
     temporary = path.with_suffix(path.suffix + ".tmp")
-    with temporary.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(asdict(row) for row in rows)
+    columns = {
+        "run_seed": np.asarray([row.run_seed for row in rows], dtype=np.int64),
+        "uncertainty_center": np.asarray([row.uncertainty_center for row in rows]),
+        "noise_scale": np.asarray([row.noise_scale for row in rows]),
+        "target": np.asarray([row.target for row in rows], dtype="U16"),
+        "estimator": np.asarray([row.estimator for row in rows], dtype="U24"),
+        "start_x": np.asarray([row.start_x for row in rows]),
+        "step": np.asarray([row.step for row in rows], dtype=np.int64),
+        "x": np.asarray([row.x for row in rows]),
+        "target_value": np.asarray([row.target_value for row in rows]),
+        "true_regret": np.asarray([row.true_regret for row in rows]),
+        "optimization_gap": np.asarray([row.optimization_gap for row in rows]),
+    }
+    with temporary.open("wb") as handle:
+        np.savez_compressed(handle, **columns)
     temporary.replace(path)
 
 
@@ -1265,18 +1274,18 @@ def _trajectory_summary(
     accumulators: dict[tuple[object, ...], list[float]] = {}
     for seed in manifest.spec.optimizer_run_seeds:
         path = manifest.seed_trajectory_path(seed, runs_root)
-        with path.open(newline="", encoding="utf-8") as handle:
-            for row in csv.DictReader(handle):
+        with np.load(path, allow_pickle=False) as data:
+            for index in range(len(data["step"])):
                 key = (
-                    float(row["uncertainty_center"]),
-                    float(row["noise_scale"]),
-                    row["target"],
-                    row["estimator"],
-                    float(row["start_x"]),
-                    int(row["step"]),
+                    float(data["uncertainty_center"][index]),
+                    float(data["noise_scale"][index]),
+                    str(data["target"][index]),
+                    str(data["estimator"][index]),
+                    float(data["start_x"][index]),
+                    int(data["step"][index]),
                 )
-                gap = float(row["optimization_gap"])
-                regret = float(row["true_regret"])
+                gap = float(data["optimization_gap"][index])
+                regret = float(data["true_regret"][index])
                 stats = accumulators.setdefault(key, [0.0] * 9)
                 stats[0] += 1.0
                 stats[1] += gap
@@ -1286,7 +1295,7 @@ def _trajectory_summary(
                 stats[5] += gap <= 1e-2
                 stats[6] += gap <= 1e-3
                 stats[7] += gap <= 1e-4
-                stats[8] += float(row["x"])
+                stats[8] += float(data["x"][index])
     output: list[dict[str, object]] = []
     for key in sorted(accumulators, key=lambda item: tuple(str(value) for value in item)):
         count, gap_sum, gap_sq, regret_sum, regret_sq, success_2, success_3, success_4, x_sum = accumulators[key]
@@ -1353,6 +1362,22 @@ def collect_continuous_gp_variable_lcb_outputs(
         boolean_fields=("selected_point_covered",),
     ) if optimizer_rows else []
     trajectory_summary = _trajectory_summary(manifest, runs_root=runs_root) if manifest.spec.optimizer_run_seeds else []
+    coverage_values = np.asarray([bool(row["simultaneous_coverage"]) for row in gp_rows], dtype=float)
+    reporting_rng = rng_from_seed(manifest.spec.reporting_seed)
+    bootstrap_means = np.mean(
+        reporting_rng.choice(coverage_values, size=(2000, len(coverage_values)), replace=True),
+        axis=1,
+    )
+    coverage_summary = [
+        {
+            "n_seeds": len(coverage_values),
+            "analytic_target": 1.0 - manifest.spec.confidence.delta,
+            "empirical_coverage": float(np.mean(coverage_values)),
+            "bootstrap_95_lower": float(np.quantile(bootstrap_means, 0.025)),
+            "bootstrap_95_upper": float(np.quantile(bootstrap_means, 0.975)),
+            "reporting_seed": manifest.spec.reporting_seed,
+        }
+    ]
 
     tables = (
         ("seed_gp_metrics.csv", gp_rows),
@@ -1363,6 +1388,7 @@ def collect_continuous_gp_variable_lcb_outputs(
         ("selector_summary.csv", selector_summary),
         ("optimizer_final_summary.csv", optimizer_summary),
         ("optimizer_trajectory_summary.csv", trajectory_summary),
+        ("coverage_summary.csv", coverage_summary),
     )
     for filename, rows in tables:
         if rows:

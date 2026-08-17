@@ -150,6 +150,17 @@ def test_seed_replay_pairing_zero_scale_and_conditional_lcb_certificate() -> Non
     zero_selectors = [row for row in first.selectors if row.noise_scale == 0.0]
     assert all(row.simultaneous_coverage and row.maximum_half_width == 0.0 for row in zero_conditions)
     assert all(row.selected_x == 0.5 and row.regret == 0.0 for row in zero_selectors)
+    zero_lcb_finals = [
+        row
+        for row in first.optimizer_finals
+        if row.noise_scale == 0.0 and row.target == "variable_lcb"
+    ]
+    assert zero_lcb_finals
+    assert all(row.certificate_bound is not None for row in zero_lcb_finals)
+    assert all(
+        row.certificate_slack == pytest.approx(row.optimization_gap - row.true_regret)
+        for row in zero_lcb_finals
+    )
     for row in first.selectors:
         if row.target == "variable_lcb" and row.selected_point_covered:
             assert row.certificate_slack is not None and row.certificate_slack >= -1e-6

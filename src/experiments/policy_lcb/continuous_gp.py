@@ -956,10 +956,21 @@ def evaluate_continuous_gp_variable_lcb_draw(
                     continue
                 if noise_scale == 0.0 and zero_optimizer_cache is not None:
                     cached_finals, cached_trajectories = zero_optimizer_cache
-                    finals.extend(
-                        replace(row, uncertainty_center=center, target=target)
-                        for row in cached_finals
-                    )
+                    for row in cached_finals:
+                        if target == "variable_lcb":
+                            finals.append(
+                                replace(
+                                    row,
+                                    uncertainty_center=center,
+                                    target=target,
+                                    certificate_bound=row.optimization_gap,
+                                    certificate_slack=row.optimization_gap - row.true_regret,
+                                )
+                            )
+                        else:
+                            finals.append(
+                                replace(row, uncertainty_center=center, target=target)
+                            )
                     trajectories.extend(
                         replace(row, uncertainty_center=center, target=target)
                         for row in cached_trajectories

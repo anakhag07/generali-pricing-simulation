@@ -192,7 +192,7 @@ def _one_axis_plot(
     axes[0, 0].legend(fontsize=8)
     axes[1, 0].legend(fontsize=7)
     fig.suptitle("Independent surrogate and envelope sweeps")
-    _save(fig, plot_dir / "one_at_a_time_sweeps.png")
+    _save(fig, plot_dir / "one_at_a_time_sweeps.pdf")
 
 
 def _optimizer_error_plot(best_rows: Sequence[Mapping[str, Any]], plot_dir: Path) -> None:
@@ -218,7 +218,7 @@ def _optimizer_error_plot(best_rows: Sequence[Mapping[str, Any]], plot_dir: Path
     axes[0].set_ylabel("True regret")
     axes[1].legend()
     fig.suptitle("Optimizer-error axis uses measured global gap, not iteration count")
-    _save(fig, plot_dir / "optimizer_error_vs_regret.png")
+    _save(fig, plot_dir / "optimizer_error_vs_regret.pdf")
 
 
 def _decomposition_plot(best_rows: Sequence[Mapping[str, Any]], plot_dir: Path) -> None:
@@ -257,7 +257,7 @@ def _decomposition_plot(best_rows: Sequence[Mapping[str, Any]], plot_dir: Path) 
     axis.set(xlabel=r"Certified RHS $T+\varepsilon_{upper}$", ylabel="True regret", title="Regret decomposition certificate check")
     axis.grid(alpha=0.2)
     axis.legend(fontsize=8)
-    _save(fig, plot_dir / "decomposition_bound_check.png")
+    _save(fig, plot_dir / "decomposition_bound_check.pdf")
 
 
 def _factorial_plot(best_rows: Sequence[Mapping[str, Any]], plot_dir: Path) -> None:
@@ -316,7 +316,7 @@ def _factorial_plot(best_rows: Sequence[Mapping[str, Any]], plot_dir: Path) -> N
             axis.set_title(f"{estimator}; m_f={mf:g}; step={step}")
             fig.colorbar(image, ax=axis, label="median true regret")
     fig.suptitle("Factorial regret; cells annotate median optimizer error")
-    _save(fig, plot_dir / "factorial_tradeoff_heatmaps.png")
+    _save(fig, plot_dir / "factorial_tradeoff_heatmaps.pdf")
 
 
 def _representative_plot(
@@ -370,7 +370,7 @@ def _representative_plot(
     handles, labels = axes[0, 0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="upper center", ncol=5)
     fig.suptitle("Predeclared analytic Fourier paths; curves are rendered evaluations", y=1.02)
-    _save(fig, plot_dir / "representative_landscapes.png")
+    _save(fig, plot_dir / "representative_landscapes.pdf")
 
 
 def write_decomposition_reports(

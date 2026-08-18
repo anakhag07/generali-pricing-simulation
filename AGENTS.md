@@ -13,6 +13,9 @@ Project context: simulation and optimization repo. Users should be able to speci
   which seed controls the process.
 - Include short comments or specs for functions when helpful.
 - Prefer vectorized or cached computations when they preserve existing logic.
+- Save every newly generated plot or figure as PDF, not PNG. Apply this to new
+  runs and regenerated outputs; do not migrate artifacts from previously
+  completed experiments unless the user explicitly requests it.
 - Do not rely on prior chat context as the source of truth; repo context may be stale across terminals, worktrees, or later sessions.
 - Before implementing a stochastic objective indexed by a finite or continuous
   domain, explicitly document and confirm: the index domain; dependence or

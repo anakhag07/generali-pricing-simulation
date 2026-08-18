@@ -249,11 +249,11 @@ def test_persistence_resume_collection_and_five_plots(tmp_path: Path) -> None:
     ):
         assert (project / filename).exists()
     for filename in (
-        "one_at_a_time_sweeps.png",
-        "optimizer_error_vs_regret.png",
-        "decomposition_bound_check.png",
-        "factorial_tradeoff_heatmaps.png",
-        "representative_landscapes.png",
+        "one_at_a_time_sweeps.pdf",
+        "optimizer_error_vs_regret.pdf",
+        "decomposition_bound_check.pdf",
+        "factorial_tradeoff_heatmaps.pdf",
+        "representative_landscapes.pdf",
     ):
         assert (project / "plots" / filename).exists()
     payload = json.loads(manifest.seed_result_path(101, tmp_path).read_text())

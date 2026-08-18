@@ -33,6 +33,9 @@ from experiments.policy_lcb.continuous_gp_core import (
     certified_shape_ratio,
     certified_weighted_gp_supremum,
 )
+from experiments.policy_lcb.continuous_gp_decomposition_reporting import (
+    _cluster_bootstrap_metrics,
+)
 
 
 def _draw() -> FourierGPDraw:
@@ -225,6 +228,37 @@ def test_manifest_rejects_missing_real_line_probe_contract() -> None:
     payload["optimizer"]["probe_domain"] = "clipped"  # type: ignore[index]
     with pytest.raises(ValueError, match="real-line extension"):
         parse_continuous_gp_decomposition_manifest(payload)
+
+
+def test_cluster_bootstrap_sufficient_statistics_match_expanded_rows() -> None:
+    y = np.asarray([0.2, 0.4, 1.0, 1.2, 0.8, 0.1, 0.3], dtype=float)
+    residual = np.asarray([0.1, -0.2, 0.3, -0.1, 0.2, -0.05, 0.04], dtype=float)
+    seeds = np.asarray([101, 101, 102, 102, 102, 103, 103], dtype=int)
+    fast_r2, fast_mae = _cluster_bootstrap_metrics(
+        y,
+        residual,
+        seeds,
+        np.random.default_rng(77),
+        n_bootstrap=40,
+    )
+    rng = np.random.default_rng(77)
+    unique = np.unique(seeds)
+    expected_r2 = []
+    expected_mae = []
+    for _ in range(40):
+        chosen = rng.choice(unique, size=len(unique), replace=True)
+        indices = np.concatenate([np.flatnonzero(seeds == seed) for seed in chosen])
+        sample_y = y[indices]
+        sample_residual = residual[indices]
+        denominator = float(np.sum((sample_y - np.mean(sample_y)) ** 2))
+        expected_r2.append(
+            1.0 - float(np.sum(sample_residual**2)) / denominator
+            if denominator > 0.0
+            else float("nan")
+        )
+        expected_mae.append(float(np.mean(np.abs(sample_residual))))
+    assert fast_r2 == pytest.approx(expected_r2, nan_ok=True)
+    assert fast_mae == pytest.approx(expected_mae)
 
 
 def test_persistence_resume_collection_and_five_plots(tmp_path: Path) -> None:

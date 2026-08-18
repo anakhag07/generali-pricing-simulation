@@ -71,6 +71,39 @@ def _cross_validated_predictions(
     return y, predictions, seeds
 
 
+def _cluster_bootstrap_metrics(
+    y: np.ndarray,
+    residual: np.ndarray,
+    seeds: np.ndarray,
+    rng: np.random.Generator,
+    *,
+    n_bootstrap: int = 500,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Bootstrap R2 and MAE exactly from per-seed sufficient statistics."""
+    unique, inverse = np.unique(seeds, return_inverse=True)
+    cluster_n = np.bincount(inverse).astype(float)
+    cluster_y = np.bincount(inverse, weights=y)
+    cluster_y2 = np.bincount(inverse, weights=y**2)
+    cluster_residual2 = np.bincount(inverse, weights=residual**2)
+    cluster_absolute_residual = np.bincount(inverse, weights=np.abs(residual))
+    boot_r2 = np.empty(n_bootstrap, dtype=float)
+    boot_mae = np.empty(n_bootstrap, dtype=float)
+    for index in range(n_bootstrap):
+        chosen = rng.choice(unique, size=len(unique), replace=True)
+        counts = np.bincount(
+            np.searchsorted(unique, chosen), minlength=len(unique)
+        ).astype(float)
+        total_n = float(counts @ cluster_n)
+        total_y = float(counts @ cluster_y)
+        denominator = float(counts @ cluster_y2) - total_y**2 / total_n
+        numerator = float(counts @ cluster_residual2)
+        boot_r2[index] = (
+            1.0 - numerator / denominator if denominator > 0.0 else np.nan
+        )
+        boot_mae[index] = float(counts @ cluster_absolute_residual) / total_n
+    return boot_r2, boot_mae
+
+
 def _model_summary(
     rows: Sequence[Mapping[str, Any]], reporting_seed: int
 ) -> list[dict[str, object]]:
@@ -102,20 +135,7 @@ def _model_summary(
         r2 = 1.0 - float(np.sum(residual**2) / np.sum((y - np.mean(y)) ** 2))
         mae = float(np.mean(np.abs(residual)))
         unique = np.asarray(sorted(set(seeds)))
-        boot_r2: list[float] = []
-        boot_mae: list[float] = []
-        for _ in range(500):
-            chosen = rng.choice(unique, size=len(unique), replace=True)
-            indices = np.concatenate([np.flatnonzero(seeds == seed) for seed in chosen])
-            sample_y = y[indices]
-            sample_residual = residual[indices]
-            denominator = float(np.sum((sample_y - np.mean(sample_y)) ** 2))
-            boot_r2.append(
-                1.0 - float(np.sum(sample_residual**2)) / denominator
-                if denominator > 0.0
-                else float("nan")
-            )
-            boot_mae.append(float(np.mean(np.abs(sample_residual))))
+        boot_r2, boot_mae = _cluster_bootstrap_metrics(y, residual, seeds, rng)
         output.append(
             {
                 "model": name,

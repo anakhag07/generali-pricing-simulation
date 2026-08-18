@@ -820,12 +820,14 @@ def _write_checkpoint_rows(path: Path, rows: Sequence[DecompositionCheckpointMet
 
 def _read_checkpoint_rows(path: Path) -> tuple[DecompositionCheckpointMetric, ...]:
     with np.load(path, allow_pickle=False) as data:
-        count = len(data["run_seed"])
+        metric_fields = fields(DecompositionCheckpointMetric)
+        columns = {field.name: data[field.name] for field in metric_fields}
+        count = len(columns["run_seed"])
         return tuple(
             DecompositionCheckpointMetric(
                 **{
-                    field.name: data[field.name][index].item()
-                    for field in fields(DecompositionCheckpointMetric)
+                    field.name: columns[field.name][index].item()
+                    for field in metric_fields
                 }
             )
             for index in range(count)

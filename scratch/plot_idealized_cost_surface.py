@@ -31,6 +31,9 @@ INK = "#15324B"
 MUTED = "#607386"
 GRID = "#DCE5EC"
 ACCENT = "#F06449"
+AXIS_LABEL_SIZE = 15
+TICK_LABEL_SIZE = 11
+TITLE_SIZE = 28
 SURFACE_CMAP = LinearSegmentedColormap.from_list(
     "executive_blue",
     ["#E9F2F7", "#9BC6D7", "#3B91AE", "#155E7A", "#0B3D56"],
@@ -241,7 +244,7 @@ def _style_3d_axis(ax: plt.Axes) -> None:
     ax.xaxis.pane.set_edgecolor(GRID)
     ax.yaxis.pane.set_edgecolor(GRID)
     ax.zaxis.pane.set_edgecolor(GRID)
-    ax.tick_params(colors=MUTED, labelsize=9, pad=1)
+    ax.tick_params(colors=MUTED, labelsize=TICK_LABEL_SIZE, pad=1)
     for axis in (ax.xaxis, ax.yaxis, ax.zaxis):
         axis._axinfo["grid"].update(color=GRID, linewidth=0.6, linestyle="-")
 
@@ -253,8 +256,14 @@ def _percent_axes(ax: plt.Axes) -> None:
 
 
 def _slide_title(fig: plt.Figure, title: str, subtitle: str) -> None:
-    fig.text(0.055, 0.965, title, ha="left", va="top", fontsize=22, fontweight="bold", color=INK)
-    fig.text(0.055, 0.905, subtitle, ha="left", va="top", fontsize=11, color=MUTED)
+    fig.text(0.055, 0.965, title, ha="left", va="top", fontsize=TITLE_SIZE, fontweight="bold", color=INK)
+    fig.text(0.055, 0.895, subtitle, ha="left", va="top", fontsize=13, color=MUTED)
+
+
+def _save_figure(fig: plt.Figure, path: Path, *, dpi: int) -> None:
+    """Save the slide preview and a vector PDF from the same figure."""
+    fig.savefig(path, dpi=dpi, facecolor="white")
+    fig.savefig(path.with_suffix(".pdf"), facecolor="white")
 
 
 def _footer(fig: plt.Figure) -> None:
@@ -309,9 +318,9 @@ def plot_profit_surface(
         fontweight="bold",
     )
     ax.set_zlim(floor, float(np.max(profit)) + 18.0)
-    ax.set_xlabel("Segment A price change", labelpad=12, color=INK)
-    ax.set_ylabel("Segment B price change", labelpad=12, color=INK)
-    ax.set_zlabel("Expected profit / policy", labelpad=10, color=INK)
+    ax.set_xlabel(r"Decision Parameter $\theta_1$", fontsize=AXIS_LABEL_SIZE, labelpad=16, color=INK)
+    ax.set_ylabel(r"Decision Parameter $\theta_2$", fontsize=AXIS_LABEL_SIZE, labelpad=16, color=INK)
+    ax.set_zlabel("Expected profit / policy", fontsize=AXIS_LABEL_SIZE, labelpad=12, color=INK)
     ax.zaxis.set_major_formatter(ticker.StrMethodFormatter("${x:,.0f}"))
     _percent_axes(ax)
     _style_3d_axis(ax)
@@ -323,7 +332,7 @@ def plot_profit_surface(
         r"Expected profit = $-\,f_{accept}\,(gross\ loss - revenue)$; higher is better",
     )
     _footer(fig)
-    fig.savefig(path, dpi=dpi, facecolor="white")
+    _save_figure(fig, path, dpi=dpi)
     plt.close(fig)
 
 
@@ -359,22 +368,22 @@ def plot_profit_contour(
         bbox={"boxstyle": "round,pad=0.55", "facecolor": "white", "edgecolor": GRID, "alpha": 0.96},
         arrowprops={"arrowstyle": "-", "color": ACCENT, "linewidth": 1.4},
     )
-    ax.set_xlabel("Segment A price change", fontsize=11, color=INK, labelpad=10)
-    ax.set_ylabel("Segment B price change", fontsize=11, color=INK, labelpad=10)
-    ax.tick_params(colors=MUTED)
+    ax.set_xlabel(r"Decision Parameter $\theta_1$", fontsize=AXIS_LABEL_SIZE, color=INK, labelpad=12)
+    ax.set_ylabel(r"Decision Parameter $\theta_2$", fontsize=AXIS_LABEL_SIZE, color=INK, labelpad=12)
+    ax.tick_params(colors=MUTED, labelsize=TICK_LABEL_SIZE)
     _percent_axes(ax)
     ax.set_aspect("equal", adjustable="box")
     colorbar = fig.colorbar(filled, ax=ax, pad=0.035, fraction=0.035)
-    colorbar.set_label("Expected profit / policy", color=INK, labelpad=10)
+    colorbar.set_label("Expected profit / policy", fontsize=AXIS_LABEL_SIZE, color=INK, labelpad=12)
     colorbar.ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("${x:,.0f}"))
-    colorbar.ax.tick_params(colors=MUTED)
+    colorbar.ax.tick_params(colors=MUTED, labelsize=TICK_LABEL_SIZE)
     _slide_title(
         fig,
         "The optimum is stable across both pricing levers",
         "Closed contour bands make the peak and the value trade-off easy to read",
     )
     _footer(fig)
-    fig.savefig(path, dpi=dpi, facecolor="white")
+    _save_figure(fig, path, dpi=dpi)
     plt.close(fig)
 
 
@@ -427,9 +436,9 @@ def plot_cost_surface(
         fontweight="bold",
         bbox={"boxstyle": "round,pad=0.5", "facecolor": "white", "edgecolor": GRID, "alpha": 0.94},
     )
-    ax.set_xlabel("Segment A price change", labelpad=12, color=INK)
-    ax.set_ylabel("Segment B price change", labelpad=12, color=INK)
-    ax.set_zlabel("Cost / policy", labelpad=10, color=INK)
+    ax.set_xlabel(r"Decision Parameter $\theta_1$", fontsize=AXIS_LABEL_SIZE, labelpad=16, color=INK)
+    ax.set_ylabel(r"Decision Parameter $\theta_2$", fontsize=AXIS_LABEL_SIZE, labelpad=16, color=INK)
+    ax.set_zlabel("Cost / policy", fontsize=AXIS_LABEL_SIZE, labelpad=12, color=INK)
     ax.zaxis.set_major_formatter(ticker.StrMethodFormatter("${x:,.0f}"))
     _percent_axes(ax)
     _style_3d_axis(ax)
@@ -441,7 +450,7 @@ def plot_cost_surface(
         r"Cost = $f_{accept}\,(gross\ loss - revenue)$; lower is better",
     )
     _footer(fig)
-    fig.savefig(path, dpi=dpi, facecolor="white")
+    _save_figure(fig, path, dpi=dpi)
     plt.close(fig)
 
 
@@ -478,9 +487,9 @@ def plot_executive_combined(
     ax_surface.scatter(
         [peak_a], [peak_b], [peak_profit], s=75, color=ACCENT, edgecolor="white", linewidth=1.3, depthshade=False
     )
-    ax_surface.set_xlabel("Segment A", labelpad=8, color=INK)
-    ax_surface.set_ylabel("Segment B", labelpad=8, color=INK)
-    ax_surface.set_zlabel("Profit / policy", labelpad=7, color=INK)
+    ax_surface.set_xlabel(r"Decision Parameter $\theta_1$", fontsize=AXIS_LABEL_SIZE, labelpad=12, color=INK)
+    ax_surface.set_ylabel(r"Decision Parameter $\theta_2$", fontsize=AXIS_LABEL_SIZE, labelpad=12, color=INK)
+    ax_surface.set_zlabel("Profit / policy", fontsize=AXIS_LABEL_SIZE, labelpad=10, color=INK)
     ax_surface.zaxis.set_major_formatter(ticker.StrMethodFormatter("${x:,.0f}"))
     _percent_axes(ax_surface)
     _style_3d_axis(ax_surface)
@@ -492,14 +501,14 @@ def plot_executive_combined(
     ax_contour.scatter([peak_a], [peak_b], marker="*", s=210, color=ACCENT, edgecolor="white", linewidth=1.2)
     ax_contour.axvline(peak_a, color=ACCENT, linewidth=1.0, linestyle=(0, (3, 3)), alpha=0.85)
     ax_contour.axhline(peak_b, color=ACCENT, linewidth=1.0, linestyle=(0, (3, 3)), alpha=0.85)
-    ax_contour.set_xlabel("Segment A price change", color=INK, labelpad=8)
-    ax_contour.set_ylabel("Segment B price change", color=INK, labelpad=8)
-    ax_contour.tick_params(colors=MUTED, labelsize=9)
+    ax_contour.set_xlabel(r"Decision Parameter $\theta_1$", fontsize=AXIS_LABEL_SIZE, color=INK, labelpad=10)
+    ax_contour.set_ylabel(r"Decision Parameter $\theta_2$", fontsize=AXIS_LABEL_SIZE, color=INK, labelpad=10)
+    ax_contour.tick_params(colors=MUTED, labelsize=TICK_LABEL_SIZE)
     _percent_axes(ax_contour)
     ax_contour.set_aspect("equal", adjustable="box")
     colorbar = fig.colorbar(filled, ax=ax_contour, pad=0.03, fraction=0.05)
     colorbar.ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("${x:,.0f}"))
-    colorbar.ax.tick_params(colors=MUTED, labelsize=8)
+    colorbar.ax.tick_params(colors=MUTED, labelsize=TICK_LABEL_SIZE)
 
     fig.text(
         0.77,
@@ -518,7 +527,7 @@ def plot_executive_combined(
         r"Maximum expected profit, equivalent to minimizing $f_{accept}\,(gross\ loss - revenue)$",
     )
     _footer(fig)
-    fig.savefig(path, dpi=dpi, facecolor="white")
+    _save_figure(fig, path, dpi=dpi)
     plt.close(fig)
 
 

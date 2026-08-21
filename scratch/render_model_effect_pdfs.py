@@ -63,7 +63,7 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--output-dir",
         type=Path,
-        help="PDF destination; defaults to --analysis-dir.",
+        help="PDF destination; defaults to ANALYSIS_DIR/plots.",
     )
     parser.add_argument(
         "--xgb-smoothing-bandwidth",
@@ -100,7 +100,6 @@ def _plot_mean_std(
     ylabel: str,
     title: str,
     pdf_path: Path,
-    png_path: Path,
     ylim: tuple[float, float] | None = None,
     add_y_margin: bool = False,
     probability: bool = False,
@@ -153,7 +152,6 @@ def _plot_mean_std(
     if add_y_margin:
         ax.margins(y=0.12)
     fig.savefig(pdf_path, format="pdf")
-    fig.savefig(png_path, format="png", dpi=180)
     plt.close(fig)
 
 
@@ -162,7 +160,6 @@ def _plot_smoothed_xgb_mean_std(
     *,
     bandwidth: float,
     pdf_path: Path,
-    png_path: Path,
 ) -> None:
     """Gaussian-smooth the aggregate XGBoost mean and SD functions."""
     ordered = frame.sort_values("u")
@@ -212,7 +209,6 @@ def _plot_smoothed_xgb_mean_std(
     ax.tick_params(labelsize=10)
     ax.grid(alpha=0.25)
     fig.savefig(pdf_path, format="pdf")
-    fig.savefig(png_path, format="png", dpi=180)
     plt.close(fig)
 
 
@@ -251,7 +247,6 @@ def render_model_effect_pdfs(
             ylabel="Acceptance Probability",
             title="Predicted Effect of Price Change on Acceptance Probability",
             pdf_path=price_output,
-            png_path=output_dir / f"{model}_acceptance_mean_std.png",
             ylim=ACCEPTANCE_YLIMS[model],
             probability=True,
         )
@@ -273,7 +268,6 @@ def render_model_effect_pdfs(
             ylabel="Acceptance Probability",
             title="Predicted Effect of Bonus-Malus Rating on Acceptance Probability",
             pdf_path=acceptance_output,
-            png_path=output_dir / f"{model}_bonus_malus_vs_acceptance.png",
             add_y_margin=True,
             probability=True,
         )
@@ -295,7 +289,6 @@ def render_model_effect_pdfs(
             ylabel="Predicted Claims",
             title="Predicted Effect of Bonus-Malus Rating on Claims",
             pdf_path=claims_output,
-            png_path=output_dir / f"{model}_bonus_malus_vs_claims.png",
             add_y_margin=True,
         )
         written.append(claims_output)
@@ -306,7 +299,6 @@ def render_model_effect_pdfs(
         xgb_curve,
         bandwidth=xgb_smoothing_bandwidth,
         pdf_path=xgb_smoothed_output,
-        png_path=output_dir / "xgb_acceptance_mean_std_smoothed.png",
     )
     written.append(xgb_smoothed_output)
 
@@ -319,7 +311,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     output_dir = (
         args.output_dir.expanduser().resolve()
         if args.output_dir is not None
-        else analysis_dir
+        else analysis_dir / "plots"
     )
     written = render_model_effect_pdfs(
         analysis_dir,

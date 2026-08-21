@@ -140,8 +140,7 @@ def _plot_correlation_matrix(
     colorbar = fig.colorbar(image, ax=ax, fraction=0.046, pad=0.04)
     colorbar.set_label("Spearman correlation")
     fig.tight_layout()
-    fig.savefig(output_path.with_suffix(".pdf"), format="pdf")
-    fig.savefig(output_path, dpi=180, bbox_inches="tight")
+    fig.savefig(output_path, format="pdf")
     plt.close(fig)
 
 
@@ -178,7 +177,7 @@ def _plot_importance_rank_correlations(
     colorbar = fig.colorbar(image, ax=axes, fraction=0.046, pad=0.04)
     colorbar.set_label("Spearman rank correlation")
     fig.suptitle("Agreement of feature-importance rankings across models")
-    fig.savefig(output_path, dpi=180, bbox_inches="tight")
+    fig.savefig(output_path, format="pdf")
     plt.close(fig)
 
 
@@ -196,6 +195,8 @@ def render_correlations(
     frame["historical_u"] = load_observed_u_array("linear", row_indices=row_indices)
     frame["observed_acceptance"] = _observed_acceptance(row_indices)
     frame["observed_loss"] = load_observed_loss_array("linear", row_indices=row_indices)
+    plots_dir = analysis_dir / "plots"
+    plots_dir.mkdir(parents=True, exist_ok=True)
 
     selected: dict[str, list[str]] = {}
     excluded: dict[str, list[str]] = {}
@@ -213,7 +214,7 @@ def render_correlations(
         _plot_correlation_matrix(
             correlation,
             title=f"Top {display_target} features: customer-level Spearman correlations",
-            output_path=analysis_dir / f"{target}_top_feature_spearman.png",
+            output_path=plots_dir / f"{target}_top_feature_spearman.pdf",
         )
         selected[target] = numeric
         excluded[target] = excluded_features
@@ -236,7 +237,7 @@ def render_correlations(
     )
     _plot_importance_rank_correlations(
         rank_correlations,
-        analysis_dir / "feature_importance_rank_correlations.png",
+        plots_dir / "feature_importance_rank_correlations.pdf",
     )
 
     metadata: dict[str, object] = {

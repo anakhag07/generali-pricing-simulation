@@ -1,0 +1,223 @@
+"""Regenerate the nine saved model-effect figures as vector PDFs.
+
+The task reads the collected acceptance-by-price and bonus-malus partial-
+dependence CSVs.  It does not rerun model inference.  By default it targets the
+canonical ``20260809_105106`` analysis sweep; pass ``--analysis-dir`` to reuse
+the renderer with another collected sweep that has the same CSV schema.
+
+Example
+-------
+python scratch/render_model_effect_pdfs.py
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+from pathlib import Path
+from typing import Sequence
+
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+
+
+DEFAULT_RESULTS_ROOT = Path(
+    os.environ.get(
+        "GENERALI_RESULTS_ROOT",
+        Path.home() / "projects" / "generali-pricing" / "results",
+    )
+)
+DEFAULT_ANALYSIS_DIR = (
+    DEFAULT_RESULTS_ROOT
+    / "model-acceptance-feature-analysis"
+    / "sweeps"
+    / "20260809_105106"
+)
+
+MODEL_ORDER = ("glm", "spline", "xgb")
+MODEL_COLORS = {
+    "glm": "#2166ac",
+    "spline": "#1b7837",
+    "xgb": "#b2182b",
+}
+ACCEPTANCE_YLIMS = {
+    "glm": (0.70, 0.98),
+    "spline": (0.80, 0.98),
+    "xgb": (0.60, 0.98),
+}
+
+
+def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--analysis-dir",
+        type=Path,
+        default=DEFAULT_ANALYSIS_DIR,
+        help=(
+            "Collected analysis directory containing acceptance_by_u.csv and "
+            "the three bonus-malus partial-dependence CSVs."
+        ),
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        help="PDF destination; defaults to --analysis-dir.",
+    )
+    return parser.parse_args(argv)
+
+
+def _read_csv(path: Path, required_columns: set[str]) -> pd.DataFrame:
+    if not path.is_file():
+        raise FileNotFoundError(f"Required plot data not found: {path}")
+    frame = pd.read_csv(path)
+    missing = required_columns.difference(frame.columns)
+    if missing:
+        raise ValueError(f"{path} is missing columns: {sorted(missing)}")
+    return frame
+
+
+def _plot_curve(
+    x: pd.Series | np.ndarray,
+    y: pd.Series | np.ndarray,
+    *,
+    color: str,
+    xlabel: str,
+    ylabel: str,
+    title: str,
+    output_path: Path,
+    ylim: tuple[float, float] | None = None,
+    add_y_margin: bool = False,
+) -> None:
+    x_values = np.asarray(x, dtype=float)
+    y_values = np.asarray(y, dtype=float)
+    if x_values.ndim != 1 or y_values.shape != x_values.shape or x_values.size < 2:
+        raise ValueError(f"Invalid one-dimensional curve for {output_path.name}")
+    if not np.isfinite(x_values).all() or not np.isfinite(y_values).all():
+        raise ValueError(f"Non-finite values in curve for {output_path.name}")
+
+    order = np.argsort(x_values)
+    x_values = x_values[order]
+    y_values = y_values[order]
+
+    fig, ax = plt.subplots(figsize=(9, 5.6))
+    ax.plot(x_values, y_values, color=color, linewidth=3)
+    ax.set_xlim(float(x_values[0]), float(x_values[-1]))
+    if ylim is not None:
+        ax.set_ylim(*ylim)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.set_title(title)
+    ax.grid(alpha=0.25)
+    if add_y_margin:
+        ax.margins(y=0.12)
+    fig.tight_layout()
+    fig.savefig(output_path, format="pdf")
+    plt.close(fig)
+
+
+def render_model_effect_pdfs(analysis_dir: Path, output_dir: Path) -> list[Path]:
+    """Render price and bonus-malus effect PDFs from one collected sweep."""
+    analysis_dir = analysis_dir.expanduser().resolve()
+    output_dir = output_dir.expanduser().resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    acceptance_by_u = _read_csv(
+        analysis_dir / "acceptance_by_u.csv",
+        {"model", "u", "mean"},
+    )
+    bonus_malus = {
+        "glm": _read_csv(
+            analysis_dir / "glm_bonus_malus_partial_dependence.csv",
+            {
+                "bonus_malus_rating",
+                "mean_acceptance_probability_at_u_0_08",
+                "mean_predicted_loss",
+            },
+        ),
+        "xgb": _read_csv(
+            analysis_dir / "xgb_bonus_malus_partial_dependence.csv",
+            {
+                "bonus_malus_rating",
+                "mean_acceptance_probability_at_u_0_08",
+                "mean_predicted_loss",
+            },
+        ),
+        "spline": _read_csv(
+            analysis_dir / "spline_bonus_malus_partial_dependence.csv",
+            {
+                "bonus_malus_rating",
+                "mean_acceptance_probability_at_u_0_08",
+            },
+        ),
+    }
+
+    written: list[Path] = []
+    for model in MODEL_ORDER:
+        price_curve = acceptance_by_u.loc[acceptance_by_u["model"].eq(model)]
+        if price_curve.empty:
+            raise ValueError(f"acceptance_by_u.csv has no rows for model={model!r}")
+        price_output = output_dir / f"{model}_acceptance_mean_only.pdf"
+        _plot_curve(
+            price_curve["u"],
+            price_curve["mean"],
+            color=MODEL_COLORS[model],
+            xlabel="Proposed Price Change",
+            ylabel="Acceptance Probability",
+            title="Predicted Effect of Price Change on Acceptance Probability",
+            output_path=price_output,
+            ylim=ACCEPTANCE_YLIMS[model],
+        )
+        written.append(price_output)
+
+        acceptance_output = output_dir / f"{model}_bonus_malus_vs_acceptance.pdf"
+        _plot_curve(
+            bonus_malus[model]["bonus_malus_rating"],
+            bonus_malus[model]["mean_acceptance_probability_at_u_0_08"],
+            color=MODEL_COLORS[model],
+            xlabel="Bonus-Malus Rating",
+            ylabel="Acceptance Probability",
+            title="Predicted Effect of Bonus-Malus Rating on Acceptance Probability",
+            output_path=acceptance_output,
+            add_y_margin=True,
+        )
+        written.append(acceptance_output)
+
+        # The spline family shares the XGBoost loss artifact, so its loss curve
+        # is sourced from the XGBoost partial-dependence table and recolored.
+        loss_source = bonus_malus["xgb"] if model == "spline" else bonus_malus[model]
+        loss_output = output_dir / f"{model}_bonus_malus_vs_loss.pdf"
+        _plot_curve(
+            loss_source["bonus_malus_rating"],
+            loss_source["mean_predicted_loss"],
+            color=MODEL_COLORS[model],
+            xlabel="Bonus-Malus Rating",
+            ylabel="Predicted Loss",
+            title="Predicted Effect of Bonus-Malus Rating on Loss",
+            output_path=loss_output,
+            add_y_margin=True,
+        )
+        written.append(loss_output)
+
+    return written
+
+
+def main(argv: Sequence[str] | None = None) -> None:
+    args = _parse_args(argv)
+    analysis_dir = args.analysis_dir.expanduser().resolve()
+    output_dir = (
+        args.output_dir.expanduser().resolve()
+        if args.output_dir is not None
+        else analysis_dir
+    )
+    written = render_model_effect_pdfs(analysis_dir, output_dir)
+    print(f"Wrote {len(written)} PDFs to {output_dir}")
+    for path in written:
+        print(path.name)
+
+
+if __name__ == "__main__":
+    main()

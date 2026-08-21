@@ -19,10 +19,10 @@ from mpl_toolkits.mplot3d import proj3d
 import numpy as np
 
 
-TITLE_SIZE = 20
-AXIS_LABEL_SIZE = 14
-TICK_LABEL_SIZE = 11
-ANNOTATION_SIZE = 12
+TITLE_SIZE = 16
+AXIS_LABEL_SIZE = 12
+TICK_LABEL_SIZE = 10
+ANNOTATION_SIZE = 10
 
 
 def objective(theta_1: np.ndarray, theta_2: np.ndarray) -> np.ndarray:
@@ -101,10 +101,10 @@ def plot(output_dir: Path, *, dpi: int) -> None:
     local_mask = (theta_1 < -0.8) & (theta_2 < -0.55)
     local_maximum = _grid_maximum(theta_1, theta_2, profit, local_mask)
 
-    fig = plt.figure(figsize=(13.333, 7.5))
+    fig = plt.figure(figsize=(7.0, 7.0), constrained_layout=True)
     fig.patch.set_facecolor("white")
-    ax = fig.add_axes(
-        (0.02, 0.05, 0.94, 0.84),
+    ax = fig.add_subplot(
+        111,
         projection="3d",
         computed_zorder=False,
     )
@@ -137,10 +137,10 @@ def plot(output_dir: Path, *, dpi: int) -> None:
             zorder=20,
         )
 
-    ax.xaxis.set_rotate_label(False)
-    ax.yaxis.set_rotate_label(False)
-    ax.set_xlabel(r"Decision Parameter $\theta_1$", fontsize=AXIS_LABEL_SIZE, labelpad=16, rotation=0)
-    ax.set_ylabel(r"Decision Parameter $\theta_2$", fontsize=AXIS_LABEL_SIZE, labelpad=30, rotation=0)
+    ax.xaxis.set_rotate_label(True)
+    ax.yaxis.set_rotate_label(True)
+    ax.set_xlabel(r"Decision Parameter $\theta_1$", fontsize=AXIS_LABEL_SIZE, labelpad=12)
+    ax.set_ylabel(r"Decision Parameter $\theta_2$", fontsize=AXIS_LABEL_SIZE, labelpad=12)
     ax.set_zlabel("Expected Profit", fontsize=AXIS_LABEL_SIZE, labelpad=12)
     ax.tick_params(axis="both", which="major", labelsize=TICK_LABEL_SIZE, pad=2)
     ax.set_xlim(-3.0, 3.0)
@@ -153,17 +153,11 @@ def plot(output_dir: Path, *, dpi: int) -> None:
     # the relative height of the profit axis.
     ax.set_box_aspect((1.15, 1.0, 0.78))
     ax.view_init(elev=25, azim=-58)
+    ax.set_title("Objective Landscape: Expected Profit", fontsize=TITLE_SIZE, pad=12)
 
     fig.canvas.draw()
-    _annotate_projected(ax, local_maximum, "Local Maximum", (-70, 48))
+    _annotate_projected(ax, local_maximum, "Local Maximum", (-42, 42))
     _annotate_projected(ax, global_maximum, "Best Decision Rule", (44, 34))
-
-    fig.suptitle(
-        "Objective Landscape: Expected Profit",
-        x=0.50,
-        y=0.96,
-        fontsize=TITLE_SIZE,
-    )
 
     png_path = output_dir / "smooth_nonconcave_expected_profit.png"
     pdf_path = output_dir / "smooth_nonconcave_expected_profit.pdf"
@@ -172,7 +166,7 @@ def plot(output_dir: Path, *, dpi: int) -> None:
         pdf_path,
         facecolor="white",
         bbox_inches="tight",
-        pad_inches=0.05,
+        pad_inches=0.02,
     )
     plt.close(fig)
 

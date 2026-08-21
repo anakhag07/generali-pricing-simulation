@@ -73,7 +73,9 @@ FEATURE_SPECS = (
         key="customer_age",
         column="X_age",
         label="Customer Age",
-        grid=np.arange(23.0, 87.0, 1.0),
+        # Include the supported adult lower tail; the only younger records are
+        # two implausible observations at ages 9 and 15.
+        grid=np.arange(18.0, 87.0, 1.0),
     ),
 )
 
@@ -220,6 +222,19 @@ def _validate_collected(frame: pd.DataFrame, *, fixed_u: float) -> None:
     observed = set(zip(frame["feature"], frame["target"], strict=True))
     if observed != expected:
         raise ValueError("Collected feature-effect CSV has unexpected feature/target pairs")
+    for spec in FEATURE_SPECS:
+        for target in ("acceptance", "claims"):
+            values = np.sort(
+                frame.loc[
+                    frame["feature"].eq(spec.key) & frame["target"].eq(target),
+                    "feature_value",
+                ].to_numpy(dtype=float)
+            )
+            if not np.array_equal(values, spec.grid):
+                raise ValueError(
+                    f"Collected CSV grid differs for {spec.key}/{target}; "
+                    "rerun with --recompute"
+                )
     acceptance_u = frame.loc[frame["target"].eq("acceptance"), "fixed_u"]
     if not np.allclose(acceptance_u, fixed_u):
         raise ValueError("Collected CSV fixed_u differs; rerun with --recompute")

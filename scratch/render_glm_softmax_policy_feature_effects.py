@@ -1,4 +1,4 @@
-"""Render all-customer feature effects for a saved GLM softmax policy.
+"""Render cohort-level feature effects for a saved GLM softmax policy.
 
 For each selected raw customer feature, this task fixes that feature to every
 value on the configured grid while retaining every other customer covariate.
@@ -51,6 +51,7 @@ DEFAULT_ANALYSIS_DIR = (
     / "policy-feature-analysis"
     / "glm-softmax-first-order-20260706_124627"
 )
+TEAL_70_BLACK = "#005959"
 
 
 @dataclass(frozen=True)
@@ -103,6 +104,18 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="PDF destination; defaults to ANALYSIS_DIR/plots.",
     )
     parser.add_argument("--chunk-size", type=int, default=100_000)
+    parser.add_argument(
+        "--splits",
+        nargs="+",
+        choices=("train", "test", "all"),
+        default=("all",),
+        help="Saved customer cohorts over which to calculate pointwise mean and SD.",
+    )
+    parser.add_argument(
+        "--color",
+        default=None,
+        help="Optional Matplotlib color applied to curves and figure text.",
+    )
     parser.add_argument(
         "--recompute",
         action="store_true",
@@ -219,13 +232,14 @@ def _empty_stats() -> dict[str, dict[str, np.ndarray]]:
     }
 
 
-def _collect_effects(
+def _collect_split_effects(
     artifact: PolicyArtifact,
     objective: object,
     *,
+    split: str,
     chunk_size: int,
 ) -> pd.DataFrame:
-    base_frame = artifact.load_x("all")
+    base_frame = artifact.load_x(split)
     slopes = _verified_raw_slopes(objective, artifact.theta, base_frame)
     stats = _empty_stats()
     base_u_sum = 0.0
@@ -251,13 +265,36 @@ def _collect_effects(
                     np.sum(policy_u * policy_u, dtype=float)
                 )
         print(
-            f"chunk {chunk_index}/{n_chunks} complete ({stop - start:,} customers)",
+            f"{split} chunk {chunk_index}/{n_chunks} complete "
+            f"({stop - start:,} customers)",
             flush=True,
         )
 
     n_customers = len(base_frame)
     replayed_mean_u = base_u_sum / n_customers
-    saved_mean_u = float(artifact.train_metrics.mean_u)
+    saved_metrics = (
+        artifact.train_metrics if split == "train" else artifact.test_metrics
+    )
+    if split == "all":
+        train_size = artifact.row_indices("train").size
+        try:
+            test_size = artifact.row_indices("test").size
+        except ValueError:
+            test_size = 0
+        if test_size == 0:
+            saved_mean_u = float(artifact.train_metrics.mean_u)
+        else:
+            saved_mean_u = float(
+                (
+                    train_size * artifact.train_metrics.mean_u
+                    + test_size * artifact.test_metrics.mean_u
+                )
+                / (train_size + test_size)
+            )
+    elif saved_metrics is None:
+        raise ValueError(f"Saved artifact has no metrics for split {split!r}")
+    else:
+        saved_mean_u = float(saved_metrics.mean_u)
     if not np.isclose(replayed_mean_u, saved_mean_u, rtol=1e-9, atol=1e-9):
         raise ValueError(
             "Replayed policy mean does not match the saved metric: "
@@ -281,6 +318,7 @@ def _collect_effects(
                 {
                     "estimator": artifact.estimator,
                     "policy_type": artifact.policy_head.type,
+                    "split": split,
                     "feature": spec.key,
                     "feature_column": spec.column,
                     "feature_label": spec.label,
@@ -297,10 +335,37 @@ def _collect_effects(
     return pd.DataFrame(rows)
 
 
-def _validate_collected(frame: pd.DataFrame) -> None:
+def _collect_effects(
+    artifact: PolicyArtifact,
+    objective: object,
+    *,
+    splits: Sequence[str],
+    chunk_size: int,
+) -> pd.DataFrame:
+    return pd.concat(
+        [
+            _collect_split_effects(
+                artifact,
+                objective,
+                split=split,
+                chunk_size=chunk_size,
+            )
+            for split in splits
+        ],
+        ignore_index=True,
+    )
+
+
+def _validate_collected(
+    frame: pd.DataFrame,
+    *,
+    artifact: PolicyArtifact,
+    splits: Sequence[str],
+) -> None:
     required = {
         "estimator",
         "policy_type",
+        "split",
         "feature",
         "feature_value",
         "n_customers",
@@ -318,14 +383,21 @@ def _validate_collected(frame: pd.DataFrame) -> None:
         raise ValueError("Collected policy-effect CSV is not for first_order")
     if set(frame["policy_type"]) != {"SoftmaxPolicy"}:
         raise ValueError("Collected policy-effect CSV is not for SoftmaxPolicy")
-    if set(frame["n_customers"]) != {715_023}:
-        raise ValueError("Collected policy-effect CSV is not all-customer")
-    for spec in FEATURE_SPECS:
-        values = frame.loc[
-            frame["feature"].eq(spec.key), "feature_value"
-        ].to_numpy(dtype=float)
-        if not np.allclose(values, spec.grid):
-            raise ValueError(f"Collected grid differs for {spec.key}; rerun with --recompute")
+    if set(frame["split"]) != set(splits):
+        raise ValueError("Collected policy-effect CSV has different saved splits")
+    for split in splits:
+        selected_split = frame.loc[frame["split"].eq(split)]
+        expected_n = int(artifact.row_indices(split).size)
+        if set(selected_split["n_customers"]) != {expected_n}:
+            raise ValueError(f"Collected customer count differs for {split}")
+        for spec in FEATURE_SPECS:
+            values = selected_split.loc[
+                selected_split["feature"].eq(spec.key), "feature_value"
+            ].to_numpy(dtype=float)
+            if not np.allclose(values, spec.grid):
+                raise ValueError(
+                    f"Collected grid differs for {split}/{spec.key}; rerun with --recompute"
+                )
 
 
 def _plot_effect(
@@ -333,33 +405,82 @@ def _plot_effect(
     *,
     feature_label: str,
     output_path: Path,
+    color: str | None,
 ) -> None:
-    ordered = frame.sort_values("feature_value")
-    x = ordered["feature_value"].to_numpy(dtype=float)
-    mean = ordered["mean_proposed_price_change"].to_numpy(dtype=float) * 100.0
-    std = ordered["std_proposed_price_change"].to_numpy(dtype=float) * 100.0
-    action_low = float(ordered["action_low"].iloc[0]) * 100.0
-    action_high = float(ordered["action_high"].iloc[0]) * 100.0
-    lower = np.clip(mean - std, action_low, action_high)
-    upper = np.clip(mean + std, action_low, action_high)
-
     fig, ax = plt.subplots(figsize=(9, 5.6), constrained_layout=True)
-    color = plt.rcParams["axes.prop_cycle"].by_key()["color"][0]
-    ax.fill_between(x, lower, upper, color=color, alpha=0.20, linewidth=0)
-    ax.plot(x, mean, color=color, linewidth=3)
-    ax.set_xlim(float(x[0]), float(x[-1]))
-    ax.set_xlabel(feature_label, fontsize=12)
-    ax.set_ylabel("Proposed Price Change (%)", fontsize=12)
-    ax.set_title(f"Proposed Price Change by {feature_label}", fontsize=16)
+    resolved_color = color or plt.rcParams["axes.prop_cycle"].by_key()["color"][0]
+    text_kwargs = {"color": resolved_color} if color else {}
+    splits = frame["split"].drop_duplicates().tolist()
+    line_styles = {"train": "-", "test": "--", "all": "-"}
+    fill_alphas = {"train": 0.20, "test": 0.10, "all": 0.20}
+    x_min = np.inf
+    x_max = -np.inf
+    for split in splits:
+        ordered = frame.loc[frame["split"].eq(split)].sort_values("feature_value")
+        x = ordered["feature_value"].to_numpy(dtype=float)
+        mean = ordered["mean_proposed_price_change"].to_numpy(dtype=float) * 100.0
+        std = ordered["std_proposed_price_change"].to_numpy(dtype=float) * 100.0
+        action_low = float(ordered["action_low"].iloc[0]) * 100.0
+        action_high = float(ordered["action_high"].iloc[0]) * 100.0
+        lower = np.clip(mean - std, action_low, action_high)
+        upper = np.clip(mean + std, action_low, action_high)
+        ax.fill_between(
+            x,
+            lower,
+            upper,
+            color=resolved_color,
+            alpha=fill_alphas[split],
+            linewidth=0,
+        )
+        ax.plot(
+            x,
+            mean,
+            color=resolved_color,
+            linestyle=line_styles[split],
+            linewidth=3,
+            label=split.title(),
+        )
+        x_min = min(x_min, float(x[0]))
+        x_max = max(x_max, float(x[-1]))
+    ax.set_xlim(x_min, x_max)
+    ax.set_xlabel(feature_label, fontsize=12, **text_kwargs)
+    ax.set_ylabel(
+        "Proposed Price Change (%)",
+        fontsize=12,
+        **text_kwargs,
+    )
+    ax.set_title(
+        f"Proposed Price Change by {feature_label}",
+        fontsize=16,
+        **text_kwargs,
+    )
     ax.yaxis.set_major_formatter(PercentFormatter(xmax=100.0, decimals=0))
-    ax.tick_params(labelsize=10)
-    ax.grid(alpha=0.25)
+    if color:
+        ax.tick_params(labelsize=10, colors=resolved_color)
+        ax.grid(color=resolved_color, alpha=0.25)
+    else:
+        ax.tick_params(labelsize=10)
+        ax.grid(alpha=0.25)
+    if color:
+        for spine in ax.spines.values():
+            spine.set_color(resolved_color)
+    if len(splits) > 1:
+        legend = ax.legend(fontsize=10)
+        if color:
+            legend.get_frame().set_edgecolor(resolved_color)
+            for text in legend.get_texts():
+                text.set_color(resolved_color)
     ax.margins(y=0.12)
     fig.savefig(output_path, format=output_path.suffix.removeprefix("."))
     plt.close(fig)
 
 
-def _render_effects(frame: pd.DataFrame, output_dir: Path) -> list[Path]:
+def _render_effects(
+    frame: pd.DataFrame,
+    output_dir: Path,
+    *,
+    color: str | None,
+) -> list[Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
     written: list[Path] = []
     for spec in FEATURE_SPECS:
@@ -369,6 +490,7 @@ def _render_effects(frame: pd.DataFrame, output_dir: Path) -> list[Path]:
             selected,
             feature_label=spec.label,
             output_path=output_path,
+            color=color,
         )
         written.append(output_path)
     return written
@@ -392,6 +514,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         collected = _collect_effects(
             artifact,
             objective,
+            splits=args.splits,
             chunk_size=args.chunk_size,
         )
         collected.to_csv(collected_path, index=False)
@@ -404,10 +527,16 @@ def main(argv: Sequence[str] | None = None) -> None:
                 artifact.policy_head.action_high,
             ],
             "n_customers": int(artifact.data_binding.selected_row_indices.size),
+            "splits": list(args.splits),
+            "split_n_customers": {
+                split: int(artifact.row_indices(split).size) for split in args.splits
+            },
+            "color": args.color,
             "construction": (
-                "For each grid value, replace that raw feature for every customer, "
-                "retain all other covariates, replay the saved policy, and compute "
-                "the pointwise population mean and population standard deviation."
+                "Within each saved split, replace that raw feature at each grid value "
+                "for every customer, retain all other covariates, replay the same "
+                "train-fitted policy, and compute the pointwise population mean and "
+                "population standard deviation."
             ),
             "std_ddof": 0,
             "features": {
@@ -428,10 +557,12 @@ def main(argv: Sequence[str] | None = None) -> None:
         print(f"Wrote {len(collected)} rows to {collected_path}")
     else:
         collected = pd.read_csv(collected_path)
+        if "split" not in collected and tuple(args.splits) == ("all",):
+            collected = collected.assign(split="all")
         print(f"Reusing {collected_path}")
 
-    _validate_collected(collected)
-    written = _render_effects(collected, output_dir)
+    _validate_collected(collected, artifact=artifact, splits=args.splits)
+    written = _render_effects(collected, output_dir, color=args.color)
     print(f"Wrote {len(written)} PDFs to {output_dir}")
     for path in written:
         print(path.name)

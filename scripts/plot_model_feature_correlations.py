@@ -113,7 +113,7 @@ def _display_label(column: str) -> str:
     aliases = {
         "historical_u": "Historical u",
         "observed_acceptance": "Observed acceptance",
-        "observed_loss": "Observed loss",
+        "observed_loss": "Observed claims",
     }
     return aliases.get(column, column.removeprefix("X_").replace("_", " ").title())
 
@@ -140,6 +140,7 @@ def _plot_correlation_matrix(
     colorbar = fig.colorbar(image, ax=ax, fraction=0.046, pad=0.04)
     colorbar.set_label("Spearman correlation")
     fig.tight_layout()
+    fig.savefig(output_path.with_suffix(".pdf"), format="pdf")
     fig.savefig(output_path, dpi=180, bbox_inches="tight")
     plt.close(fig)
 
@@ -208,9 +209,10 @@ def render_correlations(
         columns = [*numeric, *outcome_columns]
         correlation = frame[columns].corr(method="spearman")
         correlation.to_csv(analysis_dir / f"{target}_top_feature_spearman.csv")
+        display_target = "claims" if target == "loss" else target
         _plot_correlation_matrix(
             correlation,
-            title=f"Top {target} features: customer-level Spearman correlations",
+            title=f"Top {display_target} features: customer-level Spearman correlations",
             output_path=analysis_dir / f"{target}_top_feature_spearman.png",
         )
         selected[target] = numeric

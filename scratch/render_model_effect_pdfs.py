@@ -1,4 +1,4 @@
-"""Regenerate the nine saved model-effect figures as vector PDFs.
+"""Regenerate saved model-effect figures as vector PDFs.
 
 The task reads the collected acceptance-by-price and bonus-malus partial-
 dependence CSVs.  It does not rerun model inference.  By default it targets the
@@ -119,6 +119,52 @@ def _plot_curve(
     plt.close(fig)
 
 
+def _plot_xgb_mean_std(
+    frame: pd.DataFrame,
+    *,
+    pdf_path: Path,
+    png_path: Path,
+) -> None:
+    """Plot pointwise XGBoost mean acceptance and customer-level variation."""
+    ordered = frame.sort_values("u")
+    u = ordered["u"].to_numpy(dtype=float)
+    mean = ordered["mean"].to_numpy(dtype=float)
+    std = ordered["std"].to_numpy(dtype=float)
+    lower = np.clip(mean - std, 0.0, 1.0)
+    upper = np.clip(mean + std, 0.0, 1.0)
+
+    fig, ax = plt.subplots(figsize=(9, 5.6), constrained_layout=True)
+    ax.fill_between(
+        u,
+        lower,
+        upper,
+        color=MODEL_COLORS["xgb"],
+        alpha=0.20,
+        linewidth=0,
+        label="Mean ± 1 SD across customers",
+    )
+    ax.plot(
+        u,
+        mean,
+        color=MODEL_COLORS["xgb"],
+        linewidth=3,
+        label="Mean acceptance",
+    )
+    ax.set_xlim(float(u[0]), float(u[-1]))
+    ax.set_xlabel("Proposed Price Change", fontsize=12)
+    ax.set_ylabel("Acceptance Probability", fontsize=12)
+    ax.set_title(
+        "XGBoost Acceptance by Price Change Across Customers",
+        fontsize=16,
+    )
+    ax.tick_params(labelsize=10)
+    ax.grid(alpha=0.25)
+    ax.legend(fontsize=10)
+    fig.savefig(pdf_path, format="pdf")
+    fig.savefig(png_path, format="png", dpi=180)
+    plt.close(fig)
+
+
 def render_model_effect_pdfs(analysis_dir: Path, output_dir: Path) -> list[Path]:
     """Render price and bonus-malus effect PDFs from one collected sweep."""
     analysis_dir = analysis_dir.expanduser().resolve()
@@ -127,7 +173,7 @@ def render_model_effect_pdfs(analysis_dir: Path, output_dir: Path) -> list[Path]
 
     acceptance_by_u = _read_csv(
         analysis_dir / "acceptance_by_u.csv",
-        {"model", "u", "mean"},
+        {"model", "u", "mean", "std"},
     )
     bonus_malus = {
         "glm": _read_csv(
@@ -201,6 +247,15 @@ def render_model_effect_pdfs(analysis_dir: Path, output_dir: Path) -> list[Path]
             add_y_margin=True,
         )
         written.append(loss_output)
+
+    xgb_curve = acceptance_by_u.loc[acceptance_by_u["model"].eq("xgb")]
+    xgb_band_output = output_dir / "xgb_acceptance_mean_std.pdf"
+    _plot_xgb_mean_std(
+        xgb_curve,
+        pdf_path=xgb_band_output,
+        png_path=output_dir / "xgb_acceptance_mean_std.png",
+    )
+    written.append(xgb_band_output)
 
     return written
 

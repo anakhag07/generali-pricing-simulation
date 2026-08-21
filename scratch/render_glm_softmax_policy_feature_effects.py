@@ -114,7 +114,7 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--color",
         default=None,
-        help="Optional Matplotlib color applied to curves and figure text.",
+        help="Optional Matplotlib color applied only to mean curves and SD bands.",
     )
     parser.add_argument(
         "--recompute",
@@ -409,7 +409,6 @@ def _plot_effect(
 ) -> None:
     fig, ax = plt.subplots(figsize=(9, 5.6), constrained_layout=True)
     resolved_color = color or plt.rcParams["axes.prop_cycle"].by_key()["color"][0]
-    text_kwargs = {"color": resolved_color} if color else {}
     splits = frame["split"].drop_duplicates().tolist()
     line_styles = {"train": "-", "test": "--", "all": "-"}
     fill_alphas = {"train": 0.20, "test": 0.10, "all": 0.20}
@@ -442,27 +441,18 @@ def _plot_effect(
         x_min = min(x_min, float(x[0]))
         x_max = max(x_max, float(x[-1]))
     ax.set_xlim(x_min, x_max)
-    ax.set_xlabel(feature_label, fontsize=12, **text_kwargs)
+    ax.set_xlabel(feature_label, fontsize=12)
     ax.set_ylabel(
         "Proposed Price Change (%)",
         fontsize=12,
-        **text_kwargs,
     )
     ax.set_title(
         f"Proposed Price Change by {feature_label}",
         fontsize=16,
-        **text_kwargs,
     )
     ax.yaxis.set_major_formatter(PercentFormatter(xmax=100.0, decimals=0))
-    if color:
-        ax.tick_params(labelsize=10, colors=resolved_color)
-        ax.grid(color=resolved_color, alpha=0.25)
-    else:
-        ax.tick_params(labelsize=10)
-        ax.grid(alpha=0.25)
-    if color:
-        for spine in ax.spines.values():
-            spine.set_color(resolved_color)
+    ax.tick_params(labelsize=10)
+    ax.grid(alpha=0.25)
     ax.margins(y=0.12)
     fig.savefig(output_path, format=output_path.suffix.removeprefix("."))
     plt.close(fig)

@@ -438,7 +438,6 @@ def _plot_effect(
             color=resolved_color,
             linestyle=line_styles[split],
             linewidth=3,
-            label=split.title(),
         )
         x_min = min(x_min, float(x[0]))
         x_max = max(x_max, float(x[-1]))
@@ -464,12 +463,6 @@ def _plot_effect(
     if color:
         for spine in ax.spines.values():
             spine.set_color(resolved_color)
-    if len(splits) > 1:
-        legend = ax.legend(fontsize=10)
-        if color:
-            legend.get_frame().set_edgecolor(resolved_color)
-            for text in legend.get_texts():
-                text.set_color(resolved_color)
     ax.margins(y=0.12)
     fig.savefig(output_path, format=output_path.suffix.removeprefix("."))
     plt.close(fig)

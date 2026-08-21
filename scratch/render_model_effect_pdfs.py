@@ -229,12 +229,11 @@ def _plot_smoothed_xgb_mean_std(
     ax.set_xlabel("Proposed Price Change", fontsize=12)
     ax.set_ylabel("Acceptance Probability", fontsize=12)
     ax.set_title(
-        "Smoothed XGBoost Acceptance by Price Change Across Customers",
+        "Predicted Effect of Price Change on Acceptance Probability",
         fontsize=16,
     )
     ax.tick_params(labelsize=10)
     ax.grid(alpha=0.25)
-    ax.legend(fontsize=10)
     fig.savefig(pdf_path, format="pdf")
     fig.savefig(png_path, format="png", dpi=180)
     plt.close(fig)

@@ -83,7 +83,8 @@ def main(argv: list[str] | None = None) -> None:
 
     theta0 = np.asarray([2.4, -2.0])
     radius = 0.20
-    n_steps = 14
+    # Match the project-wide ExperimentConfig default maximum step count.
+    n_steps = 100
     rng = np.random.default_rng(args.seed)
 
     trajectories = {
@@ -106,17 +107,17 @@ def main(argv: list[str] | None = None) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     plot_specs = {
         "full_gd": (
-            "full_batch_gradient_ascent.png",
+            "full_batch_gradient_ascent.pdf",
             "Full-batch Gradient Ascent",
             {"color": "C0", "marker": "o", "linestyle": "-"},
         ),
         "stein_difference_zo": (
-            "zeroth_order_stein_difference.png",
+            "zeroth_order_stein_difference.pdf",
             "Zeroth Order Method (Stein Difference)",
             {"color": "C1", "marker": "^", "linestyle": "-"},
         ),
         "finite_difference_zo": (
-            "zeroth_order_finite_difference.png",
+            "zeroth_order_finite_difference.pdf",
             "Zeroth Order Method (Finite Difference)",
             {"color": "C2", "marker": "s", "linestyle": "--"},
         ),
@@ -124,6 +125,24 @@ def main(argv: list[str] | None = None) -> None:
     for name, (filename, label, style) in plot_specs.items():
         plot_trajectory(output_dir / filename, trajectories[name], label, style)
         print(f"Wrote: {output_dir / filename}")
+
+    overlay_path = output_dir / "first_order_vs_stein_difference.pdf"
+    plot_overlay(
+        overlay_path,
+        (
+            (
+                trajectories["full_gd"],
+                "First Order (Full-batch Gradient Ascent)",
+                {"color": "C0", "marker": "o", "linestyle": "-"},
+            ),
+            (
+                trajectories["stein_difference_zo"],
+                "Zeroth Order (Stein Difference)",
+                {"color": "C1", "marker": "^", "linestyle": "-"},
+            ),
+        ),
+    )
+    print(f"Wrote: {overlay_path}")
 
 
 def plot_trajectory(
@@ -169,14 +188,66 @@ def plot_trajectory(
         depthshade=False,
         zorder=20,
     )
-    ax.set_xlabel("x")
-    ax.set_ylabel("y")
-    ax.set_zlabel("f(x, y)")
-    ax.set_title(label)
+    ax.set_xlabel(r"Decision Parameter $\theta_1$")
+    ax.set_ylabel(r"Decision Parameter $\theta_2$")
+    ax.set_title("Objective Landscape: Expected Profit")
     ax.view_init(elev=28, azim=-55)
     ax.legend()
     fig.tight_layout()
     fig.savefig(path, dpi=180)
+    fig.savefig(path.with_suffix(".png"), dpi=180)
+    plt.close(fig)
+
+
+def plot_overlay(
+    path: Path,
+    series: tuple[tuple[np.ndarray, str, dict[str, str]], ...],
+) -> None:
+    """Overlay multiple optimization trajectories on the flipped quadratic."""
+    grid = np.linspace(-3.0, 3.0, 151)
+    x_grid, y_grid = np.meshgrid(grid, grid)
+    z_grid = -(x_grid**2 + y_grid**2)
+
+    fig = plt.figure(figsize=(9, 7))
+    ax = fig.add_subplot(111, projection="3d", computed_zorder=False)
+    ax.plot_surface(x_grid, y_grid, z_grid, cmap="viridis", alpha=0.90, linewidth=0, zorder=1)
+
+    for iterates, label, style in series:
+        heights = -(iterates[:, 0] ** 2 + iterates[:, 1] ** 2) + 0.15
+        ax.plot(
+            iterates[:, 0],
+            iterates[:, 1],
+            heights,
+            label=label,
+            markersize=6,
+            markeredgecolor="white",
+            markeredgewidth=0.6,
+            linewidth=2.5,
+            zorder=10,
+            **style,
+        )
+
+    ax.scatter(
+        [0.0],
+        [0.0],
+        [0.40],
+        color="black",
+        edgecolor="white",
+        linewidth=1.2,
+        marker="*",
+        s=220,
+        label="Maximum",
+        depthshade=False,
+        zorder=20,
+    )
+    ax.set_xlabel(r"Decision Parameter $\theta_1$")
+    ax.set_ylabel(r"Decision Parameter $\theta_2$")
+    ax.set_title("Objective Landscape: Expected Profit")
+    ax.view_init(elev=28, azim=-55)
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(path)
+    fig.savefig(path.with_suffix(".png"), dpi=180)
     plt.close(fig)
 
 

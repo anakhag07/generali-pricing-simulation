@@ -78,7 +78,7 @@ def plot_frontier(output_dir: Path) -> None:
     colorbar = fig.colorbar(scalar_mappable, ax=ax)
     colorbar.set_label("Acceptance Floor", fontsize=12)
     ax.set_xlabel("Mean Acceptance", fontsize=12)
-    ax.set_ylabel("Objective Value", fontsize=12)
+    ax.set_ylabel("Expected Profit per Customer", fontsize=12)
     ax.tick_params(labelsize=10)
     colorbar.ax.tick_params(labelsize=10)
     ax.grid(True, alpha=0.3)

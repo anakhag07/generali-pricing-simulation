@@ -1,0 +1,26 @@
+{
+  "_run_name": "glm-softmax-80-20-first-order-unconstrained",
+  "compute_backend": "jax",
+  "constraint_mode": "none",
+  "acceptance_floor": null,
+  "enabled_estimators": [
+    "first_order"
+  ],
+  "feature_order": "linear",
+  "initial_constr_penalty": 1.0,
+  "initial_u": 0.0,
+  "n_grad_samples": 8,
+  "n_samples": null,
+  "policy_kind": "softmax",
+  "policy_preprocessing": "no_pca",
+  "softmax_action_bounds": [
+    -0.1,
+    0.2
+  ],
+  "step_rule": "trust-constr",
+  "t_steps": 100,
+  "test_fraction": 0.2,
+  "train_fraction": 0.8,
+  "wandb_enabled": false,
+  "wandb_project": "real-data-glm-80-20-first-order-unconstrained"
+}

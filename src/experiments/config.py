@@ -377,8 +377,6 @@ class ExperimentConfig:
             )
         elif self.lagrangian_lambda is not None:
             raise ValueError("lagrangian_lambda requires acceptance_floor to be provided.")
-        elif self.step_rule == STEP_RULE_TRUST_CONSTR:
-            raise ValueError("step_rule='trust-constr' requires acceptance_floor to be provided.")
         if self.n_grad_samples <= 0:
             raise ValueError("n_grad_samples must be positive.")
 

@@ -392,7 +392,8 @@ class Optimization:
                 "options": options,
             }
             if self.algorithm == STEP_RULE_TRUST_CONSTR:
-                minimize_kwargs["constraints"] = [trust_constr_constraint()]
+                if acceptance_floor() is not None:
+                    minimize_kwargs["constraints"] = [trust_constr_constraint()]
                 minimize_kwargs["callback"] = trust_constr_callback
             else:
                 minimize_kwargs["callback"] = record

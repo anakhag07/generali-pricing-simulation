@@ -42,7 +42,22 @@ $$\varphi_{\text{cubic}}(x) = [x_1,\; \dots,\; x_d,\; x_i x_j x_k\; \text{for}\;
 
 $$\varphi_{\text{quartic}}(x) = [x_1,\; \dots,\; x_d,\; x_i x_j x_k x_l\; \text{for}\; 1 \le i \le j \le k \le l \le d]$$
 
-- **Source:** `src/objective/policy.py` :: `FeatureMap`, `IdentityFeatureMap`,
+For a gradually nested, interaction-free capacity ladder, first define
+
+$$t_j(x)=\operatorname{clip}\!\left(\frac{x_j}{s},-1,1\right),\qquad
+T_0(t)=1,\quad T_1(t)=t,\quad T_k(t)=2tT_{k-1}(t)-T_{k-2}(t).$$
+
+The degree-$$D$$ additive Chebyshev map is ordered by degree,
+
+$$\varphi_{\mathrm{cheb},D}(x)=
+[T_1(t_1),\ldots,T_1(t_d),T_2(t_1),\ldots,T_D(t_d)],$$
+
+so it has $$dD$$ mapped features and the bounded policy has
+$$1+dD$$ parameters including its intercept. The capacity experiment uses
+$$s=3$$ after train-only standardization. It contains no feature interactions,
+and degree $$D$$ is an exact prefix of degree $$D+1$$.
+
+- **Source:** `src/objective/policy.py` :: `FeatureMap`, `AdditiveChebyshevFeatureMap`, `IdentityFeatureMap`,
   `QuadraticFeatureMap`, `CubicFeatureMap`, `QuarticFeatureMap`,
   `CallableFeatureMap`, `_phi(x_batch, feature_map)`
 - **Notes:** `IdentityFeatureMap` preserves the previous default behavior

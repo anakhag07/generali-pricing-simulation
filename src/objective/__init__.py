@@ -4,7 +4,7 @@ This module provides:
 - Base interfaces: Objective, Policy
 - Sampling: sample_states, default_rng
 - Concrete policies: ConstantPolicy, LinearPolicy, SoftmaxPolicy, MLPPolicy
-- Policy feature maps: IdentityFeatureMap, QuadraticFeatureMap,
+- Policy feature maps: AdditiveChebyshevFeatureMap, IdentityFeatureMap, QuadraticFeatureMap,
   CubicFeatureMap, QuarticFeatureMap, CallableFeatureMap
 - Concrete objectives: FixedRegressionObjective, BiasedObjective,
   PlantedLogisticObjective, ModelBasedObjective, PreparedGLMObjective,
@@ -78,6 +78,7 @@ from objective.objectives import (
     prepare_glm_objective,
 )
 from objective.policy import (
+    AdditiveChebyshevFeatureMap,
     CallableFeatureMap,
     ConstantPolicy,
     CubicFeatureMap,
@@ -122,6 +123,7 @@ __all__ = [
     "default_rng",
     "sample_states",
     # Concrete policies
+    "AdditiveChebyshevFeatureMap",
     "CallableFeatureMap",
     "ConstantPolicy",
     "CubicFeatureMap",

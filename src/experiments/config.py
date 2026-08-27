@@ -629,6 +629,8 @@ def _policy_to_dict(policy: object) -> dict[str, Any]:
             "feature_dim": getattr(feature_map, "feature_dim", None),
             "include_interactions": getattr(feature_map, "include_interactions", None),
             "name": getattr(feature_map, "name", None),
+            "max_degree": getattr(feature_map, "max_degree", None),
+            "clip_scale": getattr(feature_map, "clip_scale", None),
         }
     if isinstance(policy, ConstantPolicy):
         return {"type": "ConstantPolicy"}

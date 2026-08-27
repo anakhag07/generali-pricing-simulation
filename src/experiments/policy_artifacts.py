@@ -24,6 +24,7 @@ from experiments.results import ExperimentResult, PolicyEvaluation
 from objective.noise import NoisyObjective
 from objective.objectives import ModelBasedObjective
 from objective.policy import (
+    AdditiveChebyshevFeatureMap,
     ConstantPolicy,
     CubicFeatureMap,
     FeatureMap,
@@ -51,6 +52,8 @@ class PolicyFeatureMapSpec:
     include_interactions: bool | None = None
     feature_dim: int | None = None
     name: str | None = None
+    max_degree: int | None = None
+    clip_scale: float | None = None
 
     @classmethod
     def from_policy(cls, policy: object) -> "PolicyFeatureMapSpec | None":
@@ -63,6 +66,8 @@ class PolicyFeatureMapSpec:
             include_interactions=getattr(feature_map, "include_interactions", None),
             feature_dim=getattr(feature_map, "feature_dim", None),
             name=getattr(feature_map, "name", None),
+            max_degree=getattr(feature_map, "max_degree", None),
+            clip_scale=getattr(feature_map, "clip_scale", None),
         )
 
     @classmethod
@@ -75,6 +80,8 @@ class PolicyFeatureMapSpec:
             include_interactions=_optional_bool(payload.get("include_interactions")),
             feature_dim=_optional_int(payload.get("feature_dim")),
             name=_optional_str(payload.get("name")),
+            max_degree=_optional_int(payload.get("max_degree")),
+            clip_scale=_optional_float(payload.get("clip_scale")),
         )
 
     def to_dict(self) -> dict[str, object]:
@@ -84,11 +91,18 @@ class PolicyFeatureMapSpec:
             "include_interactions": self.include_interactions,
             "feature_dim": self.feature_dim,
             "name": self.name,
+            "max_degree": self.max_degree,
+            "clip_scale": self.clip_scale,
         }
 
     def build(self) -> FeatureMap:
         if self.type == "IdentityFeatureMap":
             return IdentityFeatureMap()
+        if self.type == "AdditiveChebyshevFeatureMap":
+            return AdditiveChebyshevFeatureMap(
+                max_degree=int(self.max_degree or 0),
+                clip_scale=float(self.clip_scale or 3.0),
+            )
         if self.type == "QuadraticFeatureMap":
             return QuadraticFeatureMap(include_interactions=self.include_interactions is not False)
         if self.type == "CubicFeatureMap":

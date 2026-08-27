@@ -130,6 +130,53 @@ class IdentityFeatureMap(FeatureMap):
 
 
 @dataclass(frozen=True)
+class AdditiveChebyshevFeatureMap(FeatureMap):
+    r"""Nested additive Chebyshev map with no cross-feature interactions.
+
+    Inputs are scaled as ``clip(x / clip_scale, -1, 1)``.  Terms are emitted
+    degree-major, so the degree-``d`` map is an exact prefix of degree
+    ``d + 1`` and adds exactly one parameter per input feature.
+    """
+
+    max_degree: int
+    clip_scale: float = 3.0
+    kind: str = "additive_chebyshev"
+
+    def __post_init__(self) -> None:
+        degree = int(self.max_degree)
+        scale = float(self.clip_scale)
+        if degree < 0:
+            raise ValueError("max_degree must be non-negative.")
+        if not np.isfinite(scale) or scale <= 0.0:
+            raise ValueError("clip_scale must be finite and positive.")
+        object.__setattr__(self, "max_degree", degree)
+        object.__setattr__(self, "clip_scale", scale)
+
+    def transform(self, x_batch: np.ndarray) -> np.ndarray:
+        """Return ``[T_1(t), ..., T_d(t)]`` in degree-major order."""
+        x_arr = _as_2d_float_array(x_batch)
+        if not np.isfinite(x_arr).all():
+            raise ValueError("x_batch must contain finite values.")
+        n_samples, state_dim = x_arr.shape
+        if self.max_degree == 0:
+            return np.empty((n_samples, 0), dtype=float)
+
+        scaled = np.clip(x_arr / self.clip_scale, -1.0, 1.0)
+        terms = [scaled]
+        previous_previous = np.ones_like(scaled)
+        previous = scaled
+        for _degree in range(2, self.max_degree + 1):
+            current = 2.0 * scaled * previous - previous_previous
+            terms.append(current)
+            previous_previous, previous = previous, current
+        return np.concatenate(terms, axis=1).astype(float)
+
+    def output_dim(self, state_dim: int) -> int:
+        """Return ``state_dim * max_degree`` excluding the intercept."""
+        return _validate_state_dim(state_dim) * self.max_degree
+
+
+@dataclass(frozen=True)
 class QuadraticFeatureMap(FeatureMap):
     """Quadratic map with linear terms and upper-triangular pair products."""
 

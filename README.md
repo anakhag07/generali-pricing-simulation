@@ -98,7 +98,9 @@ leading `1`. The default `IdentityFeatureMap` gives the previous behavior
 `phi(x) = [1, x]`; `QuadraticFeatureMap` expands the state with linear,
 square, and pairwise interaction terms. `CubicFeatureMap` and
 `QuarticFeatureMap` follow the same pattern with linear terms plus exact
-degree-3 or degree-4 monomials.
+degree monomials. `AdditiveChebyshevFeatureMap` provides a nested,
+interaction-free capacity ladder: each added degree contributes one bounded
+Chebyshev term per state feature after configurable clipping/scaling.
 
 Policy replay separates input preprocessing from policy feature mapping:
 

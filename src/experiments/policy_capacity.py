@@ -32,12 +32,18 @@ from data.monotone_spline_xgb import (
 )
 from experiments.config import CorrectnessSpec, ExperimentConfig, make_model_based_objective
 from experiments.launch import LaunchContext, LaunchPlan
-from experiments.policy_validation import evaluate_policy
+from experiments.policy_validation import evaluate_policy, policy_u_values
 from experiments.run import run_experiment
 from experiments.slurm import SlurmProfile
-from objective.policy import AdditiveChebyshevFeatureMap, SoftmaxPolicy
+from objective.policy import (
+    AdditiveChebyshevFeatureMap,
+    FeatureMap,
+    SoftmaxPolicy,
+    TotalDegreePolynomialFeatureMap,
+)
 from objective.policy_preprocessing import PolicyFeaturePreprocessor
 from reporting.visualization import (
+    plot_policy_capacity_action_diagnostics,
     plot_policy_capacity_baseline_adjusted_gains,
     plot_policy_capacity_endpoint_slices,
     plot_policy_capacity_generalization_gap,
@@ -49,6 +55,7 @@ from reporting.visualization import (
 POLICY_CAPACITY_MANIFEST_KIND = "policy_capacity"
 POLICY_INPUT_PREFIX = "__policy_input_"
 MODEL_FAMILIES = ("glm", "xgb")
+POLICY_CAPACITY_BASES = ("additive_chebyshev", "total_degree_polynomial")
 
 
 @dataclass(frozen=True)
@@ -70,9 +77,10 @@ class PolicyCapacityManifest:
     name: str
     models: tuple[str, ...]
     degrees: tuple[int, ...]
+    basis: str
     action_bounds: tuple[float, float]
     initial_u: float
-    clip_scale: float
+    clip_scale: float | None
     acceptance_floor: float
     acceptance_penalty_weight: float
     acceptance_penalty_temperature: float
@@ -91,7 +99,12 @@ class PolicyCapacityManifest:
         return len(ACCEPTANCE_STATE_COLS)
 
     def parameter_count(self, degree: int) -> int:
-        return 1 + self.state_dim * int(degree)
+        resolved_degree = int(degree)
+        if self.basis == "additive_chebyshev":
+            return 1 + self.state_dim * resolved_degree
+        if self.basis == "total_degree_polynomial":
+            return math.comb(self.state_dim + resolved_degree, resolved_degree)
+        raise ValueError(f"Unsupported policy-capacity basis {self.basis!r}.")
 
 
 @dataclass(frozen=True)
@@ -141,15 +154,33 @@ def load_policy_capacity_manifest(path: str | Path) -> PolicyCapacityManifest:
     degrees = tuple(int(value) for value in _sequence(policy.get("degrees"), "policy.degrees"))
     if not degrees or any(value < 0 for value in degrees) or tuple(sorted(set(degrees))) != degrees:
         raise ValueError("policy.degrees must be unique, sorted, and non-negative.")
+    basis = str(policy.get("basis"))
+    if basis not in POLICY_CAPACITY_BASES:
+        raise ValueError(f"policy.basis must be one of {list(POLICY_CAPACITY_BASES)}.")
+    expected_interactions = basis == "total_degree_polynomial"
+    if policy.get("interactions") != expected_interactions:
+        raise ValueError(
+            f"policy.interactions must be {expected_interactions!r} for basis {basis!r}."
+        )
+    if policy.get("term_order") != "degree_major":
+        raise ValueError("policy.term_order must be 'degree_major'.")
     bounds = tuple(float(value) for value in _sequence(policy.get("action_bounds"), "policy.action_bounds"))
     if len(bounds) != 2 or not bounds[0] < bounds[1]:
         raise ValueError("policy.action_bounds must contain increasing lower/upper bounds.")
     initial_u = float(policy.get("initial_u"))
     if not bounds[0] < initial_u < bounds[1]:
         raise ValueError("policy.initial_u must lie strictly inside action_bounds.")
-    clip_scale = float(policy.get("clip_scale"))
-    if not np.isfinite(clip_scale) or clip_scale <= 0.0:
-        raise ValueError("policy.clip_scale must be finite and positive.")
+    clip_scale_payload = policy.get("clip_scale")
+    if basis == "additive_chebyshev":
+        clip_scale = float(clip_scale_payload)
+        if not np.isfinite(clip_scale) or clip_scale <= 0.0:
+            raise ValueError("policy.clip_scale must be finite and positive.")
+    else:
+        if clip_scale_payload is not None:
+            raise ValueError(
+                "policy.clip_scale must be omitted for an unclipped total-degree polynomial."
+            )
+        clip_scale = None
 
     split_seeds = tuple(int(value) for value in _sequence(seeds.get("split_seeds"), "seeds.split_seeds"))
     if not split_seeds or len(set(split_seeds)) != len(split_seeds):
@@ -207,6 +238,7 @@ def load_policy_capacity_manifest(path: str | Path) -> PolicyCapacityManifest:
         name=str(payload["name"]),
         models=models,
         degrees=degrees,
+        basis=basis,
         action_bounds=(bounds[0], bounds[1]),
         initial_u=initial_u,
         clip_scale=clip_scale,
@@ -342,10 +374,7 @@ def run_policy_capacity_task(
     degree = task.degree
     train_frame = _model_frame(train_raw, optimize_model, resources.policy_cols)
     policy = SoftmaxPolicy(
-        feature_map=AdditiveChebyshevFeatureMap(
-            max_degree=degree,
-            clip_scale=manifest.clip_scale,
-        ),
+        feature_map=_policy_capacity_feature_map(manifest, degree),
         action_low=manifest.action_bounds[0],
         action_high=manifest.action_bounds[1],
     )
@@ -409,6 +438,10 @@ def run_policy_capacity_task(
         eval_test = _model_frame(test_raw, evaluate_model, resources.policy_cols)
         train_metrics = evaluate_policy(evaluator, estimator.theta, eval_train)
         test_metrics = evaluate_policy(evaluator, estimator.theta, eval_test)
+        train_u = policy_u_values(evaluator, estimator.theta, eval_train)
+        test_u = policy_u_values(evaluator, estimator.theta, eval_test)
+        action_span = manifest.action_bounds[1] - manifest.action_bounds[0]
+        near_bound_tolerance = 0.01 * action_span
         rows.append(
             {
                 "split_seed": seed,
@@ -426,9 +459,39 @@ def run_policy_capacity_task(
                 "test_acceptance": test_metrics.mean_acceptance,
                 "train_mean_u": train_metrics.mean_u,
                 "test_mean_u": test_metrics.mean_u,
+                "train_u_std": float(np.std(train_u, ddof=0)),
+                "test_u_std": float(np.std(test_u, ddof=0)),
+                "train_lower_bound_fraction": float(
+                    np.mean(train_u <= manifest.action_bounds[0] + near_bound_tolerance)
+                ),
+                "train_upper_bound_fraction": float(
+                    np.mean(train_u >= manifest.action_bounds[1] - near_bound_tolerance)
+                ),
+                "test_lower_bound_fraction": float(
+                    np.mean(test_u <= manifest.action_bounds[0] + near_bound_tolerance)
+                ),
+                "test_upper_bound_fraction": float(
+                    np.mean(test_u >= manifest.action_bounds[1] - near_bound_tolerance)
+                ),
+                "train_near_bound_fraction": float(
+                    np.mean(
+                        (train_u <= manifest.action_bounds[0] + near_bound_tolerance)
+                        | (train_u >= manifest.action_bounds[1] - near_bound_tolerance)
+                    )
+                ),
+                "test_near_bound_fraction": float(
+                    np.mean(
+                        (test_u <= manifest.action_bounds[0] + near_bound_tolerance)
+                        | (test_u >= manifest.action_bounds[1] - near_bound_tolerance)
+                    )
+                ),
                 "train_acceptance_violation": max(
                     0.0,
                     manifest.acceptance_floor - float(train_metrics.mean_acceptance),
+                ),
+                "test_acceptance_violation": max(
+                    0.0,
+                    manifest.acceptance_floor - float(test_metrics.mean_acceptance),
                 ),
                 "optimizer_runtime_sec": estimator.time,
                 "optimizer_success": trace.optimizer_success,
@@ -489,6 +552,7 @@ def collect_policy_capacity_outputs(
     for family in manifest.models:
         plot_policy_capacity_objective(summary, context.sweep_dir, family=family)
         plot_policy_capacity_baseline_adjusted_gains(frame, context.sweep_dir, family=family)
+        plot_policy_capacity_action_diagnostics(frame, context.sweep_dir, family=family)
         plot_policy_capacity_generalization_gap(summary, context.sweep_dir, family=family)
         plot_policy_capacity_model_transfer(summary, context.sweep_dir, family=family)
         plot_policy_capacity_endpoint_slices(
@@ -519,6 +583,17 @@ def summarize_policy_capacity(frame: pd.DataFrame) -> pd.DataFrame:
         "train_acceptance_violation",
         "optimizer_runtime_sec",
     ]
+    metrics.extend(
+        metric
+        for metric in (
+            "train_u_std",
+            "test_u_std",
+            "train_near_bound_fraction",
+            "test_near_bound_fraction",
+            "test_acceptance_violation",
+        )
+        if metric in frame.columns
+    )
     records: list[dict[str, Any]] = []
     for group_values, group in frame.groupby(keys, sort=True):
         record = dict(zip(keys, group_values, strict=True))
@@ -646,6 +721,22 @@ def _build_objective(
     )
 
 
+def _policy_capacity_feature_map(
+    manifest: PolicyCapacityManifest,
+    degree: int,
+) -> FeatureMap:
+    if manifest.basis == "additive_chebyshev":
+        if manifest.clip_scale is None:
+            raise ValueError("Additive Chebyshev policies require clip_scale.")
+        return AdditiveChebyshevFeatureMap(
+            max_degree=degree,
+            clip_scale=manifest.clip_scale,
+        )
+    if manifest.basis == "total_degree_polynomial":
+        return TotalDegreePolynomialFeatureMap(max_degree=degree)
+    raise ValueError(f"Unsupported policy-capacity basis {manifest.basis!r}.")
+
+
 def _model_frame(frame: pd.DataFrame, family: str, policy_cols: Sequence[str]) -> pd.DataFrame:
     columns = list(ACCEPTANCE_STATE_COLS)
     if family == "xgb":
@@ -685,13 +776,7 @@ def _save_policy_state(
             "optimize_model": optimize_model,
             "degree": degree,
             "parameter_count": manifest.parameter_count(degree),
-            "feature_map": {
-                "type": "AdditiveChebyshevFeatureMap",
-                "max_degree": degree,
-                "clip_scale": manifest.clip_scale,
-                "ordering": "degree-major",
-                "interactions": False,
-            },
+            "feature_map": _policy_feature_map_metadata(manifest, degree),
             "policy": {
                 "type": "SoftmaxPolicy",
                 "action_bounds": list(manifest.action_bounds),
@@ -703,14 +788,42 @@ def _save_policy_state(
     return policy_dir / "policy.json"
 
 
+def _policy_feature_map_metadata(
+    manifest: PolicyCapacityManifest,
+    degree: int,
+) -> dict[str, Any]:
+    if manifest.basis == "additive_chebyshev":
+        if manifest.clip_scale is None:
+            raise ValueError("Additive Chebyshev policies require clip_scale.")
+        return {
+            "type": "AdditiveChebyshevFeatureMap",
+            "max_degree": degree,
+            "clip_scale": manifest.clip_scale,
+            "ordering": "degree-major",
+            "interactions": False,
+        }
+    if manifest.basis == "total_degree_polynomial":
+        return {
+            "type": "TotalDegreePolynomialFeatureMap",
+            "max_degree": degree,
+            "ordering": "degree-major",
+            "interactions": True,
+        }
+    raise ValueError(f"Unsupported policy-capacity basis {manifest.basis!r}.")
+
+
 def _endpoint_records(sweep_dir: Path, manifest: PolicyCapacityManifest) -> list[dict[str, Any]]:
     seed = manifest.split_seeds[0]
     records: list[dict[str, Any]] = []
-    selected_degrees = tuple(
-        dict.fromkeys(
-            value
-            for value in (0, 5, manifest.degrees[-1])
-            if value in manifest.degrees
+    selected_degrees = (
+        manifest.degrees
+        if len(manifest.degrees) <= 4
+        else tuple(
+            dict.fromkeys(
+                value
+                for value in (0, 5, manifest.degrees[-1])
+                if value in manifest.degrees
+            )
         )
     )
     for family in manifest.models:
@@ -731,6 +844,7 @@ def _endpoint_records(sweep_dir: Path, manifest: PolicyCapacityManifest) -> list
                         "degree": degree,
                         "theta": loaded["theta"].copy(),
                         "state_dim": manifest.state_dim,
+                        "basis": manifest.basis,
                         "clip_scale": manifest.clip_scale,
                         "action_low": manifest.action_bounds[0],
                         "action_high": manifest.action_bounds[1],
@@ -751,6 +865,7 @@ def _write_experiment_markdown(
     text = f"""# {model_label} policy-capacity sweep
 
 - Policy action bounds: `{manifest.action_bounds}`
+- Policy basis: `{manifest.basis}`
 - Degrees: `{list(manifest.degrees)}`
 - Parameter counts: `{[manifest.parameter_count(d) for d in manifest.degrees]}`
 - Split seeds: `{list(manifest.split_seeds)}`

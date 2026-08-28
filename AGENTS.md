@@ -254,6 +254,10 @@ split/training-model/degree fit and its two evaluator replays (360 tasks total),
 while the dependent collector owns cross-split confidence intervals and PDFs.
 The manifest also fixes the smaller per-task CPU/time/memory profile. Do not
 turn acceptance into a sweep axis for this experiment.
+The same runner also accepts `policy.basis: "total_degree_polynomial"` for the
+XGBoost interaction-capacity experiment; this basis uses unclipped monomials
+after train-only standardization and counts parameters as
+`comb(state_dim + degree, degree)`.
 
 Variant axes belong under `matrix` or `variants`. Scalar matrix entries override
 the same config key; labeled entries may provide nested `overrides`, which is

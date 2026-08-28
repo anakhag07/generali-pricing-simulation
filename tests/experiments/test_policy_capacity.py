@@ -15,6 +15,7 @@ from experiments.policy_capacity import (
 )
 from objective.policy import AdditiveChebyshevFeatureMap, SoftmaxPolicy
 from reporting.visualization import (
+    plot_policy_capacity_action_diagnostics,
     plot_policy_capacity_baseline_adjusted_gains,
     plot_policy_capacity_endpoint_slices,
     plot_policy_capacity_generalization_gap,
@@ -31,6 +32,11 @@ XGB_EXTENSION_MANIFEST = (
     Path(__file__).parents[2]
     / "manifests"
     / "policy_capacity_xgb_u_0_0p16_degree_32.json"
+)
+XGB_FULL_POLYNOMIAL_MANIFEST = (
+    Path(__file__).parents[2]
+    / "manifests"
+    / "policy_capacity_xgb_u_0_0p16_full_polynomial_degree_3.json"
 )
 
 
@@ -107,6 +113,28 @@ def test_xgb_extension_manifest_reaches_609_parameters_in_360_small_tasks() -> N
     )
 
 
+def test_xgb_full_polynomial_manifest_explodes_capacity_in_80_small_tasks() -> None:
+    manifest = load_policy_capacity_manifest(XGB_FULL_POLYNOMIAL_MANIFEST)
+
+    assert manifest.models == ("xgb",)
+    assert manifest.basis == "total_degree_polynomial"
+    assert manifest.degrees == (0, 1, 2, 3)
+    assert [manifest.parameter_count(degree) for degree in manifest.degrees] == [
+        1,
+        20,
+        210,
+        1540,
+    ]
+    tasks = policy_capacity_tasks(manifest)
+    assert len(tasks) == 80
+    assert (tasks[0].split_seed, tasks[0].optimize_model, tasks[0].degree) == (0, "xgb", 0)
+    assert (tasks[-1].split_seed, tasks[-1].optimize_model, tasks[-1].degree) == (
+        19,
+        "xgb",
+        3,
+    )
+
+
 def test_split_positions_are_deterministic_disjoint_and_balanced() -> None:
     manifest = load_policy_capacity_manifest(MANIFEST)
     train, test = split_positions(manifest, 7)
@@ -145,6 +173,11 @@ def test_summary_and_capacity_plots_use_parameter_count_not_acceptance(tmp_path)
                             "train_acceptance": 0.9,
                             "test_acceptance": 0.89,
                             "train_acceptance_violation": 0.0,
+                            "test_acceptance_violation": 0.0,
+                            "train_u_std": 0.02,
+                            "test_u_std": 0.021,
+                            "train_near_bound_fraction": 0.1,
+                            "test_near_bound_fraction": 0.11,
                             "optimizer_runtime_sec": 1.0,
                         }
                     )
@@ -158,6 +191,11 @@ def test_summary_and_capacity_plots_use_parameter_count_not_acceptance(tmp_path)
             [
                 plot_policy_capacity_objective(summary, tmp_path, family=family),
                 plot_policy_capacity_baseline_adjusted_gains(
+                    pd.DataFrame(rows),
+                    tmp_path,
+                    family=family,
+                ),
+                plot_policy_capacity_action_diagnostics(
                     pd.DataFrame(rows),
                     tmp_path,
                     family=family,

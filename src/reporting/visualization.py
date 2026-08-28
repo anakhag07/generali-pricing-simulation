@@ -2353,6 +2353,83 @@ def plot_policy_capacity_baseline_adjusted_gains(
     )
 
 
+def plot_policy_capacity_action_diagnostics(
+    records: object,
+    output_dir: str | Path,
+    *,
+    family: str,
+) -> Path:
+    """Plot action dispersion and near-bound rates across matched splits."""
+    frame = _capacity_frame(records)
+    subset = frame.loc[
+        (frame["optimize_model"] == family) & (frame["evaluate_model"] == family)
+    ].copy()
+    required = {
+        "train_u_std",
+        "test_u_std",
+        "train_near_bound_fraction",
+        "test_near_bound_fraction",
+    }
+    if subset.empty or not required.issubset(subset.columns):
+        raise ValueError(f"No action diagnostics found for model family {family!r}.")
+
+    rows = []
+    for (degree, parameter_count), group in subset.groupby(
+        ["degree", "parameter_count"],
+        sort=True,
+    ):
+        row = {"degree": int(degree), "parameter_count": int(parameter_count)}
+        for metric in sorted(required):
+            values = group[metric].to_numpy(dtype=float)
+            row[f"{metric}_mean"] = float(np.mean(values))
+            row[f"{metric}_ci95"] = (
+                float(
+                    student_t.ppf(0.975, values.size - 1)
+                    * np.std(values, ddof=1)
+                    / np.sqrt(values.size)
+                )
+                if values.size > 1
+                else 0.0
+            )
+        rows.append(row)
+    summary = _capacity_frame(rows).sort_values("parameter_count")
+
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.8), constrained_layout=True)
+    for split_name, label in (("train", "Train"), ("test", "Test")):
+        axes[0].errorbar(
+            summary["parameter_count"],
+            summary[f"{split_name}_u_std_mean"],
+            yerr=summary[f"{split_name}_u_std_ci95"],
+            marker="o",
+            capsize=3,
+            label=label,
+        )
+        axes[1].errorbar(
+            summary["parameter_count"],
+            summary[f"{split_name}_near_bound_fraction_mean"],
+            yerr=summary[f"{split_name}_near_bound_fraction_ci95"],
+            marker="o",
+            capsize=3,
+            label=label,
+        )
+    axes[0].set_title("Action dispersion", fontsize=14)
+    axes[0].set_xlabel("Policy parameter count", fontsize=12)
+    axes[0].set_ylabel("Standard deviation of action u", fontsize=12)
+    axes[1].set_title("Actions near either bound", fontsize=14)
+    axes[1].set_xlabel("Policy parameter count", fontsize=12)
+    axes[1].set_ylabel("Fraction within 1% of action range", fontsize=12)
+    for ax in axes:
+        ax.tick_params(labelsize=10)
+        ax.grid(True, alpha=0.3)
+        ax.legend(fontsize=10)
+    fig.suptitle(f"{family.upper()} policy action diagnostics", fontsize=16)
+    return _save_capacity_figure(
+        fig,
+        output_dir,
+        f"policy_capacity_action_diagnostics_{family}",
+    )
+
+
 def plot_policy_capacity_model_transfer(
     summary: object,
     output_dir: str | Path,
@@ -2424,10 +2501,7 @@ def plot_policy_capacity_endpoint_slices(
         inputs[:, 0] = x_one.ravel()
         inputs[:, 1] = x_two.ravel()
         policy = SoftmaxPolicy(
-            feature_map=_capacity_chebyshev_map(
-                degree,
-                float(record["clip_scale"]),
-            ),
+            feature_map=_capacity_feature_map(record),
             action_low=float(record["action_low"]),
             action_high=float(record["action_high"]),
         )
@@ -2457,10 +2531,19 @@ def plot_policy_capacity_endpoint_slices(
     return _save_capacity_figure(fig, output_dir, f"policy_capacity_endpoint_slices_{family}")
 
 
-def _capacity_chebyshev_map(degree: int, clip_scale: float) -> object:
-    from objective.policy import AdditiveChebyshevFeatureMap
+def _capacity_feature_map(record: Mapping[str, object]) -> object:
+    from objective.policy import AdditiveChebyshevFeatureMap, TotalDegreePolynomialFeatureMap
 
-    return AdditiveChebyshevFeatureMap(max_degree=degree, clip_scale=clip_scale)
+    degree = int(record["degree"])
+    basis = str(record.get("basis", "additive_chebyshev"))
+    if basis == "additive_chebyshev":
+        return AdditiveChebyshevFeatureMap(
+            max_degree=degree,
+            clip_scale=float(record["clip_scale"]),
+        )
+    if basis == "total_degree_polynomial":
+        return TotalDegreePolynomialFeatureMap(max_degree=degree)
+    raise ValueError(f"Unsupported policy-capacity basis {basis!r}.")
 
 
 def _capacity_frame(summary: object):

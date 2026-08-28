@@ -444,6 +444,21 @@ python scripts/run_experiment_manifest.py \
   manifests/policy_capacity_xgb_u_0_0p16_degree_32.json
 ```
 
+The full-polynomial interaction experiment instead sweeps nested total degrees
+0 through 3 over the same 19 train-standardized inputs. It includes every
+monomial interaction through the requested degree, giving
+`[1, 20, 210, 1540]` policy parameters. Unlike the additive Chebyshev ladder,
+these monomials are not clipped or rescaled after standardization:
+
+```bash
+python scripts/run_experiment_manifest.py \
+  manifests/policy_capacity_xgb_u_0_0p16_full_polynomial_degree_3.json
+```
+
+The launcher expands 80 independent condition tasks—one for each split and
+degree—and retains the same fixed acceptance penalty and `u in [0, 0.16]`
+bounded sigmoid head.
+
 A separate versioned analysis cache can materialize the same canonical curve
 for every complete eligible source row without changing the 200-profile runtime
 artifact or anything under `src/data/models/`:

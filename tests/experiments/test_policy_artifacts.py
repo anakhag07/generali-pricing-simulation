@@ -18,7 +18,11 @@ from experiments.reporting import JsonReporter, PolicyArtifactReporter, RunConte
 from experiments.reporting.json_summary import _policy_artifact_paths
 from experiments.run import run_experiment
 from objective.noise import NoisyObjective, NoNoise
-from objective.policy import AdditiveChebyshevFeatureMap, SoftmaxPolicy
+from objective.policy import (
+    AdditiveChebyshevFeatureMap,
+    SoftmaxPolicy,
+    TotalDegreePolynomialFeatureMap,
+)
 
 
 def test_additive_chebyshev_feature_map_spec_round_trip() -> None:
@@ -26,6 +30,20 @@ def test_additive_chebyshev_feature_map_spec_round_trip() -> None:
         feature_map=AdditiveChebyshevFeatureMap(max_degree=8, clip_scale=3.0),
         action_low=-0.1,
         action_high=0.2,
+    )
+
+    spec = PolicyFeatureMapSpec.from_policy(policy)
+    assert spec is not None
+    rebuilt = PolicyFeatureMapSpec.from_dict(spec.to_dict()).build()
+
+    assert rebuilt == policy.feature_map
+
+
+def test_total_degree_polynomial_feature_map_spec_round_trip() -> None:
+    policy = SoftmaxPolicy(
+        feature_map=TotalDegreePolynomialFeatureMap(max_degree=3),
+        action_low=0.0,
+        action_high=0.16,
     )
 
     spec = PolicyFeatureMapSpec.from_policy(policy)

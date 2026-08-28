@@ -57,7 +57,23 @@ $$1+dD$$ parameters including its intercept. The capacity experiment uses
 $$s=3$$ after train-only standardization. It contains no feature interactions,
 and degree $$D$$ is an exact prefix of degree $$D+1$$.
 
-- **Source:** `src/objective/policy.py` :: `FeatureMap`, `AdditiveChebyshevFeatureMap`, `IdentityFeatureMap`,
+For a nested interaction-capable polynomial ladder, let
+
+$$\mathcal A_D = \{\alpha\in\mathbb N_0^d:1\le |\alpha|_1\le D\},
+\qquad x^\alpha=\prod_{j=1}^d x_j^{\alpha_j}.$$
+
+The total-degree polynomial map is
+
+$$\varphi_{\mathrm{poly},D}(x)=[x^\alpha:\alpha\in\mathcal A_D],$$
+
+ordered first by total degree and then by deterministic
+combinations-with-replacement order. It has
+$$\binom{d+D}{D}-1$$ mapped features, so a linear or bounded policy has
+$$\binom{d+D}{D}$$ parameters including its intercept. Degree $$D$$ is an
+exact prefix of degree $$D+1$$ and contains every interaction whose total
+degree is at most $$D$$.
+
+- **Source:** `src/objective/policy.py` :: `FeatureMap`, `AdditiveChebyshevFeatureMap`, `TotalDegreePolynomialFeatureMap`, `IdentityFeatureMap`,
   `QuadraticFeatureMap`, `CubicFeatureMap`, `QuarticFeatureMap`,
   `CallableFeatureMap`, `_phi(x_batch, feature_map)`
 - **Notes:** `IdentityFeatureMap` preserves the previous default behavior

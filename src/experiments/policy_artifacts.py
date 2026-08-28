@@ -34,6 +34,7 @@ from objective.policy import (
     QuadraticFeatureMap,
     QuarticFeatureMap,
     SoftmaxPolicy,
+    TotalDegreePolynomialFeatureMap,
 )
 from objective.policy_preprocessing import PolicyFeaturePreprocessor
 
@@ -103,6 +104,8 @@ class PolicyFeatureMapSpec:
                 max_degree=int(self.max_degree or 0),
                 clip_scale=float(self.clip_scale or 3.0),
             )
+        if self.type == "TotalDegreePolynomialFeatureMap":
+            return TotalDegreePolynomialFeatureMap(max_degree=int(self.max_degree or 0))
         if self.type == "QuadraticFeatureMap":
             return QuadraticFeatureMap(include_interactions=self.include_interactions is not False)
         if self.type == "CubicFeatureMap":

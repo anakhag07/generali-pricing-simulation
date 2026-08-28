@@ -177,6 +177,42 @@ class AdditiveChebyshevFeatureMap(FeatureMap):
 
 
 @dataclass(frozen=True)
+class TotalDegreePolynomialFeatureMap(FeatureMap):
+    r"""Nested monomial map containing every interaction through ``max_degree``.
+
+    Terms are emitted in increasing total-degree order. Within each degree,
+    combinations-with-replacement order makes the map deterministic. The
+    degree-``d`` map is therefore an exact prefix of degree ``d + 1``.
+    """
+
+    max_degree: int
+    kind: str = "total_degree_polynomial"
+
+    def __post_init__(self) -> None:
+        degree = int(self.max_degree)
+        if degree < 0:
+            raise ValueError("max_degree must be non-negative.")
+        object.__setattr__(self, "max_degree", degree)
+
+    def transform(self, x_batch: np.ndarray) -> np.ndarray:
+        """Return all monomials with total degree from one through ``max_degree``."""
+        x_arr = _as_2d_float_array(x_batch)
+        if not np.isfinite(x_arr).all():
+            raise ValueError("x_batch must contain finite values.")
+        if self.max_degree == 0:
+            return np.empty((x_arr.shape[0], 0), dtype=float)
+        return np.concatenate(
+            [_exact_degree_products(x_arr, degree) for degree in range(1, self.max_degree + 1)],
+            axis=1,
+        ).astype(float)
+
+    def output_dim(self, state_dim: int) -> int:
+        """Return ``binom(state_dim + max_degree, max_degree) - 1``."""
+        dim = _validate_state_dim(state_dim)
+        return comb(dim + self.max_degree, self.max_degree) - 1
+
+
+@dataclass(frozen=True)
 class QuadraticFeatureMap(FeatureMap):
     """Quadratic map with linear terms and upper-triangular pair products."""
 

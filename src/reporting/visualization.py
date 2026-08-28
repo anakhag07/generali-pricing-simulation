@@ -2144,3 +2144,225 @@ def plot_lagrangian_pareto_frontier(
         y_label=y_label,
         filename=filename,
     )
+
+
+def plot_policy_capacity_objective(summary: object, output_dir: str | Path) -> Path:
+    """Plot train/test profit against policy parameter count for GLM and XGB."""
+    frame = _capacity_frame(summary)
+    matched = frame.loc[frame["optimize_model"] == frame["evaluate_model"]]
+    degrees = np.sort(matched["degree"].unique())
+    normalization = matplotlib.colors.Normalize(vmin=float(degrees.min()), vmax=float(degrees.max()))
+    colormap = matplotlib.colormaps["viridis"]
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.8), sharey=True, constrained_layout=True)
+    scalar_mappable = matplotlib.cm.ScalarMappable(norm=normalization, cmap=colormap)
+    for ax, family in zip(axes, ("glm", "xgb"), strict=True):
+        subset = matched.loc[matched["optimize_model"] == family].sort_values("parameter_count")
+        params = subset["parameter_count"].to_numpy(dtype=float)
+        train = subset["train_profit_mean"].to_numpy(dtype=float)
+        test = subset["test_profit_mean"].to_numpy(dtype=float)
+        colors = colormap(normalization(subset["degree"].to_numpy(dtype=float)))
+        ax.plot(params, train, color="C0", linewidth=1.5, alpha=0.55)
+        ax.plot(params, test, color="C1", linewidth=1.5, alpha=0.55)
+        ax.errorbar(
+            params,
+            train,
+            yerr=subset["train_profit_ci95"].to_numpy(dtype=float),
+            fmt="none",
+            ecolor="C0",
+            capsize=2,
+            alpha=0.65,
+        )
+        ax.errorbar(
+            params,
+            test,
+            yerr=subset["test_profit_ci95"].to_numpy(dtype=float),
+            fmt="none",
+            ecolor="C1",
+            capsize=2,
+            alpha=0.65,
+        )
+        ax.scatter(
+            params,
+            train,
+            marker="o",
+            s=48,
+            facecolors="none",
+            edgecolors=colors,
+            linewidths=1.5,
+            zorder=3,
+        )
+        ax.scatter(
+            params,
+            test,
+            c=subset["degree"],
+            cmap=colormap,
+            norm=normalization,
+            marker="o",
+            s=48,
+            edgecolors="black",
+            linewidths=0.5,
+            zorder=3,
+        )
+        ax.axvline(100, color="C2", linestyle="--", linewidth=1.2, label="100 parameters")
+        ax.set_title(family.upper(), fontsize=14)
+        ax.set_xlabel("Policy parameter count", fontsize=12)
+        ax.tick_params(labelsize=10)
+        ax.grid(True, alpha=0.3)
+    axes[0].set_ylabel("Expected profit per customer", fontsize=12)
+    from matplotlib.lines import Line2D
+
+    legend_handles = [
+        Line2D([], [], color="C0", marker="o", markerfacecolor="none", label="Train mean"),
+        Line2D([], [], color="C1", marker="o", label="Test mean"),
+        Line2D([], [], color="C2", linestyle="--", label="100 parameters"),
+    ]
+    axes[0].legend(handles=legend_handles, fontsize=10)
+    colorbar = fig.colorbar(scalar_mappable, ax=axes, label="Chebyshev degree")
+    colorbar.ax.tick_params(labelsize=10)
+    colorbar.set_label("Chebyshev degree", fontsize=12)
+    fig.suptitle("Objective performance versus policy capacity", fontsize=16)
+    return _save_capacity_figure(fig, output_dir, "objective_vs_policy_capacity")
+
+
+def plot_policy_capacity_generalization_gap(summary: object, output_dir: str | Path) -> Path:
+    """Plot held-out minus train profit for policies evaluated by their training model."""
+    frame = _capacity_frame(summary)
+    matched = frame.loc[frame["optimize_model"] == frame["evaluate_model"]]
+    fig, ax = plt.subplots(figsize=(7.5, 4.8), constrained_layout=True)
+    for family in ("glm", "xgb"):
+        subset = matched.loc[matched["optimize_model"] == family].sort_values("parameter_count")
+        ax.errorbar(
+            subset["parameter_count"],
+            subset["generalization_gap_profit_mean"],
+            yerr=subset["generalization_gap_profit_ci95"],
+            marker="o",
+            capsize=3,
+            label=family.upper(),
+        )
+    ax.axhline(0.0, color="C2", linestyle="--", linewidth=1.2)
+    ax.axvline(100, color="C3", linestyle="--", linewidth=1.2)
+    ax.set_title("Policy-capacity generalization gap", fontsize=16)
+    ax.set_xlabel("Policy parameter count", fontsize=12)
+    ax.set_ylabel("Test profit minus train profit", fontsize=12)
+    ax.tick_params(labelsize=10)
+    ax.grid(True, alpha=0.3)
+    ax.legend(fontsize=10)
+    return _save_capacity_figure(fig, output_dir, "policy_capacity_generalization_gap")
+
+
+def plot_policy_capacity_model_transfer(summary: object, output_dir: str | Path) -> Path:
+    """Plot cross-model test profit without retraining the learned policies."""
+    frame = _capacity_frame(summary)
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.8), sharey=True, constrained_layout=True)
+    for ax, optimize_model in zip(axes, ("glm", "xgb"), strict=True):
+        subset = frame.loc[frame["optimize_model"] == optimize_model]
+        for evaluate_model in ("glm", "xgb"):
+            condition = subset.loc[subset["evaluate_model"] == evaluate_model].sort_values(
+                "parameter_count"
+            )
+            ax.errorbar(
+                condition["parameter_count"],
+                condition["test_profit_mean"],
+                yerr=condition["test_profit_ci95"],
+                marker="o",
+                capsize=3,
+                label=f"Evaluated by {evaluate_model.upper()}",
+            )
+        ax.axvline(100, color="C2", linestyle="--", linewidth=1.2)
+        ax.set_title(f"Optimized with {optimize_model.upper()}", fontsize=14)
+        ax.set_xlabel("Policy parameter count", fontsize=12)
+        ax.tick_params(labelsize=10)
+        ax.grid(True, alpha=0.3)
+        ax.legend(fontsize=10)
+    axes[0].set_ylabel("Held-out expected profit per customer", fontsize=12)
+    fig.suptitle("Policy transfer between model evaluators", fontsize=16)
+    return _save_capacity_figure(fig, output_dir, "policy_capacity_model_transfer")
+
+
+def plot_policy_capacity_endpoint_slices(
+    records: Sequence[Mapping[str, object]],
+    output_dir: str | Path,
+) -> Path:
+    """Plot representative learned action surfaces over two standardized inputs."""
+    from objective.policy import SoftmaxPolicy
+
+    if not records:
+        raise ValueError("Endpoint-slice records must not be empty.")
+    degrees = sorted({int(record["degree"]) for record in records})
+    models = ("glm", "xgb")
+    fig, axes = plt.subplots(
+        len(models),
+        len(degrees),
+        figsize=(3.8 * len(degrees), 6.8),
+        sharex=True,
+        sharey=True,
+        constrained_layout=True,
+        squeeze=False,
+    )
+    grid = np.linspace(-3.0, 3.0, 81)
+    x_one, x_two = np.meshgrid(grid, grid)
+    image = None
+    for row_index, model in enumerate(models):
+        for column_index, degree in enumerate(degrees):
+            record = next(
+                value
+                for value in records
+                if str(value["model"]) == model and int(value["degree"]) == degree
+            )
+            state_dim = int(record["state_dim"])
+            inputs = np.zeros((x_one.size, state_dim), dtype=float)
+            inputs[:, 0] = x_one.ravel()
+            inputs[:, 1] = x_two.ravel()
+            policy = SoftmaxPolicy(
+                feature_map=_capacity_chebyshev_map(
+                    degree,
+                    float(record["clip_scale"]),
+                ),
+                action_low=float(record["action_low"]),
+                action_high=float(record["action_high"]),
+            )
+            actions = policy.value(np.asarray(record["theta"], dtype=float), inputs).reshape(x_one.shape)
+            ax = axes[row_index, column_index]
+            image = ax.pcolormesh(
+                x_one,
+                x_two,
+                actions,
+                shading="auto",
+                cmap="viridis",
+                vmin=float(record["action_low"]),
+                vmax=float(record["action_high"]),
+            )
+            ax.set_title(f"{model.upper()}, degree {degree}", fontsize=14)
+            ax.set_xlabel("Standardized policy input 1", fontsize=12)
+            ax.set_ylabel("Standardized policy input 2", fontsize=12)
+            ax.tick_params(labelsize=10)
+    if image is not None:
+        colorbar = fig.colorbar(image, ax=axes, label="Action u")
+        colorbar.ax.tick_params(labelsize=10)
+        colorbar.set_label("Action u", fontsize=12)
+    fig.suptitle("Representative learned-policy slices (split seed 0)", fontsize=16)
+    return _save_capacity_figure(fig, output_dir, "policy_capacity_endpoint_slices")
+
+
+def _capacity_chebyshev_map(degree: int, clip_scale: float) -> object:
+    from objective.policy import AdditiveChebyshevFeatureMap
+
+    return AdditiveChebyshevFeatureMap(max_degree=degree, clip_scale=clip_scale)
+
+
+def _capacity_frame(summary: object):
+    import pandas as pd
+
+    if isinstance(summary, pd.DataFrame):
+        return summary.copy()
+    return pd.DataFrame.from_records(summary)
+
+
+def _save_capacity_figure(fig: object, output_dir: str | Path, stem: str) -> Path:
+    path = _ensure_plot_dir(str(output_dir))
+    pdf_path = path / f"{stem}.pdf"
+    png_path = path / f"{stem}.png"
+    fig.savefig(pdf_path, format="pdf")
+    fig.savefig(png_path, dpi=160)
+    plt.close(fig)
+    return pdf_path

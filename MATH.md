@@ -271,6 +271,41 @@ then zero after clipping. At the support boundaries the implementation uses the
 interior derivative. The hierarchy preset constrains actions to $$[0,0.16]$$ and
 rejects policies absent from the artifact.
 
+**GLM/XGBoost policy-capacity experiment:**
+
+For the shared 19-dimensional, train-standardized policy input $$z(x)$$, the
+degree-$$D$$ policy is
+
+$$u_{\theta,D}(x)=-0.1+0.3\,\sigma\!\left(
+\theta_0+\sum_{k=1}^{D}\sum_{j=1}^{19}\theta_{kj}
+T_k\!\left(\operatorname{clip}(z_j(x)/3,-1,1)\right)
+\right).$$
+
+There are no interactions and the parameter count is $$p_D=1+19D$$. Every fit
+starts at $$\theta_0=-\log 2$$ and all other coefficients zero, which gives
+$$u(x)=0$$ for every customer. For evaluator $$m\in\{\mathrm{GLM},\mathrm{XGB}\}$$,
+
+$$J_m(\theta;S)=\frac1{|S|}\sum_{i\in S}
+a_i^m(u_{\theta,D}(x_i))\left[L_i^m-(1+u_{\theta,D}(x_i))p_i\right],$$
+
+$$\bar a_m(\theta;S)=\frac1{|S|}\sum_{i\in S}a_i^m(u_{\theta,D}(x_i)),$$
+
+and L-BFGS-B minimizes the fixed-floor penalized training target
+
+$$Q_m(\theta;S)=J_m(\theta;S)+10^6\left[
+10^{-3}\log\!\left(1+\exp\!\left(
+\frac{0.8787745289312372-\bar a_m(\theta;S)}{10^{-3}}
+\right)\right)\right]^2.$$
+
+Reported objective performance is the unpenalized $$J_m$$ (or profit $$-J_m$$).
+The floor is fixed and is not a sweep axis. The XGBoost arm builds an
+experiment-specific 31-knot raw query grid from $$-0.10$$ through $$0.20$$,
+then applies the same smoothing-spline, isotonic, and PCHIP construction; the
+policy bounds keep all evaluations inside that fitted support.
+
+- **Source:** `src/experiments/policy_capacity.py`,
+  `manifests/policy_capacity_glm_xgb.json`
+
 The full-customer analysis cache stores the same PCHIP exactly as shared-grid
 cubic Hermite data rather than one Python polynomial object per customer. For
 an interval $$[x_j,x_{j+1}]$$, let

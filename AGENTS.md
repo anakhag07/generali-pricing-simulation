@@ -245,6 +245,15 @@ Required manifest fields:
   document Slurm behavior; `requires_jax` may be inferred from `compute_backend`
   but should be set when the manifest must force GPU submission.
 
+`kind: "policy_capacity"` is the dedicated real-data exception to the generic
+preset/truth schema. Its source of truth is
+`manifests/policy_capacity_glm_xgb.json`; it uses `models`, `cohort`, `policy`,
+fixed `acceptance`, `optimizer`, `seeds.split_seeds`, `curve_cache`, and
+`launch.array: "split_seed"`. One array task owns one deterministic data split
+and runs all GLM/XGBoost degree conditions, while the dependent collector owns
+cross-split confidence intervals and PDFs. Do not turn acceptance into a sweep
+axis for this experiment.
+
 Variant axes belong under `matrix` or `variants`. Scalar matrix entries override
 the same config key; labeled entries may provide nested `overrides`, which is
 the preferred way to toggle noise/bias objective modifications or data-ladder
@@ -631,6 +640,14 @@ belongs under `generali/`.
     `summary_json` requires an explicit path and estimator and compares learned
     theta against that saved reference
 
+- **`src/experiments/policy_capacity.py`**
+  - Dedicated GLM/XGBoost capacity runner. It binds the shared 200-customer
+    cohort, train-only policy standardization, additive Chebyshev degree ladder,
+    sweep-local widened XGBoost curve cache, split-task outputs, cross-model
+    evaluation, confidence-interval collection, and policy-state sidecars.
+  - `reporting.visualization` owns its four canonical PDF helpers; the primary
+    axis is policy parameter count and acceptance is CSV-only diagnostics.
+
 - **`src/experiments/policy_lcb/`**
   - Reusable policy-LCB module with shared Gaussian quantiles, coverage/oracle
     diagnostics, result serialization, seed-array launch dispatch, and two
@@ -745,6 +762,9 @@ belongs under `generali/`.
   interface, where `launch.array: "seed"` maps one paired-condition task to
   each problem-noise seed; manifests without `kind` retain the optimization-
   manifest behavior.
+  `kind: "policy_capacity"` routes through the split-seed capacity plan, where
+  each task runs all model/degree fits for one split and the collector writes
+  sweep-level CSVs and PDFs.
 - `manifests/finite_policy_lcb_validation.json` is the source of truth for the
   exact eleven-policy lower-confidence-bound validation, its five delta values,
   and its 25 paired noise seeds.

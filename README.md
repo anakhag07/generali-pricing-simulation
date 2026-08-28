@@ -397,6 +397,30 @@ policies follow the original wrapper contract and fall back to raw XGB, so the
 cache size is not a limit on inference. Logit-spline and shifted-sigmoid runtime
 families have been removed.
 
+The GLM/XGBoost policy-capacity experiment uses those same 200 covered
+customers, twenty deterministic 100/100 splits, and a shared train-standardized
+19-feature policy encoder. It sweeps additive Chebyshev degrees
+`[0, 1, 2, 3, 4, 5, 6, 8, 10]`, corresponding to
+`[1, 20, 39, 58, 77, 96, 115, 153, 191]` policy parameters. Policies are bounded
+to `u in (-0.1, 0.2)`; the fixed acceptance floor remains an optimization
+penalty and is not swept. Run the CPU split-seed array with:
+
+```bash
+python scripts/run_experiment_manifest.py \
+  manifests/policy_capacity_glm_xgb.json
+```
+
+Each of the 20 array tasks runs 18 fits (two model families by nine degrees)
+and cross-evaluates the learned policies under both model evaluators without
+retraining. The sweep-level collector writes `capacity_per_split.csv`,
+`capacity_summary.csv`, and canonical PDFs under
+`results/policy-capacity-glm-xgb/sweeps/<sweep-id>/`. The primary
+`objective_vs_policy_capacity.pdf` plots train/test expected profit per customer
+against parameter count; acceptance remains only in the CSV diagnostics. The
+experiment creates a locked, sweep-local XGBoost curve cache over 31 raw action
+knots from `-0.10` to `0.20` and never overwrites the canonical `[0, 0.16]`
+runtime artifact.
+
 A separate versioned analysis cache can materialize the same canonical curve
 for every complete eligible source row without changing the 200-profile runtime
 artifact or anything under `src/data/models/`:

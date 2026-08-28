@@ -44,7 +44,8 @@ def _x_fixed_frame_matches_state_dim(objective: object, x_fixed_frame: Any, stat
         return x_fixed_frame.shape[1] == state_dim
     acceptance_model = getattr(objective, "acceptance_model", None)
     auxiliary_cols = tuple(getattr(acceptance_model, "auxiliary_state_cols", ()))
-    expected_cols = set(state_cols) | set(auxiliary_cols)
+    policy_feature_cols = tuple(getattr(objective, "policy_feature_cols", ()) or ())
+    expected_cols = set(state_cols) | set(auxiliary_cols) | set(policy_feature_cols)
     if getattr(objective, "loss_source", "predicted") == "observed":
         observed_loss_col = getattr(objective, "observed_loss_col", None)
         if observed_loss_col is None:

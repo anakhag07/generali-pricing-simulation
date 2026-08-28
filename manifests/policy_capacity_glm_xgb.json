@@ -1,0 +1,114 @@
+{
+  "kind": "policy_capacity",
+  "name": "policy-capacity-glm-xgb",
+  "models": [
+    "glm",
+    "xgb"
+  ],
+  "objective_modifications": [],
+  "cohort": {
+    "source": "monotone_spline_xgb_covered",
+    "size": 200,
+    "train_size": 100
+  },
+  "policy": {
+    "degrees": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      8,
+      10
+    ],
+    "action_bounds": [
+      -0.1,
+      0.2
+    ],
+    "initial_u": 0.0,
+    "clip_scale": 3.0,
+    "basis": "additive_chebyshev",
+    "interactions": false,
+    "term_order": "degree_major"
+  },
+  "acceptance": {
+    "floor": 0.8787745289312372,
+    "penalty_weight": 1000000.0,
+    "penalty_temperature": 0.001,
+    "sweep": false
+  },
+  "optimizer": {
+    "estimator": "first_order",
+    "step_rule": "l-bfgs-b",
+    "t_steps": 1000,
+    "grad_norm_tol": 1e-6
+  },
+  "seeds": {
+    "split_seeds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19
+    ]
+  },
+  "curve_cache": {
+    "action_grid": [
+      -0.1,
+      -0.09,
+      -0.08,
+      -0.07,
+      -0.06,
+      -0.05,
+      -0.04,
+      -0.03,
+      -0.02,
+      -0.01,
+      0.0,
+      0.01,
+      0.02,
+      0.03,
+      0.04,
+      0.05,
+      0.06,
+      0.07,
+      0.08,
+      0.09,
+      0.1,
+      0.11,
+      0.12,
+      0.13,
+      0.14,
+      0.15,
+      0.16,
+      0.17,
+      0.18,
+      0.19,
+      0.2
+    ],
+    "dense_grid_size": 500,
+    "smoother": "smoothing_spline_isotonic_pchip"
+  },
+  "launch": {
+    "mode": "slurm",
+    "array": "split_seed",
+    "array_max_parallel": 20
+  }
+}

@@ -427,7 +427,14 @@ class ExperimentConfig:
                     dtype=float,
                 )
             )
-            x_probe = np.zeros((1, self.state_dim), dtype=float)
+            if self.x_fixed is not None:
+                x_probe = (
+                    self.x_fixed.iloc[:1].copy()
+                    if hasattr(self.x_fixed, "iloc")
+                    else np.asarray(self.x_fixed)[:1]
+                )
+            else:
+                x_probe = np.zeros((1, self.state_dim), dtype=float)
             u_probe_arr = np.asarray(policy_value(probe_theta, x_probe), dtype=float)
             if not bool(np.isfinite(u_probe_arr).all()):
                 raise ValueError("policy.value(theta0, x_batch) must be finite.")

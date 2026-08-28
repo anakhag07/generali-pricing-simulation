@@ -425,6 +425,16 @@ experiment creates a locked, sweep-local XGBoost curve cache over 31 raw action
 knots from `-0.10` to `0.20` and never overwrites the canonical `[0, 0.16]`
 runtime artifact.
 
+The restricted-range replication uses the same cohort, split seeds, degree
+ladder, and acceptance floor while constraining the policy to the canonical
+`u in [0, 0.16]` range. Its finite softmax initialization is the midpoint
+`u=0.08`:
+
+```bash
+python scripts/run_experiment_manifest.py \
+  manifests/policy_capacity_glm_xgb_u_0_0p16.json
+```
+
 A separate versioned analysis cache can materialize the same canonical curve
 for every complete eligible source row without changing the 200-profile runtime
 artifact or anything under `src/data/models/`:

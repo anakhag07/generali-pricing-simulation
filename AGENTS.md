@@ -650,6 +650,10 @@ belongs under `generali/`.
     as separate GLM and XGBoost PDFs. Capacity plotting emits PDF only, never
     PNG or other raster previews. The primary axis is policy parameter count,
     and acceptance is CSV-only diagnostics.
+  - `manifests/policy_capacity_glm_xgb_u_0_0p16.json` is the matched
+    restricted-range replication: it keeps the cohort, splits, degree ladder,
+    and acceptance floor fixed, constrains `u` to `[0, 0.16]`, and initializes
+    the bounded softmax policy at the finite midpoint `u=0.08`.
 
 - **`src/experiments/policy_lcb/`**
   - Reusable policy-LCB module with shared Gaussian quantiles, coverage/oracle

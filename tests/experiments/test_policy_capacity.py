@@ -23,6 +23,9 @@ from reporting.visualization import (
 
 
 MANIFEST = Path(__file__).parents[2] / "manifests" / "policy_capacity_glm_xgb.json"
+RESTRICTED_MANIFEST = (
+    Path(__file__).parents[2] / "manifests" / "policy_capacity_glm_xgb_u_0_0p16.json"
+)
 
 
 def test_canonical_policy_capacity_manifest_has_gradual_parameter_ladder() -> None:
@@ -68,6 +71,17 @@ def test_initial_theta_represents_zero_action_for_every_customer() -> None:
 
     np.testing.assert_allclose(actions, 0.0, atol=1e-15)
     np.testing.assert_allclose(initial_theta(manifest, 6)[0], np.log(0.5), atol=1e-15)
+
+
+def test_restricted_policy_capacity_manifest_uses_canonical_action_range() -> None:
+    manifest = load_policy_capacity_manifest(RESTRICTED_MANIFEST)
+
+    assert manifest.name == "policy-capacity-glm-xgb-u-0-0p16"
+    assert manifest.action_bounds == (0.0, 0.16)
+    assert manifest.initial_u == 0.08
+    np.testing.assert_allclose(manifest.curve_action_grid, np.linspace(0.0, 0.16, 17))
+    np.testing.assert_allclose(initial_theta(manifest, 10)[0], 0.0, atol=1e-15)
+    assert len(policy_capacity_tasks(manifest)) == 360
 
 
 def test_split_positions_are_deterministic_disjoint_and_balanced() -> None:

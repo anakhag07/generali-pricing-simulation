@@ -38,6 +38,7 @@ from experiments.slurm import SlurmProfile
 from objective.policy import AdditiveChebyshevFeatureMap, SoftmaxPolicy
 from objective.policy_preprocessing import PolicyFeaturePreprocessor
 from reporting.visualization import (
+    plot_policy_capacity_baseline_adjusted_gains,
     plot_policy_capacity_endpoint_slices,
     plot_policy_capacity_generalization_gap,
     plot_policy_capacity_model_transfer,
@@ -487,6 +488,7 @@ def collect_policy_capacity_outputs(
     endpoint_records = _endpoint_records(context.sweep_dir, manifest)
     for family in manifest.models:
         plot_policy_capacity_objective(summary, context.sweep_dir, family=family)
+        plot_policy_capacity_baseline_adjusted_gains(frame, context.sweep_dir, family=family)
         plot_policy_capacity_generalization_gap(summary, context.sweep_dir, family=family)
         plot_policy_capacity_model_transfer(summary, context.sweep_dir, family=family)
         plot_policy_capacity_endpoint_slices(

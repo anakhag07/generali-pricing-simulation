@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Callable, Mapping, Optional, Sequence, cast
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.stats import t as student_t
 
 from objective.base import Objective
 from objective.utils import _policy_value
@@ -2257,6 +2258,99 @@ def plot_policy_capacity_generalization_gap(
     ax.tick_params(labelsize=10)
     ax.grid(True, alpha=0.3)
     return _save_capacity_figure(fig, output_dir, f"policy_capacity_generalization_gap_{family}")
+
+
+def plot_policy_capacity_baseline_adjusted_gains(
+    records: object,
+    output_dir: str | Path,
+    *,
+    family: str,
+) -> Path:
+    """Plot paired train/test gains relative to the degree-zero policy."""
+    frame = _capacity_frame(records)
+    matched = frame.loc[frame["optimize_model"] == frame["evaluate_model"]]
+    subset = matched.loc[matched["optimize_model"] == family].copy()
+    if subset.empty:
+        raise ValueError(f"No policy-capacity rows found for model family {family!r}.")
+    baseline = subset.loc[subset["degree"] == 0, ["split_seed", "train_profit", "test_profit"]]
+    if baseline["split_seed"].nunique() != subset["split_seed"].nunique():
+        raise ValueError("Every split must contain a degree-zero baseline.")
+    baseline = baseline.rename(
+        columns={
+            "train_profit": "baseline_train_profit",
+            "test_profit": "baseline_test_profit",
+        }
+    )
+    paired = subset.merge(baseline, on="split_seed", how="left", validate="many_to_one")
+    paired["train_gain"] = paired["train_profit"] - paired["baseline_train_profit"]
+    paired["test_gain"] = paired["test_profit"] - paired["baseline_test_profit"]
+    paired["excess_train_gain"] = paired["train_gain"] - paired["test_gain"]
+
+    rows = []
+    for (degree, parameter_count), group in paired.groupby(
+        ["degree", "parameter_count"],
+        sort=True,
+    ):
+        row = {"degree": int(degree), "parameter_count": int(parameter_count)}
+        for metric in ("train_gain", "test_gain", "excess_train_gain"):
+            values = group[metric].to_numpy(dtype=float)
+            row[f"{metric}_mean"] = float(np.mean(values))
+            row[f"{metric}_ci95"] = (
+                float(
+                    student_t.ppf(0.975, values.size - 1)
+                    * np.std(values, ddof=1)
+                    / np.sqrt(values.size)
+                )
+                if values.size > 1
+                else 0.0
+            )
+        rows.append(row)
+    summary = _capacity_frame(rows).sort_values("parameter_count")
+
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.8), constrained_layout=True)
+    axes[0].errorbar(
+        summary["parameter_count"],
+        summary["train_gain_mean"],
+        yerr=summary["train_gain_ci95"],
+        marker="o",
+        capsize=3,
+        label="Train gain",
+    )
+    axes[0].errorbar(
+        summary["parameter_count"],
+        summary["test_gain_mean"],
+        yerr=summary["test_gain_ci95"],
+        marker="o",
+        capsize=3,
+        label="Test gain",
+    )
+    axes[0].axhline(0.0, color="C2", linestyle="--", linewidth=1.2)
+    axes[0].set_title("Gain relative to degree zero", fontsize=14)
+    axes[0].set_xlabel("Policy parameter count", fontsize=12)
+    axes[0].set_ylabel("Profit change per customer", fontsize=12)
+    axes[0].tick_params(labelsize=10)
+    axes[0].grid(True, alpha=0.3)
+    axes[0].legend(fontsize=10)
+
+    axes[1].errorbar(
+        summary["parameter_count"],
+        summary["excess_train_gain_mean"],
+        yerr=summary["excess_train_gain_ci95"],
+        marker="o",
+        capsize=3,
+    )
+    axes[1].axhline(0.0, color="C2", linestyle="--", linewidth=1.2)
+    axes[1].set_title("Baseline-adjusted overfit gap", fontsize=14)
+    axes[1].set_xlabel("Policy parameter count", fontsize=12)
+    axes[1].set_ylabel("Excess training gain per customer", fontsize=12)
+    axes[1].tick_params(labelsize=10)
+    axes[1].grid(True, alpha=0.3)
+    fig.suptitle(f"{family.upper()} baseline-adjusted policy performance", fontsize=16)
+    return _save_capacity_figure(
+        fig,
+        output_dir,
+        f"policy_capacity_baseline_adjusted_gains_{family}",
+    )
 
 
 def plot_policy_capacity_model_transfer(

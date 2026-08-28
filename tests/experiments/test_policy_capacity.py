@@ -15,6 +15,7 @@ from experiments.policy_capacity import (
 )
 from objective.policy import AdditiveChebyshevFeatureMap, SoftmaxPolicy
 from reporting.visualization import (
+    plot_policy_capacity_baseline_adjusted_gains,
     plot_policy_capacity_endpoint_slices,
     plot_policy_capacity_generalization_gap,
     plot_policy_capacity_model_transfer,
@@ -156,6 +157,11 @@ def test_summary_and_capacity_plots_use_parameter_count_not_acceptance(tmp_path)
         paths.extend(
             [
                 plot_policy_capacity_objective(summary, tmp_path, family=family),
+                plot_policy_capacity_baseline_adjusted_gains(
+                    pd.DataFrame(rows),
+                    tmp_path,
+                    family=family,
+                ),
                 plot_policy_capacity_generalization_gap(summary, tmp_path, family=family),
                 plot_policy_capacity_model_transfer(summary, tmp_path, family=family),
             ]

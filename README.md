@@ -416,8 +416,11 @@ fit, and cross-evaluates the learned policy under both model evaluators without
 retraining. The sweep-level collector writes `capacity_per_split.csv`,
 `capacity_summary.csv`, and canonical PDFs under
 `results/policy-capacity-glm-xgb/sweeps/<sweep-id>/`. The primary
-`objective_vs_policy_capacity.pdf` plots train/test expected profit per customer
-against parameter count; acceptance remains only in the CSV diagnostics. The
+`objective_vs_policy_capacity_glm.pdf` and
+`objective_vs_policy_capacity_xgb.pdf` plots show train/test expected profit per
+customer against parameter count separately for each policy family; all other
+capacity diagnostics use the same `_glm.pdf`/`_xgb.pdf` split. Plotting emits
+PDFs only, and acceptance remains in the CSV diagnostics. The
 experiment creates a locked, sweep-local XGBoost curve cache over 31 raw action
 knots from `-0.10` to `0.20` and never overwrites the canonical `[0, 0.16]`
 runtime artifact.

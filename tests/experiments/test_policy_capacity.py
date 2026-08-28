@@ -115,11 +115,15 @@ def test_summary_and_capacity_plots_use_parameter_count_not_acceptance(tmp_path)
 
     assert summary.shape[0] == 36
     assert set(summary["n_splits"]) == {20}
-    paths = [
-        plot_policy_capacity_objective(summary, tmp_path),
-        plot_policy_capacity_generalization_gap(summary, tmp_path),
-        plot_policy_capacity_model_transfer(summary, tmp_path),
-    ]
+    paths = []
+    for family in ("glm", "xgb"):
+        paths.extend(
+            [
+                plot_policy_capacity_objective(summary, tmp_path, family=family),
+                plot_policy_capacity_generalization_gap(summary, tmp_path, family=family),
+                plot_policy_capacity_model_transfer(summary, tmp_path, family=family),
+            ]
+        )
     endpoint_records = []
     for model in ("glm", "xgb"):
         for degree in (0, 5, 10):
@@ -134,9 +138,16 @@ def test_summary_and_capacity_plots_use_parameter_count_not_acceptance(tmp_path)
                     "action_high": 0.2,
                 }
             )
-    paths.append(plot_policy_capacity_endpoint_slices(endpoint_records, tmp_path))
+    for family in ("glm", "xgb"):
+        paths.append(
+            plot_policy_capacity_endpoint_slices(
+                endpoint_records,
+                tmp_path,
+                family=family,
+            )
+        )
 
     for path in paths:
         assert path.suffix == ".pdf"
         assert path.read_bytes().startswith(b"%PDF")
-        assert path.with_suffix(".png").exists()
+        assert not path.with_suffix(".png").exists()

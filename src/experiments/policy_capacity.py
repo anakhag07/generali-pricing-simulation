@@ -480,11 +480,16 @@ def collect_policy_capacity_outputs(
     summary_path = context.sweep_dir / "capacity_summary.csv"
     summary.to_csv(summary_path, index=False)
 
-    plot_policy_capacity_objective(summary, context.sweep_dir)
-    plot_policy_capacity_generalization_gap(summary, context.sweep_dir)
-    plot_policy_capacity_model_transfer(summary, context.sweep_dir)
     endpoint_records = _endpoint_records(context.sweep_dir, manifest)
-    plot_policy_capacity_endpoint_slices(endpoint_records, context.sweep_dir)
+    for family in manifest.models:
+        plot_policy_capacity_objective(summary, context.sweep_dir, family=family)
+        plot_policy_capacity_generalization_gap(summary, context.sweep_dir, family=family)
+        plot_policy_capacity_model_transfer(summary, context.sweep_dir, family=family)
+        plot_policy_capacity_endpoint_slices(
+            endpoint_records,
+            context.sweep_dir,
+            family=family,
+        )
     _write_experiment_markdown(context.sweep_dir / "EXPERIMENT.md", manifest, frame)
     return {
         "rows_csv": str(rows_path),
@@ -740,9 +745,10 @@ def _write_experiment_markdown(
 - Fixed acceptance floor: `{manifest.acceptance_floor}` (diagnostic/penalty only; not swept)
 - Mean optimizer runtime per fit: `{float(runtimes.mean()):.3f}` seconds
 
-The primary result is `objective_vs_policy_capacity.pdf`. Open markers are train
-profit and filled markers are held-out test profit. Acceptance is retained only
-as a CSV diagnostic and is not a sweep axis or plot axis.
+The primary results are `objective_vs_policy_capacity_glm.pdf` and
+`objective_vs_policy_capacity_xgb.pdf`. Open markers are train profit and filled
+markers are held-out test profit. Acceptance is retained only as a CSV diagnostic
+and is not a sweep axis or plot axis. All plots are emitted as PDF only.
 """
     path.write_text(text, encoding="utf-8")
 

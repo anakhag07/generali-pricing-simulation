@@ -646,8 +646,10 @@ belongs under `generali/`.
     cohort, train-only policy standardization, additive Chebyshev degree ladder,
     sweep-local widened XGBoost curve cache, split-task outputs, cross-model
     evaluation, confidence-interval collection, and policy-state sidecars.
-  - `reporting.visualization` owns its four canonical PDF helpers; the primary
-    axis is policy parameter count and acceptance is CSV-only diagnostics.
+  - `reporting.visualization` owns its four canonical plot families, each saved
+    as separate GLM and XGBoost PDFs. Capacity plotting emits PDF only, never
+    PNG or other raster previews. The primary axis is policy parameter count,
+    and acceptance is CSV-only diagnostics.
 
 - **`src/experiments/policy_lcb/`**
   - Reusable policy-LCB module with shared Gaussian quantiles, coverage/oracle

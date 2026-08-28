@@ -7,6 +7,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
+from scipy.ndimage import gaussian_filter1d
 
 from plot_policy_capacity_constraint_overfitting import _summarize
 
@@ -29,11 +30,10 @@ def plot_chebyshev_mean_acceptance(
     summary = _summarize(frame, acceptance_floor)
     fig, ax = plt.subplots(figsize=(7.5, 4.8), constrained_layout=True)
     for split_name, split_label in (("train", "Train"), ("test", "Test")):
-        mean = (
-            summary[f"{split_name}_acceptance_mean"]
-            .rolling(window=3, center=True, min_periods=1)
-            .mean()
-            .to_numpy(dtype=float)
+        mean = gaussian_filter1d(
+            summary[f"{split_name}_acceptance_mean"].to_numpy(dtype=float),
+            sigma=1.0,
+            mode="nearest",
         )
         parameters = summary["parameter_count"].to_numpy(dtype=float)
         ax.plot(parameters, mean, marker="o", label=split_label)
@@ -45,6 +45,7 @@ def plot_chebyshev_mean_acceptance(
         label="Acceptance floor",
     )
     ax.set_xscale("log")
+    ax.set_ylim(0.85, 0.90)
     ax.set_xlabel("Policy parameter count (log scale)", fontsize=12)
     ax.set_ylabel("Mean Acceptance Probability", fontsize=12)
     ax.tick_params(labelsize=10)

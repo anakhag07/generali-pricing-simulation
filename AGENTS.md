@@ -249,10 +249,11 @@ Required manifest fields:
 preset/truth schema. Its source of truth is
 `manifests/policy_capacity_glm_xgb.json`; it uses `models`, `cohort`, `policy`,
 fixed `acceptance`, `optimizer`, `seeds.split_seeds`, `curve_cache`, and
-`launch.array: "split_seed"`. One array task owns one deterministic data split
-and runs all GLM/XGBoost degree conditions, while the dependent collector owns
-cross-split confidence intervals and PDFs. Do not turn acceptance into a sweep
-axis for this experiment.
+`launch.array: "condition"`. One array task owns one deterministic
+split/training-model/degree fit and its two evaluator replays (360 tasks total),
+while the dependent collector owns cross-split confidence intervals and PDFs.
+The manifest also fixes the smaller per-task CPU/time/memory profile. Do not
+turn acceptance into a sweep axis for this experiment.
 
 Variant axes belong under `matrix` or `variants`. Scalar matrix entries override
 the same config key; labeled entries may provide nested `overrides`, which is
@@ -762,8 +763,8 @@ belongs under `generali/`.
   interface, where `launch.array: "seed"` maps one paired-condition task to
   each problem-noise seed; manifests without `kind` retain the optimization-
   manifest behavior.
-  `kind: "policy_capacity"` routes through the split-seed capacity plan, where
-  each task runs all model/degree fits for one split and the collector writes
+  `kind: "policy_capacity"` routes through the condition-array capacity plan,
+  where each task runs one split/model/degree fit and the collector writes
   sweep-level CSVs and PDFs.
 - `manifests/finite_policy_lcb_validation.json` is the source of truth for the
   exact eleven-policy lower-confidence-bound validation, its five delta values,

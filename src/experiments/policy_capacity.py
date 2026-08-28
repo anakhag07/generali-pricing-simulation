@@ -34,6 +34,7 @@ from experiments.config import CorrectnessSpec, ExperimentConfig, make_model_bas
 from experiments.launch import LaunchContext, LaunchPlan
 from experiments.policy_validation import evaluate_policy
 from experiments.run import run_experiment
+from experiments.slurm import SlurmProfile
 from objective.policy import AdditiveChebyshevFeatureMap, SoftmaxPolicy
 from objective.policy_preprocessing import PolicyFeaturePreprocessor
 from reporting.visualization import (
@@ -51,11 +52,14 @@ MODEL_FAMILIES = ("glm", "xgb")
 
 @dataclass(frozen=True)
 class PolicyCapacityLaunchSpec:
-    """Launch settings for a split-seed array."""
+    """Launch settings for one-fit-per-task condition arrays."""
 
     mode: str
     array: str
     array_max_parallel: int | None = None
+    time: str = "02:00:00"
+    cpus_per_task: int = 2
+    memory: str = "16G"
 
 
 @dataclass(frozen=True)
@@ -98,6 +102,15 @@ class _TaskResources:
     loss_models: dict[str, Any]
 
 
+@dataclass(frozen=True)
+class PolicyCapacityTask:
+    """One independent optimization fit and its two evaluator replays."""
+
+    split_seed: int
+    optimize_model: str
+    degree: int
+
+
 def load_policy_capacity_manifest(path: str | Path) -> PolicyCapacityManifest:
     """Load and validate a policy-capacity JSON manifest."""
     manifest_path = Path(path)
@@ -115,6 +128,7 @@ def load_policy_capacity_manifest(path: str | Path) -> PolicyCapacityManifest:
     optimizer = dict(_mapping(payload.get("optimizer"), "optimizer"))
     curve = _mapping(payload.get("curve_cache"), "curve_cache")
     launch_payload = _mapping(payload.get("launch"), "launch")
+    resources_payload = _mapping(launch_payload.get("resources"), "launch.resources")
 
     models = tuple(str(value) for value in _sequence(payload.get("models"), "models"))
     if models != MODEL_FAMILIES:
@@ -175,9 +189,14 @@ def load_policy_capacity_manifest(path: str | Path) -> PolicyCapacityManifest:
             if launch_payload.get("array_max_parallel") is not None
             else None
         ),
+        time=str(resources_payload.get("time")),
+        cpus_per_task=int(resources_payload.get("cpus_per_task")),
+        memory=str(resources_payload.get("memory")),
     )
-    if launch.mode not in {"auto", "local", "slurm"} or launch.array != "split_seed":
-        raise ValueError("launch must use a valid mode and array='split_seed'.")
+    if launch.mode not in {"auto", "local", "slurm"} or launch.array != "condition":
+        raise ValueError("launch must use a valid mode and array='condition'.")
+    if launch.cpus_per_task <= 0 or not launch.memory or not launch.time:
+        raise ValueError("launch.resources must specify positive CPUs, memory, and time.")
 
     return PolicyCapacityManifest(
         name=str(payload["name"]),
@@ -218,25 +237,48 @@ def split_positions(manifest: PolicyCapacityManifest, seed: int) -> tuple[np.nda
     return train, test
 
 
+def policy_capacity_tasks(manifest: PolicyCapacityManifest) -> tuple[PolicyCapacityTask, ...]:
+    """Return the deterministic split/model/degree task expansion."""
+    return tuple(
+        PolicyCapacityTask(split_seed=seed, optimize_model=model, degree=degree)
+        for seed in manifest.split_seeds
+        for model in manifest.models
+        for degree in manifest.degrees
+    )
+
+
 def build_policy_capacity_launch_plan(
     manifest: PolicyCapacityManifest,
     *,
     runs_root: str | None = None,
     force: bool = False,
 ) -> LaunchPlan:
-    """Build a split-seed launch plan for the shared manifest runner."""
+    """Build a one-fit-per-task launch plan for the shared manifest runner."""
+    tasks = policy_capacity_tasks(manifest)
 
     def run_task(index: int, context: LaunchContext) -> Mapping[str, Any]:
         return run_policy_capacity_task(manifest, index, context, force=force)
 
     def run_all(context: LaunchContext) -> None:
-        for index in range(len(manifest.split_seeds)):
+        for index in range(len(tasks)):
             run_policy_capacity_task(manifest, index, context, force=force)
         collect_policy_capacity_outputs(manifest, context)
 
+    profile = SlurmProfile(
+        name="policy-capacity-cpu",
+        partition="mit_normal",
+        time=manifest.launch.time,
+        nodes=1,
+        ntasks=1,
+        cpus_per_task=manifest.launch.cpus_per_task,
+        memory=manifest.launch.memory,
+        job_name="policy-capacity",
+        output="outputs/slurm/%x-%j.out",
+    )
+
     return LaunchPlan(
         name=manifest.name,
-        task_count=len(manifest.split_seeds),
+        task_count=len(tasks),
         requires_jax=False,
         run_task=run_task,
         run_all=run_all,
@@ -244,6 +286,7 @@ def build_policy_capacity_launch_plan(
         runs_root=runs_root,
         default_launch=manifest.launch.mode,
         default_array=True,
+        slurm_profile=profile,
     )
 
 
@@ -254,15 +297,29 @@ def run_policy_capacity_task(
     *,
     force: bool = False,
 ) -> dict[str, Any]:
-    """Run all 18 model/degree fits for one deterministic split seed."""
-    if not 0 <= int(task_index) < len(manifest.split_seeds):
+    """Run one split/model/degree fit and replay it under both evaluators."""
+    tasks = policy_capacity_tasks(manifest)
+    if not 0 <= int(task_index) < len(tasks):
         raise IndexError("Policy-capacity task index is out of range.")
-    seed = manifest.split_seeds[int(task_index)]
+    task = tasks[int(task_index)]
+    seed = task.split_seed
     split_dir = context.sweep_dir / "splits" / f"seed-{seed:02d}"
-    output_csv = split_dir / "capacity_rows.csv"
+    condition_dir = (
+        split_dir
+        / "conditions"
+        / task.optimize_model
+        / f"degree-{task.degree:02d}"
+    )
+    output_csv = condition_dir / "capacity_rows.csv"
     if output_csv.exists() and not force:
-        return {"split_seed": seed, "rows_csv": str(output_csv), "skipped": True}
-    split_dir.mkdir(parents=True, exist_ok=True)
+        return {
+            "split_seed": seed,
+            "optimize_model": task.optimize_model,
+            "degree": task.degree,
+            "rows_csv": str(output_csv),
+            "skipped": True,
+        }
+    condition_dir.mkdir(parents=True, exist_ok=True)
 
     resources = _load_task_resources(manifest, context.sweep_dir / "cache")
     train_positions, test_positions = split_positions(manifest, seed)
@@ -276,118 +333,126 @@ def run_policy_capacity_task(
         pca_dim=None,
     ).fit(train_raw.loc[:, list(resources.policy_cols)].to_numpy(dtype=float))
 
-    rows: list[dict[str, Any]] = []
-    for optimize_model in manifest.models:
-        train_frame = _model_frame(train_raw, optimize_model, resources.policy_cols)
-        for degree in manifest.degrees:
-            policy = SoftmaxPolicy(
-                feature_map=AdditiveChebyshevFeatureMap(
-                    max_degree=degree,
-                    clip_scale=manifest.clip_scale,
-                ),
-                action_low=manifest.action_bounds[0],
-                action_high=manifest.action_bounds[1],
-            )
-            objective = _build_objective(
-                manifest,
-                optimize_model,
-                policy,
-                policy_preprocessor,
-                resources,
-            )
-            config = ExperimentConfig(
-                state_dim=manifest.state_dim,
-                n_samples=manifest.train_size,
-                train_fraction=1.0,
-                test_fraction=0.0,
-                step_rule=str(manifest.optimizer["step_rule"]),
-                objective=objective,
-                perturbation_space="u",
-                objective_modifications=manifest.objective_modifications,
-                theta0=initial_theta(manifest, degree),
-                seed=seed,
-                t_steps=int(manifest.optimizer["t_steps"]),
-                grad_norm_tol=float(manifest.optimizer["grad_norm_tol"]),
-                sigma=0.05,
-                n_grad_samples=1,
-                enabled_estimators=(str(manifest.optimizer["estimator"]),),
-                acceptance_floor=manifest.acceptance_floor,
-                acceptance_penalty_weight=manifest.acceptance_penalty_weight,
-                acceptance_penalty_temperature=manifest.acceptance_penalty_temperature,
-                correctness=CorrectnessSpec(gradient_source="none"),
-                verbose=False,
-                plot=False,
-                wandb_enabled=False,
-                x_fixed=train_frame,
-                x_fixed_row_indices=train_rows,
-            )
-            result = run_experiment(config)
-            estimator = result.results["first_order"]
-            trace = result.traces["first_order"]
-            policy_path = _save_policy_state(
-                split_dir,
-                optimize_model=optimize_model,
-                degree=degree,
-                theta=estimator.theta,
-                preprocessor=policy_preprocessor,
-                manifest=manifest,
-                train_rows=train_rows,
-                test_rows=test_rows,
-            )
+    optimize_model = task.optimize_model
+    degree = task.degree
+    train_frame = _model_frame(train_raw, optimize_model, resources.policy_cols)
+    policy = SoftmaxPolicy(
+        feature_map=AdditiveChebyshevFeatureMap(
+            max_degree=degree,
+            clip_scale=manifest.clip_scale,
+        ),
+        action_low=manifest.action_bounds[0],
+        action_high=manifest.action_bounds[1],
+    )
+    objective = _build_objective(
+        manifest,
+        optimize_model,
+        policy,
+        policy_preprocessor,
+        resources,
+    )
+    config = ExperimentConfig(
+        state_dim=manifest.state_dim,
+        n_samples=manifest.train_size,
+        train_fraction=1.0,
+        test_fraction=0.0,
+        step_rule=str(manifest.optimizer["step_rule"]),
+        objective=objective,
+        perturbation_space="u",
+        objective_modifications=manifest.objective_modifications,
+        theta0=initial_theta(manifest, degree),
+        seed=seed,
+        t_steps=int(manifest.optimizer["t_steps"]),
+        grad_norm_tol=float(manifest.optimizer["grad_norm_tol"]),
+        sigma=0.05,
+        n_grad_samples=1,
+        enabled_estimators=(str(manifest.optimizer["estimator"]),),
+        acceptance_floor=manifest.acceptance_floor,
+        acceptance_penalty_weight=manifest.acceptance_penalty_weight,
+        acceptance_penalty_temperature=manifest.acceptance_penalty_temperature,
+        correctness=CorrectnessSpec(gradient_source="none"),
+        verbose=False,
+        plot=False,
+        wandb_enabled=False,
+        x_fixed=train_frame,
+        x_fixed_row_indices=train_rows,
+    )
+    result = run_experiment(config)
+    estimator = result.results["first_order"]
+    trace = result.traces["first_order"]
+    policy_path = _save_policy_state(
+        split_dir,
+        optimize_model=optimize_model,
+        degree=degree,
+        theta=estimator.theta,
+        preprocessor=policy_preprocessor,
+        manifest=manifest,
+        train_rows=train_rows,
+        test_rows=test_rows,
+    )
 
-            for evaluate_model in manifest.models:
-                evaluator = _build_objective(
-                    manifest,
-                    evaluate_model,
-                    policy,
-                    policy_preprocessor,
-                    resources,
-                )
-                eval_train = _model_frame(train_raw, evaluate_model, resources.policy_cols)
-                eval_test = _model_frame(test_raw, evaluate_model, resources.policy_cols)
-                train_metrics = evaluate_policy(evaluator, estimator.theta, eval_train)
-                test_metrics = evaluate_policy(evaluator, estimator.theta, eval_test)
-                rows.append(
-                    {
-                        "split_seed": seed,
-                        "optimize_model": optimize_model,
-                        "evaluate_model": evaluate_model,
-                        "degree": degree,
-                        "parameter_count": manifest.parameter_count(degree),
-                        "train_objective": train_metrics.objective_value,
-                        "test_objective": test_metrics.objective_value,
-                        "train_profit": -train_metrics.objective_value,
-                        "test_profit": -test_metrics.objective_value,
-                        "generalization_gap_profit": -test_metrics.objective_value
-                        + train_metrics.objective_value,
-                        "train_acceptance": train_metrics.mean_acceptance,
-                        "test_acceptance": test_metrics.mean_acceptance,
-                        "train_mean_u": train_metrics.mean_u,
-                        "test_mean_u": test_metrics.mean_u,
-                        "train_acceptance_violation": max(
-                            0.0,
-                            manifest.acceptance_floor - float(train_metrics.mean_acceptance),
-                        ),
-                        "optimizer_runtime_sec": estimator.time,
-                        "optimizer_success": trace.optimizer_success,
-                        "optimizer_status": trace.optimizer_status,
-                        "optimizer_message": trace.optimizer_message,
-                        "optimizer_iterations": len(trace.steps),
-                        "theta_l2": float(np.linalg.norm(estimator.theta)),
-                        "policy_state": str(policy_path.relative_to(context.sweep_dir)),
-                    }
-                )
+    rows: list[dict[str, Any]] = []
+    for evaluate_model in manifest.models:
+        evaluator = _build_objective(
+            manifest,
+            evaluate_model,
+            policy,
+            policy_preprocessor,
+            resources,
+        )
+        eval_train = _model_frame(train_raw, evaluate_model, resources.policy_cols)
+        eval_test = _model_frame(test_raw, evaluate_model, resources.policy_cols)
+        train_metrics = evaluate_policy(evaluator, estimator.theta, eval_train)
+        test_metrics = evaluate_policy(evaluator, estimator.theta, eval_test)
+        rows.append(
+            {
+                "split_seed": seed,
+                "optimize_model": optimize_model,
+                "evaluate_model": evaluate_model,
+                "degree": degree,
+                "parameter_count": manifest.parameter_count(degree),
+                "train_objective": train_metrics.objective_value,
+                "test_objective": test_metrics.objective_value,
+                "train_profit": -train_metrics.objective_value,
+                "test_profit": -test_metrics.objective_value,
+                "generalization_gap_profit": -test_metrics.objective_value
+                + train_metrics.objective_value,
+                "train_acceptance": train_metrics.mean_acceptance,
+                "test_acceptance": test_metrics.mean_acceptance,
+                "train_mean_u": train_metrics.mean_u,
+                "test_mean_u": test_metrics.mean_u,
+                "train_acceptance_violation": max(
+                    0.0,
+                    manifest.acceptance_floor - float(train_metrics.mean_acceptance),
+                ),
+                "optimizer_runtime_sec": estimator.time,
+                "optimizer_success": trace.optimizer_success,
+                "optimizer_status": trace.optimizer_status,
+                "optimizer_message": trace.optimizer_message,
+                "optimizer_iterations": len(trace.steps),
+                "theta_l2": float(np.linalg.norm(estimator.theta)),
+                "policy_state": str(policy_path.relative_to(context.sweep_dir)),
+            }
+        )
 
     _write_rows_csv(output_csv, rows)
     metadata = {
         "split_seed": seed,
+        "optimize_model": optimize_model,
+        "degree": degree,
         "train_source_rows": train_rows.tolist(),
         "test_source_rows": test_rows.tolist(),
-        "n_fits": len(manifest.models) * len(manifest.degrees),
+        "n_fits": 1,
         "n_evaluations": len(rows),
     }
-    _write_json(split_dir / "split_metadata.json", metadata)
-    return {"split_seed": seed, "rows_csv": str(output_csv), "skipped": False}
+    _write_json(condition_dir / "condition_metadata.json", metadata)
+    return {
+        "split_seed": seed,
+        "optimize_model": optimize_model,
+        "degree": degree,
+        "rows_csv": str(output_csv),
+        "skipped": False,
+    }
 
 
 def collect_policy_capacity_outputs(
@@ -396,8 +461,14 @@ def collect_policy_capacity_outputs(
 ) -> dict[str, Any]:
     """Collect all split outputs, compute 95% intervals, and write canonical PDFs."""
     paths = [
-        context.sweep_dir / "splits" / f"seed-{seed:02d}" / "capacity_rows.csv"
-        for seed in manifest.split_seeds
+        context.sweep_dir
+        / "splits"
+        / f"seed-{task.split_seed:02d}"
+        / "conditions"
+        / task.optimize_model
+        / f"degree-{task.degree:02d}"
+        / "capacity_rows.csv"
+        for task in policy_capacity_tasks(manifest)
     ]
     missing = [path for path in paths if not path.exists()]
     if missing:
@@ -719,10 +790,12 @@ __all__ = [
     "MODEL_FAMILIES",
     "POLICY_CAPACITY_MANIFEST_KIND",
     "PolicyCapacityManifest",
+    "PolicyCapacityTask",
     "build_policy_capacity_launch_plan",
     "collect_policy_capacity_outputs",
     "initial_theta",
     "load_policy_capacity_manifest",
+    "policy_capacity_tasks",
     "run_policy_capacity_task",
     "split_positions",
     "summarize_policy_capacity",

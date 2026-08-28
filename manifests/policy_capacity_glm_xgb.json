@@ -108,7 +108,12 @@
   },
   "launch": {
     "mode": "slurm",
-    "array": "split_seed",
-    "array_max_parallel": 20
+    "array": "condition",
+    "array_max_parallel": 20,
+    "resources": {
+      "time": "02:00:00",
+      "cpus_per_task": 2,
+      "memory": "16G"
+    }
   }
 }

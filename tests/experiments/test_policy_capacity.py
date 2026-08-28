@@ -9,6 +9,7 @@ from experiments.policy_capacity import (
     build_policy_capacity_launch_plan,
     initial_theta,
     load_policy_capacity_manifest,
+    policy_capacity_tasks,
     split_positions,
     summarize_policy_capacity,
 )
@@ -41,7 +42,19 @@ def test_canonical_policy_capacity_manifest_has_gradual_parameter_ladder() -> No
     ]
     assert manifest.action_bounds == (-0.1, 0.2)
     np.testing.assert_allclose(manifest.curve_action_grid, np.linspace(-0.1, 0.2, 31), atol=1e-15)
-    assert build_policy_capacity_launch_plan(manifest).task_count == 20
+    tasks = policy_capacity_tasks(manifest)
+    plan = build_policy_capacity_launch_plan(manifest)
+    assert len(tasks) == plan.task_count == 360
+    assert (tasks[0].split_seed, tasks[0].optimize_model, tasks[0].degree) == (0, "glm", 0)
+    assert (tasks[-1].split_seed, tasks[-1].optimize_model, tasks[-1].degree) == (
+        19,
+        "xgb",
+        10,
+    )
+    assert plan.slurm_profile is not None
+    assert plan.slurm_profile.cpus_per_task == 2
+    assert plan.slurm_profile.memory == "16G"
+    assert plan.slurm_profile.time == "02:00:00"
 
 
 def test_initial_theta_represents_zero_action_for_every_customer() -> None:

@@ -410,8 +410,9 @@ python scripts/run_experiment_manifest.py \
   manifests/policy_capacity_glm_xgb.json
 ```
 
-Each of the 20 array tasks runs 18 fits (two model families by nine degrees)
-and cross-evaluates the learned policies under both model evaluators without
+The launcher expands 360 small array tasks: one task per split seed, training
+model, and degree. Each task requests 2 CPUs, 16 GB, and two hours, performs one
+fit, and cross-evaluates the learned policy under both model evaluators without
 retraining. The sweep-level collector writes `capacity_per_split.csv`,
 `capacity_summary.csv`, and canonical PDFs under
 `results/policy-capacity-glm-xgb/sweeps/<sweep-id>/`. The primary

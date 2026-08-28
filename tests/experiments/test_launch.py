@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 from experiments.launch import LaunchPlan, read_task_records, run_launch_plan
+from experiments.slurm import SlurmProfile
 
 
 def _args(**overrides):
@@ -96,6 +97,49 @@ def test_slurm_array_parent_submits_array_and_collector(tmp_path) -> None:
     assert "--array=0-3%2" in commands[0]
     assert any(part == "--dependency=afterany:111" for part in commands[1])
     assert not any(part.startswith("--array=") for part in commands[1])
+
+
+def test_slurm_plan_profile_applies_to_array_and_collector(tmp_path) -> None:
+    commands: list[list[str]] = []
+    profile = SlurmProfile(
+        name="small-cpu",
+        partition="mit_normal",
+        time="02:00:00",
+        nodes=1,
+        ntasks=1,
+        cpus_per_task=2,
+        memory="16G",
+        job_name="small-fit",
+        output="ignored.out",
+    )
+
+    def fake_runner(command, *, check, capture_output, text):
+        commands.append(command)
+        return subprocess.CompletedProcess(command, 0, stdout=f"{len(commands)}\n", stderr="")
+
+    plan = LaunchPlan(
+        name="demo",
+        task_count=2,
+        requires_jax=False,
+        run_task=lambda index, context: {},
+        collect=lambda context: None,
+        runs_root=str(tmp_path),
+        slurm_profile=profile,
+    )
+
+    run_launch_plan(
+        plan,
+        args=_args(launch="slurm", array=True),
+        argv=["script.py", "--array"],
+        cwd=tmp_path,
+        env={},
+        runner=fake_runner,
+    )
+
+    assert len(commands) == 2
+    for command in commands:
+        assert "--cpus-per-task=2" in command
+        assert "--mem=16G" in command
 
 
 def test_slurm_parent_submission_failure_exits_without_traceback(tmp_path) -> None:

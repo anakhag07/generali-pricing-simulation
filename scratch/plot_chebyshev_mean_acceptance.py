@@ -45,7 +45,7 @@ def plot_chebyshev_mean_acceptance(
         label="Acceptance floor",
     )
     ax.set_xscale("log")
-    ax.set_ylim(0.85, 0.90)
+    ax.set_ylim(0.86, 0.89)
     ax.set_xlabel("Policy parameter count (log scale)", fontsize=12)
     ax.set_ylabel("Mean Acceptance Probability", fontsize=12)
     ax.tick_params(labelsize=10)

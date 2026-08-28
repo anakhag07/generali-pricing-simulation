@@ -49,6 +49,7 @@ from reporting.visualization import (
     plot_policy_capacity_generalization_gap,
     plot_policy_capacity_model_transfer,
     plot_policy_capacity_objective,
+    plot_policy_capacity_penalized_gains,
 )
 
 
@@ -542,6 +543,7 @@ def collect_policy_capacity_outputs(
     if missing:
         raise FileNotFoundError(f"Cannot collect policy-capacity sweep; missing {len(missing)} split files.")
     frame = pd.concat([pd.read_csv(path) for path in paths], ignore_index=True)
+    frame = _with_acceptance_penalty_metrics(frame, manifest)
     rows_path = context.sweep_dir / "capacity_per_split.csv"
     frame.to_csv(rows_path, index=False)
     summary = summarize_policy_capacity(frame)
@@ -555,6 +557,7 @@ def collect_policy_capacity_outputs(
         plot_policy_capacity_action_diagnostics(frame, context.sweep_dir, family=family)
         plot_policy_capacity_generalization_gap(summary, context.sweep_dir, family=family)
         plot_policy_capacity_model_transfer(summary, context.sweep_dir, family=family)
+        plot_policy_capacity_penalized_gains(frame, context.sweep_dir, family=family)
         plot_policy_capacity_endpoint_slices(
             endpoint_records,
             context.sweep_dir,
@@ -591,6 +594,10 @@ def summarize_policy_capacity(frame: pd.DataFrame) -> pd.DataFrame:
             "train_near_bound_fraction",
             "test_near_bound_fraction",
             "test_acceptance_violation",
+            "train_acceptance_penalty",
+            "test_acceptance_penalty",
+            "train_penalized_profit",
+            "test_penalized_profit",
         )
         if metric in frame.columns
     )
@@ -613,6 +620,25 @@ def summarize_policy_capacity(frame: pd.DataFrame) -> pd.DataFrame:
             record[f"{metric}_ci95"] = half_width
         records.append(record)
     return pd.DataFrame.from_records(records)
+
+
+def _with_acceptance_penalty_metrics(
+    frame: pd.DataFrame,
+    manifest: PolicyCapacityManifest,
+) -> pd.DataFrame:
+    """Add the smooth acceptance penalty and penalized profit used by optimization."""
+    enriched = frame.copy()
+    for split_name in ("train", "test"):
+        scaled_gap = (
+            manifest.acceptance_floor - enriched[f"{split_name}_acceptance"].to_numpy(dtype=float)
+        ) / manifest.acceptance_penalty_temperature
+        soft_gap = manifest.acceptance_penalty_temperature * np.logaddexp(0.0, scaled_gap)
+        penalty = manifest.acceptance_penalty_weight * soft_gap * soft_gap
+        enriched[f"{split_name}_acceptance_penalty"] = penalty
+        enriched[f"{split_name}_penalized_profit"] = (
+            enriched[f"{split_name}_profit"].to_numpy(dtype=float) - penalty
+        )
+    return enriched
 
 
 def _load_task_resources(manifest: PolicyCapacityManifest, cache_dir: Path) -> _TaskResources:

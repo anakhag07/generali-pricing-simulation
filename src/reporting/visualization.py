@@ -2430,6 +2430,106 @@ def plot_policy_capacity_action_diagnostics(
     )
 
 
+def plot_policy_capacity_penalized_gains(
+    records: object,
+    output_dir: str | Path,
+    *,
+    family: str,
+) -> Path:
+    """Plot train/test gains under the acceptance-penalized optimization objective."""
+    frame = _capacity_frame(records)
+    subset = frame.loc[
+        (frame["optimize_model"] == family) & (frame["evaluate_model"] == family)
+    ].copy()
+    required = {"train_penalized_profit", "test_penalized_profit"}
+    if subset.empty or not required.issubset(subset.columns):
+        raise ValueError(f"No penalized-profit records found for model family {family!r}.")
+    baseline = subset.loc[
+        subset["degree"] == 0,
+        ["split_seed", "train_penalized_profit", "test_penalized_profit"],
+    ].rename(
+        columns={
+            "train_penalized_profit": "baseline_train_penalized_profit",
+            "test_penalized_profit": "baseline_test_penalized_profit",
+        }
+    )
+    paired = subset.merge(baseline, on="split_seed", how="left", validate="many_to_one")
+    paired["train_penalized_gain"] = (
+        paired["train_penalized_profit"] - paired["baseline_train_penalized_profit"]
+    )
+    paired["test_penalized_gain"] = (
+        paired["test_penalized_profit"] - paired["baseline_test_penalized_profit"]
+    )
+    paired["excess_train_penalized_gain"] = (
+        paired["train_penalized_gain"] - paired["test_penalized_gain"]
+    )
+
+    rows = []
+    metrics = (
+        "train_penalized_gain",
+        "test_penalized_gain",
+        "excess_train_penalized_gain",
+    )
+    for (degree, parameter_count), group in paired.groupby(
+        ["degree", "parameter_count"],
+        sort=True,
+    ):
+        row = {"degree": int(degree), "parameter_count": int(parameter_count)}
+        for metric in metrics:
+            values = group[metric].to_numpy(dtype=float)
+            row[f"{metric}_mean"] = float(np.mean(values))
+            row[f"{metric}_ci95"] = (
+                float(
+                    student_t.ppf(0.975, values.size - 1)
+                    * np.std(values, ddof=1)
+                    / np.sqrt(values.size)
+                )
+                if values.size > 1
+                else 0.0
+            )
+        rows.append(row)
+    summary = _capacity_frame(rows).sort_values("parameter_count")
+
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.8), constrained_layout=True)
+    for metric, label in (
+        ("train_penalized_gain", "Train gain"),
+        ("test_penalized_gain", "Test gain"),
+    ):
+        axes[0].errorbar(
+            summary["parameter_count"],
+            summary[f"{metric}_mean"],
+            yerr=summary[f"{metric}_ci95"],
+            marker="o",
+            capsize=3,
+            label=label,
+        )
+    axes[0].axhline(0.0, color="C2", linestyle="--", linewidth=1.2)
+    axes[0].set_title("Penalized gain relative to degree zero", fontsize=14)
+    axes[0].set_xlabel("Policy parameter count", fontsize=12)
+    axes[0].set_ylabel("Penalized profit change per customer", fontsize=12)
+    axes[0].legend(fontsize=10)
+    axes[1].errorbar(
+        summary["parameter_count"],
+        summary["excess_train_penalized_gain_mean"],
+        yerr=summary["excess_train_penalized_gain_ci95"],
+        marker="o",
+        capsize=3,
+    )
+    axes[1].axhline(0.0, color="C2", linestyle="--", linewidth=1.2)
+    axes[1].set_title("Penalized overfit gap", fontsize=14)
+    axes[1].set_xlabel("Policy parameter count", fontsize=12)
+    axes[1].set_ylabel("Excess training gain per customer", fontsize=12)
+    for ax in axes:
+        ax.tick_params(labelsize=10)
+        ax.grid(True, alpha=0.3)
+    fig.suptitle(f"{family.upper()} acceptance-penalized performance", fontsize=16)
+    return _save_capacity_figure(
+        fig,
+        output_dir,
+        f"policy_capacity_penalized_gains_{family}",
+    )
+
+
 def plot_policy_capacity_model_transfer(
     summary: object,
     output_dir: str | Path,

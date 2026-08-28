@@ -12,6 +12,7 @@ from experiments.policy_capacity import (
     policy_capacity_tasks,
     split_positions,
     summarize_policy_capacity,
+    _with_acceptance_penalty_metrics,
 )
 from objective.policy import AdditiveChebyshevFeatureMap, SoftmaxPolicy
 from reporting.visualization import (
@@ -21,6 +22,7 @@ from reporting.visualization import (
     plot_policy_capacity_generalization_gap,
     plot_policy_capacity_model_transfer,
     plot_policy_capacity_objective,
+    plot_policy_capacity_penalized_gains,
 )
 
 
@@ -182,6 +184,8 @@ def test_summary_and_capacity_plots_use_parameter_count_not_acceptance(tmp_path)
                         }
                     )
     summary = summarize_policy_capacity(pd.DataFrame(rows))
+    manifest = load_policy_capacity_manifest(MANIFEST)
+    enriched_rows = _with_acceptance_penalty_metrics(pd.DataFrame(rows), manifest)
 
     assert summary.shape[0] == 36
     assert set(summary["n_splits"]) == {20}
@@ -197,6 +201,11 @@ def test_summary_and_capacity_plots_use_parameter_count_not_acceptance(tmp_path)
                 ),
                 plot_policy_capacity_action_diagnostics(
                     pd.DataFrame(rows),
+                    tmp_path,
+                    family=family,
+                ),
+                plot_policy_capacity_penalized_gains(
+                    enriched_rows,
                     tmp_path,
                     family=family,
                 ),

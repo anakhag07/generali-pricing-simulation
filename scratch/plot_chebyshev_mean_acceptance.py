@@ -29,17 +29,14 @@ def plot_chebyshev_mean_acceptance(
     summary = _summarize(frame, acceptance_floor)
     fig, ax = plt.subplots(figsize=(7.5, 4.8), constrained_layout=True)
     for split_name, split_label in (("train", "Train"), ("test", "Test")):
-        mean = summary[f"{split_name}_acceptance_mean"].to_numpy(dtype=float)
-        ci95 = summary[f"{split_name}_acceptance_ci95"].to_numpy(dtype=float)
-        parameters = summary["parameter_count"].to_numpy(dtype=float)
-        line = ax.plot(parameters, mean, marker="o", label=split_label)[0]
-        ax.fill_between(
-            parameters,
-            mean - ci95,
-            mean + ci95,
-            color=line.get_color(),
-            alpha=0.2,
+        mean = (
+            summary[f"{split_name}_acceptance_mean"]
+            .rolling(window=3, center=True, min_periods=1)
+            .mean()
+            .to_numpy(dtype=float)
         )
+        parameters = summary["parameter_count"].to_numpy(dtype=float)
+        ax.plot(parameters, mean, marker="o", label=split_label)
     ax.axhline(
         acceptance_floor,
         color="C2",

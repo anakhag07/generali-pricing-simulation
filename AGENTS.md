@@ -654,6 +654,9 @@ belongs under `generali/`.
     restricted-range replication: it keeps the cohort, splits, degree ladder,
     and acceptance floor fixed, constrains `u` to `[0, 0.16]`, and initializes
     the bounded softmax policy at the finite midpoint `u=0.08`.
+  - `manifests/policy_capacity_xgb_u_0_0p16_degree_32.json` is the XGBoost-only
+    overparameterized extension. It retains the 50/50 splits and full
+    low-degree curve, then continues through degree 32 (609 parameters).
 
 - **`src/experiments/policy_lcb/`**
   - Reusable policy-LCB module with shared Gaussian quantiles, coverage/oracle

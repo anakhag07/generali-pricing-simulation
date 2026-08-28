@@ -131,8 +131,12 @@ def load_policy_capacity_manifest(path: str | Path) -> PolicyCapacityManifest:
     resources_payload = _mapping(launch_payload.get("resources"), "launch.resources")
 
     models = tuple(str(value) for value in _sequence(payload.get("models"), "models"))
-    if models != MODEL_FAMILIES:
-        raise ValueError("models must be exactly ['glm', 'xgb'] in that order.")
+    if (
+        not models
+        or len(set(models)) != len(models)
+        or any(model not in MODEL_FAMILIES for model in models)
+    ):
+        raise ValueError("models must be a unique non-empty subset of ['glm', 'xgb'].")
     degrees = tuple(int(value) for value in _sequence(policy.get("degrees"), "policy.degrees"))
     if not degrees or any(value < 0 for value in degrees) or tuple(sorted(set(degrees))) != degrees:
         raise ValueError("policy.degrees must be unique, sorted, and non-negative.")
@@ -700,7 +704,13 @@ def _save_policy_state(
 def _endpoint_records(sweep_dir: Path, manifest: PolicyCapacityManifest) -> list[dict[str, Any]]:
     seed = manifest.split_seeds[0]
     records: list[dict[str, Any]] = []
-    selected_degrees = tuple(value for value in (0, 5, 10) if value in manifest.degrees)
+    selected_degrees = tuple(
+        dict.fromkeys(
+            value
+            for value in (0, 5, manifest.degrees[-1])
+            if value in manifest.degrees
+        )
+    )
     for family in manifest.models:
         for degree in selected_degrees:
             arrays_path = (
@@ -732,10 +742,11 @@ def _write_experiment_markdown(
     manifest: PolicyCapacityManifest,
     frame: pd.DataFrame,
 ) -> None:
+    model_label = "/".join(model.upper() for model in manifest.models)
     runtimes = (
         frame.drop_duplicates(["split_seed", "optimize_model", "degree"])["optimizer_runtime_sec"]
     )
-    text = f"""# GLM/XGBoost policy-capacity sweep
+    text = f"""# {model_label} policy-capacity sweep
 
 - Policy action bounds: `{manifest.action_bounds}`
 - Degrees: `{list(manifest.degrees)}`

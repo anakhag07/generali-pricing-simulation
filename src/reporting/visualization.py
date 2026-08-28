@@ -2271,7 +2271,12 @@ def plot_policy_capacity_model_transfer(
     if subset.empty:
         raise ValueError(f"No policy-capacity rows found for model family {family!r}.")
     fig, ax = plt.subplots(figsize=(7.5, 4.8), constrained_layout=True)
-    for evaluate_model in ("glm", "xgb"):
+    evaluation_models = [
+        model
+        for model in ("glm", "xgb")
+        if bool((subset["evaluate_model"] == model).any())
+    ]
+    for evaluate_model in evaluation_models:
         condition = subset.loc[subset["evaluate_model"] == evaluate_model].sort_values(
             "parameter_count"
         )

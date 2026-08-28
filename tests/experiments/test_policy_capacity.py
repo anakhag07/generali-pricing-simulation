@@ -26,6 +26,11 @@ MANIFEST = Path(__file__).parents[2] / "manifests" / "policy_capacity_glm_xgb.js
 RESTRICTED_MANIFEST = (
     Path(__file__).parents[2] / "manifests" / "policy_capacity_glm_xgb_u_0_0p16.json"
 )
+XGB_EXTENSION_MANIFEST = (
+    Path(__file__).parents[2]
+    / "manifests"
+    / "policy_capacity_xgb_u_0_0p16_degree_32.json"
+)
 
 
 def test_canonical_policy_capacity_manifest_has_gradual_parameter_ladder() -> None:
@@ -82,6 +87,23 @@ def test_restricted_policy_capacity_manifest_uses_canonical_action_range() -> No
     np.testing.assert_allclose(manifest.curve_action_grid, np.linspace(0.0, 0.16, 17))
     np.testing.assert_allclose(initial_theta(manifest, 10)[0], 0.0, atol=1e-15)
     assert len(policy_capacity_tasks(manifest)) == 360
+
+
+def test_xgb_extension_manifest_reaches_609_parameters_in_360_small_tasks() -> None:
+    manifest = load_policy_capacity_manifest(XGB_EXTENSION_MANIFEST)
+
+    assert manifest.models == ("xgb",)
+    assert manifest.degrees == (0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 18, 20, 21, 24, 28, 32)
+    assert manifest.parameter_count(21) == 400
+    assert manifest.parameter_count(32) == 609
+    tasks = policy_capacity_tasks(manifest)
+    assert len(tasks) == 360
+    assert (tasks[0].split_seed, tasks[0].optimize_model, tasks[0].degree) == (0, "xgb", 0)
+    assert (tasks[-1].split_seed, tasks[-1].optimize_model, tasks[-1].degree) == (
+        19,
+        "xgb",
+        32,
+    )
 
 
 def test_split_positions_are_deterministic_disjoint_and_balanced() -> None:

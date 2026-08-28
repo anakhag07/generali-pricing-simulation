@@ -435,6 +435,15 @@ python scripts/run_experiment_manifest.py \
   manifests/policy_capacity_glm_xgb_u_0_0p16.json
 ```
 
+The XGBoost-only overparameterized extension retains the complete low-degree
+curve and continues through degree 32 (609 parameters) using the same 20
+deterministic 100/100 splits:
+
+```bash
+python scripts/run_experiment_manifest.py \
+  manifests/policy_capacity_xgb_u_0_0p16_degree_32.json
+```
+
 A separate versioned analysis cache can materialize the same canonical curve
 for every complete eligible source row without changing the 200-profile runtime
 artifact or anything under `src/data/models/`:

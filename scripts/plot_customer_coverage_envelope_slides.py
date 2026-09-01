@@ -392,6 +392,47 @@ def _plot_sample_optimizer_price_change_histogram(
     )
 
 
+def _plot_optimizer_vs_coverage_envelope_histograms(
+    data: dict[str, np.ndarray],
+    output_dir: Path,
+) -> None:
+    _, optimizer_actions = _sample_optimizer_actions(data)
+    smoothed_lower = gaussian_filter1d(
+        data["lower_envelope"],
+        sigma=GAUSSIAN_SMOOTH_SIGMA,
+        mode="nearest",
+        truncate=GAUSSIAN_SMOOTH_TRUNCATE,
+    )
+    coverage_action = float(data["u"][np.argmax(smoothed_lower)])
+    coverage_actions = np.full(len(optimizer_actions), coverage_action)
+    bins = np.linspace(0.0, 0.16, 33)
+
+    fig, axes = plt.subplots(1, 2, figsize=(10.0, 5.8), constrained_layout=True)
+    axes[0].hist(optimizer_actions, bins=bins)
+    axes[0].set_title("Customer-Specific Optimizer", fontsize=14)
+    axes[0].set_xlabel("Price Change", fontsize=12)
+    axes[0].set_ylabel("Number of Customers", fontsize=12)
+
+    axes[1].hist(coverage_actions, bins=bins)
+    axes[1].set_title(
+        f"Coverage Lower-Envelope Rule ({100 * coverage_action:.1f}%)",
+        fontsize=14,
+    )
+    axes[1].set_xlabel("Price Change", fontsize=12)
+    axes[1].set_ylabel("Number of Customers", fontsize=12)
+
+    for ax in axes:
+        ax.tick_params(labelsize=10)
+    fig.suptitle(
+        "Optimizer Actions vs. Coverage-Based Lower-Envelope Rule",
+        fontsize=16,
+    )
+    _save_pdf(
+        fig,
+        output_dir / "06_optimizer_vs_coverage_lower_envelope_histograms.pdf",
+    )
+
+
 def _plot_historical_only(
     data: dict[str, np.ndarray],
     output_dir: Path,
@@ -658,6 +699,7 @@ def main() -> None:
     _plot_optimizer_price_change_histogram(args.output_dir)
     _export_sample_optimizer_actions(diagnostics, args.output_dir)
     _plot_sample_optimizer_price_change_histogram(diagnostics, args.output_dir)
+    _plot_optimizer_vs_coverage_envelope_histograms(diagnostics, args.output_dir)
     print(args.output_dir)
 
 

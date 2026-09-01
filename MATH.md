@@ -188,6 +188,20 @@ to the bundled estimator's `predict_proba` / `predict` methods. In observed-loss
 mode the loss-model path is bypassed and `Y_G_Loss` must be present in the
 real-data batch.
 
+For the customer-dispersion diagnostic, predicted profit is the negative of the
+minimization objective,
+
+$$P_i(u) = -f(u;x_i) = a(x_i,u)\bigl((u+1)p(x_i)-L(x_i)\bigr).$$
+
+At each candidate action, the plotted cloud is the sample mean plus or minus one
+sample standard deviation across customers:
+
+$$\bar P(u) \pm s_P(u), \qquad
+s_P(u)=\sqrt{\frac{1}{n-1}\sum_{i=1}^n\left(P_i(u)-\bar P(u)\right)^2}.$$
+
+- **Source:** `scripts/plot_customer_coverage_envelope_slides.py` ::
+  `_compute_diagnostics()`, `_plot_smoothed_mean_profit_std_band()`
+
 **Gradient w.r.t. $u$:**
 
 $$\frac{\partial f}{\partial u} = \frac{\partial a}{\partial u}\,(L - (u+1)\,p) - a\, p$$

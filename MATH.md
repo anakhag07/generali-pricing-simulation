@@ -202,6 +202,29 @@ s_P(u)=\sqrt{\frac{1}{n-1}\sum_{i=1}^n\left(P_i(u)-\bar P(u)\right)^2}.$$
 - **Source:** `scripts/plot_customer_coverage_envelope_slides.py` ::
   `_compute_diagnostics()`, `_plot_smoothed_mean_profit_std_band()`
 
+For the customer-specific coverage-aware policy rerun, let $$S_i(u_j)$$ be the
+local joint customer/action support on the fixed action grid. Each customer's
+penalty is normalized against that customer's best-supported action:
+
+$$W_i(u_j)=c\left(1-\frac{S_i(u_j)}{\max_k S_i(u_k)}\right), \qquad c=10.$$
+
+The XGBoost acceptance response, predicted profit, and $$W_i(u)$$ are evaluated
+on the same 0.001-spaced action grid. Between grid points, their values and
+action derivatives are obtained by linear interpolation. The bounded sigmoid policy
+
+$$u_i(\theta)=0.16\,\sigma\!\left(\theta^\top\phi(z_i)\right)$$
+
+is refit by minimizing the coverage-adjusted cost
+
+$$J_{\mathrm{cov}}(\theta)=\frac1n\sum_{i=1}^n
+\left[f(u_i(\theta);x_i)+W_i(u_i(\theta))\right]$$
+
+subject to the same cohort-mean acceptance floor as the original constrained
+policy. Equivalently, the refit maximizes predicted profit minus the
+customer-specific coverage penalty.
+
+- **Source:** `scripts/run_coverage_aware_policy_optimizer.py`
+
 **Gradient w.r.t. $u$:**
 
 $$\frac{\partial f}{\partial u} = \frac{\partial a}{\partial u}\,(L - (u+1)\,p) - a\, p$$

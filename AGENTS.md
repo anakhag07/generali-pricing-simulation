@@ -206,6 +206,12 @@ Guidelines:
   dense additive-`u` replay tables/plots, and adjacent-grid customer jump
   statistics; external artifacts remain read-only and are identified by hashes
   in `provenance.json`.
+- `scripts/run_coverage_aware_policy_optimizer.py` refits the bounded sigmoid
+  XGBoost policy on the fixed 20,000-row coverage diagnostic sample. It applies
+  per-customer local-support widths on the 0--16% action grid, retains the hard
+  cohort-mean acceptance floor, caches coverage/response matrices, and writes
+  customer-level baseline-versus-adjusted actions and vector-PDF histograms to
+  `results/coverage-aware-policy-20k/`.
 - Keep the boundary strict: do not hide reusable pipeline logic inside a script,
   and do not promote analysis-only code into `src/` without a concrete reusable
   integration point.

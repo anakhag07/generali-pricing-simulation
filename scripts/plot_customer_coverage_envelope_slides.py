@@ -104,6 +104,7 @@ def _local_support_matrix(
     u_grid: np.ndarray,
     *,
     n_neighbors: int,
+    n_jobs: int = -1,
 ) -> np.ndarray:
     """Estimate local joint support over customer state and candidate action."""
     neighbor_count = min(int(n_neighbors) + 1, len(embedding))
@@ -111,7 +112,7 @@ def _local_support_matrix(
         n_neighbors=neighbor_count,
         algorithm="brute",
         metric="euclidean",
-        n_jobs=-1,
+        n_jobs=int(n_jobs),
     ).fit(embedding)
     distances, indices = nearest.kneighbors(embedding)
     distances = distances[:, 1:].astype(np.float32)

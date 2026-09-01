@@ -340,6 +340,31 @@ def _plot_optimizer_price_change_histogram(output_dir: Path) -> None:
     _save_pdf(fig, output_dir / "05_optimizer_price_change_histogram.pdf")
 
 
+def _export_sample_optimizer_actions(
+    data: dict[str, np.ndarray],
+    output_dir: Path,
+) -> None:
+    sample_rows = np.asarray(data["row_indices"], dtype=int)
+    with np.load(OPTIMIZED_POLICY_PATH, allow_pickle=False) as saved_policy:
+        policy_rows = saved_policy["row_indices"]
+        policy_actions = saved_policy["actions"]
+
+    positions = np.searchsorted(policy_rows, sample_rows)
+    if np.any(positions >= len(policy_rows)) or not np.array_equal(
+        policy_rows[positions], sample_rows
+    ):
+        raise ValueError("The diagnostic sample is not contained in the saved policy rows.")
+
+    pd.DataFrame(
+        {
+            "sample_position": np.arange(len(sample_rows), dtype=int),
+            "csv_row_index": sample_rows,
+            "optimizer_price_change": policy_actions[positions],
+            "optimizer_price_change_percent": 100.0 * policy_actions[positions],
+        }
+    ).to_csv(output_dir / "optimizer_price_changes_20k_sample.csv", index=False)
+
+
 def _plot_historical_only(
     data: dict[str, np.ndarray],
     output_dir: Path,
@@ -604,6 +629,7 @@ def main() -> None:
     _plot_smoothed_envelope(diagnostics, args.output_dir, show_stars=True)
     _plot_envelope_construction(diagnostics, args.output_dir)
     _plot_optimizer_price_change_histogram(args.output_dir)
+    _export_sample_optimizer_actions(diagnostics, args.output_dir)
     print(args.output_dir)
 
 

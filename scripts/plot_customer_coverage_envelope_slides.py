@@ -41,6 +41,12 @@ FULL_OBJECTIVE_PATH = (
     / "xgboost-full-dataset-historical-support"
     / "xgboost_objective_minus010_plus020.csv"
 )
+OPTIMIZED_POLICY_PATH = (
+    REPOSITORY_ROOT
+    / "results"
+    / "xgboost-full-dataset-historical-support"
+    / "optimized_policy_cropped.npz"
+)
 U_GRID = np.linspace(0.0, 0.16, 161)
 NUMERIC_CLIP = 6.0
 ACTION_BANDWIDTH = 0.01
@@ -321,6 +327,19 @@ def _plot_historical_vs_optimized(data: dict[str, np.ndarray], output_dir: Path)
     _save_pdf(fig, output_dir / "02_historical_vs_optimized_u.pdf")
 
 
+def _plot_optimizer_price_change_histogram(output_dir: Path) -> None:
+    with np.load(OPTIMIZED_POLICY_PATH, allow_pickle=False) as saved_policy:
+        actions = saved_policy["actions"]
+
+    fig, ax = plt.subplots(figsize=(10.0, 5.8), constrained_layout=True)
+    ax.hist(actions, bins=np.linspace(0.0, 0.16, 33))
+    ax.set_title("Distribution of Optimizer Price Changes", fontsize=16)
+    ax.set_xlabel("Optimizer Price Change", fontsize=12)
+    ax.set_ylabel("Number of Customers", fontsize=12)
+    ax.tick_params(labelsize=10)
+    _save_pdf(fig, output_dir / "05_optimizer_price_change_histogram.pdf")
+
+
 def _plot_historical_only(
     data: dict[str, np.ndarray],
     output_dir: Path,
@@ -584,6 +603,7 @@ def main() -> None:
     _plot_smoothed_envelope(diagnostics, args.output_dir, show_stars=False)
     _plot_smoothed_envelope(diagnostics, args.output_dir, show_stars=True)
     _plot_envelope_construction(diagnostics, args.output_dir)
+    _plot_optimizer_price_change_histogram(args.output_dir)
     print(args.output_dir)
 
 

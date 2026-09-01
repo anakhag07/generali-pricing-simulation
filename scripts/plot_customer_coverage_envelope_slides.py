@@ -340,10 +340,9 @@ def _plot_optimizer_price_change_histogram(output_dir: Path) -> None:
     _save_pdf(fig, output_dir / "05_optimizer_price_change_histogram.pdf")
 
 
-def _export_sample_optimizer_actions(
+def _sample_optimizer_actions(
     data: dict[str, np.ndarray],
-    output_dir: Path,
-) -> None:
+) -> tuple[np.ndarray, np.ndarray]:
     sample_rows = np.asarray(data["row_indices"], dtype=int)
     with np.load(OPTIMIZED_POLICY_PATH, allow_pickle=False) as saved_policy:
         policy_rows = saved_policy["row_indices"]
@@ -354,15 +353,43 @@ def _export_sample_optimizer_actions(
         policy_rows[positions], sample_rows
     ):
         raise ValueError("The diagnostic sample is not contained in the saved policy rows.")
+    return sample_rows, policy_actions[positions]
+
+
+def _export_sample_optimizer_actions(
+    data: dict[str, np.ndarray],
+    output_dir: Path,
+) -> None:
+    sample_rows, sample_actions = _sample_optimizer_actions(data)
 
     pd.DataFrame(
         {
             "sample_position": np.arange(len(sample_rows), dtype=int),
             "csv_row_index": sample_rows,
-            "optimizer_price_change": policy_actions[positions],
-            "optimizer_price_change_percent": 100.0 * policy_actions[positions],
+            "optimizer_price_change": sample_actions,
+            "optimizer_price_change_percent": 100.0 * sample_actions,
         }
     ).to_csv(output_dir / "optimizer_price_changes_20k_sample.csv", index=False)
+
+
+def _plot_sample_optimizer_price_change_histogram(
+    data: dict[str, np.ndarray],
+    output_dir: Path,
+) -> None:
+    _, sample_actions = _sample_optimizer_actions(data)
+    fig, ax = plt.subplots(figsize=(10.0, 5.8), constrained_layout=True)
+    ax.hist(sample_actions, bins=np.linspace(0.0, 0.16, 33))
+    ax.set_title(
+        "Distribution of Optimizer Price Changes (20,000-Customer Sample)",
+        fontsize=16,
+    )
+    ax.set_xlabel("Optimizer Price Change", fontsize=12)
+    ax.set_ylabel("Number of Customers", fontsize=12)
+    ax.tick_params(labelsize=10)
+    _save_pdf(
+        fig,
+        output_dir / "05_optimizer_price_change_histogram_20k_sample.pdf",
+    )
 
 
 def _plot_historical_only(
@@ -630,6 +657,7 @@ def main() -> None:
     _plot_envelope_construction(diagnostics, args.output_dir)
     _plot_optimizer_price_change_histogram(args.output_dir)
     _export_sample_optimizer_actions(diagnostics, args.output_dir)
+    _plot_sample_optimizer_price_change_histogram(diagnostics, args.output_dir)
     print(args.output_dir)
 
 

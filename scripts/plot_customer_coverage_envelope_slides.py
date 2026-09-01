@@ -273,7 +273,6 @@ def _plot_smoothed_mean_profit_std_band(
     )
     lower = smoothed_profit - smoothed_std
     upper = smoothed_profit + smoothed_std
-    optimum = int(np.argmax(smoothed_profit))
 
     fig, ax = plt.subplots(figsize=(10.0, 5.8), constrained_layout=True)
     ax.fill_between(
@@ -284,14 +283,6 @@ def _plot_smoothed_mean_profit_std_band(
         label="±1 customer standard deviation",
     )
     ax.plot(u, smoothed_profit, linewidth=2.0, label="Mean predicted profit")
-    ax.scatter(
-        u[optimum],
-        smoothed_profit[optimum],
-        marker="*",
-        s=140,
-        color="darkred",
-        zorder=3,
-    )
     ax.set_title(
         "Mean Predicted Profit Per Customer vs. Proposed Price Change",
         fontsize=16,

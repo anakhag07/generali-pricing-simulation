@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from scripts import run_experiment_manifest as script
 
@@ -286,3 +287,17 @@ def test_main_routes_variable_grid_lcb_to_shared_launcher(monkeypatch, tmp_path)
     assert calls["plan"].task_count == 3
     assert calls["plan"].default_array is True
     assert str(manifest_path) in calls["argv"]
+
+
+def test_continuous_gp_manifest_uses_shared_seed_launch_plan() -> None:
+    manifest_path = Path(__file__).parents[2] / "manifests" / "continuous_gp_variable_lcb.json"
+    args = script._parse_args([str(manifest_path)])
+    manifest = script.load_policy_lcb_manifest(manifest_path)
+
+    plan = script._build_policy_lcb_launch_plan(args, manifest)
+
+    assert script._manifest_kind(manifest_path) == "continuous_gp_variable_lcb"
+    assert plan.name == "continuous-gp-variable-lcb"
+    assert plan.task_count == 2000
+    assert plan.requires_jax is False
+    assert plan.default_array is True

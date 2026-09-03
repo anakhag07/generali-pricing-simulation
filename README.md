@@ -274,6 +274,11 @@ The variable-envelope characterization performs exact maximization on 101
 points in $$[0,1]$$ for the concave objective
 $$f(x)=5x-5x^2$$. Its uncertainty profile has minimum at a swept center $$m$$:
 
+This experiment is finite: it draws one independent Gaussian value at each of
+the 101 grid points and optimizes only those points. Lines joining values in
+the diagnostic plots are visual guides, not interpolation and not a continuous
+random-function definition.
+
 $$
 \sigma_m(x)=0.1+0.9\min\left(\frac{|x-m|}{0.5},1\right),
 \qquad
@@ -320,6 +325,49 @@ The additional `experiment_1_realized_landscapes.png` diagnostic fixes the
 first run seed and one off-optimum uncertainty center, then shows $$f$$,
 $$\widehat f$$, the two-sided envelope, its LCB edge, and both selected points
 across all configured values of $$c$$.
+
+### Continuous-GP Variable-Envelope Lower Confidence Bounds
+
+The continuous analog defines every random path analytically rather than
+interpolating finite samples. For fixed rank $$J=32$$ and lengthscale
+$$\ell=0.2$$,
+
+$$
+G_s(x)=\frac1{\sqrt J}\sum_{j=1}^J
+[A_{s,j}\cos(\omega_jx)+B_{s,j}\sin(\omega_jx)],
+$$
+
+where the frequencies are deterministic RBF-spectral quantiles and each seed
+draws only the Gaussian coefficients. The surrogate is
+
+$$
+\widehat f_{s,c,m}(x)=5x-5x^2+c\sigma_m(x)G_s(x),
+$$
+
+with a $$C^2$$ clipped smoothstep uncertainty profile minimized at $$m$$. The
+committed manifest sweeps
+$$m\in\{0,0.25,0.5,0.75,1\}$$ and
+$$c\in\{0,0.25,0.5,1,2\}$$:
+
+```bash
+python scripts/run_experiment_manifest.py \
+  manifests/continuous_gp_variable_lcb.json
+```
+
+The single envelope multiplier is calculated before any run seed. Bonferroni
+controls a 129-point covering net, and a chi-square coefficient-norm event
+bounds all between-net movement, giving
+$$q\approx3.908377$$ and
+$$\Pr(\sup_{x\in[0,1]}|G_s(x)|\le q)\ge0.95$$. The 2,000 GP draws verify this
+guarantee empirically; they do not calibrate it.
+
+Every draw receives branch-and-bound-certified nominal and variable-LCB global
+reference values. The first 200 of those same draws additionally run projected
+exact-gradient, central finite-difference, and 64-perturbation antithetic
+Stein-difference optimization from three starts. The ZO probes evaluate the
+documented analytic extension outside `[0,1]`, while every iterate is projected
+back into the feasible interval. Outputs distinguish confidence-band validity,
+envelope tightness, globally achievable regret, and practical optimizer gap.
 
 ### Zeroth-Order Support Envelopes
 

@@ -910,7 +910,178 @@ needed for this paired construction.
 - **Source:** `src/experiments/policy_lcb/finite_grid.py`;
   `manifests/variable_lcb_envelope_characterization.json`
 - **Notes:** The grid search is exact and has no optimizer or reporting RNG.
-  The master noise seed is the only stochastic stream.
+  The master noise seed is the only stochastic stream. The random surrogate is
+  defined only at the $$K$$ grid points. Lines connecting those values in plots
+  are visualization aids, not an interpolation rule or a continuous random
+  function.
+
+#### 3.6.6 Continuous Finite-Fourier GP Lower Confidence Bounds
+
+The continuous optimization class is $$\mathcal X=[0,1]$$, with
+
+$$
+f(x)=5x-5x^2,
+\qquad x^*=\tfrac12,
+\qquad R(x)=f(x^*)-f(x)=5(x-\tfrac12)^2.
+$$
+
+Let
+
+$$
+h(t)=
+\begin{cases}
+6t^5-15t^4+10t^3,&0\le t<1,\\
+1,&t\ge1,
+\end{cases}
+$$
+
+and define the smooth clipped uncertainty scale
+
+$$
+\sigma_m(x)=\sigma_{\min}
++(\sigma_{\max}-\sigma_{\min})
+h\!\left(\frac{|x-m|}{r}\right).
+$$
+
+The configured values are $$\sigma_{\min}=0.1$$,
+$$\sigma_{\max}=1$$, and $$r=0.5$$. The polynomial has zero first and
+second derivatives at both endpoints, so $$\sigma_m$$ is $$C^2$$ at its
+minimum $$m$$ and at the clipped plateau. The point $$m$$ minimizes marginal
+uncertainty; it need not minimize a realized absolute error.
+
+For rank $$J$$ and lengthscale $$\ell$$, use deterministic half-normal
+spectral quantiles
+
+$$
+p_j=\frac{j-\tfrac12}{J},
+\qquad
+\omega_j=\ell^{-1}\Phi^{-1}\!\left(\frac{1+p_j}{2}\right),
+\qquad j=1,\ldots,J.
+$$
+
+One run seed draws the coefficient vector
+
+$$
+\xi_s=(A_{s,1},B_{s,1},\ldots,A_{s,J},B_{s,J})
+\sim N(0,I_{2J})
+$$
+
+and defines the analytic random function
+
+$$
+G_s(x)=\frac1{\sqrt J}\sum_{j=1}^J
+\left[A_{s,j}\cos(\omega_jx)+B_{s,j}\sin(\omega_jx)\right].
+$$
+
+This is an exact finite-rank GP with covariance
+
+$$
+k_J(x,x')=\frac1J\sum_{j=1}^J\cos(\omega_j(x-x')),
+\qquad k_J(x,x)=1.
+$$
+
+It is evaluated from this formula at every optimizer query. Plotting grids do
+not define or interpolate the path. The nonstationary surrogate and LCB are
+
+$$
+\widehat f_{s,c,m}(x)=f(x)+c\sigma_m(x)G_s(x),
+$$
+
+$$
+E_{c,m}(x)=cq\sigma_m(x),
+\qquad
+\underline f_{s,c,m}(x)=\widehat f_{s,c,m}(x)-E_{c,m}(x).
+$$
+
+To certify one continuum-wide multiplier, write
+$$G_s(x)=\phi(x)^\top\xi_s$$. Then
+
+$$
+\|\phi'(x)\|_2
+=L_\phi
+=\sqrt{\frac1J\sum_{j=1}^J\omega_j^2}.
+$$
+
+For an equally spaced $$N$$-point covering net with radius
+$$\rho=1/[2(N-1)]$$, split the failure probability equally between the net
+and coefficient-norm events:
+
+$$
+q_{\mathrm{net}}
+=\Phi^{-1}\!\left(1-\frac{\delta}{4N}\right),
+\qquad
+r_{\mathrm{coef}}
+=\sqrt{\chi^2_{2J,1-\delta/2}},
+$$
+
+$$
+q=q_{\mathrm{net}}+\rho L_\phi r_{\mathrm{coef}}.
+$$
+
+Bonferroni gives
+
+$$
+\Pr\!\left(\max_{t\in T}|G_s(t)|\le q_{\mathrm{net}}\right)
+\ge1-\delta/2,
+$$
+
+while the chi-square event has probability $$1-\delta/2$$ and implies, for
+the nearest net point $$t$$,
+
+$$
+|G_s(x)-G_s(t)|
+\le |x-t|L_\phi\|\xi_s\|_2
+\le\rho L_\phi r_{\mathrm{coef}}.
+$$
+
+A union bound therefore proves
+
+$$
+\Pr\!\left(\sup_{x\in[0,1]}|G_s(x)|\le q\right)\ge1-\delta.
+$$
+
+For $$J=32$$, $$\ell=0.2$$, $$N=129$$, and $$\delta=0.05$$,
+$$L_\phi\approx4.9505$$, $$q_{\mathrm{net}}\approx3.7270$$,
+$$r_{\mathrm{coef}}\approx9.3810$$, and $$q\approx3.9084$$. This multiplier
+is computed before and independently of all run seeds. The seeds only verify
+the guaranteed coverage empirically.
+
+For positive $$c$$ and $$\sigma_m(x)$$, the coverage inequality reduces to
+$$|G_s(x)|\le q$$. Reusing one $$G_s$$ across every $$m$$ and $$c$$ therefore
+requires no additional multiplicity correction. On this event, the exact LCB
+maximizer obeys
+
+$$
+R(\widehat x_{\mathrm{LCB}})\le2E_{c,m}(x^*).
+$$
+
+If an iterative optimizer has LCB objective gap $$\varepsilon$$ relative to
+the global LCB maximum, then
+
+$$
+R(\widehat x_{\mathrm{method}})
+\le2E_{c,m}(x^*)+\varepsilon.
+$$
+
+Global reference values are certified numerically in one dimension. If
+$$|F''(x)|\le M_I$$ on $$I=[a,b]$$, linear-interpolation error gives
+
+$$
+\sup_{x\in I}F(x)
+\le\max\{F(a),F(b)\}+\frac{M_I(b-a)^2}{8}.
+$$
+
+Branch-and-bound subdivides only intervals whose upper bound can beat the
+incumbent and stops when the global upper/lower value gap is at most the
+manifest tolerance. This certifies the reference value, not global convergence
+of first-order or zeroth-order iterates.
+
+- **Source:** `src/experiments/policy_lcb/continuous_gp.py`;
+  `manifests/continuous_gp_variable_lcb.json`
+- **Notes:** The GP coefficient seed, fixed Stein perturbation seed, and
+  reporting seed are separate. Formulas are extended to all real $$x$$ for
+  zeroth-order probes, while every optimizer iterate is projected onto
+  $$[0,1]$$.
 
 ### 3.7 Synthetic Ladder Objectives
 

@@ -76,7 +76,11 @@ OPTIMIZER_X_SAMPLES = np.zeros((1, 1), dtype=float)
 class _SplineMinimizationObjective(Objective):
     """Bounded constant-policy objective queried by the repository optimizer."""
 
-    def __init__(self, u_grid: np.ndarray, objective_values: np.ndarray) -> None:
+    def __init__(
+        self,
+        u_grid: np.ndarray,
+        objective_values: np.ndarray,
+    ) -> None:
         u = np.asarray(u_grid, dtype=float)
         values = np.asarray(objective_values, dtype=float)
         if u.ndim != 1 or values.shape != u.shape or len(u) < 2:
@@ -178,17 +182,44 @@ def _mad_dispersion(customer_values: np.ndarray) -> tuple[np.ndarray, np.ndarray
     return mad, MAD_TO_NORMAL_STD * mad
 
 
-def _minimize_xgboost_objective(
+def _within_customer_change_summary(
+    customer_profit: np.ndarray,
+    baseline_profit: np.ndarray,
+) -> dict[str, np.ndarray]:
+    """Summarize paired profit changes from one common baseline action."""
+    profit = np.asarray(customer_profit, dtype=float)
+    baseline = np.asarray(baseline_profit, dtype=float)
+    if profit.ndim != 2 or profit.shape[0] < 1:
+        raise ValueError("customer_profit must be a non-empty two-dimensional array.")
+    if baseline.shape != (profit.shape[0],):
+        raise ValueError("baseline_profit must contain one value per customer.")
+    changes = profit - baseline[:, None]
+    quantiles = np.quantile(changes, [0.10, 0.25, 0.50, 0.75, 0.90], axis=0)
+    mad, robust_std = _mad_dispersion(changes)
+    return {
+        "q10": quantiles[0],
+        "q25": quantiles[1],
+        "median": quantiles[2],
+        "q75": quantiles[3],
+        "q90": quantiles[4],
+        "mad": mad,
+        "robust_std": robust_std,
+    }
+
+
+def _repo_spline_minimize(
     u_grid: np.ndarray,
     objective_values: np.ndarray,
+    *,
+    start_u: float,
 ) -> dict[str, float | int | bool | str]:
-    """Minimize an XGBoost cost spline with the repo finite-difference setup."""
+    """Minimize a scalar spline with the repository finite-difference setup."""
     objective = _SplineMinimizationObjective(u_grid, objective_values)
-    start_fraction = (OPTIMIZER_START_U - objective.action_low) / (
+    start_fraction = (float(start_u) - objective.action_low) / (
         objective.action_high - objective.action_low
     )
     if not 0.0 < start_fraction < 1.0:
-        raise ValueError("OPTIMIZER_START_U must lie strictly inside the action domain.")
+        raise ValueError("start_u must lie strictly inside the action domain.")
     theta_start = np.asarray(
         [np.log(start_fraction / (1.0 - start_fraction))],
         dtype=float,
@@ -215,13 +246,56 @@ def _minimize_xgboost_objective(
     return {
         "u": action,
         "minimized_value": minimized_value,
-        "plotted_profit_value": -minimized_value,
         "theta": float(theta_final[0]),
         "success": bool(trace.optimizer_success),
         "status": int(trace.optimizer_status),
         "nit": max(0, len(trace.steps) - 1),
         "message": str(trace.optimizer_message),
     }
+
+
+def _minimize_xgboost_objective(
+    u_grid: np.ndarray,
+    objective_values: np.ndarray,
+) -> dict[str, float | int | bool | str]:
+    """Minimize XGBoost cost and return its sign-flipped plotted profit."""
+    solution = _repo_spline_minimize(
+        u_grid,
+        objective_values,
+        start_u=OPTIMIZER_START_U,
+    )
+    solution["plotted_profit_value"] = -float(solution["minimized_value"])
+    return solution
+
+
+def _repo_multistart_spline_minimize(
+    u_grid: np.ndarray,
+    objective_values: np.ndarray,
+    *,
+    start_u_values: tuple[float, ...],
+) -> dict[str, float | int | bool | str]:
+    """Return the best successful repository-optimizer result across starts."""
+    solutions: list[dict[str, float | int | bool | str]] = []
+    failures: list[str] = []
+    for start_u in start_u_values:
+        try:
+            solutions.append(
+                _repo_spline_minimize(
+                    u_grid,
+                    objective_values,
+                    start_u=start_u,
+                )
+            )
+        except RuntimeError as error:
+            failures.append(f"start_u={start_u}: {error}")
+    if not solutions:
+        raise RuntimeError(
+            "All repository optimizer starts failed: " + "; ".join(failures)
+        )
+    return min(
+        solutions,
+        key=lambda solution: float(solution["minimized_value"]),
+    )
 
 
 def _load_saved_optimizer_actions(row_indices: np.ndarray) -> np.ndarray:
@@ -305,6 +379,9 @@ def _compute_diagnostics(
     n_jobs: int,
 ) -> dict[str, np.ndarray]:
     eligible = eligible_csv_row_indices("xgb")
+    population_observed_u = load_observed_u_array("xgb", row_indices=eligible)
+    baseline_u = float(np.median(population_observed_u))
+    del population_observed_u
     rng = np.random.default_rng(seed)
     row_indices = np.sort(
         rng.choice(eligible, size=min(int(n_customers), len(eligible)), replace=False)
@@ -341,7 +418,40 @@ def _compute_diagnostics(
     if not np.allclose(EXPLORATORY_U_GRID[primary_mask], U_GRID):
         raise ValueError("The primary action grid is not nested in the exploratory grid.")
     customer_objective_std = exploratory_customer_std[primary_mask]
-    del exploratory_acceptance, exploratory_revenue, exploratory_customer_profit
+
+    baseline_acceptance = _predict_acceptance_matrix(
+        acceptance_artifact,
+        frame,
+        np.asarray([baseline_u], dtype=float),
+    )[:, 0]
+    baseline_profit = baseline_acceptance * (
+        premium * (1.0 + baseline_u) - loss
+    )
+    sensitivity_u = U_GRID
+    sensitivity_customer_profit = exploratory_customer_profit[:, primary_mask]
+    sensitivity = _within_customer_change_summary(
+        sensitivity_customer_profit,
+        baseline_profit,
+    )
+    sensitivity_display_robust_std = _smooth_display_curve(
+        sensitivity["robust_std"]
+    )
+    dispersion_minimum = _repo_multistart_spline_minimize(
+        sensitivity_u,
+        sensitivity_display_robust_std,
+        start_u_values=(0.04, 0.08, 0.12),
+    )
+    dispersion_maximum = _repo_multistart_spline_minimize(
+        sensitivity_u,
+        -sensitivity_display_robust_std,
+        start_u_values=(0.02, 0.08, 0.14),
+    )
+    del (
+        exploratory_acceptance,
+        exploratory_revenue,
+        exploratory_customer_profit,
+        sensitivity_customer_profit,
+    )
     baseline_policy_actions = _load_saved_optimizer_actions(row_indices)
 
     embedding = _mixed_customer_embedding(acceptance_artifact, frame)
@@ -388,6 +498,24 @@ def _compute_diagnostics(
         "observed_u": np.asarray(observed_u, dtype=float),
         "baseline_policy_actions": baseline_policy_actions,
         "customer_objective_std": customer_objective_std,
+        "sensitivity_u": sensitivity_u,
+        "sensitivity_baseline_u": np.asarray(baseline_u),
+        "sensitivity_q10": sensitivity["q10"],
+        "sensitivity_q25": sensitivity["q25"],
+        "sensitivity_median": sensitivity["median"],
+        "sensitivity_q75": sensitivity["q75"],
+        "sensitivity_q90": sensitivity["q90"],
+        "sensitivity_mad": sensitivity["mad"],
+        "sensitivity_robust_std": sensitivity["robust_std"],
+        "sensitivity_display_robust_std": sensitivity_display_robust_std,
+        "sensitivity_minimum_u": np.asarray(dispersion_minimum["u"]),
+        "sensitivity_minimum_value": np.asarray(
+            dispersion_minimum["minimized_value"]
+        ),
+        "sensitivity_maximum_u": np.asarray(dispersion_maximum["u"]),
+        "sensitivity_maximum_value": np.asarray(
+            -float(dispersion_maximum["minimized_value"])
+        ),
         "exploratory_u": EXPLORATORY_U_GRID,
         "exploratory_mean_profit": -exploratory_mean_objective,
         "exploratory_customer_std": exploratory_customer_std,
@@ -596,6 +724,120 @@ def _export_customer_profit_dispersion(
             ),
         }
     ).to_csv(output_dir / "01_customer_profit_dispersion_std_vs_mad.csv", index=False)
+
+
+def _plot_within_customer_profit_change(
+    data: dict[str, np.ndarray],
+    output_dir: Path,
+) -> None:
+    u = data["sensitivity_u"]
+    baseline_u = float(data["sensitivity_baseline_u"])
+    minimum_u = float(data["sensitivity_minimum_u"])
+    minimum_value = float(data["sensitivity_minimum_value"])
+    maximum_u = float(data["sensitivity_maximum_u"])
+    maximum_value = float(data["sensitivity_maximum_value"])
+
+    fig, axes = plt.subplots(
+        2,
+        1,
+        figsize=(10.0, 7.5),
+        sharex=True,
+        constrained_layout=True,
+    )
+    axes[0].fill_between(
+        u,
+        _smooth_display_curve(data["sensitivity_q10"]),
+        _smooth_display_curve(data["sensitivity_q90"]),
+        alpha=0.15,
+        label="10th–90th percentile",
+    )
+    axes[0].fill_between(
+        u,
+        _smooth_display_curve(data["sensitivity_q25"]),
+        _smooth_display_curve(data["sensitivity_q75"]),
+        alpha=0.3,
+        label="25th–75th percentile",
+    )
+    axes[0].plot(
+        u,
+        _smooth_display_curve(data["sensitivity_median"]),
+        linewidth=2.0,
+        label="Median predicted profit change",
+    )
+    axes[0].axhline(0.0, color="0.5", linewidth=1.0)
+    axes[0].axvline(
+        baseline_u,
+        color="C2",
+        linewidth=1.5,
+        label=f"Population median historical price ({100 * baseline_u:.1f}%)",
+    )
+    axes[0].set_title("Paired Predicted Profit Changes", fontsize=14)
+    axes[0].set_ylabel("Profit Change Per Customer", fontsize=12)
+    axes[0].legend(fontsize=10)
+
+    axes[1].plot(u, data["sensitivity_display_robust_std"], linewidth=2.0)
+    axes[1].scatter(
+        minimum_u,
+        minimum_value,
+        marker="*",
+        s=140,
+        color="darkgreen",
+        label=f"Smallest dispersion ({100 * minimum_u:.1f}%)",
+        zorder=3,
+    )
+    axes[1].scatter(
+        maximum_u,
+        maximum_value,
+        marker="*",
+        s=140,
+        color="darkred",
+        label=f"Largest dispersion ({100 * maximum_u:.1f}%)",
+        zorder=3,
+        clip_on=False,
+    )
+    axes[1].axvline(baseline_u, color="C2", linewidth=1.5)
+    axes[1].set_title("Robust Dispersion of Paired Changes", fontsize=14)
+    axes[1].set_xlabel("Proposed Price Change", fontsize=12)
+    axes[1].set_ylabel("Robust σ (1.4826 × MAD)", fontsize=12)
+    axes[1].legend(fontsize=10)
+
+    for ax in axes:
+        ax.tick_params(labelsize=10)
+        ax.set_xlim(0.0, 0.16)
+    fig.suptitle(
+        "Within-Customer Profit Sensitivity from the Median Historical Price",
+        fontsize=16,
+    )
+    _save_pdf(
+        fig,
+        output_dir / "01_within_customer_profit_change_from_median_price.pdf",
+    )
+
+
+def _export_within_customer_profit_change(
+    data: dict[str, np.ndarray],
+    output_dir: Path,
+) -> None:
+    pd.DataFrame(
+        {
+            "u": data["sensitivity_u"],
+            "profit_change_q10": data["sensitivity_q10"],
+            "profit_change_q25": data["sensitivity_q25"],
+            "profit_change_median": data["sensitivity_median"],
+            "profit_change_q75": data["sensitivity_q75"],
+            "profit_change_q90": data["sensitivity_q90"],
+            "profit_change_mad": data["sensitivity_mad"],
+            "profit_change_robust_standard_deviation": data[
+                "sensitivity_robust_std"
+            ],
+            "smoothed_profit_change_robust_standard_deviation": data[
+                "sensitivity_display_robust_std"
+            ],
+        }
+    ).to_csv(
+        output_dir / "01_within_customer_profit_change_from_median_price.csv",
+        index=False,
+    )
 
 
 def _plot_historical_vs_optimized(data: dict[str, np.ndarray], output_dir: Path) -> None:
@@ -1012,6 +1254,22 @@ def _write_experiment_record(
             "sample_seed": int(sample_seed),
             "computes_optimum": False,
         },
+        "within_customer_profit_change": {
+            "interpretation": "paired predicted profit change for each diagnostic customer relative to one common action",
+            "baseline_source": "median historical price change across all XGBoost-eligible customers",
+            "baseline_u": float(data["sensitivity_baseline_u"]),
+            "domain": [float(U_GRID[0]), float(U_GRID[-1])],
+            "reported_quantiles": [0.10, 0.25, 0.50, 0.75, 0.90],
+            "robust_scale": "1.4826 * MAD across paired customer profit changes",
+            "extrema_interpolation": "Gaussian-smoothed samples with natural cubic spline off-grid queries",
+            "extrema_optimizer": "repository action-space finite-difference minimizer with L-BFGS-B",
+            "minimum_start_u_values": [0.04, 0.08, 0.12],
+            "maximum_start_u_values": [0.02, 0.08, 0.14],
+            "minimum_dispersion_u": float(data["sensitivity_minimum_u"]),
+            "minimum_dispersion_value": float(data["sensitivity_minimum_value"]),
+            "maximum_dispersion_u": float(data["sensitivity_maximum_u"]),
+            "maximum_dispersion_value": float(data["sensitivity_maximum_value"]),
+        },
         "representation": {
             "domain": [float(U_GRID[0]), float(U_GRID[-1])],
             "grid_spacing": float(U_GRID[1] - U_GRID[0]),
@@ -1099,6 +1357,17 @@ def _write_experiment_record(
                 "with the ordinary customer standard deviation. These plots do not",
                 "calculate or report an optimum.",
                 "",
+                "The paired within-customer sensitivity plot holds each diagnostic",
+                "customer fixed and subtracts that customer's predicted profit at the",
+                "population-median historical price. It reports quantile ribbons and",
+                "robust MAD dispersion on `[0, 0.16]`. Its marked dispersion extrema",
+                "come from the repository finite-difference optimizer over the smoothed",
+                "natural-cubic curve, never from grid selection.",
+                "",
+                f"- Population-median historical price: `{100 * float(data['sensitivity_baseline_u']):.3f}%`",
+                f"- Smallest paired-change dispersion: `{float(data['sensitivity_minimum_value']):.3f}` at `{100 * float(data['sensitivity_minimum_u']):.3f}%`",
+                f"- Largest paired-change dispersion: `{float(data['sensitivity_maximum_value']):.3f}` at `{100 * float(data['sensitivity_maximum_u']):.3f}%`",
+                "",
                 f"- Profit-only optimizer solution: `{100 * float(data['profit_optimizer_u']):.3f}%`",
                 f"- Uncertainty-aware optimizer solution: `{100 * float(data['uncertainty_optimizer_u']):.3f}%`",
                 f"- Shift: `{shift_points:.3f}` percentage points",
@@ -1148,6 +1417,8 @@ def main() -> None:
     _plot_smoothed_mean_profit_mad_band(diagnostics, args.output_dir)
     _plot_customer_profit_dispersion_comparison(diagnostics, args.output_dir)
     _export_customer_profit_dispersion(diagnostics, args.output_dir)
+    _plot_within_customer_profit_change(diagnostics, args.output_dir)
+    _export_within_customer_profit_change(diagnostics, args.output_dir)
     _plot_historical_vs_optimized(diagnostics, args.output_dir)
     _plot_historical_only(diagnostics, args.output_dir)
     _plot_historical_only(diagnostics, args.output_dir, show_star=True)

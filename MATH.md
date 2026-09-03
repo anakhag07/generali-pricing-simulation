@@ -261,6 +261,38 @@ without interpreting an optimizer. Neither plot computes or reports an optimum.
   `_plot_smoothed_mean_profit_mad_band()`,
   `_plot_customer_profit_dispersion_comparison()`
 
+For the paired within-customer sensitivity view, the common baseline action is
+the median historical price change across all XGBoost-eligible customers,
+
+$$u_{\mathrm{base}}=\operatorname{median}_{i\in\mathcal E} U_i.$$
+
+Holding each diagnostic customer's features fixed, define its predicted profit
+change from that common baseline as
+
+$$\Delta P_i(u)=P_i(u)-P_i(u_{\mathrm{base}}).$$
+
+The fan chart reports the 10th, 25th, 50th, 75th, and 90th empirical quantiles
+of $$\Delta P_i(u)$$ across the same deterministic 20,000 customers. Its robust
+dispersion curve is
+
+$$
+D_{\mathrm{MAD}}(u)=1.4826\operatorname{median}_i
+\left|\Delta P_i(u)-\operatorname{median}_k\Delta P_k(u)\right|.
+$$
+
+Because all customers are compared with themselves at the common baseline,
+$$\Delta P_i(u_{\mathrm{base}})=0$$. The robust-dispersion samples are Gaussian
+smoothed on the regular 0.001 grid, and a natural cubic spline supplies off-grid
+queries. Marked extrema are obtained through the repository's action-space
+finite-difference minimizer: the minimum minimizes the smoothed
+$$D_{\mathrm{MAD}}$$ and the maximum minimizes its negative. Multiple documented
+starts may be used to resolve basins; only completed repository-optimizer
+solutions are compared. The plotted grid never selects an extremum.
+
+- **Source:** `scripts/plot_customer_coverage_envelope_slides.py` ::
+  `_within_customer_change_summary()`, `_repo_spline_minimize()`,
+  `_compute_diagnostics()`, `_plot_within_customer_profit_change()`
+
 For the plot-forward optimizer-shift demonstration, the saved full-population
 XGBoost minimization-objective samples and the aggregate support-based width are
 first smoothed on the fixed action grid $$u_j=0.001j$$,

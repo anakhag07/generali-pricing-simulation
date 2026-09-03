@@ -256,7 +256,10 @@ Guidelines:
   dispersion outputs span `[-0.10, 0.20]`: the historical `1std` filename now
   contains a Gaussian-consistent `1.4826 * MAD` cloud, while a companion PDF/CSV
   compares robust and ordinary standard deviations. Those dispersion plots do
-  not calculate an optimum.
+  not calculate an optimum. Its paired within-customer PDF/CSV uses the
+  population-median historical action as a common baseline, reports profit-change
+  quantile ribbons plus robust MAD dispersion on `[0, 0.16]`, and obtains any
+  marked dispersion extrema from the repository finite-difference optimizer.
 - Keep the boundary strict: do not hide reusable pipeline logic inside a script,
   and do not promote analysis-only code into `src/` without a concrete reusable
   integration point.

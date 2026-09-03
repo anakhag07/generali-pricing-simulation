@@ -6,6 +6,8 @@ from scripts.plot_customer_coverage_envelope_slides import (
     MAD_TO_NORMAL_STD,
     _mad_dispersion,
     _minimize_xgboost_objective,
+    _repo_spline_minimize,
+    _within_customer_change_summary,
 )
 
 
@@ -24,6 +26,42 @@ def test_mad_dispersion_is_robust_to_customer_outlier() -> None:
     assert np.allclose(mad, [1.0, 1.0])
     assert np.allclose(robust_std, MAD_TO_NORMAL_STD * mad)
     assert np.std(customer_profit[:, 0], ddof=1) > robust_std[0]
+
+
+def test_within_customer_summary_removes_customer_profit_levels() -> None:
+    baseline = np.asarray([100.0, 200.0, 400.0, 800.0])
+    changes = np.asarray(
+        [
+            [-10.0, 0.0, 10.0],
+            [-5.0, 0.0, 20.0],
+            [5.0, 0.0, 30.0],
+            [10.0, 0.0, 40.0],
+        ]
+    )
+
+    summary = _within_customer_change_summary(
+        baseline[:, None] + changes,
+        baseline,
+    )
+
+    assert np.allclose(summary["median"], [0.0, 0.0, 25.0])
+    assert summary["robust_std"][1] == 0.0
+    assert summary["robust_std"][2] > summary["robust_std"][1]
+
+
+def test_repo_spline_minimizer_finds_smooth_dispersion_baseline_off_grid() -> None:
+    u = np.asarray([0.0, 0.04, 0.0875, 0.12, 0.16])
+    dispersion = (u - 0.0875) ** 2
+
+    solution = _repo_spline_minimize(
+        u,
+        dispersion,
+        start_u=0.0875,
+    )
+
+    assert solution["success"] is True
+    assert abs(float(solution["u"]) - 0.0875) < 3e-4
+    assert abs(float(solution["minimized_value"])) < 1e-6
 
 
 def test_displayed_profit_solution_comes_from_repo_minimizer() -> None:

@@ -1063,6 +1063,14 @@ scale with the ordinary customer standard deviation, and the companion CSV
 stores both raw and smoothed curves. These dispersion outputs do not calculate
 or report an optimum.
 
+`01_within_customer_profit_change_from_median_price.pdf` instead holds each
+diagnostic customer fixed and subtracts that customer's predicted profit at the
+median historical action across all XGBoost-eligible customers. It plots paired
+profit-change quantiles and robust MAD dispersion on `[0, 0.16]`; its companion
+CSV stores the curves. The marked smallest/largest dispersion locations are
+returned by the repository finite-difference optimizer over the smoothed
+continuous dispersion curve.
+
 To benchmark GLM analytical acceptance speed, Stein-difference call counts,
 objective-cache behavior, and contour-subsampling speed on the bundled real-data
 objective, use:

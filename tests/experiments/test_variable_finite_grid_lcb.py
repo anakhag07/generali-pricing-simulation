@@ -8,6 +8,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from experiments.policy_lcb import finite_grid
 from experiments.policy_lcb.finite_grid import (
     ClippedDistanceRampSpec,
     calibration_quantile,
@@ -271,3 +272,54 @@ def test_seed_persistence_resumability_aggregation_and_plot_generation(
         rows = list(csv.DictReader(handle))
     assert len(rows) == 3 * 2
     assert {float(row["uncertainty_center"]) for row in rows} == {0.0, 0.5, 1.0}
+
+
+def test_calibration_regret_by_center_uses_calibration_type(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    rows = []
+    for calibration, calibration_type, offset in (
+        ("familywise", "bonferroni_two_sided", 20.0),
+        ("marginal", "pointwise_two_sided", 10.0),
+    ):
+        for noise_scale in (0.25, 0.5):
+            rows.append(
+                {
+                    "uncertainty_center": 0.5,
+                    "calibration": calibration,
+                    "calibration_type": calibration_type,
+                    "noise_scale": noise_scale,
+                    "nominal_regret_mean": noise_scale,
+                    "nominal_regret_q05": noise_scale - 0.1,
+                    "nominal_regret_q95": noise_scale + 0.1,
+                    "variable_lcb_regret_mean": offset + noise_scale,
+                    "variable_lcb_regret_q05": offset + noise_scale - 0.1,
+                    "variable_lcb_regret_q95": offset + noise_scale + 0.1,
+                }
+            )
+
+    captured: dict[str, object] = {}
+
+    def capture_facets(fig, facets, *args, **kwargs) -> None:
+        captured["fig"] = fig
+        captured["facets"] = facets
+
+    monkeypatch.setattr(finite_grid, "_finish_facets", capture_facets)
+    finite_grid._plot_calibration_regret_by_center(
+        _manifest().spec,
+        rows,
+        tmp_path / "calibration-regret-by-center.pdf",
+    )
+
+    facets = captured["facets"]
+    axis = facets[0][0]
+    lines = {line.get_label(): line for line in axis.lines}
+    assert set(lines) == {
+        "Nominal (no envelope)",
+        "Pointwise LCB",
+        "Simultaneous LCB",
+    }
+    assert lines["Pointwise LCB"].get_ydata() == pytest.approx([10.25, 10.5])
+    assert lines["Simultaneous LCB"].get_ydata() == pytest.approx([20.25, 20.5])
+    finite_grid._load_pyplot().close(captured["fig"])

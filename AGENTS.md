@@ -338,6 +338,44 @@ Minimal manifest shape:
 
 ### Key Components
 
+#### Design-Bench integration
+
+- **`scripts/design_bench.py`** is the intentionally thin Python-3.7 runner for
+  `AntMorphology-Exact-v0` and `DKittyMorphology-Exact-v0`. Run it inside the
+  pinned upstream Design-Baselines environment; it exports checksummed raw
+  `task.x/task.y`, calls `task.predict` on raw candidates, and invokes only the
+  official gradient-ascent baseline. It is not an optimizer or surrogate module.
+  This file shares a name with the `design_bench` package it imports, so it
+  strips its own directory from `sys.path` at module load. Without that guard,
+  `python scripts/design_bench.py` resolves `import design_bench` to itself and
+  fails with `no attribute 'make'`; keep the guard if the file is ever moved,
+  or rename it to something that cannot shadow the package.
+- **`environments/design-baselines/README.md`** pins the upstream checkout used
+  to create the legacy environment and carries the full working build recipe.
+  Do not copy upstream's requirements into this repository; upstream remains the
+  dependency source of truth. Upstream's own setup instructions no longer work
+  unaided: `mujoco-py==2.0.2.3` needs undeclared build inputs (Cython visible
+  via `--no-build-isolation`, OSMesa/`patchelf`/`libGL.so` from a separate
+  helper prefix, `MUJOCO_PY_FORCE_CPU=1`), and Design-Bench's dataset/oracle
+  downloads return HTTP 404, so assets are placed into
+  `<site-packages>/design_bench_data` by hand from a community mirror. Those
+  assets are not provably identical to the published ones; treat their
+  provenance as a caveat on any number derived from them.
+
+Deferred Design-Bench research work — do not resolve these implicitly while
+maintaining the thin runner:
+
+- Define this project's surrogate/f-hat class, architecture, training split,
+  uncertainty treatment, and validation criteria.
+- Connect Design-Bench designs to the optimizer and decide representation,
+  constraints, initialization, and proposal semantics.
+- Choose candidate budgets/selection, repetitions, random-seed protocol, score
+  normalization, aggregation, and statistical comparisons.
+- Add Design-Baselines methods beyond gradient ascent or tasks beyond Ant and
+  D'Kitty, including relabelled/subsampled dataset variants.
+- Decide whether to modernize or containerize the legacy environment. The
+  current integration deliberately uses the pinned upstream environment.
+
 #### Objective Layer (`src/objective/`)
 
 - **`src/objective/_math.py`** (private)
@@ -791,6 +829,10 @@ belongs under `generali/`.
   interface, where `launch.array: "seed"` maps one paired-condition task to
   each problem-noise seed; manifests without `kind` retain the optimization-
   manifest behavior.
+- `scripts/design_bench.py` exports Ant/D'Kitty raw datasets, runs the official
+  gradient-ascent baseline in reference or non-scientific smoke mode, and
+  queries the exact oracle. Invoke it with the pinned legacy Python; keep it
+  separate from `src/` until optimizer/surrogate research decisions are made.
 - `manifests/finite_policy_lcb_validation.json` is the source of truth for the
   exact eleven-policy lower-confidence-bound validation, its five delta values,
   and its 25 paired noise seeds.

@@ -233,6 +233,46 @@ s_P(u)=\sqrt{\frac{1}{n-1}\sum_{i=1}^n\left(P_i(u)-\bar P(u)\right)^2}.$$
 - **Source:** `scripts/plot_customer_coverage_envelope_slides.py` ::
   `_compute_diagnostics()`, `_plot_smoothed_mean_profit_std_band()`
 
+For the plot-forward optimizer-shift demonstration, the full-population mean
+profit samples and the aggregate support-based width are first smoothed on the
+fixed action grid $$u_j=0.001j$$, $$j=0,\ldots,160$$, using the documented
+Gaussian display filter. Natural cubic-spline interpolants then define the
+continuous optimizer-facing functions on $$[0,0.16]$$:
+
+$$
+\widetilde P(u)=\operatorname{CubicSpline}_{\mathrm{natural}}\!\left(
+u_j,\operatorname{GaussianSmooth}(\bar P(u_j))
+\right)(u),
+$$
+
+$$
+\widetilde W(u)=\operatorname{CubicSpline}_{\mathrm{natural}}\!\left(
+u_j,\operatorname{GaussianSmooth}\!\left[
+c\left(1-\frac{S(u_j)}{\max_k S(u_k)}\right)
+\right]\right)(u), \qquad c=10,
+$$
+
+where $$S(u_j)$$ is median local historical support across the deterministic
+20,000-customer sample. The two displayed solutions are returned by bounded
+continuous optimization, not by selecting a sampled grid point:
+
+$$
+u_{\mathrm{profit}}=\arg\min_{u\in[0,0.16]}-\widetilde P(u),
+\qquad
+u_{\mathrm{uncertainty}}=\arg\min_{u\in[0,0.16]}
+-\left[\widetilde P(u)-\widetilde W(u)\right].
+$$
+
+The natural cubic splines are the exact off-grid query rule seen by SciPy's deterministic
+bounded scalar optimizer; plotted grid samples only render those curves. Both
+objectives use closed bounds, optimizer tolerance $$10^{-10}$$, and no random
+optimizer stream. The sample itself remains fixed by seed `20260831`. This is
+an intentionally manufactured visual demonstration: $$c=10$$ is chosen for a
+clear decision shift and is not a calibrated confidence radius.
+
+- **Source:** `scripts/plot_customer_coverage_envelope_slides.py` ::
+  `_optimize_display_curve()`, `_compute_diagnostics()`
+
 For the customer-specific coverage-aware policy rerun, let $$S_i(u_j)$$ be the
 local joint customer/action support on the fixed action grid. Each customer's
 penalty is normalized against that customer's best-supported action:

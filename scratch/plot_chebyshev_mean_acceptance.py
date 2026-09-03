@@ -1,4 +1,4 @@
-"""Plot Chebyshev train/test mean acceptance with confidence bands."""
+"""Plot Chebyshev train/test mean acceptance without confidence bands."""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ from plot_policy_capacity_constraint_overfitting import _summarize
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--chebyshev-csv", type=Path, required=True)
+    parser.add_argument("--model", choices=("glm", "xgb"), required=True)
     parser.add_argument("--acceptance-floor", type=float, required=True)
     parser.add_argument("--output", type=Path, required=True)
     return parser.parse_args()
@@ -23,11 +24,18 @@ def _parse_args() -> argparse.Namespace:
 def plot_chebyshev_mean_acceptance(
     frame: pd.DataFrame,
     *,
+    model: str,
     acceptance_floor: float,
     output: Path,
 ) -> Path:
     """Write the single-panel log-capacity acceptance plot."""
-    summary = _summarize(frame, acceptance_floor)
+    model_frame = frame.loc[
+        (frame["optimize_model"] == model)
+        & (frame["evaluate_model"] == model)
+    ].copy()
+    if model_frame.empty:
+        raise ValueError(f"No matching {model!r} optimize/evaluate rows found.")
+    summary = _summarize(model_frame, acceptance_floor)
     fig, ax = plt.subplots(figsize=(7.5, 4.8), constrained_layout=True)
     for split_name, split_label in (("train", "Train"), ("test", "Test")):
         mean = gaussian_filter1d(
@@ -46,7 +54,11 @@ def plot_chebyshev_mean_acceptance(
     )
     ax.set_xscale("log")
     ax.set_ylim(0.86, 0.89)
-    ax.set_xlabel("Policy parameter count (log scale)", fontsize=12)
+    ax.set_title(
+        "Mean Acceptance Probability vs. Decision Rule Parameter Count",
+        fontsize=14,
+    )
+    ax.set_xlabel("Decision Rule Parameter Count (log scale)", fontsize=12)
     ax.set_ylabel("Mean Acceptance Probability", fontsize=12)
     ax.tick_params(labelsize=10)
     ax.grid(True, alpha=0.3)
@@ -61,6 +73,7 @@ def main() -> None:
     args = _parse_args()
     plot_chebyshev_mean_acceptance(
         pd.read_csv(args.chebyshev_csv),
+        model=args.model,
         acceptance_floor=float(args.acceptance_floor),
         output=args.output,
     )

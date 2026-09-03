@@ -40,6 +40,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--policy-artifact", type=Path, default=DEFAULT_POLICY_ARTIFACT)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument(
+        "--optimized-title",
+        default="Optimized Price Changes",
+        help="Title for the optimized-policy histogram.",
+    )
+    parser.add_argument(
         "--preview-dir",
         type=Path,
         default=None,
@@ -246,7 +251,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     plot_single(
         optimized_range,
         color=OPTIMIZED_COLOR,
-        title="Optimized Price Changes",
+        title=args.optimized_title,
         pdf_path=plots_dir / "optimized_price_changes_decimal_minus0.1_to_0.2.pdf",
         preview_path=preview_dir / "optimized_price_changes_decimal_minus0.1_to_0.2.png"
         if preview_dir

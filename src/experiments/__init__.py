@@ -18,6 +18,18 @@ from experiments.policy_lcb.continuous import (
     evaluate_continuous_policy_lcb_seed,
     load_continuous_policy_lcb_manifest,
 )
+from experiments.policy_lcb.continuous_gp import (
+    ContinuousGPVariableLCBManifest,
+    ContinuousGPVariableLCBSpec,
+    evaluate_continuous_gp_variable_lcb_seed,
+    load_continuous_gp_variable_lcb_manifest,
+)
+from experiments.policy_lcb.continuous_gp_decomposition import (
+    ContinuousGPDecompositionManifest,
+    ContinuousGPDecompositionSpec,
+    evaluate_continuous_gp_decomposition_seed,
+    load_continuous_gp_decomposition_manifest,
+)
 from experiments.paths import results_root
 from experiments.results import ConstantBaselineResult, EstimatorResult, ExperimentResult, OptimizationTrace, PolicyEvaluation
 from experiments.run import run_experiment
@@ -28,6 +40,10 @@ __all__ = [
     "ContinuousPolicyLCBManifest",
     "ContinuousPolicyLCBSpec",
     "ContinuousPolicyValueSpec",
+    "ContinuousGPVariableLCBManifest",
+    "ContinuousGPVariableLCBSpec",
+    "ContinuousGPDecompositionManifest",
+    "ContinuousGPDecompositionSpec",
     "ExperimentConfig",
     "get_config",
     "list_configs",
@@ -35,12 +51,16 @@ __all__ = [
     "default_reporter_stack",
     "execute_experiment_run",
     "evaluate_continuous_policy_lcb_seed",
+    "evaluate_continuous_gp_variable_lcb_seed",
+    "evaluate_continuous_gp_decomposition_seed",
     "FinitePolicyLCBManifest",
     "FinitePolicyLCBSpec",
     "LCBSeedResult",
     "evaluate_finite_policy_lcb_seed",
     "load_finite_policy_lcb_manifest",
     "load_continuous_policy_lcb_manifest",
+    "load_continuous_gp_variable_lcb_manifest",
+    "load_continuous_gp_decomposition_manifest",
     "results_root",
     "LaunchContext",
     "LaunchPlan",

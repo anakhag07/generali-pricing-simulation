@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from scripts import run_experiment_manifest as script
 
@@ -79,6 +80,50 @@ def _continuous_policy_lcb_manifest_file(tmp_path):
                     "run_seeds": [101, 102, 103],
                 },
                 "launch": {"mode": "local", "array": "seed"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
+def _variable_grid_lcb_manifest_file(tmp_path):
+    path = tmp_path / "variable-grid-lcb-manifest.json"
+    path.write_text(
+        json.dumps(
+            {
+                "kind": "finite_grid_variable_lcb",
+                "name": "variable-grid-manifest-launch",
+                "grid": {"type": "linspace", "lower": 0.0, "upper": 1.0, "count": 5},
+                "true_value": {
+                    "type": "concave_quadratic",
+                    "linear": 5.0,
+                    "quadratic": 5.0,
+                },
+                "uncertainty": {
+                    "type": "clipped_distance_ramp",
+                    "centers": [0.0, 0.5, 1.0],
+                    "minimum": 0.1,
+                    "maximum": 1.0,
+                    "ramp_radius": 0.5,
+                },
+                "surrogate": {
+                    "type": "independent_gaussian",
+                    "noise_scales": [0.0, 0.5],
+                },
+                "confidence": {
+                    "delta": 0.05,
+                    "calibrations": [
+                        {"name": "simultaneous", "type": "bonferroni_two_sided"},
+                        {"name": "pointwise", "type": "pointwise_two_sided"},
+                    ],
+                },
+                "seeds": {
+                    "master_noise_seed": 7,
+                    "run_seeds": {"type": "range", "start": 101, "count": 3},
+                },
+                "launch": {"mode": "local", "array": "seed"},
+                "per_seed_plots": False,
             }
         ),
         encoding="utf-8",
@@ -209,3 +254,50 @@ def test_main_routes_continuous_policy_lcb_manifest_to_shared_launcher(monkeypat
     assert calls["plan"].task_count == 3
     assert calls["plan"].default_array is True
     assert str(manifest_path) in calls["argv"]
+
+
+def test_variable_grid_lcb_uses_shared_seed_launch_plan(tmp_path) -> None:
+    manifest_path = _variable_grid_lcb_manifest_file(tmp_path)
+    args = script._parse_args([str(manifest_path)])
+    manifest = script.load_policy_lcb_manifest(manifest_path)
+
+    plan = script._build_policy_lcb_launch_plan(args, manifest)
+
+    assert script._manifest_kind(manifest_path) == "finite_grid_variable_lcb"
+    assert plan.name == "variable-grid-manifest-launch"
+    assert plan.task_count == 3
+    assert plan.requires_jax is False
+    assert plan.default_launch == "local"
+    assert plan.default_array is True
+
+
+def test_main_routes_variable_grid_lcb_to_shared_launcher(monkeypatch, tmp_path) -> None:
+    manifest_path = _variable_grid_lcb_manifest_file(tmp_path)
+    calls: dict[str, object] = {}
+
+    def fake_run_launch_plan(plan, *, args, argv):
+        calls["plan"] = plan
+        calls["args"] = args
+        calls["argv"] = argv
+
+    monkeypatch.setattr(script, "run_launch_plan", fake_run_launch_plan)
+
+    script.main([str(manifest_path)])
+
+    assert calls["plan"].task_count == 3
+    assert calls["plan"].default_array is True
+    assert str(manifest_path) in calls["argv"]
+
+
+def test_continuous_gp_manifest_uses_shared_seed_launch_plan() -> None:
+    manifest_path = Path(__file__).parents[2] / "manifests" / "continuous_gp_variable_lcb.json"
+    args = script._parse_args([str(manifest_path)])
+    manifest = script.load_policy_lcb_manifest(manifest_path)
+
+    plan = script._build_policy_lcb_launch_plan(args, manifest)
+
+    assert script._manifest_kind(manifest_path) == "continuous_gp_variable_lcb"
+    assert plan.name == "continuous-gp-variable-lcb"
+    assert plan.task_count == 2000
+    assert plan.requires_jax is False
+    assert plan.default_array is True

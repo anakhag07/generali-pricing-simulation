@@ -866,6 +866,379 @@ $$
   stream is separate and deliberately paired across run seeds, confidence
   levels, and starts so cross-seed spread isolates the shared Gaussian draw.
 
+#### 3.6.5 Variable-Envelope Finite-Grid Lower Confidence Bounds
+
+Let the finite optimization class be the inclusive grid
+
+$$
+\mathcal X=\{x_1,\ldots,x_K\}\subset[0,1]
+$$
+
+with true value and grid optimum
+
+$$
+f(x)=5x-5x^2,
+\qquad
+x^*\in\arg\max_{x\in\mathcal X}f(x).
+$$
+
+For an uncertainty center $$m$$, the clipped distance-ramp scale is
+
+$$
+\sigma_m(x)=\sigma_{\min}
++(\sigma_{\max}-\sigma_{\min})
+\min\!\left(\frac{|x-m|}{r},1\right).
+$$
+
+One run seed draws a vector of independent standard Gaussians and reuses it for
+every noise magnitude, uncertainty center, and envelope calibration:
+
+$$
+Z_{s,x}\overset{\mathrm{i.i.d.}}{\sim}N(0,1),
+\qquad
+\widehat f_{s,c,m}(x)=f(x)+c\sigma_m(x)Z_{s,x}.
+$$
+
+For failure probability $$\delta$$, the simultaneous Bonferroni and pointwise
+two-sided quantiles are
+
+$$
+q_{\mathrm{sim}}=\Phi^{-1}\!\left(1-\frac{\delta}{2K}\right),
+\qquad
+q_{\mathrm{point}}=\Phi^{-1}\!\left(1-\frac{\delta}{2}\right),
+$$
+
+and either calibration defines the half-width and lower confidence bound
+
+$$
+E_{c,m,q}(x)=c q\sigma_m(x),
+\qquad
+\underline f_{s,c,m,q}(x)=\widehat f_{s,c,m}(x)-E_{c,m,q}(x).
+$$
+
+For Bonferroni calibration, a union bound gives
+
+$$
+\Pr\!\left(
+|\widehat f_{s,c,m}(x)-f(x)|\le E_{c,m,q_{\mathrm{sim}}}(x)
+\ \forall x\in\mathcal X
+\right)\ge1-\delta.
+$$
+
+Under the configured independent Gaussian coordinates, its exact coverage is
+$$ (1-\delta/K)^K $$. Pointwise calibration instead covers each fixed point
+with probability $$1-\delta$$, so its expected covered fraction is
+$$1-\delta$$ while its exact simultaneous coverage is $$(1-\delta)^K$$.
+
+The exhaustive selectors are
+
+$$
+\widehat x_{\mathrm{nom}}
+\in\arg\max_x\widehat f_{s,c,m}(x),
+\qquad
+\widehat x_{\mathrm{var}}
+\in\arg\max_x\underline f_{s,c,m,q}(x).
+$$
+
+The uniform half-width $$E_{\mathrm{unif}}=\max_x E_{c,m,q}(x)$$ is constant
+over $$x$$, hence
+
+$$
+\arg\max_x[\widehat f_{s,c,m}(x)-E_{\mathrm{unif}}]
+=\arg\max_x\widehat f_{s,c,m}(x).
+$$
+
+The deterministic penalized target
+
+$$
+x^\dagger_{c,m,q}\in\arg\max_x[f(x)-E_{c,m,q}(x)]
+$$
+
+separates envelope geometry from surrogate randomness. Regret is
+
+$$
+R(\widehat x)=f(x^*)-f(\widehat x).
+$$
+
+On the simultaneous two-sided coverage event, exact variable-LCB maximization
+obeys
+
+$$
+R(\widehat x_{\mathrm{var}})\le 2E_{c,m,q_{\mathrm{sim}}}(x^*).
+$$
+
+Because the same standardized $$Z_{s,x}$$ is paired across positive $$c$$ and
+all $$\sigma_m(x)>0$$, the coverage event reduces to
+$$\{|Z_{s,x}|\le q\ \forall x\}$$ for every configured center and every
+positive noise magnitude. No additional center multiplicity correction is
+needed for this paired construction.
+
+- **Source:** `src/experiments/policy_lcb/finite_grid.py`;
+  `manifests/variable_lcb_envelope_characterization.json`
+- **Notes:** The grid search is exact and has no optimizer or reporting RNG.
+  The master noise seed is the only stochastic stream. The random surrogate is
+  defined only at the $$K$$ grid points. Lines connecting those values in plots
+  are visualization aids, not an interpolation rule or a continuous random
+  function.
+
+#### 3.6.6 Continuous Finite-Fourier GP Lower Confidence Bounds
+
+The continuous optimization class is $$\mathcal X=[0,1]$$, with
+
+$$
+f(x)=5x-5x^2,
+\qquad x^*=\tfrac12,
+\qquad R(x)=f(x^*)-f(x)=5(x-\tfrac12)^2.
+$$
+
+Let
+
+$$
+h(t)=
+\begin{cases}
+6t^5-15t^4+10t^3,&0\le t<1,\\
+1,&t\ge1,
+\end{cases}
+$$
+
+and define the smooth clipped uncertainty scale
+
+$$
+\sigma_m(x)=\sigma_{\min}
++(\sigma_{\max}-\sigma_{\min})
+h\!\left(\frac{|x-m|}{r}\right).
+$$
+
+The configured values are $$\sigma_{\min}=0.1$$,
+$$\sigma_{\max}=1$$, and $$r=0.5$$. The polynomial has zero first and
+second derivatives at both endpoints, so $$\sigma_m$$ is $$C^2$$ at its
+minimum $$m$$ and at the clipped plateau. The point $$m$$ minimizes marginal
+uncertainty; it need not minimize a realized absolute error.
+
+For rank $$J$$ and lengthscale $$\ell$$, use deterministic half-normal
+spectral quantiles
+
+$$
+p_j=\frac{j-\tfrac12}{J},
+\qquad
+\omega_j=\ell^{-1}\Phi^{-1}\!\left(\frac{1+p_j}{2}\right),
+\qquad j=1,\ldots,J.
+$$
+
+One run seed draws the coefficient vector
+
+$$
+\xi_s=(A_{s,1},B_{s,1},\ldots,A_{s,J},B_{s,J})
+\sim N(0,I_{2J})
+$$
+
+and defines the analytic random function
+
+$$
+G_s(x)=\frac1{\sqrt J}\sum_{j=1}^J
+\left[A_{s,j}\cos(\omega_jx)+B_{s,j}\sin(\omega_jx)\right].
+$$
+
+This is an exact finite-rank GP with covariance
+
+$$
+k_J(x,x')=\frac1J\sum_{j=1}^J\cos(\omega_j(x-x')),
+\qquad k_J(x,x)=1.
+$$
+
+It is evaluated from this formula at every optimizer query. Plotting grids do
+not define or interpolate the path. The nonstationary surrogate and LCB are
+
+$$
+\widehat f_{s,c,m}(x)=f(x)+c\sigma_m(x)G_s(x),
+$$
+
+$$
+E_{c,m}(x)=cq\sigma_m(x),
+\qquad
+\underline f_{s,c,m}(x)=\widehat f_{s,c,m}(x)-E_{c,m}(x).
+$$
+
+To certify one continuum-wide multiplier, write
+$$G_s(x)=\phi(x)^\top\xi_s$$. Then
+
+$$
+\|\phi'(x)\|_2
+=L_\phi
+=\sqrt{\frac1J\sum_{j=1}^J\omega_j^2}.
+$$
+
+For an equally spaced $$N$$-point covering net with radius
+$$\rho=1/[2(N-1)]$$, split the failure probability equally between the net
+and coefficient-norm events:
+
+$$
+q_{\mathrm{net}}
+=\Phi^{-1}\!\left(1-\frac{\delta}{4N}\right),
+\qquad
+r_{\mathrm{coef}}
+=\sqrt{\chi^2_{2J,1-\delta/2}},
+$$
+
+$$
+q=q_{\mathrm{net}}+\rho L_\phi r_{\mathrm{coef}}.
+$$
+
+Bonferroni gives
+
+$$
+\Pr\!\left(\max_{t\in T}|G_s(t)|\le q_{\mathrm{net}}\right)
+\ge1-\delta/2,
+$$
+
+while the chi-square event has probability $$1-\delta/2$$ and implies, for
+the nearest net point $$t$$,
+
+$$
+|G_s(x)-G_s(t)|
+\le |x-t|L_\phi\|\xi_s\|_2
+\le\rho L_\phi r_{\mathrm{coef}}.
+$$
+
+A union bound therefore proves
+
+$$
+\Pr\!\left(\sup_{x\in[0,1]}|G_s(x)|\le q\right)\ge1-\delta.
+$$
+
+For $$J=32$$, $$\ell=0.2$$, $$N=129$$, and $$\delta=0.05$$,
+$$L_\phi\approx4.9505$$, $$q_{\mathrm{net}}\approx3.7270$$,
+$$r_{\mathrm{coef}}\approx9.3810$$, and $$q\approx3.9084$$. This multiplier
+is computed before and independently of all run seeds. The seeds only verify
+the guaranteed coverage empirically.
+
+For positive $$c$$ and $$\sigma_m(x)$$, the coverage inequality reduces to
+$$|G_s(x)|\le q$$. Reusing one $$G_s$$ across every $$m$$ and $$c$$ therefore
+requires no additional multiplicity correction. On this event, the exact LCB
+maximizer obeys
+
+$$
+R(\widehat x_{\mathrm{LCB}})\le2E_{c,m}(x^*).
+$$
+
+If an iterative optimizer has LCB objective gap $$\varepsilon$$ relative to
+the global LCB maximum, then
+
+$$
+R(\widehat x_{\mathrm{method}})
+\le2E_{c,m}(x^*)+\varepsilon.
+$$
+
+Global reference values are certified numerically in one dimension. If
+$$|F''(x)|\le M_I$$ on $$I=[a,b]$$, linear-interpolation error gives
+
+$$
+\sup_{x\in I}F(x)
+\le\max\{F(a),F(b)\}+\frac{M_I(b-a)^2}{8}.
+$$
+
+Branch-and-bound subdivides only intervals whose upper bound can beat the
+incumbent and stops when the global upper/lower value gap is at most the
+manifest tolerance. This certifies the reference value, not global convergence
+of first-order or zeroth-order iterates.
+
+- **Source:** `src/experiments/policy_lcb/continuous_gp.py`;
+  `manifests/continuous_gp_variable_lcb.json`
+- **Notes:** The GP coefficient seed, fixed Stein perturbation seed, and
+  reporting seed are separate. Formulas are extended to all real $$x$$ for
+  zeroth-order probes, while every optimizer iterate is projected onto
+  $$[0,1]$$.
+
+#### 3.6.7 Continuous-GP Regret Decomposition
+
+The decomposition experiment retains the objective, analytic Fourier draw,
+uncertainty family, and global-reference construction from Section 3.6.6, but
+separates the surrogate-error and lower-envelope parameters:
+
+$$
+\widehat f(x)=f(x)+c_f\sigma_{m_f}(x)G_s(x),
+\qquad
+\underline f(x)=\widehat f(x)-c_Eq\sigma_{m_E}(x).
+$$
+
+Here $$c_f$$ controls the global magnitude of the frozen surrogate error and
+$$m_f$$ controls its spatial amplitude profile. Independently, $$c_E$$ controls
+the global confidence-correction magnitude and $$m_E$$ controls where that
+correction is narrowest. The standardization of $$\sigma_m$$ remains fixed at
+minimum $$0.1$$ and maximum $$1$$, so the scale and shape parameters are
+identifiable.
+
+For $$c_f>0$$, define the certified shape ratio and effective GP threshold
+
+$$
+r_{\min}(m_f,m_E)=\inf_{x\in[0,1]}
+\frac{\sigma_{m_E}(x)}{\sigma_{m_f}(x)},
+\qquad
+q_{\mathrm{eff}}=q\frac{c_E}{c_f}r_{\min}(m_f,m_E).
+$$
+
+The two-sided event $$\sup_x|G_s(x)|\le q_{\mathrm{eff}}$$ is sufficient for
+$$\underline f(x)\le f(x)$$ everywhere. Its certified probability is obtained
+by inverting the same covering-net construction as Section 3.6.6: for failure
+probability $$\delta'$$,
+
+$$
+q(\delta')=
+\Phi^{-1}\!\left(1-\frac{\delta'}{4N}\right)
++\rho L_\phi\sqrt{\chi^2_{2J,1-\delta'/2}}.
+$$
+
+Thus $$p_{\mathrm{cert}}(t)=1-\delta_t$$ when
+$$q(\delta_t)=t$$. If the threshold is below the smallest value certifiable by
+this construction, the reported lower bound is zero. When $$c_f=0$$ and
+$$c_E\ge0$$ the envelope is deterministically valid, while $$c_E=0<c_f$$ has
+certified level zero. The matched unit-scale case has
+$$q_{\mathrm{eff}}=q(0.05)$$ and therefore certified level $$0.95$$.
+
+For one realized path, envelope validity is checked independently by certifying
+the maximum of
+
+$$
+v(x)=\underline f(x)-f(x)
+=c_f\sigma_{m_f}(x)G_s(x)-c_Eq\sigma_{m_E}(x).
+$$
+
+No value of $$f$$ is used to clip or alter the optimized lower envelope.
+Surrogate error is summarized by the certified quantity
+
+$$
+\|\widehat f-f\|_\infty
+=c_f\sup_{x\in[0,1]}|\sigma_{m_f}(x)G_s(x)|.
+$$
+
+For an optimizer checkpoint $$\widehat x$$, define
+
+$$
+T=f(x^*)-\underline f(x^*),
+\qquad
+\varepsilon=\max_x\underline f(x)-\underline f(\widehat x).
+$$
+
+Whenever the realized lower envelope is valid over the domain,
+
+$$
+R(\widehat x)=f(x^*)-f(\widehat x)
+\le T+\varepsilon.
+$$
+
+Branch-and-bound supplies lower and upper brackets for the global values, so
+the stored surrogate error, realized violation, and optimizer error retain
+their numerical certification gaps rather than being described as exact real
+numbers.
+
+- **Source:** `src/experiments/policy_lcb/continuous_gp_core.py`;
+  `src/experiments/policy_lcb/continuous_gp_decomposition.py`;
+  `manifests/continuous_gp_regret_decomposition.json`
+- **Notes:** Each run seed owns one Fourier coefficient draw reused by every
+  condition. One dedicated optimizer seed fixes the antithetic Stein
+  perturbations across paths, conditions, and starts. Zeroth-order probes use
+  the analytic real-line extension and iterates are projected to $$[0,1]$$.
+
 ### 3.7 Synthetic Ladder Objectives
 
 Direct theta-space benchmark functions over the decision vector $$w = \theta$$

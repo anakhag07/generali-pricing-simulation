@@ -32,6 +32,18 @@ class SimpleAcceptanceObjective:
         return np.asarray([1.0], dtype=float)
 
 
+class SimpleUnconstrainedObjective:
+    def value(self, theta: np.ndarray, x_batch: np.ndarray) -> float:
+        del x_batch
+        theta_arr = np.asarray(theta, dtype=float)
+        return float((theta_arr[0] - 0.2) ** 2)
+
+    def grad(self, theta: np.ndarray, x_batch: np.ndarray) -> np.ndarray:
+        del x_batch
+        theta_arr = np.asarray(theta, dtype=float)
+        return np.asarray([2.0 * (theta_arr[0] - 0.2)], dtype=float)
+
+
 def test_trust_constr_passes_nonlinear_constraint_to_minimize() -> None:
     seen: dict[str, object] = {}
 
@@ -72,6 +84,42 @@ def test_trust_constr_passes_nonlinear_constraint_to_minimize() -> None:
     assert trace.constraint_violation == 0.0
     assert trace.acceptance_multiplier == 0.4
     assert trace.constraint_penalty == 0.125
+
+
+def test_trust_constr_supports_an_unconstrained_objective() -> None:
+    seen: dict[str, object] = {}
+
+    def fake_minimize(fun, **kwargs):
+        del fun
+        seen.update(kwargs)
+        callback = kwargs["callback"]
+        callback(np.asarray([0.2], dtype=float), None)
+        return SimpleNamespace(
+            x=np.asarray([0.2], dtype=float),
+            success=True,
+            status=0,
+            message="ok",
+            optimality=0.0,
+            lagrangian_grad=np.asarray([0.0], dtype=float),
+        )
+
+    optimizer = Optimization(
+        SimpleUnconstrainedObjective(),
+        np.zeros((4, 1), dtype=float),
+        FirstOrderGradient(),
+        algorithm="trust-constr",
+        t_steps=5,
+        n_grad_samples=1,
+        sigma=1e-3,
+        minimize_fn=fake_minimize,
+    )
+
+    _, trace = optimizer.solve(np.asarray([0.0], dtype=float))
+
+    assert seen["method"] == "trust-constr"
+    assert "constraints" not in seen
+    assert trace.constraint_violation is None
+    assert trace.acceptance_multiplier is None
 
 
 def test_trust_constr_first_order_enforces_acceptance_floor() -> None:

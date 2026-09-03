@@ -457,7 +457,7 @@ def test_lagrangian_lambda_rejected_for_trust_constr() -> None:
         )
 
 
-def test_trust_constr_requires_acceptance_floor() -> None:
+def test_trust_constr_supports_no_acceptance_floor() -> None:
     policy = SoftmaxPolicy()
     objective = FixedRegressionObjective.from_parameters(
         policy=policy,
@@ -467,15 +467,16 @@ def test_trust_constr_requires_acceptance_floor() -> None:
         beta_4=0.4,
     )
 
-    with pytest.raises(ValueError, match="requires acceptance_floor"):
-        ExperimentConfig(
-            state_dim=1,
-            objective=objective,
-            theta0=_theta0(1),
-            n_samples=5,
-            step_rule="trust-constr",
-            perturbation_space="theta",
-        )
+    config = ExperimentConfig(
+        state_dim=1,
+        objective=objective,
+        theta0=_theta0(1),
+        n_samples=5,
+        step_rule="trust-constr",
+        perturbation_space="theta",
+    )
+
+    assert config.acceptance_floor is None
 
 
 def test_trust_constr_requires_mean_acceptance_grad() -> None:

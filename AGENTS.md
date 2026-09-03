@@ -13,7 +13,19 @@ Project context: simulation and optimization repo. Users should be able to speci
   which seed controls the process.
 - Include short comments or specs for functions when helpful.
 - Prefer vectorized or cached computations when they preserve existing logic.
+- Save every newly generated plot or figure as PDF, not PNG. Apply this to new
+  runs and regenerated outputs; do not migrate artifacts from previously
+  completed experiments unless the user explicitly requests it.
 - Do not rely on prior chat context as the source of truth; repo context may be stale across terminals, worktrees, or later sessions.
+- Before implementing a stochastic objective indexed by a finite or continuous
+  domain, explicitly document and confirm: the index domain; dependence or
+  covariance across inputs; the exact off-grid evaluation rule; whether any
+  plotted line is interpolation or visualization only; optimizer query and
+  boundary behavior; the global-reference method and certification tolerance;
+  the domain covered by the confidence statement and its calibration proof;
+  and which sweep axes reuse the same random draw and seed streams. Put these
+  representation decisions in the plan and generated experiment documentation.
+  Never describe connected finite samples as a continuous random function.
 
 ## Logical Rules
 
@@ -664,7 +676,7 @@ belongs under `generali/`.
 
 - **`src/experiments/policy_lcb/`**
   - Reusable policy-LCB module with shared Gaussian quantiles, coverage/oracle
-    diagnostics, result serialization, seed-array launch dispatch, and two
+    diagnostics, result serialization, seed-array launch dispatch, and five
     adapters. `experiments.finite_policy_lcb` is a compatibility alias for the
     finite adapter, including private monkeypatch/test behavior.
   - The finite adapter preserves the Proposition 11.2 construction
@@ -678,6 +690,37 @@ belongs under `generali/`.
     first-order, finite-difference, and Stein-difference updates from paired
     starts, records exact analytic gaps, and writes per-seed JSON/trajectory
     leaves plus cross-seed median/IQR and mean/bootstrap-CI plots.
+  - The `finite_grid_variable_lcb` adapter in `finite_grid.py` exactly maximizes
+    a concave quadratic surrogate over a manifest-defined dense grid. It pairs
+    one independent Gaussian vector across uncertainty centers, noise scales,
+    Bonferroni/pointwise calibrations, and nominal/uniform/variable selectors;
+    writes replayable seed JSONs and raw/summary CSVs; and renders aggregate
+    validity, tightness, optimizer-protection, regret, and center-sweep plots.
+    The uncertainty center is the minimum-width point and remains distinct from
+    the true optimum and deterministic penalized target. Its independent
+    Gaussian coordinates exist only on the manifest grid; connected plot lines
+    are visualization only and do not define a continuous stochastic process.
+  - The `continuous_gp_variable_lcb` adapter in `continuous_gp.py` evaluates an
+    exact finite-rank Fourier GP formula at every real-valued query. It uses a
+    Bonferroni covering net plus an analytic coefficient-norm smoothness
+    remainder for one seed-independent continuum-wide band, and certifies
+    nominal/LCB global reference values by scalar branch-and-bound. All 2,000
+    GP paths receive reference metrics; the predeclared first 200 also run
+    projected first-order, central finite-difference, and 64-sample antithetic
+    Stein-difference trajectories. ZO probes use the documented real-line
+    analytic extension while iterates remain in `[0,1]`.
+  - `continuous_gp_core.py` is the pure in-process seam shared by both Fourier-GP
+    adapters. It owns the analytic path/uncertainty formulas, decomposed
+    landscape, covering-net inversion, shape-ratio and weighted-supremum
+    certificates, and scalar branch-and-bound. `continuous_gp.py` retains the
+    §3.6.6 manifest/reporting adapter and its compatibility landscape interface.
+  - The `continuous_gp_regret_decomposition` adapter in
+    `continuous_gp_decomposition.py` separates `(c_f, m_f)` from `(c_E, m_E)`,
+    de-duplicates overlapping one-axis/factorial conditions, evaluates all 200
+    paired Fourier paths, and stores raw plus best-of-three finite-difference and
+    Stein checkpoints. `continuous_gp_decomposition_reporting.py` reads the
+    saved results and writes coverage/decomposition/model summaries and the five
+    predeclared plots without rerunning optimization.
   - Continuum-wide coverage uses $$q_\delta=\Phi^{-1}(1-\delta/2)$$ because the
     shared error process has rank one: the event for every positive policy is
     the same event $$|Z_s|\le q_\delta$$. Continuity alone does not remove
@@ -771,8 +814,11 @@ belongs under `generali/`.
   default `LaunchPlan`, maps `launch.array: "variant"` to one task per variant,
   and maps `launch.array: "none"` to one serial task. It supports `--force` to
   rerun completed variants and `--runs-root` for alternate result roots.
-  Manifests with `kind: "finite_policy_lcb"` or
-  `kind: "continuous_policy_lcb"` route through the shared policy-LCB launch
+  Manifests with `kind: "finite_policy_lcb"`,
+  `kind: "continuous_policy_lcb"`, `kind: "finite_grid_variable_lcb"`, or
+  `kind: "continuous_gp_variable_lcb"`, or
+  `kind: "continuous_gp_regret_decomposition"`
+  route through the shared policy-LCB launch
   interface, where `launch.array: "seed"` maps one paired-condition task to
   each problem-noise seed; manifests without `kind` retain the optimization-
   manifest behavior.
@@ -787,6 +833,21 @@ belongs under `generali/`.
   optimizer settings, three paired starts, five delta values, 25 problem-noise
   seeds, fixed Stein stream, and reporting-bootstrap seed. Outputs live under
   `results/continuous-policy-lcb-validation/`.
+- `manifests/variable_lcb_envelope_characterization.json` is the source of
+  truth for the 101-point concave-quadratic variable-envelope cube over seven
+  uncertainty centers, six noise scales, two calibrations, and 2,000 paired
+  Gaussian vectors. Outputs live under
+  `results/variable-lcb-envelope-characterization/`.
+- `manifests/continuous_gp_variable_lcb.json` is the source of truth for the
+  continuous analytic Fourier-GP suite: rank 32, lengthscale 0.2, five
+  uncertainty centers, five noise scales, the analytic 95% covering-net band,
+  2,000 global-reference paths, and a 200-path optimizer subset. Outputs live
+  under `results/continuous-gp-variable-lcb/`.
+- `manifests/continuous_gp_regret_decomposition.json` is the source of truth
+  for the independently controlled surrogate/envelope scales and centers, 71
+  de-duplicated landscapes, eight optimizer checkpoints, two fixed ZO methods,
+  200 paired Fourier paths, and three predeclared diagnostic paths. Outputs live
+  under `results/continuous-gp-regret-decomposition/`.
 - `manifests/zeroth_order_baseline.json` and
   `manifests/zeroth_order_functional_bias.json` are the source of truth for the
   small perturbation/sample-count and functional-bias proof grids.
@@ -986,6 +1047,9 @@ exclude `tests/objective/test_jax_prepared_glm*`, `tests/optimization/test_jax_*
 | `test_manifest.py` | Manifest parsing, explicit truth/seed/optimizer/launch validation, completion skipping, and summary-derived metrics |
 | `test_finite_policy_lcb.py` | Finite-policy LCB formulas, paired noise streams, exact selection, oracle inequality, analytic coverage, manifest contract, and aggregate outputs |
 | `test_continuous_policy_lcb.py` | Shared-Gaussian continuum formulas, projected estimators, seed pairing, endpoint oracle checks, manifest contract, exact output tree, and plots |
+| `test_variable_finite_grid_lcb.py` | Clipped uncertainty geometry, full-cube noise pairing, Bonferroni invariance, exact selectors and deterministic targets, conditional certificates, symmetry, replay/resume, aggregation, and plots |
+| `test_continuous_gp_variable_lcb.py` | Analytic Fourier paths and derivatives, smooth uncertainty, uniform certificate constants, certified global references, paired seeds, optimizer subset, replay/resume, aggregation, and plots |
+| `test_continuous_gp_regret_decomposition.py` | Shared analytic-core parity, separated landscape derivatives, certificate inversion and shape ratios, de-duplicated grids, original path reuse, paired optimizer checkpoints/query counts, replay/resume, aggregate tables, and five plots |
 | `test_policy_lcb_common.py` | Shared policy-LCB math and legacy finite-module compatibility |
 | `test_run_context.py` | default results-root output directory, readable run leaves, run metadata, and verbatim run_dir paths |
 | `test_noisy_objective_backend.py` | Noisy objective acceptance-control propagation and JAX GLM backend re-wrapping |

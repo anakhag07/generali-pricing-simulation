@@ -224,6 +224,15 @@ Guidelines:
   cohort-mean acceptance floor, caches coverage/response matrices, and writes
   customer-level baseline-versus-adjusted actions and vector-PDF histograms to
   `results/coverage-aware-policy-20k/`.
+- `scripts/plot_customer_coverage_envelope_slides.py` is the intentionally
+  illustrative constant-action optimizer-shift demonstration. It uses the
+  deterministic 20,000-row historical-support sample to shape a width fixed at
+  10 profit units, smooths the saved full-population profit and width samples,
+  defines continuous natural-cubic-spline query functions on `[0, 0.16]`, and obtains both
+  displayed solutions from SciPy's deterministic bounded scalar optimizer. The
+  sampled grid is never used to select a solution. It writes vector PDFs plus
+  `EXPERIMENT.md`, `optimizer_solutions.json`, and replay arrays under
+  `results/customer-coverage-envelope-slides/`.
 - Keep the boundary strict: do not hide reusable pipeline logic inside a script,
   and do not promote analysis-only code into `src/` without a concrete reusable
   integration point.

@@ -1034,6 +1034,21 @@ histograms, customer-level actions, an optimization trace, and `summary.json`.
 The interpolated constraint includes a small safety margin and the final actions
 are also checked directly with XGBoost.
 
+For the intentionally illustrative, constant-action optimizer-shift slide set,
+run:
+
+```bash
+python scripts/plot_customer_coverage_envelope_slides.py
+```
+
+This uses empirical local historical support to shape an uncertainty width but
+fixes its scale at 10 profit units for visual clarity; it is not a calibrated
+confidence interval. Profit-only and uncertainty-adjusted solutions both come
+from SciPy's bounded continuous optimizer over documented natural cubic splines on
+`[0, 0.16]`. The action grid supplies interpolation knots and plotting points,
+not candidate solutions. Outputs and machine-readable optimizer provenance live
+under `results/customer-coverage-envelope-slides/`.
+
 To benchmark GLM analytical acceptance speed, Stein-difference call counts,
 objective-cache behavior, and contour-subsampling speed on the bundled real-data
 objective, use:

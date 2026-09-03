@@ -252,7 +252,11 @@ Guidelines:
   negate the objective into the profit/maximization convention. The sampled
   grid is never used to select a solution. It writes vector PDFs plus
   `EXPERIMENT.md`, `optimizer_solutions.json`, and replay arrays under
-  `results/customer-coverage-envelope-slides/`.
+  `results/customer-coverage-envelope-slides/`. Its exploratory customer-profit
+  dispersion outputs span `[-0.10, 0.20]`: the historical `1std` filename now
+  contains a Gaussian-consistent `1.4826 * MAD` cloud, while a companion PDF/CSV
+  compares robust and ordinary standard deviations. Those dispersion plots do
+  not calculate an optimum.
 - Keep the boundary strict: do not hide reusable pipeline logic inside a script,
   and do not promote analysis-only code into `src/` without a concrete reusable
   integration point.

@@ -1054,6 +1054,15 @@ interpolation knots and plotting points, not candidate solutions. Outputs and
 machine-readable optimizer provenance live under
 `results/customer-coverage-envelope-slides/`.
 
+The same command also regenerates
+`01_smoothed_mean_profit_with_1std_cloud.pdf` as an exploratory robust-dispersion
+view over `u in [-0.10, 0.20]`. Its band is the full-population mean predicted
+profit plus or minus `1.4826 * MAD` across the deterministic 20,000-customer
+sample. `01_customer_profit_dispersion_std_vs_mad.pdf` compares that robust
+scale with the ordinary customer standard deviation, and the companion CSV
+stores both raw and smoothed curves. These dispersion outputs do not calculate
+or report an optimum.
+
 To benchmark GLM analytical acceptance speed, Stein-difference call counts,
 objective-cache behavior, and contour-subsampling speed on the bundled real-data
 objective, use:

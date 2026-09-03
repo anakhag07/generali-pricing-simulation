@@ -3,8 +3,27 @@ from __future__ import annotations
 import numpy as np
 
 from scripts.plot_customer_coverage_envelope_slides import (
+    MAD_TO_NORMAL_STD,
+    _mad_dispersion,
     _minimize_xgboost_objective,
 )
+
+
+def test_mad_dispersion_is_robust_to_customer_outlier() -> None:
+    customer_profit = np.asarray(
+        [
+            [0.0, 10.0],
+            [1.0, 11.0],
+            [2.0, 12.0],
+            [100.0, 13.0],
+        ]
+    )
+
+    mad, robust_std = _mad_dispersion(customer_profit)
+
+    assert np.allclose(mad, [1.0, 1.0])
+    assert np.allclose(robust_std, MAD_TO_NORMAL_STD * mad)
+    assert np.std(customer_profit[:, 0], ddof=1) > robust_std[0]
 
 
 def test_displayed_profit_solution_comes_from_repo_minimizer() -> None:

@@ -231,7 +231,36 @@ $$\bar P(u) \pm s_P(u), \qquad
 s_P(u)=\sqrt{\frac{1}{n-1}\sum_{i=1}^n\left(P_i(u)-\bar P(u)\right)^2}.$$
 
 - **Source:** `scripts/plot_customer_coverage_envelope_slides.py` ::
-  `_compute_diagnostics()`, `_plot_smoothed_mean_profit_std_band()`
+  `_compute_diagnostics()`, `_plot_customer_profit_dispersion_comparison()`
+
+The exploratory robust-dispersion version evaluates the same customer-level
+profit on the wider saved-objective domain
+$$u_j=-0.10+0.001j$$, $$j=0,\ldots,300$$. At each action, let
+
+$$
+m_P(u)=\operatorname{median}_i P_i(u), \qquad
+\operatorname{MAD}_P(u)=\operatorname{median}_i\left|P_i(u)-m_P(u)\right|.
+$$
+
+The Gaussian-consistent robust standard-deviation estimate is
+
+$$
+s_{\mathrm{MAD}}(u)=
+\frac{1}{\Phi^{-1}(0.75)}\operatorname{MAD}_P(u)
+\approx 1.4826\operatorname{MAD}_P(u).
+$$
+
+The robust cloud is centered on the saved full-population mean profit and uses
+the smoothed robust scale,
+$$\widetilde{\bar P}(u)\pm\widetilde{s}_{\mathrm{MAD}}(u)$$. A companion
+diagnostic plots $$\widetilde{s}_P(u)$$ and
+$$\widetilde{s}_{\mathrm{MAD}}(u)$$ directly so their widths can be compared
+without interpreting an optimizer. Neither plot computes or reports an optimum.
+
+- **Source:** `scripts/plot_customer_coverage_envelope_slides.py` ::
+  `_mad_dispersion()`, `_compute_diagnostics()`,
+  `_plot_smoothed_mean_profit_mad_band()`,
+  `_plot_customer_profit_dispersion_comparison()`
 
 For the plot-forward optimizer-shift demonstration, the saved full-population
 XGBoost minimization-objective samples and the aggregate support-based width are

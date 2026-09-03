@@ -58,9 +58,11 @@ OPTIMIZED_POLICY_PATH = (
     / "optimized_policy_cropped.npz"
 )
 U_GRID = np.linspace(0.0, 0.16, 161)
+EXPLORATORY_U_GRID = np.linspace(-0.10, 0.20, 301)
 NUMERIC_CLIP = 6.0
 ACTION_BANDWIDTH = 0.01
 ILLUSTRATIVE_WIDTH_SCALE = 10.0
+MAD_TO_NORMAL_STD = 1.4826
 GAUSSIAN_SMOOTH_SIGMA = 1.25
 GAUSSIAN_SMOOTH_TRUNCATE = 4.0
 OPTIMIZER_START_U = 0.08
@@ -164,6 +166,16 @@ def _smooth_display_curve(values: np.ndarray) -> np.ndarray:
         mode="nearest",
         truncate=GAUSSIAN_SMOOTH_TRUNCATE,
     )
+
+
+def _mad_dispersion(customer_values: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Return MAD and Gaussian-consistent robust scale at each action."""
+    values = np.asarray(customer_values, dtype=float)
+    if values.ndim != 2 or values.shape[0] < 1:
+        raise ValueError("customer_values must be a non-empty two-dimensional array.")
+    customer_median = np.median(values, axis=0)
+    mad = np.median(np.abs(values - customer_median[None, :]), axis=0)
+    return mad, MAD_TO_NORMAL_STD * mad
 
 
 def _minimize_xgboost_objective(
@@ -303,12 +315,33 @@ def _compute_diagnostics(
     acceptance_artifact.model.set_params(n_jobs=int(n_jobs))
     loss_artifact.model.set_params(n_jobs=int(n_jobs))
 
-    acceptance = _predict_acceptance_matrix(acceptance_artifact, frame, U_GRID)
+    exploratory_acceptance = _predict_acceptance_matrix(
+        acceptance_artifact,
+        frame,
+        EXPLORATORY_U_GRID,
+    )
     loss = _predict_loss(loss_artifact, frame)
     premium = frame["X_policy_premium"].to_numpy(dtype=float)
-    revenue = premium[:, None] * (1.0 + U_GRID[None, :])
-    customer_profit = acceptance * (revenue - loss[:, None])
-    customer_objective_std = np.std(customer_profit, axis=0, ddof=1)
+    exploratory_revenue = premium[:, None] * (1.0 + EXPLORATORY_U_GRID[None, :])
+    exploratory_customer_profit = exploratory_acceptance * (
+        exploratory_revenue - loss[:, None]
+    )
+    exploratory_customer_std = np.std(
+        exploratory_customer_profit,
+        axis=0,
+        ddof=1,
+    )
+    exploratory_customer_mad, exploratory_customer_robust_std = _mad_dispersion(
+        exploratory_customer_profit
+    )
+    grid_tolerance = 1e-12
+    primary_mask = (EXPLORATORY_U_GRID >= U_GRID[0] - grid_tolerance) & (
+        EXPLORATORY_U_GRID <= U_GRID[-1] + grid_tolerance
+    )
+    if not np.allclose(EXPLORATORY_U_GRID[primary_mask], U_GRID):
+        raise ValueError("The primary action grid is not nested in the exploratory grid.")
+    customer_objective_std = exploratory_customer_std[primary_mask]
+    del exploratory_acceptance, exploratory_revenue, exploratory_customer_profit
     baseline_policy_actions = _load_saved_optimizer_actions(row_indices)
 
     embedding = _mixed_customer_embedding(acceptance_artifact, frame)
@@ -322,10 +355,20 @@ def _compute_diagnostics(
     median_support = np.median(support, axis=0)
 
     full_curve = pd.read_csv(FULL_OBJECTIVE_PATH)
-    full_curve = full_curve.loc[full_curve["u"].between(0.0, 0.16)].copy()
-    if not np.allclose(full_curve["u"].to_numpy(dtype=float), U_GRID):
-        raise ValueError("The saved full-dataset objective grid does not match U_GRID.")
-    mean_objective = full_curve["mean_objective"].to_numpy(dtype=float)
+    exploratory_full_curve = full_curve.loc[
+        full_curve["u"].between(EXPLORATORY_U_GRID[0], EXPLORATORY_U_GRID[-1])
+    ].copy()
+    if not np.allclose(
+        exploratory_full_curve["u"].to_numpy(dtype=float),
+        EXPLORATORY_U_GRID,
+    ):
+        raise ValueError(
+            "The saved full-dataset objective grid does not match EXPLORATORY_U_GRID."
+        )
+    exploratory_mean_objective = exploratory_full_curve[
+        "mean_objective"
+    ].to_numpy(dtype=float)
+    mean_objective = exploratory_mean_objective[primary_mask]
 
     support_deficit = 1.0 - median_support / float(np.max(median_support))
     illustrative_width = ILLUSTRATIVE_WIDTH_SCALE * support_deficit
@@ -345,6 +388,11 @@ def _compute_diagnostics(
         "observed_u": np.asarray(observed_u, dtype=float),
         "baseline_policy_actions": baseline_policy_actions,
         "customer_objective_std": customer_objective_std,
+        "exploratory_u": EXPLORATORY_U_GRID,
+        "exploratory_mean_profit": -exploratory_mean_objective,
+        "exploratory_customer_std": exploratory_customer_std,
+        "exploratory_customer_mad": exploratory_customer_mad,
+        "exploratory_customer_robust_std": exploratory_customer_robust_std,
         "mean_objective": mean_objective,
         "mean_profit": -mean_objective,
         "median_support": median_support,
@@ -454,15 +502,17 @@ def _plot_smoothed_mean_profit(
     _save_pdf(fig, output_dir / f"01_smoothed_mean_profit_{suffix}.pdf")
 
 
-def _plot_smoothed_mean_profit_std_band(
+def _plot_smoothed_mean_profit_mad_band(
     data: dict[str, np.ndarray],
     output_dir: Path,
 ) -> None:
-    u = data["u"]
-    smoothed_profit = data["display_profit"]
-    smoothed_std = _smooth_display_curve(data["customer_objective_std"])
-    lower = smoothed_profit - smoothed_std
-    upper = smoothed_profit + smoothed_std
+    u = data["exploratory_u"]
+    smoothed_profit = _smooth_display_curve(data["exploratory_mean_profit"])
+    smoothed_robust_std = _smooth_display_curve(
+        data["exploratory_customer_robust_std"]
+    )
+    lower = smoothed_profit - smoothed_robust_std
+    upper = smoothed_profit + smoothed_robust_std
 
     fig, ax = plt.subplots(figsize=(10.0, 5.8), constrained_layout=True)
     ax.fill_between(
@@ -470,18 +520,82 @@ def _plot_smoothed_mean_profit_std_band(
         lower,
         upper,
         alpha=0.2,
-        label="±1 customer standard deviation",
+        label="±1 robust σ (1.4826 × customer MAD)",
     )
     ax.plot(u, smoothed_profit, linewidth=2.0, label="Mean predicted profit")
     ax.set_title(
-        "Mean Predicted Profit Per Customer vs. Proposed Price Change",
+        "Mean Predicted Profit with Robust Customer Dispersion",
         fontsize=16,
     )
     ax.set_xlabel("Proposed Price Change", fontsize=12)
     ax.set_ylabel("Predicted Profit Per Customer", fontsize=12)
     ax.tick_params(labelsize=10)
+    ax.set_xlim(float(u[0]), float(u[-1]))
     ax.legend(fontsize=10)
+    fig.savefig(
+        output_dir / "01_smoothed_mean_profit_with_mad_cloud_minus010_plus020.pdf",
+        format="pdf",
+    )
     _save_pdf(fig, output_dir / "01_smoothed_mean_profit_with_1std_cloud.pdf")
+
+
+def _plot_customer_profit_dispersion_comparison(
+    data: dict[str, np.ndarray],
+    output_dir: Path,
+) -> None:
+    u = data["exploratory_u"]
+    smoothed_std = _smooth_display_curve(data["exploratory_customer_std"])
+    smoothed_robust_std = _smooth_display_curve(
+        data["exploratory_customer_robust_std"]
+    )
+
+    fig, ax = plt.subplots(figsize=(10.0, 5.8), constrained_layout=True)
+    ax.plot(u, smoothed_std, linewidth=2.0, label="Customer standard deviation")
+    ax.plot(
+        u,
+        smoothed_robust_std,
+        linewidth=2.0,
+        label="Robust σ (1.4826 × MAD)",
+    )
+    ax.set_title("Customer Profit Dispersion by Proposed Price Change", fontsize=16)
+    ax.set_xlabel("Proposed Price Change", fontsize=12)
+    ax.set_ylabel("Profit Dispersion Per Customer", fontsize=12)
+    ax.tick_params(labelsize=10)
+    ax.set_xlim(float(u[0]), float(u[-1]))
+    ax.legend(fontsize=10)
+    _save_pdf(
+        fig,
+        output_dir / "01_customer_profit_dispersion_std_vs_mad.pdf",
+    )
+
+
+def _export_customer_profit_dispersion(
+    data: dict[str, np.ndarray],
+    output_dir: Path,
+) -> None:
+    mean_profit = np.asarray(data["exploratory_mean_profit"], dtype=float)
+    standard_deviation = np.asarray(data["exploratory_customer_std"], dtype=float)
+    mad = np.asarray(data["exploratory_customer_mad"], dtype=float)
+    robust_standard_deviation = np.asarray(
+        data["exploratory_customer_robust_std"],
+        dtype=float,
+    )
+    pd.DataFrame(
+        {
+            "u": data["exploratory_u"],
+            "mean_profit": mean_profit,
+            "customer_standard_deviation": standard_deviation,
+            "customer_mad": mad,
+            "customer_robust_standard_deviation": robust_standard_deviation,
+            "smoothed_mean_profit": _smooth_display_curve(mean_profit),
+            "smoothed_customer_standard_deviation": _smooth_display_curve(
+                standard_deviation
+            ),
+            "smoothed_customer_robust_standard_deviation": _smooth_display_curve(
+                robust_standard_deviation
+            ),
+        }
+    ).to_csv(output_dir / "01_customer_profit_dispersion_std_vs_mad.csv", index=False)
 
 
 def _plot_historical_vs_optimized(data: dict[str, np.ndarray], output_dir: Path) -> None:
@@ -882,6 +996,22 @@ def _write_experiment_record(
             "action_bandwidth": float(ACTION_BANDWIDTH),
             "width_scale_profit_units": float(ILLUSTRATIVE_WIDTH_SCALE),
         },
+        "customer_profit_dispersion": {
+            "interpretation": "cross-customer dispersion at each proposed price change; not optimizer uncertainty",
+            "domain": [
+                float(EXPLORATORY_U_GRID[0]),
+                float(EXPLORATORY_U_GRID[-1]),
+            ],
+            "grid_spacing": float(
+                np.round(EXPLORATORY_U_GRID[1] - EXPLORATORY_U_GRID[0], 12)
+            ),
+            "center": "saved full-population mean predicted profit",
+            "robust_scale": "1.4826 * median_i(abs(P_i - median_i(P_i)))",
+            "comparison_scale": "sample standard deviation across customers with ddof=1",
+            "sample_n_customers": int(n_customers),
+            "sample_seed": int(sample_seed),
+            "computes_optimum": False,
+        },
         "representation": {
             "domain": [float(U_GRID[0]), float(U_GRID[-1])],
             "grid_spacing": float(U_GRID[1] - U_GRID[0]),
@@ -963,6 +1093,12 @@ def _write_experiment_record(
                 "The 0.001-spaced samples are interpolation knots and plotting points, not",
                 "candidate solutions.",
                 "",
+                "The exploratory robust-dispersion cloud spans `[-0.10, 0.20]` and",
+                "uses `1.4826 * MAD` across customers as a Gaussian-consistent robust",
+                "standard-deviation estimate. Its companion PDF/CSV compares that scale",
+                "with the ordinary customer standard deviation. These plots do not",
+                "calculate or report an optimum.",
+                "",
                 f"- Profit-only optimizer solution: `{100 * float(data['profit_optimizer_u']):.3f}%`",
                 f"- Uncertainty-aware optimizer solution: `{100 * float(data['uncertainty_optimizer_u']):.3f}%`",
                 f"- Shift: `{shift_points:.3f}` percentage points",
@@ -1009,7 +1145,9 @@ def main() -> None:
     _plot_clean_objective(diagnostics, args.output_dir)
     _plot_smoothed_mean_profit(diagnostics, args.output_dir, show_star=False)
     _plot_smoothed_mean_profit(diagnostics, args.output_dir, show_star=True)
-    _plot_smoothed_mean_profit_std_band(diagnostics, args.output_dir)
+    _plot_smoothed_mean_profit_mad_band(diagnostics, args.output_dir)
+    _plot_customer_profit_dispersion_comparison(diagnostics, args.output_dir)
+    _export_customer_profit_dispersion(diagnostics, args.output_dir)
     _plot_historical_vs_optimized(diagnostics, args.output_dir)
     _plot_historical_only(diagnostics, args.output_dir)
     _plot_historical_only(diagnostics, args.output_dir, show_star=True)

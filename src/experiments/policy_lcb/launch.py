@@ -21,10 +21,21 @@ from experiments.policy_lcb.finite import (
     run_finite_policy_lcb_manifest_seed,
     run_finite_policy_lcb_manifest_serial,
 )
+from experiments.policy_lcb.finite_grid import (
+    VariableFiniteGridLCBManifest,
+    collect_variable_finite_grid_lcb_outputs,
+    parse_variable_finite_grid_lcb_manifest,
+    run_variable_finite_grid_lcb_manifest_seed,
+    run_variable_finite_grid_lcb_manifest_serial,
+)
 
 
-PolicyLCBManifest: TypeAlias = FinitePolicyLCBManifest | ContinuousPolicyLCBManifest
-POLICY_LCB_MANIFEST_KINDS = frozenset({"finite_policy_lcb", "continuous_policy_lcb"})
+PolicyLCBManifest: TypeAlias = (
+    FinitePolicyLCBManifest | ContinuousPolicyLCBManifest | VariableFiniteGridLCBManifest
+)
+POLICY_LCB_MANIFEST_KINDS = frozenset(
+    {"finite_policy_lcb", "continuous_policy_lcb", "finite_grid_variable_lcb"}
+)
 
 
 def load_policy_lcb_manifest(path: str | Path) -> PolicyLCBManifest:
@@ -36,6 +47,8 @@ def load_policy_lcb_manifest(path: str | Path) -> PolicyLCBManifest:
         return parse_finite_policy_lcb_manifest(payload, source_path=manifest_path)
     if kind == "continuous_policy_lcb":
         return parse_continuous_policy_lcb_manifest(payload, source_path=manifest_path)
+    if kind == "finite_grid_variable_lcb":
+        return parse_variable_finite_grid_lcb_manifest(payload, source_path=manifest_path)
     raise ValueError(f"Unsupported policy-LCB manifest kind {kind!r}.")
 
 
@@ -78,6 +91,13 @@ def _run_seed(
             runs_root=context.runs_root,
             force=force,
         )
+    if isinstance(manifest, VariableFiniteGridLCBManifest):
+        return run_variable_finite_grid_lcb_manifest_seed(
+            manifest,
+            index,
+            runs_root=context.runs_root,
+            force=force,
+        )
     return run_continuous_policy_lcb_manifest_seed(
         manifest,
         index,
@@ -103,6 +123,17 @@ def _run_serial(
             f"{payload['project_dir']} ({payload['n_skipped_seeds']} seeds skipped)."
         )
         return
+    if isinstance(manifest, VariableFiniteGridLCBManifest):
+        payload = run_variable_finite_grid_lcb_manifest_serial(
+            manifest,
+            runs_root=context.runs_root,
+            force=force,
+        )
+        print(
+            f"Completed {payload['n_executed_condition_rows']} finite-grid conditions "
+            f"under {payload['project_dir']} ({payload['n_skipped_seeds']} seeds skipped)."
+        )
+        return
     payload = run_continuous_policy_lcb_manifest_serial(
         manifest,
         runs_root=context.runs_root,
@@ -120,6 +151,15 @@ def _collect(manifest: PolicyLCBManifest, context: LaunchContext) -> None:
         print(
             f"Collected {payload['n_selection_rows']} selections and "
             f"{payload['n_policy_rows']} policy rows under {payload['project_dir']}."
+        )
+        return
+    if isinstance(manifest, VariableFiniteGridLCBManifest):
+        payload = collect_variable_finite_grid_lcb_outputs(
+            manifest, runs_root=context.runs_root
+        )
+        print(
+            f"Collected {payload['n_condition_rows']} condition rows and "
+            f"{payload['n_selector_rows']} selector rows under {payload['project_dir']}."
         )
         return
     payload = collect_continuous_policy_lcb_outputs(manifest, runs_root=context.runs_root)

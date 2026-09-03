@@ -268,6 +268,59 @@ it follows because the policy-indexed error is rank one,
 $$\widehat V_s(\pi)-V(\pi)=\pi Z_s$$, so simultaneous coverage over every
 $$\pi$$ is exactly the single event $$|Z_s|\le q_\delta$$.
 
+### Variable-Envelope Finite-Grid Lower Confidence Bounds
+
+The variable-envelope characterization performs exact maximization on 101
+points in $$[0,1]$$ for the concave objective
+$$f(x)=5x-5x^2$$. Its uncertainty profile has minimum at a swept center $$m$$:
+
+$$
+\sigma_m(x)=0.1+0.9\min\left(\frac{|x-m|}{0.5},1\right),
+\qquad
+\widehat f_{s,c,m}(x)=f(x)+c\sigma_m(x)Z_{s,x}.
+$$
+
+Run the committed 2,000-seed manifest with:
+
+```bash
+python scripts/run_experiment_manifest.py \
+  manifests/variable_lcb_envelope_characterization.json
+```
+
+One independent Gaussian vector is drawn per run seed and reused for every
+center, noise scale, Bonferroni/pointwise calibration, and selector. Thus the
+cube is paired: changing $$c$$ or $$m$$ changes only the uncertainty geometry,
+not the standardized noise realization. The simultaneous envelope uses
+$$q=\Phi^{-1}(1-\delta/(2K))$$; the pointwise comparator uses
+$$q=\Phi^{-1}(1-\delta/2)$$. Because $$c>0$$ and $$\sigma_m(x)>0$$ cancel from
+the coverage inequality, the Bonferroni simultaneous event is the same
+$$\max_x|Z_{s,x}|\le q$$ for every positive scale and center. At $$c=0$$,
+coverage is deterministically perfect.
+
+The outputs under `results/variable-lcb-envelope-characterization/` include
+replayable seed JSONs, raw condition and selector CSVs, summaries for the noise,
+calibration, envelope-shape, and center sweeps, and ten aggregate plots. The
+center plots distinguish the true optimum $$x^*$$, uncertainty center $$m$$,
+and deterministic penalized target
+$$x^\dagger=\arg\max_x[f(x)-E(x)]$$. The constant uniform envelope is retained
+as a diagnostic and must select exactly the same point as the nominal surrogate.
+Here $$m$$ is specifically the point at which $$\sigma_m(x)$$ is minimized,
+while $$c$$ multiplies both surrogate noise and the calibrated envelope. Every
+reported regret is evaluated on the true objective:
+$$R(\hat x)=f(x^*)-f(\hat x)=1.25-[5\hat x-5\hat x^2]
+=5(\hat x-0.5)^2$$. The aggregate regret plots print this calculation and the
+definitions of $$m$$ and $$c$$ directly below the axes.
+The per-center Experiment 2 calibration-regret plot compares nominal,
+pointwise-LCB, and simultaneous-LCB regret as $$c$$ changes, with 5th--95th
+seed-percentile bands in every $$m$$ facet.
+The matching per-center Experiment 3 plot combines the exactly identical
+nominal and uniform-LCB curves, then contrasts them with the variable-LCB curve
+to isolate the effect of valid envelope geometry at each $$m$$.
+The additional `experiment_1_realized_landscapes.png` diagnostic fixes the
+first run seed and one off-optimum uncertainty center, then shows $$f$$,
+$$\widehat f$$, the two-sided envelope, its LCB edge, and both selected points
+across all configured values of $$c$$.
+
 ### Zeroth-Order Support Envelopes
 
 The committed support-envelope sweep reuses the same strongly convex proof

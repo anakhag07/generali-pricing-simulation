@@ -249,12 +249,19 @@ s_{\mathrm{MAD}}(u)=
 \approx 1.4826\operatorname{MAD}_P(u).
 $$
 
-The robust cloud is centered on the saved full-population mean profit and uses
-the smoothed robust scale,
-$$\widetilde{\bar P}(u)\pm\widetilde{s}_{\mathrm{MAD}}(u)$$. A companion
-diagnostic plots $$\widetilde{s}_P(u)$$ and
-$$\widetilde{s}_{\mathrm{MAD}}(u)$$ directly so their widths can be compared
-without interpreting an optimizer. Neither plot computes or reports an optimum.
+The direct dispersion comparison plots $$\widetilde{s}_P(u)$$ and
+$$\widetilde{s}_{\mathrm{MAD}}(u)$$ over the wider domain so their widths can be
+compared without interpreting an optimizer. The dedicated MAD-cloud slide uses
+the primary domain $$u\in[0,0.16]$$ and the user-specified half-width
+
+$$H_{0.6\mathrm{MAD}}(u)=0.6\,\operatorname{GaussianSmooth}
+\left(\operatorname{MAD}_P(u)\right).$$
+
+It plots
+$$\widetilde{\bar P}(u)\pm H_{0.6\mathrm{MAD}}(u)$$ around the saved
+full-population mean profit. This is explicitly a scaled-MAD display band, not a
+Gaussian-consistent standard-deviation estimate. Neither dispersion plot
+computes or reports an optimum.
 
 - **Source:** `scripts/plot_customer_coverage_envelope_slides.py` ::
   `_mad_dispersion()`, `_compute_diagnostics()`,

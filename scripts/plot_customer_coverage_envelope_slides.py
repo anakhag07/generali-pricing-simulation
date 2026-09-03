@@ -63,6 +63,7 @@ NUMERIC_CLIP = 6.0
 ACTION_BANDWIDTH = 0.01
 ILLUSTRATIVE_WIDTH_SCALE = 10.0
 MAD_TO_NORMAL_STD = 1.4826
+MAD_CLOUD_MULTIPLIER = 0.6
 GAUSSIAN_SMOOTH_SIGMA = 1.25
 GAUSSIAN_SMOOTH_TRUNCATE = 4.0
 OPTIMIZER_START_U = 0.08
@@ -180,6 +181,21 @@ def _mad_dispersion(customer_values: np.ndarray) -> tuple[np.ndarray, np.ndarray
     customer_median = np.median(values, axis=0)
     mad = np.median(np.abs(values - customer_median[None, :]), axis=0)
     return mad, MAD_TO_NORMAL_STD * mad
+
+
+def _mad_cloud_half_width(data: dict[str, np.ndarray]) -> np.ndarray:
+    """Return the requested 0.6-MAD cloud half-width on the primary grid."""
+    exploratory_u = np.asarray(data["exploratory_u"], dtype=float)
+    exploratory_mad = np.asarray(data["exploratory_customer_mad"], dtype=float)
+    grid_tolerance = 1e-12
+    primary_mask = (exploratory_u >= U_GRID[0] - grid_tolerance) & (
+        exploratory_u <= U_GRID[-1] + grid_tolerance
+    )
+    if not np.allclose(exploratory_u[primary_mask], U_GRID):
+        raise ValueError("The primary action grid is not nested in the exploratory grid.")
+    return MAD_CLOUD_MULTIPLIER * _smooth_display_curve(
+        exploratory_mad[primary_mask]
+    )
 
 
 def _within_customer_change_summary(
@@ -634,13 +650,11 @@ def _plot_smoothed_mean_profit_mad_band(
     data: dict[str, np.ndarray],
     output_dir: Path,
 ) -> None:
-    u = data["exploratory_u"]
-    smoothed_profit = _smooth_display_curve(data["exploratory_mean_profit"])
-    smoothed_robust_std = _smooth_display_curve(
-        data["exploratory_customer_robust_std"]
-    )
-    lower = smoothed_profit - smoothed_robust_std
-    upper = smoothed_profit + smoothed_robust_std
+    u = data["u"]
+    smoothed_profit = data["display_profit"]
+    half_width = _mad_cloud_half_width(data)
+    lower = smoothed_profit - half_width
+    upper = smoothed_profit + half_width
 
     fig, ax = plt.subplots(figsize=(10.0, 5.8), constrained_layout=True)
     ax.fill_between(
@@ -648,11 +662,11 @@ def _plot_smoothed_mean_profit_mad_band(
         lower,
         upper,
         alpha=0.2,
-        label="±1 robust σ (1.4826 × customer MAD)",
+        label="±0.6 × customer MAD",
     )
     ax.plot(u, smoothed_profit, linewidth=2.0, label="Mean predicted profit")
     ax.set_title(
-        "Mean Predicted Profit with Robust Customer Dispersion",
+        "Mean Predicted Profit with Customer MAD Cloud",
         fontsize=16,
     )
     ax.set_xlabel("Proposed Price Change", fontsize=12)
@@ -660,11 +674,7 @@ def _plot_smoothed_mean_profit_mad_band(
     ax.tick_params(labelsize=10)
     ax.set_xlim(float(u[0]), float(u[-1]))
     ax.legend(fontsize=10)
-    fig.savefig(
-        output_dir / "01_smoothed_mean_profit_with_mad_cloud_minus010_plus020.pdf",
-        format="pdf",
-    )
-    _save_pdf(fig, output_dir / "01_smoothed_mean_profit_with_1std_cloud.pdf")
+    _save_pdf(fig, output_dir / "01_smoothed_mean_profit_with_mad_cloud.pdf")
 
 
 def _plot_customer_profit_dispersion_comparison(
@@ -1254,6 +1264,15 @@ def _write_experiment_record(
             "sample_seed": int(sample_seed),
             "computes_optimum": False,
         },
+        "mad_cloud": {
+            "output": "01_smoothed_mean_profit_with_mad_cloud.pdf",
+            "domain": [float(U_GRID[0]), float(U_GRID[-1])],
+            "center": "saved full-population mean predicted profit",
+            "half_width": "0.6 * GaussianSmooth(customer MAD)",
+            "mad_sample_n_customers": int(n_customers),
+            "mad_sample_seed": int(sample_seed),
+            "computes_optimum": False,
+        },
         "within_customer_profit_change": {
             "interpretation": "paired predicted profit change for each diagnostic customer relative to one common action",
             "baseline_source": "median historical price change across all XGBoost-eligible customers",
@@ -1351,11 +1370,11 @@ def _write_experiment_record(
                 "The 0.001-spaced samples are interpolation knots and plotting points, not",
                 "candidate solutions.",
                 "",
-                "The exploratory robust-dispersion cloud spans `[-0.10, 0.20]` and",
-                "uses `1.4826 * MAD` across customers as a Gaussian-consistent robust",
-                "standard-deviation estimate. Its companion PDF/CSV compares that scale",
-                "with the ordinary customer standard deviation. These plots do not",
-                "calculate or report an optimum.",
+                "The dedicated MAD cloud spans `[0, 0.16]` and uses the explicitly",
+                "requested half-width `0.6 * customer MAD`. It is a scaled-MAD display",
+                "band, not a standard-deviation estimate. A separate wide-domain PDF/CSV",
+                "compares Gaussian-consistent `1.4826 * MAD` with ordinary customer",
+                "standard deviation. These plots do not calculate or report an optimum.",
                 "",
                 "The paired within-customer sensitivity plot holds each diagnostic",
                 "customer fixed and subtracts that customer's predicted profit at the",

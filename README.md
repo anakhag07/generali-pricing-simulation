@@ -1055,13 +1055,14 @@ machine-readable optimizer provenance live under
 `results/customer-coverage-envelope-slides/`.
 
 The same command also regenerates
-`01_smoothed_mean_profit_with_1std_cloud.pdf` as an exploratory robust-dispersion
-view over `u in [-0.10, 0.20]`. Its band is the full-population mean predicted
-profit plus or minus `1.4826 * MAD` across the deterministic 20,000-customer
-sample. `01_customer_profit_dispersion_std_vs_mad.pdf` compares that robust
-scale with the ordinary customer standard deviation, and the companion CSV
-stores both raw and smoothed curves. These dispersion outputs do not calculate
-or report an optimum.
+`01_smoothed_mean_profit_with_mad_cloud.pdf` on `u in [0, 0.16]`. Its band is the
+full-population mean predicted profit plus or minus the user-specified
+`0.6 * customer MAD` from the deterministic 20,000-customer sample. This is a
+scaled-MAD display band, not a standard-deviation estimate.
+`01_customer_profit_dispersion_std_vs_mad.pdf` separately compares the
+Gaussian-consistent `1.4826 * MAD` scale with ordinary customer standard
+deviation over `[-0.10, 0.20]`; the companion CSV stores both curves. These
+dispersion outputs do not calculate or report an optimum.
 
 `01_within_customer_profit_change_from_median_price.pdf` instead holds each
 diagnostic customer fixed and subtracts that customer's predicted profit at the

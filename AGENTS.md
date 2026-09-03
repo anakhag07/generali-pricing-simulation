@@ -253,10 +253,11 @@ Guidelines:
   grid is never used to select a solution. It writes vector PDFs plus
   `EXPERIMENT.md`, `optimizer_solutions.json`, and replay arrays under
   `results/customer-coverage-envelope-slides/`. Its exploratory customer-profit
-  dispersion outputs span `[-0.10, 0.20]`: the historical `1std` filename now
-  contains a Gaussian-consistent `1.4826 * MAD` cloud, while a companion PDF/CSV
-  compares robust and ordinary standard deviations. Those dispersion plots do
-  not calculate an optimum. Its paired within-customer PDF/CSV uses the
+  dedicated MAD-cloud output spans `[0, 0.16]` with the explicitly requested
+  half-width `0.6 * customer MAD`; it is not labelled as a standard deviation.
+  A companion wide-domain PDF/CSV compares Gaussian-consistent robust and
+  ordinary standard deviations. Those dispersion plots do not calculate an
+  optimum. Its paired within-customer PDF/CSV uses the
   population-median historical action as a common baseline, reports profit-change
   quantile ribbons plus robust MAD dispersion on `[0, 0.16]`, and obtains any
   marked dispersion extrema from the repository finite-difference optimizer.

@@ -3,12 +3,30 @@ from __future__ import annotations
 import numpy as np
 
 from scripts.plot_customer_coverage_envelope_slides import (
+    EXPLORATORY_U_GRID,
+    MAD_CLOUD_MULTIPLIER,
     MAD_TO_NORMAL_STD,
+    U_GRID,
+    _mad_cloud_half_width,
     _mad_dispersion,
     _minimize_xgboost_objective,
     _repo_spline_minimize,
     _within_customer_change_summary,
 )
+
+
+def test_mad_cloud_uses_requested_scale_on_primary_domain() -> None:
+    customer_mad = np.full(EXPLORATORY_U_GRID.shape, 5.0)
+
+    half_width = _mad_cloud_half_width(
+        {
+            "exploratory_u": EXPLORATORY_U_GRID,
+            "exploratory_customer_mad": customer_mad,
+        }
+    )
+
+    assert half_width.shape == U_GRID.shape
+    assert np.allclose(half_width, MAD_CLOUD_MULTIPLIER * 5.0)
 
 
 def test_mad_dispersion_is_robust_to_customer_outlier() -> None:

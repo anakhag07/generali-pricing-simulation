@@ -3,6 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 
 from experiments import run as run_module
 from objective.noise import NoisyObjective, NoNoise
@@ -27,8 +28,9 @@ def test_acceptance_controls_are_applied_inside_noisy_objective() -> None:
     assert objective.base_objective.acceptance_floor is None
 
 
-def test_jax_backend_rewraps_noisy_glm_objective(monkeypatch) -> None:
-    base = _glm_objective()
+@pytest.mark.parametrize("model_type", ["glm", "linear"])
+def test_jax_backend_rewraps_noisy_glm_objective(monkeypatch, model_type: str) -> None:
+    base = _glm_objective(model_type=model_type)
     prepared = SimpleNamespace(policy=base.policy, warmed_theta=None)
 
     def fake_prepare_jax_glm_objective(objective, x_samples, *, row_indices=None):
@@ -61,11 +63,11 @@ def test_jax_backend_rewraps_noisy_glm_objective(monkeypatch) -> None:
     np.testing.assert_allclose(prepared.warmed_theta, theta_initial)
 
 
-def _glm_objective() -> ModelBasedObjective:
+def _glm_objective(*, model_type: str = "glm") -> ModelBasedObjective:
     policy = ConstantPolicy()
     return ModelBasedObjective(
         policy=policy,
-        acceptance_model=SimpleNamespace(model_type="glm"),
+        acceptance_model=SimpleNamespace(model_type=model_type),
         loss_model=SimpleNamespace(),
         acceptance_state_cols=("x",),
         loss_cols=("x",),

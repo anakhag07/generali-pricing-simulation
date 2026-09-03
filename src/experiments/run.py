@@ -227,7 +227,7 @@ def _optimizer_backend_objective(
     if not isinstance(source_objective, ModelBasedObjective):
         raise ValueError("compute_backend='jax' currently supports GLM ModelBasedObjective runs only.")
     model_type = getattr(source_objective.acceptance_model, "model_type", None)
-    if model_type != "glm":
+    if model_type not in {"glm", "linear"}:
         raise ValueError("compute_backend='jax' currently supports only GLM real-data artifacts.")
     jax_objective, batch = _prepare_jax_glm_objective(
         source_objective,

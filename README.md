@@ -1016,6 +1016,24 @@ floor applies to the cohort mean and defaults to historical observed acceptance.
 External artifact/dataset hashes and deterministic mean imputations are recorded
 in `provenance.json`.
 
+To refit the bounded sigmoid XGBoost pricing policy on the deterministic
+20,000-customer coverage sample with a customer-specific local-support penalty,
+run:
+
+```bash
+python scripts/run_coverage_aware_policy_optimizer.py
+```
+
+The script reuses the row indices in
+`results/customer-coverage-envelope-slides/coverage_diagnostics.npz`, computes
+each customer's local coverage width on the 0--16% action grid, and optimizes
+predicted profit minus that width subject to the original cohort-mean acceptance
+floor. Customer response and coverage grids are cached under
+`results/coverage-aware-policy-20k/`; the run writes baseline-versus-adjusted
+histograms, customer-level actions, an optimization trace, and `summary.json`.
+The interpolated constraint includes a small safety margin and the final actions
+are also checked directly with XGBoost.
+
 To benchmark GLM analytical acceptance speed, Stein-difference call counts,
 objective-cache behavior, and contour-subsampling speed on the bundled real-data
 objective, use:

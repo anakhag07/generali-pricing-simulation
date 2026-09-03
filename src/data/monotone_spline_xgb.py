@@ -194,16 +194,31 @@ def fit_monotone_spline_artifact(
     id_col: str = "id",
     u_col: str = "U",
     max_price_increase: int = 16,
+    action_grid: Sequence[float] | None = None,
     dense_grid_size: int = 500,
 ) -> MonotoneSplineArtifactData:
-    """Fit the original probability-space monotone smoother over selected profiles."""
+    """Fit probability-space monotone curves over selected profiles.
+
+    ``action_grid`` permits experiment-specific action ranges while preserving
+    the historical ``0..max_price_increase`` percentage-point grid by default.
+    """
     selected = np.asarray(row_indices, dtype=int)
     profiles = dataset.iloc[selected].copy()
     policy_ids = profiles[id_col].astype("string").to_numpy(dtype=str)
     if np.unique(policy_ids).size != policy_ids.size:
         raise ValueError("Selected curve-cache rows must contain unique policy IDs.")
 
-    action_fit = np.linspace(0.0, max_price_increase / 100.0, max_price_increase + 1)
+    if action_grid is None:
+        action_fit = np.linspace(0.0, max_price_increase / 100.0, max_price_increase + 1)
+    else:
+        action_fit = np.asarray(action_grid, dtype=float)
+        if (
+            action_fit.ndim != 1
+            or action_fit.size < 2
+            or not np.isfinite(action_fit).all()
+            or np.any(np.diff(action_fit) <= 0.0)
+        ):
+            raise ValueError("action_grid must be finite, 1D, and strictly increasing.")
     observed = profiles[u_col].round(2).value_counts(normalize=True)
     weights = observed.reindex(action_fit.round(2), fill_value=0.0).to_numpy(dtype=float)
     weights = np.where(weights > 0.0, weights, 1e-9)

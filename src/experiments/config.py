@@ -44,7 +44,8 @@ def _x_fixed_frame_matches_state_dim(objective: object, x_fixed_frame: Any, stat
         return x_fixed_frame.shape[1] == state_dim
     acceptance_model = getattr(objective, "acceptance_model", None)
     auxiliary_cols = tuple(getattr(acceptance_model, "auxiliary_state_cols", ()))
-    expected_cols = set(state_cols) | set(auxiliary_cols)
+    policy_feature_cols = tuple(getattr(objective, "policy_feature_cols", ()) or ())
+    expected_cols = set(state_cols) | set(auxiliary_cols) | set(policy_feature_cols)
     if getattr(objective, "loss_source", "predicted") == "observed":
         observed_loss_col = getattr(objective, "observed_loss_col", None)
         if observed_loss_col is None:
@@ -424,7 +425,14 @@ class ExperimentConfig:
                     dtype=float,
                 )
             )
-            x_probe = np.zeros((1, self.state_dim), dtype=float)
+            if self.x_fixed is not None:
+                x_probe = (
+                    self.x_fixed.iloc[:1].copy()
+                    if hasattr(self.x_fixed, "iloc")
+                    else np.asarray(self.x_fixed)[:1]
+                )
+            else:
+                x_probe = np.zeros((1, self.state_dim), dtype=float)
             u_probe_arr = np.asarray(policy_value(probe_theta, x_probe), dtype=float)
             if not bool(np.isfinite(u_probe_arr).all()):
                 raise ValueError("policy.value(theta0, x_batch) must be finite.")
@@ -627,6 +635,8 @@ def _policy_to_dict(policy: object) -> dict[str, Any]:
             "feature_dim": getattr(feature_map, "feature_dim", None),
             "include_interactions": getattr(feature_map, "include_interactions", None),
             "name": getattr(feature_map, "name", None),
+            "max_degree": getattr(feature_map, "max_degree", None),
+            "clip_scale": getattr(feature_map, "clip_scale", None),
         }
     if isinstance(policy, ConstantPolicy):
         return {"type": "ConstantPolicy"}

@@ -14,6 +14,7 @@ from data.monotone_spline_xgb import (
     MonotoneSplineArtifactData,
     MonotoneSplineXGBAcceptance,
     fit_monotone_churn_curve,
+    fit_monotone_spline_artifact,
     load_monotone_spline_artifact,
     save_monotone_spline_artifact,
 )
@@ -75,6 +76,35 @@ def test_curve_helper_matches_source_recipe() -> None:
     np.testing.assert_allclose(fitted.curve(evaluation_grid), source_curve(evaluation_grid))
     assert np.all(np.diff(fitted.curve(evaluation_grid)) >= -1e-12)
     assert np.all((fitted.curve(evaluation_grid) >= 0.0) & (fitted.curve(evaluation_grid) <= 1.0))
+
+
+def test_artifact_builder_accepts_explicit_negative_to_positive_action_grid(
+    tmp_path: Path,
+) -> None:
+    base_path = tmp_path / "acceptance.pkl"
+    base_path.write_bytes(b"base")
+    dataset = pd.DataFrame(
+        {
+            "id": ["101", "202"],
+            "x": [1.0, 2.0],
+            "U": [-0.05, 0.12],
+        }
+    )
+    action_grid = np.linspace(-0.1, 0.2, 31)
+
+    artifact = fit_monotone_spline_artifact(
+        _BaseAcceptance(),
+        dataset,
+        [0, 1],
+        base_artifact_path=base_path,
+        action_grid=action_grid,
+        dense_grid_size=101,
+    )
+
+    assert artifact.action_grid.size == 101
+    assert artifact.u_min == pytest.approx(-0.1)
+    assert artifact.u_max == pytest.approx(0.2)
+    assert artifact.coefficients.shape == (2, 4, 100)
 
 
 def test_array_only_round_trip(tmp_path: Path) -> None:

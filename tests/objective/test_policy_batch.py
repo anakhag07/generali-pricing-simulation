@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from objective.policy import (
+    AdditiveChebyshevFeatureMap,
     ConstantPolicy,
     CubicFeatureMap,
     IdentityFeatureMap,
@@ -13,6 +14,42 @@ from objective.policy import (
     mlp_init_theta,
     policy_from_kind,
 )
+
+
+def test_additive_chebyshev_feature_map_is_nested_and_degree_major() -> None:
+    x_array = np.array([[1.5, -3.0], [6.0, 0.0]], dtype=float)
+    degree_two = AdditiveChebyshevFeatureMap(max_degree=2)
+    degree_three = AdditiveChebyshevFeatureMap(max_degree=3)
+
+    mapped_two = degree_two.transform(x_array)
+    mapped_three = degree_three.transform(x_array)
+
+    expected_t = np.array([[0.5, -1.0], [1.0, 0.0]])
+    np.testing.assert_allclose(mapped_two[:, :2], expected_t)
+    np.testing.assert_allclose(mapped_two[:, 2:], 2.0 * expected_t**2 - 1.0)
+    np.testing.assert_allclose(mapped_three[:, :4], mapped_two)
+    assert degree_two.output_dim(2) == 4
+    assert SoftmaxPolicy(feature_map=degree_two).theta_dim(2) == 5
+
+
+def test_additive_chebyshev_degree_zero_is_intercept_only() -> None:
+    x_array = np.ones((3, 19), dtype=float)
+    feature_map = AdditiveChebyshevFeatureMap(max_degree=0)
+
+    assert feature_map.transform(x_array).shape == (3, 0)
+    assert SoftmaxPolicy(feature_map=feature_map).theta_dim(19) == 1
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "message"),
+    [
+        ({"max_degree": -1}, "non-negative"),
+        ({"max_degree": 1, "clip_scale": 0.0}, "positive"),
+    ],
+)
+def test_additive_chebyshev_rejects_invalid_configuration(kwargs, message) -> None:
+    with pytest.raises(ValueError, match=message):
+        AdditiveChebyshevFeatureMap(**kwargs)
 
 
 def test_constant_policy_value_shape() -> None:

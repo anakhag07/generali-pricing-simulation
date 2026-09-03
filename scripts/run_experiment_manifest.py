@@ -26,6 +26,12 @@ from experiments.policy_lcb.launch import (
     build_policy_lcb_launch_plan,
     load_policy_lcb_manifest,
 )
+from experiments.policy_capacity import (
+    POLICY_CAPACITY_MANIFEST_KIND,
+    PolicyCapacityManifest,
+    build_policy_capacity_launch_plan,
+    load_policy_capacity_manifest,
+)
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -47,7 +53,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def _apply_manifest_launch_defaults(
     args: argparse.Namespace,
-    manifest: ExperimentManifest | PolicyLCBManifest,
+    manifest: ExperimentManifest | PolicyLCBManifest | PolicyCapacityManifest,
 ) -> None:
     if args.array_max_parallel is None:
         args.array_max_parallel = manifest.launch.array_max_parallel
@@ -163,6 +169,13 @@ def main(argv: list[str] | None = None) -> None:
     elif kind == "optimization":
         manifest = load_experiment_manifest(Path(args.manifest))
         plan = _build_launch_plan(args, manifest)
+    elif kind == POLICY_CAPACITY_MANIFEST_KIND:
+        manifest = load_policy_capacity_manifest(Path(args.manifest))
+        plan = build_policy_capacity_launch_plan(
+            manifest,
+            runs_root=args.runs_root,
+            force=bool(args.force),
+        )
     else:
         raise ValueError(f"Unsupported experiment manifest kind {kind!r}.")
     _apply_manifest_launch_defaults(args, manifest)

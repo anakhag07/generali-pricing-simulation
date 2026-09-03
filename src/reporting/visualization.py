@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Callable, Mapping, Optional, Sequence, cast
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.stats import t as student_t
 
 from objective.base import Objective
 from objective.utils import _policy_value
@@ -2144,3 +2145,525 @@ def plot_lagrangian_pareto_frontier(
         y_label=y_label,
         filename=filename,
     )
+
+
+def plot_policy_capacity_objective(
+    summary: object,
+    output_dir: str | Path,
+    *,
+    family: str,
+    train_size: int,
+) -> Path:
+    """Plot train/test profit against parameter count for one model family."""
+    frame = _capacity_frame(summary)
+    matched = frame.loc[frame["optimize_model"] == frame["evaluate_model"]]
+    subset = matched.loc[matched["optimize_model"] == family].sort_values("parameter_count")
+    if subset.empty:
+        raise ValueError(f"No policy-capacity rows found for model family {family!r}.")
+    degrees = np.sort(subset["degree"].unique())
+    normalization = matplotlib.colors.Normalize(vmin=float(degrees.min()), vmax=float(degrees.max()))
+    colormap = matplotlib.colormaps["viridis"]
+    fig, ax = plt.subplots(figsize=(7.5, 4.8), constrained_layout=True)
+    scalar_mappable = matplotlib.cm.ScalarMappable(norm=normalization, cmap=colormap)
+    params = subset["parameter_count"].to_numpy(dtype=float)
+    train = subset["train_profit_mean"].to_numpy(dtype=float)
+    test = subset["test_profit_mean"].to_numpy(dtype=float)
+    colors = colormap(normalization(subset["degree"].to_numpy(dtype=float)))
+    ax.plot(params, train, color="C0", linewidth=1.5, alpha=0.55)
+    ax.plot(params, test, color="C1", linewidth=1.5, alpha=0.55)
+    ax.errorbar(
+        params,
+        train,
+        yerr=subset["train_profit_ci95"].to_numpy(dtype=float),
+        fmt="none",
+        ecolor="C0",
+        capsize=2,
+        alpha=0.65,
+    )
+    ax.errorbar(
+        params,
+        test,
+        yerr=subset["test_profit_ci95"].to_numpy(dtype=float),
+        fmt="none",
+        ecolor="C1",
+        capsize=2,
+        alpha=0.65,
+    )
+    ax.scatter(
+        params,
+        train,
+        marker="o",
+        s=48,
+        facecolors="none",
+        edgecolors=colors,
+        linewidths=1.5,
+        zorder=3,
+    )
+    ax.scatter(
+        params,
+        test,
+        c=subset["degree"],
+        cmap=colormap,
+        norm=normalization,
+        marker="o",
+        s=48,
+        edgecolors="black",
+        linewidths=0.5,
+        zorder=3,
+    )
+    ax.axvline(train_size, color="C2", linestyle="--", linewidth=1.2)
+    ax.set_title(f"{family.upper()} objective performance versus policy capacity", fontsize=16)
+    ax.set_xlabel("Policy parameter count", fontsize=12)
+    ax.set_ylabel("Expected profit per customer", fontsize=12)
+    ax.tick_params(labelsize=10)
+    ax.grid(True, alpha=0.3)
+    from matplotlib.lines import Line2D
+
+    legend_handles = [
+        Line2D([], [], color="C0", marker="o", markerfacecolor="none", label="Train mean"),
+        Line2D([], [], color="C1", marker="o", label="Test mean"),
+        Line2D([], [], color="C2", linestyle="--", label=f"Train size ({train_size})"),
+    ]
+    ax.legend(handles=legend_handles, fontsize=10)
+    colorbar = fig.colorbar(scalar_mappable, ax=ax, label="Chebyshev degree")
+    colorbar.ax.tick_params(labelsize=10)
+    colorbar.set_label("Chebyshev degree", fontsize=12)
+    return _save_capacity_figure(fig, output_dir, f"objective_vs_policy_capacity_{family}")
+
+
+def plot_policy_capacity_generalization_gap(
+    summary: object,
+    output_dir: str | Path,
+    *,
+    family: str,
+    train_size: int,
+) -> Path:
+    """Plot held-out minus train profit for one matched model family."""
+    frame = _capacity_frame(summary)
+    matched = frame.loc[frame["optimize_model"] == frame["evaluate_model"]]
+    subset = matched.loc[matched["optimize_model"] == family].sort_values("parameter_count")
+    if subset.empty:
+        raise ValueError(f"No policy-capacity rows found for model family {family!r}.")
+    fig, ax = plt.subplots(figsize=(7.5, 4.8), constrained_layout=True)
+    ax.errorbar(
+        subset["parameter_count"],
+        subset["generalization_gap_profit_mean"],
+        yerr=subset["generalization_gap_profit_ci95"],
+        marker="o",
+        capsize=3,
+    )
+    ax.axhline(0.0, color="C2", linestyle="--", linewidth=1.2)
+    ax.axvline(train_size, color="C3", linestyle="--", linewidth=1.2)
+    ax.set_title(f"{family.upper()} policy-capacity generalization gap", fontsize=16)
+    ax.set_xlabel("Policy parameter count", fontsize=12)
+    ax.set_ylabel("Test profit minus train profit", fontsize=12)
+    ax.tick_params(labelsize=10)
+    ax.grid(True, alpha=0.3)
+    return _save_capacity_figure(fig, output_dir, f"policy_capacity_generalization_gap_{family}")
+
+
+def plot_policy_capacity_baseline_adjusted_gains(
+    records: object,
+    output_dir: str | Path,
+    *,
+    family: str,
+) -> Path:
+    """Plot paired train/test gains relative to the degree-zero policy."""
+    frame = _capacity_frame(records)
+    matched = frame.loc[frame["optimize_model"] == frame["evaluate_model"]]
+    subset = matched.loc[matched["optimize_model"] == family].copy()
+    if subset.empty:
+        raise ValueError(f"No policy-capacity rows found for model family {family!r}.")
+    baseline = subset.loc[subset["degree"] == 0, ["split_seed", "train_profit", "test_profit"]]
+    if baseline["split_seed"].nunique() != subset["split_seed"].nunique():
+        raise ValueError("Every split must contain a degree-zero baseline.")
+    baseline = baseline.rename(
+        columns={
+            "train_profit": "baseline_train_profit",
+            "test_profit": "baseline_test_profit",
+        }
+    )
+    paired = subset.merge(baseline, on="split_seed", how="left", validate="many_to_one")
+    paired["train_gain"] = paired["train_profit"] - paired["baseline_train_profit"]
+    paired["test_gain"] = paired["test_profit"] - paired["baseline_test_profit"]
+    paired["excess_train_gain"] = paired["train_gain"] - paired["test_gain"]
+
+    rows = []
+    for (degree, parameter_count), group in paired.groupby(
+        ["degree", "parameter_count"],
+        sort=True,
+    ):
+        row = {"degree": int(degree), "parameter_count": int(parameter_count)}
+        for metric in ("train_gain", "test_gain", "excess_train_gain"):
+            values = group[metric].to_numpy(dtype=float)
+            row[f"{metric}_mean"] = float(np.mean(values))
+            row[f"{metric}_ci95"] = (
+                float(
+                    student_t.ppf(0.975, values.size - 1)
+                    * np.std(values, ddof=1)
+                    / np.sqrt(values.size)
+                )
+                if values.size > 1
+                else 0.0
+            )
+        rows.append(row)
+    summary = _capacity_frame(rows).sort_values("parameter_count")
+
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.8), constrained_layout=True)
+    axes[0].errorbar(
+        summary["parameter_count"],
+        summary["train_gain_mean"],
+        yerr=summary["train_gain_ci95"],
+        marker="o",
+        capsize=3,
+        label="Train gain",
+    )
+    axes[0].errorbar(
+        summary["parameter_count"],
+        summary["test_gain_mean"],
+        yerr=summary["test_gain_ci95"],
+        marker="o",
+        capsize=3,
+        label="Test gain",
+    )
+    axes[0].axhline(0.0, color="C2", linestyle="--", linewidth=1.2)
+    axes[0].set_title("Gain relative to degree zero", fontsize=14)
+    axes[0].set_xlabel("Policy parameter count", fontsize=12)
+    axes[0].set_ylabel("Profit change per customer", fontsize=12)
+    axes[0].tick_params(labelsize=10)
+    axes[0].grid(True, alpha=0.3)
+    axes[0].legend(fontsize=10)
+
+    axes[1].errorbar(
+        summary["parameter_count"],
+        summary["excess_train_gain_mean"],
+        yerr=summary["excess_train_gain_ci95"],
+        marker="o",
+        capsize=3,
+    )
+    axes[1].axhline(0.0, color="C2", linestyle="--", linewidth=1.2)
+    axes[1].set_title("Baseline-adjusted overfit gap", fontsize=14)
+    axes[1].set_xlabel("Policy parameter count", fontsize=12)
+    axes[1].set_ylabel("Excess training gain per customer", fontsize=12)
+    axes[1].tick_params(labelsize=10)
+    axes[1].grid(True, alpha=0.3)
+    fig.suptitle(f"{family.upper()} baseline-adjusted policy performance", fontsize=16)
+    return _save_capacity_figure(
+        fig,
+        output_dir,
+        f"policy_capacity_baseline_adjusted_gains_{family}",
+    )
+
+
+def plot_policy_capacity_action_diagnostics(
+    records: object,
+    output_dir: str | Path,
+    *,
+    family: str,
+) -> Path:
+    """Plot action dispersion and near-bound rates across matched splits."""
+    frame = _capacity_frame(records)
+    subset = frame.loc[
+        (frame["optimize_model"] == family) & (frame["evaluate_model"] == family)
+    ].copy()
+    required = {
+        "train_u_std",
+        "test_u_std",
+        "train_near_bound_fraction",
+        "test_near_bound_fraction",
+    }
+    if subset.empty or not required.issubset(subset.columns):
+        raise ValueError(f"No action diagnostics found for model family {family!r}.")
+
+    rows = []
+    for (degree, parameter_count), group in subset.groupby(
+        ["degree", "parameter_count"],
+        sort=True,
+    ):
+        row = {"degree": int(degree), "parameter_count": int(parameter_count)}
+        for metric in sorted(required):
+            values = group[metric].to_numpy(dtype=float)
+            row[f"{metric}_mean"] = float(np.mean(values))
+            row[f"{metric}_ci95"] = (
+                float(
+                    student_t.ppf(0.975, values.size - 1)
+                    * np.std(values, ddof=1)
+                    / np.sqrt(values.size)
+                )
+                if values.size > 1
+                else 0.0
+            )
+        rows.append(row)
+    summary = _capacity_frame(rows).sort_values("parameter_count")
+
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.8), constrained_layout=True)
+    for split_name, label in (("train", "Train"), ("test", "Test")):
+        axes[0].errorbar(
+            summary["parameter_count"],
+            summary[f"{split_name}_u_std_mean"],
+            yerr=summary[f"{split_name}_u_std_ci95"],
+            marker="o",
+            capsize=3,
+            label=label,
+        )
+        axes[1].errorbar(
+            summary["parameter_count"],
+            summary[f"{split_name}_near_bound_fraction_mean"],
+            yerr=summary[f"{split_name}_near_bound_fraction_ci95"],
+            marker="o",
+            capsize=3,
+            label=label,
+        )
+    axes[0].set_title("Action dispersion", fontsize=14)
+    axes[0].set_xlabel("Policy parameter count", fontsize=12)
+    axes[0].set_ylabel("Standard deviation of action u", fontsize=12)
+    axes[1].set_title("Actions near either bound", fontsize=14)
+    axes[1].set_xlabel("Policy parameter count", fontsize=12)
+    axes[1].set_ylabel("Fraction within 1% of action range", fontsize=12)
+    for ax in axes:
+        ax.tick_params(labelsize=10)
+        ax.grid(True, alpha=0.3)
+        ax.legend(fontsize=10)
+    fig.suptitle(f"{family.upper()} policy action diagnostics", fontsize=16)
+    return _save_capacity_figure(
+        fig,
+        output_dir,
+        f"policy_capacity_action_diagnostics_{family}",
+    )
+
+
+def plot_policy_capacity_penalized_gains(
+    records: object,
+    output_dir: str | Path,
+    *,
+    family: str,
+) -> Path:
+    """Plot train/test gains under the acceptance-penalized optimization objective."""
+    frame = _capacity_frame(records)
+    subset = frame.loc[
+        (frame["optimize_model"] == family) & (frame["evaluate_model"] == family)
+    ].copy()
+    required = {"train_penalized_profit", "test_penalized_profit"}
+    if subset.empty or not required.issubset(subset.columns):
+        raise ValueError(f"No penalized-profit records found for model family {family!r}.")
+    baseline = subset.loc[
+        subset["degree"] == 0,
+        ["split_seed", "train_penalized_profit", "test_penalized_profit"],
+    ].rename(
+        columns={
+            "train_penalized_profit": "baseline_train_penalized_profit",
+            "test_penalized_profit": "baseline_test_penalized_profit",
+        }
+    )
+    paired = subset.merge(baseline, on="split_seed", how="left", validate="many_to_one")
+    paired["train_penalized_gain"] = (
+        paired["train_penalized_profit"] - paired["baseline_train_penalized_profit"]
+    )
+    paired["test_penalized_gain"] = (
+        paired["test_penalized_profit"] - paired["baseline_test_penalized_profit"]
+    )
+    paired["excess_train_penalized_gain"] = (
+        paired["train_penalized_gain"] - paired["test_penalized_gain"]
+    )
+
+    rows = []
+    metrics = (
+        "train_penalized_gain",
+        "test_penalized_gain",
+        "excess_train_penalized_gain",
+    )
+    for (degree, parameter_count), group in paired.groupby(
+        ["degree", "parameter_count"],
+        sort=True,
+    ):
+        row = {"degree": int(degree), "parameter_count": int(parameter_count)}
+        for metric in metrics:
+            values = group[metric].to_numpy(dtype=float)
+            row[f"{metric}_mean"] = float(np.mean(values))
+            row[f"{metric}_ci95"] = (
+                float(
+                    student_t.ppf(0.975, values.size - 1)
+                    * np.std(values, ddof=1)
+                    / np.sqrt(values.size)
+                )
+                if values.size > 1
+                else 0.0
+            )
+        rows.append(row)
+    summary = _capacity_frame(rows).sort_values("parameter_count")
+
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.8), constrained_layout=True)
+    for metric, label in (
+        ("train_penalized_gain", "Train gain"),
+        ("test_penalized_gain", "Test gain"),
+    ):
+        axes[0].errorbar(
+            summary["parameter_count"],
+            summary[f"{metric}_mean"],
+            yerr=summary[f"{metric}_ci95"],
+            marker="o",
+            capsize=3,
+            label=label,
+        )
+    axes[0].axhline(0.0, color="C2", linestyle="--", linewidth=1.2)
+    axes[0].set_title("Penalized gain relative to degree zero", fontsize=14)
+    axes[0].set_xlabel("Policy parameter count", fontsize=12)
+    axes[0].set_ylabel("Penalized profit change per customer", fontsize=12)
+    axes[0].legend(fontsize=10)
+    axes[1].errorbar(
+        summary["parameter_count"],
+        summary["excess_train_penalized_gain_mean"],
+        yerr=summary["excess_train_penalized_gain_ci95"],
+        marker="o",
+        capsize=3,
+    )
+    axes[1].axhline(0.0, color="C2", linestyle="--", linewidth=1.2)
+    axes[1].set_title("Penalized overfit gap", fontsize=14)
+    axes[1].set_xlabel("Policy parameter count", fontsize=12)
+    axes[1].set_ylabel("Excess training gain per customer", fontsize=12)
+    for ax in axes:
+        ax.tick_params(labelsize=10)
+        ax.grid(True, alpha=0.3)
+    fig.suptitle(f"{family.upper()} acceptance-penalized performance", fontsize=16)
+    return _save_capacity_figure(
+        fig,
+        output_dir,
+        f"policy_capacity_penalized_gains_{family}",
+    )
+
+
+def plot_policy_capacity_model_transfer(
+    summary: object,
+    output_dir: str | Path,
+    *,
+    family: str,
+    train_size: int,
+) -> Path:
+    """Plot cross-model test profit for policies optimized with one model family."""
+    frame = _capacity_frame(summary)
+    subset = frame.loc[frame["optimize_model"] == family]
+    if subset.empty:
+        raise ValueError(f"No policy-capacity rows found for model family {family!r}.")
+    fig, ax = plt.subplots(figsize=(7.5, 4.8), constrained_layout=True)
+    evaluation_models = tuple(
+        dict.fromkeys(subset["evaluate_model"].dropna().astype(str).tolist())
+    )
+    if not evaluation_models:
+        raise ValueError(f"No evaluation models found for model family {family!r}.")
+    for evaluate_model in evaluation_models:
+        condition = subset.loc[subset["evaluate_model"] == evaluate_model].sort_values(
+            "parameter_count"
+        )
+        ax.errorbar(
+            condition["parameter_count"],
+            condition["test_profit_mean"],
+            yerr=condition["test_profit_ci95"],
+            marker="o",
+            capsize=3,
+            label=f"Evaluated by {evaluate_model.upper()}",
+        )
+    ax.axvline(train_size, color="C2", linestyle="--", linewidth=1.2)
+    ax.set_title(f"Policies optimized with {family.upper()}", fontsize=16)
+    ax.set_xlabel("Policy parameter count", fontsize=12)
+    ax.set_ylabel("Held-out expected profit per customer", fontsize=12)
+    ax.tick_params(labelsize=10)
+    ax.grid(True, alpha=0.3)
+    ax.legend(fontsize=10)
+    return _save_capacity_figure(fig, output_dir, f"policy_capacity_model_transfer_{family}")
+
+
+def plot_policy_capacity_endpoint_slices(
+    records: Sequence[Mapping[str, object]],
+    output_dir: str | Path,
+    *,
+    family: str,
+) -> Path:
+    """Plot representative learned action surfaces for one model family."""
+    from objective.policy import SoftmaxPolicy
+
+    selected = [record for record in records if str(record["model"]) == family]
+    if not selected:
+        raise ValueError(f"No endpoint-slice records found for model family {family!r}.")
+    split_seeds = {int(record["split_seed"]) for record in selected}
+    if len(split_seeds) != 1:
+        raise ValueError("Endpoint-slice records must contain exactly one split seed.")
+    split_seed = split_seeds.pop()
+    degrees = sorted({int(record["degree"]) for record in selected})
+    fig, axes = plt.subplots(
+        1,
+        len(degrees),
+        figsize=(3.8 * len(degrees), 3.8),
+        sharex=True,
+        sharey=True,
+        constrained_layout=True,
+        squeeze=False,
+    )
+    grid = np.linspace(-3.0, 3.0, 81)
+    x_one, x_two = np.meshgrid(grid, grid)
+    image = None
+    for column_index, degree in enumerate(degrees):
+        record = next(value for value in selected if int(value["degree"]) == degree)
+        state_dim = int(record["state_dim"])
+        inputs = np.zeros((x_one.size, state_dim), dtype=float)
+        inputs[:, 0] = x_one.ravel()
+        inputs[:, 1] = x_two.ravel()
+        policy = SoftmaxPolicy(
+            feature_map=_capacity_feature_map(record),
+            action_low=float(record["action_low"]),
+            action_high=float(record["action_high"]),
+        )
+        actions = policy.value(np.asarray(record["theta"], dtype=float), inputs).reshape(x_one.shape)
+        ax = axes[0, column_index]
+        image = ax.pcolormesh(
+            x_one,
+            x_two,
+            actions,
+            shading="auto",
+            cmap="viridis",
+            vmin=float(record["action_low"]),
+            vmax=float(record["action_high"]),
+        )
+        ax.set_title(f"Degree {degree}", fontsize=14)
+        ax.set_xlabel("Standardized policy input 1", fontsize=12)
+        ax.set_ylabel("Standardized policy input 2", fontsize=12)
+        ax.tick_params(labelsize=10)
+    if image is not None:
+        colorbar = fig.colorbar(image, ax=axes, label="Action u")
+        colorbar.ax.tick_params(labelsize=10)
+        colorbar.set_label("Action u", fontsize=12)
+    fig.suptitle(
+        f"{family.upper()} learned-policy slices (split seed {split_seed})",
+        fontsize=16,
+    )
+    return _save_capacity_figure(fig, output_dir, f"policy_capacity_endpoint_slices_{family}")
+
+
+def _capacity_feature_map(record: Mapping[str, object]) -> object:
+    from objective.policy import AdditiveChebyshevFeatureMap, TotalDegreePolynomialFeatureMap
+
+    degree = int(record["degree"])
+    basis = str(record.get("basis", "additive_chebyshev"))
+    if basis == "additive_chebyshev":
+        return AdditiveChebyshevFeatureMap(
+            max_degree=degree,
+            clip_scale=float(record["clip_scale"]),
+        )
+    if basis == "total_degree_polynomial":
+        return TotalDegreePolynomialFeatureMap(max_degree=degree)
+    raise ValueError(f"Unsupported policy-capacity basis {basis!r}.")
+
+
+def _capacity_frame(summary: object):
+    import pandas as pd
+
+    if isinstance(summary, pd.DataFrame):
+        return summary.copy()
+    return pd.DataFrame.from_records(summary)
+
+
+def _save_capacity_figure(fig: object, output_dir: str | Path, stem: str) -> Path:
+    path = _ensure_plot_dir(str(output_dir))
+    pdf_path = path / f"{stem}.pdf"
+    fig.savefig(pdf_path, format="pdf")
+    plt.close(fig)
+    return pdf_path

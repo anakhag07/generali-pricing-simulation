@@ -42,7 +42,38 @@ $$\varphi_{\text{cubic}}(x) = [x_1,\; \dots,\; x_d,\; x_i x_j x_k\; \text{for}\;
 
 $$\varphi_{\text{quartic}}(x) = [x_1,\; \dots,\; x_d,\; x_i x_j x_k x_l\; \text{for}\; 1 \le i \le j \le k \le l \le d]$$
 
-- **Source:** `src/objective/policy.py` :: `FeatureMap`, `IdentityFeatureMap`,
+For a gradually nested, interaction-free capacity ladder, first define
+
+$$t_j(x)=\operatorname{clip}\!\left(\frac{x_j}{s},-1,1\right),\qquad
+T_0(t)=1,\quad T_1(t)=t,\quad T_k(t)=2tT_{k-1}(t)-T_{k-2}(t).$$
+
+The degree-$$D$$ additive Chebyshev map is ordered by degree,
+
+$$\varphi_{\mathrm{cheb},D}(x)=
+[T_1(t_1),\ldots,T_1(t_d),T_2(t_1),\ldots,T_D(t_d)],$$
+
+so it has $$dD$$ mapped features and the bounded policy has
+$$1+dD$$ parameters including its intercept. The capacity experiment uses
+$$s=3$$ after train-only standardization. It contains no feature interactions,
+and degree $$D$$ is an exact prefix of degree $$D+1$$.
+
+For a nested interaction-capable polynomial ladder, let
+
+$$\mathcal A_D = \{\alpha\in\mathbb N_0^d:1\le |\alpha|_1\le D\},
+\qquad x^\alpha=\prod_{j=1}^d x_j^{\alpha_j}.$$
+
+The total-degree polynomial map is
+
+$$\varphi_{\mathrm{poly},D}(x)=[x^\alpha:\alpha\in\mathcal A_D],$$
+
+ordered first by total degree and then by deterministic
+combinations-with-replacement order. It has
+$$\binom{d+D}{D}-1$$ mapped features, so a linear or bounded policy has
+$$\binom{d+D}{D}$$ parameters including its intercept. Degree $$D$$ is an
+exact prefix of degree $$D+1$$ and contains every interaction whose total
+degree is at most $$D$$.
+
+- **Source:** `src/objective/policy.py` :: `FeatureMap`, `AdditiveChebyshevFeatureMap`, `TotalDegreePolynomialFeatureMap`, `IdentityFeatureMap`,
   `QuadraticFeatureMap`, `CubicFeatureMap`, `QuarticFeatureMap`,
   `CallableFeatureMap`, `_phi(x_batch, feature_map)`
 - **Notes:** `IdentityFeatureMap` preserves the previous default behavior
@@ -255,6 +286,51 @@ $$-s_i^{max}$$ above support while the tangent is strictly inside $$(0,1)$$,
 then zero after clipping. At the support boundaries the implementation uses the
 interior derivative. The hierarchy preset constrains actions to $$[0,0.16]$$ and
 rejects policies absent from the artifact.
+
+**GLM/XGBoost policy-capacity experiment:**
+
+For the shared 19-dimensional, train-standardized policy input $$z(x)$$, the
+degree-$$D$$ policy is
+
+$$u_{\theta,D}(x)=-0.1+0.3\,\sigma\!\left(
+\theta_0+\sum_{k=1}^{D}\sum_{j=1}^{19}\theta_{kj}
+T_k\!\left(\operatorname{clip}(z_j(x)/3,-1,1)\right)
+\right).$$
+
+There are no interactions and the parameter count is $$p_D=1+19D$$. Every fit
+starts at $$\theta_0=-\log 2$$ and all other coefficients zero, which gives
+$$u(x)=0$$ for every customer. For evaluator $$m\in\{\mathrm{GLM},\mathrm{XGB}\}$$,
+
+$$J_m(\theta;S)=\frac1{|S|}\sum_{i\in S}
+a_i^m(u_{\theta,D}(x_i))\left[L_i^m-(1+u_{\theta,D}(x_i))p_i\right],$$
+
+$$\bar a_m(\theta;S)=\frac1{|S|}\sum_{i\in S}a_i^m(u_{\theta,D}(x_i)),$$
+
+and L-BFGS-B minimizes the fixed-floor penalized training target
+
+$$Q_m(\theta;S)=J_m(\theta;S)+10^6\left[
+10^{-3}\log\!\left(1+\exp\!\left(
+\frac{0.8787745289312372-\bar a_m(\theta;S)}{10^{-3}}
+\right)\right)\right]^2.$$
+
+Reported objective performance is the unpenalized $$J_m$$ (or profit $$-J_m$$).
+The floor is fixed and is not a sweep axis. The XGBoost arm builds an
+experiment-specific 31-knot raw query grid from $$-0.10$$ through $$0.20$$,
+then applies the same smoothing-spline, isotonic, and PCHIP construction; the
+policy bounds keep all evaluations inside that fitted support. This grid widens
+the canonical spline range $$[0,0.16]$$, not the raw XGBoost training-data range:
+the saved acceptance-training notebook reports observed $$U$$ from approximately
+$$-0.1144$$ through $$0.4327$$ after its modeling filters. Those aggregate
+endpoints do not establish dense conditional support for every customer profile.
+In particular, tree predictions in sparsely observed tail/profile combinations
+can be flat leaf-boundary values. The manifest must therefore set
+`curve_cache.widened_xgb_tail_acknowledged=true`, and results outside
+$$[0,0.16]$$ are interpreted as tail-sensitivity analysis rather than validated
+empirical or causal extrapolation. Post-fit spline monotonicity and probability
+bounds establish numerical shape constraints only.
+
+- **Source:** `src/experiments/policy_capacity.py`,
+  `manifests/policy_capacity_glm_xgb.json`
 
 The full-customer analysis cache stores the same PCHIP exactly as shared-grid
 cubic Hermite data rather than one Python polynomial object per customer. For

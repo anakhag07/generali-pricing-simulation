@@ -257,6 +257,20 @@ Required manifest fields:
   document Slurm behavior; `requires_jax` may be inferred from `compute_backend`
   but should be set when the manifest must force GPU submission.
 
+`kind: "policy_capacity"` is the dedicated real-data exception to the generic
+preset/truth schema. Its source of truth is
+`manifests/policy_capacity_glm_xgb.json`; it uses `models`, `cohort`, `policy`,
+fixed `acceptance`, `optimizer`, `seeds.split_seeds`, `curve_cache`, and
+`launch.array: "condition"`. One array task owns one deterministic
+split/training-model/degree fit and its two evaluator replays (360 tasks total),
+while the dependent collector owns cross-split confidence intervals and PDFs.
+The manifest also fixes the smaller per-task CPU/time/memory profile. Do not
+turn acceptance into a sweep axis for this experiment.
+The same runner also accepts `policy.basis: "total_degree_polynomial"` for the
+XGBoost interaction-capacity experiment; this basis uses unclipped monomials
+after train-only standardization and counts parameters as
+`comb(state_dim + degree, degree)`.
+
 Variant axes belong under `matrix` or `variants`. Scalar matrix entries override
 the same config key; labeled entries may provide nested `overrides`, which is
 the preferred way to toggle noise/bias objective modifications or data-ladder
@@ -643,6 +657,23 @@ belongs under `generali/`.
     `summary_json` requires an explicit path and estimator and compares learned
     theta against that saved reference
 
+- **`src/experiments/policy_capacity.py`**
+  - Dedicated GLM/XGBoost capacity runner. It binds the shared 200-customer
+    cohort, train-only policy standardization, additive Chebyshev degree ladder,
+    sweep-local widened XGBoost curve cache, split-task outputs, cross-model
+    evaluation, confidence-interval collection, and policy-state sidecars.
+  - `reporting.visualization` owns its four canonical plot families, each saved
+    as separate GLM and XGBoost PDFs. Capacity plotting emits PDF only, never
+    PNG or other raster previews. The primary axis is policy parameter count,
+    and acceptance is CSV-only diagnostics.
+  - `manifests/policy_capacity_glm_xgb_u_0_0p16.json` is the matched
+    restricted-range replication: it keeps the cohort, splits, degree ladder,
+    and acceptance floor fixed, constrains `u` to `[0, 0.16]`, and initializes
+    the bounded softmax policy at the finite midpoint `u=0.08`.
+  - `manifests/policy_capacity_xgb_u_0_0p16_degree_32.json` is the XGBoost-only
+    overparameterized extension. It retains the 50/50 splits and full
+    low-degree curve, then continues through degree 32 (609 parameters).
+
 - **`src/experiments/policy_lcb/`**
   - Reusable policy-LCB module with shared Gaussian quantiles, coverage/oracle
     diagnostics, result serialization, seed-array launch dispatch, and five
@@ -791,6 +822,9 @@ belongs under `generali/`.
   interface, where `launch.array: "seed"` maps one paired-condition task to
   each problem-noise seed; manifests without `kind` retain the optimization-
   manifest behavior.
+  `kind: "policy_capacity"` routes through the condition-array capacity plan,
+  where each task runs one split/model/degree fit and the collector writes
+  sweep-level CSVs and PDFs.
 - `manifests/finite_policy_lcb_validation.json` is the source of truth for the
   exact eleven-policy lower-confidence-bound validation, its five delta values,
   and its 25 paired noise seeds.

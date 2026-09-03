@@ -98,7 +98,9 @@ leading `1`. The default `IdentityFeatureMap` gives the previous behavior
 `phi(x) = [1, x]`; `QuadraticFeatureMap` expands the state with linear,
 square, and pairwise interaction terms. `CubicFeatureMap` and
 `QuarticFeatureMap` follow the same pattern with linear terms plus exact
-degree-3 or degree-4 monomials.
+degree monomials. `AdditiveChebyshevFeatureMap` provides a nested,
+interaction-free capacity ladder: each added degree contributes one bounded
+Chebyshev term per state feature after configurable clipping/scaling.
 
 Policy replay separates input preprocessing from policy feature mapping:
 
@@ -528,6 +530,72 @@ enforce non-decreasing churn and `[0, 1]` probability bounds. Other complete
 policies follow the original wrapper contract and fall back to raw XGB, so the
 cache size is not a limit on inference. Logit-spline and shifted-sigmoid runtime
 families have been removed.
+
+The GLM/XGBoost policy-capacity experiment uses those same 200 covered
+customers, twenty deterministic 100/100 splits, and a shared train-standardized
+19-feature policy encoder. It sweeps additive Chebyshev degrees
+`[0, 1, 2, 3, 4, 5, 6, 8, 10]`, corresponding to
+`[1, 20, 39, 58, 77, 96, 115, 153, 191]` policy parameters. Policies are bounded
+to `u in (-0.1, 0.2)`; the fixed acceptance floor remains an optimization
+penalty and is not swept. Run the CPU split-seed array with:
+
+```bash
+python scripts/run_experiment_manifest.py \
+  manifests/policy_capacity_glm_xgb.json
+```
+
+The launcher expands 360 small array tasks: one task per split seed, training
+model, and degree. Each task requests 2 CPUs, 16 GB, and two hours, performs one
+fit, and cross-evaluates the learned policy under both model evaluators without
+retraining. The sweep-level collector writes `capacity_per_split.csv`,
+`capacity_summary.csv`, and canonical PDFs under
+`results/policy-capacity-glm-xgb/sweeps/<sweep-id>/`. The primary
+`objective_vs_policy_capacity_glm.pdf` and
+`objective_vs_policy_capacity_xgb.pdf` plots show train/test expected profit per
+customer against parameter count separately for each policy family; all other
+capacity diagnostics use the same `_glm.pdf`/`_xgb.pdf` split. Plotting emits
+PDFs only, and acceptance remains in the CSV diagnostics. The
+experiment creates a locked, sweep-local XGBoost curve cache over 31 raw action
+knots from `-0.10` to `0.20` and never overwrites the canonical `[0, 0.16]`
+runtime artifact. The widened manifest explicitly acknowledges that aggregate
+training-range coverage does not guarantee conditional support for each customer;
+results outside `[0, 0.16]` are tail-sensitivity analysis, not validated empirical
+or causal extrapolation. Manifests cannot widen the XGBoost grid without this
+acknowledgement.
+
+The restricted-range replication uses the same cohort, split seeds, degree
+ladder, and acceptance floor while constraining the policy to the canonical
+`u in [0, 0.16]` range. Its finite softmax initialization is the midpoint
+`u=0.08`:
+
+```bash
+python scripts/run_experiment_manifest.py \
+  manifests/policy_capacity_glm_xgb_u_0_0p16.json
+```
+
+The XGBoost-only overparameterized extension retains the complete low-degree
+curve and continues through degree 32 (609 parameters) using the same 20
+deterministic 100/100 splits:
+
+```bash
+python scripts/run_experiment_manifest.py \
+  manifests/policy_capacity_xgb_u_0_0p16_degree_32.json
+```
+
+The full-polynomial interaction experiment instead sweeps nested total degrees
+0 through 3 over the same 19 train-standardized inputs. It includes every
+monomial interaction through the requested degree, giving
+`[1, 20, 210, 1540]` policy parameters. Unlike the additive Chebyshev ladder,
+these monomials are not clipped or rescaled after standardization:
+
+```bash
+python scripts/run_experiment_manifest.py \
+  manifests/policy_capacity_xgb_u_0_0p16_full_polynomial_degree_3.json
+```
+
+The launcher expands 80 independent condition tasks—one for each split and
+degree—and retains the same fixed acceptance penalty and `u in [0, 0.16]`
+bounded sigmoid head.
 
 A separate versioned analysis cache can materialize the same canonical curve
 for every complete eligible source row without changing the 200-profile runtime

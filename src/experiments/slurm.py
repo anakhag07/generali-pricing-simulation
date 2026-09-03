@@ -189,12 +189,15 @@ def submit_to_slurm_if_needed(
     runner: Any = subprocess.run,
     array: SlurmArraySpec | None = None,
     dependency: str | None = None,
+    profile: SlurmProfile | None = None,
 ) -> SlurmSubmission | None:
     """Submit the current entry point to Slurm unless already allocated or disabled."""
     if no_sbatch or in_slurm_allocation(env):
         return None
 
-    profile = profile_for_backend(requires_jax=requires_jax)
+    resolved_profile = profile or profile_for_backend(requires_jax=requires_jax)
+    if requires_jax and resolved_profile.gres is None:
+        raise ValueError("A custom Slurm profile for JAX must request a GPU resource.")
     workdir = (Path.cwd() if cwd is None else Path(cwd)).resolve()
     if log_dir is None:
         log_path = results_root() / "slurm"
@@ -204,7 +207,7 @@ def submit_to_slurm_if_needed(
 
     output = str(log_path / "%x-%j.out")
     command = build_sbatch_command(
-        profile,
+        resolved_profile,
         argv,
         cwd=workdir,
         output=output,
@@ -217,7 +220,11 @@ def submit_to_slurm_if_needed(
         message = _format_sbatch_failure(command, exc)
         raise SlurmSubmissionError(message) from exc
     job_id = str(result.stdout).strip() or "unknown"
-    return SlurmSubmission(profile=replace(profile, output=output), job_id=job_id, command=tuple(command))
+    return SlurmSubmission(
+        profile=replace(resolved_profile, output=output),
+        job_id=job_id,
+        command=tuple(command),
+    )
 
 
 def _format_sbatch_failure(command: Sequence[str], exc: subprocess.CalledProcessError) -> str:

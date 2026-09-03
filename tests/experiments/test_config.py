@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from experiments.config import CorrectnessSpec, ExperimentConfig
@@ -17,6 +18,44 @@ from objective.modifications import (
 )
 from objective import FixedRegressionObjective, QuadraticFeatureMap, SoftmaxPolicy
 from objective.policy import Policy, policy_theta_dim
+
+
+class _SeparatePolicyColumnsObjective:
+    """Minimal objective whose policy consumes columns appended to raw state."""
+
+    policy = SoftmaxPolicy()
+    acceptance_state_cols = ("raw_x",)
+    policy_feature_cols = ("policy_x",)
+    acceptance_model = None
+
+    def value(self, theta, x_batch) -> float:
+        return float(np.mean(self.policy_value(theta, x_batch)))
+
+    def grad(self, theta, x_batch) -> np.ndarray:
+        return np.mean(self.policy_grad(theta, x_batch), axis=0)
+
+    def policy_value(self, theta, x_batch) -> np.ndarray:
+        return self.policy.value(theta, x_batch.loc[:, ["policy_x"]].to_numpy(dtype=float))
+
+    def policy_grad(self, theta, x_batch) -> np.ndarray:
+        return self.policy.grad(theta, x_batch.loc[:, ["policy_x"]].to_numpy(dtype=float))
+
+
+def test_policy_probe_preserves_appended_policy_feature_columns() -> None:
+    x_fixed = pd.DataFrame({"raw_x": [1.0, 2.0], "policy_x": [0.25, -0.5]})
+
+    config = ExperimentConfig(
+        state_dim=1,
+        objective=_SeparatePolicyColumnsObjective(),
+        theta0=np.zeros(2),
+        n_samples=2,
+        step_rule="l-bfgs-b",
+        perturbation_space="u",
+        enabled_estimators=("first_order",),
+        x_fixed=x_fixed,
+    )
+
+    assert list(config.x_fixed.columns) == ["raw_x", "policy_x"]
 
 
 def _theta0(state_dim: int = 1, policy: Policy | None = None) -> np.ndarray:

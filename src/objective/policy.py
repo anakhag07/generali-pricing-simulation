@@ -130,6 +130,89 @@ class IdentityFeatureMap(FeatureMap):
 
 
 @dataclass(frozen=True)
+class AdditiveChebyshevFeatureMap(FeatureMap):
+    r"""Nested additive Chebyshev map with no cross-feature interactions.
+
+    Inputs are scaled as ``clip(x / clip_scale, -1, 1)``.  Terms are emitted
+    degree-major, so the degree-``d`` map is an exact prefix of degree
+    ``d + 1`` and adds exactly one parameter per input feature.
+    """
+
+    max_degree: int
+    clip_scale: float = 3.0
+    kind: str = "additive_chebyshev"
+
+    def __post_init__(self) -> None:
+        degree = int(self.max_degree)
+        scale = float(self.clip_scale)
+        if degree < 0:
+            raise ValueError("max_degree must be non-negative.")
+        if not np.isfinite(scale) or scale <= 0.0:
+            raise ValueError("clip_scale must be finite and positive.")
+        object.__setattr__(self, "max_degree", degree)
+        object.__setattr__(self, "clip_scale", scale)
+
+    def transform(self, x_batch: np.ndarray) -> np.ndarray:
+        """Return ``[T_1(t), ..., T_d(t)]`` in degree-major order."""
+        x_arr = _as_2d_float_array(x_batch)
+        if not np.isfinite(x_arr).all():
+            raise ValueError("x_batch must contain finite values.")
+        n_samples, state_dim = x_arr.shape
+        if self.max_degree == 0:
+            return np.empty((n_samples, 0), dtype=float)
+
+        scaled = np.clip(x_arr / self.clip_scale, -1.0, 1.0)
+        terms = [scaled]
+        previous_previous = np.ones_like(scaled)
+        previous = scaled
+        for _degree in range(2, self.max_degree + 1):
+            current = 2.0 * scaled * previous - previous_previous
+            terms.append(current)
+            previous_previous, previous = previous, current
+        return np.concatenate(terms, axis=1).astype(float)
+
+    def output_dim(self, state_dim: int) -> int:
+        """Return ``state_dim * max_degree`` excluding the intercept."""
+        return _validate_state_dim(state_dim) * self.max_degree
+
+
+@dataclass(frozen=True)
+class TotalDegreePolynomialFeatureMap(FeatureMap):
+    r"""Nested monomial map containing every interaction through ``max_degree``.
+
+    Terms are emitted in increasing total-degree order. Within each degree,
+    combinations-with-replacement order makes the map deterministic. The
+    degree-``d`` map is therefore an exact prefix of degree ``d + 1``.
+    """
+
+    max_degree: int
+    kind: str = "total_degree_polynomial"
+
+    def __post_init__(self) -> None:
+        degree = int(self.max_degree)
+        if degree < 0:
+            raise ValueError("max_degree must be non-negative.")
+        object.__setattr__(self, "max_degree", degree)
+
+    def transform(self, x_batch: np.ndarray) -> np.ndarray:
+        """Return all monomials with total degree from one through ``max_degree``."""
+        x_arr = _as_2d_float_array(x_batch)
+        if not np.isfinite(x_arr).all():
+            raise ValueError("x_batch must contain finite values.")
+        if self.max_degree == 0:
+            return np.empty((x_arr.shape[0], 0), dtype=float)
+        return np.concatenate(
+            [_exact_degree_products(x_arr, degree) for degree in range(1, self.max_degree + 1)],
+            axis=1,
+        ).astype(float)
+
+    def output_dim(self, state_dim: int) -> int:
+        """Return ``binom(state_dim + max_degree, max_degree) - 1``."""
+        dim = _validate_state_dim(state_dim)
+        return comb(dim + self.max_degree, self.max_degree) - 1
+
+
+@dataclass(frozen=True)
 class QuadraticFeatureMap(FeatureMap):
     """Quadratic map with linear terms and upper-triangular pair products."""
 

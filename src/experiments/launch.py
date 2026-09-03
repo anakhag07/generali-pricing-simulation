@@ -18,6 +18,7 @@ from experiments.paths import results_root
 from experiments.slurm import (
     SlurmArraySpec,
     SlurmSubmissionError,
+    SlurmProfile,
     assert_jax_gpu_available,
     in_slurm_allocation,
     submit_to_slurm_if_needed,
@@ -43,6 +44,7 @@ class LaunchPlan:
     runs_root: str | None = None
     default_launch: LaunchMode = "auto"
     default_array: bool = False
+    slurm_profile: SlurmProfile | None = None
 
 
 @dataclass(frozen=True)
@@ -249,6 +251,7 @@ def _submit_parent_jobs(
         cwd=cwd,
         runner=runner,
         array=array_spec,
+        profile=plan.slurm_profile,
     )
     if submission is None:
         return
@@ -266,6 +269,7 @@ def _submit_parent_jobs(
             cwd=cwd,
             runner=runner,
             dependency=f"afterany:{submission.job_id}",
+            profile=plan.slurm_profile,
         )
         if collector is not None:
             print(

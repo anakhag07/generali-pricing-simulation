@@ -7,6 +7,7 @@ from objective.policy import (
     IdentityFeatureMap,
     QuadraticFeatureMap,
     QuarticFeatureMap,
+    TotalDegreePolynomialFeatureMap,
 )
 
 
@@ -35,6 +36,34 @@ def test_quadratic_feature_map_order_and_dim() -> None:
 
     assert feature_map.output_dim(2) == 5
     np.testing.assert_allclose(result, expected)
+
+
+def test_total_degree_polynomial_map_is_nested_and_includes_all_interactions() -> None:
+    x_array = np.array([[2.0, 3.0], [-1.0, 4.0]], dtype=float)
+    degree_two = TotalDegreePolynomialFeatureMap(max_degree=2)
+    degree_three = TotalDegreePolynomialFeatureMap(max_degree=3)
+
+    quadratic = degree_two.transform(x_array)
+    cubic = degree_three.transform(x_array)
+    expected = np.array(
+        [
+            [2.0, 3.0, 4.0, 6.0, 9.0, 8.0, 12.0, 18.0, 27.0],
+            [-1.0, 4.0, 1.0, -4.0, 16.0, -1.0, 4.0, -16.0, 64.0],
+        ],
+        dtype=float,
+    )
+
+    assert degree_two.output_dim(2) == 5
+    assert degree_three.output_dim(2) == 9
+    np.testing.assert_allclose(cubic[:, : quadratic.shape[1]], quadratic)
+    np.testing.assert_allclose(cubic, expected)
+
+
+def test_total_degree_polynomial_map_has_expected_capacity_for_19_inputs() -> None:
+    assert [
+        1 + TotalDegreePolynomialFeatureMap(max_degree=degree).output_dim(19)
+        for degree in range(4)
+    ] == [1, 20, 210, 1540]
 
 
 def test_quadratic_feature_map_without_interactions() -> None:

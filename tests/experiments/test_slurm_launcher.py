@@ -10,6 +10,7 @@ from experiments.slurm import (
     GPU_PROFILE,
     SLURM_CHILD_ENV,
     SlurmArraySpec,
+    SlurmProfile,
     SlurmSubmissionError,
     assert_jax_gpu_available,
     build_sbatch_command,
@@ -108,6 +109,39 @@ def test_submit_to_slurm_creates_log_dir_and_returns_job(tmp_path, monkeypatch) 
     assert submission.profile.output == str(results_root / "slurm" / "%x-%j.out")
     assert f"--output={results_root / 'slurm' / '%x-%j.out'}" in captured["command"]
     assert captured["command"] == list(submission.command)
+
+
+def test_submit_to_slurm_uses_custom_cpu_profile(tmp_path) -> None:
+    custom = SlurmProfile(
+        name="small-cpu",
+        partition="mit_normal",
+        time="02:00:00",
+        nodes=1,
+        ntasks=1,
+        cpus_per_task=2,
+        memory="16G",
+        job_name="small-fit",
+        output="ignored.out",
+    )
+
+    def fake_runner(command, *, check, capture_output, text):
+        return subprocess.CompletedProcess(command, 0, stdout="12345\n", stderr="")
+
+    submission = submit_to_slurm_if_needed(
+        requires_jax=False,
+        no_sbatch=False,
+        argv=["main.py"],
+        cwd=tmp_path,
+        log_dir=tmp_path / "logs",
+        runner=fake_runner,
+        profile=custom,
+    )
+
+    assert submission is not None
+    assert submission.profile.name == "small-cpu"
+    assert "--cpus-per-task=2" in submission.command
+    assert "--mem=16G" in submission.command
+    assert "--time=02:00:00" in submission.command
 
 
 def test_submit_to_slurm_reports_sbatch_stderr(tmp_path) -> None:

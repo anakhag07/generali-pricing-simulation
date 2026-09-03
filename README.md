@@ -369,6 +369,39 @@ documented analytic extension outside `[0,1]`, while every iterate is projected
 back into the feasible interval. Outputs distinguish confidence-band validity,
 envelope tightness, globally achievable regret, and practical optimizer gap.
 
+### Continuous-GP Regret Decomposition
+
+The follow-on experiment separates the scale and spatial profile of the frozen
+surrogate error from those of the lower-envelope correction:
+
+$$
+\widehat f(x)=f(x)+c_f\sigma_{m_f}(x)G_s(x),
+\qquad
+\underline f(x)=\widehat f(x)-c_Eq\sigma_{m_E}(x).
+$$
+
+Run its committed 200-path manifest with:
+
+```bash
+python scripts/run_experiment_manifest.py \
+  manifests/continuous_gp_regret_decomposition.json
+```
+
+The one-at-a-time surrogate-scale, envelope-scale, and envelope-shape sweeps use
+the certified global LCB maximizer, eliminating optimizer error. The optimizer
+axis and combined grids retain checkpoints from projected central finite
+difference and 64-perturbation antithetic Stein runs. All configurations within
+a seed reuse the same Fourier path, starts, and fixed Stein perturbation stream.
+
+The two frozen surrogate profiles $$m_f\in\{0.25,0.5\}$$ distinguish matching
+the actual surrogate-error shape from putting the narrowest envelope point at
+the true optimum. Every row records true regret, certified surrogate sup error,
+the covering-net coverage level implied by $$q_{\mathrm{eff}}$$, realized
+one-sided envelope validity, the optimum envelope term, and a branch-and-bound
+bracket for optimizer error. The collector writes raw and best-of-start tables,
+seed-grouped explanatory summaries, and five direct decomposition plots under
+`results/continuous-gp-regret-decomposition/`.
+
 ### Zeroth-Order Support Envelopes
 
 The committed support-envelope sweep reuses the same strongly convex proof

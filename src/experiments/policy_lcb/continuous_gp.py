@@ -9,14 +9,11 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, replace
-import heapq
 from pathlib import Path
 from typing import Any, Literal
 
 import numpy as np
-from scipy.optimize import minimize_scalar
 from scipy.integrate import quad
-from scipy.stats import chi2, norm
 
 from experiments.paths import results_root
 from experiments.policy_lcb.common import (
@@ -29,87 +26,29 @@ from experiments.policy_lcb.common import (
 )
 from experiments.seeds import derive_seed, rng_from_seed
 from experiments.sweep_reporting import write_rows_csv
+from experiments.policy_lcb.continuous_gp_core import (
+    AnalyticUniformCertificate,
+    DecomposedGPLandscape,
+    FiniteFourierGPSpec,
+    FourierGPDraw,
+    GPSupremumResult,
+    GlobalMaximumResult,
+    GlobalReferenceSpec,
+    SmoothClippedUncertaintySpec,
+    UniformConfidenceSpec,
+    analytic_uniform_certificate,
+    certified_global_maximum,
+    certified_gp_supremum,
+    smooth_clipped_uncertainty,
+    smoothstep,
+    true_regret,
+    true_value,
+    uncertainty_derivative_bound,
+)
 
 
 TargetName = Literal["nominal", "variable_lcb"]
 EstimatorName = Literal["first_order", "finite_difference", "stein_difference"]
-
-
-@dataclass(frozen=True)
-class FiniteFourierGPSpec:
-    """Deterministic spectral basis for one exact finite-rank GP."""
-
-    rank: int
-    lengthscale: float
-
-    def __post_init__(self) -> None:
-        if int(self.rank) <= 0:
-            raise ValueError("gp.rank must be positive.")
-        if not np.isfinite(self.lengthscale) or self.lengthscale <= 0.0:
-            raise ValueError("gp.lengthscale must be finite and positive.")
-        object.__setattr__(self, "rank", int(self.rank))
-        object.__setattr__(self, "lengthscale", float(self.lengthscale))
-
-    def frequencies(self) -> np.ndarray:
-        probabilities = (np.arange(self.rank, dtype=float) + 0.5) / self.rank
-        return norm.ppf((1.0 + probabilities) / 2.0) / self.lengthscale
-
-
-@dataclass(frozen=True)
-class SmoothClippedUncertaintySpec:
-    """C2 uncertainty bowl with its minimum at each configured center."""
-
-    centers: tuple[float, ...]
-    minimum: float
-    maximum: float
-    ramp_radius: float
-
-    def __post_init__(self) -> None:
-        centers = tuple(float(value) for value in self.centers)
-        if not centers or any(not np.isfinite(value) for value in centers):
-            raise ValueError("uncertainty.centers must be a non-empty finite sequence.")
-        if tuple(sorted(set(centers))) != centers:
-            raise ValueError("uncertainty.centers must be unique and strictly increasing.")
-        if not np.isfinite(self.minimum) or self.minimum <= 0.0:
-            raise ValueError("uncertainty.minimum must be finite and positive.")
-        if not np.isfinite(self.maximum) or self.maximum < self.minimum:
-            raise ValueError("uncertainty.maximum must be at least uncertainty.minimum.")
-        if not np.isfinite(self.ramp_radius) or self.ramp_radius <= 0.0:
-            raise ValueError("uncertainty.ramp_radius must be finite and positive.")
-        object.__setattr__(self, "centers", centers)
-
-
-@dataclass(frozen=True)
-class UniformConfidenceSpec:
-    """Analytic net-plus-smoothness simultaneous confidence certificate."""
-
-    delta: float
-    net_count: int
-
-    def __post_init__(self) -> None:
-        if not np.isfinite(self.delta) or not 0.0 < self.delta < 1.0:
-            raise ValueError("confidence.delta must lie in (0, 1).")
-        if int(self.net_count) < 2:
-            raise ValueError("confidence.net_count must be at least two.")
-        object.__setattr__(self, "delta", float(self.delta))
-        object.__setattr__(self, "net_count", int(self.net_count))
-
-
-@dataclass(frozen=True)
-class GlobalReferenceSpec:
-    """Controls for certified one-dimensional branch-and-bound."""
-
-    value_tolerance: float
-    max_intervals: int
-    initial_grid_count: int = 65
-
-    def __post_init__(self) -> None:
-        if not np.isfinite(self.value_tolerance) or self.value_tolerance <= 0.0:
-            raise ValueError("global_reference.value_tolerance must be positive.")
-        if int(self.max_intervals) <= 0:
-            raise ValueError("global_reference.max_intervals must be positive.")
-        if int(self.initial_grid_count) < 3:
-            raise ValueError("global_reference.initial_grid_count must be at least three.")
 
 
 @dataclass(frozen=True)
@@ -144,46 +83,6 @@ class ContinuousGPOptimizerSpec:
             raise ValueError("optimizer.n_stein_perturbations must be positive.")
         object.__setattr__(self, "enabled_estimators", estimators)
         object.__setattr__(self, "starts", starts)
-
-
-@dataclass(frozen=True)
-class AnalyticUniformCertificate:
-    """Resolved constants in the continuum-wide coverage proof."""
-
-    delta: float
-    net_count: int
-    covering_radius: float
-    feature_lipschitz: float
-    net_quantile: float
-    coefficient_radius: float
-    remainder: float
-    quantile: float
-
-
-@dataclass(frozen=True)
-class GlobalMaximumResult:
-    """A value-certified global maximum and its numerical representative."""
-
-    x: float
-    value: float
-    upper_bound: float
-    bound_gap: float
-    certified: bool
-    intervals_created: int
-    evaluations: int
-
-
-@dataclass(frozen=True)
-class GPSupremumResult:
-    """Certified lower/upper bracket for one realized absolute GP supremum."""
-
-    lower_bound: float
-    upper_bound: float
-    bound_gap: float
-    certified: bool
-    maximizing_x: float
-    intervals_created: int
-    evaluations: int
 
 
 @dataclass(frozen=True)
@@ -286,156 +185,6 @@ class ContinuousGPSeedResult:
     trajectories: tuple[GPOptimizerTrajectoryRow, ...]
 
 
-def smoothstep(t: float | Sequence[float] | np.ndarray, derivative: int = 0) -> Any:
-    """Evaluate the clipped quintic smoothstep or its first two derivatives."""
-    values = np.asarray(t, dtype=float)
-    inside = (values > 0.0) & (values < 1.0)
-    clipped = np.clip(values, 0.0, 1.0)
-    if derivative == 0:
-        result = 6.0 * clipped**5 - 15.0 * clipped**4 + 10.0 * clipped**3
-    elif derivative == 1:
-        result = np.where(inside, 30.0 * clipped**2 * (clipped - 1.0) ** 2, 0.0)
-    elif derivative == 2:
-        result = np.where(
-            inside,
-            60.0 * clipped * (2.0 * clipped**2 - 3.0 * clipped + 1.0),
-            0.0,
-        )
-    else:
-        raise ValueError("smoothstep supports derivative orders 0, 1, and 2.")
-    return float(result) if values.ndim == 0 else result
-
-
-def smooth_clipped_uncertainty(
-    x: float | Sequence[float] | np.ndarray,
-    center: float,
-    spec: SmoothClippedUncertaintySpec,
-    derivative: int = 0,
-) -> Any:
-    """Evaluate sigma_m or its first two real-line derivatives."""
-    values = np.asarray(x, dtype=float)
-    displacement = values - float(center)
-    scaled_distance = np.abs(displacement) / spec.ramp_radius
-    amplitude = spec.maximum - spec.minimum
-    if derivative == 0:
-        result = spec.minimum + amplitude * smoothstep(scaled_distance)
-    elif derivative == 1:
-        result = (
-            amplitude
-            * smoothstep(scaled_distance, 1)
-            * np.sign(displacement)
-            / spec.ramp_radius
-        )
-    elif derivative == 2:
-        result = amplitude * smoothstep(scaled_distance, 2) / spec.ramp_radius**2
-    else:
-        raise ValueError("uncertainty supports derivative orders 0, 1, and 2.")
-    return float(result) if values.ndim == 0 else result
-
-
-def uncertainty_derivative_bound(spec: SmoothClippedUncertaintySpec, derivative: int) -> float:
-    """Return a global absolute derivative bound for the smooth uncertainty."""
-    amplitude = spec.maximum - spec.minimum
-    if derivative == 0:
-        return float(spec.maximum)
-    if derivative == 1:
-        return float(amplitude * (15.0 / 8.0) / spec.ramp_radius)
-    if derivative == 2:
-        return float(amplitude * (10.0 * np.sqrt(3.0) / 3.0) / spec.ramp_radius**2)
-    raise ValueError("uncertainty bounds support derivative orders 0, 1, and 2.")
-
-
-def true_value(x: float | Sequence[float] | np.ndarray, derivative: int = 0) -> Any:
-    """Evaluate f(x)=5x-5x^2 or either analytic derivative."""
-    values = np.asarray(x, dtype=float)
-    if derivative == 0:
-        result = 5.0 * values - 5.0 * values**2
-    elif derivative == 1:
-        result = 5.0 - 10.0 * values
-    elif derivative == 2:
-        result = np.full_like(values, -10.0)
-    else:
-        raise ValueError("true_value supports derivative orders 0, 1, and 2.")
-    return float(result) if values.ndim == 0 else result
-
-
-def true_regret(x: float | Sequence[float] | np.ndarray) -> Any:
-    """Return f(0.5)-f(x)=5(x-0.5)^2."""
-    values = np.asarray(x, dtype=float)
-    result = 5.0 * (values - 0.5) ** 2
-    return float(result) if values.ndim == 0 else result
-
-
-@dataclass(frozen=True)
-class FourierGPDraw:
-    """One replayable analytic function behind a small evaluation interface."""
-
-    spec: FiniteFourierGPSpec
-    a: tuple[float, ...]
-    b: tuple[float, ...]
-
-    def __post_init__(self) -> None:
-        if len(self.a) != self.spec.rank or len(self.b) != self.spec.rank:
-            raise ValueError("Fourier coefficients must match gp.rank.")
-        if not np.all(np.isfinite(self.a)) or not np.all(np.isfinite(self.b)):
-            raise ValueError("Fourier coefficients must be finite.")
-
-    def evaluate(
-        self,
-        x: float | Sequence[float] | np.ndarray,
-        derivative: int = 0,
-    ) -> Any:
-        """Evaluate the exact Fourier formula, never an interpolant."""
-        values = np.asarray(x, dtype=float)
-        flat = values.reshape(-1)
-        omega = self.spec.frequencies()
-        phase = np.outer(flat, omega)
-        a = np.asarray(self.a)
-        b = np.asarray(self.b)
-        scale = np.sqrt(self.spec.rank)
-        if derivative == 0:
-            result = (np.cos(phase) @ a + np.sin(phase) @ b) / scale
-        elif derivative == 1:
-            result = (-np.sin(phase) @ (a * omega) + np.cos(phase) @ (b * omega)) / scale
-        elif derivative == 2:
-            result = (-np.cos(phase) @ (a * omega**2) - np.sin(phase) @ (b * omega**2)) / scale
-        else:
-            raise ValueError("FourierGPDraw supports derivative orders 0, 1, and 2.")
-        reshaped = result.reshape(values.shape)
-        return float(reshaped) if values.ndim == 0 else reshaped
-
-    def derivative_bound(self, derivative: int) -> float:
-        """Return a coefficient-wise uniform bound on |G^(derivative)|."""
-        if derivative not in {0, 1, 2}:
-            raise ValueError("GP bounds support derivative orders 0, 1, and 2.")
-        amplitudes = np.hypot(np.asarray(self.a), np.asarray(self.b))
-        omega = self.spec.frequencies()
-        return float(np.sum(amplitudes * omega**derivative) / np.sqrt(self.spec.rank))
-
-
-def analytic_uniform_certificate(
-    gp: FiniteFourierGPSpec,
-    confidence: UniformConfidenceSpec,
-) -> AnalyticUniformCertificate:
-    """Compute the seed-independent 1-delta simultaneous band multiplier."""
-    omega = gp.frequencies()
-    lipschitz = float(np.sqrt(np.mean(omega**2)))
-    radius = 1.0 / (2.0 * (confidence.net_count - 1))
-    net_quantile = float(norm.ppf(1.0 - confidence.delta / (4.0 * confidence.net_count)))
-    coefficient_radius = float(np.sqrt(chi2.ppf(1.0 - confidence.delta / 2.0, 2 * gp.rank)))
-    remainder = radius * lipschitz * coefficient_radius
-    return AnalyticUniformCertificate(
-        delta=confidence.delta,
-        net_count=confidence.net_count,
-        covering_radius=radius,
-        feature_lipschitz=lipschitz,
-        net_quantile=net_quantile,
-        coefficient_radius=coefficient_radius,
-        remainder=remainder,
-        quantile=net_quantile + remainder,
-    )
-
-
 @dataclass(frozen=True)
 class ContinuousGPLandscape:
     """Analytic nominal, variable-LCB, or deterministic penalized landscape."""
@@ -447,153 +196,33 @@ class ContinuousGPLandscape:
     quantile: float
     target: TargetName
 
-    def evaluate(self, x: float | Sequence[float] | np.ndarray, derivative: int = 0) -> Any:
-        sigma = smooth_clipped_uncertainty(x, self.center, self.uncertainty, derivative)
-        result = np.asarray(true_value(x, derivative), dtype=float)
-        if self.draw is not None and self.noise_scale > 0.0:
-            if derivative == 0:
-                noise = sigma * self.draw.evaluate(x, 0)
-            elif derivative == 1:
-                noise = sigma * self.draw.evaluate(x, 0) + smooth_clipped_uncertainty(
-                    x, self.center, self.uncertainty, 0
-                ) * self.draw.evaluate(x, 1)
-            elif derivative == 2:
-                sigma0 = smooth_clipped_uncertainty(x, self.center, self.uncertainty, 0)
-                sigma1 = smooth_clipped_uncertainty(x, self.center, self.uncertainty, 1)
-                noise = (
-                    sigma * self.draw.evaluate(x, 0)
-                    + 2.0 * sigma1 * self.draw.evaluate(x, 1)
-                    + sigma0 * self.draw.evaluate(x, 2)
-                )
-            else:
-                raise ValueError("landscapes support derivative orders 0, 1, and 2.")
-            result = result + self.noise_scale * np.asarray(noise)
-        if self.target == "variable_lcb":
-            result = result - self.noise_scale * self.quantile * np.asarray(sigma)
-        values = np.asarray(x)
-        return float(result) if values.ndim == 0 else result
+    def _delegate(self) -> DecomposedGPLandscape:
+        return DecomposedGPLandscape(
+            draw=self.draw,
+            uncertainty=self.uncertainty,
+            surrogate_center=self.center,
+            surrogate_scale=self.noise_scale if self.draw is not None else 0.0,
+            envelope_center=self.center,
+            envelope_scale=self.noise_scale if self.target == "variable_lcb" else 0.0,
+            quantile=self.quantile,
+            target="lower" if self.target == "variable_lcb" else "surrogate",
+        )
+
+    def evaluate(
+        self,
+        x: float | Sequence[float] | np.ndarray,
+        derivative: int = 0,
+    ) -> Any:
+        """Evaluate the legacy landscape through the shared decomposition core."""
+        return self._delegate().evaluate(x, derivative)
 
     def second_derivative_bound(self) -> float:
-        sigma0 = uncertainty_derivative_bound(self.uncertainty, 0)
-        sigma1 = uncertainty_derivative_bound(self.uncertainty, 1)
-        sigma2 = uncertainty_derivative_bound(self.uncertainty, 2)
-        bound = 10.0
-        if self.draw is not None and self.noise_scale > 0.0:
-            bound += self.noise_scale * (
-                sigma2 * self.draw.derivative_bound(0)
-                + 2.0 * sigma1 * self.draw.derivative_bound(1)
-                + sigma0 * self.draw.derivative_bound(2)
-            )
-        if self.target == "variable_lcb":
-            bound += self.noise_scale * self.quantile * sigma2
-        return float(bound)
+        """Return the shared core's global curvature bound."""
+        return self._delegate().second_derivative_bound()
 
     def breakpoints(self) -> tuple[float, ...]:
-        candidates = (0.0, 1.0, self.center, self.center - self.uncertainty.ramp_radius, self.center + self.uncertainty.ramp_radius)
-        return tuple(sorted({float(np.clip(value, 0.0, 1.0)) for value in candidates}))
-
-
-def certified_global_maximum(
-    value_fn: Any,
-    *,
-    second_derivative_bound: float,
-    reference: GlobalReferenceSpec,
-    breakpoints: Sequence[float] = (0.0, 1.0),
-) -> GlobalMaximumResult:
-    """Certify a scalar global maximum using interpolation-error upper bounds."""
-    if not np.isfinite(second_derivative_bound) or second_derivative_bound < 0.0:
-        raise ValueError("second_derivative_bound must be finite and non-negative.")
-    base = np.linspace(0.0, 1.0, reference.initial_grid_count)
-    points = np.unique(np.concatenate([base, np.asarray(breakpoints, dtype=float)]))
-    points = points[(points >= 0.0) & (points <= 1.0)]
-    values = np.asarray([float(value_fn(float(x))) for x in points])
-    evaluations = len(points)
-
-    candidates: list[tuple[float, float]] = [(float(x), float(y)) for x, y in zip(points, values)]
-    for index in range(1, len(points) - 1):
-        if values[index] >= values[index - 1] and values[index] >= values[index + 1]:
-            optimized = minimize_scalar(
-                lambda x: -float(value_fn(float(x))),
-                bounds=(float(points[index - 1]), float(points[index + 1])),
-                method="bounded",
-                options={"xatol": min(reference.value_tolerance, 1e-10)},
-            )
-            evaluations += int(optimized.nfev)
-            candidates.append((float(optimized.x), float(-optimized.fun)))
-    best_x, best_value = min(candidates, key=lambda item: (-item[1], item[0]))
-
-    def upper(a: float, b: float, fa: float, fb: float) -> float:
-        return max(fa, fb) + second_derivative_bound * (b - a) ** 2 / 8.0
-
-    heap: list[tuple[float, float, float, float, float]] = []
-    created = 0
-    for left, right, f_left, f_right in zip(points[:-1], points[1:], values[:-1], values[1:]):
-        bound = upper(float(left), float(right), float(f_left), float(f_right))
-        heapq.heappush(heap, (-bound, float(left), float(right), float(f_left), float(f_right)))
-        created += 1
-
-    while heap and created < reference.max_intervals:
-        maximum_upper = -heap[0][0]
-        if maximum_upper - best_value <= reference.value_tolerance:
-            break
-        _, left, right, f_left, f_right = heapq.heappop(heap)
-        midpoint = (left + right) / 2.0
-        f_mid = float(value_fn(midpoint))
-        evaluations += 1
-        if f_mid > best_value or (
-            abs(f_mid - best_value) <= reference.value_tolerance and midpoint < best_x
-        ):
-            best_x, best_value = midpoint, f_mid
-        for a, b, fa, fb in (
-            (left, midpoint, f_left, f_mid),
-            (midpoint, right, f_mid, f_right),
-        ):
-            bound = upper(a, b, fa, fb)
-            if bound - best_value > reference.value_tolerance:
-                heapq.heappush(heap, (-bound, a, b, fa, fb))
-            created += 1
-
-    maximum_upper = max(best_value, -heap[0][0] if heap else best_value)
-    gap = max(0.0, maximum_upper - best_value)
-    return GlobalMaximumResult(
-        x=float(best_x),
-        value=float(best_value),
-        upper_bound=float(maximum_upper),
-        bound_gap=float(gap),
-        certified=bool(gap <= reference.value_tolerance),
-        intervals_created=created,
-        evaluations=evaluations,
-    )
-
-
-def certified_gp_supremum(
-    draw: FourierGPDraw,
-    reference: GlobalReferenceSpec,
-) -> GPSupremumResult:
-    """Return a certified bracket for sup_[0,1] |G|."""
-    second = draw.derivative_bound(2)
-    positive = certified_global_maximum(
-        lambda x: draw.evaluate(x),
-        second_derivative_bound=second,
-        reference=reference,
-    )
-    negative = certified_global_maximum(
-        lambda x: -draw.evaluate(x),
-        second_derivative_bound=second,
-        reference=reference,
-    )
-    winner = positive if positive.value >= negative.value else negative
-    lower = max(positive.value, negative.value)
-    upper = max(positive.upper_bound, negative.upper_bound)
-    return GPSupremumResult(
-        lower_bound=float(lower),
-        upper_bound=float(upper),
-        bound_gap=float(max(0.0, upper - lower)),
-        certified=positive.certified and negative.certified,
-        maximizing_x=winner.x,
-        intervals_created=positive.intervals_created + negative.intervals_created,
-        evaluations=positive.evaluations + negative.evaluations,
-    )
+        """Return all uncertainty-ramp breakpoints used by certification."""
+        return self._delegate().breakpoints()
 
 
 @dataclass(frozen=True)

@@ -262,7 +262,7 @@
                     <h1 class="modulename">
 optimization    </h1>
 
-                
+
                         <input id="mod-optimization-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 
                         <label class="view-source-button" for="mod-optimization-view-source"><span>View Source</span></label>
@@ -307,7 +307,7 @@ optimization    </h1>
                 <section id="Optimization">
                             <input id="Optimization-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr class">
-            
+
     <span class="def">class</span>
     <span class="name">Optimization</span>:
 
@@ -733,7 +733,7 @@ optimization    </h1>
                             <div id="Optimization.__init__" class="classattr">
                                         <input id="Optimization.__init__-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="name">Optimization</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">objective</span><span class="p">:</span> <span class="n"><a href="objective.html#Objective">objective.Objective</a></span>,</span><span class="param">	<span class="n">x_samples</span><span class="p">:</span> <span class="n">Any</span>,</span><span class="param">	<span class="n">gradient</span><span class="p">:</span> <span class="n">Any</span>,</span><span class="param">	<span class="o">*</span>,</span><span class="param">	<span class="n">algorithm</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;l-bfgs-b&#39;</span>,</span><span class="param">	<span class="n">t_steps</span><span class="p">:</span> <span class="nb">int</span>,</span><span class="param">	<span class="n">n_grad_samples</span><span class="p">:</span> <span class="nb">int</span>,</span><span class="param">	<span class="n">sigma</span><span class="p">:</span> <span class="nb">float</span>,</span><span class="param">	<span class="n">perturbation_space</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;theta&#39;</span>,</span><span class="param">	<span class="n">step_size</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.01</span>,</span><span class="param">	<span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">true_grad_theta_fn</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">grad_norm_tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">ftol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">initial_constr_penalty</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">step_reporter</span><span class="p">:</span> <span class="n">experiments</span><span class="o">.</span><span class="n">reporting</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">StepReporter</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">method_label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">batch_rng</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">_generator</span><span class="o">.</span><span class="n">Generator</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">gradient_rng</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">_generator</span><span class="o">.</span><span class="n">Generator</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">rng</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">_generator</span><span class="o">.</span><span class="n">Generator</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>,</span><span class="param">	<span class="n">minimize_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">function</span> <span class="n">minimize</span><span class="o">&gt;</span></span>)</span>
 
                 <label class="view-source-button" for="Optimization.__init__-view-source"><span>View Source</span></label>
@@ -875,237 +875,237 @@ optimization    </h1>
                                 <div class="attr variable">
             <span class="name">objective</span>
 
-        
+
     </div>
     <a class="headerlink" href="#Optimization.objective"></a>
-    
-    
+
+
 
                             </div>
                             <div id="Optimization.gradient" class="classattr">
                                 <div class="attr variable">
             <span class="name">gradient</span>
 
-        
+
     </div>
     <a class="headerlink" href="#Optimization.gradient"></a>
-    
-    
+
+
 
                             </div>
                             <div id="Optimization.perturbation_space" class="classattr">
                                 <div class="attr variable">
             <span class="name">perturbation_space</span>
 
-        
+
     </div>
     <a class="headerlink" href="#Optimization.perturbation_space"></a>
-    
-    
+
+
 
                             </div>
                             <div id="Optimization.algorithm" class="classattr">
                                 <div class="attr variable">
             <span class="name">algorithm</span>
 
-        
+
     </div>
     <a class="headerlink" href="#Optimization.algorithm"></a>
-    
-    
+
+
 
                             </div>
                             <div id="Optimization.t_steps" class="classattr">
                                 <div class="attr variable">
             <span class="name">t_steps</span>
 
-        
+
     </div>
     <a class="headerlink" href="#Optimization.t_steps"></a>
-    
-    
+
+
 
                             </div>
                             <div id="Optimization.n_grad_samples" class="classattr">
                                 <div class="attr variable">
             <span class="name">n_grad_samples</span>
 
-        
+
     </div>
     <a class="headerlink" href="#Optimization.n_grad_samples"></a>
-    
-    
+
+
 
                             </div>
                             <div id="Optimization.sigma" class="classattr">
                                 <div class="attr variable">
             <span class="name">sigma</span>
 
-        
+
     </div>
     <a class="headerlink" href="#Optimization.sigma"></a>
-    
-    
+
+
 
                             </div>
                             <div id="Optimization.step_size" class="classattr">
                                 <div class="attr variable">
             <span class="name">step_size</span>
 
-        
+
     </div>
     <a class="headerlink" href="#Optimization.step_size"></a>
-    
-    
+
+
 
                             </div>
                             <div id="Optimization.batch_size" class="classattr">
                                 <div class="attr variable">
             <span class="name">batch_size</span>
 
-        
+
     </div>
     <a class="headerlink" href="#Optimization.batch_size"></a>
-    
-    
+
+
 
                             </div>
                             <div id="Optimization.true_grad_theta_fn" class="classattr">
                                 <div class="attr variable">
             <span class="name">true_grad_theta_fn</span>
 
-        
+
     </div>
     <a class="headerlink" href="#Optimization.true_grad_theta_fn"></a>
-    
-    
+
+
 
                             </div>
                             <div id="Optimization.grad_norm_tol" class="classattr">
                                 <div class="attr variable">
             <span class="name">grad_norm_tol</span>
 
-        
+
     </div>
     <a class="headerlink" href="#Optimization.grad_norm_tol"></a>
-    
-    
+
+
 
                             </div>
                             <div id="Optimization.ftol" class="classattr">
                                 <div class="attr variable">
             <span class="name">ftol</span>
 
-        
+
     </div>
     <a class="headerlink" href="#Optimization.ftol"></a>
-    
-    
+
+
 
                             </div>
                             <div id="Optimization.initial_constr_penalty" class="classattr">
                                 <div class="attr variable">
             <span class="name">initial_constr_penalty</span>
 
-        
+
     </div>
     <a class="headerlink" href="#Optimization.initial_constr_penalty"></a>
-    
-    
+
+
 
                             </div>
                             <div id="Optimization.step_reporter" class="classattr">
                                 <div class="attr variable">
             <span class="name">step_reporter</span>
 
-        
+
     </div>
     <a class="headerlink" href="#Optimization.step_reporter"></a>
-    
-    
+
+
 
                             </div>
                             <div id="Optimization.method_label" class="classattr">
                                 <div class="attr variable">
             <span class="name">method_label</span>
 
-        
+
     </div>
     <a class="headerlink" href="#Optimization.method_label"></a>
-    
-    
+
+
 
                             </div>
                             <div id="Optimization.batch_rng" class="classattr">
                                 <div class="attr variable">
             <span class="name">batch_rng</span>
 
-        
+
     </div>
     <a class="headerlink" href="#Optimization.batch_rng"></a>
-    
-    
+
+
 
                             </div>
                             <div id="Optimization.gradient_rng" class="classattr">
                                 <div class="attr variable">
             <span class="name">gradient_rng</span>
 
-        
+
     </div>
     <a class="headerlink" href="#Optimization.gradient_rng"></a>
-    
-    
+
+
 
                             </div>
                             <div id="Optimization.rng" class="classattr">
                                 <div class="attr variable">
             <span class="name">rng</span>
 
-        
+
     </div>
     <a class="headerlink" href="#Optimization.rng"></a>
-    
-    
+
+
 
                             </div>
                             <div id="Optimization.x_array" class="classattr">
                                 <div class="attr variable">
             <span class="name">x_array</span>
 
-        
+
     </div>
     <a class="headerlink" href="#Optimization.x_array"></a>
-    
-    
+
+
 
                             </div>
                             <div id="Optimization.n_total" class="classattr">
                                 <div class="attr variable">
             <span class="name">n_total</span>
 
-        
+
     </div>
     <a class="headerlink" href="#Optimization.n_total"></a>
-    
-    
+
+
 
                             </div>
                             <div id="Optimization.batch_size_eff" class="classattr">
                                 <div class="attr variable">
             <span class="name">batch_size_eff</span>
 
-        
+
     </div>
     <a class="headerlink" href="#Optimization.batch_size_eff"></a>
-    
-    
+
+
 
                             </div>
                             <div id="Optimization.solve" class="classattr">
                                         <input id="Optimization.solve-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">solve</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">theta_start</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span><span class="return-annotation">) -> <span class="nb">tuple</span><span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n"><a href="experiments.html#OptimizationTrace">experiments.OptimizationTrace</a></span><span class="p">]</span>:</span></span>
 
@@ -1431,7 +1431,7 @@ optimization    </h1>
                 <section id="GradientMethod">
                             <input id="GradientMethod-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr class">
-            
+
     <span class="def">class</span>
     <span class="name">GradientMethod</span>:
 
@@ -1469,17 +1469,17 @@ optimization    </h1>
             <span class="name">name</span>        =
 <span class="default_value">&#39;gradient&#39;</span>
 
-        
+
     </div>
     <a class="headerlink" href="#GradientMethod.name"></a>
-    
-    
+
+
 
                             </div>
                             <div id="GradientMethod.setup" class="classattr">
                                         <input id="GradientMethod.setup-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">setup</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">optimizer</span><span class="p">:</span> <span class="n"><a href="#Optimization">Optimization</a></span>,</span><span class="param">	<span class="n">theta0</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
 
@@ -1492,13 +1492,13 @@ optimization    </h1>
 </span></pre></div>
 
 
-    
+
 
                             </div>
                             <div id="GradientMethod.advance_rng" class="classattr">
                                         <input id="GradientMethod.advance_rng-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">advance_rng</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">optimizer</span><span class="p">:</span> <span class="n"><a href="#Optimization">Optimization</a></span>,</span><span class="param">	<span class="n">theta</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
 
@@ -1511,13 +1511,13 @@ optimization    </h1>
 </span></pre></div>
 
 
-    
+
 
                             </div>
                             <div id="GradientMethod.theta_grad" class="classattr">
                                         <input id="GradientMethod.theta_grad-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">theta_grad</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">optimizer</span><span class="p">:</span> <span class="n"><a href="#Optimization">Optimization</a></span>,</span><span class="param">	<span class="n">theta</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>,</span><span class="param">	<span class="n">indices</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span><span class="return-annotation">) -> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>:</span></span>
 
@@ -1535,14 +1535,14 @@ optimization    </h1>
 </span></pre></div>
 
 
-    
+
 
                             </div>
                 </section>
                 <section id="FirstOrderGradient">
                             <input id="FirstOrderGradient-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr class">
-            
+
     <span class="def">class</span>
     <span class="name">FirstOrderGradient</span><wbr>(<span class="base"><a href="#GradientMethod">optimization.GradientMethod</a></span>):
 
@@ -1580,17 +1580,17 @@ optimization    </h1>
             <span class="name">name</span>        =
 <span class="default_value">&#39;first-order&#39;</span>
 
-        
+
     </div>
     <a class="headerlink" href="#FirstOrderGradient.name"></a>
-    
-    
+
+
 
                             </div>
                             <div id="FirstOrderGradient.theta_grad" class="classattr">
                                         <input id="FirstOrderGradient.theta_grad-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">theta_grad</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">optimizer</span><span class="p">:</span> <span class="n"><a href="#Optimization">Optimization</a></span>,</span><span class="param">	<span class="n">theta</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>,</span><span class="param">	<span class="n">indices</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span><span class="return-annotation">) -> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>:</span></span>
 
@@ -1614,14 +1614,14 @@ optimization    </h1>
 </span></pre></div>
 
 
-    
+
 
                             </div>
                 </section>
                 <section id="FiniteDifferenceGradient">
                             <input id="FiniteDifferenceGradient-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr class">
-            
+
     <span class="def">class</span>
     <span class="name">FiniteDifferenceGradient</span><wbr>(<span class="base"><a href="#GradientMethod">optimization.GradientMethod</a></span>):
 
@@ -1710,17 +1710,17 @@ optimization    </h1>
             <span class="name">name</span>        =
 <span class="default_value">&#39;finite-difference&#39;</span>
 
-        
+
     </div>
     <a class="headerlink" href="#FiniteDifferenceGradient.name"></a>
-    
-    
+
+
 
                             </div>
                             <div id="FiniteDifferenceGradient.setup" class="classattr">
                                         <input id="FiniteDifferenceGradient.setup-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">setup</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">optimizer</span><span class="p">:</span> <span class="n"><a href="#Optimization">Optimization</a></span>,</span><span class="param">	<span class="n">theta0</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
 
@@ -1735,13 +1735,13 @@ optimization    </h1>
 </span></pre></div>
 
 
-    
+
 
                             </div>
                             <div id="FiniteDifferenceGradient.theta_grad" class="classattr">
                                         <input id="FiniteDifferenceGradient.theta_grad-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">theta_grad</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">optimizer</span><span class="p">:</span> <span class="n"><a href="#Optimization">Optimization</a></span>,</span><span class="param">	<span class="n">theta</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>,</span><span class="param">	<span class="n">indices</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span><span class="return-annotation">) -> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>:</span></span>
 
@@ -1761,14 +1761,14 @@ optimization    </h1>
 </span></pre></div>
 
 
-    
+
 
                             </div>
                 </section>
                 <section id="GaussSteinGradient">
                             <input id="GaussSteinGradient-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr class">
-            
+
     <span class="def">class</span>
     <span class="name">GaussSteinGradient</span><wbr>(<span class="base"><a href="#GradientMethod">optimization.GradientMethod</a></span>):
 
@@ -1863,17 +1863,17 @@ $$\varepsilon_j \sim \mathcal{N}(0, I^d)$$ — one-sided, <code>n_grad_samples</
             <span class="name">name</span>        =
 <span class="default_value">&#39;gauss-stein&#39;</span>
 
-        
+
     </div>
     <a class="headerlink" href="#GaussSteinGradient.name"></a>
-    
-    
+
+
 
                             </div>
                             <div id="GaussSteinGradient.setup" class="classattr">
                                         <input id="GaussSteinGradient.setup-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">setup</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">optimizer</span><span class="p">:</span> <span class="n"><a href="#Optimization">Optimization</a></span>,</span><span class="param">	<span class="n">theta0</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
 
@@ -1890,13 +1890,13 @@ $$\varepsilon_j \sim \mathcal{N}(0, I^d)$$ — one-sided, <code>n_grad_samples</
 </span></pre></div>
 
 
-    
+
 
                             </div>
                             <div id="GaussSteinGradient.theta_grad" class="classattr">
                                         <input id="GaussSteinGradient.theta_grad-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">theta_grad</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">optimizer</span><span class="p">:</span> <span class="n"><a href="#Optimization">Optimization</a></span>,</span><span class="param">	<span class="n">theta</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>,</span><span class="param">	<span class="n">indices</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span><span class="return-annotation">) -> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>:</span></span>
 
@@ -1916,13 +1916,13 @@ $$\varepsilon_j \sim \mathcal{N}(0, I^d)$$ — one-sided, <code>n_grad_samples</
 </span></pre></div>
 
 
-    
+
 
                             </div>
                             <div id="GaussSteinGradient.advance_rng" class="classattr">
                                         <input id="GaussSteinGradient.advance_rng-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">advance_rng</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">optimizer</span><span class="p">:</span> <span class="n"><a href="#Optimization">Optimization</a></span>,</span><span class="param">	<span class="n">theta</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
 
@@ -1938,14 +1938,14 @@ $$\varepsilon_j \sim \mathcal{N}(0, I^d)$$ — one-sided, <code>n_grad_samples</
 </span></pre></div>
 
 
-    
+
 
                             </div>
                 </section>
                 <section id="SPSAGradient">
                             <input id="SPSAGradient-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr class">
-            
+
     <span class="def">class</span>
     <span class="name">SPSAGradient</span><wbr>(<span class="base"><a href="#GradientMethod">optimization.GradientMethod</a></span>):
 
@@ -2059,17 +2059,17 @@ $$\Delta_j \sim {\pm 1}^d$$ — two-sided, <code>2 * n_grad_samples</code> evalu
             <span class="name">name</span>        =
 <span class="default_value">&#39;spsa&#39;</span>
 
-        
+
     </div>
     <a class="headerlink" href="#SPSAGradient.name"></a>
-    
-    
+
+
 
                             </div>
                             <div id="SPSAGradient.setup" class="classattr">
                                         <input id="SPSAGradient.setup-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">setup</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">optimizer</span><span class="p">:</span> <span class="n"><a href="#Optimization">Optimization</a></span>,</span><span class="param">	<span class="n">theta0</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
 
@@ -2086,13 +2086,13 @@ $$\Delta_j \sim {\pm 1}^d$$ — two-sided, <code>2 * n_grad_samples</code> evalu
 </span></pre></div>
 
 
-    
+
 
                             </div>
                             <div id="SPSAGradient.theta_grad" class="classattr">
                                         <input id="SPSAGradient.theta_grad-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">theta_grad</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">optimizer</span><span class="p">:</span> <span class="n"><a href="#Optimization">Optimization</a></span>,</span><span class="param">	<span class="n">theta</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>,</span><span class="param">	<span class="n">indices</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span><span class="return-annotation">) -> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>:</span></span>
 
@@ -2112,13 +2112,13 @@ $$\Delta_j \sim {\pm 1}^d$$ — two-sided, <code>2 * n_grad_samples</code> evalu
 </span></pre></div>
 
 
-    
+
 
                             </div>
                             <div id="SPSAGradient.advance_rng" class="classattr">
                                         <input id="SPSAGradient.advance_rng-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">advance_rng</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">optimizer</span><span class="p">:</span> <span class="n"><a href="#Optimization">Optimization</a></span>,</span><span class="param">	<span class="n">theta</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
 
@@ -2135,14 +2135,14 @@ $$\Delta_j \sim {\pm 1}^d$$ — two-sided, <code>2 * n_grad_samples</code> evalu
 </span></pre></div>
 
 
-    
+
 
                             </div>
                 </section>
                 <section id="SteinDifferenceGradient">
                             <input id="SteinDifferenceGradient-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr class">
-            
+
     <span class="def">class</span>
     <span class="name">SteinDifferenceGradient</span><wbr>(<span class="base"><a href="#GradientMethod">optimization.GradientMethod</a></span>):
 
@@ -2246,17 +2246,17 @@ $$w_j \sim \mathcal{N}(0,1)$$, chain-ruled to theta via $$\nabla_\theta \pi_\the
             <span class="name">name</span>        =
 <span class="default_value">&#39;stein-difference&#39;</span>
 
-        
+
     </div>
     <a class="headerlink" href="#SteinDifferenceGradient.name"></a>
-    
-    
+
+
 
                             </div>
                             <div id="SteinDifferenceGradient.setup" class="classattr">
                                         <input id="SteinDifferenceGradient.setup-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">setup</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">optimizer</span><span class="p">:</span> <span class="n"><a href="#Optimization">Optimization</a></span>,</span><span class="param">	<span class="n">theta0</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
 
@@ -2273,13 +2273,13 @@ $$w_j \sim \mathcal{N}(0,1)$$, chain-ruled to theta via $$\nabla_\theta \pi_\the
 </span></pre></div>
 
 
-    
+
 
                             </div>
                             <div id="SteinDifferenceGradient.theta_grad" class="classattr">
                                         <input id="SteinDifferenceGradient.theta_grad-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">theta_grad</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">optimizer</span><span class="p">:</span> <span class="n"><a href="#Optimization">Optimization</a></span>,</span><span class="param">	<span class="n">theta</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>,</span><span class="param">	<span class="n">indices</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span><span class="return-annotation">) -> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>:</span></span>
 
@@ -2299,13 +2299,13 @@ $$w_j \sim \mathcal{N}(0,1)$$, chain-ruled to theta via $$\nabla_\theta \pi_\the
 </span></pre></div>
 
 
-    
+
 
                             </div>
                             <div id="SteinDifferenceGradient.advance_rng" class="classattr">
                                         <input id="SteinDifferenceGradient.advance_rng-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">advance_rng</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span>,</span><span class="param">	<span class="n">optimizer</span><span class="p">:</span> <span class="n"><a href="#Optimization">Optimization</a></span>,</span><span class="param">	<span class="n">theta</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span><span class="return-annotation">) -> <span class="kc">None</span>:</span></span>
 
@@ -2321,7 +2321,7 @@ $$w_j \sim \mathcal{N}(0,1)$$, chain-ruled to theta via $$\nabla_\theta \pi_\the
 </span></pre></div>
 
 
-    
+
 
                             </div>
                 </section>
@@ -2330,11 +2330,11 @@ $$w_j \sim \mathcal{N}(0,1)$$, chain-ruled to theta via $$\nabla_\theta \pi_\the
             <span class="name">OPTAX_STEP_RULES</span>        =
 <span class="default_value">(&#39;optax-adam&#39;, &#39;optax-sgd&#39;)</span>
 
-        
+
     </div>
     <a class="headerlink" href="#OPTAX_STEP_RULES"></a>
-    
-    
+
+
 
                 </section>
                 <section id="STEP_RULE_ARMIJO">
@@ -2342,11 +2342,11 @@ $$w_j \sim \mathcal{N}(0,1)$$, chain-ruled to theta via $$\nabla_\theta \pi_\the
             <span class="name">STEP_RULE_ARMIJO</span>        =
 <span class="default_value">&#39;armijo&#39;</span>
 
-        
+
     </div>
     <a class="headerlink" href="#STEP_RULE_ARMIJO"></a>
-    
-    
+
+
 
                 </section>
                 <section id="STEP_RULE_CONSTANT">
@@ -2354,11 +2354,11 @@ $$w_j \sim \mathcal{N}(0,1)$$, chain-ruled to theta via $$\nabla_\theta \pi_\the
             <span class="name">STEP_RULE_CONSTANT</span>        =
 <span class="default_value">&#39;constant&#39;</span>
 
-        
+
     </div>
     <a class="headerlink" href="#STEP_RULE_CONSTANT"></a>
-    
-    
+
+
 
                 </section>
                 <section id="STEP_RULE_OPTAX_ADAM">
@@ -2366,11 +2366,11 @@ $$w_j \sim \mathcal{N}(0,1)$$, chain-ruled to theta via $$\nabla_\theta \pi_\the
             <span class="name">STEP_RULE_OPTAX_ADAM</span>        =
 <span class="default_value">&#39;optax-adam&#39;</span>
 
-        
+
     </div>
     <a class="headerlink" href="#STEP_RULE_OPTAX_ADAM"></a>
-    
-    
+
+
 
                 </section>
                 <section id="STEP_RULE_OPTAX_SGD">
@@ -2378,11 +2378,11 @@ $$w_j \sim \mathcal{N}(0,1)$$, chain-ruled to theta via $$\nabla_\theta \pi_\the
             <span class="name">STEP_RULE_OPTAX_SGD</span>        =
 <span class="default_value">&#39;optax-sgd&#39;</span>
 
-        
+
     </div>
     <a class="headerlink" href="#STEP_RULE_OPTAX_SGD"></a>
-    
-    
+
+
 
                 </section>
                 <section id="STEP_RULES">
@@ -2390,11 +2390,11 @@ $$w_j \sim \mathcal{N}(0,1)$$, chain-ruled to theta via $$\nabla_\theta \pi_\the
             <span class="name">STEP_RULES</span>        =
 <span class="default_value">(&#39;constant&#39;, &#39;armijo&#39;, &#39;l-bfgs-b&#39;, &#39;trust-constr&#39;, &#39;optax-adam&#39;, &#39;optax-sgd&#39;)</span>
 
-        
+
     </div>
     <a class="headerlink" href="#STEP_RULES"></a>
-    
-    
+
+
 
                 </section>
     </main>

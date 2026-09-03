@@ -224,11 +224,10 @@ minimization objective,
 
 $$P_i(u) = -f(u;x_i) = a(x_i,u)\bigl((u+1)p(x_i)-L(x_i)\bigr).$$
 
-At each candidate action, the plotted cloud is the sample mean plus or minus one
-sample standard deviation across customers:
+For comparison with the robust cloud below, the ordinary sample standard
+deviation across customers is
 
-$$\bar P(u) \pm s_P(u), \qquad
-s_P(u)=\sqrt{\frac{1}{n-1}\sum_{i=1}^n\left(P_i(u)-\bar P(u)\right)^2}.$$
+$$s_P(u)=\sqrt{\frac{1}{n-1}\sum_{i=1}^n\left(P_i(u)-\bar P(u)\right)^2}.$$
 
 - **Source:** `scripts/plot_customer_coverage_envelope_slides.py` ::
   `_compute_diagnostics()`, `_plot_customer_profit_dispersion_comparison()`

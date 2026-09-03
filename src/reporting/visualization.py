@@ -2152,6 +2152,7 @@ def plot_policy_capacity_objective(
     output_dir: str | Path,
     *,
     family: str,
+    train_size: int,
 ) -> Path:
     """Plot train/test profit against parameter count for one model family."""
     frame = _capacity_frame(summary)
@@ -2210,7 +2211,7 @@ def plot_policy_capacity_objective(
         linewidths=0.5,
         zorder=3,
     )
-    ax.axvline(100, color="C2", linestyle="--", linewidth=1.2)
+    ax.axvline(train_size, color="C2", linestyle="--", linewidth=1.2)
     ax.set_title(f"{family.upper()} objective performance versus policy capacity", fontsize=16)
     ax.set_xlabel("Policy parameter count", fontsize=12)
     ax.set_ylabel("Expected profit per customer", fontsize=12)
@@ -2221,7 +2222,7 @@ def plot_policy_capacity_objective(
     legend_handles = [
         Line2D([], [], color="C0", marker="o", markerfacecolor="none", label="Train mean"),
         Line2D([], [], color="C1", marker="o", label="Test mean"),
-        Line2D([], [], color="C2", linestyle="--", label="100 parameters"),
+        Line2D([], [], color="C2", linestyle="--", label=f"Train size ({train_size})"),
     ]
     ax.legend(handles=legend_handles, fontsize=10)
     colorbar = fig.colorbar(scalar_mappable, ax=ax, label="Chebyshev degree")
@@ -2235,6 +2236,7 @@ def plot_policy_capacity_generalization_gap(
     output_dir: str | Path,
     *,
     family: str,
+    train_size: int,
 ) -> Path:
     """Plot held-out minus train profit for one matched model family."""
     frame = _capacity_frame(summary)
@@ -2251,7 +2253,7 @@ def plot_policy_capacity_generalization_gap(
         capsize=3,
     )
     ax.axhline(0.0, color="C2", linestyle="--", linewidth=1.2)
-    ax.axvline(100, color="C3", linestyle="--", linewidth=1.2)
+    ax.axvline(train_size, color="C3", linestyle="--", linewidth=1.2)
     ax.set_title(f"{family.upper()} policy-capacity generalization gap", fontsize=16)
     ax.set_xlabel("Policy parameter count", fontsize=12)
     ax.set_ylabel("Test profit minus train profit", fontsize=12)
@@ -2535,6 +2537,7 @@ def plot_policy_capacity_model_transfer(
     output_dir: str | Path,
     *,
     family: str,
+    train_size: int,
 ) -> Path:
     """Plot cross-model test profit for policies optimized with one model family."""
     frame = _capacity_frame(summary)
@@ -2542,11 +2545,11 @@ def plot_policy_capacity_model_transfer(
     if subset.empty:
         raise ValueError(f"No policy-capacity rows found for model family {family!r}.")
     fig, ax = plt.subplots(figsize=(7.5, 4.8), constrained_layout=True)
-    evaluation_models = [
-        model
-        for model in ("glm", "xgb")
-        if bool((subset["evaluate_model"] == model).any())
-    ]
+    evaluation_models = tuple(
+        dict.fromkeys(subset["evaluate_model"].dropna().astype(str).tolist())
+    )
+    if not evaluation_models:
+        raise ValueError(f"No evaluation models found for model family {family!r}.")
     for evaluate_model in evaluation_models:
         condition = subset.loc[subset["evaluate_model"] == evaluate_model].sort_values(
             "parameter_count"
@@ -2559,7 +2562,7 @@ def plot_policy_capacity_model_transfer(
             capsize=3,
             label=f"Evaluated by {evaluate_model.upper()}",
         )
-    ax.axvline(100, color="C2", linestyle="--", linewidth=1.2)
+    ax.axvline(train_size, color="C2", linestyle="--", linewidth=1.2)
     ax.set_title(f"Policies optimized with {family.upper()}", fontsize=16)
     ax.set_xlabel("Policy parameter count", fontsize=12)
     ax.set_ylabel("Held-out expected profit per customer", fontsize=12)
@@ -2581,6 +2584,10 @@ def plot_policy_capacity_endpoint_slices(
     selected = [record for record in records if str(record["model"]) == family]
     if not selected:
         raise ValueError(f"No endpoint-slice records found for model family {family!r}.")
+    split_seeds = {int(record["split_seed"]) for record in selected}
+    if len(split_seeds) != 1:
+        raise ValueError("Endpoint-slice records must contain exactly one split seed.")
+    split_seed = split_seeds.pop()
     degrees = sorted({int(record["degree"]) for record in selected})
     fig, axes = plt.subplots(
         1,
@@ -2625,7 +2632,7 @@ def plot_policy_capacity_endpoint_slices(
         colorbar.ax.tick_params(labelsize=10)
         colorbar.set_label("Action u", fontsize=12)
     fig.suptitle(
-        f"{family.upper()} learned-policy slices (split seed 0)",
+        f"{family.upper()} learned-policy slices (split seed {split_seed})",
         fontsize=16,
     )
     return _save_capacity_figure(fig, output_dir, f"policy_capacity_endpoint_slices_{family}")

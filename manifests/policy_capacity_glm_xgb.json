@@ -70,6 +70,7 @@
     ]
   },
   "curve_cache": {
+    "widened_xgb_tail_acknowledged": true,
     "action_grid": [
       -0.1,
       -0.09,

@@ -57,6 +57,7 @@ POLICY_CAPACITY_MANIFEST_KIND = "policy_capacity"
 POLICY_INPUT_PREFIX = "__policy_input_"
 MODEL_FAMILIES = ("glm", "xgb")
 POLICY_CAPACITY_BASES = ("additive_chebyshev", "total_degree_polynomial")
+CANONICAL_XGB_ACTION_BOUNDS = (0.0, 0.16)
 
 
 @dataclass(frozen=True)
@@ -91,6 +92,7 @@ class PolicyCapacityManifest:
     optimizer: dict[str, Any]
     curve_action_grid: tuple[float, ...]
     curve_dense_grid_size: int
+    widened_xgb_tail_acknowledged: bool
     objective_modifications: tuple[dict[str, Any], ...]
     launch: PolicyCapacityLaunchSpec
     source_path: Path | None = None
@@ -201,6 +203,18 @@ def load_policy_capacity_manifest(path: str | Path) -> PolicyCapacityManifest:
     dense_grid_size = int(curve.get("dense_grid_size"))
     if dense_grid_size < 2:
         raise ValueError("curve_cache.dense_grid_size must be at least 2.")
+    widened_xgb_tail_acknowledged = curve.get("widened_xgb_tail_acknowledged", False)
+    if not isinstance(widened_xgb_tail_acknowledged, bool):
+        raise ValueError("curve_cache.widened_xgb_tail_acknowledged must be boolean.")
+    uses_widened_xgb_tail = "xgb" in models and (
+        action_grid[0] < CANONICAL_XGB_ACTION_BOUNDS[0]
+        or action_grid[-1] > CANONICAL_XGB_ACTION_BOUNDS[1]
+    )
+    if uses_widened_xgb_tail and not widened_xgb_tail_acknowledged:
+        raise ValueError(
+            "curve_cache.widened_xgb_tail_acknowledged must be true when the XGBoost "
+            "curve grid extends beyond the canonical [0, 0.16] range."
+        )
 
     expected_optimizer = {
         "estimator": "first_order",
@@ -252,6 +266,7 @@ def load_policy_capacity_manifest(path: str | Path) -> PolicyCapacityManifest:
         optimizer=optimizer,
         curve_action_grid=action_grid,
         curve_dense_grid_size=dense_grid_size,
+        widened_xgb_tail_acknowledged=widened_xgb_tail_acknowledged,
         objective_modifications=objective_modifications,
         launch=launch,
         source_path=manifest_path.resolve(),
@@ -552,11 +567,26 @@ def collect_policy_capacity_outputs(
 
     endpoint_records = _endpoint_records(context.sweep_dir, manifest)
     for family in manifest.models:
-        plot_policy_capacity_objective(summary, context.sweep_dir, family=family)
+        plot_policy_capacity_objective(
+            summary,
+            context.sweep_dir,
+            family=family,
+            train_size=manifest.train_size,
+        )
         plot_policy_capacity_baseline_adjusted_gains(frame, context.sweep_dir, family=family)
         plot_policy_capacity_action_diagnostics(frame, context.sweep_dir, family=family)
-        plot_policy_capacity_generalization_gap(summary, context.sweep_dir, family=family)
-        plot_policy_capacity_model_transfer(summary, context.sweep_dir, family=family)
+        plot_policy_capacity_generalization_gap(
+            summary,
+            context.sweep_dir,
+            family=family,
+            train_size=manifest.train_size,
+        )
+        plot_policy_capacity_model_transfer(
+            summary,
+            context.sweep_dir,
+            family=family,
+            train_size=manifest.train_size,
+        )
         plot_policy_capacity_penalized_gains(frame, context.sweep_dir, family=family)
         plot_policy_capacity_endpoint_slices(
             endpoint_records,
@@ -867,6 +897,7 @@ def _endpoint_records(sweep_dir: Path, manifest: PolicyCapacityManifest) -> list
                 records.append(
                     {
                         "model": family,
+                        "split_seed": seed,
                         "degree": degree,
                         "theta": loaded["theta"].copy(),
                         "state_dim": manifest.state_dim,
@@ -897,12 +928,16 @@ def _write_experiment_markdown(
 - Split seeds: `{list(manifest.split_seeds)}`
 - Fits: `{len(manifest.models) * len(manifest.degrees) * len(manifest.split_seeds)}`
 - Fixed acceptance floor: `{manifest.acceptance_floor}` (diagnostic/penalty only; not swept)
+- Widened XGBoost tail acknowledged: `{manifest.widened_xgb_tail_acknowledged}`
 - Mean optimizer runtime per fit: `{float(runtimes.mean()):.3f}` seconds
 
 The primary results are `objective_vs_policy_capacity_glm.pdf` and
 `objective_vs_policy_capacity_xgb.pdf`. Open markers are train profit and filled
 markers are held-out test profit. Acceptance is retained only as a CSV diagnostic
 and is not a sweep axis or plot axis. All plots are emitted as PDF only.
+When the widened-XGBoost acknowledgement is true, results outside the canonical
+`[0, 0.16]` curve range are sensitivity analysis: spline monotonicity and bounds
+do not establish empirical calibration or causal validity in the tails.
 """
     path.write_text(text, encoding="utf-8")
 

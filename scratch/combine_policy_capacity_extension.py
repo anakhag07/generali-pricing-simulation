@@ -23,6 +23,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--extension-csv", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--family", default="xgb")
+    parser.add_argument("--train-size", type=int, required=True)
     parser.add_argument("--acceptance-floor", type=float, default=0.8787745289312372)
     parser.add_argument("--penalty-weight", type=float, default=1_000_000.0)
     parser.add_argument("--penalty-temperature", type=float, default=0.001)
@@ -35,6 +36,7 @@ def combine_sweeps(
     *,
     output_dir: Path,
     family: str,
+    train_size: int,
     acceptance_floor: float,
     penalty_weight: float,
     penalty_temperature: float,
@@ -71,7 +73,12 @@ def combine_sweeps(
     combined.to_csv(rows_path, index=False)
     summary = summarize_policy_capacity(combined)
     summary.to_csv(summary_path, index=False)
-    plot_policy_capacity_objective(summary, output_dir, family=family)
+    plot_policy_capacity_objective(
+        summary,
+        output_dir,
+        family=family,
+        train_size=train_size,
+    )
     plot_policy_capacity_baseline_adjusted_gains(combined, output_dir, family=family)
     plot_policy_capacity_penalized_gains(combined, output_dir, family=family)
     plot_profit_curves(combined, output_dir=output_dir, family=family)
@@ -85,6 +92,7 @@ def main() -> None:
         pd.read_csv(args.extension_csv),
         output_dir=args.output_dir,
         family=str(args.family),
+        train_size=int(args.train_size),
         acceptance_floor=float(args.acceptance_floor),
         penalty_weight=float(args.penalty_weight),
         penalty_temperature=float(args.penalty_temperature),

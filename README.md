@@ -557,7 +557,11 @@ capacity diagnostics use the same `_glm.pdf`/`_xgb.pdf` split. Plotting emits
 PDFs only, and acceptance remains in the CSV diagnostics. The
 experiment creates a locked, sweep-local XGBoost curve cache over 31 raw action
 knots from `-0.10` to `0.20` and never overwrites the canonical `[0, 0.16]`
-runtime artifact.
+runtime artifact. The widened manifest explicitly acknowledges that aggregate
+training-range coverage does not guarantee conditional support for each customer;
+results outside `[0, 0.16]` are tail-sensitivity analysis, not validated empirical
+or causal extrapolation. Manifests cannot widen the XGBoost grid without this
+acknowledgement.
 
 The restricted-range replication uses the same cohort, split seeds, degree
 ladder, and acceptance floor while constraining the policy to the canonical

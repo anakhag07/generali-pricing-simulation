@@ -317,7 +317,17 @@ Reported objective performance is the unpenalized $$J_m$$ (or profit $$-J_m$$).
 The floor is fixed and is not a sweep axis. The XGBoost arm builds an
 experiment-specific 31-knot raw query grid from $$-0.10$$ through $$0.20$$,
 then applies the same smoothing-spline, isotonic, and PCHIP construction; the
-policy bounds keep all evaluations inside that fitted support.
+policy bounds keep all evaluations inside that fitted support. This grid widens
+the canonical spline range $$[0,0.16]$$, not the raw XGBoost training-data range:
+the saved acceptance-training notebook reports observed $$U$$ from approximately
+$$-0.1144$$ through $$0.4327$$ after its modeling filters. Those aggregate
+endpoints do not establish dense conditional support for every customer profile.
+In particular, tree predictions in sparsely observed tail/profile combinations
+can be flat leaf-boundary values. The manifest must therefore set
+`curve_cache.widened_xgb_tail_acknowledged=true`, and results outside
+$$[0,0.16]$$ are interpreted as tail-sensitivity analysis rather than validated
+empirical or causal extrapolation. Post-fit spline monotonicity and probability
+bounds establish numerical shape constraints only.
 
 - **Source:** `src/experiments/policy_capacity.py`,
   `manifests/policy_capacity_glm_xgb.json`

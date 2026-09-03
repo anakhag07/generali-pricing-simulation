@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from experiments.policy_capacity import (
     build_policy_capacity_launch_plan,
@@ -15,6 +17,7 @@ from experiments.policy_capacity import (
     _with_acceptance_penalty_metrics,
 )
 from objective.policy import AdditiveChebyshevFeatureMap, SoftmaxPolicy
+from reporting import visualization
 from reporting.visualization import (
     plot_policy_capacity_action_diagnostics,
     plot_policy_capacity_baseline_adjusted_gains,
@@ -58,6 +61,7 @@ def test_canonical_policy_capacity_manifest_has_gradual_parameter_ladder() -> No
         191,
     ]
     assert manifest.action_bounds == (-0.1, 0.2)
+    assert manifest.widened_xgb_tail_acknowledged is True
     np.testing.assert_allclose(manifest.curve_action_grid, np.linspace(-0.1, 0.2, 31), atol=1e-15)
     tasks = policy_capacity_tasks(manifest)
     plan = build_policy_capacity_launch_plan(manifest)
@@ -72,6 +76,16 @@ def test_canonical_policy_capacity_manifest_has_gradual_parameter_ladder() -> No
     assert plan.slurm_profile.cpus_per_task == 2
     assert plan.slurm_profile.memory == "16G"
     assert plan.slurm_profile.time == "02:00:00"
+
+
+def test_widened_xgb_grid_requires_explicit_tail_acknowledgement(tmp_path) -> None:
+    payload = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    del payload["curve_cache"]["widened_xgb_tail_acknowledged"]
+    path = tmp_path / "unacknowledged-widened-grid.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="widened_xgb_tail_acknowledged must be true"):
+        load_policy_capacity_manifest(path)
 
 
 def test_initial_theta_represents_zero_action_for_every_customer() -> None:
@@ -193,7 +207,12 @@ def test_summary_and_capacity_plots_use_parameter_count_not_acceptance(tmp_path)
     for family in ("glm", "xgb"):
         paths.extend(
             [
-                plot_policy_capacity_objective(summary, tmp_path, family=family),
+                plot_policy_capacity_objective(
+                    summary,
+                    tmp_path,
+                    family=family,
+                    train_size=manifest.train_size,
+                ),
                 plot_policy_capacity_baseline_adjusted_gains(
                     pd.DataFrame(rows),
                     tmp_path,
@@ -209,8 +228,18 @@ def test_summary_and_capacity_plots_use_parameter_count_not_acceptance(tmp_path)
                     tmp_path,
                     family=family,
                 ),
-                plot_policy_capacity_generalization_gap(summary, tmp_path, family=family),
-                plot_policy_capacity_model_transfer(summary, tmp_path, family=family),
+                plot_policy_capacity_generalization_gap(
+                    summary,
+                    tmp_path,
+                    family=family,
+                    train_size=manifest.train_size,
+                ),
+                plot_policy_capacity_model_transfer(
+                    summary,
+                    tmp_path,
+                    family=family,
+                    train_size=manifest.train_size,
+                ),
             ]
         )
     endpoint_records = []
@@ -219,6 +248,7 @@ def test_summary_and_capacity_plots_use_parameter_count_not_acceptance(tmp_path)
             endpoint_records.append(
                 {
                     "model": model,
+                    "split_seed": 37,
                     "degree": degree,
                     "theta": np.zeros(1 + 19 * degree),
                     "state_dim": 19,
@@ -240,3 +270,92 @@ def test_summary_and_capacity_plots_use_parameter_count_not_acceptance(tmp_path)
         assert path.suffix == ".pdf"
         assert path.read_bytes().startswith(b"%PDF")
         assert not path.with_suffix(".png").exists()
+
+
+def test_capacity_plots_use_supplied_metadata_and_observed_model_names(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    captured_figures = []
+
+    def _capture_figure(fig, _output_dir, stem):
+        captured_figures.append(fig)
+        return tmp_path / f"{stem}.pdf"
+
+    monkeypatch.setattr(visualization, "_save_capacity_figure", _capture_figure)
+    summary = pd.DataFrame.from_records(
+        [
+            {
+                "optimize_model": "glm",
+                "evaluate_model": "glm",
+                "degree": 0,
+                "parameter_count": 1,
+                "train_profit_mean": 1.0,
+                "train_profit_ci95": 0.1,
+                "test_profit_mean": 0.9,
+                "test_profit_ci95": 0.1,
+                "generalization_gap_profit_mean": -0.1,
+                "generalization_gap_profit_ci95": 0.02,
+            },
+            {
+                "optimize_model": "glm",
+                "evaluate_model": "future_model",
+                "degree": 0,
+                "parameter_count": 1,
+                "train_profit_mean": 0.8,
+                "train_profit_ci95": 0.1,
+                "test_profit_mean": 0.7,
+                "test_profit_ci95": 0.1,
+                "generalization_gap_profit_mean": -0.1,
+                "generalization_gap_profit_ci95": 0.02,
+            },
+        ]
+    )
+
+    visualization.plot_policy_capacity_objective(
+        summary,
+        tmp_path,
+        family="glm",
+        train_size=137,
+    )
+    objective_ax = captured_figures[-1].axes[0]
+    assert any(np.allclose(line.get_xdata(), [137, 137]) for line in objective_ax.lines)
+    assert "Train size (137)" in [text.get_text() for text in objective_ax.get_legend().texts]
+
+    visualization.plot_policy_capacity_generalization_gap(
+        summary,
+        tmp_path,
+        family="glm",
+        train_size=137,
+    )
+    gap_ax = captured_figures[-1].axes[0]
+    assert any(np.allclose(line.get_xdata(), [137, 137]) for line in gap_ax.lines)
+
+    visualization.plot_policy_capacity_model_transfer(
+        summary,
+        tmp_path,
+        family="glm",
+        train_size=137,
+    )
+    transfer_ax = captured_figures[-1].axes[0]
+    transfer_labels = [text.get_text() for text in transfer_ax.get_legend().texts]
+    assert transfer_labels == ["Evaluated by GLM", "Evaluated by FUTURE_MODEL"]
+    assert any(np.allclose(line.get_xdata(), [137, 137]) for line in transfer_ax.lines)
+
+    visualization.plot_policy_capacity_endpoint_slices(
+        [
+            {
+                "model": "glm",
+                "split_seed": 37,
+                "degree": 0,
+                "theta": np.zeros(1),
+                "state_dim": 2,
+                "clip_scale": 3.0,
+                "action_low": -0.1,
+                "action_high": 0.2,
+            }
+        ],
+        tmp_path,
+        family="glm",
+    )
+    assert captured_figures[-1]._suptitle.get_text().endswith("(split seed 37)")

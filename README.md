@@ -1044,10 +1044,15 @@ python scripts/plot_customer_coverage_envelope_slides.py
 This uses empirical local historical support to shape an uncertainty width but
 fixes its scale at 10 profit units for visual clarity; it is not a calibrated
 confidence interval. Profit-only and uncertainty-adjusted solutions both come
-from SciPy's bounded continuous optimizer over documented natural cubic splines on
-`[0, 0.16]`. The action grid supplies interpolation knots and plotting points,
-not candidate solutions. Outputs and machine-readable optimizer provenance live
-under `results/customer-coverage-envelope-slides/`.
+from the repository's `Optimization` pipeline using its action-space central
+finite-difference estimator, L-BFGS-B step rule, and bounded sigmoid
+constant-policy parameterization. The optimizer minimizes the saved XGBoost
+objective (plus the width for the adjusted run); plots negate those objectives
+to retain the profit/maximization view where higher is better. Natural cubic
+splines define off-grid queries on `[0, 0.16]`. The action grid supplies
+interpolation knots and plotting points, not candidate solutions. Outputs and
+machine-readable optimizer provenance live under
+`results/customer-coverage-envelope-slides/`.
 
 To benchmark GLM analytical acceptance speed, Stein-difference call counts,
 objective-cache behavior, and contour-subsampling speed on the bundled real-data

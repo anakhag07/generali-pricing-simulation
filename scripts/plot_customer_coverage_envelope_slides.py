@@ -11,9 +11,12 @@ coverage is estimated independently from historical neighbors:
 The uncertainty envelope is intentionally illustrative. Its shape is determined
 by empirical local coverage, while its scale is fixed at 10 objective units so
 that the decision consequence is visible in a slide. It is not presented as a
-calibrated confidence interval. Every displayed solution is returned by a
-continuous optimizer; sampled action grids are used only to construct and render
-the optimizer-facing natural cubic splines.
+calibrated confidence interval. Every displayed solution is returned by the
+repository's minimization optimizer with its finite-difference gradient
+estimator. The optimizer receives the XGBoost cost objective; plots negate that
+cost so they retain the profit convention where higher is better. Sampled action
+grids are used only to construct and render the optimizer-facing natural cubic
+splines.
 """
 
 from __future__ import annotations
@@ -27,7 +30,6 @@ import numpy as np
 import pandas as pd
 from scipy.ndimage import gaussian_filter1d
 from scipy.interpolate import CubicSpline
-from scipy.optimize import minimize_scalar
 from sklearn.neighbors import NearestNeighbors
 
 from data.loader import (
@@ -36,6 +38,9 @@ from data.loader import (
     load_observed_u_array,
     load_x_frame,
 )
+from objective.base import Objective
+from objective.policy import AdditiveChebyshevFeatureMap, SoftmaxPolicy
+from optimization.solvers import run_finite_difference_minimize
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
@@ -58,8 +63,72 @@ ACTION_BANDWIDTH = 0.01
 ILLUSTRATIVE_WIDTH_SCALE = 10.0
 GAUSSIAN_SMOOTH_SIGMA = 1.25
 GAUSSIAN_SMOOTH_TRUNCATE = 4.0
-OPTIMIZER_XATOL = 1e-10
-OPTIMIZER_MAXITER = 1_000
+OPTIMIZER_START_U = 0.08
+OPTIMIZER_SIGMA_U = 0.001
+OPTIMIZER_GRAD_NORM_TOL = 1e-8
+OPTIMIZER_FTOL = 1e-12
+OPTIMIZER_T_STEPS = 1_000
+OPTIMIZER_X_SAMPLES = np.zeros((1, 1), dtype=float)
+
+
+class _SplineMinimizationObjective(Objective):
+    """Bounded constant-policy objective queried by the repository optimizer."""
+
+    def __init__(self, u_grid: np.ndarray, objective_values: np.ndarray) -> None:
+        u = np.asarray(u_grid, dtype=float)
+        values = np.asarray(objective_values, dtype=float)
+        if u.ndim != 1 or values.shape != u.shape or len(u) < 2:
+            raise ValueError(
+                "u_grid and objective_values must be matching one-dimensional arrays."
+            )
+        if not np.isfinite(u).all() or not np.isfinite(values).all():
+            raise ValueError("u_grid and objective_values must be finite.")
+        if not np.all(np.diff(u) > 0.0):
+            raise ValueError("u_grid must be strictly increasing.")
+
+        self.action_low = float(u[0])
+        self.action_high = float(u[-1])
+        self.policy = SoftmaxPolicy(
+            feature_map=AdditiveChebyshevFeatureMap(max_degree=0),
+            action_low=self.action_low,
+            action_high=self.action_high,
+        )
+        self._interpolant = CubicSpline(
+            u,
+            values,
+            bc_type="natural",
+            extrapolate=False,
+        )
+
+    def _evaluate_actions(self, actions: np.ndarray) -> np.ndarray:
+        bounded = np.clip(
+            np.asarray(actions, dtype=float),
+            self.action_low,
+            self.action_high,
+        )
+        return np.asarray(self._interpolant(bounded), dtype=float)
+
+    def _value_batch(self, x_batch: np.ndarray, u_array: np.ndarray) -> np.ndarray:
+        del x_batch
+        return self._evaluate_actions(u_array)
+
+    def _value_batch_many(
+        self,
+        x_batch: np.ndarray,
+        u_matrix: np.ndarray,
+    ) -> np.ndarray:
+        del x_batch
+        return self._evaluate_actions(u_matrix)
+
+    def value(self, theta: np.ndarray, x_batch: np.ndarray) -> float:
+        actions = self.policy.value(theta, x_batch)
+        return float(np.mean(self._evaluate_actions(actions)))
+
+    def grad(self, theta: np.ndarray, x_batch: np.ndarray) -> np.ndarray:
+        del theta, x_batch
+        raise NotImplementedError(
+            "This objective is intentionally optimized with finite differences."
+        )
 
 
 def _predict_acceptance_matrix(artifact, frame: pd.DataFrame, u_grid: np.ndarray) -> np.ndarray:
@@ -97,36 +166,49 @@ def _smooth_display_curve(values: np.ndarray) -> np.ndarray:
     )
 
 
-def _optimize_display_curve(
+def _minimize_xgboost_objective(
     u_grid: np.ndarray,
-    values: np.ndarray,
+    objective_values: np.ndarray,
 ) -> dict[str, float | int | bool | str]:
-    """Maximize a continuous natural cubic spline with SciPy's bounded optimizer."""
-    u = np.asarray(u_grid, dtype=float)
-    y = np.asarray(values, dtype=float)
-    if u.ndim != 1 or y.shape != u.shape or len(u) < 2:
-        raise ValueError("u_grid and values must be matching one-dimensional arrays.")
-    if not np.isfinite(u).all() or not np.isfinite(y).all():
-        raise ValueError("u_grid and values must be finite.")
-    if not np.all(np.diff(u) > 0.0):
-        raise ValueError("u_grid must be strictly increasing.")
-
-    interpolant = CubicSpline(u, y, bc_type="natural", extrapolate=False)
-    result = minimize_scalar(
-        lambda action: -float(interpolant(action)),
-        bounds=(float(u[0]), float(u[-1])),
-        method="bounded",
-        options={"xatol": OPTIMIZER_XATOL, "maxiter": OPTIMIZER_MAXITER},
+    """Minimize an XGBoost cost spline with the repo finite-difference setup."""
+    objective = _SplineMinimizationObjective(u_grid, objective_values)
+    start_fraction = (OPTIMIZER_START_U - objective.action_low) / (
+        objective.action_high - objective.action_low
     )
-    if not result.success:
-        raise RuntimeError(f"Bounded curve optimization failed: {result.message}")
+    if not 0.0 < start_fraction < 1.0:
+        raise ValueError("OPTIMIZER_START_U must lie strictly inside the action domain.")
+    theta_start = np.asarray(
+        [np.log(start_fraction / (1.0 - start_fraction))],
+        dtype=float,
+    )
+    theta_final, trace = run_finite_difference_minimize(
+        theta_start,
+        OPTIMIZER_X_SAMPLES,
+        objective,
+        t_steps=OPTIMIZER_T_STEPS,
+        n_grad_samples=1,
+        sigma=OPTIMIZER_SIGMA_U,
+        perturbation_space="u",
+        algorithm="l-bfgs-b",
+        grad_norm_tol=OPTIMIZER_GRAD_NORM_TOL,
+        ftol=OPTIMIZER_FTOL,
+    )
+    if not trace.optimizer_success:
+        raise RuntimeError(
+            "Repository finite-difference optimization failed: "
+            f"{trace.optimizer_message}"
+        )
+    action = float(objective.policy.value(theta_final, OPTIMIZER_X_SAMPLES)[0])
+    minimized_value = float(objective.value(theta_final, OPTIMIZER_X_SAMPLES))
     return {
-        "u": float(result.x),
-        "value": float(interpolant(result.x)),
-        "success": bool(result.success),
-        "nfev": int(result.nfev),
-        "nit": int(result.nit),
-        "message": str(result.message),
+        "u": action,
+        "minimized_value": minimized_value,
+        "plotted_profit_value": -minimized_value,
+        "theta": float(theta_final[0]),
+        "success": bool(trace.optimizer_success),
+        "status": int(trace.optimizer_status),
+        "nit": max(0, len(trace.steps) - 1),
+        "message": str(trace.optimizer_message),
     }
 
 
@@ -243,35 +325,65 @@ def _compute_diagnostics(
     full_curve = full_curve.loc[full_curve["u"].between(0.0, 0.16)].copy()
     if not np.allclose(full_curve["u"].to_numpy(dtype=float), U_GRID):
         raise ValueError("The saved full-dataset objective grid does not match U_GRID.")
-    mean_profit = -full_curve["mean_objective"].to_numpy(dtype=float)
+    mean_objective = full_curve["mean_objective"].to_numpy(dtype=float)
 
     support_deficit = 1.0 - median_support / float(np.max(median_support))
     illustrative_width = ILLUSTRATIVE_WIDTH_SCALE * support_deficit
-    display_profit = _smooth_display_curve(mean_profit)
+    display_objective = _smooth_display_curve(mean_objective)
+    display_profit = -display_objective
     display_width = _smooth_display_curve(illustrative_width)
+    display_penalized_objective = display_objective + display_width
     display_lower_envelope = display_profit - display_width
-    profit_solution = _optimize_display_curve(U_GRID, display_profit)
-    uncertainty_solution = _optimize_display_curve(U_GRID, display_lower_envelope)
+    profit_solution = _minimize_xgboost_objective(U_GRID, display_objective)
+    uncertainty_solution = _minimize_xgboost_objective(
+        U_GRID,
+        display_penalized_objective,
+    )
     return {
         "row_indices": row_indices,
         "u": U_GRID,
         "observed_u": np.asarray(observed_u, dtype=float),
         "baseline_policy_actions": baseline_policy_actions,
         "customer_objective_std": customer_objective_std,
-        "mean_profit": mean_profit,
+        "mean_objective": mean_objective,
+        "mean_profit": -mean_objective,
         "median_support": median_support,
         "illustrative_width": illustrative_width,
+        "display_objective": display_objective,
         "display_profit": display_profit,
         "display_width": display_width,
+        "display_penalized_objective": display_penalized_objective,
         "display_lower_envelope": display_lower_envelope,
         "profit_optimizer_u": np.asarray(profit_solution["u"]),
-        "profit_optimizer_value": np.asarray(profit_solution["value"]),
-        "profit_optimizer_nfev": np.asarray(profit_solution["nfev"]),
+        "profit_optimizer_objective_value": np.asarray(
+            profit_solution["minimized_value"]
+        ),
+        "profit_optimizer_value": np.asarray(
+            profit_solution["plotted_profit_value"]
+        ),
+        "profit_optimizer_theta": np.asarray(profit_solution["theta"]),
+        "profit_optimizer_success": np.asarray(profit_solution["success"]),
+        "profit_optimizer_status": np.asarray(profit_solution["status"]),
         "profit_optimizer_nit": np.asarray(profit_solution["nit"]),
+        "profit_optimizer_message": np.asarray(profit_solution["message"]),
         "uncertainty_optimizer_u": np.asarray(uncertainty_solution["u"]),
-        "uncertainty_optimizer_value": np.asarray(uncertainty_solution["value"]),
-        "uncertainty_optimizer_nfev": np.asarray(uncertainty_solution["nfev"]),
+        "uncertainty_optimizer_objective_value": np.asarray(
+            uncertainty_solution["minimized_value"]
+        ),
+        "uncertainty_optimizer_value": np.asarray(
+            uncertainty_solution["plotted_profit_value"]
+        ),
+        "uncertainty_optimizer_theta": np.asarray(uncertainty_solution["theta"]),
+        "uncertainty_optimizer_success": np.asarray(
+            uncertainty_solution["success"]
+        ),
+        "uncertainty_optimizer_status": np.asarray(
+            uncertainty_solution["status"]
+        ),
         "uncertainty_optimizer_nit": np.asarray(uncertainty_solution["nit"]),
+        "uncertainty_optimizer_message": np.asarray(
+            uncertainty_solution["message"]
+        ),
     }
 
 
@@ -305,7 +417,7 @@ def _plot_clean_objective(data: dict[str, np.ndarray], output_dir: Path) -> None
     ax.set_title("The Profit-Only Optimizer Favors a High Price Increase", fontsize=16)
     ax.set_xlabel("Price change, u", fontsize=12)
     ax.set_ylabel(
-        "Mean predicted objective value per customer\n(higher is better)",
+        "Mean predicted profit per customer\n(higher is better)",
         fontsize=12,
     )
     ax.tick_params(labelsize=10)
@@ -657,7 +769,7 @@ def _plot_envelope(data: dict[str, np.ndarray], output_dir: Path) -> None:
     ax.set_title("A Coverage-Aware Envelope Favors the Supported Peak", fontsize=16)
     ax.set_xlabel("Price change, u", fontsize=12)
     ax.set_ylabel(
-        "Mean predicted objective value per customer\n(higher is better)",
+        "Mean predicted profit per customer\n(higher is better)",
         fontsize=12,
     )
     ax.tick_params(labelsize=10)
@@ -775,30 +887,54 @@ def _write_experiment_record(
             "grid_spacing": float(U_GRID[1] - U_GRID[0]),
             "smoothing_sigma_grid_cells": float(GAUSSIAN_SMOOTH_SIGMA),
             "off_grid_rule": "natural cubic-spline interpolation",
+            "boundary_rule": "bounded sigmoid policy; action-space probes clip to the closed domain",
             "plotted_grid_role": "rendering and interpolation knots only",
+            "plot_sign_convention": "plots show profit = -minimized objective, so higher is better",
         },
         "optimizer": {
-            "library": "scipy.optimize.minimize_scalar",
-            "method": "bounded",
-            "bounds": [float(U_GRID[0]), float(U_GRID[-1])],
-            "xatol": float(OPTIMIZER_XATOL),
-            "maxiter": int(OPTIMIZER_MAXITER),
+            "entry_point": "optimization.solvers.run_finite_difference_minimize",
+            "implementation": "optimization.base.Optimization",
+            "direction": "minimize",
+            "step_rule": "l-bfgs-b",
+            "gradient_estimator": "finite_difference",
+            "perturbation_space": "u",
+            "sigma_u": float(OPTIMIZER_SIGMA_U),
+            "n_grad_samples": 1,
+            "policy": "bounded sigmoid constant policy",
+            "action_bounds": [float(U_GRID[0]), float(U_GRID[-1])],
+            "initial_action": float(OPTIMIZER_START_U),
+            "initial_theta": 0.0,
+            "grad_norm_tol": float(OPTIMIZER_GRAD_NORM_TOL),
+            "ftol": float(OPTIMIZER_FTOL),
+            "max_steps": int(OPTIMIZER_T_STEPS),
             "random_seed": None,
         },
         "solutions": {
             "profit_only": {
                 "u": float(data["profit_optimizer_u"]),
-                "value": float(data["profit_optimizer_value"]),
-                "success": True,
-                "nfev": int(data["profit_optimizer_nfev"]),
+                "minimized_xgboost_objective": float(
+                    data["profit_optimizer_objective_value"]
+                ),
+                "plotted_profit": float(data["profit_optimizer_value"]),
+                "theta": float(data["profit_optimizer_theta"]),
+                "success": bool(data["profit_optimizer_success"]),
+                "status": int(data["profit_optimizer_status"]),
                 "nit": int(data["profit_optimizer_nit"]),
+                "message": str(data["profit_optimizer_message"]),
             },
             "uncertainty_aware": {
                 "u": float(data["uncertainty_optimizer_u"]),
-                "value": float(data["uncertainty_optimizer_value"]),
-                "success": True,
-                "nfev": int(data["uncertainty_optimizer_nfev"]),
+                "minimized_penalized_objective": float(
+                    data["uncertainty_optimizer_objective_value"]
+                ),
+                "plotted_uncertainty_adjusted_profit": float(
+                    data["uncertainty_optimizer_value"]
+                ),
+                "theta": float(data["uncertainty_optimizer_theta"]),
+                "success": bool(data["uncertainty_optimizer_success"]),
+                "status": int(data["uncertainty_optimizer_status"]),
                 "nit": int(data["uncertainty_optimizer_nit"]),
+                "message": str(data["uncertainty_optimizer_message"]),
             },
         },
     }
@@ -819,9 +955,12 @@ def _write_experiment_record(
                 "scale is fixed at 10 profit units for a visually clear decision consequence.",
                 "It is not a calibrated confidence interval.",
                 "",
-                "Both displayed solutions come from SciPy's deterministic bounded scalar",
-                "optimizer over continuous natural cubic splines on `[0, 0.16]`. The",
-                "0.001-spaced samples are interpolation knots and plotting points, not",
+                "Both displayed solutions come from the repository's `Optimization`",
+                "pipeline using its action-space central finite-difference estimator and",
+                "L-BFGS-B step rule. The bounded sigmoid policy maps one scalar parameter",
+                "to `[0, 0.16]`. The optimizer minimizes the smoothed XGBoost cost objective",
+                "directly; the plots negate that cost back to profit so higher is better.",
+                "The 0.001-spaced samples are interpolation knots and plotting points, not",
                 "candidate solutions.",
                 "",
                 f"- Profit-only optimizer solution: `{100 * float(data['profit_optimizer_u']):.3f}%`",
@@ -830,6 +969,7 @@ def _write_experiment_record(
                 f"- Historical sample: `{n_customers:,}` customers, seed `{sample_seed}`",
                 f"- Local-support neighbors: `{n_neighbors}`",
                 f"- Action-kernel bandwidth: `{ACTION_BANDWIDTH}`",
+                f"- Finite-difference action step: `{OPTIMIZER_SIGMA_U}`",
                 f"- Numerical workers: `{n_jobs}`",
                 "",
                 "See `optimizer_solutions.json` for the machine-readable optimizer and",

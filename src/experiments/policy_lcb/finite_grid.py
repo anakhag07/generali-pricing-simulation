@@ -1130,9 +1130,15 @@ def _plot_calibration_regret_by_center(
     )
     for axis, center in facets:
         center_rows = _rows_for(rows, uncertainty_center=center)
-        pointwise = [row for row in center_rows if row["calibration"] == "pointwise"]
+        pointwise = [
+            row
+            for row in center_rows
+            if row["calibration_type"] == "pointwise_two_sided"
+        ]
         simultaneous = [
-            row for row in center_rows if row["calibration"] == "simultaneous"
+            row
+            for row in center_rows
+            if row["calibration_type"] == "bonferroni_two_sided"
         ]
         for label, metric, color, marker, linestyle in styles:
             group = pointwise if label != "Simultaneous LCB" else simultaneous

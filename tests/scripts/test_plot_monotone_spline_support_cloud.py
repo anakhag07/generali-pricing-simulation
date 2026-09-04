@@ -105,6 +105,27 @@ def test_requested_plot_labels_are_exact() -> None:
     assert script.Y_AXIS_LABEL == "Mean Predicted Profit Per Customer"
 
 
+def test_plot_omits_legend(tmp_path, monkeypatch) -> None:
+    frame = pd.DataFrame(
+        {
+            "u": [-0.1, 0.0, 0.2],
+            "smoothed_mean_profit": [100.0, 110.0, 120.0],
+            "support_cloud_lower_profit": [90.0, 105.0, 111.0],
+            "support_cloud_upper_profit": [110.0, 115.0, 129.0],
+        }
+    )
+    captured = {}
+    monkeypatch.setattr(
+        script.plt,
+        "close",
+        lambda figure: captured.setdefault("figure", figure),
+    )
+
+    script._plot_support_cloud(frame, tmp_path / "cloud.pdf")
+
+    assert captured["figure"].axes[0].get_legend() is None
+
+
 def test_load_cloud_data_rejects_sample_mismatch(tmp_path) -> None:
     curve_csv, curve_manifest, diagnostics = _write_inputs(tmp_path)
     manifest = json.loads(curve_manifest.read_text(encoding="utf-8"))

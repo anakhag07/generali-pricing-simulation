@@ -248,7 +248,6 @@ def _plot_support_cloud(frame: pd.DataFrame, output_path: Path) -> None:
     ax.set_ylabel(Y_AXIS_LABEL, fontsize=12)
     ax.tick_params(labelsize=10)
     ax.set_xlim(float(u[0]), float(u[-1]))
-    ax.legend(fontsize=10)
     fig.savefig(output_path, format="pdf")
     plt.close(fig)
 

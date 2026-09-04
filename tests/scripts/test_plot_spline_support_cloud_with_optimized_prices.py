@@ -111,6 +111,7 @@ def test_overlay_labels_blue_profit_and_red_optimized_prices(
     figure = captured["figure"]
     profit_ax, density_ax = figure.axes
     assert script.OPTIMIZED_COLOR == "#86002d"
+    assert np.isclose(density_ax.containers[0].patches[0].get_alpha(), 0.60)
     assert profit_ax.get_title() == script.PLOT_TITLE
     assert profit_ax.get_xlabel() == "Price Change"
     assert profit_ax.get_ylabel() == "Mean Predicted Profit Per Customer"

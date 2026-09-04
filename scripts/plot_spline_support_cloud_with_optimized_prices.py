@@ -170,7 +170,7 @@ def _plot_overlay(
         color=OPTIMIZED_COLOR,
         edgecolor=OPTIMIZED_COLOR,
         linewidth=0.5,
-        alpha=0.32,
+        alpha=0.60,
         label="Optimized Price Changes",
     )
     cloud = profit_ax.fill_between(

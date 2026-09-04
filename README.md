@@ -1019,6 +1019,34 @@ decimal price changes. The vector PDF, pointwise CSV, and provenance
 manifest are written under `results/monotone-spline-xgb-support-cloud/`. No
 model is refit and no optimum is computed or marked.
 
+To construct a deliberately support-aware synthetic GP lower bound on that
+same deterministic 20,000-customer objective curve and fit a policy to it, run:
+
+```bash
+python scripts/run_spline_gp_lower_bound_policy.py
+```
+
+The GP mean is the saved exact-spline/XGBoost mean-profit curve on
+`u in [-0.1, 0.2]`. Its zero-residual RBF process is conditioned at 33 fixed,
+evenly spaced actions on `[0, 0.16]`, with fixed amplitude `35`, length scale
+`0.01`, and observation-noise standard deviation `0.35`. Thus the posterior
+standard deviation is low on `[0, 0.16]` and rises smoothly outside it. The
+orange vector-PDF band is the posterior mean plus or minus one posterior
+standard deviation; it is a synthetic design envelope, not an empirically
+calibrated confidence interval. There is no random GP draw or fitted
+hyperparameter and therefore no added seed stream.
+
+The bounded softmax-linear policy minimizes customer-specific
+`ModelBasedObjective + posterior_std` subject to the saved acceptance floor,
+using `optimization.solvers.run_first_order_minimize` with `trust-constr`.
+Customer objective values use piecewise-linear interpolation on the saved
+301-point response grid, while the GP posterior standard deviation uses a
+natural cubic interpolant on that grid for off-grid optimizer queries. The
+softmax policy remains inside `[-0.1, 0.2]`; no grid scan or analytical
+extremum selects or reports the optimized policy. Outputs under
+`results/spline-xgb-synthetic-gp-lower-bound-policy-20k/` include the PDF,
+pointwise CSV, optimized 20k policy artifact, and provenance-rich summary.
+
 To overlay the saved first-order GLM policy's optimized-price distribution on
 that support cloud, run:
 

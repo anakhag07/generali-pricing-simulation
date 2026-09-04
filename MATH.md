@@ -270,6 +270,47 @@ upper slope and clips it to $$[0,1]$$.
   `model_based_objective_matrix()`, `summarize_profit()`
 - **Source:** `scripts/plot_glm_spline_profit_dispersion.py`
 
+### Synthetic GP lower bound for the spline/XGBoost profit objective
+
+For the deterministic 20,000-customer spline/XGBoost mean-profit curve
+\(\bar P(u)\), define a zero-residual Gaussian process with fixed RBF kernel
+
+$$
+k(u,v)=a^2\exp\!\left[-\frac{(u-v)^2}{2\ell^2}\right].
+$$
+
+The process is conditioned on synthetic observations \(y_j=0\) at an evenly
+spaced design \(z_j\in[0,0.16]\), with observation-noise variance
+\(\sigma_n^2\). Its posterior residual variance is
+
+$$
+s^2(u)=k(u,u)-k(u,Z)
+\left[K(Z,Z)+\sigma_n^2I\right]^{-1}k(Z,u).
+$$
+
+Using \(\bar P(u)\) as the deterministic GP mean function leaves the posterior
+mean equal to the saved objective curve. The one-standard-deviation lower
+confidence bound used for policy fitting is
+
+$$
+\operatorname{LCB}(u)=\bar P(u)-s(u).
+$$
+
+For customer-specific policy actions \(u_i=\pi_\theta(x_i)\), maximizing this
+lower bound is equivalent to the repository minimization objective
+
+$$
+J_{\mathrm{GP\text{-}LCB}}(\theta)=\frac1n\sum_{i=1}^n
+\left[C_i(u_i)+s(u_i)\right],
+$$
+
+where \(C_i=-P_i\) is the existing `ModelBasedObjective` cost. The synthetic
+conditioning design is deterministic and is used to express the requested
+high uncertainty outside the spline-fit interval; it is not an empirically
+calibrated confidence statement.
+
+- **Source:** `scripts/run_spline_gp_lower_bound_policy.py`
+
 The exploratory robust-dispersion version evaluates the same customer-level
 profit on the wider saved-objective domain
 $$u_j=-0.10+0.001j$$, $$j=0,\ldots,300$$. At each action, let
@@ -452,6 +493,33 @@ $$\widetilde P_{\mathrm{spline}}(u)\pm
 \operatorname{GaussianSmooth}[W_{\mathrm{abs}}(u)].$$ It reuses the same
 deterministic customer indices and support diagnostics, is not a confidence
 interval, and does not compute an optimizer solution.
+
+The support-lower-bound policy analysis uses the bounded softmax-linear policy
+
+$$u_i(\theta)=-0.1+0.3\,\operatorname{sigmoid}
+\left(\theta_0+\theta_x^\top z_i\right),$$
+
+where $$z_i$$ is the fitted standardized and sphered XGBoost customer-feature
+representation. On the deterministic 20,000-customer sample it minimizes
+
+$$J_{\mathrm{LB}}(\theta)=\frac{1}{n}\sum_{i=1}^n
+\left[J_i(u_i(\theta))+W_{\mathrm{abs}}(u_i(\theta))\right],$$
+
+equivalently maximizing mean predicted profit minus the positive aggregate
+support width. The optimization retains the cohort constraint
+
+$$\frac{1}{n}\sum_{i=1}^n A_i(u_i(\theta))\geq 0.8787745289.$$
+
+Customer cost and acceptance are evaluated from exact monotone-spline/XGBoost
+values on the 0.001-spaced grid with piecewise-linear off-grid interpolation;
+the smoothed aggregate support width uses natural-cubic interpolation. The
+repository first-order `trust-constr` optimizer differentiates these
+interpolants through the policy. After fitting, the fixed policy and fitted
+feature transform are replayed on all 715,023 eligible customer states; no
+full-population refit is performed.
+
+- **Source:** `scripts/run_spline_lower_bound_policy.py` ::
+  `SplineSupportLowerBoundObjective`, `run_analysis()`
 
 For the customer-specific coverage-aware policy rerun, let $$S_i(u_j)$$ be the
 local joint customer/action support on the fixed action grid. Each customer's

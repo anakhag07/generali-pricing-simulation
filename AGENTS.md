@@ -244,6 +244,13 @@ Guidelines:
   price-change axis, separate labeled profit and density y axes, and records
   the source PDF, data, policy artifact, and output hashes without rerunning
   optimization.
+- `scripts/run_spline_lower_bound_policy.py` fits a bounded softmax-linear
+  policy on the deterministic 20,000-row sample by minimizing exact
+  monotone-spline/XGBoost cost plus the wide cloud's positive aggregate support
+  width. It invokes the repository first-order `trust-constr` optimizer with
+  the saved acceptance floor, saves the converged policy, replays it on all
+  715,023 eligible customers, and regenerates the blue-cloud/red-action-density
+  overlay with complete artifact and optimizer provenance.
 - `scripts/build_full_monotone_spline_cache.py` builds the versioned, resumable
   full-eligible-row monotone-XGB curve cache under `results/cache/`; it reuses
   `analyze_model_acceptance_features` for eligible rows, all-customer historical

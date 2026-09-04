@@ -1032,6 +1032,26 @@ denotes the optimized price-change density replayed from the saved policy
 histogram on the right y axis. The script writes a new vector PDF and provenance
 manifest beside the support-cloud outputs and does not rerun optimization.
 
+To fit a support-lower-bound softmax-linear policy on the deterministic 20,000
+customers, replay it on all 715,023 eligible customers, and replace the red
+optimized-price distribution in that overlay, run:
+
+```bash
+python scripts/run_spline_lower_bound_policy.py
+```
+
+The minimized objective is the customer-level exact monotone-spline/XGBoost
+model cost plus the positive aggregate support half-width shown in the blue
+cloud, subject to the saved cohort-mean acceptance floor. Optimization uses the
+repository `run_first_order_minimize` entry point with `trust-constr`; it never
+selects a policy from an action grid. The bounded policy is
+`u_i=-0.1+0.3*sigmoid(theta' z_i)`, where `z_i` contains fitted standardized
+and sphered XGBoost customer features. Outputs under
+`results/spline-xgb-support-lower-bound-policy-20k/` include the saved 20k
+policy, its actions on every eligible customer, density bins, the new vector
+overlay PDF, the reusable exact-spline response cache, and full optimizer
+provenance.
+
 After collection, render customer-level Spearman correlation heatmaps for the
 top-ranked numeric acceptance/loss features and a cross-model feature-ranking
 agreement plot with:

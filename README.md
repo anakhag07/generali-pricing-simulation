@@ -1008,12 +1008,14 @@ python scripts/plot_monotone_spline_support_cloud.py
 ```
 
 This post-processing script verifies and reuses the same deterministic 20,000
-customers, the saved exact-spline `-ModelBasedObjective` mean-profit curve, and
-the 161-point support diagnostics from the customer-coverage-envelope slides.
-The symmetric half-width is the slide scaffold's smoothed illustrative width,
-based on median local support among 500 nearest neighbors with action-kernel
-bandwidth `0.01` and display scale 10. It is an extrapolation-support proxy,
-not a confidence interval. The vector PDF, pointwise CSV, and provenance
+customers and the saved exact-spline `-ModelBasedObjective` mean-profit curve.
+It reapplies the customer-coverage-envelope local-support scaffold at 301
+points over `[-0.10, 0.20]`, based on median local support among 500 nearest
+neighbors with action-kernel bandwidth `0.01`. Absolute inverse-root support
+risk is scaled to a maximum half-width of 10 without subtracting its baseline,
+so the symmetric cloud remains positive everywhere. It is an
+extrapolation-support proxy, not a confidence interval. The x axis reports
+decimal price changes. The vector PDF, pointwise CSV, and provenance
 manifest are written under `results/monotone-spline-xgb-support-cloud/`. No
 model is refit and no optimum is computed or marked.
 

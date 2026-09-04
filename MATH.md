@@ -437,11 +437,19 @@ confidence radius.
   `_compute_diagnostics()`; `scripts/plot_monotone_spline_support_cloud.py` ::
   `_load_cloud_data()`, `_plot_support_cloud()`
 
-The monotone-spline/XGBoost support-cloud post-processing figure centers this
-same smoothed aggregate width on the exact-spline mean profit
+The monotone-spline/XGBoost support-cloud post-processing figure recomputes
+median local support on $$u=-0.100,\ldots,0.200$$. It retains absolute
+inverse-root support risk rather than subtracting its best-supported baseline:
+
+$$R(u)=\sqrt{\frac{\max_v S(v)}{S(u)}}, \qquad
+W_{\mathrm{abs}}(u)=10\frac{R(u)}{\max_v R(v)}.$$
+
+Thus $$W_{\mathrm{abs}}(u)>0$$ everywhere. The figure centers the smoothed
+width on the exact-spline mean profit
 $$\widetilde P_{\mathrm{spline}}(u)=-\operatorname{GaussianSmooth}
 [\bar J_{\mathrm{spline}}(u)]$$ and displays
-$$\widetilde P_{\mathrm{spline}}(u)\pm\widetilde W(u).$$ It reuses the same
+$$\widetilde P_{\mathrm{spline}}(u)\pm
+\operatorname{GaussianSmooth}[W_{\mathrm{abs}}(u)].$$ It reuses the same
 deterministic customer indices and support diagnostics, is not a confidence
 interval, and does not compute an optimizer solution.
 

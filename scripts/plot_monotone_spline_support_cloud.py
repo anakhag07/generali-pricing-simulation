@@ -1,8 +1,9 @@
 """Plot the exact monotone-spline/XGBoost profit curve with local-support cloud.
 
-This post-processing analysis reuses the deterministic 20,000-customer
-customer-coverage diagnostics and the exact-spline ``-ModelBasedObjective``
-curve. It does not refit models or select an optimum.
+This analysis reuses the deterministic 20,000-customer sample and exact-spline
+``-ModelBasedObjective`` curve. It recomputes the customer-specific local
+support over the requested wide action range, but does not refit models or
+select an optimum.
 """
 
 from __future__ import annotations
@@ -24,9 +25,16 @@ from scipy.ndimage import gaussian_filter1d
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "src"))
 
+from data.loader import load_model_artifacts, load_x_frame
 from reporting.profit_dispersion import row_index_sha256
+from scripts.plot_customer_coverage_envelope_slides import (
+    ACTION_BANDWIDTH,
+    _local_support_matrix,
+    _mixed_customer_embedding,
+)
 
 
 DEFAULT_RESULTS_ROOT = ROOT.parent / "results"
@@ -39,8 +47,12 @@ DEFAULT_DIAGNOSTICS = (
 DEFAULT_OUTPUT_DIR = DEFAULT_RESULTS_ROOT / "monotone-spline-xgb-support-cloud"
 GAUSSIAN_SMOOTH_SIGMA = 1.25
 GAUSSIAN_SMOOTH_TRUNCATE = 4.0
+SUPPORT_BAND_MAX_HALF_WIDTH = 10.0
 EXPECTED_SAMPLE_SIZE = 20_000
-EXPECTED_SUPPORT_POINTS = 161
+SUPPORT_GRID = np.linspace(-0.10, 0.20, 301)
+PLOT_TITLE = "Mean Predicted Profit Per Customer vs. Price Change"
+X_AXIS_LABEL = "Price Change"
+Y_AXIS_LABEL = "Mean Predicted Profit Per Customer"
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -57,6 +69,8 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--diagnostics", type=Path, default=DEFAULT_DIAGNOSTICS)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
+    parser.add_argument("--n-neighbors", type=int, default=500)
+    parser.add_argument("--n-jobs", type=int, default=1)
     return parser
 
 
@@ -77,10 +91,54 @@ def _smooth(values: np.ndarray) -> np.ndarray:
     )
 
 
+def _absolute_support_half_width(
+    median_support: np.ndarray,
+    *,
+    max_half_width: float = SUPPORT_BAND_MAX_HALF_WIDTH,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Map absolute inverse-root support risk to a positive display width."""
+    support = np.asarray(median_support, dtype=float)
+    if support.ndim != 1 or support.size == 0 or not np.isfinite(support).all():
+        raise ValueError("median_support must be a non-empty finite 1D array.")
+    if np.any(support <= 0.0):
+        raise ValueError("median_support must be positive everywhere.")
+    if max_half_width <= 0.0:
+        raise ValueError("max_half_width must be positive.")
+
+    relative_support = support / float(np.max(support))
+    absolute_risk = np.sqrt(1.0 / relative_support)
+    half_width = max_half_width * absolute_risk / float(np.max(absolute_risk))
+    return relative_support, absolute_risk, half_width
+
+
+def _compute_median_local_support(
+    row_indices: np.ndarray,
+    observed_u: np.ndarray,
+    *,
+    n_neighbors: int,
+    n_jobs: int,
+) -> np.ndarray:
+    """Reapply the coverage-slide local-support scaffold on the wide grid."""
+    frame = load_x_frame("xgb", row_indices=row_indices)
+    acceptance_artifact, _ = load_model_artifacts("xgb")
+    embedding = _mixed_customer_embedding(acceptance_artifact, frame)
+    support = _local_support_matrix(
+        embedding,
+        observed_u,
+        SUPPORT_GRID,
+        n_neighbors=n_neighbors,
+        n_jobs=n_jobs,
+    )
+    return np.median(support, axis=0)
+
+
 def _load_cloud_data(
     curve_csv: Path,
     curve_manifest: Path,
     diagnostics_path: Path,
+    *,
+    n_neighbors: int,
+    n_jobs: int,
 ) -> tuple[pd.DataFrame, dict[str, object]]:
     manifest = json.loads(curve_manifest.read_text(encoding="utf-8"))
     if manifest.get("objective", {}).get("class") != "ModelBasedObjective":
@@ -92,44 +150,34 @@ def _load_cloud_data(
         raise ValueError("Curve manifest does not contain the canonical spline/XGBoost pair.")
 
     with np.load(diagnostics_path, allow_pickle=False) as diagnostics:
-        required = {
-            "row_indices",
-            "u",
-            "median_support",
-            "illustrative_width",
-            "display_width",
-        }
+        required = {"row_indices", "observed_u"}
         missing = sorted(required.difference(diagnostics.files))
         if missing:
             raise ValueError(f"Coverage diagnostics are missing keys: {missing}")
         row_indices = diagnostics["row_indices"].astype(int)
-        support_u = diagnostics["u"].astype(float)
-        median_support = diagnostics["median_support"].astype(float)
-        raw_width = diagnostics["illustrative_width"].astype(float)
-        display_width = diagnostics["display_width"].astype(float)
+        observed_u = diagnostics["observed_u"].astype(float)
 
     if row_indices.size != EXPECTED_SAMPLE_SIZE or np.unique(row_indices).size != row_indices.size:
         raise ValueError("Expected 20,000 unique deterministic diagnostic rows.")
+    if observed_u.shape != row_indices.shape or not np.isfinite(observed_u).all():
+        raise ValueError("Expected one finite historical action per diagnostic row.")
     expected_hash = manifest.get("sample", {}).get("row_indices_sha256")
     actual_hash = row_index_sha256(row_indices)
     if expected_hash != actual_hash:
         raise ValueError("Curve and coverage diagnostics use different customer samples.")
-    if support_u.shape != (EXPECTED_SUPPORT_POINTS,) or not np.allclose(
-        support_u,
-        np.linspace(0.0, 0.16, EXPECTED_SUPPORT_POINTS),
-    ):
-        raise ValueError("Expected the established 161-point support grid on [0, 0.16].")
-    for name, values in {
-        "median_support": median_support,
-        "illustrative_width": raw_width,
-        "display_width": display_width,
-    }.items():
-        if values.shape != support_u.shape or not np.isfinite(values).all():
-            raise ValueError(f"{name} must contain one finite value per support-grid point.")
-    if np.any(raw_width < 0.0) or np.any(display_width < 0.0):
-        raise ValueError("Support widths must be non-negative.")
-    if not np.allclose(display_width, _smooth(raw_width), rtol=0.0, atol=1e-12):
-        raise ValueError("Saved display_width does not match the coverage-slide smoothing.")
+
+    median_support = _compute_median_local_support(
+        row_indices,
+        observed_u,
+        n_neighbors=n_neighbors,
+        n_jobs=n_jobs,
+    )
+    if median_support.shape != SUPPORT_GRID.shape or not np.isfinite(median_support).all():
+        raise ValueError("Local support must contain one finite value per wide-grid point.")
+    relative_support, absolute_risk, raw_width = _absolute_support_half_width(
+        median_support
+    )
+    display_width = _smooth(raw_width)
 
     curves = pd.read_csv(curve_csv)
     selected = curves.loc[
@@ -142,7 +190,7 @@ def _load_cloud_data(
         raise ValueError("Expected one exact-spline mean-profit row per curve-grid point.")
     curve_u = selected["u"].to_numpy(dtype=float)
     matched_positions: list[int] = []
-    for proposed_u in support_u:
+    for proposed_u in SUPPORT_GRID:
         matches = np.flatnonzero(np.isclose(curve_u, proposed_u, rtol=0.0, atol=1e-12))
         if matches.size != 1:
             raise ValueError("The exact-spline curve does not cover the support grid.")
@@ -155,11 +203,13 @@ def _load_cloud_data(
 
     cloud = pd.DataFrame(
         {
-            "u": support_u,
+            "u": SUPPORT_GRID,
             "mean_profit": mean_profit,
             "smoothed_mean_profit": smoothed_profit,
             "median_effective_neighbor_count": median_support,
-            "raw_illustrative_half_width": raw_width,
+            "relative_local_support": relative_support,
+            "absolute_inverse_root_support_risk": absolute_risk,
+            "raw_absolute_support_half_width": raw_width,
             "smoothed_support_half_width": display_width,
             "support_cloud_lower_profit": smoothed_profit - display_width,
             "support_cloud_upper_profit": smoothed_profit + display_width,
@@ -181,23 +231,23 @@ def _plot_support_cloud(frame: pd.DataFrame, output_path: Path) -> None:
 
     fig, ax = plt.subplots(figsize=(10.0, 5.8), constrained_layout=True)
     ax.fill_between(
-        100.0 * u,
+        u,
         lower,
         upper,
         alpha=0.2,
         label="Illustrative local-support cloud",
     )
     ax.plot(
-        100.0 * u,
+        u,
         mean_profit,
         linewidth=2.0,
         label="Monotone-spline XGBoost mean profit",
     )
-    ax.set_title("Monotone-Spline XGBoost Profit with Local-Support Cloud", fontsize=16)
-    ax.set_xlabel("Proposed Price Change (%)", fontsize=12)
-    ax.set_ylabel("Predicted Profit Per Customer (−objective)", fontsize=12)
+    ax.set_title(PLOT_TITLE, fontsize=16)
+    ax.set_xlabel(X_AXIS_LABEL, fontsize=12)
+    ax.set_ylabel(Y_AXIS_LABEL, fontsize=12)
     ax.tick_params(labelsize=10)
-    ax.set_xlim(float(100.0 * u[0]), float(100.0 * u[-1]))
+    ax.set_xlim(float(u[0]), float(u[-1]))
     ax.legend(fontsize=10)
     fig.savefig(output_path, format="pdf")
     plt.close(fig)
@@ -230,12 +280,15 @@ def _write_manifest(
         "support": {
             "source": str(args.diagnostics.resolve()),
             "source_sha256": _sha256_file(args.diagnostics),
-            "grid": "u=0.000,...,0.160",
+            "grid": "u=-0.100,...,0.200",
             "definition": (
-                "median customer-specific local support over 500 nearest neighbors; "
-                "illustrative width = 10 * (1 - median_support / max(median_support))"
+                "median customer-specific local support over nearest neighbors; "
+                "absolute risk = sqrt(max(median_support) / median_support); "
+                "illustrative width = 10 * absolute_risk / max(absolute_risk)"
             ),
-            "action_kernel_bandwidth": 0.01,
+            "n_neighbors": int(args.n_neighbors),
+            "action_kernel_bandwidth": ACTION_BANDWIDTH,
+            "baseline_subtracted": False,
             "interpretation": "illustrative extrapolation-support proxy, not a confidence interval",
         },
         "display": {
@@ -272,6 +325,8 @@ def run_analysis(args: argparse.Namespace) -> list[Path]:
         args.curve_csv,
         args.curve_manifest,
         args.diagnostics,
+        n_neighbors=args.n_neighbors,
+        n_jobs=args.n_jobs,
     )
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)

@@ -259,8 +259,9 @@ Guidelines:
   ordinary standard deviations. Those dispersion plots do not calculate an
   optimum. Its full-population support-band PDF/CSV uses Gaussian-kernel
   effective sample size over all 715,023 eligible historical actions; the
-  inverse-root support-risk shape is illustratively scaled to a maximum
-  10-profit-unit half-width and is not a confidence interval. That diagnostic
+  full inverse-root support-risk shape, without baseline subtraction, is
+  illustratively scaled to a maximum 10-profit-unit half-width and is not a
+  confidence interval. That diagnostic
   also does not calculate an optimum. Its paired within-customer PDF/CSV uses the
   population-median historical action as a common baseline, reports profit-change
   quantile ribbons plus robust MAD dispersion on `[0, 0.16]`, and obtains any

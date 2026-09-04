@@ -282,16 +282,17 @@ $$S_{\mathrm{rel}}(u)=\frac{N_{\mathrm{eff}}(u)}
 {\max_v N_{\mathrm{eff}}(v)}, \qquad
 R(u)=\frac{1}{\sqrt{S_{\mathrm{rel}}(u)}}.$$
 
-For the display band only, risk excess is mapped to a maximum half-width of 10
-profit units,
+For the display band only, full relative risk is mapped to a maximum half-width
+of 10 profit units,
 
 $$H_{\mathrm{support}}(u)=10\,
-\frac{R(u)-1}{\max_v R(v)-1}.$$
+\frac{R(u)}{\max_v R(v)}.$$
 
 The plot shows
-$$\widetilde{\bar P}(u)\pm H_{\mathrm{support}}(u)$$ and reports
-$$S_{\mathrm{rel}}(u)$$ in an aligned panel. Historical support determines the
-shape, but the 10-unit vertical scale is illustrative. The band is therefore an
+$$\widetilde{\bar P}(u)\pm H_{\mathrm{support}}(u)$$. The baseline risk value
+is not subtracted, so the band remains nonzero at the best-supported action.
+Historical support determines the shape, but the 10-unit vertical scale is
+illustrative. The band is therefore an
 extrapolation-risk diagnostic, not a predictive confidence interval, and it
 does not compute or report an optimum.
 

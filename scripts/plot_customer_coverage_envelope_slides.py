@@ -238,12 +238,7 @@ def _support_weighted_band_half_width(
 
     relative_ess = ess / float(np.max(ess))
     relative_risk = np.sqrt(1.0 / relative_ess)
-    risk_excess = relative_risk - 1.0
-    maximum_excess = float(np.max(risk_excess))
-    if maximum_excess == 0.0:
-        half_width = np.zeros_like(risk_excess)
-    else:
-        half_width = max_half_width * risk_excess / maximum_excess
+    half_width = max_half_width * relative_risk / float(np.max(relative_risk))
     return relative_ess, relative_risk, half_width
 
 
@@ -749,42 +744,26 @@ def _plot_full_population_support_weighted_band(
     u = np.asarray(data["u"], dtype=float)
     mean_profit = np.asarray(data["display_profit"], dtype=float)
     half_width = np.asarray(data["marginal_support_band_half_width"], dtype=float)
-    relative_ess = np.asarray(data["marginal_support_relative_ess"], dtype=float)
     population_size = int(data["population_size"])
 
-    fig, axes = plt.subplots(
-        2,
-        1,
-        figsize=(10.0, 7.5),
-        sharex=True,
-        constrained_layout=True,
-    )
-    axes[0].fill_between(
+    fig, ax = plt.subplots(figsize=(10.0, 5.8), constrained_layout=True)
+    ax.fill_between(
         u,
         mean_profit - half_width,
         mean_profit + half_width,
         alpha=0.2,
         label="Illustrative support-weighted band",
     )
-    axes[0].plot(u, mean_profit, linewidth=2.0, label="Mean predicted profit")
-    axes[0].set_title("Full-Cohort Predicted Profit", fontsize=14)
-    axes[0].set_ylabel("Predicted Profit Per Customer", fontsize=12)
-    axes[0].legend(fontsize=10)
-
-    axes[1].fill_between(u, 0.0, relative_ess, alpha=0.2)
-    axes[1].plot(u, relative_ess, linewidth=2.0)
-    axes[1].set_title("Historical Price Support", fontsize=14)
-    axes[1].set_xlabel("Proposed Price Change", fontsize=12)
-    axes[1].set_ylabel("Relative Effective Support", fontsize=12)
-    axes[1].set_ylim(0.0, 1.05)
-
-    for ax in axes:
-        ax.tick_params(labelsize=10)
-        ax.set_xlim(float(u[0]), float(u[-1]))
-    fig.suptitle(
-        f"Profit and Historical Support Across {population_size:,} Customers",
+    ax.plot(u, mean_profit, linewidth=2.0, label="Mean predicted profit")
+    ax.set_title(
+        f"Full-Cohort Predicted Profit Across {population_size:,} Customers",
         fontsize=16,
     )
+    ax.set_xlabel("Proposed Price Change", fontsize=12)
+    ax.set_ylabel("Predicted Profit Per Customer", fontsize=12)
+    ax.tick_params(labelsize=10)
+    ax.set_xlim(float(u[0]), float(u[-1]))
+    ax.legend(fontsize=10)
     _save_pdf(
         fig,
         output_dir / "01_full_population_profit_with_support_weighted_band.pdf",
@@ -1421,7 +1400,7 @@ def _write_experiment_record(
             "support": "Gaussian-kernel marginal ESS over all historical actions",
             "action_bandwidth": ACTION_BANDWIDTH,
             "relative_risk": "sqrt(max(ESS) / ESS(u))",
-            "band_scaling": "relative-risk excess mapped to [0, 10] profit units",
+            "band_scaling": "relative risk mapped to a maximum of 10 profit units without subtracting baseline risk",
             "interpretation": "illustrative extrapolation-risk diagnostic, not a confidence interval",
             "computes_optimum": False,
         },
@@ -1530,8 +1509,9 @@ def _write_experiment_record(
                 "",
                 "The full-population support-band diagnostic uses all 715,023 eligible",
                 "historical actions. Gaussian-kernel effective sample size determines",
-                "the band shape; inverse-root support risk is rescaled to a maximum",
-                "half-width of 10 profit units for display. It is an illustrative",
+                "the band shape; full inverse-root support risk is rescaled to a",
+                "maximum half-width of 10 profit units without subtracting its",
+                "baseline value. It is an illustrative",
                 "extrapolation-risk band, not a predictive confidence interval, and it",
                 "does not calculate or report an optimum.",
                 "",

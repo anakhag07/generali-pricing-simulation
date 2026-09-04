@@ -1066,11 +1066,11 @@ dispersion outputs do not calculate or report an optimum.
 
 `01_full_population_profit_with_support_weighted_band.pdf` uses all 715,023
 eligible historical actions to calculate Gaussian-kernel effective sample size
-on `[0, 0.16]`. Its aligned panels show the saved full-cohort mean-profit curve
-with an illustrative support-weighted band and the normalized historical
-support that determines the band's shape. Inverse-root support-risk excess is
-mapped to a maximum half-width of 10 profit units for display, so the result is
-an extrapolation-risk diagnostic rather than a predictive confidence interval.
+on `[0, 0.16]`. It shows the saved full-cohort mean-profit curve with an
+illustrative support-weighted band. Full inverse-root support risk, including
+its baseline value of one, is mapped to a maximum half-width of 10 profit units
+for display, so the result is an extrapolation-risk diagnostic rather than a
+predictive confidence interval.
 The companion CSV stores the effective sample size, relative support, risk
 multiplier, and displayed half-width. This diagnostic does not compute or
 report an optimum.

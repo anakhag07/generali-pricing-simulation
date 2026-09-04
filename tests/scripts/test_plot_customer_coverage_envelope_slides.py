@@ -64,10 +64,14 @@ def test_marginal_support_band_widens_away_from_historical_actions() -> None:
 
     assert relative_ess[1] == 1.0
     assert relative_risk[1] == 1.0
-    assert half_width[1] == 0.0
+    assert half_width[1] > 0.0
     assert half_width[0] > half_width[1]
     assert half_width[2] > half_width[1]
     assert np.max(half_width) == 10.0
+    assert np.allclose(
+        half_width / np.max(half_width),
+        relative_risk / np.max(relative_risk),
+    )
 
 
 def test_within_customer_summary_removes_customer_profit_levels() -> None:

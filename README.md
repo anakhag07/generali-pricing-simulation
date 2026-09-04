@@ -1019,6 +1019,19 @@ decimal price changes. The vector PDF, pointwise CSV, and provenance
 manifest are written under `results/monotone-spline-xgb-support-cloud/`. No
 model is refit and no optimum is computed or marked.
 
+To overlay the saved first-order GLM policy's optimized-price distribution on
+that support cloud, run:
+
+```bash
+python scripts/plot_spline_support_cloud_with_optimized_prices.py
+```
+
+The shared x axis remains decimal price change on `[-0.1, 0.2]`. Blue denotes
+the monotone-spline/XGBoost mean-profit line and local-support cloud; pink
+denotes the optimized price-change density replayed from the saved policy
+histogram on the right y axis. The script writes a new vector PDF and provenance
+manifest beside the support-cloud outputs and does not rerun optimization.
+
 After collection, render customer-level Spearman correlation heatmaps for the
 top-ranked numeric acceptance/loss features and a cross-model feature-ranking
 agreement plot with:

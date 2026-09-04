@@ -238,6 +238,12 @@ Guidelines:
   not subtract baseline risk, so the cloud remains positive everywhere. The
   cloud is an extrapolation-support proxy, not a confidence interval; the
   script refits no model and computes no optimum.
+- `scripts/plot_spline_support_cloud_with_optimized_prices.py` combines the
+  wide monotone-spline/XGBoost support cloud with the exact saved density bins
+  from the first-order GLM optimized-policy histogram. It uses a shared decimal
+  price-change axis, separate labeled profit and density y axes, and records
+  the source PDF, data, policy artifact, and output hashes without rerunning
+  optimization.
 - `scripts/build_full_monotone_spline_cache.py` builds the versioned, resumable
   full-eligible-row monotone-XGB curve cache under `results/cache/`; it reuses
   `analyze_model_acceptance_features` for eligible rows, all-customer historical

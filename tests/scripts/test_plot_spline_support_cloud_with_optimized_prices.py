@@ -91,7 +91,7 @@ def test_loaders_require_wide_support_and_optimized_bins(tmp_path) -> None:
     assert np.isclose(histogram["bin_right"].iloc[-1], 0.2)
 
 
-def test_overlay_labels_blue_profit_and_pink_optimized_density(
+def test_overlay_labels_blue_profit_and_red_optimized_prices(
     tmp_path,
     monkeypatch,
 ) -> None:
@@ -110,14 +110,15 @@ def test_overlay_labels_blue_profit_and_pink_optimized_density(
 
     figure = captured["figure"]
     profit_ax, density_ax = figure.axes
+    assert script.OPTIMIZED_COLOR == "#86002d"
     assert profit_ax.get_title() == script.PLOT_TITLE
     assert profit_ax.get_xlabel() == "Price Change"
     assert profit_ax.get_ylabel() == "Mean Predicted Profit Per Customer"
     assert density_ax.get_ylabel() == "Optimized Price-Change Density"
     legend_text = profit_ax.get_legend().get_texts()
     assert [text.get_text() for text in legend_text] == [
-        "Mean profit with local-support cloud",
-        "Optimized price-change density",
+        "Mean Profit",
+        "Optimized Price Changes",
     ]
     assert legend_text[0].get_color() == script.SUPPORT_COLOR
     assert legend_text[1].get_color() == script.OPTIMIZED_COLOR
@@ -154,5 +155,9 @@ def test_run_analysis_writes_vector_pdf_and_manifest(tmp_path) -> None:
     assert pdf_path.read_bytes().startswith(b"%PDF-")
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert manifest["display"]["blue"].startswith("monotone-spline/XGBoost")
-    assert manifest["display"]["pink"].startswith("saved first-order GLM-policy")
+    assert manifest["display"]["red"].startswith("saved first-order GLM-policy")
+    assert manifest["display"]["legend"] == [
+        "Mean Profit",
+        "Optimized Price Changes",
+    ]
     assert manifest["optimizer"].startswith("not rerun")

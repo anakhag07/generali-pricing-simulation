@@ -1027,7 +1027,7 @@ python scripts/plot_spline_support_cloud_with_optimized_prices.py
 ```
 
 The shared x axis remains decimal price change on `[-0.1, 0.2]`. Blue denotes
-the monotone-spline/XGBoost mean-profit line and local-support cloud; pink
+the monotone-spline/XGBoost mean-profit line and local-support cloud; dark red
 denotes the optimized price-change density replayed from the saved policy
 histogram on the right y axis. The script writes a new vector PDF and provenance
 manifest beside the support-cloud outputs and does not rerun optimization.

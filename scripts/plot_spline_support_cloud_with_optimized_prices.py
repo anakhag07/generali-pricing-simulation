@@ -171,7 +171,7 @@ def _plot_overlay(
         edgecolor=OPTIMIZED_COLOR,
         linewidth=0.5,
         alpha=0.32,
-        label="Optimized price-change density",
+        label="Optimized Price Changes",
     )
     cloud = profit_ax.fill_between(
         u,
@@ -185,7 +185,7 @@ def _plot_overlay(
         mean_profit,
         color=SUPPORT_COLOR,
         linewidth=2.0,
-        label="Mean profit with local-support cloud",
+        label="Mean Profit",
     )[0]
 
     density_ax.set_zorder(1)
@@ -210,8 +210,8 @@ def _plot_overlay(
     legend = profit_ax.legend(
         [(mean_line, cloud), bars],
         [
-            "Mean profit with local-support cloud",
-            "Optimized price-change density",
+            "Mean Profit",
+            "Optimized Price Changes",
         ],
         fontsize=10,
         loc="upper left",
@@ -243,7 +243,8 @@ def _write_manifest(
         },
         "display": {
             "blue": "monotone-spline/XGBoost mean profit and local-support cloud",
-            "pink": "saved first-order GLM-policy optimized price-change density",
+            "red": "saved first-order GLM-policy optimized price changes",
+            "legend": ["Mean Profit", "Optimized Price Changes"],
             "shared_x_axis": "decimal price change on [-0.1, 0.2]",
         },
         "inputs": {

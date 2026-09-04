@@ -230,6 +230,12 @@ Guidelines:
   plus raw-MAD vector PDFs, a long-form CSV, and a provenance manifest under
   `results/glm-spline-objective-dispersion-minus010-plus020/`; it computes no
   optimum and disables raw-XGBoost fallback for failed spline fits.
+- `scripts/plot_monotone_spline_support_cloud.py` post-processes that exact
+  monotone-spline/XGBoost mean-profit curve with the deterministic 20,000-row
+  customer-coverage diagnostics. It verifies the row-index checksum and plots
+  the saved smoothed illustrative local-support width on `u=0.000,...,0.160`
+  in profit/maximization form. The cloud is an extrapolation-support proxy, not
+  a confidence interval; the script refits no model and computes no optimum.
 - `scripts/build_full_monotone_spline_cache.py` builds the versioned, resumable
   full-eligible-row monotone-XGB curve cache under `results/cache/`; it reuses
   `analyze_model_acceptance_features` for eligible rows, all-customer historical

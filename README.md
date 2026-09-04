@@ -1000,6 +1000,23 @@ in profit/maximization form by negating the per-customer costs returned by the
 repository's `ModelBasedObjective`, whose minimized formula is
 `acceptance * (loss - revenue)`. The script computes or marks no optimum.
 
+To render the exact monotone-spline/XGBoost mean-profit curve with the existing
+customer-coverage local-support cloud, run:
+
+```bash
+python scripts/plot_monotone_spline_support_cloud.py
+```
+
+This post-processing script verifies and reuses the same deterministic 20,000
+customers, the saved exact-spline `-ModelBasedObjective` mean-profit curve, and
+the 161-point support diagnostics from the customer-coverage-envelope slides.
+The symmetric half-width is the slide scaffold's smoothed illustrative width,
+based on median local support among 500 nearest neighbors with action-kernel
+bandwidth `0.01` and display scale 10. It is an extrapolation-support proxy,
+not a confidence interval. The vector PDF, pointwise CSV, and provenance
+manifest are written under `results/monotone-spline-xgb-support-cloud/`. No
+model is refit and no optimum is computed or marked.
+
 After collection, render customer-level Spearman correlation heatmaps for the
 top-ranked numeric acceptance/loss features and a cross-model feature-ranking
 agreement plot with:

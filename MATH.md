@@ -434,7 +434,16 @@ confidence radius.
 
 - **Source:** `scripts/plot_customer_coverage_envelope_slides.py` ::
   `_SplineMinimizationObjective`, `_minimize_xgboost_objective()`,
-  `_compute_diagnostics()`
+  `_compute_diagnostics()`; `scripts/plot_monotone_spline_support_cloud.py` ::
+  `_load_cloud_data()`, `_plot_support_cloud()`
+
+The monotone-spline/XGBoost support-cloud post-processing figure centers this
+same smoothed aggregate width on the exact-spline mean profit
+$$\widetilde P_{\mathrm{spline}}(u)=-\operatorname{GaussianSmooth}
+[\bar J_{\mathrm{spline}}(u)]$$ and displays
+$$\widetilde P_{\mathrm{spline}}(u)\pm\widetilde W(u).$$ It reuses the same
+deterministic customer indices and support diagnostics, is not a confidence
+interval, and does not compute an optimizer solution.
 
 For the customer-specific coverage-aware policy rerun, let $$S_i(u_j)$$ be the
 local joint customer/action support on the fixed action grid. Each customer's

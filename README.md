@@ -987,14 +987,18 @@ python scripts/plot_glm_spline_profit_dispersion.py
 ```
 
 The script verifies that the saved row indices reproduce seed `20260831`, then
-evaluates `u=0.000,...,0.160`. Every sampled spline is rebuilt from the 17
+evaluates `u=-0.100,...,0.200`. Every sampled spline is rebuilt from the 17
 raw-XGBoost anchors with the weighted smoothing-spline, isotonic, and PCHIP
 recipe; spline failure aborts the run instead of falling back to raw XGBoost.
-It writes two vector PDFs under `results/glm-spline-profit-dispersion/`: mean
+Outside the fitted spline interval `[0, 0.16]`, it uses the runtime model's
+constant-left and clipped-linear-right churn boundary rules. It writes two
+vector PDFs under `results/glm-spline-objective-dispersion-minus010-plus020/`: mean
 profit with population-standard-deviation ribbons, and median profit with raw,
 unscaled MAD ribbons. The companion long-form CSV and manifest record the
 sample, model and artifact provenance, formulas, and output hashes. Values stay
-in profit/maximization form, and the script computes or marks no optimum.
+in profit/maximization form by negating the per-customer costs returned by the
+repository's `ModelBasedObjective`, whose minimized formula is
+`acceptance * (loss - revenue)`. The script computes or marks no optimum.
 
 After collection, render customer-level Spearman correlation heatmaps for the
 top-ranked numeric acceptance/loss features and a cross-model feature-ranking

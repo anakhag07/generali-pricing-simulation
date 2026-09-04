@@ -1,9 +1,9 @@
-"""Plot GLM and monotone-spline customer profit dispersion on a fixed action grid.
+"""Plot GLM and monotone-spline ModelBasedObjective profit dispersion.
 
-The two canonical model pairs are GLM acceptance with GLM financial loss, and
-exact monotone-spline XGBoost acceptance with XGBoost financial loss. Curves
-show predicted profit directly, so larger values remain better. This script
-does not optimize, scan for, or mark an optimum.
+The repository objective first computes the minimization cost
+``acceptance * (loss - revenue)``. Curves negate that per-customer cost for the
+profit/maximization display where larger values remain better. This script does
+not optimize, scan for, or mark an optimum.
 """
 
 from __future__ import annotations
@@ -28,7 +28,9 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from data.dataset_metadata import (
     ACCEPTANCE_MODEL_ARTIFACTS,
+    ACCEPTANCE_STATE_COLS,
     DATASET_PATH,
+    LOSS_FEATURE_COLS,
     LOSS_MODEL_ARTIFACTS,
     PREMIUM_COL,
 )
@@ -39,16 +41,15 @@ from data.loader import (
     load_observed_u_array,
     load_x_frame,
 )
+from objective.objectives.generali.model_based import ModelBasedObjective
+from objective.policy import ConstantPolicy
 from reporting.profit_dispersion import (
     ANCHOR_U,
     SPLINE_DENSE_GRID_SIZE,
-    U_GRID,
     ProfitDispersion,
-    customer_profit_matrix,
     exact_spline_acceptance_matrix,
     load_deterministic_sample_rows,
-    predict_acceptance_matrix,
-    predict_loss,
+    model_based_objective_matrix,
     row_index_sha256,
     summarize_profit,
 )
@@ -58,17 +59,20 @@ DEFAULT_RESULTS_ROOT = ROOT.parent / "results"
 DEFAULT_DIAGNOSTICS = (
     DEFAULT_RESULTS_ROOT / "customer-coverage-envelope-slides" / "coverage_diagnostics.npz"
 )
-DEFAULT_OUTPUT_DIR = DEFAULT_RESULTS_ROOT / "glm-spline-profit-dispersion"
+DEFAULT_OUTPUT_DIR = DEFAULT_RESULTS_ROOT / "glm-spline-objective-dispersion-minus010-plus020"
 DEFAULT_SAMPLE_SIZE = 20_000
 DEFAULT_SAMPLE_SEED = 20260831
+DEFAULT_U_MIN = -0.10
+DEFAULT_U_MAX = 0.20
+DEFAULT_U_COUNT = 301
 MODEL_ORDER = ("glm", "spline")
 MODEL_LABELS = {
-    "glm": "GLM acceptance + GLM risk",
-    "spline": "Spline acceptance + XGBoost risk",
+    "glm": "GLM",
+    "spline": "Monotone-spline XGBoost",
 }
 MODEL_ARTIFACT_IDS = {
-    "glm": {"acceptance": "linear", "risk": "linear"},
-    "spline": {"acceptance": "monotone_spline_xgb", "risk": "xgb"},
+    "glm": {"acceptance": "linear", "loss": "linear"},
+    "spline": {"acceptance": "monotone_spline_xgb", "loss": "xgb"},
 }
 
 
@@ -84,7 +88,20 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--sample-size", type=int, default=DEFAULT_SAMPLE_SIZE)
     parser.add_argument("--seed", type=int, default=DEFAULT_SAMPLE_SEED)
     parser.add_argument("--n-jobs", type=int, default=8)
+    parser.add_argument("--u-min", type=float, default=DEFAULT_U_MIN)
+    parser.add_argument("--u-max", type=float, default=DEFAULT_U_MAX)
+    parser.add_argument("--u-count", type=int, default=DEFAULT_U_COUNT)
     return parser
+
+
+def _resolve_u_grid(u_min: float, u_max: float, u_count: int) -> np.ndarray:
+    if not np.isfinite([u_min, u_max]).all():
+        raise ValueError("u_min and u_max must be finite.")
+    if float(u_min) >= float(u_max):
+        raise ValueError("u_min must be less than u_max.")
+    if int(u_count) < 2:
+        raise ValueError("u_count must be at least two.")
+    return np.linspace(float(u_min), float(u_max), int(u_count))
 
 
 def _sha256_file(path: str | Path) -> str:
@@ -124,6 +141,7 @@ def _set_model_jobs(artifact: ModelArtifactBundle, n_jobs: int) -> None:
 
 def _curve_rows(
     summaries: Mapping[str, ProfitDispersion],
+    u_grid: np.ndarray,
     *,
     n_customers: int,
 ) -> list[dict[str, float | int | str]]:
@@ -137,17 +155,17 @@ def _curve_rows(
         for center_name, dispersion_attr, dispersion_name in statistic_pairs:
             center = np.asarray(getattr(summary, center_name), dtype=float)
             dispersion = np.asarray(getattr(summary, dispersion_attr), dtype=float)
-            if center.shape != U_GRID.shape or dispersion.shape != U_GRID.shape:
+            if center.shape != u_grid.shape or dispersion.shape != u_grid.shape:
                 raise ValueError(
                     f"{model_family} {center_name}/{dispersion_name} must contain "
-                    f"{U_GRID.size} grid points."
+                    f"{u_grid.size} grid points."
                 )
-            for index, proposed_u in enumerate(U_GRID):
+            for index, proposed_u in enumerate(u_grid):
                 rows.append(
                     {
                         "model_family": model_family,
                         "acceptance_model": MODEL_ARTIFACT_IDS[model_family]["acceptance"],
-                        "risk_model": MODEL_ARTIFACT_IDS[model_family]["risk"],
+                        "loss_model": MODEL_ARTIFACT_IDS[model_family]["loss"],
                         "u": float(proposed_u),
                         "center_statistic": center_name,
                         "center": float(center[index]),
@@ -163,6 +181,7 @@ def _curve_rows(
 
 def _plot_comparison(
     summaries: Mapping[str, ProfitDispersion],
+    u_grid: np.ndarray,
     *,
     center_attr: str,
     dispersion_attr: str,
@@ -171,7 +190,7 @@ def _plot_comparison(
     output_path: Path,
 ) -> None:
     fig, ax = plt.subplots(constrained_layout=True)
-    x_percent = 100.0 * U_GRID
+    x_percent = 100.0 * u_grid
     for model_family in MODEL_ORDER:
         summary = summaries[model_family]
         center = np.asarray(getattr(summary, center_attr), dtype=float)
@@ -187,7 +206,7 @@ def _plot_comparison(
         )
     ax.set_title(title, fontsize=14)
     ax.set_xlabel("Proposed price change (%)", fontsize=12)
-    ax.set_ylabel("Predicted profit per customer", fontsize=12)
+    ax.set_ylabel("Predicted profit per customer (−objective)", fontsize=12)
     ax.tick_params(labelsize=10)
     ax.grid(True, alpha=0.3)
     ax.legend(fontsize=10)
@@ -202,14 +221,15 @@ def _write_manifest(
     eligible_rows: np.ndarray,
     sample_rows: np.ndarray,
     spline_weights: np.ndarray,
+    u_grid: np.ndarray,
     generated_files: Sequence[Path],
 ) -> None:
     artifacts = {
         "dataset": DATASET_PATH,
         "glm_acceptance": ACCEPTANCE_MODEL_ARTIFACTS["linear"]["path"],
-        "glm_risk": LOSS_MODEL_ARTIFACTS["linear"]["path"],
+        "glm_loss": LOSS_MODEL_ARTIFACTS["linear"]["path"],
         "xgb_acceptance_spline_source": ACCEPTANCE_MODEL_ARTIFACTS["xgb"]["path"],
-        "spline_risk": LOSS_MODEL_ARTIFACTS["xgb"]["path"],
+        "spline_loss": LOSS_MODEL_ARTIFACTS["xgb"]["path"],
     }
     manifest = {
         "analysis": "glm-spline-profit-dispersion",
@@ -222,10 +242,10 @@ def _write_manifest(
             "selection": "sorted choice without replacement from eligible rows",
         },
         "action_grid": {
-            "u_min": float(U_GRID[0]),
-            "u_max": float(U_GRID[-1]),
-            "u_step": float(U_GRID[1] - U_GRID[0]),
-            "n_points": int(U_GRID.size),
+            "u_min": float(u_grid[0]),
+            "u_max": float(u_grid[-1]),
+            "u_step": float(u_grid[1] - u_grid[0]),
+            "n_points": int(u_grid.size),
         },
         "model_pairs": MODEL_ARTIFACT_IDS,
         "artifacts": {
@@ -248,11 +268,19 @@ def _write_manifest(
                 "PCHIP interpolation",
                 "convert churn to acceptance",
             ],
+            "boundary_behavior": {
+                "below_0": "constant churn at the fitted lower boundary",
+                "above_0.16": "linear churn using the fitted upper slope, clipped to [0, 1]",
+            },
             "raw_xgboost_fallback": False,
         },
-        "profit": {
-            "formula": "acceptance_i(u) * (premium_i * (1 + u) - predicted_loss_i)",
-            "orientation": "maximization; higher profit is better; no sign inversion",
+        "objective": {
+            "class": "ModelBasedObjective",
+            "minimization_formula": (
+                "acceptance_i(u) * (predicted_loss_i - premium_i * (1 + u))"
+            ),
+            "plot_transform": "profit_i(u) = -objective_i(u)",
+            "plot_orientation": "maximization; higher displayed profit is better",
         },
         "statistics": {
             "mean_std": "mean +/- population standard deviation across customers (ddof=0)",
@@ -277,6 +305,7 @@ def run_analysis(args: argparse.Namespace) -> list[Path]:
         raise ValueError("sample_size must be positive.")
     if int(args.n_jobs) == 0:
         raise ValueError("n_jobs cannot be zero.")
+    u_grid = _resolve_u_grid(args.u_min, args.u_max, args.u_count)
 
     eligible_rows = eligible_csv_row_indices("xgb")
     sample_rows = load_deterministic_sample_rows(
@@ -292,44 +321,58 @@ def run_analysis(args: argparse.Namespace) -> list[Path]:
         )
     frame = load_x_frame("xgb", row_indices=sample_rows)
     weights = _spline_weights(eligible_rows)
-    (glm_acceptance, glm_risk), (xgb_acceptance, xgb_risk) = (
+    (glm_acceptance, glm_loss), (xgb_acceptance, xgb_loss) = (
         _load_canonical_model_pairs()
     )
     _set_model_jobs(xgb_acceptance, int(args.n_jobs))
-    _set_model_jobs(xgb_risk, int(args.n_jobs))
+    _set_model_jobs(xgb_loss, int(args.n_jobs))
 
-    print("Evaluating GLM acceptance and risk...", flush=True)
-    glm_probability = predict_acceptance_matrix(glm_acceptance, frame, U_GRID)
-    glm_loss = predict_loss(glm_risk, frame)
-    glm_profit = customer_profit_matrix(
-        glm_probability,
-        frame[PREMIUM_COL].to_numpy(dtype=float),
-        glm_loss,
-        U_GRID,
+    glm_objective = ModelBasedObjective(
+        policy=ConstantPolicy(),
+        acceptance_model=glm_acceptance,
+        loss_model=glm_loss,
+        acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),
+        loss_cols=tuple(LOSS_FEATURE_COLS),
+        premium_col=PREMIUM_COL,
     )
-    glm_summary = summarize_profit(glm_profit)
-    del glm_probability, glm_loss, glm_profit
+    spline_objective = ModelBasedObjective(
+        policy=ConstantPolicy(),
+        acceptance_model=xgb_acceptance,
+        loss_model=xgb_loss,
+        acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),
+        loss_cols=tuple(LOSS_FEATURE_COLS),
+        premium_col=PREMIUM_COL,
+    )
+
+    print("Evaluating the GLM ModelBasedObjective minimization grid...", flush=True)
+    glm_cost = model_based_objective_matrix(
+        glm_objective,
+        frame,
+        u_grid,
+    )
+    glm_summary = summarize_profit(-glm_cost)
+    del glm_cost
 
     print("Fitting exact per-customer monotone splines without fallback...", flush=True)
     spline_probability = exact_spline_acceptance_matrix(
         xgb_acceptance,
         frame,
-        U_GRID,
+        u_grid,
         weights,
         n_jobs=int(args.n_jobs),
     )
-    spline_loss = predict_loss(xgb_risk, frame)
-    spline_profit = customer_profit_matrix(
-        spline_probability,
-        frame[PREMIUM_COL].to_numpy(dtype=float),
-        spline_loss,
-        U_GRID,
+    print("Evaluating the spline ModelBasedObjective minimization grid...", flush=True)
+    spline_cost = model_based_objective_matrix(
+        spline_objective,
+        frame,
+        u_grid,
+        acceptance=spline_probability,
     )
-    spline_summary = summarize_profit(spline_profit)
-    del spline_probability, spline_loss, spline_profit
+    spline_summary = summarize_profit(-spline_cost)
+    del spline_probability, spline_cost
 
     summaries = {"glm": glm_summary, "spline": spline_summary}
-    rows = _curve_rows(summaries, n_customers=sample_rows.size)
+    rows = _curve_rows(summaries, u_grid, n_customers=sample_rows.size)
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     csv_path = output_dir / "profit_dispersion_curves.csv"
@@ -339,6 +382,7 @@ def run_analysis(args: argparse.Namespace) -> list[Path]:
     median_pdf = output_dir / "profit_median_mad_glm_vs_spline.pdf"
     _plot_comparison(
         summaries,
+        u_grid,
         center_attr="mean",
         dispersion_attr="std",
         title="Mean Predicted Profit with Customer Standard Deviation",
@@ -347,6 +391,7 @@ def run_analysis(args: argparse.Namespace) -> list[Path]:
     )
     _plot_comparison(
         summaries,
+        u_grid,
         center_attr="median",
         dispersion_attr="mad",
         title="Median Predicted Profit with Customer MAD",
@@ -361,6 +406,7 @@ def run_analysis(args: argparse.Namespace) -> list[Path]:
         eligible_rows=eligible_rows,
         sample_rows=sample_rows,
         spline_weights=weights,
+        u_grid=u_grid,
         generated_files=generated,
     )
     generated.append(manifest_path)

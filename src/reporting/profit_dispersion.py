@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import hashlib
 from pathlib import Path
-from typing import Sequence
+from typing import Any, Sequence
 
 from joblib import Parallel, delayed
 import numpy as np
@@ -127,7 +127,18 @@ def _spline_acceptance_row(
         weights=weights,
         dense_grid_size=SPLINE_DENSE_GRID_SIZE,
     )
-    return np.clip(1.0 - fitted.curve(u_values), 0.0, 1.0)
+    below = u_values < ANCHOR_U[0]
+    above = u_values > ANCHOR_U[-1]
+    inside = ~(below | above)
+    churn = np.empty(u_values.size, dtype=float)
+    churn[below] = fitted.churn_min
+    churn[inside] = np.clip(fitted.curve(u_values[inside]), 0.0, 1.0)
+    churn[above] = np.clip(
+        fitted.churn_max + fitted.upper_slope * (u_values[above] - ANCHOR_U[-1]),
+        0.0,
+        1.0,
+    )
+    return 1.0 - churn
 
 
 def exact_spline_acceptance_matrix(
@@ -168,29 +179,48 @@ def exact_spline_acceptance_matrix(
     return output
 
 
-def customer_profit_matrix(
-    acceptance: np.ndarray,
-    premium: Sequence[float],
-    predicted_loss: Sequence[float],
+def model_based_objective_matrix(
+    objective: Any,
+    x_batch: Any,
     u_values: Sequence[float],
+    *,
+    acceptance: np.ndarray | None = None,
 ) -> np.ndarray:
-    """Return customer profit without negating the maximization quantity."""
-    probability = np.asarray(acceptance, dtype=float)
-    premium_array = np.asarray(premium, dtype=float)
-    loss_array = np.asarray(predicted_loss, dtype=float)
+    """Evaluate per-customer ``ModelBasedObjective`` costs over an action grid.
+
+    Supplying ``acceptance`` supports exact per-customer spline curves while
+    preserving the objective's own loss, premium, and component evaluation.
+    """
     u = np.asarray(u_values, dtype=float)
-    expected_shape = (premium_array.size, u.size)
-    if probability.shape != expected_shape:
-        raise ValueError(f"acceptance must have shape {expected_shape}.")
-    if loss_array.shape != premium_array.shape:
-        raise ValueError("predicted_loss must contain one value per premium.")
-    if not all(
-        np.isfinite(values).all()
-        for values in (probability, premium_array, loss_array, u)
-    ):
-        raise ValueError("Profit inputs must be finite.")
-    revenue = premium_array[:, None] * (1.0 + u[None, :])
-    return probability * (revenue - loss_array[:, None])
+    if u.ndim != 1 or u.size == 0 or not np.isfinite(u).all():
+        raise ValueError("u_values must be a non-empty finite one-dimensional array.")
+    n_rows = int(x_batch.shape[0])
+    values = np.empty((n_rows, u.size), dtype=float)
+    if acceptance is None:
+        for index, proposed_u in enumerate(u):
+            u_batch = np.full(n_rows, float(proposed_u), dtype=float)
+            values[:, index] = objective._value_batch(x_batch, u_batch)
+    else:
+        probabilities = np.asarray(acceptance, dtype=float)
+        if probabilities.shape != values.shape:
+            raise ValueError(f"acceptance must have shape {values.shape}.")
+        if not np.isfinite(probabilities).all() or np.any(
+            (probabilities < 0.0) | (probabilities > 1.0)
+        ):
+            raise ValueError("acceptance must contain finite probabilities.")
+        loss = np.asarray(objective._loss_prediction(x_batch), dtype=float)
+        premium = np.asarray(objective._premium_values(x_batch), dtype=float)
+        for index, proposed_u in enumerate(u):
+            u_batch = np.full(n_rows, float(proposed_u), dtype=float)
+            values[:, index] = objective._value_batch_from_components(
+                probabilities[:, index],
+                loss,
+                premium,
+                u_batch,
+            )
+    if not np.isfinite(values).all():
+        raise ValueError("Model-based objective values must be finite.")
+    return values
 
 
 def summarize_profit(profit: np.ndarray) -> ProfitDispersion:

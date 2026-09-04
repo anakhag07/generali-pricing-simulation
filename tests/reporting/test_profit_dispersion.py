@@ -83,17 +83,64 @@ def test_exact_spline_acceptance_has_no_raw_model_fallback(monkeypatch) -> None:
         )
 
 
-def test_customer_profit_matrix_keeps_maximization_sign() -> None:
-    acceptance = np.array([[0.5, 0.25], [1.0, 0.5]])
+def test_spline_row_uses_canonical_boundary_behavior(monkeypatch) -> None:
+    class Fitted:
+        churn_min = 0.2
+        churn_max = 0.4
+        upper_slope = 0.5
 
-    profit = profit_dispersion.customer_profit_matrix(
-        acceptance,
-        premium=[100.0, 200.0],
-        predicted_loss=[60.0, 150.0],
-        u_values=[0.0, 0.1],
+        @staticmethod
+        def curve(u):
+            return 0.2 + np.asarray(u, dtype=float)
+
+    monkeypatch.setattr(
+        profit_dispersion,
+        "fit_monotone_churn_curve",
+        lambda *args, **kwargs: Fitted(),
     )
 
-    np.testing.assert_allclose(profit, [[20.0, 12.5], [50.0, 35.0]])
+    acceptance = profit_dispersion._spline_acceptance_row(
+        np.linspace(0.9, 0.5, profit_dispersion.ANCHOR_U.size),
+        np.array([-0.1, 0.0, 0.16, 0.2]),
+        np.ones(profit_dispersion.ANCHOR_U.size),
+    )
+
+    np.testing.assert_allclose(acceptance, [0.8, 0.8, 0.64, 0.58])
+
+
+def test_model_based_objective_matrix_uses_repository_minimization() -> None:
+    from objective.objectives.generali.model_based import ModelBasedObjective
+    from objective.policy import ConstantPolicy
+
+    class ConstantAcceptance:
+        probability_target = "acceptance"
+
+        def predict_proba(self, frame):
+            acceptance = np.array([0.5, 1.0])
+            return np.column_stack([1.0 - acceptance, acceptance])
+
+    class ConstantLoss:
+        def predict(self, frame):
+            return np.array([60.0, 150.0])
+
+    objective = ModelBasedObjective(
+        policy=ConstantPolicy(),
+        acceptance_model=ConstantAcceptance(),
+        loss_model=ConstantLoss(),
+        acceptance_state_cols=("x", "premium"),
+        loss_cols=("x",),
+        premium_col="premium",
+    )
+    frame = pd.DataFrame({"x": [1.0, 2.0], "premium": [100.0, 200.0]})
+
+    cost = profit_dispersion.model_based_objective_matrix(
+        objective,
+        frame,
+        [0.0, 0.1],
+    )
+
+    np.testing.assert_allclose(cost, [[-20.0, -25.0], [-50.0, -70.0]])
+    np.testing.assert_allclose(-cost, [[20.0, 25.0], [50.0, 70.0]])
 
 
 def test_summarize_profit_uses_population_std_and_raw_mad() -> None:

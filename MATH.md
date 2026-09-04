@@ -234,13 +234,17 @@ $$s_P(u)=\sqrt{\frac{1}{n-1}\sum_{i=1}^n\left(P_i(u)-\bar P(u)\right)^2}.$$
 
 For the fixed 20,000-customer GLM-versus-spline comparison, let model family
 $$m\in\{\mathrm{GLM},\mathrm{spline}\}$$ supply both acceptance
-$$a_{im}(u)$$ and predicted financial loss $$L_{im}$$. The directly plotted
-maximization quantity is
+$$a_{im}(u)$$ and predicted financial loss $$L_{im}$$. The repository's
+`ModelBasedObjective` first evaluates the per-customer minimization cost
 
-$$P_{im}(u)=a_{im}(u)\left[p_i(1+u)-L_{im}\right].$$
+$$f_{im}(u)=a_{im}(u)\left[L_{im}-p_i(1+u)\right].$$
 
-At each of the 161 actions $$u_j=0.001j$$, $$j=0,\ldots,160$$, the ordinary
-band uses the population standard deviation of the fixed diagnostic cohort,
+Only reporting changes sign: the plotted maximization quantity is
+
+$$P_{im}(u)=-f_{im}(u).$$
+
+At each of the 301 actions $$u_j=-0.10+0.001j$$, $$j=0,\ldots,300$$, the
+ordinary band uses the population standard deviation of the fixed diagnostic cohort,
 
 $$
 \bar P_m(u)=\frac{1}{n}\sum_{i=1}^nP_{im}(u),\qquad
@@ -257,10 +261,13 @@ $$
 
 The plotted ribbons are exactly $$\bar P_m\pm\sigma_m$$ and
 $$q_m\pm\operatorname{MAD}_m$$. They are neither smoothed nor clipped, and
-the MAD is not multiplied by the Gaussian-consistency factor 1.4826.
+the MAD is not multiplied by the Gaussian-consistency factor 1.4826. Exact
+customer splines are fitted on $$[0,0.16]$$; below zero the repository boundary
+rule holds churn constant, while above 0.16 it extends churn with the fitted
+upper slope and clips it to $$[0,1]$$.
 
 - **Source:** `src/reporting/profit_dispersion.py` ::
-  `customer_profit_matrix()`, `summarize_profit()`
+  `model_based_objective_matrix()`, `summarize_profit()`
 - **Source:** `scripts/plot_glm_spline_profit_dispersion.py`
 
 The exploratory robust-dispersion version evaluates the same customer-level

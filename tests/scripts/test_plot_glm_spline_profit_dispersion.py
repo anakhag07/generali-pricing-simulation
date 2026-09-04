@@ -9,12 +9,12 @@ from types import SimpleNamespace
 import numpy as np
 import pandas as pd
 
-from reporting.profit_dispersion import ProfitDispersion, U_GRID
+from reporting.profit_dispersion import ProfitDispersion
 from scripts import plot_glm_spline_profit_dispersion as script
 
 
-def _summaries() -> dict[str, ProfitDispersion]:
-    offset = np.arange(U_GRID.size, dtype=float)
+def _summaries(u_grid: np.ndarray) -> dict[str, ProfitDispersion]:
+    offset = np.arange(u_grid.size, dtype=float)
     return {
         "glm": ProfitDispersion(
             mean=100.0 + offset,
@@ -36,10 +36,16 @@ def test_parser_uses_agreed_sample_defaults() -> None:
 
     assert args.sample_size == 20_000
     assert args.seed == 20260831
-    np.testing.assert_allclose(U_GRID, np.linspace(0.0, 0.16, 161))
+    assert args.u_min == -0.10
+    assert args.u_max == 0.20
+    assert args.u_count == 301
+    np.testing.assert_allclose(
+        script._resolve_u_grid(args.u_min, args.u_max, args.u_count),
+        np.linspace(-0.10, 0.20, 301),
+    )
 
 
-def test_load_canonical_model_pairs_uses_glm_and_xgb_risk(monkeypatch) -> None:
+def test_load_canonical_model_pairs_uses_glm_and_xgb_loss(monkeypatch) -> None:
     calls: list[tuple[str, str]] = []
 
     def fake_load(acceptance: str, risk: str):
@@ -56,13 +62,14 @@ def test_load_canonical_model_pairs_uses_glm_and_xgb_risk(monkeypatch) -> None:
 
 
 def test_curve_rows_have_long_form_schema_and_unclipped_bands() -> None:
-    rows = script._curve_rows(_summaries(), n_customers=20_000)
+    u_grid = np.linspace(-0.1, 0.2, 4)
+    rows = script._curve_rows(_summaries(u_grid), u_grid, n_customers=20_000)
 
-    assert len(rows) == 2 * 2 * 161
+    assert len(rows) == 2 * 2 * 4
     assert list(rows[0]) == [
         "model_family",
         "acceptance_model",
-        "risk_model",
+        "loss_model",
         "u",
         "center_statistic",
         "center",
@@ -75,7 +82,7 @@ def test_curve_rows_have_long_form_schema_and_unclipped_bands() -> None:
     first = rows[0]
     assert first["model_family"] == "glm"
     assert first["acceptance_model"] == "linear"
-    assert first["risk_model"] == "linear"
+    assert first["loss_model"] == "linear"
     assert first["center_statistic"] == "mean"
     assert first["dispersion_statistic"] == "std"
     assert first["lower"] == 90.0
@@ -84,9 +91,11 @@ def test_curve_rows_have_long_form_schema_and_unclipped_bands() -> None:
 
 def test_plot_comparison_writes_vector_pdf(tmp_path) -> None:
     output = tmp_path / "curve.pdf"
+    u_grid = np.linspace(-0.1, 0.2, 4)
 
     script._plot_comparison(
-        _summaries(),
+        _summaries(u_grid),
+        u_grid,
         center_attr="median",
         dispersion_attr="mad",
         title="Median profit",
@@ -102,15 +111,15 @@ def test_manifest_records_formula_models_and_generated_files(
     tmp_path,
 ) -> None:
     artifacts = {}
-    for name in ("dataset", "glm_acceptance", "glm_risk", "xgb_acceptance", "xgb_risk"):
+    for name in ("dataset", "glm_acceptance", "glm_loss", "xgb_acceptance", "xgb_loss"):
         path = tmp_path / name
         path.write_bytes(name.encode("ascii"))
         artifacts[name] = path
     monkeypatch.setattr(script, "DATASET_PATH", artifacts["dataset"])
     monkeypatch.setitem(script.ACCEPTANCE_MODEL_ARTIFACTS["linear"], "path", artifacts["glm_acceptance"])
-    monkeypatch.setitem(script.LOSS_MODEL_ARTIFACTS["linear"], "path", artifacts["glm_risk"])
+    monkeypatch.setitem(script.LOSS_MODEL_ARTIFACTS["linear"], "path", artifacts["glm_loss"])
     monkeypatch.setitem(script.ACCEPTANCE_MODEL_ARTIFACTS["xgb"], "path", artifacts["xgb_acceptance"])
-    monkeypatch.setitem(script.LOSS_MODEL_ARTIFACTS["xgb"], "path", artifacts["xgb_risk"])
+    monkeypatch.setitem(script.LOSS_MODEL_ARTIFACTS["xgb"], "path", artifacts["xgb_loss"])
     generated = tmp_path / "curve.csv"
     generated.write_text("u,profit\n0,1\n", encoding="utf-8")
     diagnostics = tmp_path / "diagnostics.npz"
@@ -124,12 +133,16 @@ def test_manifest_records_formula_models_and_generated_files(
         eligible_rows=np.arange(10),
         sample_rows=np.arange(3),
         spline_weights=np.ones(17),
+        u_grid=np.linspace(-0.1, 0.2, 301),
         generated_files=[generated],
     )
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    assert manifest["model_pairs"]["spline"]["risk"] == "xgb"
+    assert manifest["model_pairs"]["spline"]["loss"] == "xgb"
     assert manifest["spline"]["raw_xgboost_fallback"] is False
+    assert manifest["spline"]["boundary_behavior"]["below_0"].startswith("constant")
+    assert manifest["objective"]["class"] == "ModelBasedObjective"
+    assert manifest["objective"]["plot_transform"] == "profit_i(u) = -objective_i(u)"
     assert manifest["statistics"]["mad_scale_factor"] == 1.0
     assert manifest["statistics"]["smoothing"] == "none"
     assert manifest["optimizer"].startswith("not used")
@@ -151,15 +164,17 @@ def test_run_analysis_writes_csv_two_pdfs_and_manifest(monkeypatch, tmp_path) ->
     )
     monkeypatch.setattr(
         script,
-        "predict_acceptance_matrix",
-        lambda *args, **kwargs: np.full((3, U_GRID.size), 0.5),
+        "exact_spline_acceptance_matrix",
+        lambda artifact, frame, u_grid, *args, **kwargs: np.full((3, len(u_grid)), 0.4),
     )
     monkeypatch.setattr(
         script,
-        "exact_spline_acceptance_matrix",
-        lambda *args, **kwargs: np.full((3, U_GRID.size), 0.4),
+        "model_based_objective_matrix",
+        lambda objective, frame, u_grid, **kwargs: -np.tile(
+            np.linspace(1.0, 2.0, len(u_grid)),
+            (len(frame), 1),
+        ),
     )
-    monkeypatch.setattr(script, "predict_loss", lambda *args, **kwargs: np.zeros(3))
 
     def fake_manifest(path: Path, **kwargs) -> None:
         path.write_text("{}\n", encoding="utf-8")
@@ -185,6 +200,7 @@ def test_run_analysis_writes_csv_two_pdfs_and_manifest(monkeypatch, tmp_path) ->
     assert outputs[1].read_bytes().startswith(b"%PDF-")
     assert outputs[2].read_bytes().startswith(b"%PDF-")
     frame_out = pd.read_csv(outputs[0])
-    assert len(frame_out) == 644
+    assert len(frame_out) == 1204
     assert set(frame_out["center_statistic"]) == {"mean", "median"}
     assert set(frame_out["dispersion_statistic"]) == {"std", "mad"}
+    assert set(frame_out["loss_model"]) == {"linear", "xgb"}

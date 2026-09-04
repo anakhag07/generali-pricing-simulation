@@ -141,3 +141,21 @@ def test_uncertainty_penalty_moves_optimizer_toward_supported_region() -> None:
     assert abs(float(adjusted_solution["u"]) - 0.09) < abs(
         float(profit_solution["u"]) - 0.09
     )
+
+
+def test_support_lower_profit_is_optimized_as_a_minimization_objective() -> None:
+    u = np.linspace(0.0, 0.16, 161)
+    xgboost_objective = -160.0 + 1_200.0 * (u - 0.13) ** 2
+    support_half_width = 1.0 + 9.0 * (u / 0.16) ** 2
+
+    profit_solution = _minimize_xgboost_objective(u, xgboost_objective)
+    lower_profit_solution = _minimize_xgboost_objective(
+        u,
+        xgboost_objective + support_half_width,
+    )
+
+    assert float(lower_profit_solution["u"]) < float(profit_solution["u"])
+    assert np.isclose(
+        float(lower_profit_solution["plotted_profit_value"]),
+        -float(lower_profit_solution["minimized_value"]),
+    )

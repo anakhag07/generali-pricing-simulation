@@ -559,6 +559,13 @@ def _compute_diagnostics(
     display_penalized_objective = display_objective + display_width
     display_lower_envelope = display_profit - display_width
     profit_solution = _minimize_xgboost_objective(U_GRID, display_objective)
+    marginal_support_penalized_objective = (
+        display_objective + marginal_support_band_half_width
+    )
+    marginal_support_solution = _minimize_xgboost_objective(
+        U_GRID,
+        marginal_support_penalized_objective,
+    )
     uncertainty_solution = _minimize_xgboost_objective(
         U_GRID,
         display_penalized_objective,
@@ -592,6 +599,7 @@ def _compute_diagnostics(
         "marginal_support_relative_ess": marginal_support_relative_ess,
         "marginal_support_relative_risk": marginal_support_relative_risk,
         "marginal_support_band_half_width": marginal_support_band_half_width,
+        "marginal_support_penalized_objective": marginal_support_penalized_objective,
         "exploratory_u": EXPLORATORY_U_GRID,
         "exploratory_mean_profit": -exploratory_mean_objective,
         "exploratory_customer_std": exploratory_customer_std,
@@ -618,6 +626,28 @@ def _compute_diagnostics(
         "profit_optimizer_status": np.asarray(profit_solution["status"]),
         "profit_optimizer_nit": np.asarray(profit_solution["nit"]),
         "profit_optimizer_message": np.asarray(profit_solution["message"]),
+        "marginal_support_optimizer_u": np.asarray(marginal_support_solution["u"]),
+        "marginal_support_optimizer_objective_value": np.asarray(
+            marginal_support_solution["minimized_value"]
+        ),
+        "marginal_support_optimizer_value": np.asarray(
+            marginal_support_solution["plotted_profit_value"]
+        ),
+        "marginal_support_optimizer_theta": np.asarray(
+            marginal_support_solution["theta"]
+        ),
+        "marginal_support_optimizer_success": np.asarray(
+            marginal_support_solution["success"]
+        ),
+        "marginal_support_optimizer_status": np.asarray(
+            marginal_support_solution["status"]
+        ),
+        "marginal_support_optimizer_nit": np.asarray(
+            marginal_support_solution["nit"]
+        ),
+        "marginal_support_optimizer_message": np.asarray(
+            marginal_support_solution["message"]
+        ),
         "uncertainty_optimizer_u": np.asarray(uncertainty_solution["u"]),
         "uncertainty_optimizer_objective_value": np.asarray(
             uncertainty_solution["minimized_value"]
@@ -745,6 +775,11 @@ def _plot_full_population_support_weighted_band(
     mean_profit = np.asarray(data["display_profit"], dtype=float)
     half_width = np.asarray(data["marginal_support_band_half_width"], dtype=float)
     population_size = int(data["population_size"])
+    profit_optimizer_u = float(data["profit_optimizer_u"])
+    profit_optimizer_value = float(data["profit_optimizer_value"])
+    support_optimizer_u = float(data["marginal_support_optimizer_u"])
+    support_optimizer_value = float(data["marginal_support_optimizer_value"])
+    lower_profit = mean_profit - half_width
 
     fig, ax = plt.subplots(figsize=(10.0, 5.8), constrained_layout=True)
     ax.fill_between(
@@ -754,7 +789,36 @@ def _plot_full_population_support_weighted_band(
         alpha=0.2,
         label="Illustrative support-weighted band",
     )
-    ax.plot(u, mean_profit, linewidth=2.0, label="Mean predicted profit")
+    mean_line = ax.plot(
+        u,
+        mean_profit,
+        linewidth=2.0,
+        label="Mean predicted profit",
+    )[0]
+    lower_line = ax.plot(
+        u,
+        lower_profit,
+        linewidth=2.0,
+        label="Support-adjusted lower profit",
+    )[0]
+    ax.scatter(
+        profit_optimizer_u,
+        profit_optimizer_value,
+        marker="*",
+        s=140,
+        color=mean_line.get_color(),
+        label=f"Mean-profit optimizer ({100 * profit_optimizer_u:.2f}%)",
+        zorder=3,
+    )
+    ax.scatter(
+        support_optimizer_u,
+        support_optimizer_value,
+        marker="*",
+        s=140,
+        color=lower_line.get_color(),
+        label=f"Lower-profit optimizer ({100 * support_optimizer_u:.2f}%)",
+        zorder=3,
+    )
     ax.set_title(
         f"Full-Cohort Predicted Profit Across {population_size:,} Customers",
         fontsize=16,
@@ -789,6 +853,10 @@ def _export_full_population_support_weighted_band(
             "illustrative_band_half_width": data[
                 "marginal_support_band_half_width"
             ],
+            "support_adjusted_lower_profit": -np.asarray(
+                data["marginal_support_penalized_objective"],
+                dtype=float,
+            ),
         }
     ).to_csv(
         output_dir / "01_full_population_profit_with_support_weighted_band.csv",
@@ -1400,9 +1468,19 @@ def _write_experiment_record(
             "support": "Gaussian-kernel marginal ESS over all historical actions",
             "action_bandwidth": ACTION_BANDWIDTH,
             "relative_risk": "sqrt(max(ESS) / ESS(u))",
-            "band_scaling": "relative risk mapped to a maximum of 10 profit units without subtracting baseline risk",
-            "interpretation": "illustrative extrapolation-risk diagnostic, not a confidence interval",
-            "computes_optimum": False,
+            "band_scaling": (
+                "relative risk mapped to a maximum of 10 profit units without "
+                "subtracting baseline risk"
+            ),
+            "interpretation": (
+                "illustrative extrapolation-risk diagnostic, not a confidence "
+                "interval"
+            ),
+            "comparison": (
+                "repository optimizer on mean profit versus support-adjusted "
+                "lower profit"
+            ),
+            "computes_optimum": True,
         },
         "within_customer_profit_change": {
             "interpretation": "paired predicted profit change for each diagnostic customer relative to one common action",
@@ -1460,6 +1538,20 @@ def _write_experiment_record(
                 "nit": int(data["profit_optimizer_nit"]),
                 "message": str(data["profit_optimizer_message"]),
             },
+            "full_population_support_lower_bound": {
+                "u": float(data["marginal_support_optimizer_u"]),
+                "minimized_support_penalized_objective": float(
+                    data["marginal_support_optimizer_objective_value"]
+                ),
+                "plotted_support_adjusted_profit": float(
+                    data["marginal_support_optimizer_value"]
+                ),
+                "theta": float(data["marginal_support_optimizer_theta"]),
+                "success": bool(data["marginal_support_optimizer_success"]),
+                "status": int(data["marginal_support_optimizer_status"]),
+                "nit": int(data["marginal_support_optimizer_nit"]),
+                "message": str(data["marginal_support_optimizer_message"]),
+            },
             "uncertainty_aware": {
                 "u": float(data["uncertainty_optimizer_u"]),
                 "minimized_penalized_objective": float(
@@ -1482,6 +1574,10 @@ def _write_experiment_record(
     )
     shift_points = 100.0 * (
         float(data["uncertainty_optimizer_u"]) - float(data["profit_optimizer_u"])
+    )
+    marginal_support_shift_points = 100.0 * (
+        float(data["marginal_support_optimizer_u"])
+        - float(data["profit_optimizer_u"])
     )
     (output_dir / "EXPERIMENT.md").write_text(
         "\n".join(
@@ -1513,7 +1609,8 @@ def _write_experiment_record(
                 "maximum half-width of 10 profit units without subtracting its",
                 "baseline value. It is an illustrative",
                 "extrapolation-risk band, not a predictive confidence interval, and it",
-                "does not calculate or report an optimum.",
+                "compares the repository optimizer on the mean-profit line with the",
+                "repository optimizer on the support-adjusted lower-profit line.",
                 "",
                 "The paired within-customer sensitivity plot holds each diagnostic",
                 "customer fixed and subtracts that customer's predicted profit at the",
@@ -1527,6 +1624,14 @@ def _write_experiment_record(
                 f"- Largest paired-change dispersion: `{float(data['sensitivity_maximum_value']):.3f}` at `{100 * float(data['sensitivity_maximum_u']):.3f}%`",
                 "",
                 f"- Profit-only optimizer solution: `{100 * float(data['profit_optimizer_u']):.3f}%`",
+                (
+                    "- Full-population support-lower-bound optimizer solution: "
+                    f"`{100 * float(data['marginal_support_optimizer_u']):.3f}%`"
+                ),
+                (
+                    "- Full-population support-lower-bound shift: "
+                    f"`{marginal_support_shift_points:.3f}` percentage points"
+                ),
                 f"- Uncertainty-aware optimizer solution: `{100 * float(data['uncertainty_optimizer_u']):.3f}%`",
                 f"- Shift: `{shift_points:.3f}` percentage points",
                 f"- Historical sample: `{n_customers:,}` customers, seed `{sample_seed}`",

@@ -1072,8 +1072,10 @@ its baseline value of one, is mapped to a maximum half-width of 10 profit units
 for display, so the result is an extrapolation-risk diagnostic rather than a
 predictive confidence interval.
 The companion CSV stores the effective sample size, relative support, risk
-multiplier, and displayed half-width. This diagnostic does not compute or
-report an optimum.
+multiplier, displayed half-width, and support-adjusted lower profit. The figure
+compares the repository finite-difference optimizer applied to the mean-profit
+curve with the same optimizer applied to the lower curve. Both are continuous
+spline objectives; the plotting grid never selects either solution.
 
 `01_within_customer_profit_change_from_median_price.pdf` instead holds each
 diagnostic customer fixed and subtracts that customer's predicted profit at the

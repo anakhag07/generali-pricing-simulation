@@ -293,8 +293,16 @@ $$\widetilde{\bar P}(u)\pm H_{\mathrm{support}}(u)$$. The baseline risk value
 is not subtracted, so the band remains nonzero at the best-supported action.
 Historical support determines the shape, but the 10-unit vertical scale is
 illustrative. The band is therefore an
-extrapolation-risk diagnostic, not a predictive confidence interval, and it
-does not compute or report an optimum.
+extrapolation-risk diagnostic, not a predictive confidence interval. The
+comparison optimizes both displayed curves through the repository optimizer:
+the mean-profit solution minimizes $$\widetilde J(u)$$, while the lower-band
+solution minimizes
+
+$$\widetilde J(u)+H_{\mathrm{support}}(u).$$
+
+The plots negate these minimized objectives so that both curves retain the
+profit convention where higher is better. The action grid provides spline knots
+and rendering points only; it never selects either solution.
 
 - **Source:** `scripts/plot_customer_coverage_envelope_slides.py` ::
   `_marginal_action_effective_sample_size()`,

@@ -261,8 +261,9 @@ Guidelines:
   effective sample size over all 715,023 eligible historical actions; the
   full inverse-root support-risk shape, without baseline subtraction, is
   illustratively scaled to a maximum 10-profit-unit half-width and is not a
-  confidence interval. That diagnostic
-  also does not calculate an optimum. Its paired within-customer PDF/CSV uses the
+  confidence interval. Its mean-profit and support-lower-bound markers must both
+  come from the repository finite-difference optimizer; the grid must not select
+  either action. Its paired within-customer PDF/CSV uses the
   population-median historical action as a common baseline, reports profit-change
   quantile ribbons plus robust MAD dispersion on `[0, 0.16]`, and obtains any
   marked dispersion extrema from the repository finite-difference optimizer.

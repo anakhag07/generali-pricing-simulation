@@ -978,6 +978,24 @@ Matplotlib plots, a comparison plot, and `analysis_config.json`. The feature
 screening step intentionally writes no X-feature plots; use its rankings to
 choose later PDP/ALE axes. Reuse `--sweep-id` to resume completed tasks.
 
+To compare customer-level predicted-profit dispersion for GLM acceptance plus
+GLM financial loss and exact monotone-spline acceptance plus XGBoost financial
+loss on the existing deterministic 20,000-row sample, run:
+
+```bash
+python scripts/plot_glm_spline_profit_dispersion.py
+```
+
+The script verifies that the saved row indices reproduce seed `20260831`, then
+evaluates `u=0.000,...,0.160`. Every sampled spline is rebuilt from the 17
+raw-XGBoost anchors with the weighted smoothing-spline, isotonic, and PCHIP
+recipe; spline failure aborts the run instead of falling back to raw XGBoost.
+It writes two vector PDFs under `results/glm-spline-profit-dispersion/`: mean
+profit with population-standard-deviation ribbons, and median profit with raw,
+unscaled MAD ribbons. The companion long-form CSV and manifest record the
+sample, model and artifact provenance, formulas, and output hashes. Values stay
+in profit/maximization form, and the script computes or marks no optimum.
+
 After collection, render customer-level Spearman correlation heatmaps for the
 top-ranked numeric acceptance/loss features and a cross-model feature-ranking
 agreement plot with:

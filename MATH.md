@@ -232,6 +232,37 @@ $$s_P(u)=\sqrt{\frac{1}{n-1}\sum_{i=1}^n\left(P_i(u)-\bar P(u)\right)^2}.$$
 - **Source:** `scripts/plot_customer_coverage_envelope_slides.py` ::
   `_compute_diagnostics()`, `_plot_customer_profit_dispersion_comparison()`
 
+For the fixed 20,000-customer GLM-versus-spline comparison, let model family
+$$m\in\{\mathrm{GLM},\mathrm{spline}\}$$ supply both acceptance
+$$a_{im}(u)$$ and predicted financial loss $$L_{im}$$. The directly plotted
+maximization quantity is
+
+$$P_{im}(u)=a_{im}(u)\left[p_i(1+u)-L_{im}\right].$$
+
+At each of the 161 actions $$u_j=0.001j$$, $$j=0,\ldots,160$$, the ordinary
+band uses the population standard deviation of the fixed diagnostic cohort,
+
+$$
+\bar P_m(u)=\frac{1}{n}\sum_{i=1}^nP_{im}(u),\qquad
+\sigma_m(u)=\sqrt{\frac{1}{n}\sum_{i=1}^n
+\left(P_{im}(u)-\bar P_m(u)\right)^2},
+$$
+
+and the robust band uses the raw, unscaled median absolute deviation,
+
+$$
+q_m(u)=\operatorname{median}_iP_{im}(u),\qquad
+\operatorname{MAD}_m(u)=\operatorname{median}_i\left|P_{im}(u)-q_m(u)\right|.
+$$
+
+The plotted ribbons are exactly $$\bar P_m\pm\sigma_m$$ and
+$$q_m\pm\operatorname{MAD}_m$$. They are neither smoothed nor clipped, and
+the MAD is not multiplied by the Gaussian-consistency factor 1.4826.
+
+- **Source:** `src/reporting/profit_dispersion.py` ::
+  `customer_profit_matrix()`, `summarize_profit()`
+- **Source:** `scripts/plot_glm_spline_profit_dispersion.py`
+
 The exploratory robust-dispersion version evaluates the same customer-level
 profit on the wider saved-objective domain
 $$u_j=-0.10+0.001j$$, $$j=0,\ldots,300$$. At each action, let

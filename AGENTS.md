@@ -219,6 +219,13 @@ Guidelines:
   and raw-X prediction-sensitivity rankings. Its row-sampling seed and
   permutation seed are independent, and it deliberately creates no X-feature
   plots.
+- `scripts/plot_glm_spline_profit_dispersion.py` verifies and reuses the saved
+  deterministic 20,000-row coverage sample, then compares GLM-acceptance/GLM-loss
+  and exact-spline-acceptance/XGBoost-loss predicted profit on
+  `u=0.000,...,0.160`. It writes unsmoothed, unclipped mean plus population-SD
+  and median plus raw-MAD vector PDFs, a long-form CSV, and a provenance
+  manifest under `results/glm-spline-profit-dispersion/`; it computes no
+  optimum and disables raw-XGBoost fallback for failed spline fits.
 - `scripts/build_full_monotone_spline_cache.py` builds the versioned, resumable
   full-eligible-row monotone-XGB curve cache under `results/cache/`; it reuses
   `analyze_model_acceptance_features` for eligible rows, all-customer historical

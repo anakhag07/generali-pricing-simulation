@@ -9,8 +9,10 @@ from scripts.plot_customer_coverage_envelope_slides import (
     U_GRID,
     _mad_cloud_half_width,
     _mad_dispersion,
+    _marginal_action_effective_sample_size,
     _minimize_xgboost_objective,
     _repo_spline_minimize,
+    _support_weighted_band_half_width,
     _within_customer_change_summary,
 )
 
@@ -44,6 +46,28 @@ def test_mad_dispersion_is_robust_to_customer_outlier() -> None:
     assert np.allclose(mad, [1.0, 1.0])
     assert np.allclose(robust_std, MAD_TO_NORMAL_STD * mad)
     assert np.std(customer_profit[:, 0], ddof=1) > robust_std[0]
+
+
+def test_marginal_support_band_widens_away_from_historical_actions() -> None:
+    historical_u = np.asarray([0.09, 0.095, 0.10, 0.105, 0.11])
+    u = np.asarray([0.0, 0.10, 0.16])
+
+    ess = _marginal_action_effective_sample_size(
+        historical_u,
+        u,
+        bandwidth=0.01,
+    )
+    relative_ess, relative_risk, half_width = _support_weighted_band_half_width(
+        ess,
+        max_half_width=10.0,
+    )
+
+    assert relative_ess[1] == 1.0
+    assert relative_risk[1] == 1.0
+    assert half_width[1] == 0.0
+    assert half_width[0] > half_width[1]
+    assert half_width[2] > half_width[1]
+    assert np.max(half_width) == 10.0
 
 
 def test_within_customer_summary_removes_customer_profit_levels() -> None:

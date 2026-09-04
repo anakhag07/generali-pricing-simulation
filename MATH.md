@@ -268,6 +268,38 @@ computes or reports an optimum.
   `_plot_smoothed_mean_profit_mad_band()`,
   `_plot_customer_profit_dispersion_comparison()`
 
+The full-population historical-support diagnostic instead uses every eligible
+historical action, $$n=715{,}023$$. With Gaussian action bandwidth $$h=0.01$$,
+define
+
+$$w_i(u)=\exp\left[-\frac{(U_i-u)^2}{2h^2}\right], \qquad
+N_{\mathrm{eff}}(u)=\frac{\left(\sum_i w_i(u)\right)^2}
+{\sum_i w_i(u)^2}.$$
+
+Relative support and inverse-root support risk are
+
+$$S_{\mathrm{rel}}(u)=\frac{N_{\mathrm{eff}}(u)}
+{\max_v N_{\mathrm{eff}}(v)}, \qquad
+R(u)=\frac{1}{\sqrt{S_{\mathrm{rel}}(u)}}.$$
+
+For the display band only, risk excess is mapped to a maximum half-width of 10
+profit units,
+
+$$H_{\mathrm{support}}(u)=10\,
+\frac{R(u)-1}{\max_v R(v)-1}.$$
+
+The plot shows
+$$\widetilde{\bar P}(u)\pm H_{\mathrm{support}}(u)$$ and reports
+$$S_{\mathrm{rel}}(u)$$ in an aligned panel. Historical support determines the
+shape, but the 10-unit vertical scale is illustrative. The band is therefore an
+extrapolation-risk diagnostic, not a predictive confidence interval, and it
+does not compute or report an optimum.
+
+- **Source:** `scripts/plot_customer_coverage_envelope_slides.py` ::
+  `_marginal_action_effective_sample_size()`,
+  `_support_weighted_band_half_width()`,
+  `_plot_full_population_support_weighted_band()`
+
 For the paired within-customer sensitivity view, the common baseline action is
 the median historical price change across all XGBoost-eligible customers,
 

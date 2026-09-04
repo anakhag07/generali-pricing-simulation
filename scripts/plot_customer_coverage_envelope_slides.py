@@ -64,6 +64,7 @@ ACTION_BANDWIDTH = 0.01
 ILLUSTRATIVE_WIDTH_SCALE = 10.0
 MAD_TO_NORMAL_STD = 1.4826
 MAD_CLOUD_MULTIPLIER = 0.6
+SUPPORT_BAND_MAX_HALF_WIDTH = 10.0
 GAUSSIAN_SMOOTH_SIGMA = 1.25
 GAUSSIAN_SMOOTH_TRUNCATE = 4.0
 OPTIMIZER_START_U = 0.08
@@ -196,6 +197,54 @@ def _mad_cloud_half_width(data: dict[str, np.ndarray]) -> np.ndarray:
     return MAD_CLOUD_MULTIPLIER * _smooth_display_curve(
         exploratory_mad[primary_mask]
     )
+
+
+def _marginal_action_effective_sample_size(
+    observed_u: np.ndarray,
+    u_grid: np.ndarray,
+    *,
+    bandwidth: float,
+) -> np.ndarray:
+    """Return Gaussian-kernel effective historical support at each action."""
+    historical = np.asarray(observed_u, dtype=float)
+    grid = np.asarray(u_grid, dtype=float)
+    if historical.ndim != 1 or grid.ndim != 1:
+        raise ValueError("observed_u and u_grid must be one-dimensional.")
+    if len(historical) == 0 or not np.isfinite(historical).all():
+        raise ValueError("observed_u must contain finite observations.")
+    if not np.isfinite(grid).all() or bandwidth <= 0.0:
+        raise ValueError("u_grid must be finite and bandwidth must be positive.")
+
+    effective_sample_size = np.empty(grid.shape, dtype=float)
+    for index, proposed_u in enumerate(grid):
+        weights = np.exp(-0.5 * ((historical - proposed_u) / bandwidth) ** 2)
+        weight_sum = float(np.sum(weights))
+        squared_weight_sum = float(np.sum(np.square(weights)))
+        effective_sample_size[index] = weight_sum**2 / squared_weight_sum
+    return effective_sample_size
+
+
+def _support_weighted_band_half_width(
+    effective_sample_size: np.ndarray,
+    *,
+    max_half_width: float = SUPPORT_BAND_MAX_HALF_WIDTH,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Scale inverse-root effective support into an illustrative plot band."""
+    ess = np.asarray(effective_sample_size, dtype=float)
+    if ess.ndim != 1 or len(ess) == 0 or not np.all(ess > 0.0):
+        raise ValueError("effective_sample_size must be a positive 1D array.")
+    if max_half_width < 0.0:
+        raise ValueError("max_half_width must be non-negative.")
+
+    relative_ess = ess / float(np.max(ess))
+    relative_risk = np.sqrt(1.0 / relative_ess)
+    risk_excess = relative_risk - 1.0
+    maximum_excess = float(np.max(risk_excess))
+    if maximum_excess == 0.0:
+        half_width = np.zeros_like(risk_excess)
+    else:
+        half_width = max_half_width * risk_excess / maximum_excess
+    return relative_ess, relative_risk, half_width
 
 
 def _within_customer_change_summary(
@@ -397,6 +446,17 @@ def _compute_diagnostics(
     eligible = eligible_csv_row_indices("xgb")
     population_observed_u = load_observed_u_array("xgb", row_indices=eligible)
     baseline_u = float(np.median(population_observed_u))
+    marginal_support_ess = _marginal_action_effective_sample_size(
+        population_observed_u,
+        U_GRID,
+        bandwidth=ACTION_BANDWIDTH,
+    )
+    (
+        marginal_support_relative_ess,
+        marginal_support_relative_risk,
+        marginal_support_band_half_width,
+    ) = _support_weighted_band_half_width(marginal_support_ess)
+    population_size = len(population_observed_u)
     del population_observed_u
     rng = np.random.default_rng(seed)
     row_indices = np.sort(
@@ -532,6 +592,11 @@ def _compute_diagnostics(
         "sensitivity_maximum_value": np.asarray(
             -float(dispersion_maximum["minimized_value"])
         ),
+        "population_size": np.asarray(population_size),
+        "marginal_support_ess": marginal_support_ess,
+        "marginal_support_relative_ess": marginal_support_relative_ess,
+        "marginal_support_relative_risk": marginal_support_relative_risk,
+        "marginal_support_band_half_width": marginal_support_band_half_width,
         "exploratory_u": EXPLORATORY_U_GRID,
         "exploratory_mean_profit": -exploratory_mean_objective,
         "exploratory_customer_std": exploratory_customer_std,
@@ -675,6 +740,81 @@ def _plot_smoothed_mean_profit_mad_band(
     ax.set_xlim(float(u[0]), float(u[-1]))
     ax.legend(fontsize=10)
     _save_pdf(fig, output_dir / "01_smoothed_mean_profit_with_mad_cloud.pdf")
+
+
+def _plot_full_population_support_weighted_band(
+    data: dict[str, np.ndarray],
+    output_dir: Path,
+) -> None:
+    u = np.asarray(data["u"], dtype=float)
+    mean_profit = np.asarray(data["display_profit"], dtype=float)
+    half_width = np.asarray(data["marginal_support_band_half_width"], dtype=float)
+    relative_ess = np.asarray(data["marginal_support_relative_ess"], dtype=float)
+    population_size = int(data["population_size"])
+
+    fig, axes = plt.subplots(
+        2,
+        1,
+        figsize=(10.0, 7.5),
+        sharex=True,
+        constrained_layout=True,
+    )
+    axes[0].fill_between(
+        u,
+        mean_profit - half_width,
+        mean_profit + half_width,
+        alpha=0.2,
+        label="Illustrative support-weighted band",
+    )
+    axes[0].plot(u, mean_profit, linewidth=2.0, label="Mean predicted profit")
+    axes[0].set_title("Full-Cohort Predicted Profit", fontsize=14)
+    axes[0].set_ylabel("Predicted Profit Per Customer", fontsize=12)
+    axes[0].legend(fontsize=10)
+
+    axes[1].fill_between(u, 0.0, relative_ess, alpha=0.2)
+    axes[1].plot(u, relative_ess, linewidth=2.0)
+    axes[1].set_title("Historical Price Support", fontsize=14)
+    axes[1].set_xlabel("Proposed Price Change", fontsize=12)
+    axes[1].set_ylabel("Relative Effective Support", fontsize=12)
+    axes[1].set_ylim(0.0, 1.05)
+
+    for ax in axes:
+        ax.tick_params(labelsize=10)
+        ax.set_xlim(float(u[0]), float(u[-1]))
+    fig.suptitle(
+        f"Profit and Historical Support Across {population_size:,} Customers",
+        fontsize=16,
+    )
+    _save_pdf(
+        fig,
+        output_dir / "01_full_population_profit_with_support_weighted_band.pdf",
+    )
+
+
+def _export_full_population_support_weighted_band(
+    data: dict[str, np.ndarray],
+    output_dir: Path,
+) -> None:
+    pd.DataFrame(
+        {
+            "u": data["u"],
+            "mean_profit": data["mean_profit"],
+            "smoothed_mean_profit": data["display_profit"],
+            "marginal_support_effective_sample_size": data[
+                "marginal_support_ess"
+            ],
+            "relative_effective_support": data["marginal_support_relative_ess"],
+            "relative_inverse_sqrt_support": data[
+                "marginal_support_relative_risk"
+            ],
+            "illustrative_band_half_width": data[
+                "marginal_support_band_half_width"
+            ],
+        }
+    ).to_csv(
+        output_dir / "01_full_population_profit_with_support_weighted_band.csv",
+        index=False,
+    )
 
 
 def _plot_customer_profit_dispersion_comparison(
@@ -1273,6 +1413,18 @@ def _write_experiment_record(
             "mad_sample_seed": int(sample_seed),
             "computes_optimum": False,
         },
+        "full_population_support_band": {
+            "output": "01_full_population_profit_with_support_weighted_band.pdf",
+            "population_n_customers": int(data["population_size"]),
+            "domain": [float(U_GRID[0]), float(U_GRID[-1])],
+            "center": "saved full-population mean predicted profit",
+            "support": "Gaussian-kernel marginal ESS over all historical actions",
+            "action_bandwidth": ACTION_BANDWIDTH,
+            "relative_risk": "sqrt(max(ESS) / ESS(u))",
+            "band_scaling": "relative-risk excess mapped to [0, 10] profit units",
+            "interpretation": "illustrative extrapolation-risk diagnostic, not a confidence interval",
+            "computes_optimum": False,
+        },
         "within_customer_profit_change": {
             "interpretation": "paired predicted profit change for each diagnostic customer relative to one common action",
             "baseline_source": "median historical price change across all XGBoost-eligible customers",
@@ -1376,6 +1528,13 @@ def _write_experiment_record(
                 "compares Gaussian-consistent `1.4826 * MAD` with ordinary customer",
                 "standard deviation. These plots do not calculate or report an optimum.",
                 "",
+                "The full-population support-band diagnostic uses all 715,023 eligible",
+                "historical actions. Gaussian-kernel effective sample size determines",
+                "the band shape; inverse-root support risk is rescaled to a maximum",
+                "half-width of 10 profit units for display. It is an illustrative",
+                "extrapolation-risk band, not a predictive confidence interval, and it",
+                "does not calculate or report an optimum.",
+                "",
                 "The paired within-customer sensitivity plot holds each diagnostic",
                 "customer fixed and subtracts that customer's predicted profit at the",
                 "population-median historical price. It reports quantile ribbons and",
@@ -1434,6 +1593,8 @@ def main() -> None:
     _plot_smoothed_mean_profit(diagnostics, args.output_dir, show_star=False)
     _plot_smoothed_mean_profit(diagnostics, args.output_dir, show_star=True)
     _plot_smoothed_mean_profit_mad_band(diagnostics, args.output_dir)
+    _plot_full_population_support_weighted_band(diagnostics, args.output_dir)
+    _export_full_population_support_weighted_band(diagnostics, args.output_dir)
     _plot_customer_profit_dispersion_comparison(diagnostics, args.output_dir)
     _export_customer_profit_dispersion(diagnostics, args.output_dir)
     _plot_within_customer_profit_change(diagnostics, args.output_dir)

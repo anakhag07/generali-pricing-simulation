@@ -257,7 +257,11 @@ Guidelines:
   half-width `0.6 * customer MAD`; it is not labelled as a standard deviation.
   A companion wide-domain PDF/CSV compares Gaussian-consistent robust and
   ordinary standard deviations. Those dispersion plots do not calculate an
-  optimum. Its paired within-customer PDF/CSV uses the
+  optimum. Its full-population support-band PDF/CSV uses Gaussian-kernel
+  effective sample size over all 715,023 eligible historical actions; the
+  inverse-root support-risk shape is illustratively scaled to a maximum
+  10-profit-unit half-width and is not a confidence interval. That diagnostic
+  also does not calculate an optimum. Its paired within-customer PDF/CSV uses the
   population-median historical action as a common baseline, reports profit-change
   quantile ribbons plus robust MAD dispersion on `[0, 0.16]`, and obtains any
   marked dispersion extrema from the repository finite-difference optimizer.

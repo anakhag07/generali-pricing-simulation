@@ -1064,6 +1064,17 @@ Gaussian-consistent `1.4826 * MAD` scale with ordinary customer standard
 deviation over `[-0.10, 0.20]`; the companion CSV stores both curves. These
 dispersion outputs do not calculate or report an optimum.
 
+`01_full_population_profit_with_support_weighted_band.pdf` uses all 715,023
+eligible historical actions to calculate Gaussian-kernel effective sample size
+on `[0, 0.16]`. Its aligned panels show the saved full-cohort mean-profit curve
+with an illustrative support-weighted band and the normalized historical
+support that determines the band's shape. Inverse-root support-risk excess is
+mapped to a maximum half-width of 10 profit units for display, so the result is
+an extrapolation-risk diagnostic rather than a predictive confidence interval.
+The companion CSV stores the effective sample size, relative support, risk
+multiplier, and displayed half-width. This diagnostic does not compute or
+report an optimum.
+
 `01_within_customer_profit_change_from_median_price.pdf` instead holds each
 diagnostic customer fixed and subtracts that customer's predicted profit at the
 median historical action across all XGBoost-eligible customers. It plots paired

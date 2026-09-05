@@ -250,7 +250,14 @@ Guidelines:
   width. It invokes the repository first-order `trust-constr` optimizer with
   the saved acceptance floor, saves the converged policy, replays it on all
   715,023 eligible customers, and regenerates the blue-cloud/red-action-density
-  overlay with complete artifact and optimizer provenance.
+  overlay with complete artifact and optimizer provenance. Its optional
+  `--response-cache` reuses an exact saved 20k response grid without changing
+  the fitted objective.
+- `scripts/build_synthetic_tail_lower_bound.py` creates an explicitly synthetic
+  counterfactual lower envelope by subtracting a calibrated linear post-cutoff
+  tail penalty. It preserves the estimated mean profit and original upper
+  envelope, writes the optimization penalty as a separate CSV column, and
+  performs no optimization.
 - `scripts/build_full_monotone_spline_cache.py` builds the versioned, resumable
   full-eligible-row monotone-XGB curve cache under `results/cache/`; it reuses
   `analyze_model_acceptance_features` for eligible rows, all-customer historical

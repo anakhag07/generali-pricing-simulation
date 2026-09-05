@@ -521,6 +521,29 @@ full-population refit is performed.
 - **Source:** `scripts/run_spline_lower_bound_policy.py` ::
   `SplineSupportLowerBoundObjective`, `run_analysis()`
 
+For the explicitly synthetic tail demonstration, define
+
+$$T(u)=k\max(u-u_0,0), \qquad u_0=0.12,$$
+
+with the slope calibrated to a requested terminal lower profit
+$$L_{\mathrm{target}}$$ at $$u_t=0.20$$:
+
+$$k=\frac{L(u_t)-L_{\mathrm{target}}}{u_t-u_0}.$$
+
+The counterfactual lower envelope and policy penalty are
+
+$$L_{\mathrm{syn}}(u)=L(u)-T(u), \qquad
+W_{\mathrm{syn}}(u)=W_{\mathrm{abs}}(u)+T(u).$$
+
+The mean-profit line and original upper envelope are not modified. For the
+requested $$L_{\mathrm{target}}=120$$, the fitted policy minimizes the same
+repository objective as above with $$W_{\mathrm{syn}}$$ replacing
+$$W_{\mathrm{abs}}$$. This construction is an illustrative counterfactual and
+not an estimated confidence or uncertainty bound.
+
+- **Source:** `scripts/build_synthetic_tail_lower_bound.py` ::
+  `synthetic_tail_lower_bound()`
+
 For the customer-specific coverage-aware policy rerun, let $$S_i(u_j)$$ be the
 local joint customer/action support on the fixed action grid. Each customer's
 penalty is normalized against that customer's best-supported action:

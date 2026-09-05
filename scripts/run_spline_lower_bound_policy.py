@@ -91,6 +91,12 @@ def _build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_REFERENCE_POLICY,
     )
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
+    parser.add_argument(
+        "--response-cache",
+        type=Path,
+        default=None,
+        help="Optional existing exact-spline response cache to reuse.",
+    )
     parser.add_argument("--max-steps", type=int, default=DEFAULT_MAX_STEPS)
     parser.add_argument("--n-jobs", type=int, default=8)
     parser.add_argument("--initial-u", type=float, default=DEFAULT_INITIAL_U)
@@ -267,7 +273,12 @@ def _load_support_width(csv_path: Path, manifest_path: Path) -> np.ndarray:
     frame = pd.read_csv(csv_path).sort_values("u")
     if not np.allclose(frame["u"].to_numpy(dtype=float), ACTION_GRID):
         raise ValueError("Support cloud must cover the full [-0.1, 0.2] grid.")
-    width = frame["smoothed_support_half_width"].to_numpy(dtype=float)
+    width_column = (
+        "optimization_support_penalty"
+        if "optimization_support_penalty" in frame.columns
+        else "smoothed_support_half_width"
+    )
+    width = frame[width_column].to_numpy(dtype=float)
     if not np.isfinite(width).all() or np.any(width <= 0.0):
         raise ValueError("Support width must be finite and positive everywhere.")
     return width
@@ -300,8 +311,13 @@ def _load_or_build_response_grid(
     acceptance_artifact: Any,
     loss_artifact: Any,
     n_jobs: int,
+    cache_path: Path | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
-    cache_path = output_dir / "sample_exact_spline_response_grid.npz"
+    cache_path = (
+        output_dir / "sample_exact_spline_response_grid.npz"
+        if cache_path is None
+        else cache_path.resolve()
+    )
     if cache_path.exists():
         with np.load(cache_path, allow_pickle=False) as cached:
             if (
@@ -439,6 +455,7 @@ def run_analysis(args: argparse.Namespace) -> list[Path]:
         acceptance_artifact=acceptance_artifact,
         loss_artifact=loss_artifact,
         n_jobs=int(args.n_jobs),
+        cache_path=args.response_cache,
     )
     support_width = _load_support_width(args.support_csv, args.support_manifest)
     artifact_features = _artifact_policy_features(acceptance_artifact, frame)
@@ -593,6 +610,12 @@ def run_analysis(args: argparse.Namespace) -> list[Path]:
             "maximization_equivalent": "mean_i[profit_i(u_i(theta)) - W(u_i(theta))]",
             "support_width_source": str(args.support_csv.resolve()),
             "support_baseline_subtracted": False,
+            "support_penalty_column": (
+                "optimization_support_penalty"
+                if "optimization_support_penalty"
+                in pd.read_csv(args.support_csv, nrows=1).columns
+                else "smoothed_support_half_width"
+            ),
             "acceptance_floor": floor,
         },
         "initial_policy_on_sample": initial_summary,
@@ -612,11 +635,17 @@ def run_analysis(args: argparse.Namespace) -> list[Path]:
             "acceptance_reference_policy": _file_record(
                 args.acceptance_reference_policy
             ),
+            "response_cache": _file_record(
+                (
+                    output_dir / "sample_exact_spline_response_grid.npz"
+                    if args.response_cache is None
+                    else args.response_cache
+                )
+            ),
         },
         "outputs": {
             path.name: _sha256_file(path)
             for path in (
-                output_dir / "sample_exact_spline_response_grid.npz",
                 policy_path,
                 full_actions_path,
                 histogram_path,

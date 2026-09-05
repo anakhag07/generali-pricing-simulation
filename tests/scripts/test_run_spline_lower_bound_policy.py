@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 
 from objective.policy import IdentityFeatureMap, SoftmaxPolicy
 from scripts import run_spline_lower_bound_policy as script
@@ -101,3 +102,28 @@ def test_full_population_histogram_uses_all_actions() -> None:
         histogram["density"] * (histogram["bin_right"] - histogram["bin_left"])
     )
     assert np.isclose(integrated_density, 1.0)
+
+
+def test_load_support_width_prefers_synthetic_optimization_penalty(tmp_path) -> None:
+    frame = pd.DataFrame(
+        {
+            "u": script.ACTION_GRID,
+            "smoothed_support_half_width": np.full(script.ACTION_GRID.size, 2.0),
+            "optimization_support_penalty": np.linspace(
+                2.0,
+                20.0,
+                script.ACTION_GRID.size,
+            ),
+        }
+    )
+    csv_path = tmp_path / "support.csv"
+    manifest_path = tmp_path / "manifest.json"
+    frame.to_csv(csv_path, index=False)
+    manifest_path.write_text(
+        '{"support": {"baseline_subtracted": false}}',
+        encoding="utf-8",
+    )
+
+    loaded = script._load_support_width(csv_path, manifest_path)
+
+    np.testing.assert_allclose(loaded, frame["optimization_support_penalty"])

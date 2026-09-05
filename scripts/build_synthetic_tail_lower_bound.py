@@ -19,10 +19,10 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS_ROOT = ROOT.parent / "results"
 DEFAULT_SOURCE_DIR = RESULTS_ROOT / "monotone-spline-xgb-support-cloud"
-DEFAULT_OUTPUT_DIR = RESULTS_ROOT / "spline-xgb-synthetic-tail-support"
+DEFAULT_OUTPUT_DIR = RESULTS_ROOT / "spline-xgb-synthetic-tail-140-support"
 DEFAULT_CUTOFF = 0.12
 DEFAULT_TARGET_U = 0.20
-DEFAULT_TARGET_LOWER_PROFIT = 120.0
+DEFAULT_TARGET_LOWER_PROFIT = 140.0
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -105,9 +105,9 @@ def _plot(frame: pd.DataFrame, output_path: Path) -> None:
     u = frame["u"].to_numpy(dtype=float)
     mean = frame["smoothed_mean_profit"].to_numpy(dtype=float)
     lower = frame["support_cloud_lower_profit"].to_numpy(dtype=float)
-    upper = frame["support_cloud_upper_profit"].to_numpy(dtype=float)
     fig, ax = plt.subplots(figsize=(10.0, 5.8), constrained_layout=True)
-    ax.fill_between(u, lower, upper, color="C0", alpha=0.2)
+    ax.fill_between(u, lower, mean, color="C0", alpha=0.2)
+    ax.plot(u, lower, color="C0", linewidth=1.0, alpha=0.8)
     ax.plot(u, mean, color="C0", linewidth=2.0)
     ax.set_title("Mean Predicted Profit Per Customer vs. Price Change", fontsize=16)
     ax.set_xlabel("Price Change", fontsize=12)
@@ -149,6 +149,14 @@ def run_analysis(args: argparse.Namespace) -> list[Path]:
             "mean_profit_modified": False,
             "upper_envelope_modified": False,
             "lower_envelope_modified": True,
+            "plot_shows_upper_envelope": False,
+        },
+        "display": {
+            **source_manifest.get("display", {}),
+            "cloud": (
+                "region between smoothed mean profit and the modified lower "
+                "bound; upper envelope not displayed"
+            ),
         },
         "inputs": {
             "source_csv": {

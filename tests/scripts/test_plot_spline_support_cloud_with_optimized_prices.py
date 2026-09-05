@@ -125,6 +125,33 @@ def test_overlay_labels_blue_profit_and_red_optimized_prices(
     assert legend_text[1].get_color() == script.OPTIMIZED_COLOR
 
 
+def test_overlay_can_show_only_the_lower_side_of_support_cloud(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    captured = {}
+    monkeypatch.setattr(
+        script.plt,
+        "close",
+        lambda figure: captured.setdefault("figure", figure),
+    )
+
+    support = _support_frame()
+    script._plot_overlay(
+        support,
+        _histogram_frame(),
+        tmp_path / "lower_only.pdf",
+        lower_only=True,
+    )
+
+    profit_ax = captured["figure"].axes[0]
+    fill_vertices = profit_ax.collections[0].get_paths()[0].vertices
+    assert np.max(fill_vertices[:, 1]) <= np.max(
+        support["smoothed_mean_profit"]
+    )
+    assert len(profit_ax.lines) == 2
+
+
 def test_run_analysis_writes_vector_pdf_and_manifest(tmp_path) -> None:
     (
         support_csv,

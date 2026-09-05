@@ -535,9 +535,10 @@ The counterfactual lower envelope and policy penalty are
 $$L_{\mathrm{syn}}(u)=L(u)-T(u), \qquad
 W_{\mathrm{syn}}(u)=W_{\mathrm{abs}}(u)+T(u).$$
 
-The mean-profit line and original upper envelope are not modified. For the
-requested $$L_{\mathrm{target}}=120$$, the fitted policy minimizes the same
-repository objective as above with $$W_{\mathrm{syn}}$$ replacing
+The mean-profit line and stored original upper envelope are not modified; the
+figure displays only the mean and modified lower bound. For the requested
+$$L_{\mathrm{target}}=140$$, the fitted policy minimizes the same repository
+objective as above with $$W_{\mathrm{syn}}$$ replacing
 $$W_{\mathrm{abs}}$$. This construction is an illustrative counterfactual and
 not an estimated confidence or uncertainty bound.
 

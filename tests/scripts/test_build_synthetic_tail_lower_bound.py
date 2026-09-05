@@ -64,3 +64,29 @@ def test_synthetic_tail_does_not_modify_mean_or_upper_envelope() -> None:
         result["support_cloud_upper_profit"],
         source["support_cloud_upper_profit"],
     )
+
+
+def test_defaults_and_plot_use_target_140_and_lower_side_only(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    assert script._build_parser().parse_args([]).target_lower_profit == 140.0
+    captured = {}
+    monkeypatch.setattr(
+        script.plt,
+        "close",
+        lambda figure: captured.setdefault("figure", figure),
+    )
+    frame, _ = script.synthetic_tail_lower_bound(
+        _frame(),
+        cutoff=0.12,
+        target_u=0.2,
+        target_lower_profit=140.0,
+    )
+
+    script._plot(frame, tmp_path / "lower_only.pdf")
+
+    axis = captured["figure"].axes[0]
+    fill_vertices = axis.collections[0].get_paths()[0].vertices
+    assert np.max(fill_vertices[:, 1]) <= np.max(frame["smoothed_mean_profit"])
+    assert len(axis.lines) == 2

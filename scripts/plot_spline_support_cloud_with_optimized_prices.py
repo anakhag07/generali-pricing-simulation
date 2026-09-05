@@ -151,6 +151,8 @@ def _plot_overlay(
     support: pd.DataFrame,
     histogram: pd.DataFrame,
     output_path: Path,
+    *,
+    lower_only: bool = False,
 ) -> None:
     u = support["u"].to_numpy(dtype=float)
     mean_profit = support["smoothed_mean_profit"].to_numpy(dtype=float)
@@ -176,10 +178,12 @@ def _plot_overlay(
     cloud = profit_ax.fill_between(
         u,
         lower,
-        upper,
+        mean_profit if lower_only else upper,
         color=SUPPORT_COLOR,
         alpha=0.2,
     )
+    if lower_only:
+        profit_ax.plot(u, lower, color=SUPPORT_COLOR, linewidth=1.0, alpha=0.8)
     mean_line = profit_ax.plot(
         u,
         mean_profit,

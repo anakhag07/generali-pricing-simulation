@@ -100,6 +100,11 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-steps", type=int, default=DEFAULT_MAX_STEPS)
     parser.add_argument("--n-jobs", type=int, default=8)
     parser.add_argument("--initial-u", type=float, default=DEFAULT_INITIAL_U)
+    parser.add_argument(
+        "--lower-only-cloud",
+        action="store_true",
+        help="Plot only the region between mean profit and its lower bound.",
+    )
     return parser
 
 
@@ -556,7 +561,12 @@ def run_analysis(args: argparse.Namespace) -> list[Path]:
 
     support_frame = pd.read_csv(args.support_csv)
     overlay_path = output_dir / "mean_profit_support_cloud_with_lower_bound_policy.pdf"
-    _plot_overlay(support_frame, histogram, overlay_path)
+    _plot_overlay(
+        support_frame,
+        histogram,
+        overlay_path,
+        lower_only=bool(args.lower_only_cloud),
+    )
 
     full_quantiles = np.quantile(
         full_actions,
@@ -617,6 +627,10 @@ def run_analysis(args: argparse.Namespace) -> list[Path]:
                 else "smoothed_support_half_width"
             ),
             "acceptance_floor": floor,
+        },
+        "plot": {
+            "lower_bound_only": bool(args.lower_only_cloud),
+            "upper_bound_displayed": not bool(args.lower_only_cloud),
         },
         "initial_policy_on_sample": initial_summary,
         "optimized_policy_on_sample": final_summary,

@@ -1081,20 +1081,23 @@ overlay PDF, the reusable exact-spline response cache, and full optimizer
 provenance.
 
 For an explicitly synthetic tail-risk demonstration, first construct a lower
-envelope that is unchanged through `u=0.12` and then decreases linearly to 120
-profit units at `u=0.20`:
+envelope that is unchanged through `u=0.12` and then adds a linear penalty
+calibrated so the lower bound reaches 140 profit units at `u=0.20`:
 
 ```bash
 python scripts/build_synthetic_tail_lower_bound.py
 ```
 
-The script leaves the mean-profit line and original upper envelope unchanged,
-stores the added tail penalty separately, and labels the output as an
-illustrative counterfactual rather than estimated uncertainty. Refit and replay
-the lower-bound policy with `scripts/run_spline_lower_bound_policy.py`, passing
-the synthetic CSV/manifest and `--response-cache` pointing to the existing
-20k exact-spline response cache. This avoids rebuilding customer splines; only
-the repository optimization and full-population policy replay are rerun.
+The PDF displays only the mean-profit line and the region down to the modified
+lower bound; it does not display an upper envelope. The script leaves mean
+profit and the stored original upper-envelope values unchanged, stores the
+added tail penalty separately, and labels the output as an illustrative
+counterfactual rather than estimated uncertainty. Refit and replay the
+lower-bound policy with `scripts/run_spline_lower_bound_policy.py`, passing the
+synthetic CSV/manifest, `--lower-only-cloud`, and `--response-cache` pointing to
+the existing 20k exact-spline response cache. This avoids rebuilding customer
+splines; only the repository optimization and full-population policy replay are
+rerun. `--target-lower-profit` can reproduce a different terminal value.
 
 After collection, render customer-level Spearman correlation heatmaps for the
 top-ranked numeric acceptance/loss features and a cross-model feature-ranking

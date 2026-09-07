@@ -1,0 +1,67 @@
+{
+  "name": "optimizer-behavior-u-0-0p16",
+  "objective": {
+    "preset": "real_data_glm_base",
+    "overrides": {
+      "policy_kind": "softmax",
+      "softmax_action_bounds": [0.0, 0.16],
+      "initial_u": 0.05333333333333334,
+      "policy_preprocessing": "no_pca",
+      "feature_order": "linear",
+      "n_samples": null,
+      "train_fraction": 0.8,
+      "test_fraction": 0.2
+    }
+  },
+  "objective_modifications": [],
+  "optimizer": {
+    "step_rule": "trust-constr",
+    "compute_backend": "numpy",
+    "t_steps": 100,
+    "n_grad_samples": 8,
+    "enabled_estimators": ["first_order"],
+    "plot": false,
+    "verbose": false,
+    "wandb_enabled": false
+  },
+  "seeds": {
+    "run_seeds": [8],
+    "anchor_seed": 8,
+    "vary": ["theta"]
+  },
+  "truth": {"source": "clean_base_objective"},
+  "launch": {
+    "mode": "local",
+    "array": "none",
+    "requires_jax": false
+  },
+  "per_seed_plots": false,
+  "variants": [
+    {
+      "name": "constrained-88",
+      "axes": {"constraint": "observed acceptance floor", "acceptance_floor": 0.8787745289312372},
+      "overrides": {
+        "constraint_mode": "trust_constr",
+        "acceptance_floor": 0.8787745289312372,
+        "initial_constr_penalty": 1.0
+      }
+    },
+    {
+      "name": "constrained-90",
+      "axes": {"constraint": "90% acceptance floor", "acceptance_floor": 0.9},
+      "overrides": {
+        "constraint_mode": "trust_constr",
+        "acceptance_floor": 0.9,
+        "initial_constr_penalty": 1.0
+      }
+    },
+    {
+      "name": "unconstrained",
+      "axes": {"constraint": "none", "acceptance_floor": null},
+      "overrides": {
+        "constraint_mode": "none",
+        "acceptance_floor": null
+      }
+    }
+  ]
+}

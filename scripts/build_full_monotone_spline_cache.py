@@ -227,8 +227,9 @@ def validate_task_coverage(
             raise ValueError(f"Shard {shard_index} reports an out-of-range row span.")
         if start != previous_stop:
             raise ValueError("Shard row-position spans are missing or overlapping.")
-        path = Path(str(payload["shard_path"])).resolve()
-        if path != shard_directory(root, shard_index).resolve():
+        reported_path = Path(str(payload["shard_path"])).resolve()
+        path = shard_directory(root, shard_index).resolve()
+        if reported_path != path and not _same_mounted_shard(reported_path, path):
             raise ValueError(f"Shard {shard_index} points outside its expected cache path.")
         metadata = validate_cache_shard(path, expected_rows=eligible[start:stop])
         rows = np.load(path / "row_indices.npy", allow_pickle=False, mmap_mode="r")
@@ -243,6 +244,20 @@ def validate_task_coverage(
     if not np.array_equal(concatenated, eligible):
         raise ValueError("Collected shards are missing, reordered, or contain out-of-range rows.")
     return validated
+
+
+def _same_mounted_shard(reported_path: Path, expected_path: Path) -> bool:
+    """Recognize one shard exposed through equivalent ORCD mount prefixes."""
+    try:
+        reported_stat = reported_path.stat()
+        expected_stat = expected_path.stat()
+    except OSError:
+        return False
+    return (
+        reported_path.name == expected_path.name
+        and reported_path.parent.name == expected_path.parent.name == "shards"
+        and reported_stat.st_ino == expected_stat.st_ino
+    )
 
 
 def _canonical_curve_values(
@@ -387,6 +402,8 @@ def _manifest(
     model_path = Path(ACCEPTANCE_MODEL_ARTIFACTS["xgb"]["path"])
     bytes_per_float32 = eligible.size * 500 * 2 * np.dtype("float32").itemsize
     bytes_per_float64 = eligible.size * 500 * 2 * np.dtype("float64").itemsize
+    storage_dtypes = sorted({str(shard["storage_dtype"]) for shard in shards})
+    storage_dtype = storage_dtypes[0] if len(storage_dtypes) == 1 else "mixed"
     return {
         "schema_version": FULL_CACHE_SCHEMA_VERSION,
         "format": FULL_CACHE_FORMAT,
@@ -414,7 +431,11 @@ def _manifest(
             "shard_count": len(shards),
             "array_max_parallel": int(args.array_max_parallel),
             "n_jobs_per_task": int(args.n_jobs),
-            "storage_dtype": str(args.storage_dtype),
+            "storage_dtype": storage_dtype,
+            "storage_dtypes_by_shard": {
+                str(shard["shard_index"]): str(shard["storage_dtype"])
+                for shard in shards
+            },
             "anchor_u": acceptance_analysis.ANCHOR_U.tolist(),
             "dense_grid_size": 500,
             "tail_semantics": "constant below support; clipped nonnegative tangent above support",
@@ -439,13 +460,20 @@ def _manifest(
             ],
         },
         "dtype_assessment": {
-            "chosen": str(args.storage_dtype),
+            "chosen": storage_dtype,
+            "shard_storage_dtypes": storage_dtypes,
             "float32_curve_payload_bytes": int(bytes_per_float32),
             "float64_curve_payload_bytes": int(bytes_per_float64),
             "rationale": (
-                "float32 stores both PCHIP knot values and analytical knot derivatives, "
-                "halving the curve payload versus float64 while avoiding derivative "
-                "reconstruction from quantized values; canonical parity is enforced below"
+                "Most shards use float32 for compact PCHIP values and analytical "
+                "derivatives; any shard that fails the serialized monotonicity check "
+                "may be rebuilt in float64. Canonical parity is enforced below."
+                if storage_dtype == "mixed"
+                else (
+                    f"{storage_dtype} stores both PCHIP knot values and analytical knot "
+                    "derivatives without reconstructing derivatives at load time; "
+                    "canonical parity is enforced below."
+                )
             ),
         },
         "timing": {

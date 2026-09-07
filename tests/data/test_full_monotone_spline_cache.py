@@ -131,11 +131,19 @@ def test_scalar_grid_and_pairwise_evaluation_preserve_selection_order(tmp_path: 
     scalar = cache.acceptance(selected, 0.08)
     grid = cache.acceptance(selected, actions)
     pairwise = cache.acceptance(selected, actions, pairwise=True)
+    fast_acceptance, fast_derivative = cache.pairwise_acceptance_and_derivative(
+        selected, actions
+    )
 
     assert scalar.shape == (3,)
     assert grid.shape == (3, 3)
     assert pairwise.shape == (3,)
     np.testing.assert_allclose(pairwise, np.diag(grid))
+    np.testing.assert_allclose(fast_acceptance, pairwise)
+    np.testing.assert_allclose(
+        fast_derivative,
+        cache.derivative(selected, actions, pairwise=True),
+    )
 
 
 def test_shard_checksum_corruption_is_rejected(tmp_path: Path) -> None:

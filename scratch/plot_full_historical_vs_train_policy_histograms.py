@@ -60,7 +60,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def load_distributions(policy_artifact: Path) -> tuple[np.ndarray, np.ndarray, object]:
+def load_distributions(
+    policy_artifact: Path,
+    *,
+    expected_action_bounds: tuple[float, float] = (-0.1, 0.2),
+) -> tuple[np.ndarray, np.ndarray, object]:
     historical_frame = pd.read_csv(
         dataset_csv_path(),
         sep=";",
@@ -75,9 +79,13 @@ def load_distributions(policy_artifact: Path) -> tuple[np.ndarray, np.ndarray, o
         raise ValueError(f"Expected SoftmaxPolicy, got {artifact.policy_head.type!r}.")
     if not np.allclose(
         (artifact.policy_head.action_low, artifact.policy_head.action_high),
-        (-0.1, 0.2),
+        expected_action_bounds,
     ):
-        raise ValueError("Expected optimized price bounds [-0.1, 0.2].")
+        raise ValueError(
+            "Expected optimized price bounds "
+            f"{list(expected_action_bounds)}, got "
+            f"{[artifact.policy_head.action_low, artifact.policy_head.action_high]}."
+        )
     optimized_u = np.asarray(artifact.predict_u(split="train"), dtype=float).reshape(-1)
 
     for name, values in {

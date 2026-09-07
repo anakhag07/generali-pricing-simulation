@@ -1,4 +1,4 @@
-"""Plot historical and train-policy price changes on the decimal [-0.1, 0.2] range."""
+"""Plot historical and train-policy price changes on a bounded decimal range."""
 
 from __future__ import annotations
 
@@ -39,6 +39,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--policy-artifact", type=Path, default=DEFAULT_POLICY_ARTIFACT)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
+    parser.add_argument("--range-low", type=float, default=RANGE_LOW)
+    parser.add_argument("--range-high", type=float, default=RANGE_HIGH)
     parser.add_argument(
         "--optimized-title",
         default="Optimized Price Changes",
@@ -230,21 +232,30 @@ def histogram_records(
 
 def main(argv: Sequence[str] | None = None) -> None:
     args = parse_args(argv)
+    if not args.range_low < args.range_high:
+        raise ValueError("--range-low must be less than --range-high.")
+    global RANGE_LOW, RANGE_HIGH
+    RANGE_LOW = float(args.range_low)
+    RANGE_HIGH = float(args.range_high)
     policy_path = args.policy_artifact.expanduser().resolve()
     output_dir = args.output_dir.expanduser().resolve()
     plots_dir = output_dir / "plots"
     preview_dir = args.preview_dir.expanduser().resolve() if args.preview_dir else None
 
-    historical_full, optimized_train, artifact = load_distributions(policy_path)
+    historical_full, optimized_train, artifact = load_distributions(
+        policy_path,
+        expected_action_bounds=(RANGE_LOW, RANGE_HIGH),
+    )
     historical_range = bounded(historical_full)
     optimized_range = bounded(optimized_train)
+    range_slug = f"{RANGE_LOW:g}_to_{RANGE_HIGH:g}".replace("-", "minus")
 
     plot_single(
         historical_range,
         color=HISTORICAL_COLOR,
         title="Historical Price Changes",
-        pdf_path=plots_dir / "historical_price_changes_decimal_minus0.1_to_0.2.pdf",
-        preview_path=preview_dir / "historical_price_changes_decimal_minus0.1_to_0.2.png"
+        pdf_path=plots_dir / f"historical_price_changes_decimal_{range_slug}.pdf",
+        preview_path=preview_dir / f"historical_price_changes_decimal_{range_slug}.png"
         if preview_dir
         else None,
     )
@@ -252,17 +263,17 @@ def main(argv: Sequence[str] | None = None) -> None:
         optimized_range,
         color=OPTIMIZED_COLOR,
         title=args.optimized_title,
-        pdf_path=plots_dir / "optimized_price_changes_decimal_minus0.1_to_0.2.pdf",
-        preview_path=preview_dir / "optimized_price_changes_decimal_minus0.1_to_0.2.png"
+        pdf_path=plots_dir / f"optimized_price_changes_decimal_{range_slug}.pdf",
+        preview_path=preview_dir / f"optimized_price_changes_decimal_{range_slug}.png"
         if preview_dir
         else None,
     )
     plot_overlay(
         historical_range,
         optimized_range,
-        pdf_path=plots_dir / "historical_vs_optimized_decimal_minus0.1_to_0.2_overlay.pdf",
+        pdf_path=plots_dir / f"historical_vs_optimized_decimal_{range_slug}_overlay.pdf",
         preview_path=preview_dir
-        / "historical_vs_optimized_decimal_minus0.1_to_0.2_overlay.png"
+        / f"historical_vs_optimized_decimal_{range_slug}_overlay.png"
         if preview_dir
         else None,
     )
@@ -282,12 +293,12 @@ def main(argv: Sequence[str] | None = None) -> None:
     range_summaries = [
         decimal_summary(
             "Historical pricing",
-            "full historical population restricted to $[-0.1,0.2]$",
+            f"full historical population restricted to $[{RANGE_LOW:g},{RANGE_HIGH:g}]$",
             historical_range,
         ),
         decimal_summary(
             "Optimized pricing",
-            "training population restricted to $[-0.1,0.2]$",
+            f"training population restricted to $[{RANGE_LOW:g},{RANGE_HIGH:g}]$",
             optimized_range,
         ),
     ]

@@ -376,6 +376,41 @@ class ShardedMonotoneSplineCache:
         """Evaluate analytical cached acceptance derivatives."""
         return self.evaluate(row_indices, u, derivative=True, pairwise=pairwise)
 
+    def pairwise_acceptance_and_derivative(
+        self,
+        row_indices: Sequence[int],
+        u: Sequence[float] | np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Evaluate aligned actions and derivatives without loading whole curves."""
+        located = self._locate(row_indices)
+        actions = np.asarray(u, dtype=np.float64)
+        if actions.shape != (located.requested_rows.size,) or not np.isfinite(actions).all():
+            raise ValueError("u must contain one finite action per selected row.")
+        acceptance = np.empty(actions.shape, dtype=np.float64)
+        derivative = np.empty(actions.shape, dtype=np.float64)
+        for shard_index in np.unique(located.shard_indices):
+            selected = located.shard_indices == shard_index
+            shard = self.shards[int(shard_index)]
+            root = self.cache_dir / str(shard["path"])
+            local = located.positions[selected] - int(shard["start_position"])
+            grid = np.load(root / "action_grid.npy", allow_pickle=False, mmap_mode="r")
+            values = np.load(root / "churn_values.npy", allow_pickle=False, mmap_mode="r")
+            node_derivatives = np.load(
+                root / "churn_derivatives.npy", allow_pickle=False, mmap_mode="r"
+            )
+            slopes = np.load(root / "upper_slopes.npy", allow_pickle=False, mmap_mode="r")
+            churn, d_churn = _evaluate_mmap_pairwise(
+                np.asarray(grid, dtype=np.float64),
+                values,
+                node_derivatives,
+                slopes,
+                local,
+                actions[selected],
+            )
+            acceptance[selected] = 1.0 - churn
+            derivative[selected] = -d_churn
+        return acceptance, derivative
+
 
 def _evaluate_hermite(
     grid: np.ndarray,
@@ -423,6 +458,69 @@ def _evaluate_hermite(
     if np.any(inside):
         result[:, inside], d_result[:, inside] = _hermite_inside_grid(
             grid, values, derivatives, actions[inside]
+        )
+    return result, d_result
+
+
+def _evaluate_mmap_pairwise(
+    grid: np.ndarray,
+    values: np.ndarray,
+    derivatives: np.ndarray,
+    upper_slopes: np.ndarray,
+    local_rows: np.ndarray,
+    actions: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Evaluate aligned rows by reading only the two required cache knots."""
+    rows = np.asarray(local_rows, dtype=int)
+    action = np.asarray(actions, dtype=np.float64)
+    if rows.shape != action.shape:
+        raise ValueError("local_rows and actions must have matching shapes.")
+    result = np.empty(action.shape, dtype=np.float64)
+    d_result = np.empty(action.shape, dtype=np.float64)
+    below = action < grid[0]
+    above = action > grid[-1]
+    inside = ~(below | above)
+    if np.any(below):
+        result[below] = values[rows[below], 0]
+        d_result[below] = 0.0
+    if np.any(above):
+        last_values = np.asarray(values[rows[above], -1], dtype=np.float64)
+        selected_slopes = np.asarray(upper_slopes[rows[above]], dtype=np.float64)
+        raw_upper = last_values + selected_slopes * (action[above] - grid[-1])
+        result[above] = np.clip(raw_upper, 0.0, 1.0)
+        d_result[above] = np.where(
+            (raw_upper > 0.0) & (raw_upper < 1.0), selected_slopes, 0.0
+        )
+    if np.any(inside):
+        selected_actions = action[inside]
+        interval = np.minimum(
+            np.searchsorted(grid, selected_actions, side="right") - 1,
+            grid.size - 2,
+        )
+        selected_rows = rows[inside]
+        h = grid[interval + 1] - grid[interval]
+        t = (selected_actions - grid[interval]) / h
+        y0 = np.asarray(values[selected_rows, interval], dtype=np.float64)
+        y1 = np.asarray(values[selected_rows, interval + 1], dtype=np.float64)
+        d0 = np.asarray(derivatives[selected_rows, interval], dtype=np.float64)
+        d1 = np.asarray(derivatives[selected_rows, interval + 1], dtype=np.float64)
+        t2 = t * t
+        t3 = t2 * t
+        raw = (
+            (2.0 * t3 - 3.0 * t2 + 1.0) * y0
+            + (t3 - 2.0 * t2 + t) * h * d0
+            + (-2.0 * t3 + 3.0 * t2) * y1
+            + (t3 - t2) * h * d1
+        )
+        raw_derivative = (
+            (6.0 * t2 - 6.0 * t) / h * y0
+            + (3.0 * t2 - 4.0 * t + 1.0) * d0
+            + (-6.0 * t2 + 6.0 * t) / h * y1
+            + (3.0 * t2 - 2.0 * t) * d1
+        )
+        result[inside] = np.clip(raw, 0.0, 1.0)
+        d_result[inside] = np.where(
+            (raw > 0.0) & (raw < 1.0), raw_derivative, 0.0
         )
     return result, d_result
 

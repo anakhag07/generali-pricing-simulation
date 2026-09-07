@@ -22,6 +22,31 @@ def test_support_band_action_bias_interpolates_displayed_half_width() -> None:
     assert np.isfinite(bias.grad_u(None, np.asarray([0.04, 0.12]))).all()
 
 
+def test_support_band_action_bias_scales_values_and_gradient() -> None:
+    u_grid = np.asarray([0.0, 0.08, 0.16])
+    half_width = np.asarray([5.0, 1.0, 10.0])
+    query = np.asarray([0.04, 0.12])
+    unit_bias = _SupportBandActionBias(u_grid, half_width)
+    scaled_bias = _SupportBandActionBias(u_grid, half_width, lambda_bias=2.5)
+
+    np.testing.assert_allclose(
+        scaled_bias.values(None, query),
+        2.5 * unit_bias.values(None, query),
+    )
+    np.testing.assert_allclose(
+        scaled_bias.grad_u(None, query),
+        2.5 * unit_bias.grad_u(None, query),
+    )
+    epsilon = 1e-6
+    finite_difference = (
+        scaled_bias.values(None, query + epsilon)
+        - scaled_bias.values(None, query - epsilon)
+    ) / (2.0 * epsilon)
+    np.testing.assert_allclose(
+        scaled_bias.grad_u(None, query), finite_difference, rtol=1e-6, atol=1e-6
+    )
+
+
 def test_load_replayed_profit_policy_requires_matching_theta_and_summary(
     tmp_path,
 ) -> None:

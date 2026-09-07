@@ -219,6 +219,58 @@ Guidelines:
   and raw-X prediction-sensitivity rankings. Its row-sampling seed and
   permutation seed are independent, and it deliberately creates no X-feature
   plots.
+- `scripts/plot_glm_spline_profit_dispersion.py` verifies and reuses the saved
+  deterministic 20,000-row coverage sample, then compares GLM-acceptance/GLM-loss
+  and exact-spline-acceptance/XGBoost-loss predicted profit on
+  `u=-0.100,...,0.200`. It evaluates the repository `ModelBasedObjective`
+  minimization cost `acceptance * (loss - revenue)` and negates per-customer
+  costs only for profit/maximization reporting. Exact splines use the runtime
+  constant-left and clipped-linear-right boundary rules outside `[0, 0.16]`.
+  The script writes unsmoothed, unclipped mean plus population-SD and median
+  plus raw-MAD vector PDFs, a long-form CSV, and a provenance manifest under
+  `results/glm-spline-objective-dispersion-minus010-plus020/`; it computes no
+  optimum and disables raw-XGBoost fallback for failed spline fits.
+- `scripts/plot_monotone_spline_support_cloud.py` post-processes that exact
+  monotone-spline/XGBoost mean-profit curve with the deterministic 20,000-row
+  customer-coverage diagnostics. It verifies the row-index checksum and plots
+  a recomputed illustrative local-support width on `u=-0.100,...,0.200` in
+  profit/maximization form. Its absolute inverse-root support-risk mapping does
+  not subtract baseline risk, so the cloud remains positive everywhere. The
+  cloud is an extrapolation-support proxy, not a confidence interval; the
+  script refits no model and computes no optimum.
+- `scripts/plot_spline_support_cloud_with_optimized_prices.py` combines the
+  wide monotone-spline/XGBoost support cloud with the exact saved density bins
+  from the first-order GLM optimized-policy histogram. It uses a shared decimal
+  price-change axis, separate labeled profit and density y axes, and records
+  the source PDF, data, policy artifact, and output hashes without rerunning
+  optimization.
+- `scripts/run_spline_gp_lower_bound_policy.py` constructs a deterministic
+  synthetic-GP uncertainty envelope around the saved 20,000-row exact-spline/
+  XGBoost mean-profit curve, then fits a bounded softmax-linear policy to the
+  resulting lower bound with the repository first-order `trust-constr`
+  optimizer and saved acceptance floor. Its fixed conditioning design adds no
+  seed stream, and its grid supplies interpolation values rather than candidate
+  optimizer solutions.
+- `scripts/run_spline_lower_bound_policy.py` fits a bounded softmax-linear
+  policy on the deterministic 20,000-row sample by minimizing exact
+  monotone-spline/XGBoost cost plus the wide cloud's positive aggregate support
+  width. It invokes the repository first-order `trust-constr` optimizer with
+  the saved acceptance floor, saves the converged policy, replays it on all
+  715,023 eligible customers, and regenerates the blue-cloud/red-action-density
+  overlay with complete artifact and optimizer provenance. Its optional
+  `--response-cache` reuses an exact saved 20k response grid without changing
+  the fitted objective, and `--lower-only-cloud` omits the upper half of the
+  displayed support envelope.
+- `scripts/build_synthetic_tail_lower_bound.py` creates an explicitly synthetic
+  counterfactual lower envelope by subtracting a calibrated linear post-cutoff
+  tail penalty. It preserves the estimated mean profit and original upper
+  envelope in the data, displays only the lower-side region, writes the
+  optimization penalty as a separate CSV column, and performs no optimization.
+- `scripts/plot_historical_with_lower_bound_policy.py` preserves the reference
+  historical-versus-optimized density histogram design while replacing its
+  optimized series with the exact saved target-140 policy actions on all
+  715,023 eligible customers. It records the source policy, optimizer summary,
+  reference PDF, bins, and output hashes without rerunning optimization.
 - `scripts/build_full_monotone_spline_cache.py` builds the versioned, resumable
   full-eligible-row monotone-XGB curve cache under `results/cache/`; it reuses
   `analyze_model_acceptance_features` for eligible rows, all-customer historical
@@ -267,6 +319,14 @@ Guidelines:
   population-median historical action as a common baseline, reports profit-change
   quantile ribbons plus robust MAD dispersion on `[0, 0.16]`, and obtains any
   marked dispersion extrema from the repository finite-difference optimizer.
+- `scripts/run_full_population_support_softmax_policy.py` fits bounded
+  identity-feature softmax policies on all eligible XGBoost customers (or a
+  saved row-index cohort) with and without the displayed marginal-support
+  half-width added to minimization cost. The width is queried through a scaled
+  natural cubic `ActionBias`; both policy solutions use the repository
+  action-space finite-difference optimizer, while replay and constrained-
+  reference modes require exact saved optimizer provenance. Outputs include
+  policy artifacts, histogram CSVs, vector PDFs, and JSON optimizer summaries.
 - Keep the boundary strict: do not hide reusable pipeline logic inside a script,
   and do not promote analysis-only code into `src/` without a concrete reusable
   integration point.

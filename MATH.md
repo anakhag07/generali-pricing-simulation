@@ -232,6 +232,85 @@ $$s_P(u)=\sqrt{\frac{1}{n-1}\sum_{i=1}^n\left(P_i(u)-\bar P(u)\right)^2}.$$
 - **Source:** `scripts/plot_customer_coverage_envelope_slides.py` ::
   `_compute_diagnostics()`, `_plot_customer_profit_dispersion_comparison()`
 
+For the fixed 20,000-customer GLM-versus-spline comparison, let model family
+$$m\in\{\mathrm{GLM},\mathrm{spline}\}$$ supply both acceptance
+$$a_{im}(u)$$ and predicted financial loss $$L_{im}$$. The repository's
+`ModelBasedObjective` first evaluates the per-customer minimization cost
+
+$$f_{im}(u)=a_{im}(u)\left[L_{im}-p_i(1+u)\right].$$
+
+Only reporting changes sign: the plotted maximization quantity is
+
+$$P_{im}(u)=-f_{im}(u).$$
+
+At each of the 301 actions $$u_j=-0.10+0.001j$$, $$j=0,\ldots,300$$, the
+ordinary band uses the population standard deviation of the fixed diagnostic cohort,
+
+$$
+\bar P_m(u)=\frac{1}{n}\sum_{i=1}^nP_{im}(u),\qquad
+\sigma_m(u)=\sqrt{\frac{1}{n}\sum_{i=1}^n
+\left(P_{im}(u)-\bar P_m(u)\right)^2},
+$$
+
+and the robust band uses the raw, unscaled median absolute deviation,
+
+$$
+q_m(u)=\operatorname{median}_iP_{im}(u),\qquad
+\operatorname{MAD}_m(u)=\operatorname{median}_i\left|P_{im}(u)-q_m(u)\right|.
+$$
+
+The plotted ribbons are exactly $$\bar P_m\pm\sigma_m$$ and
+$$q_m\pm\operatorname{MAD}_m$$. They are neither smoothed nor clipped, and
+the MAD is not multiplied by the Gaussian-consistency factor 1.4826. Exact
+customer splines are fitted on $$[0,0.16]$$; below zero the repository boundary
+rule holds churn constant, while above 0.16 it extends churn with the fitted
+upper slope and clips it to $$[0,1]$$.
+
+- **Source:** `src/reporting/profit_dispersion.py` ::
+  `model_based_objective_matrix()`, `summarize_profit()`
+- **Source:** `scripts/plot_glm_spline_profit_dispersion.py`
+
+### Synthetic GP lower bound for the spline/XGBoost profit objective
+
+For the deterministic 20,000-customer spline/XGBoost mean-profit curve
+\(\bar P(u)\), define a zero-residual Gaussian process with fixed RBF kernel
+
+$$
+k(u,v)=a^2\exp\!\left[-\frac{(u-v)^2}{2\ell^2}\right].
+$$
+
+The process is conditioned on synthetic observations \(y_j=0\) at an evenly
+spaced design \(z_j\in[0,0.16]\), with observation-noise variance
+\(\sigma_n^2\). Its posterior residual variance is
+
+$$
+s^2(u)=k(u,u)-k(u,Z)
+\left[K(Z,Z)+\sigma_n^2I\right]^{-1}k(Z,u).
+$$
+
+Using \(\bar P(u)\) as the deterministic GP mean function leaves the posterior
+mean equal to the saved objective curve. The one-standard-deviation lower
+confidence bound used for policy fitting is
+
+$$
+\operatorname{LCB}(u)=\bar P(u)-s(u).
+$$
+
+For customer-specific policy actions \(u_i=\pi_\theta(x_i)\), maximizing this
+lower bound is equivalent to the repository minimization objective
+
+$$
+J_{\mathrm{GP\text{-}LCB}}(\theta)=\frac1n\sum_{i=1}^n
+\left[C_i(u_i)+s(u_i)\right],
+$$
+
+where \(C_i=-P_i\) is the existing `ModelBasedObjective` cost. The synthetic
+conditioning design is deterministic and is used to express the requested
+high uncertainty outside the spline-fit interval; it is not an empirically
+calibrated confidence statement.
+
+- **Source:** `scripts/run_spline_gp_lower_bound_policy.py`
+
 The exploratory robust-dispersion version evaluates the same customer-level
 profit on the wider saved-objective domain
 $$u_j=-0.10+0.001j$$, $$j=0,\ldots,300$$. At each action, let
@@ -308,6 +387,45 @@ and rendering points only; it never selects either solution.
   `_marginal_action_effective_sample_size()`,
   `_support_weighted_band_half_width()`,
   `_plot_full_population_support_weighted_band()`
+
+The full-population support-softmax runner reads the displayed half-width
+samples $$(u_j,H_{\mathrm{support}}(u_j))$$ from that diagnostic and defines
+$$H_{\mathrm{spline}}$$ as their natural cubic interpolant. For defensive
+queries, the action is clipped to the knot domain
+$$[u_{\min},u_{\max}]=[0,0.16]$$ before interpolation. Its `ActionBias` is
+
+$$
+b_{\lambda}(u)=\lambda_{\mathrm{bias}}\,
+H_{\mathrm{spline}}\!\left(
+\operatorname{clip}(u,u_{\min},u_{\max})
+\right).
+$$
+
+On the bounded optimizer domain, its implemented action derivative is
+
+$$
+\frac{\partial b_{\lambda}(u)}{\partial u}
+=\lambda_{\mathrm{bias}}H'_{\mathrm{spline}}(u).
+$$
+
+For customer-specific bounded softmax actions
+$$u_i=0.16\,\sigma(\theta_0+\theta_x^\top x_i)$$, the support-adjusted
+minimization objective is
+
+$$
+J_{\mathrm{support}}(\theta)=\frac{1}{n}\sum_{i=1}^{n}
+\left[C_i(u_i)+b_{\lambda}(u_i)\right],
+$$
+
+where $$C_i=-P_i$$ is the XGBoost `ModelBasedObjective` cost. The default
+$$\lambda_{\mathrm{bias}}=1$$ therefore adds the displayed half-width without
+rescaling it. Both the profit-only and support-adjusted policies are returned
+by the repository action-space finite-difference optimizer; the support grid is
+used only for interpolation and plotting. The construction is deterministic
+and adds no seed stream.
+
+- **Source:** `scripts/run_full_population_support_softmax_policy.py` ::
+  `_SupportBandActionBias`, `_run_policy_optimizer()`
 
 For the paired within-customer sensitivity view, the common baseline action is
 the median historical price change across all XGBoost-eligible customers,
@@ -396,7 +514,75 @@ confidence radius.
 
 - **Source:** `scripts/plot_customer_coverage_envelope_slides.py` ::
   `_SplineMinimizationObjective`, `_minimize_xgboost_objective()`,
-  `_compute_diagnostics()`
+  `_compute_diagnostics()`; `scripts/plot_monotone_spline_support_cloud.py` ::
+  `_load_cloud_data()`, `_plot_support_cloud()`
+
+The monotone-spline/XGBoost support-cloud post-processing figure recomputes
+median local support on $$u=-0.100,\ldots,0.200$$. It retains absolute
+inverse-root support risk rather than subtracting its best-supported baseline:
+
+$$R(u)=\sqrt{\frac{\max_v S(v)}{S(u)}}, \qquad
+W_{\mathrm{abs}}(u)=10\frac{R(u)}{\max_v R(v)}.$$
+
+Thus $$W_{\mathrm{abs}}(u)>0$$ everywhere. The figure centers the smoothed
+width on the exact-spline mean profit
+$$\widetilde P_{\mathrm{spline}}(u)=-\operatorname{GaussianSmooth}
+[\bar J_{\mathrm{spline}}(u)]$$ and displays
+$$\widetilde P_{\mathrm{spline}}(u)\pm
+\operatorname{GaussianSmooth}[W_{\mathrm{abs}}(u)].$$ It reuses the same
+deterministic customer indices and support diagnostics, is not a confidence
+interval, and does not compute an optimizer solution.
+
+The support-lower-bound policy analysis uses the bounded softmax-linear policy
+
+$$u_i(\theta)=-0.1+0.3\,\operatorname{sigmoid}
+\left(\theta_0+\theta_x^\top z_i\right),$$
+
+where $$z_i$$ is the fitted standardized and sphered XGBoost customer-feature
+representation. On the deterministic 20,000-customer sample it minimizes
+
+$$J_{\mathrm{LB}}(\theta)=\frac{1}{n}\sum_{i=1}^n
+\left[J_i(u_i(\theta))+W_{\mathrm{abs}}(u_i(\theta))\right],$$
+
+equivalently maximizing mean predicted profit minus the positive aggregate
+support width. The optimization retains the cohort constraint
+
+$$\frac{1}{n}\sum_{i=1}^n A_i(u_i(\theta))\geq 0.8787745289.$$
+
+Customer cost and acceptance are evaluated from exact monotone-spline/XGBoost
+values on the 0.001-spaced grid with piecewise-linear off-grid interpolation;
+the smoothed aggregate support width uses natural-cubic interpolation. The
+repository first-order `trust-constr` optimizer differentiates these
+interpolants through the policy. After fitting, the fixed policy and fitted
+feature transform are replayed on all 715,023 eligible customer states; no
+full-population refit is performed.
+
+- **Source:** `scripts/run_spline_lower_bound_policy.py` ::
+  `SplineSupportLowerBoundObjective`, `run_analysis()`
+
+For the explicitly synthetic tail demonstration, define
+
+$$T(u)=k\max(u-u_0,0), \qquad u_0=0.12,$$
+
+with the slope calibrated to a requested terminal lower profit
+$$L_{\mathrm{target}}$$ at $$u_t=0.20$$:
+
+$$k=\frac{L(u_t)-L_{\mathrm{target}}}{u_t-u_0}.$$
+
+The counterfactual lower envelope and policy penalty are
+
+$$L_{\mathrm{syn}}(u)=L(u)-T(u), \qquad
+W_{\mathrm{syn}}(u)=W_{\mathrm{abs}}(u)+T(u).$$
+
+The mean-profit line and stored original upper envelope are not modified; the
+figure displays only the mean and modified lower bound. For the requested
+$$L_{\mathrm{target}}=140$$, the fitted policy minimizes the same repository
+objective as above with $$W_{\mathrm{syn}}$$ replacing
+$$W_{\mathrm{abs}}$$. This construction is an illustrative counterfactual and
+not an estimated confidence or uncertainty bound.
+
+- **Source:** `scripts/build_synthetic_tail_lower_bound.py` ::
+  `synthetic_tail_lower_bound()`
 
 For the customer-specific coverage-aware policy rerun, let $$S_i(u_j)$$ be the
 local joint customer/action support on the fixed action grid. Each customer's

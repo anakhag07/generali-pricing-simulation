@@ -978,6 +978,138 @@ Matplotlib plots, a comparison plot, and `analysis_config.json`. The feature
 screening step intentionally writes no X-feature plots; use its rankings to
 choose later PDP/ALE axes. Reuse `--sweep-id` to resume completed tasks.
 
+To compare customer-level predicted-profit dispersion for GLM acceptance plus
+GLM financial loss and exact monotone-spline acceptance plus XGBoost financial
+loss on the existing deterministic 20,000-row sample, run:
+
+```bash
+python scripts/plot_glm_spline_profit_dispersion.py
+```
+
+The script verifies that the saved row indices reproduce seed `20260831`, then
+evaluates `u=-0.100,...,0.200`. Every sampled spline is rebuilt from the 17
+raw-XGBoost anchors with the weighted smoothing-spline, isotonic, and PCHIP
+recipe; spline failure aborts the run instead of falling back to raw XGBoost.
+Outside the fitted spline interval `[0, 0.16]`, it uses the runtime model's
+constant-left and clipped-linear-right churn boundary rules. It writes two
+vector PDFs under `results/glm-spline-objective-dispersion-minus010-plus020/`: mean
+profit with population-standard-deviation ribbons, and median profit with raw,
+unscaled MAD ribbons. The companion long-form CSV and manifest record the
+sample, model and artifact provenance, formulas, and output hashes. Values stay
+in profit/maximization form by negating the per-customer costs returned by the
+repository's `ModelBasedObjective`, whose minimized formula is
+`acceptance * (loss - revenue)`. The script computes or marks no optimum.
+
+To render the exact monotone-spline/XGBoost mean-profit curve with the existing
+customer-coverage local-support cloud, run:
+
+```bash
+python scripts/plot_monotone_spline_support_cloud.py
+```
+
+This post-processing script verifies and reuses the same deterministic 20,000
+customers and the saved exact-spline `-ModelBasedObjective` mean-profit curve.
+It reapplies the customer-coverage-envelope local-support scaffold at 301
+points over `[-0.10, 0.20]`, based on median local support among 500 nearest
+neighbors with action-kernel bandwidth `0.01`. Absolute inverse-root support
+risk is scaled to a maximum half-width of 10 without subtracting its baseline,
+so the symmetric cloud remains positive everywhere. It is an
+extrapolation-support proxy, not a confidence interval. The x axis reports
+decimal price changes. The vector PDF, pointwise CSV, and provenance
+manifest are written under `results/monotone-spline-xgb-support-cloud/`. No
+model is refit and no optimum is computed or marked.
+
+To construct a deliberately support-aware synthetic GP lower bound on that
+same deterministic 20,000-customer objective curve and fit a policy to it, run:
+
+```bash
+python scripts/run_spline_gp_lower_bound_policy.py
+```
+
+The GP mean is the saved exact-spline/XGBoost mean-profit curve on
+`u in [-0.1, 0.2]`. Its zero-residual RBF process is conditioned at 33 fixed,
+evenly spaced actions on `[0, 0.16]`, with fixed amplitude `35`, length scale
+`0.01`, and observation-noise standard deviation `0.35`. Thus the posterior
+standard deviation is low on `[0, 0.16]` and rises smoothly outside it. The
+orange vector-PDF band is the posterior mean plus or minus one posterior
+standard deviation; it is a synthetic design envelope, not an empirically
+calibrated confidence interval. There is no random GP draw or fitted
+hyperparameter and therefore no added seed stream.
+
+The bounded softmax-linear policy minimizes customer-specific
+`ModelBasedObjective + posterior_std` subject to the saved acceptance floor,
+using `optimization.solvers.run_first_order_minimize` with `trust-constr`.
+Customer objective values use piecewise-linear interpolation on the saved
+301-point response grid, while the GP posterior standard deviation uses a
+natural cubic interpolant on that grid for off-grid optimizer queries. The
+softmax policy remains inside `[-0.1, 0.2]`; no grid scan or analytical
+extremum selects or reports the optimized policy. Outputs under
+`results/spline-xgb-synthetic-gp-lower-bound-policy-20k/` include the PDF,
+pointwise CSV, optimized 20k policy artifact, and provenance-rich summary.
+
+To overlay the saved first-order GLM policy's optimized-price distribution on
+that support cloud, run:
+
+```bash
+python scripts/plot_spline_support_cloud_with_optimized_prices.py
+```
+
+The shared x axis remains decimal price change on `[-0.1, 0.2]`. Blue denotes
+the monotone-spline/XGBoost mean-profit line and local-support cloud; dark red
+denotes the optimized price-change density replayed from the saved policy
+histogram on the right y axis. The script writes a new vector PDF and provenance
+manifest beside the support-cloud outputs and does not rerun optimization.
+
+To fit a support-lower-bound softmax-linear policy on the deterministic 20,000
+customers, replay it on all 715,023 eligible customers, and replace the red
+optimized-price distribution in that overlay, run:
+
+```bash
+python scripts/run_spline_lower_bound_policy.py
+```
+
+The minimized objective is the customer-level exact monotone-spline/XGBoost
+model cost plus the positive aggregate support half-width shown in the blue
+cloud, subject to the saved cohort-mean acceptance floor. Optimization uses the
+repository `run_first_order_minimize` entry point with `trust-constr`; it never
+selects a policy from an action grid. The bounded policy is
+`u_i=-0.1+0.3*sigmoid(theta' z_i)`, where `z_i` contains fitted standardized
+and sphered XGBoost customer features. Outputs under
+`results/spline-xgb-support-lower-bound-policy-20k/` include the saved 20k
+policy, its actions on every eligible customer, density bins, the new vector
+overlay PDF, the reusable exact-spline response cache, and full optimizer
+provenance.
+
+For an explicitly synthetic tail-risk demonstration, first construct a lower
+envelope that is unchanged through `u=0.12` and then adds a linear penalty
+calibrated so the lower bound reaches 140 profit units at `u=0.20`:
+
+```bash
+python scripts/build_synthetic_tail_lower_bound.py
+```
+
+The PDF displays only the mean-profit line and the region down to the modified
+lower bound; it does not display an upper envelope. The script leaves mean
+profit and the stored original upper-envelope values unchanged, stores the
+added tail penalty separately, and labels the output as an illustrative
+counterfactual rather than estimated uncertainty. Refit and replay the
+lower-bound policy with `scripts/run_spline_lower_bound_policy.py`, passing the
+synthetic CSV/manifest, `--lower-only-cloud`, and `--response-cache` pointing to
+the existing 20k exact-spline response cache. This avoids rebuilding customer
+splines; only the repository optimization and full-population policy replay are
+rerun. `--target-lower-profit` can reproduce a different terminal value.
+
+To reproduce the historical-versus-optimized density histogram with the saved
+target-140 policy replacing the original optimized series, run:
+
+```bash
+python scripts/plot_historical_with_lower_bound_policy.py
+```
+
+This preserves the reference PDF's title, axes, 30 bins on `[-0.1, 0.2]`,
+colors, transparency, and legend labels. It reads the exact saved actions on
+all 715,023 eligible customers and does not rerun optimization.
+
 After collection, render customer-level Spearman correlation heatmaps for the
 top-ranked numeric acceptance/loss features and a cross-model feature-ranking
 agreement plot with:
@@ -1076,6 +1208,24 @@ multiplier, displayed half-width, and support-adjusted lower profit. The figure
 compares the repository finite-difference optimizer applied to the mean-profit
 curve with the same optimizer applied to the lower curve. Both are continuous
 spline objectives; the plotting grid never selects either solution.
+
+To fit customer-dependent softmax policies to the full-population mean-profit
+and support-adjusted objectives, run:
+
+```bash
+python scripts/run_full_population_support_softmax_policy.py
+```
+
+The runner adds a natural-cubic interpolation of the companion CSV's displayed
+support half-width to each customer's XGBoost minimization cost. It fits both
+the profit-only and support-lower-bound policies with the repository
+action-space finite-difference optimizer on `[0, 0.16]`; the support policy is
+warm-started from the profit policy. Optional arm-only, exact profit-policy
+replay, saved-cohort, and constrained-reference modes support staged runs while
+preserving optimizer provenance. Outputs under
+`results/full-population-support-softmax-policy/` include policy-action NPZs,
+histogram CSVs, vector PDFs, and JSON summaries. The interpolation grid supplies
+spline knots only and never selects a reported policy.
 
 `01_within_customer_profit_change_from_median_price.pdf` instead holds each
 diagnostic customer fixed and subtracts that customer's predicted profit at the

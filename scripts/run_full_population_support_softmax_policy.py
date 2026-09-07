@@ -66,7 +66,7 @@ OPTIMIZER_FTOL = 1e-10
 
 @dataclass(frozen=True)
 class _SupportBandActionBias(ActionBias):
-    """Natural-cubic interpolation of the displayed support half-width."""
+    r"""Scaled support penalty $$b(u)=\lambda_{bias}H_{spline}(u)$$."""
 
     u_grid: np.ndarray
     half_width: np.ndarray
@@ -76,14 +76,18 @@ class _SupportBandActionBias(ActionBias):
     def __post_init__(self) -> None:
         u = np.asarray(self.u_grid, dtype=float)
         width = np.asarray(self.half_width, dtype=float)
+        lambda_bias = float(self.lambda_bias)
         if u.ndim != 1 or width.shape != u.shape or len(u) < 2:
             raise ValueError("u_grid and half_width must be matching 1D arrays.")
         if not np.all(np.diff(u) > 0.0):
             raise ValueError("u_grid must be strictly increasing.")
         if not np.isfinite(width).all() or np.any(width < 0.0):
             raise ValueError("half_width must contain finite nonnegative values.")
+        if not np.isfinite(lambda_bias):
+            raise ValueError("lambda_bias must be finite.")
         object.__setattr__(self, "u_grid", u)
         object.__setattr__(self, "half_width", width)
+        object.__setattr__(self, "lambda_bias", lambda_bias)
         object.__setattr__(
             self,
             "_spline",
@@ -95,11 +99,15 @@ class _SupportBandActionBias(ActionBias):
 
     def values(self, x_batch: Any, u: np.ndarray) -> np.ndarray:
         del x_batch
-        return np.asarray(self._spline(self._bounded(u)), dtype=float)
+        return self.lambda_bias * np.asarray(
+            self._spline(self._bounded(u)), dtype=float
+        )
 
     def grad_u(self, x_batch: Any, u: np.ndarray) -> np.ndarray:
         del x_batch
-        return np.asarray(self._spline(self._bounded(u), 1), dtype=float)
+        return self.lambda_bias * np.asarray(
+            self._spline(self._bounded(u), 1), dtype=float
+        )
 
 
 def _load_support_bias(path: Path) -> _SupportBandActionBias:

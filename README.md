@@ -1099,6 +1099,17 @@ the existing 20k exact-spline response cache. This avoids rebuilding customer
 splines; only the repository optimization and full-population policy replay are
 rerun. `--target-lower-profit` can reproduce a different terminal value.
 
+To reproduce the historical-versus-optimized density histogram with the saved
+target-140 policy replacing the original optimized series, run:
+
+```bash
+python scripts/plot_historical_with_lower_bound_policy.py
+```
+
+This preserves the reference PDF's title, axes, 30 bins on `[-0.1, 0.2]`,
+colors, transparency, and legend labels. It reads the exact saved actions on
+all 715,023 eligible customers and does not rerun optimization.
+
 After collection, render customer-level Spearman correlation heatmaps for the
 top-ranked numeric acceptance/loss features and a cross-model feature-ranking
 agreement plot with:

@@ -259,6 +259,11 @@ Guidelines:
   tail penalty. It preserves the estimated mean profit and original upper
   envelope in the data, displays only the lower-side region, writes the
   optimization penalty as a separate CSV column, and performs no optimization.
+- `scripts/plot_historical_with_lower_bound_policy.py` preserves the reference
+  historical-versus-optimized density histogram design while replacing its
+  optimized series with the exact saved target-140 policy actions on all
+  715,023 eligible customers. It records the source policy, optimizer summary,
+  reference PDF, bins, and output hashes without rerunning optimization.
 - `scripts/build_full_monotone_spline_cache.py` builds the versioned, resumable
   full-eligible-row monotone-XGB curve cache under `results/cache/`; it reuses
   `analyze_model_acceptance_features` for eligible rows, all-customer historical

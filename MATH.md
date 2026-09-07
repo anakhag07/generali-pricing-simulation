@@ -388,6 +388,45 @@ and rendering points only; it never selects either solution.
   `_support_weighted_band_half_width()`,
   `_plot_full_population_support_weighted_band()`
 
+The full-population support-softmax runner reads the displayed half-width
+samples $$(u_j,H_{\mathrm{support}}(u_j))$$ from that diagnostic and defines
+$$H_{\mathrm{spline}}$$ as their natural cubic interpolant. For defensive
+queries, the action is clipped to the knot domain
+$$[u_{\min},u_{\max}]=[0,0.16]$$ before interpolation. Its `ActionBias` is
+
+$$
+b_{\lambda}(u)=\lambda_{\mathrm{bias}}\,
+H_{\mathrm{spline}}\!\left(
+\operatorname{clip}(u,u_{\min},u_{\max})
+\right).
+$$
+
+On the bounded optimizer domain, its implemented action derivative is
+
+$$
+\frac{\partial b_{\lambda}(u)}{\partial u}
+=\lambda_{\mathrm{bias}}H'_{\mathrm{spline}}(u).
+$$
+
+For customer-specific bounded softmax actions
+$$u_i=0.16\,\sigma(\theta_0+\theta_x^\top x_i)$$, the support-adjusted
+minimization objective is
+
+$$
+J_{\mathrm{support}}(\theta)=\frac{1}{n}\sum_{i=1}^{n}
+\left[C_i(u_i)+b_{\lambda}(u_i)\right],
+$$
+
+where $$C_i=-P_i$$ is the XGBoost `ModelBasedObjective` cost. The default
+$$\lambda_{\mathrm{bias}}=1$$ therefore adds the displayed half-width without
+rescaling it. Both the profit-only and support-adjusted policies are returned
+by the repository action-space finite-difference optimizer; the support grid is
+used only for interpolation and plotting. The construction is deterministic
+and adds no seed stream.
+
+- **Source:** `scripts/run_full_population_support_softmax_policy.py` ::
+  `_SupportBandActionBias`, `_run_policy_optimizer()`
+
 For the paired within-customer sensitivity view, the common baseline action is
 the median historical price change across all XGBoost-eligible customers,
 

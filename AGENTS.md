@@ -244,6 +244,13 @@ Guidelines:
   price-change axis, separate labeled profit and density y axes, and records
   the source PDF, data, policy artifact, and output hashes without rerunning
   optimization.
+- `scripts/run_spline_gp_lower_bound_policy.py` constructs a deterministic
+  synthetic-GP uncertainty envelope around the saved 20,000-row exact-spline/
+  XGBoost mean-profit curve, then fits a bounded softmax-linear policy to the
+  resulting lower bound with the repository first-order `trust-constr`
+  optimizer and saved acceptance floor. Its fixed conditioning design adds no
+  seed stream, and its grid supplies interpolation values rather than candidate
+  optimizer solutions.
 - `scripts/run_spline_lower_bound_policy.py` fits a bounded softmax-linear
   policy on the deterministic 20,000-row sample by minimizing exact
   monotone-spline/XGBoost cost plus the wide cloud's positive aggregate support
@@ -312,6 +319,14 @@ Guidelines:
   population-median historical action as a common baseline, reports profit-change
   quantile ribbons plus robust MAD dispersion on `[0, 0.16]`, and obtains any
   marked dispersion extrema from the repository finite-difference optimizer.
+- `scripts/run_full_population_support_softmax_policy.py` fits bounded
+  identity-feature softmax policies on all eligible XGBoost customers (or a
+  saved row-index cohort) with and without the displayed marginal-support
+  half-width added to minimization cost. The width is queried through a scaled
+  natural cubic `ActionBias`; both policy solutions use the repository
+  action-space finite-difference optimizer, while replay and constrained-
+  reference modes require exact saved optimizer provenance. Outputs include
+  policy artifacts, histogram CSVs, vector PDFs, and JSON optimizer summaries.
 - Keep the boundary strict: do not hide reusable pipeline logic inside a script,
   and do not promote analysis-only code into `src/` without a concrete reusable
   integration point.

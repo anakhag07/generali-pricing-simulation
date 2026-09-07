@@ -1209,6 +1209,24 @@ compares the repository finite-difference optimizer applied to the mean-profit
 curve with the same optimizer applied to the lower curve. Both are continuous
 spline objectives; the plotting grid never selects either solution.
 
+To fit customer-dependent softmax policies to the full-population mean-profit
+and support-adjusted objectives, run:
+
+```bash
+python scripts/run_full_population_support_softmax_policy.py
+```
+
+The runner adds a natural-cubic interpolation of the companion CSV's displayed
+support half-width to each customer's XGBoost minimization cost. It fits both
+the profit-only and support-lower-bound policies with the repository
+action-space finite-difference optimizer on `[0, 0.16]`; the support policy is
+warm-started from the profit policy. Optional arm-only, exact profit-policy
+replay, saved-cohort, and constrained-reference modes support staged runs while
+preserving optimizer provenance. Outputs under
+`results/full-population-support-softmax-policy/` include policy-action NPZs,
+histogram CSVs, vector PDFs, and JSON summaries. The interpolation grid supplies
+spline knots only and never selects a reported policy.
+
 `01_within_customer_profit_change_from_median_price.pdf` instead holds each
 diagnostic customer fixed and subtracts that customer's predicted profit at the
 median historical action across all XGBoost-eligible customers. It plots paired

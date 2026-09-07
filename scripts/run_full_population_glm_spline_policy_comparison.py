@@ -44,6 +44,7 @@ from optimization.solvers import run_first_order_minimize
 ACTION_LOW = -0.1
 ACTION_HIGH = 0.2
 BIN_WIDTH = 0.01
+OPTIMIZED_COLOR = "#86002d"
 EXPECTED_SEED = 8
 EXPECTED_TRAIN_ROWS = 572_018
 EXPECTED_TEST_ROWS = 143_005
@@ -89,6 +90,16 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--n-jobs", type=int, default=8)
     parser.add_argument("--launch", choices=("local", "slurm"), default="local")
     parser.add_argument("--no-sbatch", action="store_true")
+    parser.add_argument(
+        "--replot-only",
+        action="store_true",
+        help="Regenerate standalone spline histograms from an existing saved policy.",
+    )
+    parser.add_argument(
+        "--all-title-parenthetical",
+        default="all customers",
+        help="Parenthetical title text for the all-population standalone histogram.",
+    )
     return parser
 
 
@@ -230,7 +241,15 @@ def _plot_single(values: np.ndarray, path: Path, *, population: str) -> None:
     edges = np.linspace(ACTION_LOW, ACTION_HIGH, 31, dtype=float)
     edges[-1] = np.nextafter(ACTION_HIGH, np.inf)
     fig, ax = plt.subplots(figsize=(9, 5.6), constrained_layout=True)
-    ax.hist(values, bins=edges, density=True, alpha=0.75, linewidth=0.5)
+    ax.hist(
+        values,
+        bins=edges,
+        density=True,
+        color=OPTIMIZED_COLOR,
+        edgecolor=OPTIMIZED_COLOR,
+        alpha=0.75,
+        linewidth=0.5,
+    )
     ax.set_xlim(ACTION_LOW, ACTION_HIGH)
     ax.set_title(f"Optimized Price Changes — Spline/XGBoost ({population})", fontsize=16)
     ax.set_xlabel("Price Change", fontsize=12)
@@ -287,6 +306,38 @@ def _trace_payload(trace: Any) -> dict[str, Any]:
         ),
         "final_gradient_norm": float(trace.theta_grad_norms[-1]),
     }
+
+
+def replot_saved_standalone_histograms(
+    output_dir: Path,
+    *,
+    all_title_parenthetical: str = "all customers",
+) -> list[Path]:
+    """Replay saved actions and refresh only the two standalone PDFs."""
+    result_dir = output_dir.resolve()
+    policy_path = result_dir / "spline_policy_seed_8.npz"
+    summary_path = result_dir / "summary.json"
+    with np.load(policy_path, allow_pickle=False) as payload:
+        train_actions = np.asarray(payload["train_actions"], dtype=float)
+        all_actions = np.asarray(payload["all_actions"], dtype=float)
+        action_bounds = np.asarray(payload["action_bounds"], dtype=float)
+    if not np.allclose(action_bounds, [ACTION_LOW, ACTION_HIGH]):
+        raise ValueError("Saved policy bounds do not match [-0.1, 0.2].")
+    if not np.isfinite(train_actions).all() or not np.isfinite(all_actions).all():
+        raise ValueError("Saved policy actions must be finite.")
+
+    train_pdf = result_dir / "optimized_price_changes_spline_train.pdf"
+    all_pdf = result_dir / "optimized_price_changes_spline_all_customers.pdf"
+    _plot_single(train_actions, train_pdf, population="training population")
+    _plot_single(all_actions, all_pdf, population=all_title_parenthetical)
+
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    for path in (train_pdf, all_pdf):
+        summary["outputs"][path.name] = _file_record(path)
+    summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    for path in (train_pdf, all_pdf, summary_path):
+        print(path, flush=True)
+    return [train_pdf, all_pdf, summary_path]
 
 
 def run_analysis(args: argparse.Namespace) -> list[Path]:
@@ -509,6 +560,12 @@ def run_analysis(args: argparse.Namespace) -> list[Path]:
 
 def main(argv: Sequence[str] | None = None) -> None:
     args = _build_parser().parse_args(argv)
+    if args.replot_only:
+        replot_saved_standalone_histograms(
+            args.output_dir,
+            all_title_parenthetical=str(args.all_title_parenthetical),
+        )
+        return
     original_argv = [sys.argv[0], *(sys.argv[1:] if argv is None else argv)]
     if args.launch == "slurm":
         submission = submit_to_slurm_if_needed(

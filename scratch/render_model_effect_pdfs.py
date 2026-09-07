@@ -147,7 +147,7 @@ def _plot_mean_std(
         ax.set_ylim(*ylim)
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
-    ax.set_title(title)
+    ax.set_title(title, fontsize=16)
     ax.grid(alpha=0.25)
     if add_y_margin:
         ax.margins(y=0.12)
@@ -286,8 +286,8 @@ def render_model_effect_pdfs(
             claims_curve["std"],
             color=CLAIMS_COLOR,
             xlabel="Bonus-Malus Rating",
-            ylabel="Predicted Claims",
-            title="Predicted Effect of Bonus-Malus Rating on Claims",
+            ylabel="Expected Claims",
+            title="Predicted Effect of Bonus-Malus Rating on Expected Claims",
             pdf_path=claims_output,
             add_y_margin=True,
         )

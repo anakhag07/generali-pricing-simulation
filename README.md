@@ -1034,6 +1034,57 @@ histograms, customer-level actions, an optimization trace, and `summary.json`.
 The interpolated constraint includes a small safety margin and the final actions
 are also checked directly with XGBoost.
 
+For the intentionally illustrative, constant-action optimizer-shift slide set,
+run:
+
+```bash
+python scripts/plot_customer_coverage_envelope_slides.py
+```
+
+This uses empirical local historical support to shape an uncertainty width but
+fixes its scale at 10 profit units for visual clarity; it is not a calibrated
+confidence interval. Profit-only and uncertainty-adjusted solutions both come
+from the repository's `Optimization` pipeline using its action-space central
+finite-difference estimator, L-BFGS-B step rule, and bounded sigmoid
+constant-policy parameterization. The optimizer minimizes the saved XGBoost
+objective (plus the width for the adjusted run); plots negate those objectives
+to retain the profit/maximization view where higher is better. Natural cubic
+splines define off-grid queries on `[0, 0.16]`. The action grid supplies
+interpolation knots and plotting points, not candidate solutions. Outputs and
+machine-readable optimizer provenance live under
+`results/customer-coverage-envelope-slides/`.
+
+The same command also regenerates
+`01_smoothed_mean_profit_with_mad_cloud.pdf` on `u in [0, 0.16]`. Its band is the
+full-population mean predicted profit plus or minus the user-specified
+`0.6 * customer MAD` from the deterministic 20,000-customer sample. This is a
+scaled-MAD display band, not a standard-deviation estimate.
+`01_customer_profit_dispersion_std_vs_mad.pdf` separately compares the
+Gaussian-consistent `1.4826 * MAD` scale with ordinary customer standard
+deviation over `[-0.10, 0.20]`; the companion CSV stores both curves. These
+dispersion outputs do not calculate or report an optimum.
+
+`01_full_population_profit_with_support_weighted_band.pdf` uses all 715,023
+eligible historical actions to calculate Gaussian-kernel effective sample size
+on `[0, 0.16]`. It shows the saved full-cohort mean-profit curve with an
+illustrative support-weighted band. Full inverse-root support risk, including
+its baseline value of one, is mapped to a maximum half-width of 10 profit units
+for display, so the result is an extrapolation-risk diagnostic rather than a
+predictive confidence interval.
+The companion CSV stores the effective sample size, relative support, risk
+multiplier, displayed half-width, and support-adjusted lower profit. The figure
+compares the repository finite-difference optimizer applied to the mean-profit
+curve with the same optimizer applied to the lower curve. Both are continuous
+spline objectives; the plotting grid never selects either solution.
+
+`01_within_customer_profit_change_from_median_price.pdf` instead holds each
+diagnostic customer fixed and subtracts that customer's predicted profit at the
+median historical action across all XGBoost-eligible customers. It plots paired
+profit-change quantiles and robust MAD dispersion on `[0, 0.16]`; its companion
+CSV stores the curves. The marked smallest/largest dispersion locations are
+returned by the repository finite-difference optimizer over the smoothed
+continuous dispersion curve.
+
 To benchmark GLM analytical acceptance speed, Stein-difference call counts,
 objective-cache behavior, and contour-subsampling speed on the bundled real-data
 objective, use:

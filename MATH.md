@@ -224,14 +224,179 @@ minimization objective,
 
 $$P_i(u) = -f(u;x_i) = a(x_i,u)\bigl((u+1)p(x_i)-L(x_i)\bigr).$$
 
-At each candidate action, the plotted cloud is the sample mean plus or minus one
-sample standard deviation across customers:
+For comparison with the robust cloud below, the ordinary sample standard
+deviation across customers is
 
-$$\bar P(u) \pm s_P(u), \qquad
-s_P(u)=\sqrt{\frac{1}{n-1}\sum_{i=1}^n\left(P_i(u)-\bar P(u)\right)^2}.$$
+$$s_P(u)=\sqrt{\frac{1}{n-1}\sum_{i=1}^n\left(P_i(u)-\bar P(u)\right)^2}.$$
 
 - **Source:** `scripts/plot_customer_coverage_envelope_slides.py` ::
-  `_compute_diagnostics()`, `_plot_smoothed_mean_profit_std_band()`
+  `_compute_diagnostics()`, `_plot_customer_profit_dispersion_comparison()`
+
+The exploratory robust-dispersion version evaluates the same customer-level
+profit on the wider saved-objective domain
+$$u_j=-0.10+0.001j$$, $$j=0,\ldots,300$$. At each action, let
+
+$$
+m_P(u)=\operatorname{median}_i P_i(u), \qquad
+\operatorname{MAD}_P(u)=\operatorname{median}_i\left|P_i(u)-m_P(u)\right|.
+$$
+
+The Gaussian-consistent robust standard-deviation estimate is
+
+$$
+s_{\mathrm{MAD}}(u)=
+\frac{1}{\Phi^{-1}(0.75)}\operatorname{MAD}_P(u)
+\approx 1.4826\operatorname{MAD}_P(u).
+$$
+
+The direct dispersion comparison plots $$\widetilde{s}_P(u)$$ and
+$$\widetilde{s}_{\mathrm{MAD}}(u)$$ over the wider domain so their widths can be
+compared without interpreting an optimizer. The dedicated MAD-cloud slide uses
+the primary domain $$u\in[0,0.16]$$ and the user-specified half-width
+
+$$H_{0.6\mathrm{MAD}}(u)=0.6\,\operatorname{GaussianSmooth}
+\left(\operatorname{MAD}_P(u)\right).$$
+
+It plots
+$$\widetilde{\bar P}(u)\pm H_{0.6\mathrm{MAD}}(u)$$ around the saved
+full-population mean profit. This is explicitly a scaled-MAD display band, not a
+Gaussian-consistent standard-deviation estimate. Neither dispersion plot
+computes or reports an optimum.
+
+- **Source:** `scripts/plot_customer_coverage_envelope_slides.py` ::
+  `_mad_dispersion()`, `_compute_diagnostics()`,
+  `_plot_smoothed_mean_profit_mad_band()`,
+  `_plot_customer_profit_dispersion_comparison()`
+
+The full-population historical-support diagnostic instead uses every eligible
+historical action, $$n=715{,}023$$. With Gaussian action bandwidth $$h=0.01$$,
+define
+
+$$w_i(u)=\exp\left[-\frac{(U_i-u)^2}{2h^2}\right], \qquad
+N_{\mathrm{eff}}(u)=\frac{\left(\sum_i w_i(u)\right)^2}
+{\sum_i w_i(u)^2}.$$
+
+Relative support and inverse-root support risk are
+
+$$S_{\mathrm{rel}}(u)=\frac{N_{\mathrm{eff}}(u)}
+{\max_v N_{\mathrm{eff}}(v)}, \qquad
+R(u)=\frac{1}{\sqrt{S_{\mathrm{rel}}(u)}}.$$
+
+For the display band only, full relative risk is mapped to a maximum half-width
+of 10 profit units,
+
+$$H_{\mathrm{support}}(u)=10\,
+\frac{R(u)}{\max_v R(v)}.$$
+
+The plot shows
+$$\widetilde{\bar P}(u)\pm H_{\mathrm{support}}(u)$$. The baseline risk value
+is not subtracted, so the band remains nonzero at the best-supported action.
+Historical support determines the shape, but the 10-unit vertical scale is
+illustrative. The band is therefore an
+extrapolation-risk diagnostic, not a predictive confidence interval. The
+comparison optimizes both displayed curves through the repository optimizer:
+the mean-profit solution minimizes $$\widetilde J(u)$$, while the lower-band
+solution minimizes
+
+$$\widetilde J(u)+H_{\mathrm{support}}(u).$$
+
+The plots negate these minimized objectives so that both curves retain the
+profit convention where higher is better. The action grid provides spline knots
+and rendering points only; it never selects either solution.
+
+- **Source:** `scripts/plot_customer_coverage_envelope_slides.py` ::
+  `_marginal_action_effective_sample_size()`,
+  `_support_weighted_band_half_width()`,
+  `_plot_full_population_support_weighted_band()`
+
+For the paired within-customer sensitivity view, the common baseline action is
+the median historical price change across all XGBoost-eligible customers,
+
+$$u_{\mathrm{base}}=\operatorname{median}_{i\in\mathcal E} U_i.$$
+
+Holding each diagnostic customer's features fixed, define its predicted profit
+change from that common baseline as
+
+$$\Delta P_i(u)=P_i(u)-P_i(u_{\mathrm{base}}).$$
+
+The fan chart reports the 10th, 25th, 50th, 75th, and 90th empirical quantiles
+of $$\Delta P_i(u)$$ across the same deterministic 20,000 customers. Its robust
+dispersion curve is
+
+$$
+D_{\mathrm{MAD}}(u)=1.4826\operatorname{median}_i
+\left|\Delta P_i(u)-\operatorname{median}_k\Delta P_k(u)\right|.
+$$
+
+Because all customers are compared with themselves at the common baseline,
+$$\Delta P_i(u_{\mathrm{base}})=0$$. The robust-dispersion samples are Gaussian
+smoothed on the regular 0.001 grid, and a natural cubic spline supplies off-grid
+queries. Marked extrema are obtained through the repository's action-space
+finite-difference minimizer: the minimum minimizes the smoothed
+$$D_{\mathrm{MAD}}$$ and the maximum minimizes its negative. Multiple documented
+starts may be used to resolve basins; only completed repository-optimizer
+solutions are compared. The plotted grid never selects an extremum.
+
+- **Source:** `scripts/plot_customer_coverage_envelope_slides.py` ::
+  `_within_customer_change_summary()`, `_repo_spline_minimize()`,
+  `_compute_diagnostics()`, `_plot_within_customer_profit_change()`
+
+For the plot-forward optimizer-shift demonstration, the saved full-population
+XGBoost minimization-objective samples and the aggregate support-based width are
+first smoothed on the fixed action grid $$u_j=0.001j$$,
+$$j=0,\ldots,160$$, using the documented Gaussian display filter. Natural
+cubic-spline interpolants then define the continuous optimizer-facing functions
+on $$[0,0.16]$$:
+
+$$
+\widetilde J(u)=\operatorname{CubicSpline}_{\mathrm{natural}}\!\left(
+u_j,\operatorname{GaussianSmooth}(\bar J_{\mathrm{XGB}}(u_j))
+\right)(u),
+$$
+
+$$
+\widetilde W(u)=\operatorname{CubicSpline}_{\mathrm{natural}}\!\left(
+u_j,\operatorname{GaussianSmooth}\!\left[
+c\left(1-\frac{S(u_j)}{\max_k S(u_k)}\right)
+\right]\right)(u), \qquad c=10,
+$$
+
+where $$S(u_j)$$ is median local historical support across the deterministic
+20,000-customer sample. Optimization uses the repository's bounded sigmoid
+constant policy
+
+$$u(\theta)=0.16\,\operatorname{sigmoid}(\theta),$$
+
+initialized at $$\theta_0=0$$ (so $$u_0=0.08$$). The repository
+`Optimization` pipeline uses its L-BFGS-B step rule and action-space central
+finite-difference gradient with $$\sigma_u=0.001$$. The two solutions minimize
+the XGBoost objective and its uncertainty-penalized form:
+
+$$
+\theta_{\mathrm{profit}}=\operatorname{RepoOptimizer}\!\left[
+\widetilde J(u(\theta))
+\right],
+\qquad
+\theta_{\mathrm{uncertainty}}=\operatorname{RepoOptimizer}\!\left[
+\widetilde J(u(\theta))+\widetilde W(u(\theta))
+\right].
+$$
+
+The figures retain the maximization convention by plotting
+$$\widetilde P=-\widetilde J$$ and
+$$\widetilde P_{\mathrm{adjusted}}=-(\widetilde J+\widetilde W)$$, so higher is
+better even though optimization is performed only in minimization form. The
+natural cubic splines are the exact off-grid query rule; action-space probes are
+clipped to the closed action domain. Plotted grid samples only render the
+curves and never select a solution. The deterministic finite-difference run has
+no optimizer random stream; the historical sample remains fixed by seed
+`20260831`. This is an intentionally manufactured visual demonstration:
+$$c=10$$ is chosen for a clear decision shift and is not a calibrated
+confidence radius.
+
+- **Source:** `scripts/plot_customer_coverage_envelope_slides.py` ::
+  `_SplineMinimizationObjective`, `_minimize_xgboost_objective()`,
+  `_compute_diagnostics()`
 
 For the customer-specific coverage-aware policy rerun, let $$S_i(u_j)$$ be the
 local joint customer/action support on the fixed action grid. Each customer's

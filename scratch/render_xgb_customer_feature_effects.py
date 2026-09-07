@@ -260,7 +260,7 @@ def _plot_effect(
         target_label = "Acceptance Probability"
     else:
         color = CLAIMS_COLOR
-        target_label = "Claims"
+        target_label = "Expected Claims"
 
     fig, ax = plt.subplots(figsize=(9, 5.6), constrained_layout=True)
     ax.fill_between(x, lower, upper, color=color, alpha=0.20, linewidth=0)
@@ -268,7 +268,7 @@ def _plot_effect(
     ax.set_xlim(float(x[0]), float(x[-1]))
     ax.set_xlabel(feature_label, fontsize=12)
     ax.set_ylabel(
-        "Acceptance Probability" if target == "acceptance" else "Predicted Claims",
+        "Acceptance Probability" if target == "acceptance" else "Expected Claims",
         fontsize=12,
     )
     ax.set_title(

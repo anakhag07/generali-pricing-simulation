@@ -4,6 +4,23 @@ Project context: simulation and optimization repo. Users should be able to speci
 
 ## Core Working Rules
 
+- **Mandatory repository optimizer use for every reported optimum.** Scripts,
+  notebooks, scratch drivers, and ad-hoc analyses that compute, mark, compare,
+  or report an optimum, optimizer action, or optimizer shift must invoke the
+  optimizer setup in `src/optimization/` (or replay an exact saved output from
+  that setup with artifact provenance). Plotting/evaluation grids may render an
+  objective, but must never select the reported solution with `argmin`,
+  `argmax`, sorting, or an equivalent grid scan. Do not silently substitute a
+  direct SciPy optimizer, a hand-written optimization loop, or an analytical
+  extremum for the repository optimizer.
+- **Any exception requires advance, top-level disclosure and approval.** If an
+  agent believes the repository optimizer is broken, unsuitable, or impossible
+  to use for the requested analysis, the agent must state that prominently at
+  the top of its user-facing response *before* implementing or running the
+  alternative, explain the concrete issue and proposed deviation, and wait for
+  explicit user approval. Record any approved exception in the generated
+  experiment documentation. Never bury this disclosure in logs, code comments,
+  or an end-of-task summary.
 - Prefer small, focused changes with clear doc updates. Prior to making code changes, think about whether the code addition is necessary and if it keeps a clean, intuitive repo structure for the public api. 
 - Keep simulation logic deterministic when a seed is set.
 - When adding any new stochastic or nondeterministic process (sampling, splits,
@@ -224,6 +241,32 @@ Guidelines:
   cohort-mean acceptance floor, caches coverage/response matrices, and writes
   customer-level baseline-versus-adjusted actions and vector-PDF histograms to
   `results/coverage-aware-policy-20k/`.
+- `scripts/plot_customer_coverage_envelope_slides.py` is the intentionally
+  illustrative constant-action optimizer-shift demonstration. It uses the
+  deterministic 20,000-row historical-support sample to shape a width fixed at
+  10 profit units, smooths the saved full-population XGBoost objective and width
+  samples, and defines continuous natural-cubic-spline query functions on
+  `[0, 0.16]`. Both displayed actions come from the repository's `Optimization`
+  pipeline with its action-space finite-difference estimator, L-BFGS-B step
+  rule, and bounded sigmoid constant policy. The optimizer minimizes; plots
+  negate the objective into the profit/maximization convention. The sampled
+  grid is never used to select a solution. It writes vector PDFs plus
+  `EXPERIMENT.md`, `optimizer_solutions.json`, and replay arrays under
+  `results/customer-coverage-envelope-slides/`. Its exploratory customer-profit
+  dedicated MAD-cloud output spans `[0, 0.16]` with the explicitly requested
+  half-width `0.6 * customer MAD`; it is not labelled as a standard deviation.
+  A companion wide-domain PDF/CSV compares Gaussian-consistent robust and
+  ordinary standard deviations. Those dispersion plots do not calculate an
+  optimum. Its full-population support-band PDF/CSV uses Gaussian-kernel
+  effective sample size over all 715,023 eligible historical actions; the
+  full inverse-root support-risk shape, without baseline subtraction, is
+  illustratively scaled to a maximum 10-profit-unit half-width and is not a
+  confidence interval. Its mean-profit and support-lower-bound markers must both
+  come from the repository finite-difference optimizer; the grid must not select
+  either action. Its paired within-customer PDF/CSV uses the
+  population-median historical action as a common baseline, reports profit-change
+  quantile ribbons plus robust MAD dispersion on `[0, 0.16]`, and obtains any
+  marked dispersion extrema from the repository finite-difference optimizer.
 - Keep the boundary strict: do not hide reusable pipeline logic inside a script,
   and do not promote analysis-only code into `src/` without a concrete reusable
   integration point.

@@ -143,6 +143,26 @@ def test_existing_valid_shard_resumes_without_loading_models(tmp_path: Path, mon
     assert resumed["shard_path"] == payload["shard_path"]
 
 
+def test_same_mounted_shard_accepts_matching_inode_and_shard_suffix(
+    tmp_path: Path, monkeypatch
+) -> None:
+    expected = tmp_path / "cache" / "shards" / "shard_00003"
+    reported = tmp_path / "orcd-alias" / "shards" / "shard_00003"
+    expected.mkdir(parents=True)
+    reported.mkdir(parents=True)
+    inode = expected.stat().st_ino
+
+    class _Stat:
+        st_ino = inode
+
+    monkeypatch.setattr(Path, "stat", lambda self: _Stat())
+
+    assert builder._same_mounted_shard(reported, expected)
+    assert not builder._same_mounted_shard(
+        reported.with_name("shard_00004"), expected
+    )
+
+
 def test_resume_rejects_existing_shard_with_wrong_rows(tmp_path: Path) -> None:
     context = _context(tmp_path)
     _write_shard(context, np.asarray([2, 6]), shard_index=0, start=0, stop=2)

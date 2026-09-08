@@ -7,7 +7,14 @@ from objective.modifications.bias import (
     ActionBias,
     BiasedObjective,
     LinearActionBias,
+    NaturalCubicActionBias,
     UpperSupportHingeBias,
 )
 
-__all__ = ["ActionBias", "BiasedObjective", "LinearActionBias", "UpperSupportHingeBias"]
+__all__ = [
+    "ActionBias",
+    "BiasedObjective",
+    "LinearActionBias",
+    "NaturalCubicActionBias",
+    "UpperSupportHingeBias",
+]

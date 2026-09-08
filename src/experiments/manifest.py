@@ -18,6 +18,11 @@ import numpy as np
 
 from experiments.configs import get_config
 from experiments.paths import results_root
+from experiments.reporting.recipes import (
+    ManifestReportSpec,
+    parse_manifest_reports,
+    run_manifest_reports,
+)
 from experiments.sweep_reporting import (
     DEFAULT_SEED_METRIC_BARS,
     aggregate_seed_grid_rows,
@@ -85,6 +90,7 @@ class ExperimentManifest:
     variants: tuple[ManifestVariant, ...]
     defaults: dict[str, Any]
     per_seed_plots: bool
+    reporting: tuple[ManifestReportSpec, ...]
     source_path: Path | None = None
 
     def project_dir(self, runs_root: str | Path | None = None) -> Path:
@@ -139,6 +145,7 @@ def parse_experiment_manifest(
     truth = _truth_spec(_required_mapping(payload, "truth"), source)
     launch = _launch_spec(_required_mapping(payload, "launch"))
     defaults = dict(_optional_mapping(payload.get("defaults"), field="defaults"))
+    reporting = parse_manifest_reports(payload.get("reporting"))
 
     objective_overrides = dict(_optional_mapping(objective.get("overrides"), field="objective.overrides"))
     base_overrides: dict[str, Any] = {
@@ -161,6 +168,7 @@ def parse_experiment_manifest(
         variants=tuple(variants),
         defaults=defaults,
         per_seed_plots=bool(payload.get("per_seed_plots", False)),
+        reporting=reporting,
         source_path=source,
     )
 
@@ -239,6 +247,19 @@ def write_experiment_readme(
             "",
             *variant_lines,
             "",
+            "## Reporting",
+            "",
+            "```json",
+            json.dumps(
+                [
+                    {"name": item.name, "recipe": item.recipe, "options": item.options}
+                    for item in manifest.reporting
+                ],
+                indent=2,
+                sort_keys=True,
+            ),
+            "```",
+            "",
             "## Default Outputs",
             "",
             "- Every seed writes `summary-seed-<seed>.json` at the variant root.",
@@ -247,6 +268,8 @@ def write_experiment_readme(
             "seed metric bar plots, a seed frontier plot, and seed loss bands.",
             "- Multi-variant manifests write project-level seed-grid CSVs/plots and "
             "`derived_metrics.csv` from saved seed summaries.",
+            "- Optional reporting recipes write under `reports/<report-name>/` and "
+            "are skipped when their provenance file already exists.",
             "",
         ]
     )
@@ -343,11 +366,14 @@ def collect_manifest_outputs(
             key for key in fieldnames if key not in leading
         ]
         write_rows_csv(project_dir / "derived_metrics.csv", derived_rows, ordered)
+    report_rows = run_manifest_reports(manifest.reporting, project_dir=project_dir)
     return {
         "project_dir": str(project_dir),
         "n_final_rows": len(final_rows),
         "n_summary_rows": len(summary_rows),
         "n_derived_rows": len(derived_rows),
+        "n_reports": len(report_rows),
+        "reports": report_rows,
     }
 
 
@@ -764,6 +790,7 @@ __all__ = [
     "ExperimentManifest",
     "LaunchSpec",
     "ManifestVariant",
+    "ManifestReportSpec",
     "SeedSpec",
     "TruthSpec",
     "collect_derived_metric_rows",

@@ -187,8 +187,8 @@ def test_parse_args_defaults_to_ten_thousand_rows_and_parallel_eight() -> None:
 
 def test_main_builds_72_shard_plan_for_expected_customer_count(monkeypatch) -> None:
     captured = {}
-    monkeypatch.setattr(builder.acceptance_analysis, "_eligible_rows", lambda: np.arange(715_023))
-    monkeypatch.setattr(builder.acceptance_analysis, "_spline_weights", lambda rows: np.ones(17))
+    monkeypatch.setattr(builder, "eligible_csv_row_indices", lambda model: np.arange(715_023))
+    monkeypatch.setattr(builder, "spline_anchor_weights", lambda rows: np.ones(17))
     monkeypatch.setattr(
         builder,
         "run_launch_plan",

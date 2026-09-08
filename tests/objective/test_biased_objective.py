@@ -8,9 +8,11 @@ from objective import (
     BiasedObjective,
     ConstantPolicy,
     LinearPolicy,
+    NaturalCubicActionBias,
     PlantedLogisticObjective,
     UpperSupportHingeBias,
 )
+from objective.modifications import action_bias_from_dict, action_bias_to_dict
 
 
 def _constant_base() -> PlantedLogisticObjective:
@@ -166,3 +168,26 @@ def test_biased_objective_support_bias_config_serialization_includes_support() -
         "support_upper": 0.15000000000000002,
         "smooth_tau": 0.01,
     }
+
+
+def test_natural_cubic_action_bias_round_trip_and_gradient() -> None:
+    bias = NaturalCubicActionBias(
+        action_grid=(-0.1, 0.0, 0.1, 0.2),
+        bias_values=(2.0, 0.5, 1.0, 3.0),
+        lambda_bias=1.5,
+    )
+    restored = action_bias_from_dict(action_bias_to_dict(bias))
+    actions = np.asarray([-0.2, -0.05, 0.05, 0.25])
+
+    np.testing.assert_allclose(restored.values(None, actions), bias.values(None, actions))
+    np.testing.assert_allclose(restored.grad_u(None, actions), bias.grad_u(None, actions))
+    assert restored.grad_u(None, actions)[0] == 0.0
+    assert restored.grad_u(None, actions)[-1] == 0.0
+
+    epsilon = 1e-7
+    interior = actions[1:3]
+    numerical = (
+        bias.values(None, interior + epsilon)
+        - bias.values(None, interior - epsilon)
+    ) / (2.0 * epsilon)
+    np.testing.assert_allclose(bias.grad_u(None, interior), numerical, rtol=1e-6)

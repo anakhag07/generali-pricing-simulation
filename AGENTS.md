@@ -202,9 +202,10 @@ If lower-priority docs are stale, update them in the same task.
 Before adding code, inspect the surrounding module structure and choose the narrowest sensible location for the change.
 
 Guidelines:
-- Classify new work before choosing files. One-off or ad-hoc analyses belong in
-  `scripts/`; reusable behavior that changes the experiment pipeline belongs in
-  `src/` only after core-feature planning.
+- Classify new work before choosing files. Reproducible analyses use the
+  existing manifest runner with a validated reporting recipe; reusable model,
+  data, objective, and plotting behavior belongs under `src/`. Reserve scripts
+  for thin launchers and `scratch/` for short-lived, non-reported probes.
 - `scratch/` is a tracked (committed) area for drivers of concluded experiments
   and short-lived probes. Retire a `scripts/` driver here once its experiment is
   done rather than deleting it, and drop its `scripts/` docs entries — `scratch/`
@@ -214,119 +215,21 @@ Guidelines:
   planted-logistic support-bias sweep CSV/summaries and writes post-run true-gap
   bar charts plus constant-action oracle-vs-biased objective slices; it never
   reruns optimization.
-- `scripts/analyze_model_acceptance_features.py` is the resumable CPU-array
-  analysis for all-customer GLM/XGBoost/per-customer-spline acceptance curves
-  and raw-X prediction-sensitivity rankings. Its row-sampling seed and
-  permutation seed are independent, and it deliberately creates no X-feature
-  plots.
-- `scripts/plot_glm_spline_profit_dispersion.py` verifies and reuses the saved
-  deterministic 20,000-row coverage sample, then compares GLM-acceptance/GLM-loss
-  and exact-spline-acceptance/XGBoost-loss predicted profit on
-  `u=-0.100,...,0.200`. It evaluates the repository `ModelBasedObjective`
-  minimization cost `acceptance * (loss - revenue)` and negates per-customer
-  costs only for profit/maximization reporting. Exact splines use the runtime
-  constant-left and clipped-linear-right boundary rules outside `[0, 0.16]`.
-  The script writes unsmoothed, unclipped mean plus population-SD and median
-  plus raw-MAD vector PDFs, a long-form CSV, and a provenance manifest under
-  `results/glm-spline-objective-dispersion-minus010-plus020/`; it computes no
-  optimum and disables raw-XGBoost fallback for failed spline fits.
-- `scripts/plot_monotone_spline_support_cloud.py` post-processes that exact
-  monotone-spline/XGBoost mean-profit curve with the deterministic 20,000-row
-  customer-coverage diagnostics. It verifies the row-index checksum and plots
-  a recomputed illustrative local-support width on `u=-0.100,...,0.200` in
-  profit/maximization form. Its absolute inverse-root support-risk mapping does
-  not subtract baseline risk, so the cloud remains positive everywhere. The
-  cloud is an extrapolation-support proxy, not a confidence interval; the
-  script refits no model and computes no optimum.
-- `scripts/plot_spline_support_cloud_with_optimized_prices.py` combines the
-  wide monotone-spline/XGBoost support cloud with the exact saved density bins
-  from the first-order GLM optimized-policy histogram. It uses a shared decimal
-  price-change axis, separate labeled profit and density y axes, and records
-  the source PDF, data, policy artifact, and output hashes without rerunning
-  optimization.
-- `scripts/run_spline_gp_lower_bound_policy.py` constructs a deterministic
-  synthetic-GP uncertainty envelope around the saved 20,000-row exact-spline/
-  XGBoost mean-profit curve, then fits a bounded softmax-linear policy to the
-  resulting lower bound with the repository first-order `trust-constr`
-  optimizer and saved acceptance floor. Its fixed conditioning design adds no
-  seed stream, and its grid supplies interpolation values rather than candidate
-  optimizer solutions.
-- `scripts/run_spline_lower_bound_policy.py` fits a bounded softmax-linear
-  policy on the deterministic 20,000-row sample by minimizing exact
-  monotone-spline/XGBoost cost plus the wide cloud's positive aggregate support
-  width. It invokes the repository first-order `trust-constr` optimizer with
-  the saved acceptance floor, saves the converged policy, replays it on all
-  715,023 eligible customers, and regenerates the blue-cloud/red-action-density
-  overlay with complete artifact and optimizer provenance. Its optional
-  `--response-cache` reuses an exact saved 20k response grid without changing
-  the fitted objective, and `--lower-only-cloud` omits the upper half of the
-  displayed support envelope.
-- `scripts/build_synthetic_tail_lower_bound.py` creates an explicitly synthetic
-  counterfactual lower envelope by subtracting a calibrated linear post-cutoff
-  tail penalty. It preserves the estimated mean profit and original upper
-  envelope in the data, displays only the lower-side region, writes the
-  optimization penalty as a separate CSV column, and performs no optimization.
-- `scripts/plot_historical_with_lower_bound_policy.py` preserves the reference
-  historical-versus-optimized density histogram design while replacing its
-  optimized series with the exact saved target-140 policy actions on all
-  715,023 eligible customers. It records the source policy, optimizer summary,
-  reference PDF, bins, and output hashes without rerunning optimization.
-- `scripts/build_full_monotone_spline_cache.py` builds the versioned, resumable
-  full-eligible-row monotone-XGB curve cache under `results/cache/`; it reuses
-  `analyze_model_acceptance_features` for eligible rows, all-customer historical
-  `U` weights, and raw-XGB anchor inference, and never promotes outputs under
-  `src/data/models/`.
-- `scripts/plot_model_feature_correlations.py` is the deterministic post-run
-  companion that renders numeric top-feature Spearman heatmaps and cross-model
-  feature-ranking agreement from a collected model-feature analysis sweep.
-- `scripts/run_policy_cliff_perturbation_diagnostic.py` is the focused one-off
-  policy-output diagnostic for the 200 IDs stored in model_processing's
-  monotone smoothing wrapper. It compares embedded raw-XGB and stored-spline
-  acceptance under a hard SciPy trust-constr cohort-mean acceptance inequality,
-  while sharing the external XGB loss model. It writes direct policy histograms,
-  dense additive-`u` replay tables/plots, and adjacent-grid customer jump
-  statistics; external artifacts remain read-only and are identified by hashes
-  in `provenance.json`.
-- `scripts/run_coverage_aware_policy_optimizer.py` refits the bounded sigmoid
-  XGBoost policy on the fixed 20,000-row coverage diagnostic sample. It applies
-  per-customer local-support widths on the 0--16% action grid, retains the hard
-  cohort-mean acceptance floor, caches coverage/response matrices, and writes
-  customer-level baseline-versus-adjusted actions and vector-PDF histograms to
-  `results/coverage-aware-policy-20k/`.
-- `scripts/plot_customer_coverage_envelope_slides.py` is the intentionally
-  illustrative constant-action optimizer-shift demonstration. It uses the
-  deterministic 20,000-row historical-support sample to shape a width fixed at
-  10 profit units, smooths the saved full-population XGBoost objective and width
-  samples, and defines continuous natural-cubic-spline query functions on
-  `[0, 0.16]`. Both displayed actions come from the repository's `Optimization`
-  pipeline with its action-space finite-difference estimator, L-BFGS-B step
-  rule, and bounded sigmoid constant policy. The optimizer minimizes; plots
-  negate the objective into the profit/maximization convention. The sampled
-  grid is never used to select a solution. It writes vector PDFs plus
-  `EXPERIMENT.md`, `optimizer_solutions.json`, and replay arrays under
-  `results/customer-coverage-envelope-slides/`. Its exploratory customer-profit
-  dedicated MAD-cloud output spans `[0, 0.16]` with the explicitly requested
-  half-width `0.6 * customer MAD`; it is not labelled as a standard deviation.
-  A companion wide-domain PDF/CSV compares Gaussian-consistent robust and
-  ordinary standard deviations. Those dispersion plots do not calculate an
-  optimum. Its full-population support-band PDF/CSV uses Gaussian-kernel
-  effective sample size over all 715,023 eligible historical actions; the
-  full inverse-root support-risk shape, without baseline subtraction, is
-  illustratively scaled to a maximum 10-profit-unit half-width and is not a
-  confidence interval. Its mean-profit and support-lower-bound markers must both
-  come from the repository finite-difference optimizer; the grid must not select
-  either action. Its paired within-customer PDF/CSV uses the
-  population-median historical action as a common baseline, reports profit-change
-  quantile ribbons plus robust MAD dispersion on `[0, 0.16]`, and obtains any
-  marked dispersion extrema from the repository finite-difference optimizer.
-- `scripts/run_full_population_support_softmax_policy.py` fits bounded
-  identity-feature softmax policies on all eligible XGBoost customers (or a
-  saved row-index cohort) with and without the displayed marginal-support
-  half-width added to minimization cost. The width is queried through a scaled
-  natural cubic `ActionBias`; both policy solutions use the repository
-  action-space finite-difference optimizer, while replay and constrained-
-  reference modes require exact saved optimizer provenance. Outputs include
-  policy artifacts, histogram CSVs, vector PDFs, and JSON optimizer summaries.
+- `scratch/retired_real_data_analysis/` preserves concluded real-data drivers
+  for provenance only. They are not supported entry points and must not be
+  imported by production code.
+- `src/reporting/real_data.py` is the model-neutral seam for real-data model
+  resolution, eligible cohorts, prediction matrices, profit statistics, and
+  PDF/provenance output. Select GLM, XGBoost, monotone-spline XGBoost, or exact
+  per-customer splines through its model key instead of copying analysis code.
+- `src/data/coverage.py` owns reusable historical-action support calculations;
+  `src/objective/gridded.py` owns validated customer-grid interpolation and the
+  support-lower-bound objective used by repository optimizers.
+- `src/reporting/exact_spline_cache.py` owns exact-spline response-cache
+  identity and replay. Cache identity includes cohort, eligible-row, action-grid,
+  and spline-weight hashes.
+- `scripts/build_full_monotone_spline_cache.py` remains the thin supported cache
+  builder and imports only shared `src/` interfaces.
 - Keep the boundary strict: do not hide reusable pipeline logic inside a script,
   and do not promote analysis-only code into `src/` without a concrete reusable
   integration point.
@@ -366,6 +269,13 @@ Required manifest fields:
   document Slurm behavior; `requires_jax` may be inferred from `compute_backend`
   but should be set when the manifest must force GPU submission.
 
+Optional manifest fields:
+- `reporting`: ordered post-run report recipes. Each item has a unique `name`,
+  registered `recipe`, and recipe-specific `options`. Reports run in the normal
+  collector under `reports/<name>/` and skip when their `provenance.json`
+  already exists unless `options.force` is true. Do not introduce a separate
+  real-data-analysis manifest kind; extend this field and its recipe registry.
+
 `kind: "policy_capacity"` is the dedicated real-data exception to the generic
 preset/truth schema. Its source of truth is
 `manifests/policy_capacity_glm_xgb.json`; it uses `models`, `cohort`, `policy`,
@@ -394,7 +304,7 @@ Default artifact structure:
 - Project root: `results/<manifest-name>/EXPERIMENT.md`, project-level
   `seed_grid_finals.csv`, `seed_grid_summary.csv`, optional
   `derived_metrics.csv`, and project-level seed-grid plots for multi-variant
-  manifests.
+  manifests. Optional manifest reports live under `reports/<report-name>/`.
 - Variant root: `summary-seed-<seed>.json`, `seed_grid_finals.csv`,
   `seed_grid_summary.csv`, seed metric bar plots, seed frontier plot, and seed
   loss bands.
@@ -458,6 +368,23 @@ Minimal manifest shape:
   }
 }
 ```
+
+Attach reusable real-data reporting to that same shape, for example:
+
+```json
+"reporting": [{
+  "name": "profit-dispersion",
+  "recipe": "real_data_profit_dispersion",
+  "options": {
+    "models": ["glm", "exact_spline_xgb"],
+    "cohort": {"sample_size": 20000, "seed": 20260831},
+    "action_grid": {"min": -0.1, "max": 0.2, "count": 301}
+  }
+}]
+```
+
+Changing the `models` array is the supported model swap. Available keys are
+`glm`, `xgb`, `monotone_spline_xgb`, and `exact_spline_xgb`.
 
 ### Key Components
 
@@ -644,6 +571,10 @@ belongs under `generali/`.
   - `ModelArtifactBundle.model_frame(raw_frame)`: converts raw notebook-space columns into the exact model-input frame expected by the bundled estimator
   - `extract_glm_u_coef(glm_pipeline)`: extracts effective d_logit(p_accept)/dU from the inner fitted GLM artifact for analytical gradient computation
 
+- **`src/data/coverage.py`**
+  - Shared deterministic eligible-row indexing and historical-action support
+    calculations for real-data reports and gridded objectives
+
 #### Optimization Layer (`src/optimization/`)
 
 - **`src/optimization/base.py`**
@@ -760,11 +691,16 @@ belongs under `generali/`.
     payloads, writes `EXPERIMENT.md`, skips completed variants unless forced,
     delegates actual optimization to `sweep_utils.run_sweep(...)`, and rebuilds
     project-level `seed_grid_*.csv` plus `derived_metrics.csv` from saved
-    `summary-seed-*.json` files
+    `summary-seed-*.json` files; optional `reporting` recipes run during
+    collection under the same manifest contract
   - Truth sources are intentionally narrow: `clean_base_objective` strips
     objective modifications before looking for known optimum metadata, while
     `summary_json` requires an explicit path and estimator and compares learned
     theta against that saved reference
+
+- **`src/experiments/provenance.py`**
+  - Shared SHA-256 records for files, arrays, and generated artifacts; use these
+    helpers instead of defining report-specific hash formats
 
 - **`src/experiments/policy_capacity.py`**
   - Dedicated GLM/XGBoost capacity runner. It binds the shared 200-customer
@@ -889,8 +825,24 @@ belongs under `generali/`.
   - `json_summary.py`: `JsonReporter` and `build_summary_payload(...)` write `summary.json`, including estimator-level `train` and optional `test` policy metric blocks plus a `preset` block when `run_metadata` is set; `JsonReporter(summary_name=..., summary_dir=...)` parameterizes the filename/location so seed sweeps write `summary-seed-<seed>.json` at the variant root
   - `plots.py`: `PlotReporter` generates optimization and policy diagnostics, writes per-plot timings, and caps model-based theta contour subsampling/grid sizes
   - `wandb.py`: `WandbReporter` uploads run summaries and generated artifacts to W&B when enabled
+  - `recipes.py`: validates named manifest report specs and dispatches the
+    completion-aware report registry; `real_data_profit_dispersion` is the
+    initial model-swappable recipe
 
 #### Reporting Layer (`src/reporting/`)
+
+- **`src/reporting/real_data.py`**
+  - Resolves supported real-data model bundles by key, builds deterministic
+    cohorts and prediction/profit matrices, and writes standard vector-PDF,
+    CSV, and provenance outputs
+
+- **`src/reporting/profit_dispersion.py`**
+  - Shared population mean/standard-deviation and median/MAD summaries plus the
+    canonical exact-spline anchor weights
+
+- **`src/reporting/exact_spline_cache.py`**
+  - Exact per-customer spline response cache with cohort, eligible-row,
+    action-grid, and spline-weight identity checks
 
 - **`src/reporting/logging.py`**
   - `log_step(method, step, u, value, ...)`: prints one step to console

@@ -30,7 +30,7 @@ from data.full_monotone_spline_cache import (
     validate_cache_shard,
     write_cache_shard,
 )
-from data.loader import load_model_artifacts, load_x_frame
+from data.loader import eligible_csv_row_indices, load_model_artifacts, load_x_frame
 from data.monotone_spline_xgb import FittedMonotoneChurnCurve, fit_monotone_churn_curve
 from experiments.launch import (
     LaunchContext,
@@ -40,7 +40,11 @@ from experiments.launch import (
     run_launch_plan,
 )
 from experiments.paths import results_root
-from scripts import analyze_model_acceptance_features as acceptance_analysis
+from reporting.profit_dispersion import (
+    ANCHOR_U,
+    predict_acceptance_matrix,
+    spline_anchor_weights,
+)
 
 
 PROJECT_NAME = "monotone-spline-xgb-full-v1"
@@ -78,7 +82,7 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 def _fit_one(anchor_acceptance: np.ndarray, weights: np.ndarray) -> FittedMonotoneChurnCurve:
     return fit_monotone_churn_curve(
-        acceptance_analysis.ANCHOR_U,
+        ANCHOR_U,
         1.0 - anchor_acceptance,
         weights=weights,
         dense_grid_size=500,
@@ -122,8 +126,8 @@ def _run_task(
     started = time.perf_counter()
     frame = load_x_frame("monotone_spline_xgb", row_indices=expected_rows)
     xgb_acceptance, _ = load_model_artifacts("xgb")
-    anchors = acceptance_analysis._predict_acceptance_matrix(
-        xgb_acceptance, frame, acceptance_analysis.ANCHOR_U
+    anchors = predict_acceptance_matrix(
+        xgb_acceptance, frame, ANCHOR_U
     )
 
     def fit_safely(row_position: int) -> tuple[FittedMonotoneChurnCurve | None, str | None]:
@@ -303,8 +307,8 @@ def validate_canonical_parity(
     sample_rows = np.sort(rng.choice(eligible, size=count, replace=False))
     frame = load_x_frame("xgb", row_indices=sample_rows)
     xgb_acceptance, _ = load_model_artifacts("xgb")
-    anchors = acceptance_analysis._predict_acceptance_matrix(
-        xgb_acceptance, frame, acceptance_analysis.ANCHOR_U
+    anchors = predict_acceptance_matrix(
+        xgb_acceptance, frame, ANCHOR_U
     )
     action_grid = np.linspace(-0.02, 0.24, 521)
     cached_values = cache.acceptance(sample_rows, action_grid)
@@ -436,7 +440,7 @@ def _manifest(
                 str(shard["shard_index"]): str(shard["storage_dtype"])
                 for shard in shards
             },
-            "anchor_u": acceptance_analysis.ANCHOR_U.tolist(),
+            "anchor_u": ANCHOR_U.tolist(),
             "dense_grid_size": 500,
             "tail_semantics": "constant below support; clipped nonnegative tangent above support",
         },
@@ -450,7 +454,7 @@ def _manifest(
         },
         "recipe": {
             "canonical_helper": "data.monotone_spline_xgb.fit_monotone_churn_curve",
-            "all_customer_path": "scripts.analyze_model_acceptance_features",
+            "all_customer_path": "reporting.profit_dispersion",
             "steps": [
                 "17 raw-XGB acceptance anchor predictions",
                 "weighted scipy make_smoothing_spline",
@@ -587,8 +591,8 @@ def _build_launch_plan(
 
 def main(argv: Sequence[str] | None = None) -> None:
     args = _parse_args(argv)
-    eligible = acceptance_analysis._eligible_rows()
-    weights = acceptance_analysis._spline_weights(eligible)
+    eligible = eligible_csv_row_indices("xgb")
+    weights = spline_anchor_weights(eligible)
     task_count = (eligible.size + int(args.chunk_size) - 1) // int(args.chunk_size)
     print(
         f"Prepared {task_count} cache shards for {eligible.size:,} eligible rows; "

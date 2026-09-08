@@ -6,6 +6,7 @@ from dataclasses import dataclass, replace
 from typing import Any
 
 import numpy as np
+from scipy.interpolate import CubicSpline
 
 from objective._math import _sigmoid
 from objective.base import Objective, Policy
@@ -219,6 +220,50 @@ class UpperSupportHingeBias(ActionBias):
             return -self.lambda_bias * (u_arr > self.support_upper).astype(float)
         z = (u_arr - self.support_upper) / self.smooth_tau
         return -self.lambda_bias * _sigmoid(z)
+
+
+@dataclass(frozen=True)
+class NaturalCubicActionBias(ActionBias):
+    """Serializable action adjustment interpolated by a natural cubic spline."""
+
+    action_grid: tuple[float, ...]
+    bias_values: tuple[float, ...]
+    lambda_bias: float = 1.0
+
+    def __post_init__(self) -> None:
+        grid = np.asarray(self.action_grid, dtype=float)
+        values = np.asarray(self.bias_values, dtype=float)
+        scale = float(self.lambda_bias)
+        if grid.ndim != 1 or grid.size < 2 or values.shape != grid.shape:
+            raise ValueError("action_grid and bias_values must be matching 1D arrays.")
+        if not np.isfinite(grid).all() or not np.isfinite(values).all():
+            raise ValueError("action_grid and bias_values must be finite.")
+        if not np.all(np.diff(grid) > 0.0):
+            raise ValueError("action_grid must be strictly increasing.")
+        if not np.isfinite(scale):
+            raise ValueError("lambda_bias must be finite.")
+        object.__setattr__(self, "action_grid", tuple(float(item) for item in grid))
+        object.__setattr__(self, "bias_values", tuple(float(item) for item in values))
+        object.__setattr__(self, "lambda_bias", scale)
+        object.__setattr__(
+            self,
+            "_spline",
+            CubicSpline(grid, values, bc_type="natural", extrapolate=False),
+        )
+
+    def values(self, x_batch: Any, u: np.ndarray) -> np.ndarray:
+        del x_batch
+        actions = _validate_u_field(u)
+        bounded = np.clip(actions, self.action_grid[0], self.action_grid[-1])
+        return self.lambda_bias * np.asarray(self._spline(bounded), dtype=float)
+
+    def grad_u(self, x_batch: Any, u: np.ndarray) -> np.ndarray:
+        del x_batch
+        actions = _validate_u_field(u)
+        interior = (actions > self.action_grid[0]) & (actions < self.action_grid[-1])
+        bounded = np.clip(actions, self.action_grid[0], self.action_grid[-1])
+        derivative = self.lambda_bias * np.asarray(self._spline(bounded, 1), dtype=float)
+        return np.where(interior, derivative, 0.0)
 
 
 @dataclass(frozen=True)
@@ -439,6 +484,7 @@ __all__ = [
     "ArctanThetaBias",
     "BiasedObjective",
     "LinearActionBias",
+    "NaturalCubicActionBias",
     "LinearThetaBias",
     "ThetaBias",
     "ThetaBiasBounds",

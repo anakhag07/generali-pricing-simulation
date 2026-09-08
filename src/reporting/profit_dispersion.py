@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 
 from data.loader import ModelArtifactBundle
+from data.loader import load_observed_u_array
 from data.monotone_spline_xgb import fit_monotone_churn_curve
 
 
@@ -78,6 +79,22 @@ def row_index_sha256(row_indices: Sequence[int]) -> str:
     if rows.ndim != 1:
         raise ValueError("row_indices must be one-dimensional.")
     return hashlib.sha256(rows.tobytes()).hexdigest()
+
+
+def spline_anchor_weights(eligible_rows: Sequence[int]) -> np.ndarray:
+    """Build the canonical exact-spline weights from historical action frequency."""
+    rows = np.asarray(eligible_rows, dtype=int)
+    if rows.ndim != 1 or rows.size == 0:
+        raise ValueError("eligible_rows must be a non-empty one-dimensional array.")
+    observed_u = load_observed_u_array("xgb", row_indices=rows)
+    in_support = observed_u[
+        (observed_u >= ANCHOR_U[0]) & (observed_u <= ANCHOR_U[-1])
+    ]
+    frequencies = pd.Series(in_support).round(2).value_counts(normalize=True)
+    weights = frequencies.reindex(ANCHOR_U.round(2), fill_value=0.0).to_numpy(float)
+    if not np.isfinite(weights).all() or not np.any(weights > 0.0):
+        raise ValueError("Could not construct finite spline-anchor weights.")
+    return weights
 
 
 def predict_acceptance_matrix(

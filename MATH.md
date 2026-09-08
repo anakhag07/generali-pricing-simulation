@@ -1,2048 +1,531 @@
-# Math Reference
-
-Central reference for every mathematical formula implemented in the codebase.
-Each entry lists the formula, the implementing source file and function, and
-a brief note where helpful.
-
----
-
-## 1. Shared Utilities
-
-### 1.1 Numerically Stable Sigmoid
-
-$$\sigma(z) = \begin{cases} \frac{1}{1 + e^{-z}} & z \ge 0 \\ \frac{e^z}{1 + e^z} & z < 0 \end{cases}$$
-
-- **Source:** `src/objective/_math.py` :: `_sigmoid(z)`
-- **Notes:** Two-branch form avoids overflow in `exp()`. Output is always in
-  $(0, 1)$. Derivative: $\sigma'(z) = \sigma(z)(1 - \sigma(z))$.
-
----
-
-## 2. Policies
-
-All policies map parameters $\theta$ and state $x$ to a scalar action $u$.
-
-### 2.1 Feature Construction
-
-Policies use a configurable state feature map $$\varphi: \mathbb{R}^d \to \mathbb{R}^q$$.
-The policy layer prepends the intercept internally:
-
-$$\phi(x) = [1,\; \varphi_1(x),\; \dots,\; \varphi_q(x)]$$
-
-Therefore $$\theta \in \mathbb{R}^{q+1}$$. User-supplied feature maps return
-only $$\varphi(x)$$; they should not include the leading intercept column.
-
-Built-in feature maps:
-
-$$\varphi_{\text{identity}}(x) = [x_1,\; \dots,\; x_d]$$
-
-$$\varphi_{\text{quadratic}}(x) = [x_1,\; \dots,\; x_d,\; x_1^2,\; x_1x_2,\; \dots,\; x_d^2]$$
-
-$$\varphi_{\text{cubic}}(x) = [x_1,\; \dots,\; x_d,\; x_i x_j x_k\; \text{for}\; 1 \le i \le j \le k \le d]$$
-
-$$\varphi_{\text{quartic}}(x) = [x_1,\; \dots,\; x_d,\; x_i x_j x_k x_l\; \text{for}\; 1 \le i \le j \le k \le l \le d]$$
-
-For a gradually nested, interaction-free capacity ladder, first define
-
-$$t_j(x)=\operatorname{clip}\!\left(\frac{x_j}{s},-1,1\right),\qquad
-T_0(t)=1,\quad T_1(t)=t,\quad T_k(t)=2tT_{k-1}(t)-T_{k-2}(t).$$
-
-The degree-$$D$$ additive Chebyshev map is ordered by degree,
-
-$$\varphi_{\mathrm{cheb},D}(x)=
-[T_1(t_1),\ldots,T_1(t_d),T_2(t_1),\ldots,T_D(t_d)],$$
-
-so it has $$dD$$ mapped features and the bounded policy has
-$$1+dD$$ parameters including its intercept. The capacity experiment uses
-$$s=3$$ after train-only standardization. It contains no feature interactions,
-and degree $$D$$ is an exact prefix of degree $$D+1$$.
-
-For a nested interaction-capable polynomial ladder, let
-
-$$\mathcal A_D = \{\alpha\in\mathbb N_0^d:1\le |\alpha|_1\le D\},
-\qquad x^\alpha=\prod_{j=1}^d x_j^{\alpha_j}.$$
-
-The total-degree polynomial map is
-
-$$\varphi_{\mathrm{poly},D}(x)=[x^\alpha:\alpha\in\mathcal A_D],$$
-
-ordered first by total degree and then by deterministic
-combinations-with-replacement order. It has
-$$\binom{d+D}{D}-1$$ mapped features, so a linear or bounded policy has
-$$\binom{d+D}{D}$$ parameters including its intercept. Degree $$D$$ is an
-exact prefix of degree $$D+1$$ and contains every interaction whose total
-degree is at most $$D$$.
-
-- **Source:** `src/objective/policy.py` :: `FeatureMap`, `AdditiveChebyshevFeatureMap`, `TotalDegreePolynomialFeatureMap`, `IdentityFeatureMap`,
-  `QuadraticFeatureMap`, `CubicFeatureMap`, `QuarticFeatureMap`,
-  `CallableFeatureMap`, `_phi(x_batch, feature_map)`
-- **Notes:** `IdentityFeatureMap` preserves the previous default behavior
-  $$\phi(x) = [1, x]$$. Higher-order maps include linear terms plus exact-degree
-  monomials. Interaction terms use deterministic combinations-with-replacement
-  ordering; for degree $$k$$ the non-linear width is $$\binom{d+k-1}{k}$$.
-
-### 2.2 Constant Policy
-
-$$u = \theta_0$$
-
-- **Gradient:** $\frac{\partial u}{\partial \theta} = [1, 0, \dots, 0]$
-- **Source:** `src/objective/policy.py` :: `ConstantPolicy.value()`, `ConstantPolicy.grad()`, `ConstantPolicy.weighted_grad()`
-
-### 2.3 Linear Policy
-
-$$u = \theta^\top \phi(x)$$
-
-- **Gradient:** $\frac{\partial u}{\partial \theta} = \phi(x)$
-- **Source:** `src/objective/policy.py` :: `LinearPolicy.value()`, `LinearPolicy.grad()`, `LinearPolicy.weighted_grad()`
-
-### 2.4 Softmax (Bounded) Policy
-
-With lower action bound $$l$$ and upper action bound $$h$$:
-
-$$u = l + (h-l)\,\sigma(\theta^\top \phi(x)) \;\in\; (l,\; h)$$
-
-The default is $$l=-0.5$$ and $$h=0.5$$.
-
-- **Gradient:** $\frac{\partial u}{\partial \theta} = (h-l)\,\sigma(z)(1 - \sigma(z))\;\phi(x)$
-  where $z = \theta^\top \phi(x)$
-- **Source:** `src/objective/policy.py` :: `SoftmaxPolicy.value()`, `SoftmaxPolicy.grad()`, `SoftmaxPolicy.weighted_grad()`
-
-### 2.5 MLP (Two-Layer) Policy
-
-A two-layer MLP with $\tanh$ activations and a bounded sigmoid head:
-
-$$h_1 = \tanh(W_1\,\varphi(x) + b_1),\quad
-h_2 = \tanh(W_2\,h_1 + b_2),\quad
-z = W_3\,h_2 + b_3,\quad
-u = 0.5 - \sigma(z)$$
-
-with $W_1\in\mathbb{R}^{H\times d_{in}}$, $W_2\in\mathbb{R}^{H\times H}$,
-$W_3\in\mathbb{R}^{1\times H}$. Theta is the row-major flat concatenation
-$[\,W_1, b_1, W_2, b_2, W_3, b_3\,]$, so
-$\dim(\theta) = d_{in}H + H + H^2 + H + H + 1$.
-
-- **Gradient:** standard chain rule via reverse-mode through both layers, with
-  $\partial u/\partial z = -\sigma(z)(1-\sigma(z))$ and
-  $\tanh'(z_\ell) = 1 - h_\ell^2$ at each hidden layer.
-- **Source:** `src/objective/policy.py` :: `MLPPolicy.value()`, `MLPPolicy.grad()`, `MLPPolicy.weighted_grad()`
-
-### 2.6 Feature-Processed Policy
-
-Wrapper that applies a saved `FeatureProcessor` to raw state $x$ before
-delegating to an inner policy (Constant, Linear, Softmax, or MLP).
-
-- **Source:** `src/objective/policy.py` :: `FeatureProcessedPolicy`
-
----
-
-## 3. Objectives
-
-### 3.1 Isotropic Quadratic Objective
-
-For a configured parameter dimension $$d$$:
-
-$$J(\theta) = \frac{1}{2}\|\theta\|_2^2 = \frac{1}{2}\sum_{j=1}^{d}\theta_j^2$$
-
-**Gradient and Hessian:**
-
-$$\nabla J(\theta) = \theta, \qquad \nabla^2J(\theta) = I_d$$
-
-- **Source:** `src/objective/objectives/synthetic/ladder.py` ::
-  `StronglyConvexQuadratic.isotropic(dim)`
-- **Notes:** This is a direct theta-space objective and does not compose through
-  a policy. It is 1-strongly convex and 1-smooth, with unique minimizer
-  $$\theta^*=0$$ and minimum value $$J(\theta^*)=0$$. The required `x_batch`
-  argument is ignored. It is the $$w^*=0,\, A=I$$ case of ladder rung 1
-  (section 3.7.1), which is why the former standalone `QuadraticObjective` was
-  folded into the ladder.
-
-### 3.2 Fixed Regression Objective
-
-$$f(u;\, x) = a(x, u)\,\bigl(\ell(x) - r(u)\bigr)$$
-
-where:
-- Acceptance: $a(x, u) = \sigma(\beta_1^\top x + \beta_2\, u)$
-- Loss: $\ell(x) = \beta_3^\top x$
-- Revenue: $r(u) = \beta_4\, u$
-
-**Gradient w.r.t. $u$:**
-
-$$\frac{\partial f}{\partial u} = \frac{\partial a}{\partial u}\,(\ell - r) - a\,\beta_4$$
-
-where $\frac{\partial a}{\partial u} = a(1 - a)\,\beta_2$.
-
-- **Source:** `src/objective/objectives/synthetic/fixed_regression.py` :: `FixedRegressionObjective`
-  - `_value_batch()` — per-sample values
-  - `_grad_u_batch()` — per-sample $\partial f/\partial u$
-
-### 3.3 Planted Logistic Objective
-
-$$L(u;\, x) = \log(1 + e^z) - p^*(x)\, z$$
-
-where:
-- $z = \alpha\, u + \beta^\top x + b$
-- $z^* = \alpha\, u^* + \beta^\top x + b$
-- $p^*(x) = \sigma(z^*)$
-
-**Gradient w.r.t. $u$:**
-
-$$\frac{\partial L}{\partial u} = \alpha\,\bigl(\sigma(z) - p^*(x)\bigr)$$
-
-- **Source:** `src/objective/objectives/synthetic/planted_logistic.py` :: `PlantedLogisticObjective`
-  - `_value_batch()` — uses `np.logaddexp(0, z)` for numerical stability
-  - `_grad_u_batch()` — zero at $u = u^*$ by construction
-- **Notes:** Convex in $u$. Known optimum $u^*$ is planted at construction.
-
-### 3.4 Model-Based Objective
-
-$$f(u;\, x) = a(x, u)\,\bigl(L(x) - (u + 1)\, p(x)\bigr)$$
-
-where:
-- $a(x, u) = p_{\text{accept}}(x, u)$ — acceptance from trained classifier
-- $L(x)$ — loss term; by default $L(x)=\hat{Y}(x)$ from the loss model, while
-  real-data configs with `loss_source="observed"` use $L(x)=Y_G_Loss$
-- $p(x)$ — policy premium extracted from state column `premium_col`
-- $(u + 1)\, p(x)$ — revenue (centered: $u = 0$ is baseline multiplier)
-
-For GLM/linear artifacts with extractable coefficients, the implementation uses
-the equivalent array formulas:
-
-$$p_{\text{accept}}(x, u) = \sigma\bigl(\beta_0 + \beta_x^\top z_{\text{acc}}(x) + \beta_u^{\text{eff}} u\bigr)$$
-
-$$\hat{Y}(x) = \gamma_0 + \gamma_x^\top z_{\text{loss}}(x)$$
-
-where $$z_{\text{acc}}$$ and $$z_{\text{loss}}$$ are the artifact-preprocessed model
-features. By default $$\beta_u^{\text{eff}}$$ is the extracted artifact coefficient;
-GLM real-data configs may override it with `u_coef` for counterfactual acceptance
-sensitivity sweeps. If coefficients cannot be extracted, the objective falls back
-to the bundled estimator's `predict_proba` / `predict` methods. In observed-loss
-mode the loss-model path is bypassed and `Y_G_Loss` must be present in the
-real-data batch.
-
-For the customer-dispersion diagnostic, predicted profit is the negative of the
-minimization objective,
-
-$$P_i(u) = -f(u;x_i) = a(x_i,u)\bigl((u+1)p(x_i)-L(x_i)\bigr).$$
-
-For comparison with the robust cloud below, the ordinary sample standard
-deviation across customers is
-
-$$s_P(u)=\sqrt{\frac{1}{n-1}\sum_{i=1}^n\left(P_i(u)-\bar P(u)\right)^2}.$$
-
-- **Source:** `scripts/plot_customer_coverage_envelope_slides.py` ::
-  `_compute_diagnostics()`, `_plot_customer_profit_dispersion_comparison()`
-
-For the fixed 20,000-customer GLM-versus-spline comparison, let model family
-$$m\in\{\mathrm{GLM},\mathrm{spline}\}$$ supply both acceptance
-$$a_{im}(u)$$ and predicted financial loss $$L_{im}$$. The repository's
-`ModelBasedObjective` first evaluates the per-customer minimization cost
-
-$$f_{im}(u)=a_{im}(u)\left[L_{im}-p_i(1+u)\right].$$
-
-Only reporting changes sign: the plotted maximization quantity is
-
-$$P_{im}(u)=-f_{im}(u).$$
-
-At each of the 301 actions $$u_j=-0.10+0.001j$$, $$j=0,\ldots,300$$, the
-ordinary band uses the population standard deviation of the fixed diagnostic cohort,
+# Mathematical Reference
+
+This file records the mathematics implemented by the repository. It documents
+verified behavior; it does not override the implementation.
+
+## Outline
+
+1. [Purpose, precedence, and conventions](#1-purpose-precedence-and-conventions)
+2. [Real-data inputs and feature processing](#2-real-data-inputs-and-feature-processing)
+3. [Policies and feature maps](#3-policies-and-feature-maps)
+4. [Pricing objectives](#4-pricing-objectives)
+5. [Objective composition and constraints](#5-objective-composition-and-constraints)
+6. [Real-data analysis quantities](#6-real-data-analysis-quantities)
+7. [Uncertainty and lower bounds](#7-uncertainty-and-lower-bounds)
+8. [Gradients and estimators](#8-gradients-and-estimators)
+9. [Optimization rules](#9-optimization-rules)
+10. [Implementation and verification index](#10-implementation-and-verification-index)
+
+## 1. Purpose, Precedence, and Conventions
+
+Resolve disagreements in this order:
+
+1. current implementation in the relevant source module;
+2. tests;
+3. this file;
+4. `README.md`;
+5. `AGENTS.md`.
+
+A mismatch is a maintenance bug: reconcile the lower-priority source in the
+same change. The repository minimizes objectives. For customer $i$, $x_i$ is
+state, $u_i=\pi_\theta(x_i)$ is the relative price change, and $\theta$ is the
+policy parameter. Reported profit is the negative of pricing cost. Population
+averages use $n^{-1}\sum_i$ unless stated otherwise.
+
+The stable sigmoid is
 
 $$
-\bar P_m(u)=\frac{1}{n}\sum_{i=1}^nP_{im}(u),\qquad
-\sigma_m(u)=\sqrt{\frac{1}{n}\sum_{i=1}^n
-\left(P_{im}(u)-\bar P_m(u)\right)^2},
-$$
-
-and the robust band uses the raw, unscaled median absolute deviation,
-
-$$
-q_m(u)=\operatorname{median}_iP_{im}(u),\qquad
-\operatorname{MAD}_m(u)=\operatorname{median}_i\left|P_{im}(u)-q_m(u)\right|.
-$$
-
-The plotted ribbons are exactly $$\bar P_m\pm\sigma_m$$ and
-$$q_m\pm\operatorname{MAD}_m$$. They are neither smoothed nor clipped, and
-the MAD is not multiplied by the Gaussian-consistency factor 1.4826. Exact
-customer splines are fitted on $$[0,0.16]$$; below zero the repository boundary
-rule holds churn constant, while above 0.16 it extends churn with the fitted
-upper slope and clips it to $$[0,1]$$.
-
-- **Source:** `src/reporting/profit_dispersion.py` ::
-  `model_based_objective_matrix()`, `summarize_profit()`
-- **Source:** `scripts/plot_glm_spline_profit_dispersion.py`
-
-### Synthetic GP lower bound for the spline/XGBoost profit objective
-
-For the deterministic 20,000-customer spline/XGBoost mean-profit curve
-\(\bar P(u)\), define a zero-residual Gaussian process with fixed RBF kernel
-
-$$
-k(u,v)=a^2\exp\!\left[-\frac{(u-v)^2}{2\ell^2}\right].
-$$
-
-The process is conditioned on synthetic observations \(y_j=0\) at an evenly
-spaced design \(z_j\in[0,0.16]\), with observation-noise variance
-\(\sigma_n^2\). Its posterior residual variance is
-
-$$
-s^2(u)=k(u,u)-k(u,Z)
-\left[K(Z,Z)+\sigma_n^2I\right]^{-1}k(Z,u).
-$$
-
-Using \(\bar P(u)\) as the deterministic GP mean function leaves the posterior
-mean equal to the saved objective curve. The one-standard-deviation lower
-confidence bound used for policy fitting is
-
-$$
-\operatorname{LCB}(u)=\bar P(u)-s(u).
-$$
-
-For customer-specific policy actions \(u_i=\pi_\theta(x_i)\), maximizing this
-lower bound is equivalent to the repository minimization objective
-
-$$
-J_{\mathrm{GP\text{-}LCB}}(\theta)=\frac1n\sum_{i=1}^n
-\left[C_i(u_i)+s(u_i)\right],
-$$
-
-where \(C_i=-P_i\) is the existing `ModelBasedObjective` cost. The synthetic
-conditioning design is deterministic and is used to express the requested
-high uncertainty outside the spline-fit interval; it is not an empirically
-calibrated confidence statement.
-
-- **Source:** `scripts/run_spline_gp_lower_bound_policy.py`
-
-The exploratory robust-dispersion version evaluates the same customer-level
-profit on the wider saved-objective domain
-$$u_j=-0.10+0.001j$$, $$j=0,\ldots,300$$. At each action, let
-
-$$
-m_P(u)=\operatorname{median}_i P_i(u), \qquad
-\operatorname{MAD}_P(u)=\operatorname{median}_i\left|P_i(u)-m_P(u)\right|.
-$$
-
-The Gaussian-consistent robust standard-deviation estimate is
-
-$$
-s_{\mathrm{MAD}}(u)=
-\frac{1}{\Phi^{-1}(0.75)}\operatorname{MAD}_P(u)
-\approx 1.4826\operatorname{MAD}_P(u).
-$$
-
-The direct dispersion comparison plots $$\widetilde{s}_P(u)$$ and
-$$\widetilde{s}_{\mathrm{MAD}}(u)$$ over the wider domain so their widths can be
-compared without interpreting an optimizer. The dedicated MAD-cloud slide uses
-the primary domain $$u\in[0,0.16]$$ and the user-specified half-width
-
-$$H_{0.6\mathrm{MAD}}(u)=0.6\,\operatorname{GaussianSmooth}
-\left(\operatorname{MAD}_P(u)\right).$$
-
-It plots
-$$\widetilde{\bar P}(u)\pm H_{0.6\mathrm{MAD}}(u)$$ around the saved
-full-population mean profit. This is explicitly a scaled-MAD display band, not a
-Gaussian-consistent standard-deviation estimate. Neither dispersion plot
-computes or reports an optimum.
-
-- **Source:** `scripts/plot_customer_coverage_envelope_slides.py` ::
-  `_mad_dispersion()`, `_compute_diagnostics()`,
-  `_plot_smoothed_mean_profit_mad_band()`,
-  `_plot_customer_profit_dispersion_comparison()`
-
-The full-population historical-support diagnostic instead uses every eligible
-historical action, $$n=715{,}023$$. With Gaussian action bandwidth $$h=0.01$$,
-define
-
-$$w_i(u)=\exp\left[-\frac{(U_i-u)^2}{2h^2}\right], \qquad
-N_{\mathrm{eff}}(u)=\frac{\left(\sum_i w_i(u)\right)^2}
-{\sum_i w_i(u)^2}.$$
-
-Relative support and inverse-root support risk are
-
-$$S_{\mathrm{rel}}(u)=\frac{N_{\mathrm{eff}}(u)}
-{\max_v N_{\mathrm{eff}}(v)}, \qquad
-R(u)=\frac{1}{\sqrt{S_{\mathrm{rel}}(u)}}.$$
-
-For the display band only, full relative risk is mapped to a maximum half-width
-of 10 profit units,
-
-$$H_{\mathrm{support}}(u)=10\,
-\frac{R(u)}{\max_v R(v)}.$$
-
-The plot shows
-$$\widetilde{\bar P}(u)\pm H_{\mathrm{support}}(u)$$. The baseline risk value
-is not subtracted, so the band remains nonzero at the best-supported action.
-Historical support determines the shape, but the 10-unit vertical scale is
-illustrative. The band is therefore an
-extrapolation-risk diagnostic, not a predictive confidence interval. The
-comparison optimizes both displayed curves through the repository optimizer:
-the mean-profit solution minimizes $$\widetilde J(u)$$, while the lower-band
-solution minimizes
-
-$$\widetilde J(u)+H_{\mathrm{support}}(u).$$
-
-The plots negate these minimized objectives so that both curves retain the
-profit convention where higher is better. The action grid provides spline knots
-and rendering points only; it never selects either solution.
-
-- **Source:** `scripts/plot_customer_coverage_envelope_slides.py` ::
-  `_marginal_action_effective_sample_size()`,
-  `_support_weighted_band_half_width()`,
-  `_plot_full_population_support_weighted_band()`
-
-The full-population support-softmax runner reads the displayed half-width
-samples $$(u_j,H_{\mathrm{support}}(u_j))$$ from that diagnostic and defines
-$$H_{\mathrm{spline}}$$ as their natural cubic interpolant. For defensive
-queries, the action is clipped to the knot domain
-$$[u_{\min},u_{\max}]=[0,0.16]$$ before interpolation. Its `ActionBias` is
-
-$$
-b_{\lambda}(u)=\lambda_{\mathrm{bias}}\,
-H_{\mathrm{spline}}\!\left(
-\operatorname{clip}(u,u_{\min},u_{\max})
-\right).
-$$
-
-On the bounded optimizer domain, its implemented action derivative is
-
-$$
-\frac{\partial b_{\lambda}(u)}{\partial u}
-=\lambda_{\mathrm{bias}}H'_{\mathrm{spline}}(u).
-$$
-
-For customer-specific bounded softmax actions
-$$u_i=0.16\,\sigma(\theta_0+\theta_x^\top x_i)$$, the support-adjusted
-minimization objective is
-
-$$
-J_{\mathrm{support}}(\theta)=\frac{1}{n}\sum_{i=1}^{n}
-\left[C_i(u_i)+b_{\lambda}(u_i)\right],
-$$
-
-where $$C_i=-P_i$$ is the XGBoost `ModelBasedObjective` cost. The default
-$$\lambda_{\mathrm{bias}}=1$$ therefore adds the displayed half-width without
-rescaling it. Both the profit-only and support-adjusted policies are returned
-by the repository action-space finite-difference optimizer; the support grid is
-used only for interpolation and plotting. The construction is deterministic
-and adds no seed stream.
-
-- **Source:** `scripts/run_full_population_support_softmax_policy.py` ::
-  `_SupportBandActionBias`, `_run_policy_optimizer()`
-
-For the paired within-customer sensitivity view, the common baseline action is
-the median historical price change across all XGBoost-eligible customers,
-
-$$u_{\mathrm{base}}=\operatorname{median}_{i\in\mathcal E} U_i.$$
-
-Holding each diagnostic customer's features fixed, define its predicted profit
-change from that common baseline as
-
-$$\Delta P_i(u)=P_i(u)-P_i(u_{\mathrm{base}}).$$
-
-The fan chart reports the 10th, 25th, 50th, 75th, and 90th empirical quantiles
-of $$\Delta P_i(u)$$ across the same deterministic 20,000 customers. Its robust
-dispersion curve is
-
-$$
-D_{\mathrm{MAD}}(u)=1.4826\operatorname{median}_i
-\left|\Delta P_i(u)-\operatorname{median}_k\Delta P_k(u)\right|.
-$$
-
-Because all customers are compared with themselves at the common baseline,
-$$\Delta P_i(u_{\mathrm{base}})=0$$. The robust-dispersion samples are Gaussian
-smoothed on the regular 0.001 grid, and a natural cubic spline supplies off-grid
-queries. Marked extrema are obtained through the repository's action-space
-finite-difference minimizer: the minimum minimizes the smoothed
-$$D_{\mathrm{MAD}}$$ and the maximum minimizes its negative. Multiple documented
-starts may be used to resolve basins; only completed repository-optimizer
-solutions are compared. The plotted grid never selects an extremum.
-
-- **Source:** `scripts/plot_customer_coverage_envelope_slides.py` ::
-  `_within_customer_change_summary()`, `_repo_spline_minimize()`,
-  `_compute_diagnostics()`, `_plot_within_customer_profit_change()`
-
-For the plot-forward optimizer-shift demonstration, the saved full-population
-XGBoost minimization-objective samples and the aggregate support-based width are
-first smoothed on the fixed action grid $$u_j=0.001j$$,
-$$j=0,\ldots,160$$, using the documented Gaussian display filter. Natural
-cubic-spline interpolants then define the continuous optimizer-facing functions
-on $$[0,0.16]$$:
-
-$$
-\widetilde J(u)=\operatorname{CubicSpline}_{\mathrm{natural}}\!\left(
-u_j,\operatorname{GaussianSmooth}(\bar J_{\mathrm{XGB}}(u_j))
-\right)(u),
-$$
-
-$$
-\widetilde W(u)=\operatorname{CubicSpline}_{\mathrm{natural}}\!\left(
-u_j,\operatorname{GaussianSmooth}\!\left[
-c\left(1-\frac{S(u_j)}{\max_k S(u_k)}\right)
-\right]\right)(u), \qquad c=10,
-$$
-
-where $$S(u_j)$$ is median local historical support across the deterministic
-20,000-customer sample. Optimization uses the repository's bounded sigmoid
-constant policy
-
-$$u(\theta)=0.16\,\operatorname{sigmoid}(\theta),$$
-
-initialized at $$\theta_0=0$$ (so $$u_0=0.08$$). The repository
-`Optimization` pipeline uses its L-BFGS-B step rule and action-space central
-finite-difference gradient with $$\sigma_u=0.001$$. The two solutions minimize
-the XGBoost objective and its uncertainty-penalized form:
-
-$$
-\theta_{\mathrm{profit}}=\operatorname{RepoOptimizer}\!\left[
-\widetilde J(u(\theta))
-\right],
-\qquad
-\theta_{\mathrm{uncertainty}}=\operatorname{RepoOptimizer}\!\left[
-\widetilde J(u(\theta))+\widetilde W(u(\theta))
-\right].
-$$
-
-The figures retain the maximization convention by plotting
-$$\widetilde P=-\widetilde J$$ and
-$$\widetilde P_{\mathrm{adjusted}}=-(\widetilde J+\widetilde W)$$, so higher is
-better even though optimization is performed only in minimization form. The
-natural cubic splines are the exact off-grid query rule; action-space probes are
-clipped to the closed action domain. Plotted grid samples only render the
-curves and never select a solution. The deterministic finite-difference run has
-no optimizer random stream; the historical sample remains fixed by seed
-`20260831`. This is an intentionally manufactured visual demonstration:
-$$c=10$$ is chosen for a clear decision shift and is not a calibrated
-confidence radius.
-
-- **Source:** `scripts/plot_customer_coverage_envelope_slides.py` ::
-  `_SplineMinimizationObjective`, `_minimize_xgboost_objective()`,
-  `_compute_diagnostics()`; `scripts/plot_monotone_spline_support_cloud.py` ::
-  `_load_cloud_data()`, `_plot_support_cloud()`
-
-The monotone-spline/XGBoost support-cloud post-processing figure recomputes
-median local support on $$u=-0.100,\ldots,0.200$$. It retains absolute
-inverse-root support risk rather than subtracting its best-supported baseline:
-
-$$R(u)=\sqrt{\frac{\max_v S(v)}{S(u)}}, \qquad
-W_{\mathrm{abs}}(u)=10\frac{R(u)}{\max_v R(v)}.$$
-
-Thus $$W_{\mathrm{abs}}(u)>0$$ everywhere. The figure centers the smoothed
-width on the exact-spline mean profit
-$$\widetilde P_{\mathrm{spline}}(u)=-\operatorname{GaussianSmooth}
-[\bar J_{\mathrm{spline}}(u)]$$ and displays
-$$\widetilde P_{\mathrm{spline}}(u)\pm
-\operatorname{GaussianSmooth}[W_{\mathrm{abs}}(u)].$$ It reuses the same
-deterministic customer indices and support diagnostics, is not a confidence
-interval, and does not compute an optimizer solution.
-
-The support-lower-bound policy analysis uses the bounded softmax-linear policy
-
-$$u_i(\theta)=-0.1+0.3\,\operatorname{sigmoid}
-\left(\theta_0+\theta_x^\top z_i\right),$$
-
-where $$z_i$$ is the fitted standardized and sphered XGBoost customer-feature
-representation. On the deterministic 20,000-customer sample it minimizes
-
-$$J_{\mathrm{LB}}(\theta)=\frac{1}{n}\sum_{i=1}^n
-\left[J_i(u_i(\theta))+W_{\mathrm{abs}}(u_i(\theta))\right],$$
-
-equivalently maximizing mean predicted profit minus the positive aggregate
-support width. The optimization retains the cohort constraint
-
-$$\frac{1}{n}\sum_{i=1}^n A_i(u_i(\theta))\geq 0.8787745289.$$
-
-Customer cost and acceptance are evaluated from exact monotone-spline/XGBoost
-values on the 0.001-spaced grid with piecewise-linear off-grid interpolation;
-the smoothed aggregate support width uses natural-cubic interpolation. The
-repository first-order `trust-constr` optimizer differentiates these
-interpolants through the policy. After fitting, the fixed policy and fitted
-feature transform are replayed on all 715,023 eligible customer states; no
-full-population refit is performed.
-
-- **Source:** `scripts/run_spline_lower_bound_policy.py` ::
-  `SplineSupportLowerBoundObjective`, `run_analysis()`
-
-For the explicitly synthetic tail demonstration, define
-
-$$T(u)=k\max(u-u_0,0), \qquad u_0=0.12,$$
-
-with the slope calibrated to a requested terminal lower profit
-$$L_{\mathrm{target}}$$ at $$u_t=0.20$$:
-
-$$k=\frac{L(u_t)-L_{\mathrm{target}}}{u_t-u_0}.$$
-
-The counterfactual lower envelope and policy penalty are
-
-$$L_{\mathrm{syn}}(u)=L(u)-T(u), \qquad
-W_{\mathrm{syn}}(u)=W_{\mathrm{abs}}(u)+T(u).$$
-
-The mean-profit line and stored original upper envelope are not modified; the
-figure displays only the mean and modified lower bound. For the requested
-$$L_{\mathrm{target}}=140$$, the fitted policy minimizes the same repository
-objective as above with $$W_{\mathrm{syn}}$$ replacing
-$$W_{\mathrm{abs}}$$. This construction is an illustrative counterfactual and
-not an estimated confidence or uncertainty bound.
-
-- **Source:** `scripts/build_synthetic_tail_lower_bound.py` ::
-  `synthetic_tail_lower_bound()`
-
-For the customer-specific coverage-aware policy rerun, let $$S_i(u_j)$$ be the
-local joint customer/action support on the fixed action grid. Each customer's
-penalty is normalized against that customer's best-supported action:
-
-$$W_i(u_j)=c\left(1-\frac{S_i(u_j)}{\max_k S_i(u_k)}\right), \qquad c=10.$$
-
-The XGBoost acceptance response, predicted profit, and $$W_i(u)$$ are evaluated
-on the same 0.001-spaced action grid. Between grid points, their values and
-action derivatives are obtained by linear interpolation. The bounded sigmoid policy
-
-$$u_i(\theta)=0.16\,\sigma\!\left(\theta^\top\phi(z_i)\right)$$
-
-is refit by minimizing the coverage-adjusted cost
-
-$$J_{\mathrm{cov}}(\theta)=\frac1n\sum_{i=1}^n
-\left[f(u_i(\theta);x_i)+W_i(u_i(\theta))\right]$$
-
-subject to the same cohort-mean acceptance floor as the original constrained
-policy. Equivalently, the refit maximizes predicted profit minus the
-customer-specific coverage penalty.
-
-- **Source:** `scripts/run_coverage_aware_policy_optimizer.py`
-
-**Gradient w.r.t. $u$:**
-
-$$\frac{\partial f}{\partial u} = \frac{\partial a}{\partial u}\,(L - (u+1)\,p) - a\, p$$
-
-Acceptance derivative:
-- **GLM direct acceptance (analytical):** $\frac{\partial a}{\partial u} = a(1-a)\;\beta_u^{\text{eff}}$
-- **Legacy churn artifacts (analytical):** $\frac{\partial a}{\partial u} = -a(1-a)\;\beta_u^{\text{eff}}$
-- **Per-policy XGBoost logit spline (analytical inside support):**
-  $\frac{\partial a_i}{\partial u} = -q_i(1-q_i)S_i'(u)$
-- **XGBoost (numerical):** central FD with $\epsilon = 10^{-4}$
-
-**Per-policy XGBoost logit-spline acceptance:**
-
-For each covered insurance policy $$i$$, the source XGBoost ensemble is evaluated
-on the fixed action grid $$u_j=j/100$$ for $$j=0,\ldots,16$$. Its direct
-acceptance output is converted to churn probability $$q_{ij}=1-a^{XGB}_{ij}$$,
-then projected onto a non-decreasing sequence with weighted isotonic regression.
-A cubic smoothing spline $$S_i(u)$$ is fitted to the clipped logits of that
-sequence. Inside the fitted support $$[u_{min},u_{max}]=[0,0.16]$$:
-
-$$q_i(u)=\sigma(S_i(u)), \qquad a_i(u)=1-q_i(u)$$
-
-and therefore
-
-$$\frac{\partial a_i}{\partial u}
-=-\sigma(S_i(u))\bigl(1-\sigma(S_i(u))\bigr)S_i'(u)
-=-q_i(u)(1-q_i(u))S_i'(u).$$
-
-Below support, churn is held constant at $$q_i(u_{min})$$, so
-$$\partial a_i/\partial u=0$$. Above support, churn uses the source artifact's
-tangent rule
-
-$$q_i(u)=\operatorname{clip}\left(q_i(u_{max})
-+s_i^{max}(u-u_{max}),0,1\right),$$
-
-so $$\partial a_i/\partial u=-s_i^{max}$$ while the tangent is unclipped and is
-zero after clipping. The piecewise extension can be nondifferentiable exactly at
-the support boundaries or clipping points; the implementation uses the interior
-derivative at the boundaries and zero on clipped regions. The real-data preset
-keeps policy actions within the fitted support.
-
-**Per-policy monotone PCHIP XGBoost acceptance:**
-
-For each covered policy $$i$$, the 20260728 artifact stores the coefficients of
-a shape-preserving cubic Hermite interpolator $$P_i(u)$$ fitted to a
-non-decreasing churn curve on a shared action grid. On the fitted support,
-
-$$q_i(u)=P_i(u), \qquad a_i(u)=1-q_i(u),
-\qquad u\in[u_{min},u_{max}].$$
-
-The stored artifact is validated at its knots and within every interval: churn
-must remain in $$[0,1]$$ and must be non-decreasing. Consequently acceptance is
-bounded in $$[0,1]$$ and non-increasing on the fitted support. Its derivative is
-
-$$\frac{\partial a_i}{\partial u}=-P_i'(u).$$
-
-Below support, churn is held constant at $$q_i(u_{min})$$. Above support, it uses
-the stored non-negative upper tangent $$s_i^{max}$$:
-
-$$q_i(u)=\operatorname{clip}\left(q_i(u_{max})
-+s_i^{max}(u-u_{max}),0,1\right).$$
-
-Thus $$\partial a_i/\partial u=0$$ below support, and equals
-$$-s_i^{max}$$ above support while the tangent is strictly inside $$(0,1)$$,
-then zero after clipping. At the support boundaries the implementation uses the
-interior derivative. The hierarchy preset constrains actions to $$[0,0.16]$$ and
-rejects policies absent from the artifact.
-
-**GLM/XGBoost policy-capacity experiment:**
-
-For the shared 19-dimensional, train-standardized policy input $$z(x)$$, the
-degree-$$D$$ policy is
-
-$$u_{\theta,D}(x)=-0.1+0.3\,\sigma\!\left(
-\theta_0+\sum_{k=1}^{D}\sum_{j=1}^{19}\theta_{kj}
-T_k\!\left(\operatorname{clip}(z_j(x)/3,-1,1)\right)
-\right).$$
-
-There are no interactions and the parameter count is $$p_D=1+19D$$. Every fit
-starts at $$\theta_0=-\log 2$$ and all other coefficients zero, which gives
-$$u(x)=0$$ for every customer. For evaluator $$m\in\{\mathrm{GLM},\mathrm{XGB}\}$$,
-
-$$J_m(\theta;S)=\frac1{|S|}\sum_{i\in S}
-a_i^m(u_{\theta,D}(x_i))\left[L_i^m-(1+u_{\theta,D}(x_i))p_i\right],$$
-
-$$\bar a_m(\theta;S)=\frac1{|S|}\sum_{i\in S}a_i^m(u_{\theta,D}(x_i)),$$
-
-and L-BFGS-B minimizes the fixed-floor penalized training target
-
-$$Q_m(\theta;S)=J_m(\theta;S)+10^6\left[
-10^{-3}\log\!\left(1+\exp\!\left(
-\frac{0.8787745289312372-\bar a_m(\theta;S)}{10^{-3}}
-\right)\right)\right]^2.$$
-
-Reported objective performance is the unpenalized $$J_m$$ (or profit $$-J_m$$).
-The floor is fixed and is not a sweep axis. The XGBoost arm builds an
-experiment-specific 31-knot raw query grid from $$-0.10$$ through $$0.20$$,
-then applies the same smoothing-spline, isotonic, and PCHIP construction; the
-policy bounds keep all evaluations inside that fitted support. This grid widens
-the canonical spline range $$[0,0.16]$$, not the raw XGBoost training-data range:
-the saved acceptance-training notebook reports observed $$U$$ from approximately
-$$-0.1144$$ through $$0.4327$$ after its modeling filters. Those aggregate
-endpoints do not establish dense conditional support for every customer profile.
-In particular, tree predictions in sparsely observed tail/profile combinations
-can be flat leaf-boundary values. The manifest must therefore set
-`curve_cache.widened_xgb_tail_acknowledged=true`, and results outside
-$$[0,0.16]$$ are interpreted as tail-sensitivity analysis rather than validated
-empirical or causal extrapolation. Post-fit spline monotonicity and probability
-bounds establish numerical shape constraints only.
-
-- **Source:** `src/experiments/policy_capacity.py`,
-  `manifests/policy_capacity_glm_xgb.json`
-
-The full-customer analysis cache stores the same PCHIP exactly as shared-grid
-cubic Hermite data rather than one Python polynomial object per customer. For
-an interval $$[x_j,x_{j+1}]$$, let
-$$t=(u-x_j)/h_j$$, $$h_j=x_{j+1}-x_j$$, stored knot values
-$$y_j=P_i(x_j)$$, and stored knot derivatives $$m_j=P_i'(x_j)$$. Evaluation is
-
-$$
-P_i(u)=h_{00}(t)y_j+h_{10}(t)h_jm_j
-       +h_{01}(t)y_{j+1}+h_{11}(t)h_jm_{j+1},
-$$
-
-where $$h_{00}=2t^3-3t^2+1$$, $$h_{10}=t^3-2t^2+t$$,
-$$h_{01}=-2t^3+3t^2$$, and $$h_{11}=t^3-t^2$$. Differentiating these four
-basis functions gives the cached analytical derivative. The representation is
-mathematically the same PCHIP returned by the canonical fitter; only float32
-storage introduces approximation, which the cache collector bounds against
-fresh canonical fits for both values and derivatives. Tail equations remain
-the ones above.
-
-**Local price-sensitivity bucket score:**
-
-For GLM sensitivity-bucket experiments, customers are ranked by local acceptance
-sensitivity at the median observed historical action $$u_{ref}$$:
-
-$$s_i = \left|\frac{\partial a(x_i, u_{ref})}{\partial u}\right| = |\beta_u^{\text{eff}}|\,a_i(1-a_i), \quad a_i = a(x_i, u_{ref})$$
-
-Rows are split into low/medium/high tertiles by $$s_i$$. With no explicit
-interaction terms between `U` and `X`, heterogeneity in this score comes from
-where each customer sits on the logistic acceptance curve.
-
-**Elasticity distribution over action values:**
-
-For GLM elasticity-distribution diagnostics, elasticity is the signed local
-acceptance derivative with respect to the centered action. The customer-by-action
-matrix is
-
-$$D_{ij} = \frac{\partial a(x_i, u_j)}{\partial u}$$
-
-For direct-acceptance GLM artifacts,
-
-$$D_{ij} = \beta_u^{\text{eff}}\,a_{ij}(1-a_{ij}), \quad a_{ij} = a(x_i, u_j)$$
-
-For legacy churn-probability artifacts, the sign flips because
-$$a = 1 - p_{churn}$$:
-
-$$D_{ij} = -\beta_u^{\text{eff}}\,a_{ij}(1-a_{ij})$$
-
-For bucket construction only, the absolute sensitivity score matrix is
-
-$$S_{ij} = \left|\frac{\partial a(x_i, u_j)}{\partial u}\right| = |\beta_u^{\text{eff}}|\,a_{ij}(1-a_{ij}), \quad a_{ij} = a(x_i, u_j)$$
-
-For saved-policy acceptance-grid diagnostics, the representative sensitivity
-score averages absolute sensitivity over the simulated action grid:
-
-$$s_i^{grid} = \frac{1}{m}\sum_{j=1}^{m}\left|\frac{\partial a(x_i, u_j)}{\partial u}\right|$$
-
-The plotted average elasticity curve summarizes customers within each action
-bin using signed derivatives:
-
-$$\bar{D}(u_j) = \frac{1}{n}\sum_{i=1}^n D_{ij}$$
-
-Selected fixed actions show the empirical cross-customer distribution of signed
-$$D_{ij}$$ as histograms. Histogram x-axes are clipped for display by default at
-the `0.5` and `99.5` percentiles and those clipping thresholds are marked on the
-chart; CSV summaries retain the unclipped values.
-
-**Delta-u by reference sensitivity diagnostic:**
-
-For final real-data policy diagnostics, each estimator/customer point plots
-
-$$\Delta u_i = \pi_\theta(x_i) - u_i^{\text{historical}}$$
-
-against absolute local acceptance sensitivity evaluated at reference action
-$$u_{ref}=0.08$$:
-
-$$s_i(0.08) = \left|\frac{\partial a(x_i, u)}{\partial u}\right|_{u=0.08}$$
-
-One aggregate sensitivity scatter and one $$\Delta u_i$$ histogram are written
-per train/test split with all estimators overlaid.
-
-**Expected profit contribution diagnostic:**
-
-The per-customer objective contribution is $$M_i = f(\pi_\theta(x_i); x_i)$$.
-Because the optimizer minimizes $$M$$, the reporting plot uses the sign-flipped
-expected profit contribution
-
-$$P_i = -M_i$$
-
-so $$P_i > 0$$ means predicted money made on customer $$i$$ and $$P_i < 0$$
-means predicted money lost. The plot shows the cross-customer distribution of
-$$P_i$$ and a scatter of $$P_i$$ against predicted acceptance $$a(x_i,\pi_\theta(x_i))$$.
-
-**Acceptance penalty** (smooth floor enforcement):
-
-$$\text{penalty} = w \cdot \bigl[\tau\,\log(1 + e^{g/\tau})\bigr]^2$$
-
-where $g = \text{floor} - \bar{a}(\theta)$ and $\tau$ is temperature.
-
-$$\frac{\partial\,\text{penalty}}{\partial\,\bar{a}} = -2w\,\text{softplus}(g/\tau)\,\sigma(g/\tau)$$
-
-- **Source:** `src/objective/objectives/generali/model_based.py` :: `ModelBasedObjective`
-  - `_value_batch()` — per-sample values
-  - `_glm_acceptance_proba()` — coefficient-backed GLM acceptance probability when available
-  - `_grad_u_batch()` — per-sample $\partial f/\partial u$
-  - `_d_acceptance_du_batch()` — analytical or FD acceptance derivative
-  - `_acceptance_penalty()` — penalty value and gradient scale
-- **Source:** `src/objective/objectives/generali/prepared_glm.py` :: `PreparedGLMObjective`, `PreparedGLMBatch`, `prepare_glm_objective()`
-  - Uses the same GLM formulas after materializing `base_logit`, `loss`, `premium`, and policy features into a compact numeric batch.
-- **Source:** `src/objective/objectives/generali/jax_prepared_glm.py` :: `JaxPreparedGLMObjective`, `JaxPreparedGLMScipyAdapter`, `prepare_jax_glm_objective()`
-  - Uses the same prepared GLM formulas in JAX for fixed-batch SciPy callbacks. The explicit constraint-margin adapter uses $$\bar{a}(\theta) - \alpha$$, equivalent to SciPy's existing lower-bound form $$\bar{a}(\theta) \ge \alpha$$.
-- **Source:** `src/experiments/sensitivity_buckets.py` :: `glm_price_derivative_matrix()`, `glm_price_sensitivity_scores()`, `glm_price_sensitivity_matrix()`, `split_sensitivity_tertiles()`
-- **Source:** `src/reporting/visualization.py` :: `_plot_policy_delta_u_histograms()`, `_plot_policy_delta_u_by_elasticity()`, `_plot_policy_objective_contribution_summary()`
-
-**Lagrangian scalarization** (lambda sweep path):
-
-$$J_{\lambda}(\theta) = J(\theta) + \lambda\,(\text{floor} - \bar{a}(\theta))$$
-
-where $$J(\theta) = \mathbb{E}[f(\pi_\theta(x); x)]$$ and
-$$\bar{a}(\theta) = \mathbb{E}[a(x, \pi_\theta(x))]$$.
-
-**Gradient w.r.t. $\theta$:**
-
-$$\nabla_\theta J_{\lambda}(\theta) = \nabla_\theta J(\theta) - \lambda\,\nabla_\theta \bar{a}(\theta)$$
-
-- **Source:** `src/objective/objectives/generali/model_based.py` :: `ModelBasedObjective.value()`, `ModelBasedObjective.grad()`, `ModelBasedObjective._lagrangian_adjustment()`
-- **Notes:** `base_value()` and `base_value_at_u()` keep exposing the raw objective $$J$$ for experiment summaries and sweep frontier plots while optimization uses $$J_\lambda$$.
-
-### 3.5 Noisy Objective Wrapper
-
-`NoisyObjective` wraps an action-level objective with additive deterministic
-noise:
-
-$$\hat{M}(x, u) = M(x, u) + \delta(x, u)$$
-
-and the theta-space value oracle is
-
-$$\hat{J}(\theta) = \frac{1}{n}\sum_{i=1}^n \hat{M}(x_i, \pi_\theta(x_i)).$$
-
-The initial homoskedastic Gaussian noise adapter uses
-
-$$\delta(x_i, u_i) = \sigma_\delta\,\varepsilon(x_i, u_i; s), \qquad \varepsilon \sim N(0, 1)$$
-
-where $$\varepsilon(x_i, u_i; s)$$ is generated by a stable hash of the experiment
-noise seed $$s$$, the exact row $$x_i$$, and the exact action $$u_i$$. Therefore
-the same $$(x_i, u_i)$$ pair receives the same noise on every objective call, while
-different actions for the same row generally receive different noise.
-
-For a policy-free theta-space objective such as a synthetic ladder rung, the same
-homoskedastic adapter instead provides one scalar noise value per exact
-parameter vector:
-
-$$\hat{J}_s(\theta) = J(\theta) + \sigma_\delta\,\varepsilon(\theta; s),
-\qquad \varepsilon(\theta; s) \sim N(0,1).$$
-
-Here $$\varepsilon(\theta;s)$$ is generated by a stable hash of the noise seed
-and the exact float64 parameter vector. Repeated queries at the same $$\theta$$
-therefore agree, while different parameter vectors generally receive different
-noise. This path adds one objective-level draw rather than averaging one draw
-per dummy state row; the policy-free objective does not depend on `x_batch`.
-
-The heteroskedastic Gaussian adapter scales the same unit-normal field by an
-action-dependent standard deviation that grows linearly with distance from a
-noise center $$u_c$$ (typically the planted optimum $$u^*$$):
-
-$$\delta(x_i, u_i) = \big(\sigma_0 + \gamma\,|u_i - u_c|\big)\,\varepsilon(x_i, u_i; s)$$
-
-so value queries near the global minimum stay nearly noiseless while queries far
-from it become increasingly noisy. Because both adapters share the hash-keyed
-field $$\varepsilon(x_i, u_i; s)$$, setting $$\gamma = 0$$ reproduces the
-homoskedastic adapter with $$\sigma_\delta = \sigma_0$$ exactly. The noise is
-zero-mean at every $$(x, u)$$, so it perturbs value oracles without biasing the
-objective in expectation. Heteroskedastic noise remains action-only because its
-scale depends on distance from an action center $$u_c$$.
-
-- **Source:** `src/objective/noise.py` :: `NoisyObjective`, `HomoskedasticGaussianNoise`, `HeteroskedasticGaussianNoise`
-- **Notes:** This wrapper intentionally exposes no analytical gradient for its
-  noisy value oracle. Use zeroth-order estimators for optimization, or
-  call the wrapped `base_objective.grad(...)` to inspect the true non-noisy
-  objective gradient. `CorrectnessSpec(gradient_source="denoised_exact")` uses
-  this wrapped-objective gradient for diagnostics, while `"exact"` remains the
-  optimizer-facing objective gradient source.
-
-### 3.6 Biased Objective Wrapper
-
-`BiasedObjective` wraps an action-level objective with a deterministic additive
-action bias:
-
-$$
-\hat{M}(x, u) = M(x, u) + b(x, u)
-$$
-
-The default `LinearActionBias` preserves the original global linear action bias:
-
-$$b(u) = - \lambda_{bias}\,u$$
-
-and the theta-space value oracle is
-
-$$\hat{J}(\theta) = J(\theta) - \lambda_{bias}\,\frac{1}{n}\sum_{i=1}^n \pi_\theta(x_i).$$
-
-For minimization and $$\lambda_{bias} > 0$$, larger actions look artificially
-better because they reduce $$\hat{M}$$.
-
-**Gradient w.r.t. $u$:**
-
-$$\frac{\partial \hat{M}}{\partial u} = \frac{\partial M}{\partial u} - \lambda_{bias}$$
-
-**Gradient w.r.t. $\theta$:**
-
-$$\nabla_\theta \hat{J}(\theta) = \nabla_\theta J(\theta) - \lambda_{bias}\,\frac{1}{n}\sum_{i=1}^n \nabla_\theta\pi_\theta(x_i)$$
-
-`UpperSupportHingeBias` instead leaves an upper action-support band exact and
-adds optimism only above support. Let $$h = u_c + r$$ be the upper support
-boundary, where $$u_c$$ is the support center and $$r \ge 0$$ is the support
-radius. The hard hinge is
-
-$$b(u) = -\lambda_{bias}\,(u-h)_+,$$
-
-so the surrogate equals the true objective for $$u \le h$$ and becomes
-optimistic only when actions exceed support. Its action-gradient is
-
-$$\frac{\partial b}{\partial u} = -\lambda_{bias}\,\mathbb{1}\{u > h\}.$$
-
-When `smooth_tau = \tau > 0`, the hinge excess is replaced by
-
-$$\tau\log\left(1 + \exp\left(\frac{u-h}{\tau}\right)\right),$$
-
-with action-gradient
-
-$$\frac{\partial b}{\partial u} = -\lambda_{bias}\,\sigma\left(\frac{u-h}{\tau}\right).$$
-
-`NaturalCubicActionBias` represents a saved action-only adjustment with knots
-$(v_j, b_j)$. Let $S_b(u)$ be the natural cubic spline through those knots. The
-configured action bias and its derivative are
-
-$$
-b(u) = \lambda_{bias} S_b(\operatorname{clip}(u, v_1, v_m)),
-$$
-
-$$
-\frac{\partial b}{\partial u}
-= \lambda_{bias} S_b'(u)\,\mathbb{1}\{v_1 < u < v_m\}.
-$$
-
-Clipping makes the adjustment constant outside its recorded action domain, so
-its derivative is zero there. The knot values, scale, and boundary rule are
-serialized in the experiment configuration.
-
-- **Source:** `src/objective/modifications/bias.py` :: `ActionBias`,
-  `LinearActionBias`, `UpperSupportHingeBias`, `NaturalCubicActionBias`,
-  `BiasedObjective`
-- **Notes:** `base_value()` and `base_value_at_u()` expose the wrapped true
-  objective for reporting, while optimization uses the biased surrogate through
-  `value()` and `grad()`. The bias is deterministic and introduces no new seed
-  stream.
-
-#### 3.6.1 Policy-Free Theta Biases
-
-`ThetaBiasedObjective` adds a deterministic scalar bias directly to a
-one-dimensional theta-space objective:
-
-$$\widetilde J(x)=J(x)+b(x), \qquad
-\widetilde J'(x)=J'(x)+b'(x).$$
-
-The zeroth-order proof-validation experiment uses three bias fields:
-
-$$b_{\rm linear}(x)=\alpha x, \qquad b'_{\rm linear}(x)=\alpha,$$
-
-$$b_{\rm arctan}(x)=\alpha\arctan x, \qquad
-b'_{\rm arctan}(x)=\frac{\alpha}{1+x^2},$$
-
-$$b_{\rm remainder}(x)=\alpha(x-\arctan x), \qquad
-b'_{\rm remainder}(x)=\frac{\alpha x^2}{1+x^2}.$$
-
-The remainder is cubic near the clean minimum because
-$$x-\arctan x=x^3/3+O(x^5)$$. All three obey
-$$\sup_x|b'(x)|\le |\alpha|$$. For the two nonlinear fields,
-
-$$\sup_x|b''(x)|=\frac{3\sqrt3}{8}|\alpha|, \qquad
-\sup_x|b'''(x)|=2|\alpha|.$$
-
-- **Source:** `src/objective/modifications/bias.py` :: `ThetaBias`,
-  `LinearThetaBias`, `ArctanThetaBias`, `ArctanRemainderThetaBias`,
-  `ThetaBiasedObjective`
-- **Notes:** Theta biases are separate from action biases: they apply to direct
-  theta-space objectives without requiring a policy. `base_value()` preserves
-  clean-objective reporting, and no new seed stream is introduced.
-
-#### 3.6.2 Policy-Free Support Envelopes
-
-For the proof objective
-
-$$f(u)=u^2+\frac12(\sin u-u), \qquad u^\star=0,$$
-
-let $$C=[\ell,h]$$ be the covered interval and
-$$d(u,C)=\max(\ell-u,0,u-h)$$. The envelope sweep optimizes the upper objective
-
-$$F(u)=f(u)+\phi(u)$$
-
-for three deterministic envelope forms.
-
-The constant control is
-
-$$\phi_{\mathrm{const}}(u)=A, \qquad
-\phi_{\mathrm{const}}'(u)=0.$$
-
-It shifts every value equally and therefore leaves the exact and zeroth-order
-trajectories unchanged. In particular, it does not identify a unique envelope
-minimum: every $$u$$ minimizes the envelope, while $$F$$ retains the clean
-minimum.
-
-The constant-derivative increasing envelope is the interval-distance penalty
-
-$$\phi_{\mathrm{lin}}(u)=\lambda d(u,C), \qquad
-\phi_{\mathrm{lin}}'(u)=
+\sigma(z)=
 \begin{cases}
--\lambda,&u<\ell,\\
-0,&\ell<u<h,\\
-\lambda,&u>h.
-\end{cases}$$
-
-When the clean minimum lies below coverage, as here, the exact minimizer solves
-$$f'(u)=\lambda$$ below $$\ell$$ while $$\lambda<f'(\ell)$$ and is pinned to
-the left coverage boundary $$u=\ell$$ once $$\lambda\ge f'(\ell)$$. Thus the
-upper objective selects the truth-favorable edge of the envelope's flat
-minimum, not an arbitrary interior point.
-
-The smooth saturating envelope is zero on coverage and increases monotonically
-with distance outside it:
-
-$$
-\phi_{\mathrm{nc}}(u)=
-\begin{cases}
-0,&d(u,C)=0,\\
-A\exp\left[-\left(\frac{s}{d(u,C)}\right)^2\right],&d(u,C)>0.
+(1+e^{-z})^{-1}, & z\ge 0,\\
+e^z(1+e^z)^{-1}, & z<0.
 \end{cases}
 $$
 
-This function is $$C^\infty$$ at the interval boundary and bounded above by
-$$A$$. For $$d>0$$ its derivative magnitude is
+Its derivative is $\sigma'(z)=\sigma(z)(1-\sigma(z))$.
 
-$$
-\left|\phi_{\mathrm{nc}}'(u)\right|
-=\frac{2A}{s}\left(\frac{s}{d}\right)^3
-\exp\left[-\left(\frac{s}{d}\right)^2\right].
-$$
+Source: `src/objective/_math.py::_sigmoid`.
 
-It reaches its maximum at $$s/d=\sqrt{3/2}$$:
+## 2. Real-Data Inputs and Feature Processing
 
-$$
-\max_u|\phi_{\mathrm{nc}}'(u)|
-=2(3/2)^{3/2}e^{-3/2}\frac{A}{s}
-\approx 0.8198326\frac{A}{s}.
-$$
+### 2.1 Immutable rows and column roles
 
-Although $$\phi_{\mathrm{nc}}$$ is monotone in distance, its slope first grows
-and then decays, so the envelope and the resulting upper objective need not be
-convex. The sweep matches the linear slope to this maximum,
-$$\lambda=0.8198326A/s$$, and uses $$C=[0.75,1.25]$$, $$s=0.25$$, and
-$$A\in\{0,0.25,0.35,0.42,0.60,0.70\}$$. These values cross the creation of a
-truth-side minimum/maximum pair, the global-minimum switch between truth- and
-coverage-side basins, and the later disappearance of the outer basin.
+`src/data/dataset.csv` is the canonical semicolon-separated source. Loaders
+never modify it. They select columns and stable zero-based CSV row positions,
+then transform copies in memory.
 
-The estimator population landscapes used by the analyzer are
+A row is eligible when every `REQUIRED_DATASET_COLUMNS` value is present.
+Seeded cohorts are sorted samples without replacement from eligible positions.
+Saved row positions plus their digest identify a replayable cohort.
 
-$$
-F_{\mathrm{FD},\sigma}'(u)
-=\frac{F(u+\sigma)-F(u-\sigma)}{2\sigma}
-$$
+- Acceptance state is the 19 `ACCEPTANCE_STATE_COLS`, including premium.
+- Loss state is the 18 `LOSS_FEATURE_COLS`, excluding premium.
+- `X_policy_premium` is also read separately for revenue.
+- Policy-generated `U` is appended only to acceptance-model input.
+- Historical `U`, `is_churn`, `Y_G_Loss`, IDs, dates, and
+  `X_upcoming_premium` are diagnostic or lookup fields, not objective state.
 
+An `id` may be retained only as a spline-curve lookup key.
+
+Sources: `src/data/dataset_metadata.py`, `src/data/loader.py`.
+
+### 2.2 Saved artifact transform
+
+Let $r\in\mathbb R^d$ be numeric source columns, $\mu$ the saved training mean,
 and
 
 $$
-F_{\mathrm{Stein},\sigma}'(u)
-=\mathbb E\left[F'(u+\sigma Z)\right],
-\qquad Z\sim N(0,1).
+\Sigma=Q\operatorname{diag}(\lambda_1,\ldots,\lambda_d)Q^\top,
+\qquad \tilde\lambda_j=\max(\lambda_j,\varepsilon).
 $$
 
-The former is the derivative of a uniform convolution and the latter of a
-Gaussian convolution. Comparing their stationary points with finite-run
-$$u_K$$ separates deterministic envelope geometry, zeroth-order smoothing,
-initialization-dependent basin selection, and finite-sample optimizer noise.
+Without PCA,
 
-- **Source:** `src/objective/modifications/regularization.py` ::
-  `ConstantThetaRegularizer`, `IntervalDistanceThetaRegularizer`,
-  `SmoothSaturatingIntervalThetaRegularizer`, `RegularizedObjective`;
-  `manifests/zeroth_order_envelopes.json`;
-  `scripts/analyze_zeroth_order_envelopes.py`
-- **Notes:** These regularizers are reusable theta-space objective
-  modifications. The scalar stationary-point and convolution tooling is kept
-  experiment-side because it is specific to one-dimensional landscape
-  analysis.
+$$
+z_{\rm num}=(r-\mu)Q\operatorname{diag}(\tilde\lambda_j^{-1/2})Q^\top.
+$$
 
-#### 3.6.3 Finite-Policy Lower Confidence Bounds
+With $k$ PCA components,
 
-Let the finite class of constant policies be
+$$
+z_{\rm num}=(r-\mu)Q_{[:,1:k]}
+\operatorname{diag}(\tilde\lambda_1^{-1/2},\ldots,\tilde\lambda_k^{-1/2}).
+$$
 
-$$\Pi=\{0,0.1,\ldots,1.0\},\qquad K=|\Pi|=11,$$
+For categorical column $c$, training-order categories define mapping $m_c$.
+Missing values become `__MISSING__`; unseen values receive code $|m_c|$. The
+encoded value is
 
-with true value and Gaussian surrogate
+$$
+z_c=\frac{m_c(c)}{\max(|m_c|,1)}.
+$$
 
-$$V^\pi=\pi,$$
+Numeric outputs precede categorical outputs. Estimator input is reindexed to
+`feature_names_in_` when present.
 
-$$\widehat V_s^\pi
-=V^\pi+\pi Z_s^\pi
-=\pi+\pi Z_s^\pi,
-\qquad Z_s^\pi\overset{\mathrm{i.i.d.}}{\sim}N(0,1).$$
+Source: `src/data/feature_processor.py::FeatureProcessor`.
 
-Thus
+### 2.3 Model and policy frames
 
-$$\mathbb E[\widehat V_s^\pi]=V^\pi,
-\qquad \operatorname{Var}(\widehat V_s^\pi)=\pi^2.$$
+Acceptance follows
 
-For confidence level $$1-\delta$$, define
+$$
+x_{\rm raw,acc}\longrightarrow z_{\rm acc}
+\longrightarrow[z_{\rm acc},U]\longrightarrow\widehat a(x,U).
+$$
 
-$$q_\delta
-=\Phi^{-1}\!\left(1-\frac{\delta}{2K}\right),$$
+Loss follows
 
-$$\mathcal E^\pi(\delta)=2\pi q_\delta,$$
+$$
+x_{\rm raw,loss}\longrightarrow z_{\rm loss}\longrightarrow\widehat L(x)
+$$
 
-and the lower confidence bound
+and never receives `U`. Class 1 is interpreted using the artifact's recorded
+acceptance/churn target orientation.
 
-$$\underline V_{\delta,s}^\pi
-=\widehat V_s^\pi-\frac12\mathcal E^\pi(\delta)
-=\pi+\pi Z_s^\pi-\pi q_\delta.$$
+By default the policy reuses acceptance-side processed state. Optional policy
+preprocessing applies a second fitted transform
+$z_{\rm acc}\mapsto z_{\rm policy}$ without changing black-box model input.
+Saved policies record both preprocessing stages and the feature map separately.
 
-The Gaussian tail probability and a union bound give
+Sources: `src/data/loader.py::ModelArtifactBundle.model_frame`,
+`src/objective/objectives/generali/model_based.py`,
+`src/objective/policy_preprocessing.py`, `src/experiments/policy_artifacts.py`.
 
-$$\Pr\!\left(
-|\widehat V_s^\pi-V^\pi|
-\le \frac12\mathcal E^\pi(\delta)
-\text{ for every }\pi\in\Pi
-\right)\ge 1-\delta.$$
+## 3. Policies and Feature Maps
 
-Because the policy-level Gaussian variables are independent, the exact joint
-coverage is
+Feature maps return $\varphi(x)$; linear and bounded heads prepend an intercept:
 
-$$\Pr(A_{\delta,s})
-=\left(1-\frac{\delta}{K}\right)^K
-\ge 1-\delta.$$
+$$
+\phi(x)=[1,\varphi(x)].
+$$
 
-The finite optimizer evaluates every policy and selects
+Identity uses $\varphi(x)=x$. For total degree $D$,
 
-$$\widehat\pi_{\delta,s}
-\in\arg\max_{\pi\in\Pi}\underline V_{\delta,s}^\pi.$$
+$$
+\mathcal A_D=\{\alpha\in\mathbb N_0^d:1\le|\alpha|_1\le D\},
+\qquad \varphi_D(x)=[x^\alpha:\alpha\in\mathcal A_D],
+$$
 
-It is exact, so its script-style optimization error is $$\varepsilon=0$$.
-On the simultaneous confidence event, every comparator
-$$\widetilde\pi\in\Pi$$ satisfies the Proposition 11.2 oracle inequality
+giving $\binom{d+D}{D}$ head parameters including the intercept.
 
-$$V^{\widehat\pi_{\delta,s}}
-\ge
-V^{\widetilde\pi}
--\mathcal E^{\widetilde\pi}(\delta)
--\varepsilon.$$
+The additive Chebyshev map uses
 
-Each run seed draws one vector $$(Z_s^\pi)_{\pi\in\Pi}$$ and reuses it for
-every configured $$\delta$$. This paired design changes only the confidence
-radius within a seed; different run seeds use independently derived noise
-streams.
+$$
+t_j=\operatorname{clip}(x_j/s,-1,1),\quad
+T_0=1,\quad T_1=t,\quad T_k=2tT_{k-1}-T_{k-2},
+$$
 
-- **Source:** `src/experiments/policy_lcb/finite.py` (with compatibility import
-  `src/experiments/finite_policy_lcb.py`);
-  `manifests/finite_policy_lcb_validation.json`
-- **Notes:** There is no gradient method, theta initialization, data split, or
-  optimizer RNG. Exhaustive policy evaluation is the optimizer, and only the
-  noise seed varies.
+and concatenates $T_1(t_1),\ldots,T_D(t_d)$ by degree. It has $dD$ mapped
+features and no interactions.
 
-#### 3.6.4 Continuous-Policy Lower Confidence Bounds
+Policy heads are
 
-For the continuous class $$\Pi=[0,1]$$, one scalar Gaussian draw is shared by
-every policy within run seed $$s$$:
+$$
+u_{\rm constant}=\theta_0,
+\qquad
+u_{\rm linear}=\theta^\top\phi(x),
+$$
+
+$$
+u_{\rm bounded}=l+(h-l)\sigma(\theta^\top\phi(x)),
+$$
+
+with
+
+$$
+\nabla_\theta u_{\rm bounded}
+=(h-l)\sigma(z)(1-\sigma(z))\phi(x).
+$$
+
+The MLP policy is
+
+$$
+h_1=\tanh(W_1\varphi(x)+b_1),\quad
+h_2=\tanh(W_2h_1+b_2),\quad
+u=0.5-\sigma(W_3h_2+b_3).
+$$
+
+Source: `src/objective/policy.py`.
+
+## 4. Pricing Objectives
+
+### 4.1 Fixed regression benchmark
+
+$$
+a=\sigma(\beta_1^\top x+\beta_2u),\quad
+L=\beta_3^\top x,\quad R=\beta_4u,
+$$
+
+$$
+f(u;x)=a(L-R),
+\qquad
+\frac{\partial f}{\partial u}=\beta_2a(1-a)(L-R)-a\beta_4.
+$$
+
+Source: `src/objective/objectives/synthetic/fixed_regression.py`.
+
+### 4.2 Planted logistic benchmark
+
+Let $z=\alpha u+\beta^\top x+b$ and
+$p^*(x)=\sigma(\alpha u^*+\beta^\top x+b)$. Then
+
+$$
+f(u;x)=\log(1+e^z)-p^*(x)z,
+\qquad
+\frac{\partial f}{\partial u}=\alpha(\sigma(z)-p^*(x)).
+$$
+
+The unique action optimum is $u^*$.
+
+Source: `src/objective/objectives/synthetic/planted_logistic.py`.
+
+### 4.3 Real-data model objective
+
+For premium $p(x)$, acceptance $a(x,u)$, and predicted or observed loss $L(x)$,
+
+$$
+f(u;x)=a(x,u)[L(x)-(1+u)p(x)].
+$$
+
+The optimizer minimizes $J(\theta)=n^{-1}\sum_i f(\pi_\theta(x_i);x_i)$.
+Displayed customer profit is
+
+$$
+P_i(u)=-f(u;x_i)=a(x_i,u)[(1+u)p(x_i)-L(x_i)].
+$$
+
+For GLM logit $g(x)+\beta_u u$,
+
+$$
+\frac{\partial a}{\partial u}=\beta_u a(1-a),
+\qquad
+\frac{\partial f}{\partial u}
+=\frac{\partial a}{\partial u}[L-(1+u)p]-ap.
+$$
+
+Spline acceptance is one minus monotone churn. Exact analysis splines use
+constant-left and clipped-linear-right behavior outside $[0,0.16]$.
+
+Sources: `src/objective/objectives/generali/model_based.py`,
+`src/data/monotone_spline_xgb.py`, `src/reporting/real_data.py`.
+
+### 4.4 Synthetic ladder and proof benchmark
+
+The strongly convex rung is
+
+$$
+f(w)=\tfrac12(w-w^*)^\top A(w-w^*),
+\qquad \nabla f(w)=A(w-w^*),
+$$
+
+where $A=Q\operatorname{diag}(\lambda)Q^\top$ has eigenvalues in
+$[\mu,\mu\kappa]$.
+
+The smoothed nonconvex rung is
+
+$$
+f(w)=\tfrac12\|w-w^*\|^2-a_0e^{-\|w-w^*\|^2/(2s_0^2)}
+-\sum_j a_j\psi\!\left(\frac{\|w-c_j\|^2}{\rho_j^2}\right),
+$$
+
+where $\psi(s)=e^{1-1/(1-s)}$ for $0\le s<1$ and zero otherwise. Disjoint
+supports, positive clearance from $w^*$, and
+$a_j<\tfrac12(\|c_j-w^*\|-\rho_j)^2$ preserve the unique global minimum.
+Piecewise convex and double-well rungs remain explicit structural stubs.
+
+The proof-validation objective is
+
+$$
+f(x)=x^2+\tfrac12(\sin x-x),
+$$
+
+with $f''(x)\in[1.5,2.5]$, $x^*=0$, and $|f'''(x)|\le0.5$.
+
+Sources: `src/objective/objectives/synthetic/ladder.py` and
+`proof_validation.py`.
+
+## 5. Objective Composition and Constraints
+
+Manifest modifications are applied in listed order. `base_value` methods expose
+the wrapped unmodified objective for reporting.
+
+An action bias gives $\widehat M(x,u)=M(x,u)+b(x,u)$. Implemented fields include
+
+$$
+b_{\rm linear}(u)=-\lambda u,
+\qquad
+b_{\rm hinge}(u)=-\lambda(u-h)_+.
+$$
+
+For knots $(v_j,b_j)$, `NaturalCubicActionBias` uses natural cubic spline $S_b$:
+
+$$
+b(u)=\lambda S_b(\operatorname{clip}(u,v_1,v_m)).
+$$
+
+Its derivative is $\lambda S_b'(u)$ inside $(v_1,v_m)$ and zero outside.
+
+Noise gives $\widehat M=M+\delta$. Homoskedastic noise has scale $\sigma_0$;
+heteroskedastic noise scales the same query-keyed unit-normal field by
+$\sigma_0+\gamma|u-u_c|$. Noisy objectives intentionally have no analytical
+gradient.
+
+For mean acceptance $\bar a(\theta)$ and floor $a_{\min}$, the smooth penalty is
+
+$$
+s=\tau\log(1+e^{(a_{\min}-\bar a)/\tau}),
+\qquad
+J_{\rm pen}=J+\lambda s^2.
+$$
+
+The Lagrangian form is
+
+$$
+J_{\rm lag}=J+\lambda(a_{\min}-\bar a).
+$$
+
+Direct trust-constr enforcement instead solves
+
+$$
+\min_\theta J(\theta)
+\quad\text{subject to}\quad
+\bar a(\theta)\ge a_{\min}.
+$$
+
+Sources: `src/objective/modifications/`.
+
+## 6. Real-Data Analysis Quantities
+
+For profit matrix $P_{ij}=P_i(u_j)$,
+
+$$
+\mu_j=\frac1n\sum_iP_{ij},
+\qquad
+s_j=\sqrt{\frac1n\sum_i(P_{ij}-\mu_j)^2},
+$$
+
+$$
+m_j=\operatorname{median}_iP_{ij},
+\qquad
+\operatorname{MAD}_j=\operatorname{median}_i|P_{ij}-m_j|.
+$$
+
+MAD is raw unless a displayed quantity explicitly multiplies it by $1.4826$.
+
+Customer/action support uses clipped saved-whitened numeric coordinates and
+one-hot categorical coordinates divided by $\sqrt2$. For neighbors $N_i$,
+state weights $q_{ik}$, action bandwidth $b$, and historical action $U_k$,
+
+$$
+S_i(u)=\sum_{k\in N_i}q_{ik}
+\exp\left[-\tfrac12\left(\frac{U_k-u}{b}\right)^2\right].
+$$
+
+The normalized coverage penalty is
+
+$$
+W_i(u)=c\left(1-\frac{S_i(u)}{\max_vS_i(v)}\right).
+$$
+
+Marginal action support uses
+
+$$
+n_{\rm eff}(u)=\frac{(\sum_iw_i(u))^2}{\sum_iw_i(u)^2},
+\qquad
+w_i(u)=\exp\left[-\tfrac12\left(\frac{U_i-u}{b}\right)^2\right].
+$$
+
+Customer response grids use piecewise-linear interpolation; the derivative is
+the slope of the containing interval. A grid may render or interpolate an
+objective but never selects a reported optimum.
+
+Sources: `src/reporting/profit_dispersion.py`, `src/reporting/real_data.py`,
+`src/data/coverage.py`, `src/objective/gridded.py`.
+
+## 7. Uncertainty and Lower Bounds
+
+For finite policy class $\Pi$, simultaneous error widths $\mathcal E^\pi$ give
+
+$$
+\underline V^\pi=\widehat V^\pi-\tfrac12\mathcal E^\pi.
+$$
+
+On the simultaneous coverage event, an $\varepsilon$-optimal LCB policy obeys
+
+$$
+V^{\widehat\pi}\ge
+V^{\widetilde\pi}-\mathcal E^{\widetilde\pi}-\varepsilon
+$$
+
+for every comparator $\widetilde\pi\in\Pi$. The finite Gaussian validation uses
+$V^\pi=\pi$, $\widehat V^\pi=\pi+\pi Z^\pi$, and Bonferroni quantile
+$q=\Phi^{-1}(1-\delta/(2|\Pi|))$.
+
+The continuous rank-one validation uses
 
 $$
 V(\pi)=5\pi-5\pi^2,
 \qquad
 \widehat V_s(\pi)=V(\pi)+\pi Z_s,
-\qquad
-Z_s\sim N(0,1).
 $$
 
-The quadratic mean changes the optimizer but not the error process:
+so $\sup_{\pi>0}|\widehat V_s(\pi)-V(\pi)|/\pi=|Z_s|$ and
+$q=\Phi^{-1}(1-\delta/2)$ needs no finite-class factor.
 
-$$
-\widehat V_s(\pi)-V(\pi)=\pi Z_s.
-$$
-
-Because the same $$Z_s$$ is used throughout the interval, every positive
-policy has the same standardized error and
-
-$$
-\sup_{\pi\in(0,1]}
-\frac{|\widehat V_s(\pi)-V(\pi)|}{\pi}
-=|Z_s|.
-$$
-
-Consequently, the simultaneous two-sided quantile has no finite-class
-Bonferroni factor:
-
-$$
-q_\delta=\Phi^{-1}(1-\delta/2),
-\qquad
-\mathcal E^\pi(\delta)=2\pi q_\delta.
-$$
-
-Continuity itself does not remove the multiplicity correction. The finite
-experiment has $$K$$ distinct Gaussian coordinates and controls their union
-with $$q_{\delta,K}=\Phi^{-1}(1-\delta/(2K))$$. Here the continuum has a
-rank-one error process, so the policy-indexed intersection is exactly the
-single event $$|Z_s|\le q_\delta$$. A nonconstant Gaussian process
-$$Z_s(\pi)$$ would instead require a bound for its supremum, typically involving
-the complexity of the policy class rather than this scalar quantile.
-
-The experiment minimizes the negative lower confidence bound
-
-$$
-F_{s,\delta}(\pi)
-=-\underline V_{s,\delta}(\pi)
-=5\pi^2+(q_\delta-5-Z_s)\pi,
-$$
-
-whose exact derivative and constrained minimizer are
-
-$$
-F'_{s,\delta}(\pi)=10\pi+q_\delta-5-Z_s,
-$$
-
-$$
-\pi^*_{s,\delta}
-=\operatorname{clip}_{[0,1]}
-\left(\frac{5+Z_s-q_\delta}{10}\right).
-$$
-
-For the configured confidence levels, $$q_\delta\in[0.674,2.576]$$. Thus all
-draws $$Z_s\in[-2,2]$$ have a strictly interior analytic minimizer.
-
-The single event $$|Z_s|\le q_\delta$$ covers every policy simultaneously, so
-
-$$
-\Pr\!\left(
-|\widehat V_s(\pi)-V(\pi)|\le \tfrac12\mathcal E^\pi(\delta)
-\text{ for every }\pi\in[0,1]
-\right)=1-\delta.
-$$
-
-Projected first-order, finite-difference, and Stein-difference updates retain
-feasible iterates in $$[0,1]$$. Finite-difference and Stein probes evaluate the
-same quadratic formula outside the feasible interval before the updated policy
-is projected.
-If an optimizer returns $$\widehat\pi$$, its measured LCB optimization error is
-
-$$
-\varepsilon
-=F_{s,\delta}(\widehat\pi)-F_{s,\delta}(\pi^*_{s,\delta})
-=\underline V_{s,\delta}(\pi^*_{s,\delta})
--\underline V_{s,\delta}(\widehat\pi)\ge 0.
-$$
-
-- **Source:** `src/experiments/policy_lcb/continuous.py`
-- **Notes:** Problem-noise seeds vary across runs. The Stein perturbation
-  stream is separate and deliberately paired across run seeds, confidence
-  levels, and starts so cross-seed spread isolates the shared Gaussian draw.
-
-#### 3.6.5 Variable-Envelope Finite-Grid Lower Confidence Bounds
-
-Let the finite optimization class be the inclusive grid
-
-$$
-\mathcal X=\{x_1,\ldots,x_K\}\subset[0,1]
-$$
-
-with true value and grid optimum
-
-$$
-f(x)=5x-5x^2,
-\qquad
-x^*\in\arg\max_{x\in\mathcal X}f(x).
-$$
-
-For an uncertainty center $$m$$, the clipped distance-ramp scale is
-
-$$
-\sigma_m(x)=\sigma_{\min}
-+(\sigma_{\max}-\sigma_{\min})
-\min\!\left(\frac{|x-m|}{r},1\right).
-$$
-
-One run seed draws a vector of independent standard Gaussians and reuses it for
-every noise magnitude, uncertainty center, and envelope calibration:
-
-$$
-Z_{s,x}\overset{\mathrm{i.i.d.}}{\sim}N(0,1),
-\qquad
-\widehat f_{s,c,m}(x)=f(x)+c\sigma_m(x)Z_{s,x}.
-$$
-
-For failure probability $$\delta$$, the simultaneous Bonferroni and pointwise
-two-sided quantiles are
-
-$$
-q_{\mathrm{sim}}=\Phi^{-1}\!\left(1-\frac{\delta}{2K}\right),
-\qquad
-q_{\mathrm{point}}=\Phi^{-1}\!\left(1-\frac{\delta}{2}\right),
-$$
-
-and either calibration defines the half-width and lower confidence bound
-
-$$
-E_{c,m,q}(x)=c q\sigma_m(x),
-\qquad
-\underline f_{s,c,m,q}(x)=\widehat f_{s,c,m}(x)-E_{c,m,q}(x).
-$$
-
-For Bonferroni calibration, a union bound gives
-
-$$
-\Pr\!\left(
-|\widehat f_{s,c,m}(x)-f(x)|\le E_{c,m,q_{\mathrm{sim}}}(x)
-\ \forall x\in\mathcal X
-\right)\ge1-\delta.
-$$
-
-Under the configured independent Gaussian coordinates, its exact coverage is
-$$ (1-\delta/K)^K $$. Pointwise calibration instead covers each fixed point
-with probability $$1-\delta$$, so its expected covered fraction is
-$$1-\delta$$ while its exact simultaneous coverage is $$(1-\delta)^K$$.
-
-The exhaustive selectors are
-
-$$
-\widehat x_{\mathrm{nom}}
-\in\arg\max_x\widehat f_{s,c,m}(x),
-\qquad
-\widehat x_{\mathrm{var}}
-\in\arg\max_x\underline f_{s,c,m,q}(x).
-$$
-
-The uniform half-width $$E_{\mathrm{unif}}=\max_x E_{c,m,q}(x)$$ is constant
-over $$x$$, hence
-
-$$
-\arg\max_x[\widehat f_{s,c,m}(x)-E_{\mathrm{unif}}]
-=\arg\max_x\widehat f_{s,c,m}(x).
-$$
-
-The deterministic penalized target
-
-$$
-x^\dagger_{c,m,q}\in\arg\max_x[f(x)-E_{c,m,q}(x)]
-$$
-
-separates envelope geometry from surrogate randomness. Regret is
-
-$$
-R(\widehat x)=f(x^*)-f(\widehat x).
-$$
-
-On the simultaneous two-sided coverage event, exact variable-LCB maximization
-obeys
-
-$$
-R(\widehat x_{\mathrm{var}})\le 2E_{c,m,q_{\mathrm{sim}}}(x^*).
-$$
-
-Because the same standardized $$Z_{s,x}$$ is paired across positive $$c$$ and
-all $$\sigma_m(x)>0$$, the coverage event reduces to
-$$\{|Z_{s,x}|\le q\ \forall x\}$$ for every configured center and every
-positive noise magnitude. No additional center multiplicity correction is
-needed for this paired construction.
-
-- **Source:** `src/experiments/policy_lcb/finite_grid.py`;
-  `manifests/variable_lcb_envelope_characterization.json`
-- **Notes:** The grid search is exact and has no optimizer or reporting RNG.
-  The master noise seed is the only stochastic stream. The random surrogate is
-  defined only at the $$K$$ grid points. Lines connecting those values in plots
-  are visualization aids, not an interpolation rule or a continuous random
-  function.
-
-#### 3.6.6 Continuous Finite-Fourier GP Lower Confidence Bounds
-
-The continuous optimization class is $$\mathcal X=[0,1]$$, with
-
-$$
-f(x)=5x-5x^2,
-\qquad x^*=\tfrac12,
-\qquad R(x)=f(x^*)-f(x)=5(x-\tfrac12)^2.
-$$
-
-Let
-
-$$
-h(t)=
-\begin{cases}
-6t^5-15t^4+10t^3,&0\le t<1,\\
-1,&t\ge1,
-\end{cases}
-$$
-
-and define the smooth clipped uncertainty scale
-
-$$
-\sigma_m(x)=\sigma_{\min}
-+(\sigma_{\max}-\sigma_{\min})
-h\!\left(\frac{|x-m|}{r}\right).
-$$
-
-The configured values are $$\sigma_{\min}=0.1$$,
-$$\sigma_{\max}=1$$, and $$r=0.5$$. The polynomial has zero first and
-second derivatives at both endpoints, so $$\sigma_m$$ is $$C^2$$ at its
-minimum $$m$$ and at the clipped plateau. The point $$m$$ minimizes marginal
-uncertainty; it need not minimize a realized absolute error.
-
-For rank $$J$$ and lengthscale $$\ell$$, use deterministic half-normal
-spectral quantiles
-
-$$
-p_j=\frac{j-\tfrac12}{J},
-\qquad
-\omega_j=\ell^{-1}\Phi^{-1}\!\left(\frac{1+p_j}{2}\right),
-\qquad j=1,\ldots,J.
-$$
-
-One run seed draws the coefficient vector
-
-$$
-\xi_s=(A_{s,1},B_{s,1},\ldots,A_{s,J},B_{s,J})
-\sim N(0,I_{2J})
-$$
-
-and defines the analytic random function
+Finite-Fourier GP experiments define one analytic path
 
 $$
 G_s(x)=\frac1{\sqrt J}\sum_{j=1}^J
-\left[A_{s,j}\cos(\omega_jx)+B_{s,j}\sin(\omega_jx)\right].
+[A_{s,j}\cos(\omega_jx)+B_{s,j}\sin(\omega_jx)].
 $$
 
-This is an exact finite-rank GP with covariance
+Its covariance is
 
 $$
-k_J(x,x')=\frac1J\sum_{j=1}^J\cos(\omega_j(x-x')),
-\qquad k_J(x,x)=1.
+k_J(x,x')=\frac1J\sum_j\cos(\omega_j(x-x')).
 $$
 
-It is evaluated from this formula at every optimizer query. Plotting grids do
-not define or interpolate the path. The nonstationary surrogate and LCB are
+Optimizer queries evaluate this formula directly; plotted connections are not
+an off-grid definition. The spline/XGBoost support cloud is explicitly a
+support-risk proxy, not a calibrated confidence interval.
+
+Sources: `src/experiments/policy_lcb/`,
+`src/objective/modifications/regularization.py`.
+
+## 8. Gradients and Estimators
+
+For a differentiable action objective and policy, the population chain rule is
 
 $$
-\widehat f_{s,c,m}(x)=f(x)+c\sigma_m(x)G_s(x),
+\nabla_\theta J(\theta)=\frac1n\sum_i
+\frac{\partial f}{\partial u}(u_i;x_i)
+\nabla_\theta\pi_\theta(x_i).
 $$
 
-$$
-E_{c,m}(x)=cq\sigma_m(x),
-\qquad
-\underline f_{s,c,m}(x)=\widehat f_{s,c,m}(x)-E_{c,m}(x).
-$$
-
-To certify one continuum-wide multiplier, write
-$$G_s(x)=\phi(x)^\top\xi_s$$. Then
+The first-order method uses the objective's exact gradient. With coordinate
+vector $e_k$ and smoothing scale $\sigma$, central finite differences use
 
 $$
-\|\phi'(x)\|_2
-=L_\phi
-=\sqrt{\frac1J\sum_{j=1}^J\omega_j^2}.
+\widehat g_k=
+\frac{J(\theta+\sigma e_k)-J(\theta-\sigma e_k)}{2\sigma}.
 $$
 
-For an equally spaced $$N$$-point covering net with radius
-$$\rho=1/[2(N-1)]$$, split the failure probability equally between the net
-and coefficient-norm events:
+For $m$ independent standard Gaussian vectors $\varepsilon_j$, the one-sided
+Gaussian Stein estimator is
 
 $$
-q_{\mathrm{net}}
-=\Phi^{-1}\!\left(1-\frac{\delta}{4N}\right),
-\qquad
-r_{\mathrm{coef}}
-=\sqrt{\chi^2_{2J,1-\delta/2}},
+\widehat g_{\rm GS}=
+\frac1{m\sigma}\sum_{j=1}^m
+J(\theta+\sigma\varepsilon_j)\varepsilon_j.
 $$
 
-$$
-q=q_{\mathrm{net}}+\rho L_\phi r_{\mathrm{coef}}.
-$$
-
-Bonferroni gives
+For independent Rademacher vectors $\Delta_j\in\{-1,1\}^d$, SPSA uses
 
 $$
-\Pr\!\left(\max_{t\in T}|G_s(t)|\le q_{\mathrm{net}}\right)
-\ge1-\delta/2,
+\widehat g_{\rm SPSA}=
+\frac1m\sum_{j=1}^m
+\frac{J(\theta+\sigma\Delta_j)-J(\theta-\sigma\Delta_j)}{2\sigma}
+\Delta_j.
 $$
 
-while the chi-square event has probability $$1-\delta/2$$ and implies, for
-the nearest net point $$t$$,
+The Stein-difference estimator replaces $\Delta_j$ by standard Gaussian
+$\varepsilon_j$ in the same two-sided expression. In `u` perturbation space,
+these scalar-action estimators are evaluated customer by customer and mapped
+back through $\nabla_\theta\pi_\theta(x_i)$. Random estimators use explicitly
+seeded generators; batch and perturbation streams can be separated.
+
+Sources: `src/optimization/gradients/methods.py`,
+`src/objective/utils.py`.
+
+## 9. Optimization Rules
+
+For constant-step descent,
 
 $$
-|G_s(x)-G_s(t)|
-\le |x-t|L_\phi\|\xi_s\|_2
-\le\rho L_\phi r_{\mathrm{coef}}.
+\theta_{t+1}=\theta_t-\alpha\widehat g_t.
 $$
 
-A union bound therefore proves
+Armijo backtracking chooses $\alpha=\alpha_0\rho^k$ until
 
 $$
-\Pr\!\left(\sup_{x\in[0,1]}|G_s(x)|\le q\right)\ge1-\delta.
+J(\theta_t-\alpha\widehat g_t)
+\le J(\theta_t)-c\alpha\|\widehat g_t\|^2.
 $$
 
-For $$J=32$$, $$\ell=0.2$$, $$N=129$$, and $$\delta=0.05$$,
-$$L_\phi\approx4.9505$$, $$q_{\mathrm{net}}\approx3.7270$$,
-$$r_{\mathrm{coef}}\approx9.3810$$, and $$q\approx3.9084$$. This multiplier
-is computed before and independently of all run seeds. The seeds only verify
-the guaranteed coverage empirically.
-
-For positive $$c$$ and $$\sigma_m(x)$$, the coverage inequality reduces to
-$$|G_s(x)|\le q$$. Reusing one $$G_s$$ across every $$m$$ and $$c$$ therefore
-requires no additional multiplicity correction. On this event, the exact LCB
-maximizer obeys
-
-$$
-R(\widehat x_{\mathrm{LCB}})\le2E_{c,m}(x^*).
-$$
-
-If an iterative optimizer has LCB objective gap $$\varepsilon$$ relative to
-the global LCB maximum, then
-
-$$
-R(\widehat x_{\mathrm{method}})
-\le2E_{c,m}(x^*)+\varepsilon.
-$$
-
-Global reference values are certified numerically in one dimension. If
-$$|F''(x)|\le M_I$$ on $$I=[a,b]$$, linear-interpolation error gives
-
-$$
-\sup_{x\in I}F(x)
-\le\max\{F(a),F(b)\}+\frac{M_I(b-a)^2}{8}.
-$$
-
-Branch-and-bound subdivides only intervals whose upper bound can beat the
-incumbent and stops when the global upper/lower value gap is at most the
-manifest tolerance. This certifies the reference value, not global convergence
-of first-order or zeroth-order iterates.
-
-- **Source:** `src/experiments/policy_lcb/continuous_gp.py`;
-  `manifests/continuous_gp_variable_lcb.json`
-- **Notes:** The GP coefficient seed, fixed Stein perturbation seed, and
-  reporting seed are separate. Formulas are extended to all real $$x$$ for
-  zeroth-order probes, while every optimizer iterate is projected onto
-  $$[0,1]$$.
-
-#### 3.6.7 Continuous-GP Regret Decomposition
-
-The decomposition experiment retains the objective, analytic Fourier draw,
-uncertainty family, and global-reference construction from Section 3.6.6, but
-separates the surrogate-error and lower-envelope parameters:
-
-$$
-\widehat f(x)=f(x)+c_f\sigma_{m_f}(x)G_s(x),
-\qquad
-\underline f(x)=\widehat f(x)-c_Eq\sigma_{m_E}(x).
-$$
-
-Here $$c_f$$ controls the global magnitude of the frozen surrogate error and
-$$m_f$$ controls its spatial amplitude profile. Independently, $$c_E$$ controls
-the global confidence-correction magnitude and $$m_E$$ controls where that
-correction is narrowest. The standardization of $$\sigma_m$$ remains fixed at
-minimum $$0.1$$ and maximum $$1$$, so the scale and shape parameters are
-identifiable.
-
-For $$c_f>0$$, define the certified shape ratio and effective GP threshold
-
-$$
-r_{\min}(m_f,m_E)=\inf_{x\in[0,1]}
-\frac{\sigma_{m_E}(x)}{\sigma_{m_f}(x)},
-\qquad
-q_{\mathrm{eff}}=q\frac{c_E}{c_f}r_{\min}(m_f,m_E).
-$$
-
-The two-sided event $$\sup_x|G_s(x)|\le q_{\mathrm{eff}}$$ is sufficient for
-$$\underline f(x)\le f(x)$$ everywhere. Its certified probability is obtained
-by inverting the same covering-net construction as Section 3.6.6: for failure
-probability $$\delta'$$,
-
-$$
-q(\delta')=
-\Phi^{-1}\!\left(1-\frac{\delta'}{4N}\right)
-+\rho L_\phi\sqrt{\chi^2_{2J,1-\delta'/2}}.
-$$
-
-Thus $$p_{\mathrm{cert}}(t)=1-\delta_t$$ when
-$$q(\delta_t)=t$$. If the threshold is below the smallest value certifiable by
-this construction, the reported lower bound is zero. When $$c_f=0$$ and
-$$c_E\ge0$$ the envelope is deterministically valid, while $$c_E=0<c_f$$ has
-certified level zero. The matched unit-scale case has
-$$q_{\mathrm{eff}}=q(0.05)$$ and therefore certified level $$0.95$$.
-
-For one realized path, envelope validity is checked independently by certifying
-the maximum of
-
-$$
-v(x)=\underline f(x)-f(x)
-=c_f\sigma_{m_f}(x)G_s(x)-c_Eq\sigma_{m_E}(x).
-$$
-
-No value of $$f$$ is used to clip or alter the optimized lower envelope.
-Surrogate error is summarized by the certified quantity
-
-$$
-\|\widehat f-f\|_\infty
-=c_f\sup_{x\in[0,1]}|\sigma_{m_f}(x)G_s(x)|.
-$$
-
-For an optimizer checkpoint $$\widehat x$$, define
-
-$$
-T=f(x^*)-\underline f(x^*),
-\qquad
-\varepsilon=\max_x\underline f(x)-\underline f(\widehat x).
-$$
-
-Whenever the realized lower envelope is valid over the domain,
-
-$$
-R(\widehat x)=f(x^*)-f(\widehat x)
-\le T+\varepsilon.
-$$
-
-Branch-and-bound supplies lower and upper brackets for the global values, so
-the stored surrogate error, realized violation, and optimizer error retain
-their numerical certification gaps rather than being described as exact real
-numbers.
-
-- **Source:** `src/experiments/policy_lcb/continuous_gp_core.py`;
-  `src/experiments/policy_lcb/continuous_gp_decomposition.py`;
-  `manifests/continuous_gp_regret_decomposition.json`
-- **Notes:** Each run seed owns one Fourier coefficient draw reused by every
-  condition. One dedicated optimizer seed fixes the antithetic Stein
-  perturbations across paths, conditions, and starts. Zeroth-order probes use
-  the analytic real-line extension and iterates are projected to $$[0,1]$$.
-
-### 3.7 Synthetic Ladder Objectives
-
-Direct theta-space benchmark functions over the decision vector $$w = \theta$$
-with globally known minimizers by construction; `x_batch` is ignored and there
-is no policy or action space. Each instance is deterministic given its
-construction seed (`from_seed`), so true-gap metrics
-$$f(w) - f(w^*)$$ and $$\|w - w^*\|_2$$ need no reference runs.
-
-#### 3.7.1 Strongly Convex Quadratic (rung 1)
-
-$$f(w) = \tfrac{1}{2}(w - w^*)^\top A (w - w^*), \qquad
-A = Q\,\mathrm{diag}(\lambda)\,Q^\top,$$
-
-with $$Q$$ a seeded random rotation and eigenvalues log-spaced in
-$$[\mu, \mu\kappa]$$ for condition number $$\kappa$$.
-
-**Gradient:** $$\nabla f(w) = A(w - w^*)$$. The function is
-$$\mu$$-strongly convex and $$\mu\kappa$$-smooth with unique minimizer
-$$w^*$$ and minimum value 0.
-
-- **Source:** `src/objective/objectives/synthetic/ladder.py` :: `StronglyConvexQuadratic`
-
-#### 3.7.2 Smoothed Nonconvex With Known Global Minimum (rung 2)
-
-$$f(w) = \tfrac{1}{2}\|w - w^*\|^2
- - a_0\, e^{-\|w - w^*\|^2/(2 s_0^2)}
- - \sum_j a_j\, \psi\!\left(\frac{\|w - c_j\|^2}{\rho_j^2}\right),$$
-
-with the compactly supported $$C^\infty$$ mollifier
-$$\psi(s) = e^{1 - 1/(1 - s)}$$ on $$[0, 1)$$ and $$\psi \equiv 0$$ for
-$$s \ge 1$$, so trap $$j$$ affects only $$\{\|w - c_j\| < \rho_j\}$$.
-
-**Gradient:** with $$d = w - w^*$$, $$d_j = w - c_j$$, and
-$$s_j = \|d_j\|^2/\rho_j^2$$,
-
-$$\nabla f(w) = \left(1 + \frac{a_0}{s_0^2}\, e^{-\|d\|^2/(2 s_0^2)}\right) d
- - \sum_j \frac{2 a_j}{\rho_j^2}\, \psi'(s_j)\, d_j,
-\qquad \psi'(s) = -\frac{\psi(s)}{(1 - s)^2}.$$
-
-**Global-minimum guarantee.** Let
-$$g(r) = \tfrac{1}{2} r^2 - a_0 e^{-r^2/(2 s_0^2)}$$ be the trap-free radial
-profile; $$g'(r) = r\,(1 + (a_0/s_0^2) e^{-r^2/(2 s_0^2)}) > 0$$ for
-$$r > 0$$, so $$g$$ is strictly increasing with unique minimum
-$$g(0) = -a_0$$. Construction enforces:
-
-1. clearance $$\gamma_j = \|c_j - w^*\| - \rho_j > 0$$ (no trap support
-   touches $$w^*$$, hence $$f(w^*) = -a_0$$ exactly and
-   $$\nabla f(w^*) = 0$$);
-2. pairwise disjoint trap supports
-   ($$\|c_i - c_j\| > \rho_i + \rho_j$$), so at most one trap is active at
-   any point;
-3. per-trap depth budget $$a_j < \tfrac{1}{2}\gamma_j^2$$.
-
-For $$w$$ in the support of trap $$j$$, $$r = \|w - w^*\| \ge \gamma_j$$ and
-$$f(w) \ge g(r) - a_j \ge g(0) + \tfrac{1}{2}\gamma_j^2 - a_j > f(w^*)$$;
-outside all supports $$f = g(r) > g(0)$$ for $$r > 0$$. Hence $$w^*$$ is the
-unique global minimizer.
-
-**Whether the traps actually trap is a separate, unenforced condition.** The
-budget above only guarantees that $$w^*$$ stays global; it says nothing about a
-trap admitting a local minimum. A trap center is never itself a critical point
-($$\psi'(0)$$ contributes nothing at $$w = c_j$$, leaving
-$$\nabla f(c_j) \propto c_j - w^*\neq 0$$), so a basin exists only when the trap
-is steep enough to overcome the quadratic pull. `from_seed` sets
-$$a_j = \texttt{depth\_fraction} \cdot \tfrac{1}{2}\gamma_j^2$$: empirically at the
-default 0.9 every trap is a genuine local minimum, at 0.5-0.3 only some are, and
-by 0.1 none are and the rung is unimodal despite remaining formally nonconvex.
-Both ends are pinned by tests in `tests/objective/test_synthetic_functions.py`.
-
-- **Source:** `src/objective/objectives/synthetic/ladder.py` :: `SmoothedNonconvex`
-
-#### 3.7.3 Piecewise Convex (rung 3, planned — structural stub)
-
-Intended form: with rotated coordinates $$v = Q^\top (w - w^*)$$ (identity
-when unrotated), $$f(w) = \sum_i h_i(v_i)$$ where
-
-$$h_i(v) = \begin{cases}
- \tfrac{1}{2} c_i v^2 & |v| \le k_i \\
- \tfrac{1}{2} c_i k_i^2 + m_i (|v| - k_i) & |v| > k_i
-\end{cases}$$
-
-with $$m_i > c_i k_i$$ producing kinks at $$\pm k_i$$; convexity requires
-$$m_i \ge c_i k_i$$. `kink_at_optimum` collapses $$k_i = 0$$ (weighted-L1
-behavior, nonsmooth at the optimum). `grad()` returns the right derivative at
-kinks. `_f`/`_grad_f` raise `NotImplementedError` until implemented.
-
-- **Source:** `src/objective/objectives/synthetic/ladder.py` :: `PiecewiseConvex`
-
-#### 3.7.4 Piecewise Nonconvex Double Well (rung 4, planned — structural stub)
-
-Intended form: with rotated coordinates $$v = Q^\top (w - w^*)$$, masked
-coordinates use
-
-$$h_i(v) = \min\!\left(\tfrac{1}{2} c_i v^2,\;
- \tfrac{1}{2} d_i (v - b_i)^2 + \delta_i\right), \qquad \delta_i > 0,$$
-
-and unmasked coordinates stay purely quadratic. The decoy well at
-$$v = b_i$$ sits $$\delta_i$$ above the true well, so the global minimum is
-$$w^*$$ with value 0 (sum of coordinate-wise minima); the min of two parabolas
-is nonconvex with kinks at the crossing points. `_f`/`_grad_f` raise
-`NotImplementedError` until implemented.
-
-- **Source:** `src/objective/objectives/synthetic/ladder.py` :: `PiecewiseNonconvexDoubleWell`
-
-### 3.8 Zeroth-Order Proof-Validation Objective
-
-The one-dimensional policy-free objective is
-
-$$f(x)=x^2+\frac12(\sin x-x).$$
-
-Its first three derivatives are
-
-$$f'(x)=2x+\frac12(\cos x-1),$$
-
-$$f''(x)=2-\frac12\sin x \in [1.5,2.5],$$
-
-$$f'''(x)=-\frac12\cos x, \qquad |f'''(x)|\le0.5.$$
-
-Thus $$f$$ is globally $$\mu=1.5$$ strongly convex and $$L=2.5$$ smooth,
-with unique minimizer $$x^\star=0$$ and third-derivative bound $$\rho=0.5$$.
-For central finite difference,
-
-$$D_\sigma f(x)=2x+\frac12\left(\frac{\sin\sigma}{\sigma}\cos x-1\right).$$
-
-For the two-sided Gaussian Stein-difference estimator, its population mean is
-
-$$\mathbb E_W\!\left[
-\frac{f(x+\sigma W)-f(x-\sigma W)}{2\sigma}W
-\right]
-=2x+\frac12\left(e^{-\sigma^2/2}\cos x-1\right),
-\qquad W\sim N(0,1).$$
-
-The corresponding estimator fixed point $$x^\star_{\rm est}$$ is the unique
-root of the appropriate population-gradient equation. Both roots move
-$$O(\sigma^2)$$ from $$x^\star$$, so their squared displacement is
-$$O(\sigma^4)$$.
-
-- **Source:** `src/objective/objectives/synthetic/proof_validation.py` ::
-  `ZerothOrderProofObjective`
-
----
-
-## 4. Chain Rule (Theta-Gradient from Action-Gradient)
-
-$$\nabla_\theta J = \mathbb{E}\!\left[\frac{\partial f}{\partial u}\;\frac{\partial u}{\partial \theta}\right] = \frac{1}{n}\sum_{i=1}^n \frac{\partial f}{\partial u_i}\;\nabla_\theta \pi_\theta(x_i)$$
-
-- **Source:** `src/objective/utils.py` :: `_theta_grad_from_u_grad()`
-- **Notes:** Used by all three objectives to compose the action-level gradient
-  with the policy Jacobian. Policies may implement `weighted_grad()` to compute
-  the vector-Jacobian product directly instead of materializing the full
-  `(n, theta_dim)` Jacobian.
-
----
-
-## 5. Gradient Estimators
-
-All estimators produce $\hat{g} \approx \nabla_\theta J(\theta)$. Each has a
-theta-space and a u-space variant. The u-space variant applies the estimator to
-the action-level objective $M(x, u)$ and chain-rules back to theta via
-$\nabla_\ theta \pi_\theta(x)$.
-
-### 5.1 First-Order (Exact) Gradient
-
-$$\hat{g} = \nabla_\theta J(\theta) \quad\text{(analytical, from \texttt{objective.grad})}$$
-
-- **Source:** `src/optimization/gradients/methods.py` :: `FirstOrderGradient`
-- **Cost:** 1 objective gradient evaluation.
-
-### 5.2 Finite Difference
-
-**Theta-space (central):**
-
-$$\hat{g}_k = \frac{J(\theta + \sigma e_k) - J(\theta - \sigma e_k)}{2\sigma}$$
-
-- **Cost:** $2d$ objective evaluations ($d = \dim\theta$).
-- **Source:** `src/optimization/helpers.py` :: `finite_difference_theta_grad()` (also supports forward and backward variants)
-
-**U-space:**
-
-$$\hat{g}_{u,i} = \frac{M(x_i, u_i + \sigma) - M(x_i, u_i - \sigma)}{2\sigma}$$
-
-then chain-rule: $\hat{g}_\theta = \frac{1}{n}\sum_i \hat{g}_{u,i}\;\nabla_\theta\pi(x_i)$.
-
-- **Cost:** 2 batch evaluations regardless of $d$.
-- **Source:** `src/optimization/gradients/methods.py` :: `FiniteDifferenceGradient._u_grad()`
-
-### 5.3 Gauss-Stein (Score Function) Estimator
-
-**Theta-space (one-sided):**
-
-$$\hat{g} = \frac{1}{m}\sum_{j=1}^m \frac{J(\theta + \sigma\varepsilon_j)}{\sigma}\;\varepsilon_j, \qquad \varepsilon_j \sim \mathcal{N}(0, I^d)$$
-
-- **Cost:** $m$ = `n_grad_samples` evaluations.
-- **Source:** `src/optimization/gradients/methods.py` :: `GaussSteinGradient._theta_grad()`
-
-**U-space (one-sided):**
-
-Same estimator applied per sample with scalar $w_j \sim \mathcal{N}(0,1)$,
-chain-ruled to theta.
-
-- **Source:** `src/optimization/gradients/methods.py` :: `GaussSteinGradient._u_grad()`
-
-### 5.4 SPSA (Rademacher) Estimator
-
-**Theta-space (two-sided):**
-
-$$\hat{g} = \frac{1}{m}\sum_{j=1}^m \frac{J(\theta + \sigma\Delta_j) - J(\theta - \sigma\Delta_j)}{2\sigma}\;\Delta_j, \qquad \Delta_j \sim \{+1, -1\}^d$$
-
-- **Cost:** $2m$ evaluations.
-- **Source:** `src/optimization/gradients/methods.py` :: `SPSAGradient._theta_grad()`
-
-**U-space (two-sided):**
-
-Same with scalar $\Delta_j \sim \{+1, -1\}$, chain-ruled to theta.
-
-- **Source:** `src/optimization/gradients/methods.py` :: `SPSAGradient._u_grad()`
-
-### 5.5 Stein-Difference Estimator
-
-**Theta-space (two-sided Gaussian):**
-
-$$\hat{g} = \frac{1}{m}\sum_{j=1}^m \frac{J(\theta + \sigma\varepsilon_j) - J(\theta - \sigma\varepsilon_j)}{2\sigma}\;\varepsilon_j, \qquad \varepsilon_j \sim \mathcal{N}(0, I^d)$$
-
-- **Cost:** $2m$ evaluations.
-- **Source:** `src/optimization/gradients/methods.py` :: `SteinDifferenceGradient._theta_grad()`
-
-**U-space (two-sided Gaussian):**
-
-$$\hat{g}_{u,i} = \frac{1}{m}\sum_{j=1}^m \frac{M(x_i, u_i + \sigma w_j) - M(x_i, u_i - \sigma w_j)}{2\sigma}\; w_j, \qquad w_j \sim \mathcal{N}(0,1)$$
-
-chain-ruled to theta via $\nabla_\theta\pi(x_i)$.
-
-- **Source:** `src/optimization/gradients/methods.py` :: `SteinDifferenceGradient._u_grad()`
-
----
-
-## 6. Step Rules
-
-### 6.1 Constant Step Size
-
-$$\alpha_t = \alpha \quad\text{(identity)}$$
-
-- **Source:** `src/optimization/steps.py` :: `constant_step_size()`
-
-### 6.2 Armijo Backtracking
-
-Find the largest $\alpha = \alpha_0\, \rho^i$ satisfying the sufficient decrease
-condition:
-
-$$J(\theta + \alpha\, d) \;\le\; J(\theta) + c\,\alpha\,\nabla J^\top d$$
-
-where $d = -\nabla J$ (steepest descent), $\rho$ = `shrink` $\in (0, 1)$,
-$c$ = `1e-4`.
-
-- **Source:** `src/optimization/steps.py` :: `armijo_backtracking_step_size()`
-- **Notes:** Falls back to `min_step` if the condition is never met within
-  `max_backtracks` iterations.
-
-### 6.3 SciPy L-BFGS-B
-
-For unconstrained SciPy runs, the optimizer solves
-
-$$
-\min_{\theta} J(\theta)
-$$
-
-where
-
-$$
-J(\theta) = \frac{1}{n}\sum_{i=1}^n f(\pi_\theta(x_i); x_i).
-$$
-
-- **Source:** `src/optimization/base.py` :: `Optimization.solve()`
-- **Notes:** The repo passes `method="L-BFGS-B"` through `scipy.minimize`. In the
-  current implementation, this path is unconstrained; if an acceptance floor is
-  configured under `l-bfgs-b`, it is enforced only through the separate smooth
-  penalty added inside `ModelBasedObjective.value()`.
-
-### 6.4 SciPy Trust-Constr With Acceptance Constraint
-
-For constrained SciPy runs, the optimizer solves
-
-$$
-\min_{\theta} J(\theta)
-\quad \text{subject to} \quad
-\bar{a}(\theta) \ge \alpha_{\min},
-$$
-
-where
-
-$$
-\bar{a}(\theta) = \frac{1}{n}\sum_{i=1}^n a\bigl(x_i, \pi_\theta(x_i)\bigr)
-$$
-
-is the batch mean acceptance and $$\alpha_{\min}$$ is `acceptance_floor`.
-
-The constraint Jacobian is
-
-$$
-\nabla_\theta \bar{a}(\theta) = \frac{1}{n}\sum_{i=1}^n \frac{\partial a(x_i,u_i)}{\partial u}\,\nabla_\theta \pi_\theta(x_i), \qquad u_i = \pi_\theta(x_i).
-$$
-
-- **Source:** `src/optimization/base.py` :: `Optimization.solve()`
-  - `trust_constr_constraint()` builds the SciPy `NonlinearConstraint`
-- **Constraint value source:** `src/objective/objectives/generali/model_based.py` :: `mean_acceptance()`
-- **Constraint gradient source:** `src/objective/objectives/generali/model_based.py` :: `mean_acceptance_grad()`
-- **Notes:** The repo passes `method="trust-constr"` through `scipy.minimize`
-  and enforces the acceptance floor directly as a nonlinear inequality
-  constraint, rather than via the smooth penalty path.
-
----
-
-## 8. Feature Processing
-
-### 8.1 Centering
-
-$$x_{\text{centered}} = x - \mu$$
-
-where $\mu$ is the column-wise mean from `fit()`.
-
-- **Source:** `src/data/feature_processor.py` :: `FeatureProcessor.fit()` / `.transform()`
-
-### 8.2 Sphering (Without PCA)
-
-$$x_{\text{out}} = (x - \mu)\, S, \qquad S = V\,\text{diag}(1/\sqrt{\lambda})\,V^\top$$
-
-where $V, \lambda$ are eigenvectors/eigenvalues of the sample covariance
-(sorted descending). Eigenvalues are floored at `regularization` to avoid
-division by zero.
-
-- **Source:** `src/data/feature_processor.py` :: `FeatureProcessor.fit()` (with `use_pca=False`)
-
-### 8.3 PCA Whitening
-
-$$x_{\text{out}} = (x - \mu)\, V_k\,\text{diag}(1/\sqrt{\lambda_k})$$
-
-where $V_k$ is the top-$k$ eigenvectors, selected by `n_components` or
-`explained_variance_threshold`.
-
-- **Source:** `src/data/feature_processor.py` :: `FeatureProcessor.fit()` (with `use_pca=True`)
-
-### 8.4 PCA Inverse Transform
-
-$$\hat{x}_{\text{raw}} = x_{\text{out}}\, V_k^\top + \mu$$
-
-- **Source:** `src/data/feature_processor.py` :: `FeatureProcessor.inverse_transform_numeric()`
-- **Notes:** Only available when `use_pca=True`.
-
-### 8.5 Categorical Encoding
-
-Each category $c$ in column $j$ is mapped to $\frac{\text{label}(c)}{|\text{categories}_j|}$
-where $\text{label}(c) \in \{0, 1, \dots\}$. Unknown categories receive code
-$|\text{categories}_j|$.
-
-- **Source:** `src/data/feature_processor.py` :: `FeatureProcessor.fit()` / `.transform()`
-
----
-
-## 9. GLM Coefficient Extraction
-
-### 9.1 Effective U Coefficient
-
-$$\beta_u = \frac{d\,\text{logit}(p_{\text{accept}})}{dU}$$
-
-For current direct-acceptance GLM artifacts, this is the fitted logistic
-coefficient whose feature label is `U`. Legacy pipeline artifacts may compute the
-same effective coefficient as $w_U / \text{std}_U$ when `U` was standardized.
-`build_real_data_config(u_coef=...)` can override this value for GLM-only
-counterfactual acceptance sweeps.
-
-- **Source:** `src/data/loader.py` :: `extract_glm_u_coef()`
-
-### 9.2 Processed-Space Acceptance Coefficients
-
-$$\text{logit}(p_{\text{accept}}) = \beta_0 + \beta_x^\top z_{\text{acc}}(x) + \beta_u\,u$$
-
-Returns the processed model-feature coefficients used by the GLM acceptance
-artifact, excluding the generated `U` column from `x_feature_names` and reporting
-the `U` coefficient separately.
-
-- **Source:** `src/data/loader.py` :: `extract_glm_acceptance_coefficients()`
-- **Notes:** Legacy pipeline artifacts may report churn coefficients instead.
-
-### 9.3 Linear Loss Coefficients
-
-$$\hat{Y}(x) = \gamma_0 + \gamma_x^\top x$$
-
-Extracts intercept and per-feature coefficients from a fitted
-`LinearRegression`.
-
-- **Source:** `src/data/loader.py` :: `extract_linear_loss_coefficients()`
+`l-bfgs-b` delegates unconstrained or box-constrained minimization to the
+repository solver wrapper. `trust-constr` is the repository path for nonlinear
+constraints such as the mean-acceptance floor. Optax SGD and Adam use the same
+configured gradient method in the repository update loop.
+
+Every optimum, optimizer action, or optimizer shift reported by a script,
+notebook, or analysis must come from `src/optimization/`, or replay an exact
+saved optimizer artifact with provenance. A plot grid may evaluate and display
+an objective, but `argmin`, `argmax`, sorting, or an equivalent grid scan may
+not select the reported solution.
+
+Sources: `src/optimization/base.py`, `src/optimization/solvers.py`,
+`src/optimization/steps.py`, `src/optimization/optax_loop.py`.
+
+## 10. Implementation and Verification Index
+
+This index is navigational. When a formula disagrees with code or a test, use
+the precedence in Section 1 and update this document.
+
+| Topic | Primary implementation | Representative verification |
+|---|---|---|
+| Dataset columns and cohorts | `src/data/dataset_metadata.py`, `src/data/loader.py` | `tests/data/test_data_loader.py`, `tests/data/test_dataset_metadata.py` |
+| Saved feature transforms | `src/data/feature_processor.py` | `tests/data/test_feature_processor.py` |
+| Policy preprocessing and maps | `src/objective/policy_preprocessing.py`, `src/objective/policy.py` | `tests/objective/test_policy_preprocessing.py`, `tests/objective/test_feature_maps.py`, `tests/objective/test_policy_batch.py` |
+| Real-data objective | `src/objective/objectives/generali/model_based.py` | `tests/objective/test_model_based_objective.py` |
+| Synthetic objectives | `src/objective/objectives/synthetic/` | `tests/objective/` |
+| Bias, noise, and constraints | `src/objective/modifications/` | `tests/objective/test_objective_modifications.py`, `tests/objective/test_biased_objective.py` |
+| Coverage and grid interpolation | `src/data/coverage.py`, `src/objective/gridded.py` | `tests/data/test_coverage.py`, `tests/objective/test_gridded.py` |
+| Reusable real-data reports | `src/reporting/real_data.py`, `src/reporting/profit_dispersion.py` | `tests/reporting/test_real_data_reporting.py` |
+| Gradient methods | `src/optimization/gradients/methods.py` | `tests/optimization/test_gradient_methods_math.py` |
+| Solvers and step rules | `src/optimization/` | `tests/optimization/` |
+| Manifest and report dispatch | `src/experiments/manifest.py`, `src/experiments/reporting/recipes.py` | `tests/experiments/test_manifest.py`, `tests/experiments/test_reporting_recipes.py` |
+| Provenance and exact-spline cache | `src/experiments/provenance.py`, `src/reporting/exact_spline_cache.py` | `tests/reporting/test_exact_spline_cache.py` |
+
+The implementation and tests above are authoritative. This file is the single
+mathematical reference for maintainers, not a second implementation.

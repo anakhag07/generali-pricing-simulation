@@ -76,6 +76,7 @@ def test_parse_manifest_requires_explicit_orchestration_fields() -> None:
     assert manifest.truth.source == "clean_base_objective"
     assert manifest.launch.mode == "local"
     assert manifest.launch.array == "variant"
+    assert manifest.reporting == ()
     assert [variant.name for variant in manifest.variants] == ["dimension-2", "dimension-3"]
     assert manifest.variants[0].overrides["dimension"] == 2
     assert manifest.variants[0].overrides["objective_modifications"] == []
@@ -138,6 +139,31 @@ def test_matrix_axis_can_supply_labeled_nested_overrides() -> None:
 def test_manifest_rejects_non_mapping_matrix() -> None:
     with pytest.raises(ValueError, match="matrix"):
         parse_experiment_manifest(_manifest_payload(matrix=[]))
+
+
+def test_manifest_parses_reporting_recipes_without_a_new_manifest_kind() -> None:
+    manifest = parse_experiment_manifest(
+        _manifest_payload(
+            reporting=[
+                {
+                    "name": "glm-vs-spline",
+                    "recipe": "real_data_profit_dispersion",
+                    "options": {"models": ["glm", "exact_spline_xgb"]},
+                }
+            ]
+        )
+    )
+
+    assert manifest.reporting[0].name == "glm-vs-spline"
+    assert manifest.reporting[0].recipe == "real_data_profit_dispersion"
+    assert manifest.reporting[0].options["models"] == ["glm", "exact_spline_xgb"]
+
+
+def test_manifest_rejects_unknown_reporting_recipe() -> None:
+    with pytest.raises(ValueError, match="Unknown reporting recipe"):
+        parse_experiment_manifest(
+            _manifest_payload(reporting=[{"recipe": "ad_hoc_python"}])
+        )
 
 
 def test_matrix_run_name_template_exposes_axis_value_label_and_index() -> None:
@@ -208,3 +234,22 @@ def test_collect_manifest_rows_and_summary_truth_metrics(monkeypatch, tmp_path) 
     assert payload["n_final_rows"] == 1
     assert (manifest.project_dir(tmp_path) / "seed_grid_finals.csv").exists()
     assert (manifest.project_dir(tmp_path) / "derived_metrics.csv").exists()
+
+
+def test_collection_dispatches_declared_reports(monkeypatch, tmp_path) -> None:
+    manifest = parse_experiment_manifest(
+        _manifest_payload(
+            matrix={},
+            reporting=[{"recipe": "real_data_profit_dispersion"}],
+        )
+    )
+    calls = []
+    monkeypatch.setattr(manifest_mod, "run_manifest_reports", lambda reports, **kwargs: calls.append((reports, kwargs)) or [])
+    monkeypatch.setattr(manifest_mod, "_write_seed_grid_plots", lambda *args, **kwargs: None)
+
+    payload = collect_manifest_outputs(manifest, runs_root=tmp_path)
+
+    assert len(calls) == 1
+    assert calls[0][0] == manifest.reporting
+    assert calls[0][1]["project_dir"] == manifest.project_dir(tmp_path)
+    assert payload["n_reports"] == 0

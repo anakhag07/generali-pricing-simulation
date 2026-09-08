@@ -103,7 +103,8 @@ def _collect(context: LaunchContext, *, manifest: ExperimentManifest) -> None:
     payload = collect_manifest_outputs(manifest, runs_root=context.runs_root)
     print(
         f"Collected {payload['n_final_rows']} final rows and "
-        f"{payload['n_derived_rows']} derived rows under {payload['project_dir']}."
+        f"{payload['n_derived_rows']} derived rows plus {payload['n_reports']} "
+        f"reports under {payload['project_dir']}."
     )
 
 

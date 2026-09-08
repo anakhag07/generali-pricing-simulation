@@ -950,8 +950,26 @@ with action-gradient
 
 $$\frac{\partial b}{\partial u} = -\lambda_{bias}\,\sigma\left(\frac{u-h}{\tau}\right).$$
 
-- **Source:** `src/objective/objectives/biased.py` :: `ActionBias`,
-  `LinearActionBias`, `UpperSupportHingeBias`, `BiasedObjective`
+`NaturalCubicActionBias` represents a saved action-only adjustment with knots
+$(v_j, b_j)$. Let $S_b(u)$ be the natural cubic spline through those knots. The
+configured action bias and its derivative are
+
+$$
+b(u) = \lambda_{bias} S_b(\operatorname{clip}(u, v_1, v_m)),
+$$
+
+$$
+\frac{\partial b}{\partial u}
+= \lambda_{bias} S_b'(u)\,\mathbb{1}\{v_1 < u < v_m\}.
+$$
+
+Clipping makes the adjustment constant outside its recorded action domain, so
+its derivative is zero there. The knot values, scale, and boundary rule are
+serialized in the experiment configuration.
+
+- **Source:** `src/objective/modifications/bias.py` :: `ActionBias`,
+  `LinearActionBias`, `UpperSupportHingeBias`, `NaturalCubicActionBias`,
+  `BiasedObjective`
 - **Notes:** `base_value()` and `base_value_at_u()` expose the wrapped true
   objective for reporting, while optimization uses the biased surrogate through
   `value()` and `grad()`. The bias is deterministic and introduces no new seed

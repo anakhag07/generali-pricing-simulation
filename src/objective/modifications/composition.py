@@ -16,6 +16,7 @@ from objective.modifications.bias import (
     ArctanThetaBias,
     BiasedObjective,
     LinearActionBias,
+    NaturalCubicActionBias,
     LinearThetaBias,
     ThetaBias,
     ThetaBiasedObjective,
@@ -279,6 +280,14 @@ def action_bias_to_dict(bias: ActionBias) -> dict[str, Any]:
             "support_upper": float(bias.support_upper),
             "smooth_tau": float(bias.smooth_tau) if bias.smooth_tau is not None else None,
         }
+    if isinstance(bias, NaturalCubicActionBias):
+        return {
+            "type": "NaturalCubicActionBias",
+            "action_grid": list(bias.action_grid),
+            "bias_values": list(bias.bias_values),
+            "lambda_bias": float(bias.lambda_bias),
+            "boundary": "constant",
+        }
     return {"type": type(bias).__name__, "lambda_bias": float(bias.lambda_bias)}
 
 
@@ -293,6 +302,12 @@ def action_bias_from_dict(payload: Mapping[str, Any]) -> ActionBias:
             support_center=float(payload["support_center"]),
             support_radius=float(payload["support_radius"]),
             smooth_tau=None if payload.get("smooth_tau") is None else float(payload["smooth_tau"]),
+        )
+    if kind == "NaturalCubicActionBias":
+        return NaturalCubicActionBias(
+            action_grid=tuple(float(value) for value in payload["action_grid"]),
+            bias_values=tuple(float(value) for value in payload["bias_values"]),
+            lambda_bias=float(payload.get("lambda_bias", 1.0)),
         )
     raise ValueError(f"Unknown action-bias type: {kind!r}.")
 

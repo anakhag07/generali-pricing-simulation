@@ -193,8 +193,8 @@ Source: `src/objective/policy.py`.
 ### 4.1 Fixed regression benchmark
 
 $$
-a=\sigma(\beta_1^\top x+\beta_2u),\quad
-L=\beta_3^\top x,\quad R=\beta_4u,
+a=\sigma(\beta_1^{\top}x+\beta_2u),\quad
+L=\beta_3^{\top}x,\quad R=\beta_4u,
 $$
 
 $$
@@ -207,16 +207,16 @@ Source: `src/objective/objectives/synthetic/fixed_regression.py`.
 
 ### 4.2 Planted logistic benchmark
 
-Let $z=\alpha u+\beta^\top x+b$ and
-$p^*(x)=\sigma(\alpha u^*+\beta^\top x+b)$. Then
+Let $z=\alpha u+\beta^{\top}x+b$ and
+$p^{*}(x)=\sigma(\alpha u^{*}+\beta^{\top}x+b)$. Then
 
 $$
-f(u;x)=\log(1+e^z)-p^*(x)z,
+f(u;x)=\log(1+e^{z})-p^{*}(x)z,
 \qquad
-\frac{\partial f}{\partial u}=\alpha(\sigma(z)-p^*(x)).
+\frac{\partial f}{\partial u}=\alpha(\sigma(z)-p^{*}(x)).
 $$
 
-The unique action optimum is $u^*$.
+The unique action optimum is $u^{*}$.
 
 Source: `src/objective/objectives/synthetic/planted_logistic.py`.
 
@@ -255,32 +255,33 @@ Sources: `src/objective/objectives/generali/model_based.py`,
 The strongly convex rung is
 
 $$
-f(w)=\tfrac12(w-w^*)^\top A(w-w^*),
-\qquad \nabla f(w)=A(w-w^*),
+f(w)=\frac{1}{2}(w-w^{*})^{\top}A(w-w^{*}),
+\qquad \nabla f(w)=A(w-w^{*}),
 $$
 
-where $A=Q\mathrm{diag}(\lambda)Q^\top$ has eigenvalues in
+where $A=Q\mathrm{diag}(\lambda)Q^{\top}$ has eigenvalues in
 $[\mu,\mu\kappa]$.
 
 The smoothed nonconvex rung is
 
 $$
-f(w)=\tfrac12\|w-w^*\|^2-a_0e^{-\|w-w^*\|^2/(2s_0^2)}
--\sum_j a_j\psi\!\left(\frac{\|w-c_j\|^2}{\rho_j^2}\right),
+f(w)=\frac{1}{2}\|w-w^{*}\|^{2}
+-a_0e^{-\|w-w^{*}\|^{2}/(2s_0^{2})}
+-\sum_j a_j\psi\!\left(\frac{\|w-c_j\|^{2}}{\rho_j^{2}}\right),
 $$
 
-where $\psi(s)=e^{1-1/(1-s)}$ for $0\le s<1$ and zero otherwise. Disjoint
-supports, positive clearance from $w^*$, and
-$a_j<\tfrac12(\|c_j-w^*\|-\rho_j)^2$ preserve the unique global minimum.
+where $\psi(s)=e^{1-1/(1-s)}$ for $0\leq s<1$ and zero otherwise. Disjoint
+supports, positive clearance from $w^{*}$, and
+$a_j<\frac{1}{2}(\|c_j-w^{*}\|-\rho_j)^{2}$ preserve the unique global minimum.
 Piecewise convex and double-well rungs remain explicit structural stubs.
 
 The proof-validation objective is
 
 $$
-f(x)=x^2+\tfrac12(\sin x-x),
+f(x)=x^{2}+\frac{1}{2}(\sin x-x),
 $$
 
-with $f''(x)\in[1.5,2.5]$, $x^*=0$, and $|f'''(x)|\le0.5$.
+with $f''(x)\in[1.5,2.5]$, $x^{*}=0$, and $|f'''(x)|\leq0.5$.
 
 Sources: `src/objective/objectives/synthetic/ladder.py` and
 `proof_validation.py`.

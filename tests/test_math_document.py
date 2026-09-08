@@ -54,6 +54,11 @@ def test_math_document_avoids_unsupported_latex_macros() -> None:
     assert r"\operatorname" not in _text()
 
 
+def test_section_four_braces_every_superscript() -> None:
+    section = _text().split("## 4. Pricing Objectives", 1)[1].split("## 5.", 1)[0]
+    assert re.search(r"\^(?!\{)", section) is None
+
+
 def test_paths_in_implementation_index_exist() -> None:
     section = _text().split("## 10. Implementation and Verification Index", 1)[1]
     paths = re.findall(r"`((?:src|tests)/[^`]+)`", section)

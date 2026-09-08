@@ -18,7 +18,7 @@ from experiments.provenance import file_sha256 as _sha256_file
 from reporting.real_data import plot_support_action_overlay as _plot_overlay
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 RESULTS_ROOT = ROOT.parent / "results"
 DEFAULT_SUPPORT_DIR = RESULTS_ROOT / "monotone-spline-xgb-support-cloud"
 DEFAULT_HISTOGRAM_DIR = (

@@ -52,7 +52,7 @@ from reporting.profit_dispersion import (
 )
 
 
-REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_OUTPUT_DIR = REPOSITORY_ROOT / "results" / "customer-coverage-envelope-slides"
 FULL_OBJECTIVE_PATH = (
     REPOSITORY_ROOT

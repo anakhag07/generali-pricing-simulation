@@ -15,7 +15,7 @@ import pandas as pd
 from data.loader import load_observed_u_array
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 RESULTS_ROOT = (
     ROOT.parent.parent / "results" if ROOT.parent.name == "worktrees" else ROOT / "results"
 )

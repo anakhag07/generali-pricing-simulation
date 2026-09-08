@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 RESULTS_ROOT = ROOT.parent / "results"
 DEFAULT_SOURCE_DIR = RESULTS_ROOT / "monotone-spline-xgb-support-cloud"
 DEFAULT_OUTPUT_DIR = RESULTS_ROOT / "spline-xgb-synthetic-tail-140-support"

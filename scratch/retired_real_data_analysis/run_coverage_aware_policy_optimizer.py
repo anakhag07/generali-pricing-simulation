@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 SRC_ROOT = REPO_ROOT / "src"
 for path in (REPO_ROOT, SRC_ROOT):
     if str(path) not in sys.path:

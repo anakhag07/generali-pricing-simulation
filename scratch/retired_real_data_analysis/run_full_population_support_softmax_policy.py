@@ -34,7 +34,7 @@ from objective.policy import IdentityFeatureMap, SoftmaxPolicy
 from optimization.solvers import run_finite_difference_minimize
 
 
-REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_SUPPORT_CSV = (
     REPOSITORY_ROOT
     / "results"

@@ -26,9 +26,9 @@ import numpy as np
 import pandas as pd
 
 from data.loader import eligible_csv_row_indices, load_model_artifacts, load_x_frame
-from scripts.analyze_model_acceptance_features import (
-    _predict_acceptance_matrix,
-    _predict_loss,
+from reporting.profit_dispersion import (
+    predict_acceptance_matrix as _predict_acceptance_matrix,
+    predict_loss as _predict_loss,
 )
 
 

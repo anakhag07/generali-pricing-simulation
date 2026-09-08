@@ -32,14 +32,14 @@ state, $u_i=\pi_\theta(x_i)$ is the relative price change, and $\theta$ is the
 policy parameter. Reported profit is the negative of pricing cost. Population
 averages use $n^{-1}\sum_i$ unless stated otherwise.
 
-The stable sigmoid is
+The stable sigmoid is defined separately on the two numerical branches:
 
 $$
-\sigma(z)=
-\begin{cases}
-(1+e^{-z})^{-1}, & z\ge 0,\\
-e^z(1+e^z)^{-1}, & z<0.
-\end{cases}
+\sigma(z)=(1+e^{-z})^{-1},\qquad z\geq 0,
+$$
+
+$$
+\sigma(z)=e^{z}(1+e^{z})^{-1},\qquad z<0.
 $$
 
 Its derivative is $\sigma'(z)=\sigma(z)(1-\sigma(z))$.
@@ -71,18 +71,18 @@ Sources: `src/data/dataset_metadata.py`, `src/data/loader.py`.
 
 ### 2.2 Saved artifact transform
 
-Let $r\in\mathbb R^d$ be numeric source columns, $\mu$ the saved training mean,
+Let $r\in\mathbb{R}^{d}$ be numeric source columns, $\mu$ the saved training mean,
 and
 
 $$
-\Sigma=Q\mathrm{diag}(\lambda_1,\ldots,\lambda_d)Q^\top,
+\Sigma=Q\mathrm{diag}(\lambda_1,\ldots,\lambda_d)Q^{\top},
 \qquad \tilde\lambda_j=\max(\lambda_j,\varepsilon).
 $$
 
 Without PCA,
 
 $$
-z_{\rm num}=(r-\mu)Q\mathrm{diag}(\tilde\lambda_j^{-1/2})Q^\top.
+z_{\rm num}=(r-\mu)Q\mathrm{diag}(\tilde\lambda_j^{-1/2})Q^{\top}.
 $$
 
 With $k$ PCA components,
@@ -111,13 +111,13 @@ Acceptance follows
 
 $$
 x_{\rm raw,acc}\longrightarrow z_{\rm acc}
-\longrightarrow[z_{\rm acc},U]\longrightarrow\widehat a(x,U).
+\longrightarrow[z_{\rm acc},U]\longrightarrow\widehat{a}(x,U).
 $$
 
 Loss follows
 
 $$
-x_{\rm raw,loss}\longrightarrow z_{\rm loss}\longrightarrow\widehat L(x)
+x_{\rm raw,loss}\longrightarrow z_{\rm loss}\longrightarrow\widehat{L}(x)
 $$
 
 and never receives `U`. Class 1 is interpreted using the artifact's recorded
@@ -143,8 +143,8 @@ $$
 Identity uses $\varphi(x)=x$. For total degree $D$,
 
 $$
-\mathcal A_D=\{\alpha\in\mathbb N_0^d:1\le|\alpha|_1\le D\},
-\qquad \varphi_D(x)=[x^\alpha:\alpha\in\mathcal A_D],
+\mathcal{A}_D=\{\alpha\in\mathbb{N}_{0}^{d}:1\leq|\alpha|_1\leq D\},
+\qquad \varphi_D(x)=[x^{\alpha}:\alpha\in\mathcal{A}_D],
 $$
 
 giving $\binom{d+D}{D}$ head parameters including the intercept.
@@ -164,11 +164,11 @@ Policy heads are
 $$
 u_{\rm constant}=\theta_0,
 \qquad
-u_{\rm linear}=\theta^\top\phi(x),
+u_{\rm linear}=\theta^{\top}\phi(x),
 $$
 
 $$
-u_{\rm bounded}=l+(h-l)\sigma(\theta^\top\phi(x)),
+u_{\rm bounded}=l+(h-l)\sigma(\theta^{\top}\phi(x)),
 $$
 
 with
@@ -291,7 +291,7 @@ Sources: `src/objective/objectives/synthetic/ladder.py` and
 Manifest modifications are applied in listed order. `base_value` methods expose
 the wrapped unmodified objective for reporting.
 
-An action bias gives $\widehat M(x,u)=M(x,u)+b(x,u)$. Implemented fields include
+An action bias gives $\widehat{M}(x,u)=M(x,u)+b(x,u)$. Implemented fields include
 
 $$
 b_{\rm linear}(u)=-\lambda u,
@@ -307,7 +307,7 @@ $$
 
 Its derivative is $\lambda S_b'(u)$ inside $(v_1,v_m)$ and zero outside.
 
-Noise gives $\widehat M=M+\delta$. Homoskedastic noise has scale $\sigma_0$;
+Noise gives $\widehat{M}=M+\delta$. Homoskedastic noise has scale $\sigma_0$;
 heteroskedastic noise scales the same query-keyed unit-normal field by
 $\sigma_0+\gamma|u-u_c|$. Noisy objectives intentionally have no analytical
 gradient.
@@ -317,7 +317,7 @@ For mean acceptance $\bar a(\theta)$ and floor $a_{\min}$, the smooth penalty is
 $$
 s=\tau\log(1+e^{(a_{\min}-\bar a)/\tau}),
 \qquad
-J_{\rm pen}=J+\lambda s^2.
+J_{\rm pen}=J+\lambda s^{2}.
 $$
 
 The Lagrangian form is
@@ -331,7 +331,7 @@ Direct trust-constr enforcement instead solves
 $$
 \min_\theta J(\theta)
 \quad\text{subject to}\quad
-\bar a(\theta)\ge a_{\min}.
+\bar{a}(\theta)\geq a_{\min}.
 $$
 
 Sources: `src/objective/modifications/`.
@@ -341,9 +341,9 @@ Sources: `src/objective/modifications/`.
 For profit matrix $P_{ij}=P_i(u_j)$,
 
 $$
-\mu_j=\frac1n\sum_iP_{ij},
+\mu_j=\frac{1}{n}\sum_iP_{ij},
 \qquad
-s_j=\sqrt{\frac1n\sum_i(P_{ij}-\mu_j)^2},
+s_j=\sqrt{\frac{1}{n}\sum_i(P_{ij}-\mu_j)^{2}},
 $$
 
 $$
@@ -355,12 +355,12 @@ $$
 MAD is raw unless a displayed quantity explicitly multiplies it by $1.4826$.
 
 Customer/action support uses clipped saved-whitened numeric coordinates and
-one-hot categorical coordinates divided by $\sqrt2$. For neighbors $N_i$,
+one-hot categorical coordinates divided by $\sqrt{2}$. For neighbors $N_i$,
 state weights $q_{ik}$, action bandwidth $b$, and historical action $U_k$,
 
 $$
 S_i(u)=\sum_{k\in N_i}q_{ik}
-\exp\left[-\tfrac12\left(\frac{U_k-u}{b}\right)^2\right].
+\exp\left[-\frac{1}{2}\left(\frac{U_k-u}{b}\right)^{2}\right].
 $$
 
 The normalized coverage penalty is
@@ -372,9 +372,9 @@ $$
 Marginal action support uses
 
 $$
-n_{\rm eff}(u)=\frac{(\sum_iw_i(u))^2}{\sum_iw_i(u)^2},
+n_{\rm eff}(u)=\frac{(\sum_iw_i(u))^{2}}{\sum_iw_i(u)^{2}},
 \qquad
-w_i(u)=\exp\left[-\tfrac12\left(\frac{U_i-u}{b}\right)^2\right].
+w_i(u)=\exp\left[-\frac{1}{2}\left(\frac{U_i-u}{b}\right)^{2}\right].
 $$
 
 Customer response grids use piecewise-linear interpolation; the derivative is
@@ -386,45 +386,45 @@ Sources: `src/reporting/profit_dispersion.py`, `src/reporting/real_data.py`,
 
 ## 7. Uncertainty and Lower Bounds
 
-For finite policy class $\Pi$, simultaneous error widths $\mathcal E^\pi$ give
+For finite policy class $\Pi$, simultaneous error widths $\mathcal{E}^{\pi}$ give
 
 $$
-\underline V^\pi=\widehat V^\pi-\tfrac12\mathcal E^\pi.
+V_{\mathrm{LCB}}^{\pi}=\widehat{V}^{\pi}-\frac{1}{2}\mathcal{E}^{\pi}.
 $$
 
 On the simultaneous coverage event, an $\varepsilon$-optimal LCB policy obeys
 
 $$
-V^{\widehat\pi}\ge
-V^{\widetilde\pi}-\mathcal E^{\widetilde\pi}-\varepsilon
+V^{\widehat{\pi}}\geq
+V^{\widetilde{\pi}}-\mathcal{E}^{\widetilde{\pi}}-\varepsilon
 $$
 
-for every comparator $\widetilde\pi\in\Pi$. The finite Gaussian validation uses
-$V^\pi=\pi$, $\widehat V^\pi=\pi+\pi Z^\pi$, and Bonferroni quantile
+for every comparator $\widetilde{\pi}\in\Pi$. The finite Gaussian validation uses
+$V^{\pi}=\pi$, $\widehat{V}^{\pi}=\pi+\pi Z^{\pi}$, and Bonferroni quantile
 $q=\Phi^{-1}(1-\delta/(2|\Pi|))$.
 
 The continuous rank-one validation uses
 
 $$
-V(\pi)=5\pi-5\pi^2,
+V(\pi)=5\pi-5\pi^{2},
 \qquad
-\widehat V_s(\pi)=V(\pi)+\pi Z_s,
+\widehat{V}_s(\pi)=V(\pi)+\pi Z_s,
 $$
 
-so $\sup_{\pi>0}|\widehat V_s(\pi)-V(\pi)|/\pi=|Z_s|$ and
+so $\sup_{\pi>0}|\widehat{V}_s(\pi)-V(\pi)|/\pi=|Z_s|$ and
 $q=\Phi^{-1}(1-\delta/2)$ needs no finite-class factor.
 
 Finite-Fourier GP experiments define one analytic path
 
 $$
-G_s(x)=\frac1{\sqrt J}\sum_{j=1}^J
+G_s(x)=\frac{1}{\sqrt{J}}\sum_{j=1}^{J}
 [A_{s,j}\cos(\omega_jx)+B_{s,j}\sin(\omega_jx)].
 $$
 
 Its covariance is
 
 $$
-k_J(x,x')=\frac1J\sum_j\cos(\omega_j(x-x')).
+k_J(x,x')=\frac{1}{J}\sum_j\cos(\omega_j(x-x')).
 $$
 
 Optimizer queries evaluate this formula directly; plotted connections are not
@@ -439,7 +439,7 @@ Sources: `src/experiments/policy_lcb/`,
 For a differentiable action objective and policy, the population chain rule is
 
 $$
-\nabla_\theta J(\theta)=\frac1n\sum_i
+\nabla_\theta J(\theta)=\frac{1}{n}\sum_i
 \frac{\partial f}{\partial u}(u_i;x_i)
 \nabla_\theta\pi_\theta(x_i).
 $$
@@ -448,7 +448,7 @@ The first-order method uses the objective's exact gradient. With coordinate
 vector $e_k$ and smoothing scale $\sigma$, central finite differences use
 
 $$
-\widehat g_k=
+\widehat{g}_k=
 \frac{J(\theta+\sigma e_k)-J(\theta-\sigma e_k)}{2\sigma}.
 $$
 
@@ -456,16 +456,16 @@ For $m$ independent standard Gaussian vectors $\varepsilon_j$, the one-sided
 Gaussian Stein estimator is
 
 $$
-\widehat g_{\rm GS}=
-\frac1{m\sigma}\sum_{j=1}^m
+\widehat{g}_{\rm GS}=
+\frac{1}{m\sigma}\sum_{j=1}^{m}
 J(\theta+\sigma\varepsilon_j)\varepsilon_j.
 $$
 
-For independent Rademacher vectors $\Delta_j\in\{-1,1\}^d$, SPSA uses
+For independent Rademacher vectors $\Delta_j\in\{-1,1\}^{d}$, SPSA uses
 
 $$
-\widehat g_{\rm SPSA}=
-\frac1m\sum_{j=1}^m
+\widehat{g}_{\rm SPSA}=
+\frac{1}{m}\sum_{j=1}^{m}
 \frac{J(\theta+\sigma\Delta_j)-J(\theta-\sigma\Delta_j)}{2\sigma}
 \Delta_j.
 $$
@@ -484,14 +484,14 @@ Sources: `src/optimization/gradients/methods.py`,
 For constant-step descent,
 
 $$
-\theta_{t+1}=\theta_t-\alpha\widehat g_t.
+\theta_{t+1}=\theta_t-\alpha\widehat{g}_t.
 $$
 
-Armijo backtracking chooses $\alpha=\alpha_0\rho^k$ until
+Armijo backtracking chooses $\alpha=\alpha_0\rho^{k}$ until
 
 $$
-J(\theta_t-\alpha\widehat g_t)
-\le J(\theta_t)-c\alpha\|\widehat g_t\|^2.
+J(\theta_t-\alpha\widehat{g}_t)
+\leq J(\theta_t)-c\alpha\|\widehat{g}_t\|^{2}.
 $$
 
 `l-bfgs-b` delegates unconstrained or box-constrained minimization to the

@@ -59,6 +59,22 @@ def test_section_four_braces_every_superscript() -> None:
     assert re.search(r"\^(?!\{)", section) is None
 
 
+def test_every_math_expression_renders_locally() -> None:
+    from matplotlib.mathtext import MathTextParser
+
+    expressions = re.findall(
+        r"\$\$(.*?)\$\$|(?<!\$)\$(?!\$)(.*?)(?<!\$)\$(?!\$)",
+        _text(),
+        flags=re.DOTALL,
+    )
+    parser = MathTextParser("path")
+
+    assert expressions
+    for alternatives in expressions:
+        expression = " ".join(next(item for item in alternatives if item).split())
+        parser.parse(f"${expression}$")
+
+
 def test_paths_in_implementation_index_exist() -> None:
     section = _text().split("## 10. Implementation and Verification Index", 1)[1]
     paths = re.findall(r"`((?:src|tests)/[^`]+)`", section)

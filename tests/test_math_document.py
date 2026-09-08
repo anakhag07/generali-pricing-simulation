@@ -50,6 +50,10 @@ def test_math_document_uses_renderable_display_math_delimiters() -> None:
     assert _text().count("```") % 2 == 0
 
 
+def test_math_document_avoids_unsupported_latex_macros() -> None:
+    assert r"\operatorname" not in _text()
+
+
 def test_paths_in_implementation_index_exist() -> None:
     section = _text().split("## 10. Implementation and Verification Index", 1)[1]
     paths = re.findall(r"`((?:src|tests)/[^`]+)`", section)

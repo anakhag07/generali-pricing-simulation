@@ -75,21 +75,21 @@ Let $r\in\mathbb R^d$ be numeric source columns, $\mu$ the saved training mean,
 and
 
 $$
-\Sigma=Q\operatorname{diag}(\lambda_1,\ldots,\lambda_d)Q^\top,
+\Sigma=Q\mathrm{diag}(\lambda_1,\ldots,\lambda_d)Q^\top,
 \qquad \tilde\lambda_j=\max(\lambda_j,\varepsilon).
 $$
 
 Without PCA,
 
 $$
-z_{\rm num}=(r-\mu)Q\operatorname{diag}(\tilde\lambda_j^{-1/2})Q^\top.
+z_{\rm num}=(r-\mu)Q\mathrm{diag}(\tilde\lambda_j^{-1/2})Q^\top.
 $$
 
 With $k$ PCA components,
 
 $$
 z_{\rm num}=(r-\mu)Q_{[:,1:k]}
-\operatorname{diag}(\tilde\lambda_1^{-1/2},\ldots,\tilde\lambda_k^{-1/2}).
+\mathrm{diag}(\tilde\lambda_1^{-1/2},\ldots,\tilde\lambda_k^{-1/2}).
 $$
 
 For categorical column $c$, training-order categories define mapping $m_c$.
@@ -152,7 +152,7 @@ giving $\binom{d+D}{D}$ head parameters including the intercept.
 The additive Chebyshev map uses
 
 $$
-t_j=\operatorname{clip}(x_j/s,-1,1),\quad
+t_j=\mathrm{clip}(x_j/s,-1,1),\quad
 T_0=1,\quad T_1=t,\quad T_k=2tT_{k-1}-T_{k-2},
 $$
 
@@ -259,7 +259,7 @@ f(w)=\tfrac12(w-w^*)^\top A(w-w^*),
 \qquad \nabla f(w)=A(w-w^*),
 $$
 
-where $A=Q\operatorname{diag}(\lambda)Q^\top$ has eigenvalues in
+where $A=Q\mathrm{diag}(\lambda)Q^\top$ has eigenvalues in
 $[\mu,\mu\kappa]$.
 
 The smoothed nonconvex rung is
@@ -301,7 +301,7 @@ $$
 For knots $(v_j,b_j)$, `NaturalCubicActionBias` uses natural cubic spline $S_b$:
 
 $$
-b(u)=\lambda S_b(\operatorname{clip}(u,v_1,v_m)).
+b(u)=\lambda S_b(\mathrm{clip}(u,v_1,v_m)).
 $$
 
 Its derivative is $\lambda S_b'(u)$ inside $(v_1,v_m)$ and zero outside.
@@ -346,9 +346,9 @@ s_j=\sqrt{\frac1n\sum_i(P_{ij}-\mu_j)^2},
 $$
 
 $$
-m_j=\operatorname{median}_iP_{ij},
+m_j=\mathrm{median}_iP_{ij},
 \qquad
-\operatorname{MAD}_j=\operatorname{median}_i|P_{ij}-m_j|.
+\mathrm{MAD}_j=\mathrm{median}_i|P_{ij}-m_j|.
 $$
 
 MAD is raw unless a displayed quantity explicitly multiplies it by $1.4826$.

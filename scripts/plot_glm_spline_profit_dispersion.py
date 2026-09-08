@@ -9,7 +9,6 @@ not optimize, scan for, or mark an optimum.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 from pathlib import Path
 import sys
@@ -38,11 +37,11 @@ from data.loader import (
     ModelArtifactBundle,
     eligible_csv_row_indices,
     load_model_artifact_pair,
-    load_observed_u_array,
     load_x_frame,
 )
 from objective.objectives.generali.model_based import ModelBasedObjective
 from objective.policy import ConstantPolicy
+from experiments.provenance import file_sha256 as _sha256_file
 from reporting.profit_dispersion import (
     ANCHOR_U,
     SPLINE_DENSE_GRID_SIZE,
@@ -51,6 +50,7 @@ from reporting.profit_dispersion import (
     load_deterministic_sample_rows,
     model_based_objective_matrix,
     row_index_sha256,
+    spline_anchor_weights as _spline_weights,
     summarize_profit,
 )
 
@@ -102,24 +102,6 @@ def _resolve_u_grid(u_min: float, u_max: float, u_count: int) -> np.ndarray:
     if int(u_count) < 2:
         raise ValueError("u_count must be at least two.")
     return np.linspace(float(u_min), float(u_max), int(u_count))
-
-
-def _sha256_file(path: str | Path) -> str:
-    digest = hashlib.sha256()
-    with Path(path).open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
-def _spline_weights(eligible_rows: np.ndarray) -> np.ndarray:
-    observed_u = load_observed_u_array("xgb", row_indices=eligible_rows)
-    in_support = observed_u[(observed_u >= ANCHOR_U[0]) & (observed_u <= ANCHOR_U[-1])]
-    frequencies = pd.Series(in_support).round(2).value_counts(normalize=True)
-    weights = frequencies.reindex(ANCHOR_U.round(2), fill_value=0.0).to_numpy(float)
-    if not np.isfinite(weights).all() or not np.any(weights > 0.0):
-        raise ValueError("Could not construct finite spline-anchor weights.")
-    return weights
 
 
 def _load_canonical_model_pairs(

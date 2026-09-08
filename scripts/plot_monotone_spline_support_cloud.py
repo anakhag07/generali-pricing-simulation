@@ -28,13 +28,13 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "src"))
 
+from data.coverage import (
+    DEFAULT_ACTION_BANDWIDTH as ACTION_BANDWIDTH,
+    local_support_matrix as _local_support_matrix,
+    mixed_customer_embedding as _mixed_customer_embedding,
+)
 from data.loader import load_model_artifacts, load_x_frame
 from reporting.profit_dispersion import row_index_sha256
-from scripts.plot_customer_coverage_envelope_slides import (
-    ACTION_BANDWIDTH,
-    _local_support_matrix,
-    _mixed_customer_embedding,
-)
 
 
 DEFAULT_RESULTS_ROOT = ROOT.parent / "results"

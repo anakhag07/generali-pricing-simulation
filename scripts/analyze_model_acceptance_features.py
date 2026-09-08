@@ -667,7 +667,7 @@ def _plot_one_model(rows: Sequence[Mapping[str, Any]], model: str, output_dir: P
     ax.grid(True, alpha=0.3)
     ax.legend()
     fig.tight_layout()
-    fig.savefig(output_dir / f"{model}_acceptance_by_u.png", dpi=200)
+    fig.savefig(output_dir / f"{model}_acceptance_by_u.pdf", format="pdf")
     plt.close(fig)
 
 
@@ -692,7 +692,7 @@ def _plot_comparison(rows: Sequence[Mapping[str, Any]], output_dir: Path) -> Non
     delta_ax.set_ylabel("Spline − XGB")
     delta_ax.grid(True, alpha=0.3)
     fig.tight_layout()
-    fig.savefig(output_dir / "acceptance_model_comparison.png", dpi=200)
+    fig.savefig(output_dir / "acceptance_model_comparison.pdf", format="pdf")
     plt.close(fig)
 
 

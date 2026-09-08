@@ -179,12 +179,16 @@ def test_collector_writes_csvs_and_only_acceptance_plots(tmp_path: Path) -> None
     assert (context.sweep_dir / "acceptance_by_u.csv").exists()
     assert (context.sweep_dir / "feature_importance.csv").exists()
     assert (context.sweep_dir / "analysis_config.json").exists()
-    assert {path.name for path in context.sweep_dir.glob("*.png")} == {
-        "glm_acceptance_by_u.png",
-        "xgb_acceptance_by_u.png",
-        "spline_acceptance_by_u.png",
-        "acceptance_model_comparison.png",
+    assert {path.name for path in context.sweep_dir.glob("*.pdf")} == {
+        "glm_acceptance_by_u.pdf",
+        "xgb_acceptance_by_u.pdf",
+        "spline_acceptance_by_u.pdf",
+        "acceptance_model_comparison.pdf",
     }
+    assert all(
+        path.read_bytes().startswith(b"%PDF")
+        for path in context.sweep_dir.glob("*.pdf")
+    )
 
 
 def test_main_builds_launch_plan_from_cli(monkeypatch) -> None:

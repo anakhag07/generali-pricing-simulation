@@ -2,10 +2,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from scripts.run_coverage_aware_policy_optimizer import (
-    interpolate_rows,
-    normalize_coverage_widths,
-)
+from data.coverage import normalized_coverage_widths as normalize_coverage_widths
+from objective.gridded import interpolate_customer_curves as interpolate_rows
 
 
 def test_normalize_coverage_widths_uses_each_customers_best_support() -> None:

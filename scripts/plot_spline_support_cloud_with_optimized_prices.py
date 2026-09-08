@@ -7,17 +7,15 @@ first-order policy output. This script performs no optimization.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 from pathlib import Path
 from typing import Sequence
 
-import matplotlib
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+from experiments.provenance import file_sha256 as _sha256_file
+from reporting.real_data import plot_support_action_overlay as _plot_overlay
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,9 +30,6 @@ DEFAULT_HISTOGRAM_DIR = (
 DEFAULT_OUTPUT_DIR = DEFAULT_SUPPORT_DIR
 OUTPUT_NAME = "mean_profit_support_cloud_with_optimized_price_changes.pdf"
 MANIFEST_NAME = "mean_profit_support_cloud_with_optimized_price_changes_manifest.json"
-SUPPORT_COLOR = "C0"
-OPTIMIZED_COLOR = "#86002d"
-PLOT_TITLE = "Mean Predicted Profit Per Customer vs. Price Change"
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -71,14 +66,6 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     return parser
-
-
-def _sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 def _load_support(path: Path) -> pd.DataFrame:
@@ -145,86 +132,6 @@ def _validate_provenance(support_manifest_path: Path, histogram_config_path: Pat
         "support": support_manifest,
         "histogram": histogram_config,
     }
-
-
-def _plot_overlay(
-    support: pd.DataFrame,
-    histogram: pd.DataFrame,
-    output_path: Path,
-    *,
-    lower_only: bool = False,
-) -> None:
-    u = support["u"].to_numpy(dtype=float)
-    mean_profit = support["smoothed_mean_profit"].to_numpy(dtype=float)
-    lower = support["support_cloud_lower_profit"].to_numpy(dtype=float)
-    upper = support["support_cloud_upper_profit"].to_numpy(dtype=float)
-    left = histogram["bin_left"].to_numpy(dtype=float)
-    right = histogram["bin_right"].to_numpy(dtype=float)
-    density = histogram["density"].to_numpy(dtype=float)
-
-    fig, profit_ax = plt.subplots(figsize=(10.0, 5.8), constrained_layout=True)
-    density_ax = profit_ax.twinx()
-    bars = density_ax.bar(
-        left,
-        density,
-        width=right - left,
-        align="edge",
-        color=OPTIMIZED_COLOR,
-        edgecolor=OPTIMIZED_COLOR,
-        linewidth=0.5,
-        alpha=0.60,
-        label="Optimized Price Changes",
-    )
-    cloud = profit_ax.fill_between(
-        u,
-        lower,
-        mean_profit if lower_only else upper,
-        color=SUPPORT_COLOR,
-        alpha=0.2,
-    )
-    if lower_only:
-        profit_ax.plot(u, lower, color=SUPPORT_COLOR, linewidth=1.0, alpha=0.8)
-    mean_line = profit_ax.plot(
-        u,
-        mean_profit,
-        color=SUPPORT_COLOR,
-        linewidth=2.0,
-        label="Mean Profit",
-    )[0]
-
-    density_ax.set_zorder(1)
-    profit_ax.set_zorder(2)
-    profit_ax.patch.set_visible(False)
-    profit_ax.set_title(PLOT_TITLE, fontsize=16)
-    profit_ax.set_xlabel("Price Change", fontsize=12)
-    profit_ax.set_ylabel(
-        "Mean Predicted Profit Per Customer",
-        color=SUPPORT_COLOR,
-        fontsize=12,
-    )
-    density_ax.set_ylabel(
-        "Optimized Price-Change Density",
-        color=OPTIMIZED_COLOR,
-        fontsize=12,
-    )
-    profit_ax.tick_params(axis="y", labelcolor=SUPPORT_COLOR, labelsize=10)
-    profit_ax.tick_params(axis="x", labelsize=10)
-    density_ax.tick_params(axis="y", labelcolor=OPTIMIZED_COLOR, labelsize=10)
-    profit_ax.set_xlim(-0.1, 0.2)
-    legend = profit_ax.legend(
-        [(mean_line, cloud), bars],
-        [
-            "Mean Profit",
-            "Optimized Price Changes",
-        ],
-        fontsize=10,
-        loc="upper left",
-    )
-    legend_text = legend.get_texts()
-    legend_text[0].set_color(SUPPORT_COLOR)
-    legend_text[1].set_color(OPTIMIZED_COLOR)
-    fig.savefig(output_path, format="pdf")
-    plt.close(fig)
 
 
 def _write_manifest(

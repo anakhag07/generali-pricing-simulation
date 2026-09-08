@@ -7,6 +7,8 @@ import json
 import numpy as np
 import pandas as pd
 
+import reporting.real_data as real_data_reporting
+from reporting.real_data import plot_support_action_overlay
 from scripts import plot_spline_support_cloud_with_optimized_prices as script
 
 
@@ -97,12 +99,12 @@ def test_overlay_labels_blue_profit_and_red_optimized_prices(
 ) -> None:
     captured = {}
     monkeypatch.setattr(
-        script.plt,
+        real_data_reporting.plt,
         "close",
         lambda figure: captured.setdefault("figure", figure),
     )
 
-    script._plot_overlay(
+    plot_support_action_overlay(
         _support_frame(),
         _histogram_frame(),
         tmp_path / "overlay.pdf",
@@ -110,9 +112,8 @@ def test_overlay_labels_blue_profit_and_red_optimized_prices(
 
     figure = captured["figure"]
     profit_ax, density_ax = figure.axes
-    assert script.OPTIMIZED_COLOR == "#86002d"
     assert np.isclose(density_ax.containers[0].patches[0].get_alpha(), 0.60)
-    assert profit_ax.get_title() == script.PLOT_TITLE
+    assert profit_ax.get_title() == "Mean Predicted Profit Per Customer vs. Price Change"
     assert profit_ax.get_xlabel() == "Price Change"
     assert profit_ax.get_ylabel() == "Mean Predicted Profit Per Customer"
     assert density_ax.get_ylabel() == "Optimized Price-Change Density"
@@ -121,8 +122,8 @@ def test_overlay_labels_blue_profit_and_red_optimized_prices(
         "Mean Profit",
         "Optimized Price Changes",
     ]
-    assert legend_text[0].get_color() == script.SUPPORT_COLOR
-    assert legend_text[1].get_color() == script.OPTIMIZED_COLOR
+    assert legend_text[0].get_color() == "C0"
+    assert legend_text[1].get_color() == "#86002d"
 
 
 def test_overlay_can_show_only_the_lower_side_of_support_cloud(
@@ -131,13 +132,13 @@ def test_overlay_can_show_only_the_lower_side_of_support_cloud(
 ) -> None:
     captured = {}
     monkeypatch.setattr(
-        script.plt,
+        real_data_reporting.plt,
         "close",
         lambda figure: captured.setdefault("figure", figure),
     )
 
     support = _support_frame()
-    script._plot_overlay(
+    plot_support_action_overlay(
         support,
         _histogram_frame(),
         tmp_path / "lower_only.pdf",

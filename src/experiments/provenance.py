@@ -19,10 +19,14 @@ def file_sha256(path: str | Path) -> str:
     return digest.hexdigest()
 
 
-def file_record(path: str | Path) -> dict[str, str]:
+def file_record(path: str | Path) -> dict[str, str | int]:
     """Return the canonical path and content digest for an input or output file."""
     resolved = Path(path).resolve()
-    return {"path": str(resolved), "sha256": file_sha256(resolved)}
+    return {
+        "path": str(resolved),
+        "sha256": file_sha256(resolved),
+        "bytes": int(resolved.stat().st_size),
+    }
 
 
 def array_sha256(values: Any) -> str:

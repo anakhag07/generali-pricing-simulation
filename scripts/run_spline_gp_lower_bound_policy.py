@@ -37,27 +37,21 @@ from data.loader import (
     load_model_artifact_pair,
     load_x_frame,
 )
+from experiments.policy_utils import (
+    artifact_policy_features as _artifact_policy_features,
+    constant_softmax_theta as _constant_policy_theta,
+    load_acceptance_floor as _acceptance_floor,
+    optimization_trace_summary as _trace_payload,
+)
 from objective.policy import IdentityFeatureMap, SoftmaxPolicy
+from objective.gridded import SplineSupportLowerBoundObjective
 from objective.policy_preprocessing import PolicyFeaturePreprocessor
 from optimization.solvers import run_first_order_minimize
 from reporting.profit_dispersion import (
     load_deterministic_sample_rows,
     row_index_sha256,
 )
-from scripts.run_spline_lower_bound_policy import (
-    ACTION_GRID,
-    ACTION_HIGH,
-    ACTION_LOW,
-    DEFAULT_INITIAL_U,
-    DEFAULT_SAMPLE_SEED,
-    DEFAULT_SAMPLE_SIZE,
-    SplineSupportLowerBoundObjective,
-    _acceptance_floor,
-    _artifact_policy_features,
-    _constant_policy_theta,
-    _load_or_build_response_grid,
-    _trace_payload,
-)
+from reporting.exact_spline_cache import load_or_build_exact_spline_response_grid
 
 
 def _default_results_root() -> Path:
@@ -85,6 +79,13 @@ DEFAULT_RESPONSE_CACHE = (
     / "sample_exact_spline_response_grid.npz"
 )
 DEFAULT_OUTPUT_DIR = RESULTS_ROOT / "spline-xgb-synthetic-gp-lower-bound-policy-20k"
+
+ACTION_GRID = np.linspace(-0.1, 0.2, 301)
+ACTION_LOW = float(ACTION_GRID[0])
+ACTION_HIGH = float(ACTION_GRID[-1])
+DEFAULT_INITIAL_U = 0.08
+DEFAULT_SAMPLE_SIZE = 20_000
+DEFAULT_SAMPLE_SEED = 20260831
 
 GP_SUPPORT_LOW = 0.0
 GP_SUPPORT_HIGH = 0.16
@@ -335,16 +336,17 @@ def run_analysis(args: argparse.Namespace) -> list[Path]:
 
     cached = _load_response_grid_cache(args.response_grid_cache, sample_rows)
     if cached is None:
-        acceptance_grid, cost_grid = _load_or_build_response_grid(
-            output_dir=output_dir,
+        response_grid_source = output_dir / "sample_exact_spline_response_grid.npz"
+        acceptance_grid, cost_grid = load_or_build_exact_spline_response_grid(
+            cache_path=response_grid_source,
             frame=frame,
-            sample_rows=sample_rows,
+            row_indices=sample_rows,
             eligible_rows=eligible_csv_row_indices("xgb"),
+            action_grid=ACTION_GRID,
             acceptance_artifact=acceptance_artifact,
             loss_artifact=loss_artifact,
             n_jobs=int(args.n_jobs),
         )
-        response_grid_source = output_dir / "sample_exact_spline_response_grid.npz"
     else:
         acceptance_grid, cost_grid = cached
         response_grid_source = args.response_grid_cache.resolve()

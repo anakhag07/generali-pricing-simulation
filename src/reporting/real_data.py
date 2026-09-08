@@ -313,10 +313,85 @@ def _plot_dispersion(
     plt.close(fig)
 
 
+def plot_support_action_overlay(
+    support: pd.DataFrame,
+    histogram: pd.DataFrame,
+    output_path: str | Path,
+    *,
+    lower_only: bool = False,
+) -> None:
+    """Preserve the approved support-cloud/action-density comparison design."""
+    u = support["u"].to_numpy(dtype=float)
+    mean_profit = support["smoothed_mean_profit"].to_numpy(dtype=float)
+    lower = support["support_cloud_lower_profit"].to_numpy(dtype=float)
+    upper = support["support_cloud_upper_profit"].to_numpy(dtype=float)
+    left = histogram["bin_left"].to_numpy(dtype=float)
+    right = histogram["bin_right"].to_numpy(dtype=float)
+    density = histogram["density"].to_numpy(dtype=float)
+
+    support_color = "C0"
+    optimized_color = "#86002d"
+    fig, profit_ax = plt.subplots(figsize=(10.0, 5.8), constrained_layout=True)
+    density_ax = profit_ax.twinx()
+    bars = density_ax.bar(
+        left,
+        density,
+        width=right - left,
+        align="edge",
+        color=optimized_color,
+        edgecolor=optimized_color,
+        linewidth=0.5,
+        alpha=0.60,
+        label="Optimized Price Changes",
+    )
+    cloud = profit_ax.fill_between(
+        u,
+        lower,
+        mean_profit if lower_only else upper,
+        color=support_color,
+        alpha=0.2,
+    )
+    if lower_only:
+        profit_ax.plot(u, lower, color=support_color, linewidth=1.0, alpha=0.8)
+    mean_line = profit_ax.plot(
+        u,
+        mean_profit,
+        color=support_color,
+        linewidth=2.0,
+        label="Mean Profit",
+    )[0]
+    density_ax.set_zorder(1)
+    profit_ax.set_zorder(2)
+    profit_ax.patch.set_visible(False)
+    profit_ax.set_title("Mean Predicted Profit Per Customer vs. Price Change", fontsize=16)
+    profit_ax.set_xlabel("Price Change", fontsize=12)
+    profit_ax.set_ylabel(
+        "Mean Predicted Profit Per Customer", color=support_color, fontsize=12
+    )
+    density_ax.set_ylabel(
+        "Optimized Price-Change Density", color=optimized_color, fontsize=12
+    )
+    profit_ax.tick_params(axis="y", labelcolor=support_color, labelsize=10)
+    profit_ax.tick_params(axis="x", labelsize=10)
+    density_ax.tick_params(axis="y", labelcolor=optimized_color, labelsize=10)
+    profit_ax.set_xlim(-0.1, 0.2)
+    legend = profit_ax.legend(
+        [(mean_line, cloud), bars],
+        ["Mean Profit", "Optimized Price Changes"],
+        fontsize=10,
+        loc="upper left",
+    )
+    legend.get_texts()[0].set_color(support_color)
+    legend.get_texts()[1].set_color(optimized_color)
+    fig.savefig(Path(output_path), format="pdf")
+    plt.close(fig)
+
+
 __all__ = [
     "RealDataModelSpec",
     "ResolvedRealDataModel",
     "model_spec",
+    "plot_support_action_overlay",
     "resolve_real_data_model",
     "run_profit_dispersion_report",
 ]

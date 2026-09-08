@@ -16,7 +16,6 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from scipy.optimize import NonlinearConstraint, minimize
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -25,6 +24,12 @@ for path in (REPO_ROOT, SRC_ROOT):
     if str(path) not in sys.path:
         sys.path.insert(0, str(path))
 
+from data.coverage import (  # noqa: E402
+    DEFAULT_ACTION_BANDWIDTH as ACTION_BANDWIDTH,
+    local_support_matrix as _local_support_matrix,
+    mixed_customer_embedding as _mixed_customer_embedding,
+    normalized_coverage_widths as normalize_coverage_widths,
+)
 from data.dataset_metadata import (  # noqa: E402
     ACCEPTANCE_STATE_COLS,
     LOSS_FEATURE_COLS,
@@ -36,14 +41,13 @@ from data.loader import (  # noqa: E402
     load_x_frame,
 )
 from experiments.config import make_model_based_objective  # noqa: E402
+from objective.base import Objective  # noqa: E402
+from objective.gridded import interpolate_customer_curves as interpolate_rows  # noqa: E402
 from objective.policy import SoftmaxPolicy  # noqa: E402
-from scripts.plot_customer_coverage_envelope_slides import (  # noqa: E402
-    ACTION_BANDWIDTH,
-    U_GRID,
-    _local_support_matrix,
-    _mixed_customer_embedding,
-    _predict_acceptance_matrix,
-    _predict_loss,
+from optimization.solvers import run_first_order_minimize  # noqa: E402
+from reporting.profit_dispersion import (  # noqa: E402
+    predict_acceptance_matrix as _predict_acceptance_matrix,
+    predict_loss as _predict_loss,
 )
 
 
@@ -62,56 +66,10 @@ DEFAULT_N_NEIGHBORS = 500
 DEFAULT_MAXITER = 300
 DEFAULT_FD_EPS = 1e-4
 DEFAULT_ACCEPTANCE_BUFFER = 2e-4
+U_GRID = np.linspace(0.0, 0.16, 161)
 
 
-def normalize_coverage_widths(
-    support: np.ndarray,
-    *,
-    scale: float,
-) -> np.ndarray:
-    """Return per-customer widths in ``[0, scale]`` from local support."""
-    support_arr = np.asarray(support, dtype=float)
-    if support_arr.ndim != 2 or support_arr.shape[1] < 2:
-        raise ValueError("support must be a 2D customer-by-action array.")
-    if not np.isfinite(support_arr).all() or np.any(support_arr < 0.0):
-        raise ValueError("support must contain finite nonnegative values.")
-    if not np.isfinite(scale) or scale <= 0.0:
-        raise ValueError("scale must be finite and positive.")
-    row_max = np.max(support_arr, axis=1, keepdims=True)
-    if np.any(row_max <= 0.0):
-        raise ValueError("Every customer must have positive support at some action.")
-    return (float(scale) * (1.0 - support_arr / row_max)).astype(np.float32)
-
-
-def interpolate_rows(
-    values: np.ndarray,
-    grid: np.ndarray,
-    actions: np.ndarray,
-) -> tuple[np.ndarray, np.ndarray]:
-    """Linearly interpolate one action-grid curve per customer and its slope."""
-    values_arr = np.asarray(values, dtype=float)
-    grid_arr = np.asarray(grid, dtype=float)
-    actions_arr = np.asarray(actions, dtype=float).reshape(-1)
-    if values_arr.shape != (len(actions_arr), len(grid_arr)):
-        raise ValueError("values must have one grid curve per action.")
-    if len(grid_arr) < 2 or not np.all(np.diff(grid_arr) > 0.0):
-        raise ValueError("grid must be strictly increasing with at least two points.")
-
-    clipped = np.clip(actions_arr, grid_arr[0], grid_arr[-1])
-    right = np.searchsorted(grid_arr, clipped, side="right")
-    left = np.clip(right - 1, 0, len(grid_arr) - 2)
-    right = left + 1
-    row = np.arange(len(actions_arr))
-    span = grid_arr[right] - grid_arr[left]
-    fraction = (clipped - grid_arr[left]) / span
-    low = values_arr[row, left]
-    high = values_arr[row, right]
-    interpolated = low + fraction * (high - low)
-    slope = (high - low) / span
-    return interpolated, slope
-
-
-class CoveragePolicyEvaluator:
+class CoveragePolicyEvaluator(Objective):
     """Cache exact objective, gradient, and constraint values at one theta."""
 
     def __init__(
@@ -130,6 +88,8 @@ class CoveragePolicyEvaluator:
         self.profit_grid = np.asarray(profit_grid, dtype=float)
         self.acceptance_grid = np.asarray(acceptance_grid, dtype=float)
         self.u_grid = np.asarray(u_grid, dtype=float)
+        self.policy = objective.policy
+        self.acceptance_floor: float | None = None
         self._theta: np.ndarray | None = None
         self._metrics: dict[str, Any] | None = None
 
@@ -189,11 +149,30 @@ class CoveragePolicyEvaluator:
     def jac(self, theta: np.ndarray) -> np.ndarray:
         return np.asarray(self.evaluate(theta)["objective_grad"], dtype=float)
 
-    def mean_acceptance(self, theta: np.ndarray) -> np.ndarray:
-        return np.asarray([self.evaluate(theta)["mean_acceptance"]], dtype=float)
+    def value(self, theta: np.ndarray, x_batch: Any) -> float:
+        if len(x_batch) != len(self.frame):
+            raise ValueError("Coverage objective requires its complete fixed cohort.")
+        return self.fun(theta)
 
-    def mean_acceptance_jac(self, theta: np.ndarray) -> np.ndarray:
-        return np.atleast_2d(self.evaluate(theta)["acceptance_grad"])
+    def grad(self, theta: np.ndarray, x_batch: Any) -> np.ndarray:
+        if len(x_batch) != len(self.frame):
+            raise ValueError("Coverage objective requires its complete fixed cohort.")
+        return self.jac(theta)
+
+    def policy_value(self, theta: np.ndarray, x_batch: Any) -> np.ndarray:
+        if len(x_batch) != len(self.frame):
+            raise ValueError("Coverage objective requires its complete fixed cohort.")
+        return np.asarray(self.evaluate(theta)["actions"], dtype=float)
+
+    def mean_acceptance(self, theta: np.ndarray, x_batch: Any) -> float:
+        if len(x_batch) != len(self.frame):
+            raise ValueError("Coverage objective requires its complete fixed cohort.")
+        return float(self.evaluate(theta)["mean_acceptance"])
+
+    def mean_acceptance_grad(self, theta: np.ndarray, x_batch: Any) -> np.ndarray:
+        if len(x_batch) != len(self.frame):
+            raise ValueError("Coverage objective requires its complete fixed cohort.")
+        return np.asarray(self.evaluate(theta)["acceptance_grad"], dtype=float)
 
 
 def _load_sample_rows(path: Path) -> np.ndarray:
@@ -430,56 +409,23 @@ def main() -> None:
 
     initial_metrics = evaluator.evaluate(theta0).copy()
     constraint_target = float(baseline["acceptance_floor"] + args.acceptance_buffer)
-    trace: list[dict[str, float | int]] = []
-
-    def callback(theta: np.ndarray, state: Any | None = None) -> bool:
-        metrics = evaluator.evaluate(theta)
-        trace.append(
-            {
-                "iteration": len(trace),
-                "coverage_adjusted_cost": float(metrics["objective"]),
-                "raw_mean_profit": float(metrics["raw_profit"]),
-                "mean_coverage_width": float(metrics["mean_width"]),
-                "mean_acceptance": float(metrics["mean_acceptance"]),
-                "mean_u": float(np.mean(metrics["actions"])),
-                "optimality": float(getattr(state, "optimality", np.nan)),
-                "constraint_violation": float(
-                    getattr(state, "constr_violation", np.nan)
-                ),
-            }
-        )
-        print(
-            f"iteration={len(trace):03d} adjusted_cost={metrics['objective']:.6f} "
-            f"profit={metrics['raw_profit']:.6f} width={metrics['mean_width']:.6f} "
-            f"acceptance={metrics['mean_acceptance']:.6f} "
-            f"mean_u={np.mean(metrics['actions']):.6f}",
-            flush=True,
-        )
-        return False
-
-    constraint = NonlinearConstraint(
-        evaluator.mean_acceptance,
-        lb=np.asarray([constraint_target], dtype=float),
-        ub=np.asarray([np.inf], dtype=float),
-        jac=evaluator.mean_acceptance_jac,
-    )
+    evaluator.acceptance_floor = constraint_target
     print("Starting coverage-aware trust-constr optimization...", flush=True)
     started = time.perf_counter()
-    result = minimize(
-        evaluator.fun,
+    theta_final, optimizer_trace = run_first_order_minimize(
         theta0,
-        method="trust-constr",
-        jac=evaluator.jac,
-        constraints=[constraint],
-        callback=callback,
-        options={
-            "maxiter": int(args.maxiter),
-            "gtol": 1e-6,
-            "initial_constr_penalty": 1.0,
-        },
+        frame,
+        evaluator,
+        t_steps=int(args.maxiter),
+        n_grad_samples=1,
+        sigma=float(args.fd_eps),
+        perturbation_space="theta",
+        algorithm="trust-constr",
+        grad_norm_tol=1e-6,
+        initial_constr_penalty=1.0,
     )
     runtime = time.perf_counter() - started
-    final_metrics = evaluator.evaluate(result.x).copy()
+    final_metrics = evaluator.evaluate(theta_final).copy()
     baseline_direct_acceptance = float(
         np.mean(objective._acceptance_proba(frame, initial_metrics["actions"]))
     )
@@ -491,7 +437,7 @@ def main() -> None:
         args.output_dir / "coverage_aware_policy_20k.npz",
         row_indices=row_indices,
         baseline_theta=theta0,
-        coverage_theta=np.asarray(result.x, dtype=float),
+        coverage_theta=np.asarray(theta_final, dtype=float),
         baseline_actions=np.asarray(initial_metrics["actions"], dtype=float),
         coverage_actions=np.asarray(final_metrics["actions"], dtype=float),
         baseline_acceptance=np.asarray(initial_metrics["acceptance"], dtype=float),
@@ -510,7 +456,22 @@ def main() -> None:
             "coverage_aware_width": final_metrics["coverage_width"],
         }
     ).to_csv(args.output_dir / "customer_policy_comparison.csv", index=False)
-    pd.DataFrame(trace).to_csv(args.output_dir / "optimization_trace.csv", index=False)
+    trace_rows = []
+    for iteration, theta in enumerate(optimizer_trace.theta_values or ()):
+        metrics = evaluator.evaluate(np.asarray(theta, dtype=float))
+        trace_rows.append(
+            {
+                "iteration": iteration,
+                "coverage_adjusted_cost": float(metrics["objective"]),
+                "raw_mean_profit": float(metrics["raw_profit"]),
+                "mean_coverage_width": float(metrics["mean_width"]),
+                "mean_acceptance": float(metrics["mean_acceptance"]),
+                "mean_u": float(np.mean(metrics["actions"])),
+            }
+        )
+    pd.DataFrame(trace_rows).to_csv(
+        args.output_dir / "optimization_trace.csv", index=False
+    )
     _save_histograms(
         np.asarray(initial_metrics["actions"], dtype=float),
         np.asarray(final_metrics["actions"], dtype=float),
@@ -537,14 +498,14 @@ def main() -> None:
         "baseline": _summary(initial_metrics),
         "coverage_aware": _summary(final_metrics),
         "optimizer": {
+            "entry_point": "optimization.solvers.run_first_order_minimize",
             "method": "trust-constr",
-            "success": bool(result.success),
-            "status": int(result.status),
-            "message": str(result.message),
-            "iterations": int(getattr(result, "nit", len(trace))),
-            "function_evaluations": int(getattr(result, "nfev", -1)),
-            "gradient_evaluations": int(getattr(result, "njev", -1)),
-            "optimality": float(getattr(result, "optimality", np.nan)),
+            "gradient_estimator": "first_order",
+            "success": bool(optimizer_trace.optimizer_success),
+            "status": int(optimizer_trace.optimizer_status),
+            "message": str(optimizer_trace.optimizer_message),
+            "iterations": max(0, len(optimizer_trace.steps) - 1),
+            "optimality": optimizer_trace.optimizer_optimality,
             "constraint_violation": max(
                 0.0,
                 constraint_target

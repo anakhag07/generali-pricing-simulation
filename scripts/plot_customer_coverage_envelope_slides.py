@@ -30,7 +30,12 @@ import numpy as np
 import pandas as pd
 from scipy.ndimage import gaussian_filter1d
 from scipy.interpolate import CubicSpline
-from sklearn.neighbors import NearestNeighbors
+from data.coverage import (
+    DEFAULT_ACTION_BANDWIDTH as ACTION_BANDWIDTH,
+    DEFAULT_NUMERIC_CLIP as NUMERIC_CLIP,
+    local_support_matrix as _local_support_matrix,
+    mixed_customer_embedding as _mixed_customer_embedding,
+)
 
 from data.loader import (
     eligible_csv_row_indices,
@@ -41,6 +46,10 @@ from data.loader import (
 from objective.base import Objective
 from objective.policy import AdditiveChebyshevFeatureMap, SoftmaxPolicy
 from optimization.solvers import run_finite_difference_minimize
+from reporting.profit_dispersion import (
+    predict_acceptance_matrix as _predict_acceptance_matrix,
+    predict_loss as _predict_loss,
+)
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
@@ -59,8 +68,6 @@ OPTIMIZED_POLICY_PATH = (
 )
 U_GRID = np.linspace(0.0, 0.16, 161)
 EXPLORATORY_U_GRID = np.linspace(-0.10, 0.20, 301)
-NUMERIC_CLIP = 6.0
-ACTION_BANDWIDTH = 0.01
 ILLUSTRATIVE_WIDTH_SCALE = 10.0
 MAD_TO_NORMAL_STD = 1.4826
 MAD_CLOUD_MULTIPLIER = 0.6
@@ -137,31 +144,6 @@ class _SplineMinimizationObjective(Objective):
         raise NotImplementedError(
             "This objective is intentionally optimized with finite differences."
         )
-
-
-def _predict_acceptance_matrix(artifact, frame: pd.DataFrame, u_grid: np.ndarray) -> np.ndarray:
-    """Predict acceptance over a customer-by-action grid with one fixed fold."""
-    processed = artifact.preprocessor.transform(
-        frame.loc[:, list(artifact.x_feature_cols)]
-    )
-    processed_columns = list(processed.columns)
-    base = processed.to_numpy(dtype=float)
-    matrix = np.empty((len(frame), len(u_grid)), dtype=np.float32)
-    for start in range(0, len(frame), 1_000):
-        stop = min(start + 1_000, len(frame))
-        batch_size = stop - start
-        repeated = np.repeat(base[start:stop], len(u_grid), axis=0)
-        model_frame = pd.DataFrame(repeated, columns=processed_columns)
-        model_frame["U"] = np.tile(u_grid, batch_size)
-        matrix[start:stop] = artifact.model.predict_proba(model_frame)[:, 1].reshape(
-            batch_size, len(u_grid)
-        )
-    return matrix
-
-
-def _predict_loss(artifact, frame: pd.DataFrame) -> np.ndarray:
-    model_frame = artifact.model_frame(frame)
-    return np.asarray(artifact.model.predict(model_frame), dtype=float)
 
 
 def _smooth_display_curve(values: np.ndarray) -> np.ndarray:
@@ -370,65 +352,6 @@ def _load_saved_optimizer_actions(row_indices: np.ndarray) -> np.ndarray:
     ):
         raise ValueError("The diagnostic sample is not contained in the saved policy rows.")
     return policy_actions[positions]
-
-
-def _mixed_customer_embedding(artifact, frame: pd.DataFrame) -> np.ndarray:
-    """Return interpretable mixed-type coordinates for customer similarity."""
-    processor = artifact.preprocessor
-    transformed = processor.transform(frame.loc[:, list(artifact.x_feature_cols)])
-    numeric = transformed.loc[:, list(processor.numeric_feature_names_)].to_numpy(
-        dtype=float
-    )
-    numeric = np.clip(numeric, -NUMERIC_CLIP, NUMERIC_CLIP)
-    categorical = pd.get_dummies(
-        frame.loc[:, list(processor.categorical_cols_)].astype("string"),
-        dtype=float,
-    ).to_numpy(dtype=float)
-    # A categorical mismatch changes two one-hot coordinates. Scaling by
-    # sqrt(2) makes one mismatch contribute one squared-distance unit.
-    categorical /= np.sqrt(2.0)
-    return np.column_stack([numeric, categorical]).astype(np.float32)
-
-
-def _local_support_matrix(
-    embedding: np.ndarray,
-    observed_u: np.ndarray,
-    u_grid: np.ndarray,
-    *,
-    n_neighbors: int,
-    n_jobs: int = -1,
-) -> np.ndarray:
-    """Estimate local joint support over customer state and candidate action."""
-    neighbor_count = min(int(n_neighbors) + 1, len(embedding))
-    nearest = NearestNeighbors(
-        n_neighbors=neighbor_count,
-        algorithm="brute",
-        metric="euclidean",
-        n_jobs=int(n_jobs),
-    ).fit(embedding)
-    distances, indices = nearest.kneighbors(embedding)
-    distances = distances[:, 1:].astype(np.float32)
-    indices = indices[:, 1:]
-    historical_neighbor_u = np.asarray(observed_u, dtype=np.float32)[indices]
-    bandwidth_index = min(max(neighbor_count // 2 - 1, 0), distances.shape[1] - 1)
-    state_bandwidth = np.maximum(distances[:, bandwidth_index], 1e-6)
-    state_weights = np.exp(
-        -0.5 * (distances / state_bandwidth[:, None]) ** 2
-    ).astype(np.float32)
-
-    support = np.empty((len(embedding), len(u_grid)), dtype=np.float32)
-    action_grid = np.asarray(u_grid, dtype=np.float32)
-    for start in range(0, len(embedding), 200):
-        stop = min(start + 200, len(embedding))
-        action_distance = (
-            historical_neighbor_u[start:stop, :, None] - action_grid[None, None, :]
-        ) / ACTION_BANDWIDTH
-        action_weights = np.exp(-0.5 * action_distance**2)
-        support[start:stop] = np.sum(
-            state_weights[start:stop, :, None] * action_weights,
-            axis=1,
-        )
-    return support
 
 
 def _compute_diagnostics(

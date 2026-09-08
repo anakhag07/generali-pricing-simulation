@@ -5,9 +5,9 @@ from __future__ import annotations
 import numpy as np
 
 from objective.policy import IdentityFeatureMap, SoftmaxPolicy
+from experiments.policy_utils import constant_softmax_theta
 from scripts.run_full_population_glm_spline_policy_comparison import (
     FullCacheSplineProfitObjective,
-    _constant_policy_theta,
     _histogram,
 )
 
@@ -33,7 +33,7 @@ def _objective() -> tuple[FullCacheSplineProfitObjective, np.ndarray, np.ndarray
         policy=policy,
         acceptance_floor=0.7,
     )
-    theta = _constant_policy_theta(policy, x.shape[1], 0.0)
+    theta = constant_softmax_theta(policy, x.shape[1], 0.0)
     theta[1:] = [0.2, -0.1]
     return objective, x, theta
 

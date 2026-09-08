@@ -6,10 +6,12 @@ import numpy as np
 import pandas as pd
 
 from objective.policy import IdentityFeatureMap, SoftmaxPolicy
+from objective.gridded import SplineSupportLowerBoundObjective
+from experiments.policy_utils import constant_softmax_theta
 from scripts import run_spline_lower_bound_policy as script
 
 
-def _objective() -> tuple[script.SplineSupportLowerBoundObjective, np.ndarray]:
+def _objective() -> tuple[SplineSupportLowerBoundObjective, np.ndarray]:
     grid = np.linspace(-0.1, 0.2, 31)
     x = np.asarray(
         [
@@ -34,7 +36,7 @@ def _objective() -> tuple[script.SplineSupportLowerBoundObjective, np.ndarray]:
         action_low=-0.1,
         action_high=0.2,
     )
-    objective = script.SplineSupportLowerBoundObjective(
+    objective = SplineSupportLowerBoundObjective(
         policy=policy,
         cost_grid=cost,
         acceptance_grid=acceptance,
@@ -85,7 +87,7 @@ def test_constant_policy_theta_reproduces_requested_action() -> None:
         action_low=-0.1,
         action_high=0.2,
     )
-    theta = script._constant_policy_theta(policy, feature_dim=3, initial_u=0.08)
+    theta = constant_softmax_theta(policy, feature_dim=3, action=0.08)
     actions = policy.value(theta, np.zeros((5, 3)))
 
     np.testing.assert_allclose(actions, 0.08, rtol=0.0, atol=1e-12)

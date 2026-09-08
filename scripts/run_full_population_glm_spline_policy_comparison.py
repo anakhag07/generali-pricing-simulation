@@ -30,10 +30,16 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "src"))
 
-from data.full_monotone_spline_cache import ShardedMonotoneSplineCache, sha256_file
+from data.full_monotone_spline_cache import ShardedMonotoneSplineCache
 from data.loader import load_model_artifact_pair, load_x_frame
 from experiments.paths import results_root
 from experiments.policy_artifacts import load_policy_artifact
+from experiments.policy_utils import (
+    artifact_policy_features as _artifact_policy_features,
+    constant_softmax_theta as _constant_policy_theta,
+    optimization_trace_summary as _trace_payload,
+)
+from experiments.provenance import file_record as _file_record
 from experiments.slurm import submit_to_slurm_if_needed
 from objective.base import Objective
 from objective.policy import IdentityFeatureMap, SoftmaxPolicy
@@ -201,25 +207,6 @@ class FullCacheSplineProfitObjective(Objective):
         }
 
 
-def _constant_policy_theta(policy: SoftmaxPolicy, state_dim: int, u: float) -> np.ndarray:
-    fraction = (float(u) - policy.action_low) / policy.action_span
-    if not 0.0 < fraction < 1.0:
-        raise ValueError("Initial action must lie strictly inside the policy bounds.")
-    theta = np.zeros(state_dim + 1, dtype=float)
-    theta[0] = np.log(fraction / (1.0 - fraction))
-    return theta
-
-
-def _artifact_policy_features(artifact: Any, frame: pd.DataFrame) -> np.ndarray:
-    transformed = artifact.preprocessor.transform(
-        frame.loc[:, list(artifact.x_feature_cols)]
-    )
-    features = np.asarray(transformed, dtype=float)
-    if features.ndim != 2 or not np.isfinite(features).all():
-        raise ValueError("XGBoost policy features must be a finite matrix.")
-    return features
-
-
 def _histogram(values: np.ndarray, *, series: str, population: str) -> pd.DataFrame:
     edges = np.linspace(ACTION_LOW, ACTION_HIGH, 31, dtype=float)
     edges[-1] = np.nextafter(ACTION_HIGH, np.inf)
@@ -282,30 +269,6 @@ def _plot_comparison(glm: np.ndarray, spline: np.ndarray, path: Path) -> None:
     ax.legend(fontsize=10)
     fig.savefig(path, format="pdf")
     plt.close(fig)
-
-
-def _file_record(path: Path) -> dict[str, Any]:
-    return {
-        "path": str(path.resolve()),
-        "sha256": sha256_file(path),
-        "bytes": int(path.stat().st_size),
-    }
-
-
-def _trace_payload(trace: Any) -> dict[str, Any]:
-    return {
-        "success": bool(trace.optimizer_success),
-        "status": int(trace.optimizer_status),
-        "message": str(trace.optimizer_message),
-        "steps": int(max(0, len(trace.steps) - 1)),
-        "constraint_violation": (
-            None if trace.constraint_violation is None else float(trace.constraint_violation)
-        ),
-        "optimality": (
-            None if trace.optimizer_optimality is None else float(trace.optimizer_optimality)
-        ),
-        "final_gradient_norm": float(trace.theta_grad_norms[-1]),
-    }
 
 
 def replot_saved_standalone_histograms(

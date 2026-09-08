@@ -1,4 +1,5 @@
 import re
+from html import unescape
 from pathlib import Path
 
 
@@ -61,17 +62,21 @@ def test_section_four_braces_every_superscript() -> None:
 
 def test_every_math_expression_renders_locally() -> None:
     from matplotlib.mathtext import MathTextParser
+    from markdown import markdown
 
+    rendered_markdown = markdown(_text(), extensions=["fenced_code", "tables"])
     expressions = re.findall(
         r"\$\$(.*?)\$\$|(?<!\$)\$(?!\$)(.*?)(?<!\$)\$(?!\$)",
-        _text(),
+        rendered_markdown,
         flags=re.DOTALL,
     )
     parser = MathTextParser("path")
 
     assert expressions
     for alternatives in expressions:
-        expression = " ".join(next(item for item in alternatives if item).split())
+        expression = unescape(
+            " ".join(next(item for item in alternatives if item).split())
+        )
         parser.parse(f"${expression}$")
 
 

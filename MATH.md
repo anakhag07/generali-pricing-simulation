@@ -208,15 +208,15 @@ Source: `src/objective/objectives/synthetic/fixed_regression.py`.
 ### 4.2 Planted logistic benchmark
 
 Let $z=\alpha u+\beta^{\top}x+b$ and
-$p^{*}(x)=\sigma(\alpha u^{*}+\beta^{\top}x+b)$. Then
+$p^{\star}(x)=\sigma(\alpha u^{\star}+\beta^{\top}x+b)$. Then
 
 $$
-f(u;x)=\log(1+e^{z})-p^{*}(x)z,
+f(u;x)=\log(1+e^{z})-p^{\star}(x)z,
 \qquad
-\frac{\partial f}{\partial u}=\alpha(\sigma(z)-p^{*}(x)).
+\frac{\partial f}{\partial u}=\alpha(\sigma(z)-p^{\star}(x)).
 $$
 
-The unique action optimum is $u^{*}$.
+The unique action optimum is $u^{\star}$.
 
 Source: `src/objective/objectives/synthetic/planted_logistic.py`.
 
@@ -255,8 +255,8 @@ Sources: `src/objective/objectives/generali/model_based.py`,
 The strongly convex rung is
 
 $$
-f(w)=\frac{1}{2}(w-w^{*})^{\top}A(w-w^{*}),
-\qquad \nabla f(w)=A(w-w^{*}),
+f(w)=\frac{1}{2}(w-w^{\star})^{\top}A(w-w^{\star}),
+\qquad \nabla f(w)=A(w-w^{\star}),
 $$
 
 where $A=Q\mathrm{diag}(\lambda)Q^{\top}$ has eigenvalues in
@@ -265,14 +265,14 @@ $[\mu,\mu\kappa]$.
 The smoothed nonconvex rung is
 
 $$
-f(w)=\frac{1}{2}\|w-w^{*}\|^{2}
--a_0e^{-\|w-w^{*}\|^{2}/(2s_0^{2})}
+f(w)=\frac{1}{2}\|w-w^{\star}\|^{2}
+-a_0e^{-\|w-w^{\star}\|^{2}/(2s_0^{2})}
 -\sum_j a_j\psi\!\left(\frac{\|w-c_j\|^{2}}{\rho_j^{2}}\right),
 $$
 
 where $\psi(s)=e^{1-1/(1-s)}$ for $0\leq s<1$ and zero otherwise. Disjoint
-supports, positive clearance from $w^{*}$, and
-$a_j<\frac{1}{2}(\|c_j-w^{*}\|-\rho_j)^{2}$ preserve the unique global minimum.
+supports, positive clearance from $w^{\star}$, and
+$a_j<\frac{1}{2}(\|c_j-w^{\star}\|-\rho_j)^{2}$ preserve the unique global minimum.
 Piecewise convex and double-well rungs remain explicit structural stubs.
 
 The proof-validation objective is
@@ -281,7 +281,7 @@ $$
 f(x)=x^{2}+\frac{1}{2}(\sin x-x),
 $$
 
-with $f''(x)\in[1.5,2.5]$, $x^{*}=0$, and $|f'''(x)|\leq0.5$.
+with $f''(x)\in[1.5,2.5]$, $x^{\star}=0$, and $|f'''(x)|\leq0.5$.
 
 Sources: `src/objective/objectives/synthetic/ladder.py` and
 `proof_validation.py`.

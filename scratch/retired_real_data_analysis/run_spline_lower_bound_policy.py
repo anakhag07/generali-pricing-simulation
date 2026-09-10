@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
-"""Fit a 20k spline/XGBoost support-lower-bound policy and replay it broadly.
+"""Fit a 20k support-lower-bound policy and replay it broadly.
 
 The policy is a bounded softmax-linear map fitted by the repository first-order
-trust-constr optimizer. Its minimized cost is the exact-spline model cost plus
-the absolute local-support half-width from the support-cloud figure. The fitted
-policy is then evaluated, without refitting, on every eligible customer.
+trust-constr optimizer. Its minimized cost is either the exact-spline/XGBoost
+or GLM model cost plus the absolute local-support half-width from the supplied
+support-cloud figure. The fitted policy is then evaluated, without refitting,
+on every eligible customer.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -20,7 +22,12 @@ import matplotlib
 
 matplotlib.use("Agg")
 import numpy as np
+import numpy.core.numeric as _numpy_core_numeric
 import pandas as pd
+
+# The bundled GLM pickles were written by NumPy 2 but this runtime uses NumPy 1.26.
+sys.modules.setdefault("numpy._core", np.core)
+sys.modules.setdefault("numpy._core.numeric", _numpy_core_numeric)
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -33,6 +40,11 @@ from data.loader import (
     load_observed_u_array,
     load_x_frame,
 )
+from data.dataset_metadata import (
+    ACCEPTANCE_STATE_COLS,
+    LOSS_FEATURE_COLS,
+    PREMIUM_COL,
+)
 from experiments.policy_utils import (
     artifact_policy_features as _artifact_policy_features,
     constant_softmax_theta as _constant_policy_theta,
@@ -40,11 +52,17 @@ from experiments.policy_utils import (
     optimization_trace_summary as _trace_payload,
 )
 from experiments.provenance import file_record as _file_record, file_sha256 as _sha256_file
+from experiments.policy_artifacts import load_policy_artifact
 from objective.gridded import SplineSupportLowerBoundObjective
-from objective.policy import IdentityFeatureMap, SoftmaxPolicy
+from objective.objectives.generali.model_based import ModelBasedObjective
+from objective.policy import ConstantPolicy, IdentityFeatureMap, SoftmaxPolicy
 from objective.policy_preprocessing import PolicyFeaturePreprocessor
 from optimization.solvers import run_first_order_minimize
-from reporting.profit_dispersion import load_deterministic_sample_rows, row_index_sha256
+from reporting.profit_dispersion import (
+    load_deterministic_sample_rows,
+    model_based_objective_matrix,
+    row_index_sha256,
+)
 from reporting.exact_spline_cache import load_or_build_exact_spline_response_grid
 from reporting.real_data import plot_support_action_overlay as _plot_overlay
 
@@ -60,6 +78,21 @@ DEFAULT_REFERENCE_POLICY = (
     / "optimized_policy_cropped.npz"
 )
 DEFAULT_OUTPUT_DIR = RESULTS_ROOT / "spline-xgb-support-lower-bound-policy-20k"
+DEFAULT_GLM_REFERENCE_POLICY = (
+    RESULTS_ROOT
+    / "glm-softmax-80-20-first-order"
+    / "glm-softmax-80-20-first-order"
+    / "seeds"
+    / "seed-8"
+    / "policies"
+    / "first_order"
+    / "policy.json"
+)
+DEFAULT_SPLINE_TAIL_REFERENCE_ACTIONS = (
+    RESULTS_ROOT
+    / "spline-xgb-synthetic-tail-140-lower-bound-policy-20k"
+    / "support_lower_bound_policy_full_actions.npz"
+)
 ACTION_GRID = np.linspace(-0.1, 0.2, 301)
 ACTION_LOW = float(ACTION_GRID[0])
 ACTION_HIGH = float(ACTION_GRID[-1])
@@ -90,6 +123,24 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument(
+        "--mean-model",
+        choices=("spline-xgb", "glm"),
+        default="spline-xgb",
+        help="Customer-level mean-profit model optimized beneath the support penalty.",
+    )
+    parser.add_argument(
+        "--glm-reference-policy",
+        type=Path,
+        default=DEFAULT_GLM_REFERENCE_POLICY,
+        help="Saved repository-optimizer GLM policy used only for like-for-like comparison.",
+    )
+    parser.add_argument(
+        "--spline-tail-reference-actions",
+        type=Path,
+        default=DEFAULT_SPLINE_TAIL_REFERENCE_ACTIONS,
+        help="Saved spline/XGBoost-tail optimizer actions used for comparison.",
+    )
+    parser.add_argument(
         "--response-cache",
         type=Path,
         default=None,
@@ -104,6 +155,147 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Plot only the region between mean profit and its lower bound.",
     )
     return parser
+
+
+def _load_or_build_glm_response_grid(
+    *,
+    cache_path: Path,
+    frame: pd.DataFrame,
+    row_indices: np.ndarray,
+    action_grid: np.ndarray,
+    acceptance_artifact: Any,
+    loss_artifact: Any,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Load or build the exact GLM acceptance and objective grid."""
+    identity = {
+        "row_indices_sha256": row_index_sha256(row_indices),
+        "action_grid_sha256": hashlib.sha256(
+            np.asarray(action_grid, dtype="<f8").tobytes()
+        ).hexdigest(),
+        "acceptance_artifact_sha256": _sha256_file(
+            Path(acceptance_artifact.artifact_path)
+        ),
+        "loss_artifact_sha256": _sha256_file(Path(loss_artifact.artifact_path)),
+    }
+    if cache_path.exists():
+        with np.load(cache_path, allow_pickle=False) as cached:
+            cached_identity = {
+                key: str(cached[key].item()) if key in cached else ""
+                for key in identity
+            }
+            acceptance = cached["acceptance"].astype(float)
+            cost = cached["cost"].astype(float)
+        if cached_identity == identity and acceptance.shape == cost.shape == (
+            len(row_indices),
+            len(action_grid),
+        ):
+            return acceptance, cost
+
+    objective = ModelBasedObjective(
+        policy=ConstantPolicy(),
+        acceptance_model=acceptance_artifact,
+        loss_model=loss_artifact,
+        acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),
+        loss_cols=tuple(LOSS_FEATURE_COLS),
+        premium_col=PREMIUM_COL,
+    )
+    acceptance = np.column_stack(
+        [
+            objective._acceptance_proba(
+                frame,
+                np.full(len(frame), float(proposed_u), dtype=float),
+            )
+            for proposed_u in action_grid
+        ]
+    )
+    cost = model_based_objective_matrix(
+        objective,
+        frame,
+        action_grid,
+    )
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(
+        cache_path,
+        acceptance=acceptance.astype(np.float32),
+        cost=cost.astype(np.float32),
+        **{key: np.asarray(value) for key, value in identity.items()},
+    )
+    return acceptance, cost
+
+
+def _reanchor_support_frame(
+    source: pd.DataFrame,
+    mean_profit: np.ndarray,
+    support_width: np.ndarray,
+) -> pd.DataFrame:
+    """Put the unchanged support/tail penalty underneath a new mean curve."""
+    frame = source.sort_values("u").reset_index(drop=True).copy()
+    mean = np.asarray(mean_profit, dtype=float)
+    penalty = np.asarray(support_width, dtype=float)
+    if mean.shape != ACTION_GRID.shape or penalty.shape != ACTION_GRID.shape:
+        raise ValueError("Mean profit and support penalty must align to ACTION_GRID.")
+    base_width = frame["smoothed_support_half_width"].to_numpy(dtype=float)
+    frame["mean_profit"] = mean
+    frame["smoothed_mean_profit"] = mean
+    frame["original_support_cloud_lower_profit"] = mean - base_width
+    frame["support_cloud_lower_profit"] = mean - penalty
+    frame["support_cloud_upper_profit"] = mean + base_width
+    frame["optimization_support_penalty"] = penalty
+    return frame
+
+
+def _evaluation_row(
+    *,
+    policy_name: str,
+    population: str,
+    actions: np.ndarray,
+    frame: pd.DataFrame,
+    objective: ModelBasedObjective,
+    support_width: np.ndarray | None,
+) -> dict[str, float | int | str]:
+    """Evaluate one optimizer-derived or historical action vector under GLM."""
+    u = np.asarray(actions, dtype=float).reshape(-1)
+    if u.shape != (len(frame),) or not np.isfinite(u).all():
+        raise ValueError(f"Invalid action vector for {policy_name} on {population}.")
+    acceptance = np.asarray(objective._acceptance_proba(frame, u), dtype=float)
+    loss = np.asarray(objective._loss_prediction(frame), dtype=float)
+    premium = np.asarray(objective._premium_values(frame), dtype=float)
+    profit = -np.asarray(
+        objective._value_batch_from_components(acceptance, loss, premium, u),
+        dtype=float,
+    )
+    quantiles = np.quantile(u, [0.01, 0.25, 0.5, 0.75, 0.99])
+    row: dict[str, float | int | str] = {
+        "policy": policy_name,
+        "population": population,
+        "n_customers": int(u.size),
+        "mean_action": float(np.mean(u)),
+        "population_std_action": float(np.std(u, ddof=0)),
+        "action_p01": float(quantiles[0]),
+        "action_p25": float(quantiles[1]),
+        "action_p50": float(quantiles[2]),
+        "action_p75": float(quantiles[3]),
+        "action_p99": float(quantiles[4]),
+        "glm_mean_acceptance": float(np.mean(acceptance)),
+        "glm_mean_profit": float(np.mean(profit)),
+        "glm_total_profit": float(np.sum(profit)),
+    }
+    if support_width is not None:
+        from scipy.interpolate import CubicSpline
+
+        if np.any((u < ACTION_LOW - 1e-10) | (u > ACTION_HIGH + 1e-10)):
+            raise ValueError(
+                f"Support-adjusted evaluation requires bounded actions for {policy_name}."
+            )
+        bounded_u = np.clip(u, ACTION_LOW, ACTION_HIGH)
+        penalty = np.asarray(
+            CubicSpline(ACTION_GRID, support_width, bc_type="natural")(bounded_u),
+            dtype=float,
+        )
+        row["mean_support_penalty"] = float(np.mean(penalty))
+        row["glm_support_adjusted_mean_profit"] = float(np.mean(profit - penalty))
+        row["glm_support_adjusted_total_profit"] = float(np.sum(profit - penalty))
+    return row
 
 
 def _load_support_width(csv_path: Path, manifest_path: Path) -> np.ndarray:
@@ -147,10 +339,9 @@ def _apply_policy_to_full_population(
     policy: SoftmaxPolicy,
     policy_preprocessor: PolicyFeaturePreprocessor,
     acceptance_artifact: Any,
-    eligible_rows: np.ndarray,
+    frame: pd.DataFrame,
 ) -> np.ndarray:
-    print(f"Applying saved 20k policy to {len(eligible_rows):,} eligible customers...", flush=True)
-    frame = load_x_frame("xgb", row_indices=eligible_rows)
+    print(f"Applying saved 20k policy to {len(frame):,} eligible customers...", flush=True)
     artifact_features = _artifact_policy_features(acceptance_artifact, frame)
     policy_features = policy_preprocessor.transform(artifact_features)
     return np.clip(
@@ -174,28 +365,48 @@ def run_analysis(args: argparse.Namespace) -> list[Path]:
         seed=DEFAULT_SAMPLE_SEED,
     )
     frame = load_x_frame("xgb", row_indices=sample_rows)
-    acceptance_artifact, loss_artifact = load_model_artifact_pair("xgb", "xgb")
+    if args.mean_model == "glm":
+        acceptance_artifact, loss_artifact = load_model_artifact_pair(
+            "linear", "linear"
+        )
+    else:
+        acceptance_artifact, loss_artifact = load_model_artifact_pair("xgb", "xgb")
     for artifact in (acceptance_artifact, loss_artifact):
-        if hasattr(artifact.model, "set_params"):
+        if args.mean_model != "glm" and hasattr(artifact.model, "set_params"):
             available = artifact.model.get_params(deep=False)
             if "n_jobs" in available:
                 artifact.model.set_params(n_jobs=int(args.n_jobs))
 
+    default_cache_name = (
+        "sample_glm_response_grid.npz"
+        if args.mean_model == "glm"
+        else "sample_exact_spline_response_grid.npz"
+    )
     response_cache = (
-        output_dir / "sample_exact_spline_response_grid.npz"
+        output_dir / default_cache_name
         if args.response_cache is None
         else args.response_cache.resolve()
     )
-    acceptance_grid, cost_grid = load_or_build_exact_spline_response_grid(
-        cache_path=response_cache,
-        frame=frame,
-        row_indices=sample_rows,
-        eligible_rows=eligible_rows,
-        action_grid=ACTION_GRID,
-        acceptance_artifact=acceptance_artifact,
-        loss_artifact=loss_artifact,
-        n_jobs=int(args.n_jobs),
-    )
+    if args.mean_model == "glm":
+        acceptance_grid, cost_grid = _load_or_build_glm_response_grid(
+            cache_path=response_cache,
+            frame=frame,
+            row_indices=sample_rows,
+            action_grid=ACTION_GRID,
+            acceptance_artifact=acceptance_artifact,
+            loss_artifact=loss_artifact,
+        )
+    else:
+        acceptance_grid, cost_grid = load_or_build_exact_spline_response_grid(
+            cache_path=response_cache,
+            frame=frame,
+            row_indices=sample_rows,
+            eligible_rows=eligible_rows,
+            action_grid=ACTION_GRID,
+            acceptance_artifact=acceptance_artifact,
+            loss_artifact=loss_artifact,
+            n_jobs=int(args.n_jobs),
+        )
     support_width = _load_support_width(args.support_csv, args.support_manifest)
     artifact_features = _artifact_policy_features(acceptance_artifact, frame)
     policy_preprocessor = PolicyFeaturePreprocessor(
@@ -275,12 +486,13 @@ def run_analysis(args: argparse.Namespace) -> list[Path]:
         preprocessor_transform_matrix=state["arrays"]["transform_matrix"],
     )
 
+    full_frame = load_x_frame("xgb", row_indices=eligible_rows)
     full_actions = _apply_policy_to_full_population(
         theta=theta,
         policy=policy,
         policy_preprocessor=policy_preprocessor,
         acceptance_artifact=acceptance_artifact,
-        eligible_rows=eligible_rows,
+        frame=full_frame,
     )
     full_actions_path = output_dir / "support_lower_bound_policy_full_actions.npz"
     np.savez_compressed(
@@ -293,7 +505,18 @@ def run_analysis(args: argparse.Namespace) -> list[Path]:
     histogram_path = output_dir / "support_lower_bound_policy_histogram.csv"
     histogram.to_csv(histogram_path, index=False)
 
-    support_frame = pd.read_csv(args.support_csv)
+    source_support_frame = pd.read_csv(args.support_csv)
+    support_frame_path: Path | None = None
+    if args.mean_model == "glm":
+        support_frame = _reanchor_support_frame(
+            source_support_frame,
+            -np.mean(cost_grid, axis=0),
+            support_width,
+        )
+        support_frame_path = output_dir / "glm_synthetic_tail_support_cloud.csv"
+        support_frame.to_csv(support_frame_path, index=False)
+    else:
+        support_frame = source_support_frame
     overlay_path = output_dir / "mean_profit_support_cloud_with_lower_bound_policy.pdf"
     _plot_overlay(
         support_frame,
@@ -302,12 +525,102 @@ def run_analysis(args: argparse.Namespace) -> list[Path]:
         lower_only=bool(args.lower_only_cloud),
     )
 
+    comparison_path: Path | None = None
+    comparison_rows: list[dict[str, float | int | str]] = []
+    if args.mean_model == "glm":
+        glm_objective = ModelBasedObjective(
+            policy=ConstantPolicy(),
+            acceptance_model=acceptance_artifact,
+            loss_model=loss_artifact,
+            acceptance_state_cols=tuple(ACCEPTANCE_STATE_COLS),
+            loss_cols=tuple(LOSS_FEATURE_COLS),
+            premium_col=PREMIUM_COL,
+        )
+        historical_full_actions = load_observed_u_array(
+            "xgb", row_indices=eligible_rows
+        )
+        glm_reference = load_policy_artifact(args.glm_reference_policy)
+        glm_reference_full_actions = np.asarray(
+            glm_reference.predict_u(x_batch=full_frame), dtype=float
+        )
+        glm_reference_sample_actions = np.asarray(
+            glm_reference.predict_u(x_batch=frame), dtype=float
+        )
+        with np.load(args.spline_tail_reference_actions, allow_pickle=False) as saved:
+            spline_tail_rows = np.asarray(saved["row_indices"], dtype=int)
+            spline_tail_full_actions = np.asarray(saved["actions"], dtype=float)
+        if not np.array_equal(spline_tail_rows, eligible_rows):
+            raise ValueError("Spline-tail reference actions do not align to eligible rows.")
+        sample_positions = np.searchsorted(eligible_rows, sample_rows)
+        if not np.array_equal(eligible_rows[sample_positions], sample_rows):
+            raise ValueError("Deterministic sample rows are not aligned to eligible rows.")
+        spline_tail_sample_actions = spline_tail_full_actions[sample_positions]
+        historical_sample_actions = historical_full_actions[sample_positions]
+
+        for population, eval_frame, policies in (
+            (
+                "deterministic_20k",
+                frame,
+                (
+                    ("historical_actions", historical_sample_actions, None),
+                    ("glm_reference_policy", glm_reference_sample_actions, support_width),
+                    ("spline_xgb_synthetic_tail_policy", spline_tail_sample_actions, support_width),
+                    ("glm_synthetic_tail_policy", sample_actions, support_width),
+                ),
+            ),
+            (
+                "full_eligible",
+                full_frame,
+                (
+                    ("historical_actions", historical_full_actions, None),
+                    ("glm_reference_policy", glm_reference_full_actions, support_width),
+                    ("spline_xgb_synthetic_tail_policy", spline_tail_full_actions, support_width),
+                    ("glm_synthetic_tail_policy", full_actions, support_width),
+                ),
+            ),
+        ):
+            for policy_name, actions, width in policies:
+                comparison_rows.append(
+                    _evaluation_row(
+                        policy_name=policy_name,
+                        population=population,
+                        actions=actions,
+                        frame=eval_frame,
+                        objective=glm_objective,
+                        support_width=width,
+                    )
+                )
+        comparison = pd.DataFrame(comparison_rows)
+        for population in comparison["population"].unique():
+            mask = comparison["population"] == population
+            historical_total = float(
+                comparison.loc[
+                    mask & (comparison["policy"] == "historical_actions"),
+                    "glm_total_profit",
+                ].iloc[0]
+            )
+            comparison.loc[mask, "glm_total_profit_uplift_vs_historical"] = (
+                comparison.loc[mask, "glm_total_profit"] - historical_total
+            )
+        comparison_path = output_dir / "glm_policy_comparison.csv"
+        comparison.to_csv(comparison_path, index=False)
+
     full_quantiles = np.quantile(
         full_actions,
         [0.01, 0.05, 0.25, 0.5, 0.75, 0.95, 0.99],
     )
+    output_candidates = [
+        policy_path,
+        full_actions_path,
+        histogram_path,
+        overlay_path,
+    ]
+    if support_frame_path is not None:
+        output_candidates.append(support_frame_path)
+    if comparison_path is not None:
+        output_candidates.append(comparison_path)
     summary = {
-        "analysis": "20k-spline-xgb-support-lower-bound-softmax-policy",
+        "analysis": f"20k-{args.mean_model}-support-lower-bound-softmax-policy",
         "sample": {
             "n_customers": int(sample_rows.size),
             "seed": DEFAULT_SAMPLE_SEED,
@@ -329,12 +642,29 @@ def run_analysis(args: argparse.Namespace) -> list[Path]:
             },
         },
         "models": {
-            "acceptance": "exact monotone-spline XGBoost",
-            "loss": "XGBoost financial risk",
-            "spline_boundary_rules": "constant left; clipped-linear right",
+            "mean_profit_family": args.mean_model,
+            "acceptance": (
+                "GLM acceptance"
+                if args.mean_model == "glm"
+                else "exact monotone-spline XGBoost"
+            ),
+            "loss": (
+                "GLM financial risk"
+                if args.mean_model == "glm"
+                else "XGBoost financial risk"
+            ),
+            "spline_boundary_rules": (
+                None
+                if args.mean_model == "glm"
+                else "constant left; clipped-linear right"
+            ),
             "spline_construction": (
-                "17 raw-XGBoost anchors, weighted smoothing spline, isotonic "
-                "projection, then PCHIP"
+                None
+                if args.mean_model == "glm"
+                else (
+                    "17 raw-XGBoost anchors, weighted smoothing spline, isotonic "
+                    "projection, then PCHIP"
+                )
             ),
             "acceptance_artifact": _file_record(
                 Path(acceptance_artifact.artifact_path)
@@ -343,7 +673,10 @@ def run_analysis(args: argparse.Namespace) -> list[Path]:
         },
         "policy": {
             "class": "objective.policy.SoftmaxPolicy",
-            "feature_map": "IdentityFeatureMap over fitted standardized/sphered XGBoost features",
+            "feature_map": (
+                "IdentityFeatureMap over fitted standardized/sphered "
+                f"{args.mean_model} artifact features"
+            ),
             "formula": "u_i(theta) = -0.1 + 0.3 * sigmoid(theta_0 + theta_x^T z_i)",
             "theta": np.asarray(theta, dtype=float).tolist(),
             "preprocessor": state["metadata"],
@@ -368,6 +701,7 @@ def run_analysis(args: argparse.Namespace) -> list[Path]:
         },
         "initial_policy_on_sample": initial_summary,
         "optimized_policy_on_sample": final_summary,
+        "glm_policy_comparison": comparison_rows if comparison_rows else None,
         "optimizer": {
             "entry_point": "optimization.solvers.run_first_order_minimize",
             "step_rule": "trust-constr",
@@ -384,15 +718,20 @@ def run_analysis(args: argparse.Namespace) -> list[Path]:
                 args.acceptance_reference_policy
             ),
             "response_cache": _file_record(response_cache),
+            "glm_reference_policy": (
+                _file_record(args.glm_reference_policy)
+                if args.mean_model == "glm"
+                else None
+            ),
+            "spline_tail_reference_actions": (
+                _file_record(args.spline_tail_reference_actions)
+                if args.mean_model == "glm"
+                else None
+            ),
         },
         "outputs": {
             path.name: _sha256_file(path)
-            for path in (
-                policy_path,
-                full_actions_path,
-                histogram_path,
-                overlay_path,
-            )
+            for path in output_candidates
         },
     }
     summary_path = output_dir / "summary.json"
@@ -400,7 +739,7 @@ def run_analysis(args: argparse.Namespace) -> list[Path]:
         json.dumps(summary, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
-    outputs = [overlay_path, policy_path, full_actions_path, histogram_path, summary_path]
+    outputs = [*output_candidates, summary_path]
     for output in outputs:
         print(output, flush=True)
     return outputs

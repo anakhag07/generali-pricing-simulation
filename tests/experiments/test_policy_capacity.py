@@ -317,10 +317,28 @@ def test_capacity_plots_use_supplied_metadata_and_observed_model_names(
         tmp_path,
         family="glm",
         train_size=137,
+        comparison_points=(
+            {
+                "label": "MLP (609 parameters)",
+                "parameter_count": 609,
+                "train_profit_mean": 1.1,
+                "train_profit_ci95": 0.1,
+                "test_profit_mean": 1.0,
+                "test_profit_ci95": 0.1,
+            },
+        ),
+        degree_label="Total polynomial degree",
+        output_stem="objective_vs_policy_capacity_glm_with_mlp",
+        append_comparisons=True,
     )
     objective_ax = captured_figures[-1].axes[0]
-    assert any(np.allclose(line.get_xdata(), [137, 137]) for line in objective_ax.lines)
-    assert "Train size (137)" in [text.get_text() for text in objective_ax.get_legend().texts]
+    assert objective_ax.get_xlabel() == "Decision rule (parameter count)"
+    assert objective_ax.get_xticklabels()[-1].get_text() == "MLP\n(609)"
+    assert "MLP (609 parameters)" in [
+        text.get_text() for text in objective_ax.get_legend().texts
+    ]
+    assert "MLP (609 parameters)" in [text.get_text() for text in objective_ax.texts]
+    assert captured_figures[-1].axes[1].get_ylabel() == "Total polynomial degree"
 
     visualization.plot_policy_capacity_generalization_gap(
         summary,
@@ -329,7 +347,11 @@ def test_capacity_plots_use_supplied_metadata_and_observed_model_names(
         train_size=137,
     )
     gap_ax = captured_figures[-1].axes[0]
-    assert any(np.allclose(line.get_xdata(), [137, 137]) for line in gap_ax.lines)
+    assert any(
+        len(line.get_xdata()) == 2
+        and np.allclose(np.asarray(line.get_xdata(), dtype=float), [137, 137])
+        for line in gap_ax.lines
+    )
 
     visualization.plot_policy_capacity_model_transfer(
         summary,
@@ -340,7 +362,11 @@ def test_capacity_plots_use_supplied_metadata_and_observed_model_names(
     transfer_ax = captured_figures[-1].axes[0]
     transfer_labels = [text.get_text() for text in transfer_ax.get_legend().texts]
     assert transfer_labels == ["Evaluated by GLM", "Evaluated by FUTURE_MODEL"]
-    assert any(np.allclose(line.get_xdata(), [137, 137]) for line in transfer_ax.lines)
+    assert any(
+        len(line.get_xdata()) == 2
+        and np.allclose(np.asarray(line.get_xdata(), dtype=float), [137, 137])
+        for line in transfer_ax.lines
+    )
 
     visualization.plot_policy_capacity_endpoint_slices(
         [

@@ -2153,8 +2153,18 @@ def plot_policy_capacity_objective(
     *,
     family: str,
     train_size: int,
+    comparison_points: Sequence[Mapping[str, object]] = (),
+    degree_label: str = "Chebyshev degree",
+    output_stem: str | None = None,
+    append_comparisons: bool = False,
 ) -> Path:
-    """Plot train/test profit against parameter count for one model family."""
+    """Plot train/test profit against parameter count for one model family.
+
+    Optional comparison points are drawn as standalone diamonds so another
+    policy architecture can be shown without treating it as part of the
+    softmax degree ladder. Each point must provide ``label``,
+    ``parameter_count``, and train/test profit means and 95% CI half-widths.
+    """
     frame = _capacity_frame(summary)
     matched = frame.loc[frame["optimize_model"] == frame["evaluate_model"]]
     subset = matched.loc[matched["optimize_model"] == family].sort_values("parameter_count")
@@ -2165,14 +2175,16 @@ def plot_policy_capacity_objective(
     colormap = matplotlib.colormaps["viridis"]
     fig, ax = plt.subplots(figsize=(7.5, 4.8), constrained_layout=True)
     scalar_mappable = matplotlib.cm.ScalarMappable(norm=normalization, cmap=colormap)
+    comparison_points = tuple(comparison_points)
     params = subset["parameter_count"].to_numpy(dtype=float)
+    plot_positions = np.arange(params.size, dtype=float) if append_comparisons else params
     train = subset["train_profit_mean"].to_numpy(dtype=float)
     test = subset["test_profit_mean"].to_numpy(dtype=float)
     colors = colormap(normalization(subset["degree"].to_numpy(dtype=float)))
-    ax.plot(params, train, color="C0", linewidth=1.5, alpha=0.55)
-    ax.plot(params, test, color="C1", linewidth=1.5, alpha=0.55)
+    ax.plot(plot_positions, train, color="C0", linewidth=1.5, alpha=0.55)
+    ax.plot(plot_positions, test, color="C1", linewidth=1.5, alpha=0.55)
     ax.errorbar(
-        params,
+        plot_positions,
         train,
         yerr=subset["train_profit_ci95"].to_numpy(dtype=float),
         fmt="none",
@@ -2181,7 +2193,7 @@ def plot_policy_capacity_objective(
         alpha=0.65,
     )
     ax.errorbar(
-        params,
+        plot_positions,
         test,
         yerr=subset["test_profit_ci95"].to_numpy(dtype=float),
         fmt="none",
@@ -2190,7 +2202,7 @@ def plot_policy_capacity_objective(
         alpha=0.65,
     )
     ax.scatter(
-        params,
+        plot_positions,
         train,
         marker="o",
         s=48,
@@ -2200,7 +2212,7 @@ def plot_policy_capacity_objective(
         zorder=3,
     )
     ax.scatter(
-        params,
+        plot_positions,
         test,
         c=subset["degree"],
         cmap=colormap,
@@ -2211,9 +2223,82 @@ def plot_policy_capacity_objective(
         linewidths=0.5,
         zorder=3,
     )
-    ax.axvline(train_size, color="C2", linestyle="--", linewidth=1.2)
+    comparison_labels: list[str] = []
+    comparison_tick_labels: list[str] = []
+    for index, point in enumerate(comparison_points):
+        label = str(point["label"])
+        parameter_count = float(point["parameter_count"])
+        plot_position = float(params.size + index) if append_comparisons else parameter_count
+        train_mean = float(point["train_profit_mean"])
+        test_mean = float(point["test_profit_mean"])
+        train_ci95 = float(point["train_profit_ci95"])
+        test_ci95 = float(point["test_profit_ci95"])
+        ax.errorbar(
+            [plot_position],
+            [train_mean],
+            yerr=[train_ci95],
+            fmt="none",
+            ecolor="C3",
+            capsize=2,
+            alpha=0.65,
+        )
+        ax.errorbar(
+            [plot_position],
+            [test_mean],
+            yerr=[test_ci95],
+            fmt="none",
+            ecolor="C3",
+            capsize=2,
+            alpha=0.65,
+        )
+        ax.scatter(
+            [plot_position],
+            [train_mean],
+            marker="D",
+            s=54,
+            facecolors="none",
+            edgecolors="C3",
+            linewidths=1.5,
+            zorder=4,
+        )
+        ax.scatter(
+            [plot_position],
+            [test_mean],
+            marker="D",
+            s=54,
+            facecolors="C3",
+            edgecolors="black",
+            linewidths=0.5,
+            zorder=4,
+        )
+        ax.annotate(
+            label,
+            xy=(plot_position, max(train_mean + train_ci95, test_mean + test_ci95)),
+            xytext=(0, 5),
+            textcoords="offset points",
+            ha="center",
+            va="bottom",
+            fontsize=10,
+        )
+        comparison_labels.append(label)
+        comparison_name = label.split(" (", maxsplit=1)[0]
+        comparison_tick_labels.append(f"{comparison_name}\n({int(parameter_count):,})")
+    if append_comparisons:
+        polynomial_tick_labels = [
+            f"Degree {int(degree)}\n({int(parameter_count):,})"
+            for degree, parameter_count in zip(subset["degree"], params, strict=True)
+        ]
+        ax.set_xticks(
+            np.arange(params.size + len(comparison_points), dtype=float),
+            labels=[*polynomial_tick_labels, *comparison_tick_labels],
+        )
+    else:
+        ax.axvline(train_size, color="C2", linestyle="--", linewidth=1.2)
     ax.set_title(f"{family.upper()} objective performance versus policy capacity", fontsize=16)
-    ax.set_xlabel("Policy parameter count", fontsize=12)
+    ax.set_xlabel(
+        "Decision rule (parameter count)" if append_comparisons else "Policy parameter count",
+        fontsize=12,
+    )
     ax.set_ylabel("Expected profit per customer", fontsize=12)
     ax.tick_params(labelsize=10)
     ax.grid(True, alpha=0.3)
@@ -2222,13 +2307,28 @@ def plot_policy_capacity_objective(
     legend_handles = [
         Line2D([], [], color="C0", marker="o", markerfacecolor="none", label="Train mean"),
         Line2D([], [], color="C1", marker="o", label="Test mean"),
-        Line2D([], [], color="C2", linestyle="--", label=f"Train size ({train_size})"),
     ]
+    if not append_comparisons:
+        legend_handles.append(
+            Line2D([], [], color="C2", linestyle="--", label=f"Train size ({train_size})")
+        )
+    legend_handles.extend(
+        Line2D(
+            [],
+            [],
+            color="C3",
+            marker="D",
+            linestyle="none",
+            label=label,
+        )
+        for label in comparison_labels
+    )
     ax.legend(handles=legend_handles, fontsize=10)
-    colorbar = fig.colorbar(scalar_mappable, ax=ax, label="Chebyshev degree")
+    colorbar = fig.colorbar(scalar_mappable, ax=ax, label=degree_label)
     colorbar.ax.tick_params(labelsize=10)
-    colorbar.set_label("Chebyshev degree", fontsize=12)
-    return _save_capacity_figure(fig, output_dir, f"objective_vs_policy_capacity_{family}")
+    colorbar.set_label(degree_label, fontsize=12)
+    stem = output_stem or f"objective_vs_policy_capacity_{family}"
+    return _save_capacity_figure(fig, output_dir, stem)
 
 
 def plot_policy_capacity_generalization_gap(

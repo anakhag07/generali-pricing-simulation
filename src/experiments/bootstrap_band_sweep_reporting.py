@@ -24,7 +24,7 @@ def plot_sweep(rows, payload, destination):
               "B": r"Bootstrap refit count $B$"}
     with plt.rc_context(style):
         for metric, filename, title in zip(("coverage", "width_at_true_optimum", "regret"), names, titles):
-            fig, axes = plt.subplots(1, 3, figsize=(15, 4.5), constrained_layout=True)
+            fig, axes = plt.subplots(1, 3, figsize=(15, 4.5), sharey=True, constrained_layout=True)
             fig.suptitle(title)
             for ax, axis in zip(axes, ("sigma", "N", "B")):
                 group = sorted((r for r in rows if r["axis"] == axis), key=lambda r: r["axis_value"])

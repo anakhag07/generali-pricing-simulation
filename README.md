@@ -272,6 +272,32 @@ $$\pi$$ is exactly the single event $$|Z_s|\le q_\delta$$.
 
 ### Bootstrap OLS band constructed from observations
 
+The original finite-grid experiment below is preserved for provenance. To redo
+its saved fits analytically over the **entire real line**, run:
+
+```bash
+python scripts/run_experiment_manifest.py manifests/bootstrap_ols_continuous_replay.json --launch local
+```
+
+This replay uses exactly the saved observations, OLS fits, and all bootstrap
+coefficients. Every bootstrap supremum is bracketed by exact rational quartic
+sign checks, including both tails, and the quantile is recalibrated from those
+all-real statistics. Every observed dataset receives an analytical containment
+Boolean from `c_hat²*sigma_hat²*p(a)'V*p(a) - e(a)² >= 0` for all real `a`.
+The sign certificates apply to the saved numerical polynomials; repeated-data
+coverage remains an empirical evaluation of an approximate bootstrap procedure.
+No plot samples enter calibration or coverage, and no coefficient ellipsoid is
+used. See MATH.md §7.2.
+
+Results go to `results/bootstrap-ols-continuous-replay/`, preserving the old
+experiment. Four mathematically labeled PDFs show the true/fitted/bootstrap
+curves and signed error, bootstrap calibration and whole-line normalized error,
+saved error realizations at `n=100` across noise SD, and empirical coverage/band
+width for all original conditions. Finite display windows are explicitly
+labeled; a compactified panel uses `theta=arctan(a)` to display both infinite
+tails. The old across-dataset coefficient figure is omitted. A CSV records the
+original coefficients, first bootstrap fit, and central 95% bootstrap ranges.
+
 ```bash
 python scripts/run_experiment_manifest.py manifests/bootstrap_ols_grid_band.json --launch local
 ```

@@ -489,6 +489,69 @@ ellipsoid or optimizer/action selection is involved.
 Sources: `src/experiments/bootstrap_band.py`,
 `src/experiments/bootstrap_band_reporting.py`.
 
+### 7.2 Analytical replay on the entire real line
+
+The all-real replay reads exactly the observations, OLS coefficients, residual
+scale estimates, and bootstrap coefficients saved by section 7.1. It does not
+draw new data. Write $V=(P^\top P)^{-1}$ and $v(a)=p(a)^\top Vp(a)$. Then
+
+$$
+e(a)=p(a)^\top(\widehat\beta-\beta_0)
+=p(a)^\top\left(\sum_i p_i p_i^\top\right)^{-1}\sum_i p_i\varepsilon_i.
+$$
+
+For every coefficient difference $d$, replace the grid statistic by
+
+$$
+T(d)=\sup_{a\in\mathbb{R}}\frac{|p(a)^\top d|}{\widehat\sigma\sqrt{v(a)}}.
+$$
+
+For $h(a)=p(a)^\top d$ and $q(a)=\widehat\sigma^2v(a)$, finite nonzero
+stationary values of $h(a)^2/q(a)$ satisfy $2h'(a)q(a)-h(a)q'(a)=0$.
+The nominal degree-five term cancels, leaving degree at most four. Both tails
+have the limit $d_2^2/(\widehat\sigma^2 V_{22})$. Numerical polynomial roots
+and this tail limit propose the statistic; exact rational polynomial sign
+tests certify lower and upper bounds. The final saved interval has width at
+most twice the configured tolerance times $\max(1,T)$, apart from rounding.
+No grid selects or checks the statistic. These are user-requested analytical
+coverage statistics, not optimizer actions or pricing optima.
+
+Specifically, for every tested threshold $t\geq0$,
+
+$$
+T(d)\leq t\quad\Longleftrightarrow\quad
+H_{t,d}(a)=t^2q(a)-h(a)^2\geq0\quad\forall a\in\mathbb{R}.
+$$
+
+The exact sign test handles zero and constant polynomials, checks leading sign
+and degree, and counts real roots of the odd-multiplicity square-free factors.
+A positive-leading even-degree polynomial is nonnegative on the real line
+exactly when all its real roots have even multiplicity. Saved binary floating
+point inputs are interpreted as exact rationals for these sign decisions;
+OLS itself remains a floating-point fit. Ambiguous numerical proposals are
+refined until the certificate succeeds, or fail explicitly.
+
+Calibration uses $T(\widehat\beta_b^{\ast}-\widehat\beta)$ only. Its empirical
+quantile uses certified upper bounds (a conservatively rounded approximation
+within the stored quantile bracket), retaining `method="higher"` and the
+original fit's standard error in all denominators. Truth is used afterward:
+
+$$
+C_r=\mathbf{1}\left[
+\widehat c^2\widehat\sigma^2v(a)-e_r(a)^2\geq0
+\quad\forall a\in\mathbb{R}\right],\qquad
+\widehat{\mathrm{Coverage}}=\frac{1}{R}\sum_{r=1}^{R}C_r.
+$$
+
+Each realized containment decision is algebraic over the whole real line.
+The repeated-dataset coverage rate remains empirical validation of approximate
+bootstrap coverage, not a theorem of exact 95% sampling coverage. Figures show
+finite display windows only. The observed fitting error is checked against
+the known observation-error identity; residuals are not substituted for
+$\varepsilon_i$ in that identity.
+
+Source: `src/experiments/bootstrap_band_continuous.py`.
+
 ## 8. Gradients and Estimators
 
 For a differentiable action objective and policy, the population chain rule is

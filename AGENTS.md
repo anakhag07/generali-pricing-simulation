@@ -388,6 +388,24 @@ Changing the `models` array is the supported model swap. Available keys are
 
 ### Key Components
 
+- `src/experiments/bootstrap_band_continuous.py` analytically replays the saved
+  bootstrap OLS experiment on the whole real line (MATH.md §7.2). It computes
+  coverage statistics from the quartic stationary equation/tail limit, then
+  certifies supremum brackets and actual containment via exact rational
+  polynomial nonnegativity (SymPy root counts and square-free factors). This
+  implements the user's explicit analytical coverage request; it does not
+  select optimizer actions. Saved data and bootstrap coefficients are replayed
+  unchanged; truth only evaluates the recalibrated band. The new manifest kind
+  `bootstrap_ols_continuous_replay` uses the shared manifest launcher and writes
+  a distinct result tree, never overwriting the historical grid analysis.
+  `bootstrap_band_continuous_reporting.py` renders four mathematical PDFs;
+  rendering samples and finite display windows never enter calibration or
+  containment. Exact sign tests certify represented numerical polynomials;
+  approximate bootstrap sampling coverage is still validated empirically.
+  `tests/experiments/test_bootstrap_band_continuous.py` tests finite/tail
+  suprema, exact roots with multiplicity, numerical-proposal recovery, source
+  replay, saved certificates, and PDF collection.
+
 - `src/experiments/bootstrap_band.py` implements the direct Gaussian parametric
   bootstrap OLS band of MATH.md §7.1. It fits observations, uses the original
   prediction SE in bootstrap denominators, and reports finite-grid coverage.

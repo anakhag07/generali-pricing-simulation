@@ -53,6 +53,28 @@ pip install -e ".[dev]"
 pytest -q
 ```
 
+### Controlled bootstrap envelope sweeps
+
+```bash
+python scripts/run_experiment_manifest.py manifests/bootstrap_ols_controlled_sweep.json --launch local
+```
+
+This paired Gaussian quadratic-OLS experiment varies observation-noise SD
+`sigma`, training size `N`, and bootstrap count `B`, one at a time. Both the
+confidence statement and unconstrained LCB optimization cover the entire real
+line; normal training inputs and optimizer initialization in `[0,1]` impose
+no action bounds. Each observed dataset has its own bootstrap band.
+
+Three PDFs report simultaneous coverage, envelope half-width at the true
+optimum, and LCB regret. All reported actions come from the repository
+optimizer, with additional all-real polynomial gap certification. Unbounded or
+uncertified cases have explicit counts rather than silently reported regret.
+Outputs, saved fits/bootstrap perturbations, exact containment polynomials,
+seeds, source hashes, and `EXPERIMENT.md` live under
+`results/bootstrap-ols-controlled-sweep/`. Calibration uses no truth or grid.
+See MATH.md §7.3 for pairing, width semantics, and the coverage-event regret
+bound. The fixed-denominator bootstrap's sampling coverage is approximate.
+
 ## What This Does
 
 Most objectives optimize a parameterized policy over state vectors:

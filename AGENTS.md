@@ -388,6 +388,18 @@ Changing the `models` array is the supported model swap. Available keys are
 
 ### Key Components
 
+- `src/experiments/bootstrap_band_sweep.py` and its `_reporting.py` companion
+  implement `kind: "bootstrap_ols_controlled_sweep"` through the shared manifest
+  launcher. They pair normal inputs/observation noise/bootstrap streams across
+  sigma/N/B, certify bootstrap containment on R, and use repository first-order
+  L-BFGS-B without bounds for LCB and true-reference actions. Exact polynomial
+  sign cells verify returned actions' global gaps; they never select actions.
+  Report width at the true optimum, not infinite whole-line maximum width.
+  Three metric PDFs and per-dataset NPZ/JSONs keep failed/unbounded/degenerate
+  optimization denominators explicit. The historical grid and all-real replay
+  are unchanged. `test_bootstrap_band_sweep.py` checks pairing, refit identities,
+  exact sign cells, analytical gradients, unconstrained solver use, and replay.
+
 - `src/experiments/bootstrap_band_continuous.py` analytically replays the saved
   bootstrap OLS experiment on the whole real line (MATH.md §7.2). It computes
   coverage statistics from the quartic stationary equation/tail limit, then

@@ -32,6 +32,12 @@ from experiments.policy_capacity import (
     build_policy_capacity_launch_plan,
     load_policy_capacity_manifest,
 )
+from experiments.bootstrap_band import (
+    MANIFEST_KIND as BOOTSTRAP_BAND_MANIFEST_KIND,
+    BootstrapBandManifest,
+    build_bootstrap_band_launch_plan,
+    load_bootstrap_band_manifest,
+)
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -53,7 +59,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def _apply_manifest_launch_defaults(
     args: argparse.Namespace,
-    manifest: ExperimentManifest | PolicyLCBManifest | PolicyCapacityManifest,
+    manifest: ExperimentManifest | PolicyLCBManifest | PolicyCapacityManifest | BootstrapBandManifest,
 ) -> None:
     if args.array_max_parallel is None:
         args.array_max_parallel = manifest.launch.array_max_parallel
@@ -176,6 +182,11 @@ def main(argv: list[str] | None = None) -> None:
             manifest,
             runs_root=args.runs_root,
             force=bool(args.force),
+        )
+    elif kind == BOOTSTRAP_BAND_MANIFEST_KIND:
+        manifest = load_bootstrap_band_manifest(Path(args.manifest))
+        plan = build_bootstrap_band_launch_plan(
+            manifest, runs_root=args.runs_root, force=bool(args.force),
         )
     else:
         raise ValueError(f"Unsupported experiment manifest kind {kind!r}.")

@@ -434,6 +434,61 @@ support-risk proxy, not a calibrated confidence interval.
 Sources: `src/experiments/policy_lcb/`,
 `src/objective/modifications/regularization.py`.
 
+### 7.1 Quadratic OLS bootstrap band on a finite grid
+
+The bootstrap construction uses independent training inputs $x_i\sim N(0,1)$
+and errors $\varepsilon_i\sim N(0,\sigma^2)$, with
+
+$$
+y_i=5x_i-5x_i^2+\varepsilon_i,\qquad
+p(a)=(1,a,a^2)^\top,\qquad P_{i,:}=p(x_i)^\top.
+$$
+
+Quadratic OLS fits all three coefficients, including the intercept. With
+full column rank and $n>3$,
+
+$$
+\widehat\beta=(P^\top P)^{-1}P^\top y,\qquad
+\widehat\sigma^2=\frac{\|y-P\widehat\beta\|^2}{n-3},\qquad
+\widehat s(a)=\widehat\sigma\sqrt{p(a)^\top(P^\top P)^{-1}p(a)}.
+$$
+
+The implementation uses reduced QR solves, avoiding the normal-equation
+inverse. Conditional on the fitted dataset it generates $B$ independent
+Gaussian parametric bootstrap responses and refits at the fixed design:
+
+$$
+y_b^{\ast}=P\widehat\beta+\widehat\sigma Z_b,\qquad Z_b\sim N(0,I_n),\qquad
+T_b^{\ast}=\max_{a\in\mathcal{G}}
+\frac{|p(a)^\top(\widehat\beta_b^{\ast}-\widehat\beta)|}{\widehat s(a)}.
+$$
+
+Here $\mathcal{G}$ is the manifest's inclusive equally spaced grid in $[0,1]$.
+The original fit's $\widehat s$ stays fixed in all bootstrap denominators.
+Let $\widehat c$ be the empirical $(1-\delta)$ quantile using NumPy's
+`method="higher"` (zero-based sorted index `ceil((B-1)*(1-delta))`). Then
+
+$$
+r_\delta(a)=\widehat c\,\widehat s(a),\qquad
+C=\mathbf{1}\left[
+\max_{a\in\mathcal{G}}\frac{|\widehat f(a)-f(a)|}{\widehat s(a)}
+\leq\widehat c\right].
+$$
+
+Calibration takes only observations and bootstrap randomness; truth is used
+only to generate data and evaluate coverage. Stage 1 reports one Boolean $C$.
+Stage 2 redraws inputs and errors independently, reconstructs each band, and
+reports the fraction of $R$ covered datasets with a 95% Wilson interval.
+The target is approximate bootstrap coverage on the grid, not a finite-sample
+proof or a continuous-domain guarantee. In particular this fixed-denominator
+bootstrap does not reproduce the sampling variation of the residual variance
+estimate in the observed statistic. Polynomial evaluations exist off-grid,
+but grid calibration does not certify between-grid coverage. No coefficient
+ellipsoid or optimizer/action selection is involved.
+
+Sources: `src/experiments/bootstrap_band.py`,
+`src/experiments/bootstrap_band_reporting.py`.
+
 ## 8. Gradients and Estimators
 
 For a differentiable action objective and policy, the population chain rule is

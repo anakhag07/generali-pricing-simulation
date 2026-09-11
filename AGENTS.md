@@ -388,6 +388,23 @@ Changing the `models` array is the supported model swap. Available keys are
 
 ### Key Components
 
+- `src/experiments/bootstrap_band.py` implements the direct Gaussian parametric
+  bootstrap OLS band of MATH.md §7.1. It fits observations, uses the original
+  prediction SE in bootstrap denominators, and reports finite-grid coverage.
+  `bootstrap_band(...)` has no truth argument; `evaluate_band(...)` is separate.
+  The `bootstrap_ols_grid_band` kind routes through the existing manifest runner
+  using `manifests/bootstrap_ols_grid_band.json`; stage 1 is one dataset and stage
+  2 independently repeats datasets over explicit n/noise axes. The grid maximum
+  is the requested coverage statistic, not an optimized action. There are no
+  optimizer selections or coefficient ellipsoids. Calibration is approximate,
+  and does not establish continuous or exact finite-sample coverage.
+- `src/experiments/bootstrap_band_reporting.py` regenerates five PDF-only
+  diagnostic figures from saved data. Per-condition NPZs preserve observations,
+  OLS/bootstrap coefficients, bootstrap maxima, and grid bands. Summary hashes
+  validate the source/manifest contract and artifacts before completion reuse.
+  `tests/experiments/test_bootstrap_band.py` checks OLS/refit equivalence,
+  fixed-denominator calibration, coverage events, and artifact replay.
+
 #### Objective Layer (`src/objective/`)
 
 - **`src/objective/_math.py`** (private)

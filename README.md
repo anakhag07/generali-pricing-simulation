@@ -270,6 +270,36 @@ it follows because the policy-indexed error is rank one,
 $$\widehat V_s(\pi)-V(\pi)=\pi Z_s$$, so simultaneous coverage over every
 $$\pi$$ is exactly the single event $$|Z_s|\le q_\delta$$.
 
+### Bootstrap OLS band constructed from observations
+
+```bash
+python scripts/run_experiment_manifest.py manifests/bootstrap_ols_grid_band.json --launch local
+```
+
+This two-stage experiment fits quadratic OLS to independent `x ~ N(0,1)` and
+`y = 5*x - 5*x**2 + Gaussian noise`. Stage 1 uses `n=100`, noise SD `1`, and
+499 fixed-input Gaussian parametric bootstrap refits. It calibrates a direct
+maximum standardized prediction error on 1,001 points in `[0,1]`, using the
+original fit's prediction standard error for every bootstrap denominator.
+The 95th-percentile critical value uses `np.quantile(method="higher")`.
+There is no coefficient ellipsoid. Synthetic truth enters generation and
+evaluation only. One dataset gives one Boolean grid-coverage result.
+
+Stage 2 independently repeats fitting and calibration for 100 datasets per
+condition, with sample sizes `{25,100,500}` and observation noise SDs
+`{0.5,1,2}`. It reports simultaneous grid-coverage fractions and Wilson intervals,
+OLS coefficient spread, residual variance estimates, and band widths.
+This is empirical validation of approximate bootstrap coverage on the grid,
+not a finite-sample proof or a continuous-domain guarantee. The polynomial is
+defined for all real inputs; only the specified grid is covered by the claim.
+
+Outputs under `results/bootstrap-ols-grid-band/` include `EXPERIMENT.md`, a
+`summary.json`, raw dataset and coverage CSVs, replayable per-condition NPZs
+with all bootstrap coefficients/maxima, and five vector PDFs. Separate derived
+seeds control design, response noise, and bootstrap, with independent streams
+across both stages and every condition. The runner reuses matching completed
+conditions; `--force` regenerates them. See MATH.md §7.1 for the exact formulas.
+
 ### Variable-Envelope Finite-Grid Lower Confidence Bounds
 
 The variable-envelope characterization performs exact maximization on 101

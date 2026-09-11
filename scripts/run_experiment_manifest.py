@@ -192,6 +192,10 @@ def main(argv: list[str] | None = None) -> None:
         from experiments.bootstrap_band_continuous import load_manifest, build_launch_plan
         manifest = load_manifest(args.manifest)
         plan = build_launch_plan(manifest, runs_root=args.runs_root, force=bool(args.force))
+    elif kind == "bootstrap_ols_controlled_sweep":
+        from experiments.bootstrap_band_sweep import load_manifest, build_launch_plan
+        manifest = load_manifest(args.manifest)
+        plan = build_launch_plan(manifest, runs_root=args.runs_root, force=bool(args.force))
     else:
         raise ValueError(f"Unsupported experiment manifest kind {kind!r}.")
     _apply_manifest_launch_defaults(args, manifest)

@@ -552,6 +552,81 @@ $\varepsilon_i$ in that identity.
 
 Source: `src/experiments/bootstrap_band_continuous.py`.
 
+### 7.3 Controlled all-real bootstrap sweeps and LCB regret
+
+The controlled experiment keeps $a_i\sim N(0,1)$ and
+$f(a)=5a-5a^2$ on all of $\mathbb{R}$. Independent seed streams generate the
+training actions, standardized observation errors, and bootstrap Gaussian
+errors. Training samples are nested across $N$; observation and bootstrap
+errors are paired across positive $\sigma$; bootstrap samples are nested
+across $B$. Each independent dataset index owns all these paired settings.
+
+With a thin QR factorization $P=QR$, the bootstrap coefficient perturbations
+can be refitted without materializing bootstrap responses:
+
+$$
+d_b=R^{-1}Q^\top Z_b,\qquad
+\widehat\beta_b^*=\widehat\beta+\widehat\sigma d_b,\qquad
+T_b^*=\sup_{a\in\mathbb{R}}\frac{|p(a)^\top d_b|}{\sqrt{p(a)^\top Vp(a)}}.
+$$
+
+This is algebraically the same Gaussian parametric bootstrap with the original
+fit's standard error fixed in every denominator. Section 7.2 certifies its
+all-real statistics and containment. No truth is used in calibration.
+For paired positive noise scales, $e_\sigma=\sigma e_1$ and
+$r_{\delta,\sigma}=\sigma r_{\delta,1}$ (up to OLS rounding), so coverage
+indicators are identical. Increasing $B$ estimates the same quantile more
+precisely; it is not an additional observation and need not decrease width.
+
+The repository optimizer minimizes $-L(a)$ without action bounds, initialized
+at the manifest's starts in $[0,1]$, where
+
+$$
+L(a)=p(a)^\top\widehat\beta-k\sqrt{v(a)},\quad
+k=\widehat c\widehat\sigma,\quad v(a)=p(a)^\top Vp(a),
+$$
+
+$$
+L'(a)=p'(a)^\top\widehat\beta-k\frac{p'(a)^\top Vp(a)}{\sqrt{v(a)}}.
+$$
+
+The leading tail coefficient is $\widehat\beta_2-k\sqrt{V_{22}}$.
+A positive value means the LCB is unbounded above, a negative value means
+both tails tend to minus infinity, and the exactly zero case is explicitly
+flagged as degenerate rather than silently treated as coercive.
+
+Optimizer actions and the true reference action both come from
+`src/optimization/`. Global verification never selects an alternative action:
+for a proposed level $u$, let $g(a)=p(a)^\top\widehat\beta-u$ and
+$S(a)=k^2v(a)-g(a)^2$. Then
+
+$$
+L(a)\leq u\ \forall a\quad\Longleftrightarrow\quad
+\left[g(a)\leq 0\ \mathrm{or}\ S(a)\geq 0\right]\ \forall a.
+$$
+
+Exact rational real-root isolation of $gS$ determines the signs on every
+open sign cell, including both tails. Strict simultaneous violations are
+open, so root points require no separate test. A candidate from the repository
+optimizer is accepted only if its certified lower value plus the manifest
+gap tolerance is an all-real upper bound. Floating coefficients are treated
+as exact rationals, as in section 7.2. Unbounded, degenerate, or uncertified
+optimization cases are counted and never silently pooled as successful regret.
+
+The three metrics are $C_r$ from section 7.2,
+$W_r=r_{\delta,r}(a^\star)$, and
+$R_{\mathrm{LCB},r}=f(a^\star)-f(\widehat a_r)$.
+Whole-line maximum width is infinite, hence the explicitly local width $W_r$.
+On the coverage event, an LCB solution with objective gap at most $\eta$ obeys
+$R_{\mathrm{LCB},r}\leq 2W_r+\eta$ (plus the certified true-reference tolerance).
+The plotted $2W_r$ is a bound benchmark, not an unconditional mean theorem.
+Coverage uses Wilson intervals; width/regret means use standard errors across
+independent datasets. Regret summaries state their successful-case denominator.
+The finite-$B$, fixed-denominator bootstrap remains approximate sampling
+coverage, not an exact finite-sample confidence theorem.
+
+Source: `src/experiments/bootstrap_band_sweep.py`.
+
 ## 8. Gradients and Estimators
 
 For a differentiable action objective and policy, the population chain rule is

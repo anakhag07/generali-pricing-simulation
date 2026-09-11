@@ -1,0 +1,18 @@
+{
+  "kind": "bootstrap_ols_controlled_sweep",
+  "name": "bootstrap-ols-controlled-sweep",
+  "domain": "real_line",
+  "design": {"type": "iid_normal", "mean": 0.0, "std": 1.0},
+  "truth": {"coefficients": [0.0, 5.0, -5.0]},
+  "delta": 0.05,
+  "datasets": 100,
+  "baseline": {"N": 100, "sigma": 1.0, "B": 499},
+  "axes": {"sigma": [0.5, 1.0, 2.0], "N": [25, 100, 500], "B": [99, 499, 1999]},
+  "supremum_tolerance": 1e-8,
+  "optimizer": {
+    "step_rule": "l-bfgs-b", "starts": [0.0, 0.5, 1.0], "t_steps": 500,
+    "gradient_tolerance": 1e-9, "ftol": 1e-14, "global_gap_tolerance": 1e-7
+  },
+  "seeds": {"master": 20260912, "design": 1301, "observation": 2301, "bootstrap": 3301},
+  "launch": {"mode": "local", "array": "none"}
+}

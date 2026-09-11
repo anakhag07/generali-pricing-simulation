@@ -65,6 +65,30 @@ def test_repository_optimizer_is_unconstrained_and_tail_failures_are_explicit():
     assert optimize_lcb([0, 0, 1], np.eye(3), 1., 1., cfg)["optimization_state"] == "degenerate_tail"
 
 
+def test_solver_success_alone_cannot_certify_a_nonoptimal_action(monkeypatch):
+    from types import SimpleNamespace
+    trace = SimpleNamespace(optimizer_success=True, optimizer_status=0, optimizer_message="mock success")
+    monkeypatch.setattr("experiments.bootstrap_band_sweep.run_first_order_minimize",
+                        lambda *args, **kwargs: (np.array([0.]), trace))
+    result = optimize_lcb([0, 5, -5], np.eye(3), 1., 0., payload()["optimizer"])
+    assert result["solver_success"]
+    assert result["optimization_state"] == "uncertified"
+    assert result["global_gap_upper"] is None
+
+
+def test_level_certificate_agrees_with_polynomial_band_special_case():
+    # For v=(1+a^2)^2, sqrt(v)=1+a^2 everywhere; the global inequality
+    # reduces independently to polynomial nonnegativity, without selecting an action.
+    rng = np.random.default_rng(15)
+    for _ in range(40):
+        beta = rng.normal(size=3)
+        scale, level = float(rng.uniform(.1, 3)), float(rng.normal())
+        radius = sp.Rational(scale)*(1+VARIABLE**2)
+        fitted = sp.Poly.from_list([sp.Rational(float(c)) for c in beta[::-1]], VARIABLE, domain=sp.QQ)
+        expected = nonnegative_on_real_line(sp.Poly(sp.Rational(level)+radius, VARIABLE)-fitted)
+        assert lcb_below_level(beta, sp.Poly(radius**2, VARIABLE), level) == expected
+
+
 def test_standardized_bootstrap_is_an_actual_refit_without_truth_calibration():
     rng = np.random.default_rng(81)
     x, z = rng.normal(size=25), rng.normal(size=(9, 25))

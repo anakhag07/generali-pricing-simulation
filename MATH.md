@@ -635,6 +635,60 @@ writes a distinct result tree without changing the original three-axis sweep.
 
 Source: `src/experiments/bootstrap_band_sweep.py`.
 
+### 7.4 Fixed-bandwidth Gaussian-support envelope
+
+This separate, non-bootstrap experiment uses the same quadratic truth,
+$p(a)=(1,a,a^2)^\top$, iid $a_j\sim N(0,1)$, and
+$y_j=p(a_j)^\top\beta_0+\sigma_\varepsilon\epsilon_j$ with iid
+$\epsilon_j\sim N(0,1)$ as section 7.3. It fixes $\sigma_\varepsilon=1$ and
+reuses the same named design/observation seed streams and nested training
+prefixes across the dense $N$ axis. One OLS coefficient vector is shared by
+all action queries; the estimation errors at different actions are therefore
+dependent, with covariance $\sigma_\varepsilon^2p(a)^\top Vp(a')$.
+
+The action and coverage domain is the entire real line. The fixed Gaussian
+bandwidth is $b=0.1$, with no $N$-dependent bandwidth or kernel-density
+normalization. Direct off-grid evaluation is
+
+$$
+C_N(a)=\sum_{j=1}^{N}\exp\!\left[-\frac{(a_j-a)^2}{2b^2}\right],\qquad
+r_N(a)=\frac{q_{1-\alpha/2}\widehat\sigma}{\sqrt{C_N(a)}},\qquad
+\widehat f_{\mathrm{LCB},N}(a)=p(a)^\top\widehat\beta-r_N(a),
+$$
+
+where $\alpha=0.05$, $q_{0.975}=\Phi^{-1}(0.975)$, and
+$\widehat\sigma^2=\|y-P\widehat\beta\|^2/(N-3)$. Log-sum-exp is only a
+numerically stable evaluation of this same finite Gaussian sum. The repository
+first-order optimizer minimizes $-\widehat f_{\mathrm{LCB},N}$ without action
+bounds; starts are initializations, not a finite candidate grid. Both the
+true-reference and lower-envelope reported actions come from that optimizer.
+The support penalty tends to infinity in either tail, so the lower envelope
+tends to minus infinity. A conservative numerical interval-bound check may
+verify the optimizer's global objective gap; unlike the polynomial bootstrap
+certificate, it is not exact-arithmetic proof. Uncertified results are labeled.
+
+The two-sided simultaneous coverage event for each dataset is
+
+$$
+C_r=\mathbf1\left\{
+  [p(a)^\top(\widehat\beta-\beta_0)]^2C_N(a)
+  \le q_{0.975}^2\widehat\sigma^2\quad\forall a\in\mathbb R
+\right\}.
+$$
+
+An adaptive interval upper bound checks the complete finite line; an
+analytical Gaussian-tail bound covers both infinite tails. A point violating
+the inequality proves noncoverage; if numerical bounds cannot resolve a case,
+it remains indeterminate rather than being classified by a display grid.
+Plots sample a finite display only and do not define the objective or coverage.
+Coverage rates use resolved datasets with explicit unresolved counts and Wilson
+intervals. Width is $r_N(a^\star)$ and regret is
+$f(a^\star)-f(\widehat a_{\mathrm{LCB},N})$. The pointwise Gaussian quantile
+and kernel-support heuristic do **not** imply 95% simultaneous coverage; the
+sweep empirically evaluates that claim.
+
+Source: `src/experiments/coverage_kernel_sweep.py`.
+
 ## 8. Gradients and Estimators
 
 For a differentiable action objective and policy, the population chain rule is

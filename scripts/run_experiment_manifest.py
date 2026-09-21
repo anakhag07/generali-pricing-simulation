@@ -196,6 +196,10 @@ def main(argv: list[str] | None = None) -> None:
         from experiments.bootstrap_band_sweep import load_manifest, build_launch_plan
         manifest = load_manifest(args.manifest)
         plan = build_launch_plan(manifest, runs_root=args.runs_root, force=bool(args.force))
+    elif kind == "coverage_kernel_n_sweep":
+        from experiments.coverage_kernel_sweep import load_manifest, build_launch_plan
+        manifest = load_manifest(args.manifest)
+        plan = build_launch_plan(manifest, runs_root=args.runs_root, force=bool(args.force))
     else:
         raise ValueError(f"Unsupported experiment manifest kind {kind!r}.")
     _apply_manifest_launch_defaults(args, manifest)

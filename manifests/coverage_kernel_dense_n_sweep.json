@@ -1,0 +1,20 @@
+{
+  "kind": "coverage_kernel_n_sweep",
+  "name": "coverage-kernel-dense-n-sweep",
+  "domain": "real_line",
+  "design": {"type": "iid_normal", "mean": 0.0, "std": 1.0},
+  "truth": {"coefficients": [0.0, 5.0, -5.0]},
+  "sigma_epsilon": 1.0,
+  "alpha": 0.05,
+  "datasets": 100,
+  "bandwidth": 0.1,
+  "N_values": [25, 50, 75, 100, 150, 200, 300, 500, 750, 1000, 1500, 2000, 3000, 5000],
+  "max_coverage_intervals": 50000,
+  "optimizer": {
+    "step_rule": "l-bfgs-b", "starts": [-2.0, -1.0, 0.0, 0.5, 1.0, 2.0],
+    "t_steps": 500, "gradient_tolerance": 1e-9, "ftol": 1e-14,
+    "global_gap_tolerance": 0.0001, "max_certificate_intervals": 50000
+  },
+  "seeds": {"master": 20260913, "design": 1301, "observation": 2301},
+  "launch": {"mode": "local", "array": "none"}
+}

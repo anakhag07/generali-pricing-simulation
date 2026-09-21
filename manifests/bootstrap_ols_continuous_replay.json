@@ -1,0 +1,9 @@
+{
+  "kind": "bootstrap_ols_continuous_replay",
+  "name": "bootstrap-ols-continuous-replay",
+  "source_project": "bootstrap-ols-grid-band",
+  "domain": "real_line",
+  "supremum_tolerance": 1e-8,
+  "display_window": [-3.0, 3.0],
+  "launch": {"mode": "local", "array": "none"}
+}

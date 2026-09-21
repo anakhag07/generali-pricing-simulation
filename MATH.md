@@ -434,6 +434,199 @@ support-risk proxy, not a calibrated confidence interval.
 Sources: `src/experiments/policy_lcb/`,
 `src/objective/modifications/regularization.py`.
 
+### 7.1 Quadratic OLS bootstrap band on a finite grid
+
+The bootstrap construction uses independent training inputs $x_i\sim N(0,1)$
+and errors $\varepsilon_i\sim N(0,\sigma^2)$, with
+
+$$
+y_i=5x_i-5x_i^2+\varepsilon_i,\qquad
+p(a)=(1,a,a^2)^\top,\qquad P_{i,:}=p(x_i)^\top.
+$$
+
+Quadratic OLS fits all three coefficients, including the intercept. With
+full column rank and $n>3$,
+
+$$
+\widehat\beta=(P^\top P)^{-1}P^\top y,\qquad
+\widehat\sigma^2=\frac{\|y-P\widehat\beta\|^2}{n-3},\qquad
+\widehat s(a)=\widehat\sigma\sqrt{p(a)^\top(P^\top P)^{-1}p(a)}.
+$$
+
+The implementation uses reduced QR solves, avoiding the normal-equation
+inverse. Conditional on the fitted dataset it generates $B$ independent
+Gaussian parametric bootstrap responses and refits at the fixed design:
+
+$$
+y_b^{\ast}=P\widehat\beta+\widehat\sigma Z_b,\qquad Z_b\sim N(0,I_n),\qquad
+T_b^{\ast}=\max_{a\in\mathcal{G}}
+\frac{|p(a)^\top(\widehat\beta_b^{\ast}-\widehat\beta)|}{\widehat s(a)}.
+$$
+
+Here $\mathcal{G}$ is the manifest's inclusive equally spaced grid in $[0,1]$.
+The original fit's $\widehat s$ stays fixed in all bootstrap denominators.
+Let $\widehat c$ be the empirical $(1-\delta)$ quantile using NumPy's
+`method="higher"` (zero-based sorted index `ceil((B-1)*(1-delta))`). Then
+
+$$
+r_\delta(a)=\widehat c\,\widehat s(a),\qquad
+C=\mathbf{1}\left[
+\max_{a\in\mathcal{G}}\frac{|\widehat f(a)-f(a)|}{\widehat s(a)}
+\leq\widehat c\right].
+$$
+
+Calibration takes only observations and bootstrap randomness; truth is used
+only to generate data and evaluate coverage. Stage 1 reports one Boolean $C$.
+Stage 2 redraws inputs and errors independently, reconstructs each band, and
+reports the fraction of $R$ covered datasets with a 95% Wilson interval.
+The target is approximate bootstrap coverage on the grid, not a finite-sample
+proof or a continuous-domain guarantee. In particular this fixed-denominator
+bootstrap does not reproduce the sampling variation of the residual variance
+estimate in the observed statistic. Polynomial evaluations exist off-grid,
+but grid calibration does not certify between-grid coverage. No coefficient
+ellipsoid or optimizer/action selection is involved.
+
+Sources: `src/experiments/bootstrap_band.py`,
+`src/experiments/bootstrap_band_reporting.py`.
+
+### 7.2 Analytical replay on the entire real line
+
+The all-real replay reads exactly the observations, OLS coefficients, residual
+scale estimates, and bootstrap coefficients saved by section 7.1. It does not
+draw new data. Write $V=(P^\top P)^{-1}$ and $v(a)=p(a)^\top Vp(a)$. Then
+
+$$
+e(a)=p(a)^\top(\widehat\beta-\beta_0)
+=p(a)^\top\left(\sum_i p_i p_i^\top\right)^{-1}\sum_i p_i\varepsilon_i.
+$$
+
+For every coefficient difference $d$, replace the grid statistic by
+
+$$
+T(d)=\sup_{a\in\mathbb{R}}\frac{|p(a)^\top d|}{\widehat\sigma\sqrt{v(a)}}.
+$$
+
+For $h(a)=p(a)^\top d$ and $q(a)=\widehat\sigma^2v(a)$, finite nonzero
+stationary values of $h(a)^2/q(a)$ satisfy $2h'(a)q(a)-h(a)q'(a)=0$.
+The nominal degree-five term cancels, leaving degree at most four. Both tails
+have the limit $d_2^2/(\widehat\sigma^2 V_{22})$. Numerical polynomial roots
+and this tail limit propose the statistic; exact rational polynomial sign
+tests certify lower and upper bounds. The final saved interval has width at
+most twice the configured tolerance times $\max(1,T)$, apart from rounding.
+No grid selects or checks the statistic. These are user-requested analytical
+coverage statistics, not optimizer actions or pricing optima.
+
+Specifically, for every tested threshold $t\geq0$,
+
+$$
+T(d)\leq t\quad\Longleftrightarrow\quad
+H_{t,d}(a)=t^2q(a)-h(a)^2\geq0\quad\forall a\in\mathbb{R}.
+$$
+
+The exact sign test handles zero and constant polynomials, checks leading sign
+and degree, and counts real roots of the odd-multiplicity square-free factors.
+A positive-leading even-degree polynomial is nonnegative on the real line
+exactly when all its real roots have even multiplicity. Saved binary floating
+point inputs are interpreted as exact rationals for these sign decisions;
+OLS itself remains a floating-point fit. Ambiguous numerical proposals are
+refined until the certificate succeeds, or fail explicitly.
+
+Calibration uses $T(\widehat\beta_b^{\ast}-\widehat\beta)$ only. Its empirical
+quantile uses certified upper bounds (a conservatively rounded approximation
+within the stored quantile bracket), retaining `method="higher"` and the
+original fit's standard error in all denominators. Truth is used afterward:
+
+$$
+C_r=\mathbf{1}\left[
+\widehat c^2\widehat\sigma^2v(a)-e_r(a)^2\geq0
+\quad\forall a\in\mathbb{R}\right],\qquad
+\widehat{\mathrm{Coverage}}=\frac{1}{R}\sum_{r=1}^{R}C_r.
+$$
+
+Each realized containment decision is algebraic over the whole real line.
+The repeated-dataset coverage rate remains empirical validation of approximate
+bootstrap coverage, not a theorem of exact 95% sampling coverage. Figures show
+finite display windows only. The observed fitting error is checked against
+the known observation-error identity; residuals are not substituted for
+$\varepsilon_i$ in that identity.
+
+Source: `src/experiments/bootstrap_band_continuous.py`.
+
+### 7.3 Controlled all-real bootstrap sweeps and LCB regret
+
+The controlled experiment keeps $a_i\sim N(0,1)$ and
+$f(a)=5a-5a^2$ on all of $\mathbb{R}$. Independent seed streams generate the
+training actions, standardized observation errors, and bootstrap Gaussian
+errors. Training samples are nested across $N$; observation and bootstrap
+errors are paired across positive $\sigma$; bootstrap samples are nested
+across $B$. Each independent dataset index owns all these paired settings.
+
+With a thin QR factorization $P=QR$, the bootstrap coefficient perturbations
+can be refitted without materializing bootstrap responses:
+
+$$
+d_b=R^{-1}Q^\top Z_b,\qquad
+\widehat\beta_b^*=\widehat\beta+\widehat\sigma d_b,\qquad
+T_b^*=\sup_{a\in\mathbb{R}}\frac{|p(a)^\top d_b|}{\sqrt{p(a)^\top Vp(a)}}.
+$$
+
+This is algebraically the same Gaussian parametric bootstrap with the original
+fit's standard error fixed in every denominator. Section 7.2 certifies its
+all-real statistics and containment. No truth is used in calibration.
+For paired positive noise scales, $e_\sigma=\sigma e_1$ and
+$r_{\delta,\sigma}=\sigma r_{\delta,1}$ (up to OLS rounding), so coverage
+indicators are identical. Increasing $B$ estimates the same quantile more
+precisely; it is not an additional observation and need not decrease width.
+
+The repository optimizer minimizes $-L(a)$ without action bounds, initialized
+at the manifest's starts in $[0,1]$, where
+
+$$
+L(a)=p(a)^\top\widehat\beta-k\sqrt{v(a)},\quad
+k=\widehat c\widehat\sigma,\quad v(a)=p(a)^\top Vp(a),
+$$
+
+$$
+L'(a)=p'(a)^\top\widehat\beta-k\frac{p'(a)^\top Vp(a)}{\sqrt{v(a)}}.
+$$
+
+The leading tail coefficient is $\widehat\beta_2-k\sqrt{V_{22}}$.
+A positive value means the LCB is unbounded above, a negative value means
+both tails tend to minus infinity, and the exactly zero case is explicitly
+flagged as degenerate rather than silently treated as coercive.
+
+Optimizer actions and the true reference action both come from
+`src/optimization/`. Global verification never selects an alternative action:
+for a proposed level $u$, let $g(a)=p(a)^\top\widehat\beta-u$ and
+$S(a)=k^2v(a)-g(a)^2$. Then
+
+$$
+L(a)\leq u\ \forall a\quad\Longleftrightarrow\quad
+\left[g(a)\leq 0\ \mathrm{or}\ S(a)\geq 0\right]\ \forall a.
+$$
+
+Exact rational real-root isolation of $gS$ determines the signs on every
+open sign cell, including both tails. Strict simultaneous violations are
+open, so root points require no separate test. A candidate from the repository
+optimizer is accepted only if its certified lower value plus the manifest
+gap tolerance is an all-real upper bound. Floating coefficients are treated
+as exact rationals, as in section 7.2. Unbounded, degenerate, or uncertified
+optimization cases are counted and never silently pooled as successful regret.
+
+The three metrics are $C_r$ from section 7.2,
+$W_r=r_{\delta,r}(a^\star)$, and
+$R_{\mathrm{LCB},r}=f(a^\star)-f(\widehat a_r)$.
+Whole-line maximum width is infinite, hence the explicitly local width $W_r$.
+On the coverage event, an LCB solution with objective gap at most $\eta$ obeys
+$R_{\mathrm{LCB},r}\leq 2W_r+\eta$ (plus the certified true-reference tolerance).
+The plotted $2W_r$ is a bound benchmark, not an unconditional mean theorem.
+Coverage uses Wilson intervals; width/regret means use standard errors across
+independent datasets. Regret summaries state their successful-case denominator.
+The finite-$B$, fixed-denominator bootstrap remains approximate sampling
+coverage, not an exact finite-sample confidence theorem.
+
+Source: `src/experiments/bootstrap_band_sweep.py`.
+
 ## 8. Gradients and Estimators
 
 For a differentiable action objective and policy, the population chain rule is

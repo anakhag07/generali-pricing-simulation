@@ -388,6 +388,53 @@ Changing the `models` array is the supported model swap. Available keys are
 
 ### Key Components
 
+- `src/experiments/bootstrap_band_sweep.py` and its `_reporting.py` companion
+  implement `kind: "bootstrap_ols_controlled_sweep"` through the shared manifest
+  launcher. They pair normal inputs/observation noise/bootstrap streams across
+  sigma/N/B, certify bootstrap containment on R, and use repository first-order
+  L-BFGS-B without bounds for LCB and true-reference actions. Exact polynomial
+  sign cells verify returned actions' global gaps; they never select actions.
+  Report width at the true optimum, not infinite whole-line maximum width.
+  Three metric PDFs and per-dataset NPZ/JSONs keep failed/unbounded/degenerate
+  optimization denominators explicit. The historical grid and all-real replay
+  are unchanged. `test_bootstrap_band_sweep.py` checks pairing, refit identities,
+  exact sign cells, analytical gradients, unconstrained solver use, and replay.
+
+- `src/experiments/bootstrap_band_continuous.py` analytically replays the saved
+  bootstrap OLS experiment on the whole real line (MATH.md §7.2). It computes
+  coverage statistics from the quartic stationary equation/tail limit, then
+  certifies supremum brackets and actual containment via exact rational
+  polynomial nonnegativity (SymPy root counts and square-free factors). This
+  implements the user's explicit analytical coverage request; it does not
+  select optimizer actions. Saved data and bootstrap coefficients are replayed
+  unchanged; truth only evaluates the recalibrated band. The new manifest kind
+  `bootstrap_ols_continuous_replay` uses the shared manifest launcher and writes
+  a distinct result tree, never overwriting the historical grid analysis.
+  `bootstrap_band_continuous_reporting.py` renders four mathematical PDFs;
+  rendering samples and finite display windows never enter calibration or
+  containment. Exact sign tests certify represented numerical polynomials;
+  approximate bootstrap sampling coverage is still validated empirically.
+  `tests/experiments/test_bootstrap_band_continuous.py` tests finite/tail
+  suprema, exact roots with multiplicity, numerical-proposal recovery, source
+  replay, saved certificates, and PDF collection.
+
+- `src/experiments/bootstrap_band.py` implements the direct Gaussian parametric
+  bootstrap OLS band of MATH.md §7.1. It fits observations, uses the original
+  prediction SE in bootstrap denominators, and reports finite-grid coverage.
+  `bootstrap_band(...)` has no truth argument; `evaluate_band(...)` is separate.
+  The `bootstrap_ols_grid_band` kind routes through the existing manifest runner
+  using `manifests/bootstrap_ols_grid_band.json`; stage 1 is one dataset and stage
+  2 independently repeats datasets over explicit n/noise axes. The grid maximum
+  is the requested coverage statistic, not an optimized action. There are no
+  optimizer selections or coefficient ellipsoids. Calibration is approximate,
+  and does not establish continuous or exact finite-sample coverage.
+- `src/experiments/bootstrap_band_reporting.py` regenerates five PDF-only
+  diagnostic figures from saved data. Per-condition NPZs preserve observations,
+  OLS/bootstrap coefficients, bootstrap maxima, and grid bands. Summary hashes
+  validate the source/manifest contract and artifacts before completion reuse.
+  `tests/experiments/test_bootstrap_band.py` checks OLS/refit equivalence,
+  fixed-denominator calibration, coverage events, and artifact replay.
+
 #### Objective Layer (`src/objective/`)
 
 - **`src/objective/_math.py`** (private)

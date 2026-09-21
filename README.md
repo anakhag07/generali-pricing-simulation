@@ -53,6 +53,28 @@ pip install -e ".[dev]"
 pytest -q
 ```
 
+### Controlled bootstrap envelope sweeps
+
+```bash
+python scripts/run_experiment_manifest.py manifests/bootstrap_ols_controlled_sweep.json --launch local
+```
+
+This paired Gaussian quadratic-OLS experiment varies observation-noise SD
+`sigma`, training size `N`, and bootstrap count `B`, one at a time. Both the
+confidence statement and unconstrained LCB optimization cover the entire real
+line; normal training inputs and optimizer initialization in `[0,1]` impose
+no action bounds. Each observed dataset has its own bootstrap band.
+
+Three PDFs report simultaneous coverage, envelope half-width at the true
+optimum, and LCB regret. All reported actions come from the repository
+optimizer, with additional all-real polynomial gap certification. Unbounded or
+uncertified cases have explicit counts rather than silently reported regret.
+Outputs, saved fits/bootstrap perturbations, exact containment polynomials,
+seeds, source hashes, and `EXPERIMENT.md` live under
+`results/bootstrap-ols-controlled-sweep/`. Calibration uses no truth or grid.
+See MATH.md §7.3 for pairing, width semantics, and the coverage-event regret
+bound. The fixed-denominator bootstrap's sampling coverage is approximate.
+
 ## What This Does
 
 Most objectives optimize a parameterized policy over state vectors:
@@ -269,6 +291,62 @@ the finite-policy Bonferroni quantile. This is not a consequence of continuity:
 it follows because the policy-indexed error is rank one,
 $$\widehat V_s(\pi)-V(\pi)=\pi Z_s$$, so simultaneous coverage over every
 $$\pi$$ is exactly the single event $$|Z_s|\le q_\delta$$.
+
+### Bootstrap OLS band constructed from observations
+
+The original finite-grid experiment below is preserved for provenance. To redo
+its saved fits analytically over the **entire real line**, run:
+
+```bash
+python scripts/run_experiment_manifest.py manifests/bootstrap_ols_continuous_replay.json --launch local
+```
+
+This replay uses exactly the saved observations, OLS fits, and all bootstrap
+coefficients. Every bootstrap supremum is bracketed by exact rational quartic
+sign checks, including both tails, and the quantile is recalibrated from those
+all-real statistics. Every observed dataset receives an analytical containment
+Boolean from `c_hat²*sigma_hat²*p(a)'V*p(a) - e(a)² >= 0` for all real `a`.
+The sign certificates apply to the saved numerical polynomials; repeated-data
+coverage remains an empirical evaluation of an approximate bootstrap procedure.
+No plot samples enter calibration or coverage, and no coefficient ellipsoid is
+used. See MATH.md §7.2.
+
+Results go to `results/bootstrap-ols-continuous-replay/`, preserving the old
+experiment. Four mathematically labeled PDFs show the true/fitted/bootstrap
+curves and signed error, bootstrap calibration and whole-line normalized error,
+saved error realizations at `n=100` across noise SD, and empirical coverage/band
+width for all original conditions. Finite display windows are explicitly
+labeled; a compactified panel uses `theta=arctan(a)` to display both infinite
+tails. The old across-dataset coefficient figure is omitted. A CSV records the
+original coefficients, first bootstrap fit, and central 95% bootstrap ranges.
+
+```bash
+python scripts/run_experiment_manifest.py manifests/bootstrap_ols_grid_band.json --launch local
+```
+
+This two-stage experiment fits quadratic OLS to independent `x ~ N(0,1)` and
+`y = 5*x - 5*x**2 + Gaussian noise`. Stage 1 uses `n=100`, noise SD `1`, and
+499 fixed-input Gaussian parametric bootstrap refits. It calibrates a direct
+maximum standardized prediction error on 1,001 points in `[0,1]`, using the
+original fit's prediction standard error for every bootstrap denominator.
+The 95th-percentile critical value uses `np.quantile(method="higher")`.
+There is no coefficient ellipsoid. Synthetic truth enters generation and
+evaluation only. One dataset gives one Boolean grid-coverage result.
+
+Stage 2 independently repeats fitting and calibration for 100 datasets per
+condition, with sample sizes `{25,100,500}` and observation noise SDs
+`{0.5,1,2}`. It reports simultaneous grid-coverage fractions and Wilson intervals,
+OLS coefficient spread, residual variance estimates, and band widths.
+This is empirical validation of approximate bootstrap coverage on the grid,
+not a finite-sample proof or a continuous-domain guarantee. The polynomial is
+defined for all real inputs; only the specified grid is covered by the claim.
+
+Outputs under `results/bootstrap-ols-grid-band/` include `EXPERIMENT.md`, a
+`summary.json`, raw dataset and coverage CSVs, replayable per-condition NPZs
+with all bootstrap coefficients/maxima, and five vector PDFs. Separate derived
+seeds control design, response noise, and bootstrap, with independent streams
+across both stages and every condition. The runner reuses matching completed
+conditions; `--force` regenerates them. See MATH.md §7.1 for the exact formulas.
 
 ### Variable-Envelope Finite-Grid Lower Confidence Bounds
 

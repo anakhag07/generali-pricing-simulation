@@ -152,8 +152,17 @@ def load_manifest(path):
         raise ValueError("This experiment fixes f(a)=5a-5a^2.")
     if not 0 < p["delta"] < 1 or p["datasets"] < 2:
         raise ValueError("Require 0<delta<1 and at least two datasets.")
+    allowed_axes = {"N", "sigma", "B"}
+    if set(p["baseline"]) != allowed_axes:
+        raise ValueError("Baseline must define N, sigma, and B.")
     for key, lower in (("N", 4), ("B", 2), ("sigma", 0)):
-        values = p["axes"][key]
+        value = p["baseline"][key]
+        if not np.isfinite(value) or (value <= 0 if key == "sigma" else value < lower or int(value) != value):
+            raise ValueError("Invalid baseline value.")
+    if not p["axes"] or not set(p["axes"]) <= allowed_axes:
+        raise ValueError("Require at least one sweep axis chosen from N, sigma, and B.")
+    for key, values in p["axes"].items():
+        lower = {"N": 4, "B": 2, "sigma": 0}[key]
         if not values or values != sorted(set(values)) or p["baseline"][key] not in values:
             raise ValueError("Axes must be sorted, unique, and contain the baseline.")
         if any(not np.isfinite(v) or (v <= 0 if key == "sigma" else v < lower or int(v) != v) for v in values):
@@ -181,11 +190,16 @@ def settings(payload):
             yield axis, value, {**payload["baseline"], axis: value}
 
 
+def _values_used(payload, key):
+    """Return all values required for a parameter, including its fixed baseline."""
+    return sorted(set(payload["axes"].get(key, [])) | {payload["baseline"][key]})
+
+
 def dataset_streams(payload, index):
     """Generate nested observations and bootstrap columns with independent seeds."""
     seeds = {key: derive_seed(payload["seeds"][key], f"{payload['seeds']['master']}:dataset:{index}")
              for key in ("design", "observation", "bootstrap")}
-    nmax, bmax = max(payload["axes"]["N"]), max(payload["axes"]["B"])
+    nmax, bmax = max(_values_used(payload, "N")), max(_values_used(payload, "B"))
     x = np.random.default_rng(seeds["design"]).normal(size=nmax)
     epsilon = np.random.default_rng(seeds["observation"]).normal(size=nmax)
     z = np.random.default_rng(seeds["bootstrap"]).normal(size=(bmax, nmax))
@@ -234,13 +248,14 @@ def run_dataset(manifest, index, runs_root, force=False):
     a_star = reference["action"]
     arrays = {"training_actions": x, "standardized_observation_errors": epsilon}
     fits, solved, rows = {}, {}, []
-    for n in payload["axes"]["N"]:
-        bmax = max(payload["axes"]["B"]) if n == payload["baseline"]["N"] else payload["baseline"]["B"]
-        p, q, triangular, covariance, d, bounds = calibrate_design(x[:n], z[:bmax, :n], payload["supremum_tolerance"])
+    sweep_settings = list(settings(payload))
+    for n in sorted({setting["N"] for _, _, setting in sweep_settings}):
+        draws = max(setting["B"] for _, _, setting in sweep_settings if setting["N"] == n)
+        p, q, triangular, covariance, d, bounds = calibrate_design(x[:n], z[:draws, :n], payload["supremum_tolerance"])
         fits[n] = p, q, triangular, covariance, d, bounds
         arrays.update({f"N{n}_covariance": covariance, f"N{n}_bootstrap_unit_perturbations": d,
                        f"N{n}_bootstrap_supremum_bounds": bounds})
-    for axis, axis_value, setting in settings(payload):
+    for axis, axis_value, setting in sweep_settings:
         n, sigma, b = setting["N"], setting["sigma"], setting["B"]
         key = (n, sigma, b)
         if key not in solved:
@@ -384,8 +399,8 @@ tolerance is added to the regret inequality when testing it. Unbounded tails,
 exactly degenerate tails, solver failures, and uncertified solutions are counted
 separately. A certified result may retain a solver warning, explicitly recorded.
 
-Figures (standard Matplotlib, vector PDF) each have three independent-axis
-panels: sigma, N, B. Coverage is sum(C_r)/R with 95% Wilson intervals. Width is
+Figures (standard Matplotlib, vector PDF) each have one panel per manifest sweep
+axis. Coverage is sum(C_r)/R with 95% Wilson intervals. Width is
 W_r=r_delta,r(a_star), NOT sup_R r_delta (which is infinite). Regret is
 f(a_star)-f(a_LCB). Width and regret show means with +/- one standard error
 across independent datasets. Regret uses certified cases only, with explicit

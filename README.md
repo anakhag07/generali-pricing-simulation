@@ -75,6 +75,19 @@ seeds, source hashes, and `EXPERIMENT.md` live under
 See MATH.md §7.3 for pairing, width semantics, and the coverage-event regret
 bound. The fixed-denominator bootstrap's sampling coverage is approximate.
 
+For the paired follow-up that fixes `sigma=1` and `B=500` while sweeping a
+denser range of training sizes from `N=25` through `N=5000`, run:
+
+```bash
+python scripts/run_experiment_manifest.py manifests/bootstrap_ols_dense_n_sweep.json --launch local
+```
+
+The follow-up reuses the same all-real calibration, repository optimization,
+certification, metrics, and 100-dataset design. Within each dataset, every
+smaller training sample is a prefix of the `N=5000` sample, so changes across
+`N` are paired. Its separate outputs live under
+`results/bootstrap-ols-dense-n-sweep/` and its PDFs contain only the `N` panel.
+
 ## What This Does
 
 Most objectives optimize a parameterized policy over state vectors:

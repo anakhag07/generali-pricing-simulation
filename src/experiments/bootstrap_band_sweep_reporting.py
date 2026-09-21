@@ -1,4 +1,4 @@
-"""Three clean metric-by-axis PDFs from completed controlled sweep summaries."""
+"""Three metric-by-axis PDFs from completed controlled sweep summaries."""
 
 from pathlib import Path
 
@@ -9,7 +9,7 @@ import numpy as np
 
 
 def plot_sweep(rows, payload, destination):
-    """Plot coverage, local half-width, and regret versus sigma, N, and B."""
+    """Plot coverage, local half-width, and regret versus requested axes."""
     destination = Path(destination)
     destination.mkdir(parents=True, exist_ok=True)
     style = {"font.size": 10, "axes.titlesize": 14, "axes.labelsize": 12,
@@ -22,11 +22,13 @@ def plot_sweep(rows, payload, destination):
               r"Unconstrained LCB regret: $R_{\mathrm{LCB}}=f(a^\star)-f(\widehat a_{\mathrm{LCB}})$"]
     labels = {"sigma": r"Observation-noise SD $\sigma$", "N": r"Training sample size $N$",
               "B": r"Bootstrap refit count $B$"}
+    axis_names = tuple(payload["axes"])
     with plt.rc_context(style):
         for metric, filename, title in zip(("coverage", "width_at_true_optimum", "regret"), names, titles):
-            fig, axes = plt.subplots(1, 3, figsize=(15, 4.5), sharey=True, constrained_layout=True)
+            fig, axes = plt.subplots(1, len(axis_names), figsize=(max(7, 5*len(axis_names)), 4.5),
+                                     sharey=True, squeeze=False, constrained_layout=True)
             fig.suptitle(title)
-            for ax, axis in zip(axes, ("sigma", "N", "B")):
+            for ax, axis in zip(axes[0], axis_names):
                 group = sorted((r for r in rows if r["axis"] == axis), key=lambda r: r["axis_value"])
                 x = np.array([r["axis_value"] for r in group])
                 fixed = {k: v for k, v in payload["baseline"].items() if k != axis}
@@ -57,7 +59,8 @@ def plot_sweep(rows, payload, destination):
                         ax.set_yscale("log")
                 if axis != "sigma":
                     ax.set_xscale("log")
-                ax.set_xticks(x, [f"{v:g}" for v in x])
+                if len(x) <= 7:
+                    ax.set_xticks(x, [f"{v:g}" for v in x])
                 ax.set_xlabel(labels[axis])
                 ax.legend()
             path = destination/filename

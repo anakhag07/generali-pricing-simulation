@@ -19,6 +19,10 @@ def payload():
     return json.loads((ROOT/"manifests/bootstrap_ols_controlled_sweep.json").read_text())
 
 
+def dense_n_payload():
+    return json.loads((ROOT/"manifests/bootstrap_ols_dense_n_sweep.json").read_text())
+
+
 def test_lcb_gradient_matches_finite_difference():
     v = np.array([[2., .1, -.2], [.1, 1., .15], [-.2, .15, 1.]])
     objective = QuadraticLCBObjective([.1, 5.2, -4.9], v, 2.3)
@@ -151,6 +155,32 @@ def test_paired_sweep_end_to_end_certificates_scaling_replay_and_pdfs(tmp_path):
     assert not list(project.rglob("*.png"))
 
 
+def test_n_only_sweep_uses_fixed_bootstrap_count_and_single_panel_pdfs(tmp_path):
+    p = dense_n_payload()
+    p["datasets"] = 2
+    p["baseline"] = {"N": 12, "sigma": 1., "B": 9}
+    p["axes"] = {"N": [8, 12, 20]}
+    path = tmp_path/"dense-n.json"
+    path.write_text(json.dumps(p))
+    manifest = load_manifest(path)
+    _, x, epsilon, z = dataset_streams(p, 0)
+    assert x.shape == epsilon.shape == (20,)
+    assert z.shape == (9, 20)
+    for index in range(2):
+        saved = run_dataset(manifest, index, tmp_path)
+        assert [(row["axis"], row["N"], row["sigma"], row["B"]) for row in saved["rows"]] == [
+            ("N", 8, 1., 9), ("N", 12, 1., 9), ("N", 20, 1., 9),
+        ]
+    collect(manifest, tmp_path)
+    project = tmp_path/manifest.name
+    summary = json.loads((project/"summary.json").read_text())
+    assert len(summary["metrics"]) == 3
+    assert len(summary["plots"]) == 3
+    for record in summary["plots"]:
+        assert Path(record["path"]).read_bytes().startswith(b"%PDF-")
+    assert not list(project.rglob("*.png"))
+
+
 @pytest.mark.parametrize("key,value", [("domain", "interval"), ("delta", 1.), ("datasets", 1)])
 def test_manifest_rejects_invalid_contract(tmp_path, key, value):
     p = payload()
@@ -159,3 +189,14 @@ def test_manifest_rejects_invalid_contract(tmp_path, key, value):
     path.write_text(json.dumps(p))
     with pytest.raises(ValueError):
         load_manifest(path)
+
+
+def test_manifest_rejects_empty_axes_and_invalid_fixed_baseline(tmp_path):
+    for axes, baseline in (({}, {"N": 100, "sigma": 1., "B": 500}),
+                           ({"N": [100]}, {"N": 100, "sigma": 1., "B": 1})):
+        p = dense_n_payload()
+        p["axes"], p["baseline"] = axes, baseline
+        path = tmp_path/f"bad-{len(list(tmp_path.iterdir()))}.json"
+        path.write_text(json.dumps(p))
+        with pytest.raises(ValueError):
+            load_manifest(path)

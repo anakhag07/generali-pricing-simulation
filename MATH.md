@@ -625,6 +625,14 @@ independent datasets. Regret summaries state their successful-case denominator.
 The finite-$B$, fixed-denominator bootstrap remains approximate sampling
 coverage, not an exact finite-sample confidence theorem.
 
+The dense sample-size follow-up uses the same definitions with
+$\sigma=1$, $B=500$, and
+$N\in\{25,50,75,100,150,200,300,500,750,1000,1500,2000,3000,5000\}$.
+For each dataset index, all conditions use prefixes of the same length-5000
+training-action and observation-error streams, while each design receives 500
+bootstrap refits. It therefore isolates the effect of training sample size and
+writes a distinct result tree without changing the original three-axis sweep.
+
 Source: `src/experiments/bootstrap_band_sweep.py`.
 
 ## 8. Gradients and Estimators

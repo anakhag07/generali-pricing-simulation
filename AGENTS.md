@@ -388,6 +388,18 @@ Changing the `models` array is the supported model swap. Available keys are
 
 ### Key Components
 
+- `src/experiments/coverage_kernel_sweep.py` and its reporting companion
+  implement `kind: "coverage_kernel_n_sweep"` (MATH.md §7.4). The fixed
+  Gaussian bandwidth `b=0.1` and two-sided Gaussian quantile define a
+  support-based radius for the quadratic OLS fit. The manifest pairs the same
+  100 datasets and 14 training sizes as the dense bootstrap sweep, without
+  bootstrap resampling or a B axis. The repository optimizer supplies every
+  reported action; conservative interval bounds certify the LCB gap and
+  all-real two-sided containment, with explicit unresolved counts. Three
+  default-Matplotlib PDFs, saved streams/fits, and source hashes make the run
+  reproducible. `test_coverage_kernel_sweep.py` checks formula, gradient,
+  paired streams, optimizer provenance, and artifact generation.
+
 - `src/experiments/bootstrap_band_sweep.py` and its `_reporting.py` companion
   implement `kind: "bootstrap_ols_controlled_sweep"` through the shared manifest
   launcher. They pair normal inputs/observation noise/bootstrap streams across

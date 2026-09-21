@@ -88,6 +88,23 @@ smaller training sample is a prefix of the `N=5000` sample, so changes across
 `N` are paired. Its separate outputs live under
 `results/bootstrap-ols-dense-n-sweep/` and its PDFs contain only the `N` panel.
 
+### Gaussian-support envelope N sweep
+
+```bash
+python scripts/run_experiment_manifest.py manifests/coverage_kernel_dense_n_sweep.json --launch local
+```
+
+This separate experiment uses the same 100 paired quadratic-OLS datasets and
+14 training sizes, with observation-noise SD fixed at 1. Instead of bootstrap
+refits, it uses the unnormalized Gaussian support sum with fixed bandwidth
+`b=0.1` and two-sided radius `q_0.975 * sigma_hat / sqrt(C_N(a))`. The nominal
+Gaussian quantile does not by itself guarantee simultaneous 95% coverage;
+whole-real-line coverage is measured empirically. Repository-optimizer actions
+are gap-checked, and uncertain checks remain explicit rather than silently
+entering regret averages. Three vector PDFs show coverage, half-width, and
+regret versus `N`. Data, seeds, fits, optimizer attempts, and source hashes
+are saved under `results/coverage-kernel-dense-n-sweep/`. See MATH.md §7.4.
+
 ## What This Does
 
 Most objectives optimize a parameterized policy over state vectors:

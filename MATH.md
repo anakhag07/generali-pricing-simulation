@@ -689,6 +689,31 @@ sweep empirically evaluates that claim.
 
 Source: `src/experiments/coverage_kernel_sweep.py`.
 
+The paired $q$ follow-up replays the exact saved actions, observations, OLS
+coefficients, residual scales, and repository-optimizer true reference from
+the dense $N$ sweep. It changes only the standardized envelope coefficient
+$q>0$ in $\lambda_{r,N}(q)=q\widehat\sigma_{r,N}$, using the same support
+$C_{r,N}(a)$ and the same two-sided, all-real coverage event. The original
+$q=\Phi^{-1}(0.975)$ row is replayed verbatim from its saved optimizer output.
+For each fixed dataset and $N$, the width at $a^\star$ is linear in $q$ and
+the coverage indicator is nondecreasing in $q$; true regret need not be
+monotone because the optimizing action can change. Coverage and regret remain
+empirical evaluations on the same datasets used to display this sweep, not
+an independently validated choice of $q$ that guarantees coverage.
+
+Source: `src/experiments/coverage_kernel_parameter_sweep.py`.
+
+The paired $b$ follow-up holds $q=\Phi^{-1}(0.975)$ and changes only the
+Gaussian bandwidth in the same **unnormalized** support sum. For fixed
+$a,a_j$, each kernel term increases with $b$; hence $C_{r,N,b}(a)$ is
+nondecreasing, the radius is nonincreasing, and the two-sided coverage event
+is nonincreasing in $b$. The smoothing shape and overall support scale change
+together: this sweep does not isolate a normalized kernel-density bandwidth.
+Regret need not be monotone. The original $b=0.1$ rows are likewise replayed
+verbatim with optimizer and artifact provenance.
+
+Source: `src/experiments/coverage_kernel_parameter_sweep.py`.
+
 ## 8. Gradients and Estimators
 
 For a differentiable action objective and policy, the population chain rule is

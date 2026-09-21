@@ -1,0 +1,16 @@
+{
+  "kind": "coverage_kernel_q_sweep",
+  "name": "coverage-kernel-q-sweep",
+  "source_name": "coverage-kernel-dense-n-sweep",
+  "datasets": 100,
+  "N_values": [25, 50, 75, 100, 150, 200, 300, 500, 750, 1000, 1500, 2000, 3000, 5000],
+  "q_values": [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 1.959963984540054, 2.5, 3.0],
+  "report_N_values": [25, 100, 500, 5000],
+  "max_coverage_intervals": 50000,
+  "optimizer": {
+    "step_rule": "l-bfgs-b", "starts": [-2.0, -1.0, 0.0, 0.5, 1.0, 2.0],
+    "t_steps": 500, "gradient_tolerance": 1e-9, "ftol": 1e-14,
+    "global_gap_tolerance": 0.0001, "max_certificate_intervals": 50000
+  },
+  "launch": {"mode": "local", "array": "none"}
+}

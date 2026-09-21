@@ -400,6 +400,20 @@ Changing the `models` array is the supported model swap. Available keys are
   reproducible. `test_coverage_kernel_sweep.py` checks formula, gradient,
   paired streams, optimizer provenance, and artifact generation.
 
+- `src/experiments/coverage_kernel_parameter_sweep.py` and its reporting
+  companion replay the saved Gaussian-support N sweep for two one-at-a-time
+  axes: `kind: "coverage_kernel_q_sweep"` changes q at b=0.1, and
+  `kind: "coverage_kernel_b_sweep"` changes b at the original Gaussian
+  quantile. All 100 datasets and 14 N prefixes remain paired. The baseline
+  setting reuses its exact saved repository-optimizer result; other actions
+  use the repository optimizer and all-real gap verifier. Saved source
+  artifacts and source-code hashes are checked before replay. For the
+  unnormalized support sum, increasing b mechanically narrows the envelope,
+  so this is not an isolated density-smoothing comparison. Full N×axis CSVs
+  and four preselected N curves in each of three default-Matplotlib PDFs are
+  documented by MATH.md §7.4 and tested in
+  `test_coverage_kernel_parameter_sweep.py`.
+
 - `src/experiments/bootstrap_band_sweep.py` and its `_reporting.py` companion
   implement `kind: "bootstrap_ols_controlled_sweep"` through the shared manifest
   launcher. They pair normal inputs/observation noise/bootstrap streams across

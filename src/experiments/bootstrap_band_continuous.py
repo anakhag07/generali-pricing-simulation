@@ -326,11 +326,11 @@ is labeled on [0,1]; an average over the entire real line is not reported.
 
 One original dataset yields one coverage Boolean. Across R independently drawn
 original datasets the rate is sum(C_r)/R, with a 95% Wilson interval. Conditions
-retain the original independent seeds, n, noise SD, B=499, and delta=0.05.
+retain the original independent seeds, n, noise SD, bootstrap count, and confidence level.
 This is a correction to the completed analysis, not the proposed B/noise sweep.
 The old across-dataset coefficient figure is omitted from this report.
 
-The fixed-denominator parametric bootstrap remains an approximate coverage
+The fixed-denominator bootstrap remains an approximate coverage
 procedure: certifying containment for a realized band does not prove that its
 sampling coverage equals 95%. Old grid results remain intact in their source
 directory; this report additionally records how those old bands fare on R.

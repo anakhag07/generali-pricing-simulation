@@ -1,12 +1,51 @@
 {
   "kind": "bootstrap_ols_grid_band",
-  "name": "bootstrap-ols-grid-band",
-  "design": {"type": "iid_normal", "mean": 0.0, "std": 1.0},
-  "truth": {"coefficients": [0.0, 5.0, -5.0]},
-  "grid": {"lower": 0.0, "upper": 1.0, "count": 1001},
-  "bootstrap": {"draws": 499, "delta": 0.05, "quantile_method": "higher"},
-  "stage1": {"n": 100, "noise_std": 1.0},
-  "stage2": {"sample_sizes": [25, 100, 500], "noise_stds": [0.5, 1.0, 2.0], "datasets": 100},
-  "seeds": {"master": 20260911},
-  "launch": {"mode": "local", "array": "none"}
+  "name": "bootstrap-ols-pairs-grid-band",
+  "design": {
+    "type": "iid_normal",
+    "mean": 0.0,
+    "std": 1.0
+  },
+  "truth": {
+    "coefficients": [
+      0.0,
+      5.0,
+      -5.0
+    ]
+  },
+  "grid": {
+    "lower": 0.0,
+    "upper": 1.0,
+    "count": 1001
+  },
+  "bootstrap": {
+    "draws": 499,
+    "delta": 0.05,
+    "quantile_method": "higher",
+    "method": "pairs"
+  },
+  "stage1": {
+    "n": 100,
+    "noise_std": 1.0
+  },
+  "stage2": {
+    "sample_sizes": [
+      25,
+      100,
+      500
+    ],
+    "noise_stds": [
+      0.5,
+      1.0,
+      2.0
+    ],
+    "datasets": 100
+  },
+  "seeds": {
+    "master": 20260911
+  },
+  "launch": {
+    "mode": "local",
+    "array": "none"
+  }
 }

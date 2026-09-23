@@ -388,6 +388,17 @@ Changing the `models` array is the supported model swap. Available keys are
 
 ### Key Components
 
+- `src/experiments/bootstrap_joint_coverage.py` implements the dedicated joint
+  N/B coverage-only manifest through the shared launcher. It reuses the existing
+  pairs refitter, named streams and whole-line certificates; no optimizer action
+  or extra objective is introduced. `bootstrap_ols_joint_coverage.json` fixes
+  N=B from 20 to 5000 and 2000 outer datasets, grouped ten per CPU array task.
+  Every dataset is checkpointed, with row-index hashes and seed/shape metadata
+  for compact deterministic replay. Collection validates all datasets and
+  reports only empirical coverage and Wilson intervals in CSV/PDF. See
+  `docs/bootstrap_joint_coverage.md`, MATH §7.5 and
+  `tests/experiments/test_bootstrap_joint_coverage.py`.
+
 - `src/experiments/bootstrap_band_sweep.py` and its `_reporting.py` companion
   implement `kind: "bootstrap_ols_controlled_sweep"` through the shared manifest
   launcher. They pair normal inputs/observation noise/bootstrap streams across

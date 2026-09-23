@@ -82,6 +82,20 @@ seeds, source hashes, and `EXPERIMENT.md` live under
 See MATH.md §7.3 for pairing, width semantics, and the coverage-event regret
 bound. The fixed-denominator bootstrap's sampling coverage is approximate.
 
+For the dedicated coverage-only sweep with N and B increasing together and
+2000 independent datasets, run:
+
+```bash
+python scripts/run_experiment_manifest.py manifests/bootstrap_ols_joint_coverage.json --launch slurm --array
+```
+
+The nine settings use N=B from 20 through 5000 at sigma=1. The band rule stays
+fixed; the CSV and PDF report empirical coverage with pointwise Wilson
+intervals. There is no ranking, smoothing or monotonicity constraint. Ten
+checkpointed datasets share each CPU array task, with eight tasks concurrent.
+Outputs live under `results/bootstrap-ols-pairs-joint-coverage/`; details are in
+[the joint sweep notes](docs/bootstrap_joint_coverage.md).
+
 To reconstruct the joint N/B coverage grid from the saved bootstrap prefixes
 and plot its empirical Pareto frontier, run:
 

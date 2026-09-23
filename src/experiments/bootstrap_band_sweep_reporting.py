@@ -88,7 +88,7 @@ def plot_joint_coverage(rows, payload, destination):
         ax.axhline(1-payload["delta"], color="C1", linestyle="--", label="Nominal coverage")
         ax.set_xticks(x, [f"{r['N']}\n{r['B']}" for r in rows])
         ax.set_xlabel("Joint setting: training size N (top), bootstrap count B (bottom)")
-        ax.set_ylabel("Empirical simultaneous coverage on the whole real line")
+        ax.set_ylabel("Empirical simultaneous coverage")
         ax.set_title(rf"Pairs bootstrap: $\sigma={payload['sigma']:g}$, $\delta={payload['delta']:g}$")
         ax.legend()
         path = destination/"joint_N_B_coverage.pdf"

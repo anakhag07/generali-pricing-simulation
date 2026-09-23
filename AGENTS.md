@@ -397,11 +397,14 @@ Changing the `models` array is the supported model swap. Available keys are
   sign cells verify returned actions' global gaps; they never select actions.
   Report width at the true optimum, not infinite whole-line maximum width.
   Three metric PDFs and per-dataset NPZ/JSONs keep failed/unbounded/degenerate
-  optimization denominators explicit. The historical grid and all-real replay
-  are unchanged. `test_bootstrap_band_sweep.py` checks pairing, refit identities,
+  optimization denominators explicit. Historical outputs remain unchanged; new runs use pairs-specific names.
+  `docs/bootstrap_pairs.md` records the sampling and representation contract.
+  ORCD array tasks each own one independent dataset; the dependent collector
+  validates and aggregates all 100 datasets. `test_bootstrap_band_sweep.py` checks pairing, refit identities,
   exact sign cells, analytical gradients, unconstrained solver use, and replay.
-  `bootstrap_ols_dense_n_sweep.json` fixes sigma=1 and B=500 for a paired,
-  14-point training-size sweep from N=25 through N=5000.
+  `bootstrap_ols_dense_n_sweep.json` fixes sigma=1 and B=2000 for a paired,
+  16-point training-size sweep from N=20 through N=5000. The combined sweep
+  fixes baseline N=100 and includes fine B and sigma grids; axes are separate.
 
 - `src/experiments/bootstrap_band_continuous.py` analytically replays the saved
   bootstrap OLS experiment on the whole real line (MATH.md §7.2). It computes
@@ -421,7 +424,7 @@ Changing the `models` array is the supported model swap. Available keys are
   suprema, exact roots with multiplicity, numerical-proposal recovery, source
   replay, saved certificates, and PDF collection.
 
-- `src/experiments/bootstrap_band.py` implements the direct Gaussian parametric
+- `src/experiments/bootstrap_band.py` implements the original-row pairs
   bootstrap OLS band of MATH.md §7.1. It fits observations, uses the original
   prediction SE in bootstrap denominators, and reports finite-grid coverage.
   `bootstrap_band(...)` has no truth argument; `evaluate_band(...)` is separate.

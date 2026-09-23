@@ -82,6 +82,18 @@ seeds, source hashes, and `EXPERIMENT.md` live under
 See MATH.md §7.3 for pairing, width semantics, and the coverage-event regret
 bound. The fixed-denominator bootstrap's sampling coverage is approximate.
 
+To reconstruct the joint N/B coverage grid from the saved bootstrap prefixes
+and plot its empirical Pareto frontier, run:
+
+```bash
+PYTHONPATH=src python scratch/plot_bootstrap_coverage_frontier.py
+```
+
+This writes a vector PDF, the full coverage CSV, and replay provenance under
+`results/bootstrap-ols-pairs-controlled-sweep/reports/coverage_frontier/`.
+The frontier minimizes N, B, and absolute coverage error relative to 95%; its
+highlighted points are exploratory estimates based on 100 datasets (MATH.md §7.4).
+
 For the paired follow-up that fixes `sigma=1` and `B=2000` while sweeping a
 denser range of training sizes from `N=20` through `N=5000`, run:
 

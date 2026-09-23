@@ -694,6 +694,29 @@ or interpolated continuous coverage surfaces are not assumed.
 
 Source: `scratch/plot_bootstrap_coverage_frontier.py`.
 
+### 7.5 Dedicated joint N/B coverage sweep
+
+The dedicated experiment applies the unchanged construction of §7.3 to
+explicit pairs $(N_j,B_j)$, with both coordinates increasing. The default path
+has $N_j=B_j\in\{20,50,100,200,500,1000,2000,3000,5000\}$, $\sigma=1$,
+$\delta=0.05$, and $R=2000$ independent outer datasets. It reports only
+
+$$
+\widehat C_j=\frac{1}{R}\sum_{r=1}^R
+\mathbf{1}\{ |\widehat f_{r,N_j}(a)-f(a)|\leq
+\widehat c_{r,N_j,B_j}\widehat s_{r,N_j}(a)\quad\forall a\in\mathbb R\}.
+$$
+
+Each bootstrap quantile uses the same certified upper endpoints and `higher`
+order-statistic convention as §7.3. Confidence intervals for $\widehat C_j$
+are pointwise Wilson intervals over independent outer datasets. Settings share
+nested observations and bootstrap uniform prefixes, so comparisons across
+settings are paired. Neither $\widehat C_j$ nor its population counterpart is
+constrained to be monotone. No ranking or additional minimization objective is
+introduced. Fixed confidence level targets asymptotic coverage $1-\delta$.
+
+Source: `src/experiments/bootstrap_joint_coverage.py`.
+
 ## 8. Gradients and Estimators
 
 For a differentiable action objective and policy, the population chain rule is

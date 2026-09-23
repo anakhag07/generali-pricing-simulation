@@ -68,3 +68,30 @@ def plot_sweep(rows, payload, destination):
             plt.close(fig)
             figures.append(path)
     return figures
+
+
+def plot_joint_coverage(rows, payload, destination):
+    """Show empirical coverage at each joint N/B setting, with pointwise CIs."""
+    destination = Path(destination)
+    destination.mkdir(parents=True, exist_ok=True)
+    style = {"font.size": 10, "axes.titlesize": 14, "axes.labelsize": 12,
+             "xtick.labelsize": 10, "ytick.labelsize": 10, "legend.fontsize": 10,
+             "figure.titlesize": 16}
+    with plt.rc_context(style):
+        fig, ax = plt.subplots(figsize=(9, 5), constrained_layout=True)
+        x = np.arange(len(rows))
+        y = np.array([r["coverage"] for r in rows])
+        errors = np.array([[r["coverage"]-r["coverage_lower"] for r in rows],
+                           [r["coverage_upper"]-r["coverage"] for r in rows]])
+        ax.errorbar(x, y, yerr=errors, marker="o", capsize=3,
+                    label=f"{payload['datasets']} datasets; 95% Wilson CI")
+        ax.axhline(1-payload["delta"], color="C1", linestyle="--", label="Nominal coverage")
+        ax.set_xticks(x, [f"{r['N']}\n{r['B']}" for r in rows])
+        ax.set_xlabel("Joint setting: training size N (top), bootstrap count B (bottom)")
+        ax.set_ylabel("Empirical simultaneous coverage on the whole real line")
+        ax.set_title(rf"Pairs bootstrap: $\sigma={payload['sigma']:g}$, $\delta={payload['delta']:g}$")
+        ax.legend()
+        path = destination/"joint_N_B_coverage.pdf"
+        fig.savefig(path, format="pdf")
+        plt.close(fig)
+    return path

@@ -95,3 +95,41 @@ def plot_joint_coverage(rows, payload, destination):
         fig.savefig(path, format="pdf")
         plt.close(fig)
     return path
+
+
+def plot_cartesian_coverage(rows, payload, destination):
+    """Render all N/B cells without interpolation, plus Monte Carlo uncertainty."""
+    destination = Path(destination)
+    destination.mkdir(parents=True, exist_ok=True)
+    ns, bs = payload["grid"]["N"], payload["grid"]["B"]
+    by_cell = {(r["N"], r["B"]): r for r in rows}
+    if set(by_cell) != {(n,b) for n in ns for b in bs}:
+        raise ValueError("A Cartesian heatmap requires every N/B cell.")
+    style = {"font.size": 10, "axes.titlesize": 14, "axes.labelsize": 12,
+             "xtick.labelsize": 10, "ytick.labelsize": 10, "figure.titlesize": 16}
+    paths = []
+    for uncertainty in (False, True):
+        values = np.array([[(by_cell[n,b]["coverage_upper"]-by_cell[n,b]["coverage_lower"])/2
+                            if uncertainty else by_cell[n,b]["coverage"] for b in bs] for n in ns])*100
+        with plt.rc_context(style):
+            fig, ax = plt.subplots(figsize=(10, 8), constrained_layout=True)
+            mesh = ax.pcolormesh(np.arange(len(bs)+1), np.arange(len(ns)+1), values, cmap="viridis")
+            ax.set_xticks(np.arange(len(bs))+.5, [str(b) for b in bs])
+            ax.set_yticks(np.arange(len(ns))+.5, [str(n) for n in ns])
+            ax.set_xlabel(r"Bootstrap refit count $B$")
+            ax.set_ylabel(r"Training sample size $N$")
+            title = "95% Wilson interval half-width" if uncertainty else "Empirical simultaneous coverage"
+            ax.set_title(f"{title}\n{payload['datasets']} datasets per cell; "
+                         rf"$\sigma={payload['sigma']:g}$; nominal coverage {100*(1-payload['delta']):g}%")
+            colorbar = fig.colorbar(mesh, ax=ax)
+            colorbar.set_label("Percentage points" if uncertainty else "Coverage (%)")
+            for i in range(len(ns)):
+                for j in range(len(bs)):
+                    # Contrast only; the scalar values retain the standard viridis map.
+                    color = "white" if mesh.norm(values[i,j]) < .45 else "black"
+                    ax.text(j+.5, i+.5, f"{values[i,j]:.2f}", ha="center", va="center", color=color)
+            path = destination/("coverage_interval_half_width.pdf" if uncertainty else "cartesian_N_B_coverage.pdf")
+            fig.savefig(path, format="pdf")
+            plt.close(fig)
+            paths.append(path)
+    return paths

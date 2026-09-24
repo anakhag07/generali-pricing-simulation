@@ -717,6 +717,24 @@ introduced. Fixed confidence level targets asymptotic coverage $1-\delta$.
 
 Source: `src/experiments/bootstrap_joint_coverage.py`.
 
+### 7.6 Cartesian N/B coverage replay and extension
+
+The Cartesian extension evaluates the same $C_r(N,B)$ in §7.5 at all 81
+combinations of the nine N and B values. Original fitted coefficients and
+standard errors are retained. For each N, reuse the longest compatible saved
+bootstrap sequence of length $K_N$. Compute only replicates $K_N+1,\ldots,5000$
+from the original uniform stream, then calibrate each B using the first B
+certified supremum brackets and the unchanged `higher` quantile. Reusing
+prefixes introduces no new statistical approximation. Exact saved containment
+outcomes on the diagonal must agree with replay. No optimizer action is chosen.
+
+Every cell reports $\widehat C(N,B)=R^{-1}\sum_r C_r(N,B)$ with $R=2000$ and
+pointwise Wilson intervals. Heatmap cells are discrete settings, not samples of
+an interpolated coverage surface. Lower/upper interval bounds and half-widths
+quantify Monte Carlo uncertainty; they are not simultaneous across grid cells.
+
+Source: `src/experiments/bootstrap_cartesian_coverage.py`.
+
 ## 8. Gradients and Estimators
 
 For a differentiable action objective and policy, the population chain rule is

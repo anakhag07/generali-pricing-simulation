@@ -23,7 +23,7 @@ MANIFEST_KIND = "bootstrap_ols_joint_coverage"
 
 
 def load_manifest(path):
-    """Validate an explicitly increasing N/B path and the unchanged band rule."""
+    """Validate a joint N/B path or Cartesian grid with the unchanged band rule."""
     path = Path(path).resolve()
     p = read_json(path)
     if p.get("kind") != MANIFEST_KIND or p.get("domain") != "real_line" or p.get("bootstrap_method") != "pairs":
@@ -38,13 +38,28 @@ def load_manifest(path):
         raise ValueError("Require at least two independent datasets.")
     if not isinstance(p["datasets_per_task"], int) or p["datasets_per_task"] < 1:
         raise ValueError("datasets_per_task must be a positive integer.")
-    if not p["settings"]:
-        raise ValueError("Require explicit joint settings.")
-    previous = {"N": 3, "B": 1}
-    for setting in p["settings"]:
-        if set(setting) != {"N", "B"} or any(not isinstance(setting[k], int) or setting[k] <= previous[k] for k in previous):
-            raise ValueError("N and B must both strictly increase, starting at N>=4 and B>=2.")
-        previous = setting
+    if "grid" in p:
+        if set(p["grid"]) != {"N", "B"}:
+            raise ValueError("Specify either a joint path or a Cartesian N/B grid.")
+        for key, lower in (("N", 4), ("B", 2)):
+            values = p["grid"][key]
+            if not values or any(not isinstance(v, int) or v < lower for v in values) or values != sorted(set(values)):
+                raise ValueError("Cartesian axes must be sorted unique valid integers.")
+        projects = p.get("reuse_projects", [])
+        if not projects or any(not isinstance(v, str) or Path(v).name != v or v in {".", "..", p["name"]} for v in projects):
+            raise ValueError("Specify safe distinct source project names for reuse.")
+        expanded = [{"N": n, "B": b} for n in p["grid"]["N"] for b in p["grid"]["B"]]
+        if "settings" in p and p["settings"] != expanded:
+            raise ValueError("Explicit settings disagree with the Cartesian grid.")
+        p["settings"] = expanded
+    else:
+        if not p["settings"]:
+            raise ValueError("Require explicit joint settings.")
+        previous = {"N": 3, "B": 1}
+        for setting in p["settings"]:
+            if set(setting) != {"N", "B"} or any(not isinstance(setting[k], int) or setting[k] <= previous[k] for k in previous):
+                raise ValueError("N and B must both strictly increase, starting at N>=4 and B>=2.")
+            previous = setting
     if not 0 < p["supremum_tolerance"] < 1e-3:
         raise ValueError("Invalid supremum tolerance.")
     if set(p["seeds"]) != {"master", "design", "observation", "bootstrap"} or any(not isinstance(s, int) or s < 0 for s in p["seeds"].values()):
@@ -66,11 +81,17 @@ def _sources():
 
 
 def _contract(manifest, index):
-    return {"manifest": manifest.payload, "dataset": index, "sources": _sources()}
+    sources = _sources()
+    if "grid" in manifest.payload:
+        sources.append(file_record(Path(__file__).with_name("bootstrap_cartesian_coverage.py")))
+    return {"manifest": manifest.payload, "dataset": index, "sources": sources}
 
 
 def run_dataset(manifest, index, runs_root, force=False):
     """Fit actual observed pairs, certify coverage, and checkpoint one dataset."""
+    if "grid" in manifest.payload:
+        from experiments.bootstrap_cartesian_coverage import run_dataset as run_cartesian
+        return run_cartesian(manifest, index, runs_root, force)
     p = manifest.payload
     if not 0 <= index < p["datasets"]:
         raise IndexError(index)
@@ -125,6 +146,9 @@ def run_dataset(manifest, index, runs_root, force=False):
 
 def collect(manifest, runs_root):
     """Validate all outer datasets and report only empirical coverage and CIs."""
+    if "grid" in manifest.payload:
+        from experiments.bootstrap_cartesian_coverage import collect as collect_cartesian
+        return collect_cartesian(manifest, runs_root)
     project = Path(runs_root)/manifest.name
     records, rows = [], []
     for index in range(manifest.payload["datasets"]):

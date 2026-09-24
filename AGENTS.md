@@ -388,6 +388,16 @@ Changing the `models` array is the supported model swap. Available keys are
 
 ### Key Components
 
+- `src/experiments/bootstrap_cartesian_coverage.py` extends completed N/B coverage
+  runs using the `grid` and `reuse_projects` fields of the joint-coverage manifest
+  kind. It verifies data/seed/numerical-source contracts and artifact hashes,
+  retains each longest saved bootstrap prefix, and fits only missing suffixes.
+  Each N is checkpointed separately. The collector validates all Cartesian
+  cells and writes coverage and pointwise Wilson-uncertainty heatmaps; existing
+  diagonal/controlled artifacts are preserved. The production manifest is
+  `bootstrap_ols_cartesian_coverage.json`; see MATH §7.6,
+  `docs/bootstrap_cartesian_coverage.md` and `test_bootstrap_cartesian_coverage.py`.
+
 - `src/experiments/bootstrap_joint_coverage.py` implements the dedicated joint
   N/B coverage-only manifest through the shared launcher. It reuses the existing
   pairs refitter, named streams and whole-line certificates; no optimizer action

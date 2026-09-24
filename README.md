@@ -96,6 +96,19 @@ checkpointed datasets share each CPU array task, with eight tasks concurrent.
 Outputs live under `results/bootstrap-ols-pairs-joint-coverage/`; details are in
 [the joint sweep notes](docs/bootstrap_joint_coverage.md).
 
+To complete the 9-by-9 Cartesian N/B grid while reusing the diagonal and earlier
+controlled sweep's saved bootstrap prefixes, run:
+
+```bash
+python scripts/run_experiment_manifest.py manifests/bootstrap_ols_cartesian_coverage.json --launch slurm --array
+```
+
+This retains the original 2000 datasets and fits only missing bootstrap suffixes.
+Results and coverage/uncertainty heatmaps go to
+`results/bootstrap-ols-pairs-cartesian-coverage/`. CPU tasks checkpoint each N;
+compatible existing bootstrap draws and diagonal coverage are verified before
+reuse. See [the extension notes](docs/bootstrap_cartesian_coverage.md).
+
 To reconstruct the joint N/B coverage grid from the saved bootstrap prefixes
 and plot its empirical Pareto frontier, run:
 

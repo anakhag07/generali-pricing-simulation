@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 import json
 import time
@@ -11,7 +11,7 @@ import numpy as np
 import sympy as sp
 from scipy.linalg import solve_triangular
 
-from experiments.bootstrap_band import features
+from experiments.bootstrap_band import features, refit_pairs
 from experiments.bootstrap_band_continuous import (
     VARIABLE, QuadraticErrorCertificate, nonnegative_on_real_line,
 )
@@ -19,6 +19,7 @@ from experiments.launch import LaunchPlan
 from experiments.policy_lcb.common import PolicyLCBLaunchSpec, read_json, write_json_atomic, wilson_interval
 from experiments.provenance import file_record
 from experiments.seeds import derive_seed
+from experiments.slurm import CPU_PROFILE
 from experiments.sweep_reporting import write_rows_csv
 from objective.base import Objective
 from optimization.solvers import run_first_order_minimize
@@ -144,6 +145,8 @@ def load_manifest(path):
     p = read_json(path)
     if p.get("kind") != MANIFEST_KIND or p.get("domain") != "real_line":
         raise ValueError("Require the controlled all-real bootstrap manifest.")
+    if p.get("bootstrap_method") != "pairs":
+        raise ValueError("Require bootstrap_method='pairs'; historical Gaussian results are separate.")
     if not p["name"] or Path(p["name"]).name != p["name"] or p["name"] in {".", ".."}:
         raise ValueError("Require a safe project name.")
     if p["design"] != {"type": "iid_normal", "mean": 0.0, "std": 1.0}:
@@ -152,8 +155,17 @@ def load_manifest(path):
         raise ValueError("This experiment fixes f(a)=5a-5a^2.")
     if not 0 < p["delta"] < 1 or p["datasets"] < 2:
         raise ValueError("Require 0<delta<1 and at least two datasets.")
+    allowed_axes = {"N", "sigma", "B"}
+    if set(p["baseline"]) != allowed_axes:
+        raise ValueError("Baseline must define N, sigma, and B.")
     for key, lower in (("N", 4), ("B", 2), ("sigma", 0)):
-        values = p["axes"][key]
+        value = p["baseline"][key]
+        if not np.isfinite(value) or (value <= 0 if key == "sigma" else value < lower or int(value) != value):
+            raise ValueError("Invalid baseline value.")
+    if not p["axes"] or not set(p["axes"]) <= allowed_axes:
+        raise ValueError("Require at least one sweep axis chosen from N, sigma, and B.")
+    for key, values in p["axes"].items():
+        lower = {"N": 4, "B": 2, "sigma": 0}[key]
         if not values or values != sorted(set(values)) or p["baseline"][key] not in values:
             raise ValueError("Axes must be sorted, unique, and contain the baseline.")
         if any(not np.isfinite(v) or (v <= 0 if key == "sigma" else v < lower or int(v) != v) for v in values):
@@ -169,8 +181,12 @@ def load_manifest(path):
         raise ValueError("Require repository L-BFGS-B with starts in [0,1], without bounds.")
     if any(not np.isfinite(opt[k]) or opt[k] <= 0 for k in ("t_steps", "gradient_tolerance", "ftol", "global_gap_tolerance")):
         raise ValueError("Invalid optimizer tolerances.")
-    if p["launch"] != {"mode": "local", "array": "none"}:
-        raise ValueError("Use a local non-array launch.")
+    launch = p["launch"]
+    if launch["mode"] not in {"local", "auto", "slurm"} or launch["array"] not in {"none", "seed"}:
+        raise ValueError("Use a supported launch mode and none/seed array.")
+    parallel = launch.get("array_max_parallel")
+    if parallel is not None and (not isinstance(parallel, int) or parallel <= 0):
+        raise ValueError("array_max_parallel must be a positive integer.")
     return SweepManifest(p["name"], p, path, PolicyLCBLaunchSpec(**p["launch"]))
 
 
@@ -181,34 +197,49 @@ def settings(payload):
             yield axis, value, {**payload["baseline"], axis: value}
 
 
+def _values_used(payload, key):
+    """Return all values required for a parameter, including its fixed baseline."""
+    return sorted(set(payload["axes"].get(key, [])) | {payload["baseline"][key]})
+
+
 def dataset_streams(payload, index):
-    """Generate nested observations and bootstrap columns with independent seeds."""
+    """Keep original observation streams; use bootstrap uniforms for paired rows."""
     seeds = {key: derive_seed(payload["seeds"][key], f"{payload['seeds']['master']}:dataset:{index}")
              for key in ("design", "observation", "bootstrap")}
-    nmax, bmax = max(payload["axes"]["N"]), max(payload["axes"]["B"])
+    nmax, bmax = max(_values_used(payload, "N")), max(_values_used(payload, "B"))
     x = np.random.default_rng(seeds["design"]).normal(size=nmax)
     epsilon = np.random.default_rng(seeds["observation"]).normal(size=nmax)
-    z = np.random.default_rng(seeds["bootstrap"]).normal(size=(bmax, nmax))
-    return seeds, x, epsilon, z
+    uniforms = np.random.default_rng(seeds["bootstrap"]).random(size=(bmax, nmax))
+    return seeds, x, epsilon, uniforms
 
 
-def calibrate_design(x, z, tolerance):
-    """Calibrate standardized bootstrap refits using design and Gaussian draws only."""
+def calibrate_design(x, y, indices, tolerance):
+    """Calibrate actual observed-pairs refits without truth (MATH.md §7.3)."""
+    started = time.monotonic()
     p = features(x)
     if len(x) <= 3 or np.linalg.matrix_rank(p) != 3:
         raise ValueError("Require full-rank quadratic OLS with N>3.")
     q, triangular = np.linalg.qr(p, mode="reduced")
     inverse = solve_triangular(triangular, np.eye(3))
     covariance = inverse @ inverse.T
-    d = solve_triangular(triangular, q.T @ z.T).T
+    beta = solve_triangular(triangular, q.T @ y)
+    residual = y-p @ beta
+    sigma_hat = float(np.linalg.norm(residual)/np.sqrt(len(x)-3))
+    if sigma_hat <= np.finfo(float).eps*max(1., float(np.linalg.norm(y))):
+        raise ValueError("Residual variance is numerically zero.")
+    bootstrap_beta = refit_pairs(p, y, indices)
+    d = (bootstrap_beta-beta)/sigma_hat
+    refit_seconds = time.monotonic()-started
     cert = QuadraticErrorCertificate(covariance, 1.)
     bounds = np.array([cert.supremum_interval(cert.difference(draw, np.zeros(3)), tolerance) for draw in d])
-    return p, q, triangular, covariance, d, bounds
+    timings = {"refit_seconds": refit_seconds,
+               "certificate_seconds": time.monotonic()-started-refit_seconds}
+    return p, q, triangular, covariance, d, bounds, timings
 
 
 def _source_contract():
     return [file_record(Path(__file__).with_name(name)) for name in
-            ("bootstrap_band_sweep.py", "bootstrap_band_continuous.py")]+[
+            ("bootstrap_band_sweep.py", "bootstrap_band_continuous.py", "bootstrap_band.py")]+[
         file_record(Path(__file__).parents[1]/"optimization"/name)
         for name in ("base.py", "solvers.py", "gradients/methods.py")]
 
@@ -226,21 +257,32 @@ def run_dataset(manifest, index, runs_root, force=False):
         if previous["contract"] != contract or previous["arrays"] != file_record(destination/"draws.npz"):
             raise ValueError("Cached sweep contract/artifacts changed; use a new name or explicit --force.")
         return previous
-    seeds, x, epsilon, z = dataset_streams(payload, index)
+    seeds, x, epsilon, uniforms = dataset_streams(payload, index)
     beta0 = np.array(payload["truth"]["coefficients"])
     reference = optimize_lcb(beta0, np.eye(3), 1., 0., payload["optimizer"])
     if reference["optimization_state"] != "certified":
         raise RuntimeError("Repository true-reference optimizer did not certify.")
     a_star = reference["action"]
     arrays = {"training_actions": x, "standardized_observation_errors": epsilon}
-    fits, solved, rows = {}, {}, []
-    for n in payload["axes"]["N"]:
-        bmax = max(payload["axes"]["B"]) if n == payload["baseline"]["N"] else payload["baseline"]["B"]
-        p, q, triangular, covariance, d, bounds = calibrate_design(x[:n], z[:bmax, :n], payload["supremum_tolerance"])
+    fits, solved, rows, calibration_timings = {}, {}, [], {}
+    sweep_settings = list(settings(payload))
+    for n in sorted({setting["N"] for _, _, setting in sweep_settings}):
+        draws = max(setting["B"] for _, _, setting in sweep_settings if setting["N"] == n)
+        indices = (n*uniforms[:draws, :n]).astype(np.int32)
+        # Refit the actual observed pairs once at sigma=1. For paired positive
+        # sigma, correct-model OLS equivariance preserves these standardized
+        # perturbations; direct-refit tests verify this cache identity.
+        y_unit = features(x[:n]) @ beta0+epsilon[:n]
+        p, q, triangular, covariance, d, bounds, timings = calibrate_design(
+            x[:n], y_unit, indices, payload["supremum_tolerance"])
+        calibration_timings[str(n)] = timings
         fits[n] = p, q, triangular, covariance, d, bounds
         arrays.update({f"N{n}_covariance": covariance, f"N{n}_bootstrap_unit_perturbations": d,
+                       f"N{n}_bootstrap_indices": indices,
                        f"N{n}_bootstrap_supremum_bounds": bounds})
-    for axis, axis_value, setting in settings(payload):
+        print(f"  N={n}, B={draws}: refits {timings['refit_seconds']:.2f}s, "
+              f"certificates {timings['certificate_seconds']:.2f}s", flush=True)
+    for axis, axis_value, setting in sweep_settings:
         n, sigma, b = setting["N"], setting["sigma"], setting["B"]
         key = (n, sigma, b)
         if key not in solved:
@@ -288,6 +330,7 @@ def run_dataset(manifest, index, runs_root, force=False):
     destination.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(destination/"draws.npz", **arrays)
     summary = {"contract": contract, "seeds": seeds, "reference": reference, "rows": rows,
+               "calibration_timings": calibration_timings,
                "arrays": file_record(destination/"draws.npz"), "elapsed_seconds": time.monotonic()-started}
     write_json_atomic(summary_path, summary)
     print(f"Dataset {index+1}/{payload['datasets']}: {summary['elapsed_seconds']:.1f}s", flush=True)
@@ -359,21 +402,27 @@ error. Errors at different actions are dependent through the same three OLS
 coefficient errors, with covariance sigma^2 p(a)' V p(a').
 
 Three independent named random streams generate training actions, standardized
-observation errors, and Gaussian bootstrap arrays per dataset index. Training
-observations use prefixes for N, bootstrap arrays use prefixes for B, and sigma
-settings reuse all standardized draws. Bootstrap columns also pair across N.
-Exact RNG seeds and sufficient arrays are saved for replay; larger bootstrap
-counts change calibration, not the observed OLS coefficients. No optimizer
-randomness is used: all initialization points are explicitly in the manifest.
+observation errors, and uniform row selections per dataset index. Training
+observations use prefixes for N. Each bootstrap resamples N original (x_i,y_i)
+rows with replacement, using indices floor(N*U_bi); no response noise is added.
+B settings use prefixes of the same bootstrap fits; sigma settings use identical
+indices. Uniform selections pair across N, while indices refer to each N's rows.
+Exact seeds, row indices and observations are saved for replay. Larger B changes
+calibration, not the observed fit. All optimizer starts are in the manifest.
 
-The bootstrap refit identity beta_b*=beta_hat+sigma_hat R^(-1)Q'Z_b avoids
-materializing response matrices. Gaussian draws and P alone calibrate the
-standardized supremum; truth is used only to generate observations and evaluate
-coverage/regret. Original sigma_hat stays fixed in bootstrap denominators.
+Observed-pairs OLS refits at sigma=1 give d_b=(beta_b*-beta_hat)/sigma_hat.
+Correct-model OLS equivariance permits reuse as beta_b*=beta_hat+sigma_hat*d_b
+at other positive noise scales, exactly matching direct resampled-row refits
+up to numerical precision. Calibration requires original responses and design;
+truth only generates observations and evaluates coverage/regret. Original
+sigma_hat stays fixed in bootstrap denominators. Rank-deficient resamples
+fail explicitly and are never silently discarded or redrawn.
 Certified supremum brackets and exact rational polynomial containment tests
 are inherited from MATH.md section 7.2. Their tolerance is in the manifest.
 These certify represented floating-point polynomials, not exact-arithmetic OLS.
-Coverage across datasets is empirical, not an exact finite-sample 95% theorem.
+Under bootstrap regularity conditions, coverage approaches its nominal level
+as N and B grow. Finite-sample coverage is empirical, not exact. Increasing B
+reduces conditional Monte Carlo error without guaranteeing monotonic regret.
 
 The repository Optimization/first-order L-BFGS-B entry point computes BOTH
 the true reference action and the LCB action, without bounds. Starts in [0,1]
@@ -384,8 +433,8 @@ tolerance is added to the regret inequality when testing it. Unbounded tails,
 exactly degenerate tails, solver failures, and uncertified solutions are counted
 separately. A certified result may retain a solver warning, explicitly recorded.
 
-Figures (standard Matplotlib, vector PDF) each have three independent-axis
-panels: sigma, N, B. Coverage is sum(C_r)/R with 95% Wilson intervals. Width is
+Figures (standard Matplotlib, vector PDF) each have one panel per manifest sweep
+axis. Coverage is sum(C_r)/R with 95% Wilson intervals. Width is
 W_r=r_delta,r(a_star), NOT sup_R r_delta (which is infinite). Regret is
 f(a_star)-f(a_LCB). Width and regret show means with +/- one standard error
 across independent datasets. Regret uses certified cases only, with explicit
@@ -396,7 +445,7 @@ for exact optimization, not an unconditional bound on mean regret.
 This is a newly paired controlled experiment, not a relabeling of old independent
 noise cases. Historical grid and all-real replay outputs remain unchanged.
 
-Run: scripts/run_experiment_manifest.py {manifest.source_path} --launch local
+Run: scripts/run_experiment_manifest.py {manifest.source_path} --launch slurm --array
 
 ```json
 {json.dumps(manifest.payload, indent=2)}
@@ -405,16 +454,19 @@ Run: scripts/run_experiment_manifest.py {manifest.source_path} --launch local
 
 
 def build_launch_plan(manifest, *, runs_root=None, force=False):
-    """Integrate the paired sweep with the existing local manifest launcher."""
+    """One deterministic dataset per task, using the existing ORCD launcher."""
     def run_all(context):
         for index in range(manifest.payload["datasets"]):
             run_dataset(manifest, index, context.runs_root, force)
         collect(manifest, context.runs_root)
     def run_task(index, context):
-        if index != 0:
+        if not 0 <= index < manifest.payload["datasets"]:
             raise IndexError(index)
-        run_all(context)
-    return LaunchPlan(name=manifest.name, task_count=1, requires_jax=False,
+        saved = run_dataset(manifest, index, context.runs_root, force)
+        return {"dataset": index, "arrays": saved["arrays"]}
+    return LaunchPlan(name=manifest.name, task_count=manifest.payload["datasets"], requires_jax=False,
                       run_task=run_task, run_all=run_all,
                       collect=lambda context: collect(manifest, context.runs_root),
-                      runs_root=runs_root, default_launch="local", default_array=False)
+                      runs_root=runs_root, default_launch=manifest.launch.mode,
+                      default_array=manifest.launch.array == "seed",
+                      slurm_profile=replace(CPU_PROFILE, cpus_per_task=1, memory="4G"))

@@ -19,6 +19,10 @@ def payload():
     return json.loads((ROOT/"manifests/bootstrap_ols_controlled_sweep.json").read_text())
 
 
+def dense_n_payload():
+    return json.loads((ROOT/"manifests/bootstrap_ols_dense_n_sweep.json").read_text())
+
+
 def test_lcb_gradient_matches_finite_difference():
     v = np.array([[2., .1, -.2], [.1, 1., .15], [-.2, .15, 1.]])
     objective = QuadraticLCBObjective([.1, 5.2, -4.9], v, 2.3)
@@ -91,13 +95,18 @@ def test_level_certificate_agrees_with_polynomial_band_special_case():
 
 def test_standardized_bootstrap_is_an_actual_refit_without_truth_calibration():
     rng = np.random.default_rng(81)
-    x, z = rng.normal(size=25), rng.normal(size=(9, 25))
-    p, q, triangular, v, d, bounds = calibrate_design(x, z, 1e-8)
-    beta, sigma_hat = np.array([4., -2., 3.]), .7
-    response = p @ beta[:, None]+sigma_hat*z.T
-    direct = np.linalg.lstsq(p, response, rcond=None)[0].T
+    x = rng.normal(size=25)
+    # Arbitrary observed responses ensure calibration cannot reconstruct noise
+    # from a presumed truth or replace it by freshly generated normal draws.
+    y = 4-2*x+3*x*x + (1+x*x)*rng.uniform(-1, 1, size=len(x))
+    indices = rng.integers(0, len(x), size=(9, len(x)))
+    p, q, triangular, v, d, bounds, timings = calibrate_design(x, y, indices, 1e-8)
+    beta = np.linalg.lstsq(p, y, rcond=None)[0]
+    sigma_hat = np.linalg.norm(y-p@beta)/np.sqrt(len(x)-3)
+    direct = np.array([np.linalg.lstsq(p[rows], y[rows], rcond=None)[0] for rows in indices])
     np.testing.assert_allclose(beta+sigma_hat*d, direct, atol=1e-12)
     assert np.all(bounds[:, 1] >= bounds[:, 0])
+    assert all(value >= 0 for value in timings.values())
 
 
 def test_nested_independent_streams():
@@ -109,6 +118,17 @@ def test_nested_independent_streams():
     for a, b in zip(first[1:], replay[1:]):
         np.testing.assert_array_equal(a, b)
     assert not np.array_equal(first[1], second[1])
+    for key, values in zip(("design", "observation"), first[1:3]):
+        np.testing.assert_array_equal(values, np.random.default_rng(first[0][key]).normal(size=len(values)))
+    assert np.all((0 <= first[3]) & (first[3] < 1))
+    p["axes"]["B"] = [5, 2000, 2001]
+    larger = dataset_streams(p, 0)
+    np.testing.assert_array_equal(first[3], larger[3][:len(first[3])])
+    p["seeds"]["bootstrap"] += 1
+    changed = dataset_streams(p, 0)
+    np.testing.assert_array_equal(first[1], changed[1])
+    np.testing.assert_array_equal(first[2], changed[2])
+    assert not np.array_equal(larger[3], changed[3])
 
 
 def test_paired_sweep_end_to_end_certificates_scaling_replay_and_pdfs(tmp_path):
@@ -129,6 +149,11 @@ def test_paired_sweep_end_to_end_certificates_scaling_replay_and_pdfs(tmp_path):
         np.testing.assert_allclose([r["sigma_hat"]/r["sigma"] for r in noise_rows], noise_rows[1]["sigma_hat"], rtol=1e-12)
         with np.load(saved["arrays"]["path"]) as arrays:
             for r in saved["rows"]:
+                indices = arrays[f"N{r['N']}_bootstrap_indices"][:r["B"]]
+                design = features(arrays["training_actions"][:r["N"]])
+                y = arrays[r["array_prefix"]+"_y"]
+                direct = np.array([np.linalg.lstsq(design[rows], y[rows], rcond=None)[0] for rows in indices])
+                np.testing.assert_allclose(arrays[r["array_prefix"]+"_bootstrap_beta"], direct, atol=1e-11)
                 coefficients = arrays[r["array_prefix"]+"_containment_exact_coefficients"]
                 poly = sp.Poly.from_list([sp.Rational(v) for v in coefficients[::-1]], VARIABLE, domain=sp.QQ)
                 assert nonnegative_on_real_line(poly) == r["covered"]
@@ -149,6 +174,36 @@ def test_paired_sweep_end_to_end_certificates_scaling_replay_and_pdfs(tmp_path):
     for record in summary["plots"]:
         assert Path(record["path"]).read_bytes().startswith(b"%PDF-")
     assert not list(project.rglob("*.png"))
+    p["seeds"]["bootstrap"] += 1
+    path.write_text(json.dumps(p))
+    with pytest.raises(ValueError, match="Cached sweep contract"):
+        run_dataset(load_manifest(path), 0, tmp_path)
+
+
+def test_n_only_sweep_uses_fixed_bootstrap_count_and_single_panel_pdfs(tmp_path):
+    p = dense_n_payload()
+    p["datasets"] = 2
+    p["baseline"] = {"N": 12, "sigma": 1., "B": 9}
+    p["axes"] = {"N": [8, 12, 20]}
+    path = tmp_path/"dense-n.json"
+    path.write_text(json.dumps(p))
+    manifest = load_manifest(path)
+    _, x, epsilon, z = dataset_streams(p, 0)
+    assert x.shape == epsilon.shape == (20,)
+    assert z.shape == (9, 20)
+    for index in range(2):
+        saved = run_dataset(manifest, index, tmp_path)
+        assert [(row["axis"], row["N"], row["sigma"], row["B"]) for row in saved["rows"]] == [
+            ("N", 8, 1., 9), ("N", 12, 1., 9), ("N", 20, 1., 9),
+        ]
+    collect(manifest, tmp_path)
+    project = tmp_path/manifest.name
+    summary = json.loads((project/"summary.json").read_text())
+    assert len(summary["metrics"]) == 3
+    assert len(summary["plots"]) == 3
+    for record in summary["plots"]:
+        assert Path(record["path"]).read_bytes().startswith(b"%PDF-")
+    assert not list(project.rglob("*.png"))
 
 
 @pytest.mark.parametrize("key,value", [("domain", "interval"), ("delta", 1.), ("datasets", 1)])
@@ -159,3 +214,46 @@ def test_manifest_rejects_invalid_contract(tmp_path, key, value):
     path.write_text(json.dumps(p))
     with pytest.raises(ValueError):
         load_manifest(path)
+
+
+def test_manifest_rejects_empty_axes_and_invalid_fixed_baseline(tmp_path):
+    for axes, baseline in (({}, {"N": 100, "sigma": 1., "B": 500}),
+                           ({"N": [100]}, {"N": 100, "sigma": 1., "B": 1})):
+        p = dense_n_payload()
+        p["axes"], p["baseline"] = axes, baseline
+        path = tmp_path/f"bad-{len(list(tmp_path.iterdir()))}.json"
+        path.write_text(json.dumps(p))
+        with pytest.raises(ValueError):
+            load_manifest(path)
+
+
+def test_shared_launcher_has_one_cpu_task_per_dataset(tmp_path):
+    from experiments.bootstrap_band_sweep import build_launch_plan
+    manifest = load_manifest(ROOT/"manifests/bootstrap_ols_controlled_sweep.json")
+    plan = build_launch_plan(manifest, runs_root=tmp_path)
+    assert plan.task_count == 100
+    assert plan.default_array
+    assert plan.slurm_profile.cpus_per_task == 1
+    assert plan.slurm_profile.gres is None
+
+
+def test_original_parametric_manifest_cannot_be_silently_reinterpreted(tmp_path):
+    p = payload()
+    del p["bootstrap_method"]
+    path = tmp_path/"old.json"
+    path.write_text(json.dumps(p))
+    with pytest.raises(ValueError, match="pairs"):
+        load_manifest(path)
+
+
+def test_approved_sweep_is_not_a_cartesian_product():
+    from experiments.bootstrap_band_sweep import settings
+    p = payload()
+    rows = list(settings(p))
+    assert p["baseline"] == {"N": 100, "sigma": 1., "B": 2000}
+    assert len(rows) == 37
+    assert len({(r["N"], r["sigma"], r["B"]) for _, _, r in rows}) == 35
+    for axis, value, setting in rows:
+        assert all(setting[key] == base for key, base in p["baseline"].items() if key != axis)
+    assert p["axes"]["N"][-1] == 5000
+    assert p["axes"]["B"][0] == 5

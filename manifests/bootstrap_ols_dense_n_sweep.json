@@ -1,6 +1,6 @@
 {
   "kind": "bootstrap_ols_controlled_sweep",
-  "name": "bootstrap-ols-pairs-controlled-sweep",
+  "name": "bootstrap-ols-pairs-dense-n-sweep",
   "domain": "real_line",
   "design": {
     "type": "iid_normal",
@@ -22,17 +22,6 @@
     "B": 2000
   },
   "axes": {
-    "sigma": [
-      0.1,
-      0.25,
-      0.5,
-      0.75,
-      1.0,
-      1.5,
-      2.0,
-      3.0,
-      5.0
-    ],
     "N": [
       20,
       25,
@@ -50,20 +39,6 @@
       2000,
       3000,
       5000
-    ],
-    "B": [
-      5,
-      10,
-      20,
-      30,
-      50,
-      75,
-      100,
-      150,
-      250,
-      500,
-      1000,
-      2000
     ]
   },
   "supremum_tolerance": 1e-08,
@@ -80,7 +55,7 @@
     "global_gap_tolerance": 1e-07
   },
   "seeds": {
-    "master": 20260912,
+    "master": 20260913,
     "design": 1301,
     "observation": 2301,
     "bootstrap": 3301

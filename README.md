@@ -56,14 +56,21 @@ pytest -q
 ### Controlled bootstrap envelope sweeps
 
 ```bash
-python scripts/run_experiment_manifest.py manifests/bootstrap_ols_controlled_sweep.json --launch local
+python scripts/run_experiment_manifest.py manifests/bootstrap_ols_controlled_sweep.json --launch slurm --array
 ```
 
-This paired Gaussian quadratic-OLS experiment varies observation-noise SD
+This pairs-bootstrap quadratic-OLS experiment varies observation-noise SD
 `sigma`, training size `N`, and bootstrap count `B`, one at a time. Both the
 confidence statement and unconstrained LCB optimization cover the entire real
 line; normal training inputs and optimizer initialization in `[0,1]` impose
-no action bounds. Each observed dataset has its own bootstrap band.
+no action bounds. Each observed dataset has its own bootstrap band. The original
+`(x_i,y_i)` rows are resampled with replacement, with no fresh bootstrap noise.
+The baseline is `N=100, sigma=1, B=2000`; the three separate axes include
+`N=20..5000`, `B=5..2000`, and `sigma=0.1..5` at the manifest's listed values.
+There are 100 independent datasets, with paired prefixes across conditions.
+Slurm uses one CPU task per dataset, at most eight concurrently, followed by a
+collector. Analytical polynomial certification dominates this CPU workload.
+See [the implementation notes](docs/bootstrap_pairs.md) for seeds and replay.
 
 Three PDFs report simultaneous coverage, envelope half-width at the true
 optimum, and LCB regret. All reported actions come from the repository
@@ -71,9 +78,61 @@ optimizer, with additional all-real polynomial gap certification. Unbounded or
 uncertified cases have explicit counts rather than silently reported regret.
 Outputs, saved fits/bootstrap perturbations, exact containment polynomials,
 seeds, source hashes, and `EXPERIMENT.md` live under
-`results/bootstrap-ols-controlled-sweep/`. Calibration uses no truth or grid.
+`results/bootstrap-ols-pairs-controlled-sweep/`. Calibration uses no truth or grid.
 See MATH.md §7.3 for pairing, width semantics, and the coverage-event regret
 bound. The fixed-denominator bootstrap's sampling coverage is approximate.
+
+For the dedicated coverage-only sweep with N and B increasing together and
+2000 independent datasets, run:
+
+```bash
+python scripts/run_experiment_manifest.py manifests/bootstrap_ols_joint_coverage.json --launch slurm --array
+```
+
+The nine settings use N=B from 20 through 5000 at sigma=1. The band rule stays
+fixed; the CSV and PDF report empirical coverage with pointwise Wilson
+intervals. There is no ranking, smoothing or monotonicity constraint. Ten
+checkpointed datasets share each CPU array task, with eight tasks concurrent.
+Outputs live under `results/bootstrap-ols-pairs-joint-coverage/`; details are in
+[the joint sweep notes](docs/bootstrap_joint_coverage.md).
+
+To complete the 9-by-9 Cartesian N/B grid while reusing the diagonal and earlier
+controlled sweep's saved bootstrap prefixes, run:
+
+```bash
+python scripts/run_experiment_manifest.py manifests/bootstrap_ols_cartesian_coverage.json --launch slurm --array
+```
+
+This retains the original 2000 datasets and fits only missing bootstrap suffixes.
+Results and coverage/uncertainty heatmaps go to
+`results/bootstrap-ols-pairs-cartesian-coverage/`. CPU tasks checkpoint each N;
+compatible existing bootstrap draws and diagonal coverage are verified before
+reuse. See [the extension notes](docs/bootstrap_cartesian_coverage.md).
+
+To reconstruct the joint N/B coverage grid from the saved bootstrap prefixes
+and plot its empirical Pareto frontier, run:
+
+```bash
+PYTHONPATH=src python scratch/plot_bootstrap_coverage_frontier.py
+```
+
+This writes a vector PDF, the full coverage CSV, and replay provenance under
+`results/bootstrap-ols-pairs-controlled-sweep/reports/coverage_frontier/`.
+The frontier minimizes N, B, and absolute coverage error relative to 95%; its
+highlighted points are exploratory estimates based on 100 datasets (MATH.md §7.4).
+
+For the paired follow-up that fixes `sigma=1` and `B=2000` while sweeping a
+denser range of training sizes from `N=20` through `N=5000`, run:
+
+```bash
+python scripts/run_experiment_manifest.py manifests/bootstrap_ols_dense_n_sweep.json --launch local
+```
+
+The follow-up reuses the same all-real calibration, repository optimization,
+certification, metrics, and 100-dataset design. Within each dataset, every
+smaller training sample is a prefix of the `N=5000` sample, so changes across
+`N` are paired. Its separate outputs live under
+`results/bootstrap-ols-pairs-dense-n-sweep/` and its PDFs contain only the `N` panel.
 
 ## What This Does
 
@@ -311,7 +370,7 @@ coverage remains an empirical evaluation of an approximate bootstrap procedure.
 No plot samples enter calibration or coverage, and no coefficient ellipsoid is
 used. See MATH.md §7.2.
 
-Results go to `results/bootstrap-ols-continuous-replay/`, preserving the old
+Results go to `results/bootstrap-ols-pairs-continuous-replay/`, preserving the old
 experiment. Four mathematically labeled PDFs show the true/fitted/bootstrap
 curves and signed error, bootstrap calibration and whole-line normalized error,
 saved error realizations at `n=100` across noise SD, and empirical coverage/band
@@ -326,7 +385,7 @@ python scripts/run_experiment_manifest.py manifests/bootstrap_ols_grid_band.json
 
 This two-stage experiment fits quadratic OLS to independent `x ~ N(0,1)` and
 `y = 5*x - 5*x**2 + Gaussian noise`. Stage 1 uses `n=100`, noise SD `1`, and
-499 fixed-input Gaussian parametric bootstrap refits. It calibrates a direct
+499 original-row pairs-bootstrap refits. It calibrates a direct
 maximum standardized prediction error on 1,001 points in `[0,1]`, using the
 original fit's prediction standard error for every bootstrap denominator.
 The 95th-percentile critical value uses `np.quantile(method="higher")`.
@@ -341,7 +400,7 @@ This is empirical validation of approximate bootstrap coverage on the grid,
 not a finite-sample proof or a continuous-domain guarantee. The polynomial is
 defined for all real inputs; only the specified grid is covered by the claim.
 
-Outputs under `results/bootstrap-ols-grid-band/` include `EXPERIMENT.md`, a
+Outputs under `results/bootstrap-ols-pairs-grid-band/` include `EXPERIMENT.md`, a
 `summary.json`, raw dataset and coverage CSVs, replayable per-condition NPZs
 with all bootstrap coefficients/maxima, and five vector PDFs. Separate derived
 seeds control design, response noise, and bootstrap, with independent streams

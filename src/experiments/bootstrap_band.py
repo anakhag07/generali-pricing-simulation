@@ -1,4 +1,4 @@
-"""Direct parametric-bootstrap quadratic OLS bands; see MATH.md section 7.1."""
+"""Observed-pairs bootstrap quadratic OLS bands; see MATH.md section 7.1."""
 
 from __future__ import annotations
 
@@ -33,6 +33,26 @@ def features(a: np.ndarray) -> np.ndarray:
     return np.column_stack((np.ones_like(a), a, a**2))
 
 
+def refit_pairs(design: np.ndarray, y: np.ndarray, indices: np.ndarray) -> np.ndarray:
+    """Refit original rows, preserving input/response pairs (MATH.md §7.1).
+
+    Indices are supplied by the dedicated bootstrap stream. Singular resamples
+    fail explicitly: silently dropping or redrawing them changes the bootstrap.
+    """
+    indices = np.asarray(indices)
+    if (indices.ndim != 2 or indices.shape[1] != len(design)
+            or not np.issubdtype(indices.dtype, np.integer)
+            or np.any(indices < 0) or np.any(indices >= len(design))):
+        raise ValueError("Require an integer (B, N) array of original row indices.")
+    fits = np.empty((len(indices), design.shape[1]))
+    for b, rows in enumerate(indices):
+        fit, _, rank, _ = np.linalg.lstsq(design[rows], y[rows], rcond=None)
+        if rank != design.shape[1]:
+            raise ValueError(f"Pairs-bootstrap replicate {b} has a rank-deficient design.")
+        fits[b] = fit
+    return fits
+
+
 def bootstrap_band(
     x: np.ndarray, y: np.ndarray, grid: np.ndarray, *,
     draws: int, delta: float, bootstrap_seed: int,
@@ -58,9 +78,8 @@ def bootstrap_band(
     se = sigma_hat * np.linalg.norm(transformed, axis=0)
     fitted = evaluation @ beta
     rng = np.random.default_rng(bootstrap_seed)
-    z = rng.normal(size=(draws, n))
-    responses = (design @ beta)[:, None] + sigma_hat * z.T
-    bootstrap_beta = solve_triangular(triangular, q.T @ responses).T
+    indices = rng.integers(0, n, size=(draws, n))
+    bootstrap_beta = refit_pairs(design, y, indices)
     # This maximum is the user-specified coverage statistic, not an action selector.
     maxima = np.max(np.abs((bootstrap_beta - beta) @ evaluation.T) / se, axis=1)
     critical = float(np.quantile(maxima, 1.0 - delta, method="higher"))
@@ -69,7 +88,8 @@ def bootstrap_band(
         "x": np.asarray(x), "y": y, "grid": np.asarray(grid), "beta_hat": beta,
         "residuals": residual, "sigma_hat": sigma_hat, "sigma2_hat": sigma_hat**2,
         "design_condition_number": float(np.linalg.cond(design)),
-        "bootstrap_beta": bootstrap_beta, "bootstrap_maxima": maxima,
+        "bootstrap_beta": bootstrap_beta, "bootstrap_indices": indices,
+        "bootstrap_maxima": maxima,
         "critical_value": critical, "fitted": fitted, "standard_error": se,
         "radius": radius, "lower": fitted - radius, "upper": fitted + radius,
     }
@@ -138,6 +158,8 @@ def load_bootstrap_band_manifest(path: str | Path) -> BootstrapBandManifest:
         raise ValueError("Coverage grid must be contained in [0,1].")
     _integer(grid["count"], 2, "grid.count")
     bootstrap = payload["bootstrap"]
+    if bootstrap.get("method") != "pairs":
+        raise ValueError("Require bootstrap.method='pairs'; historical Gaussian results are separate.")
     _integer(bootstrap["draws"], 2, "bootstrap.draws")
     if not 0 < float(bootstrap["delta"]) < 1 or bootstrap["quantile_method"] != "higher":
         raise ValueError("Require 0 < delta < 1 and quantile_method='higher'.")
@@ -271,8 +293,8 @@ def _experiment_text(manifest: BootstrapBandManifest) -> str:
 Stage 1 is one Boolean outcome; stage 2 estimates the repeated-dataset probability.
 Training inputs are independent N(0,1), independent of Gaussian observation errors.
 OLS estimates all coefficients with p(a)=(1,a,a^2), using QR and residual variance
-RSS/(n-3). The response is y=5x-5x^2+noise_std*Z. Bootstrap responses are
-P*beta_hat+sigma_hat*Z_b at the fixed observed P; all B datasets are refitted.
+RSS/(n-3). The response is y=5x-5x^2+noise_std*Z. Each bootstrap dataset resamples N original
+(x_i,y_i) rows with replacement and refits OLS. No fresh response noise is added.
 Prediction standard errors are sigma_hat*sqrt(p(a)'*(P'P)^(-1)*p(a)).
 Each bootstrap statistic is max_grid |f_hat_b-f_hat|/s_hat, retaining the original
 s_hat in its denominator. The critical value uses np.quantile(method='higher').
@@ -290,12 +312,12 @@ bootstrap denominator omits residual-scale uncertainty in the real statistic.
 
 Independent named seeds control design, observation noise, and bootstrap.
 Seed labels include stage, n, noise SD, and dataset index. No draws are shared
-between conditions or stages; within each dataset bootstrap inputs stay fixed.
+between conditions or stages; each bootstrap uses only that dataset's observed rows.
 Stage 2 shows unconditional coverage over both random design and response noise
 (and finite-bootstrap randomness). Wilson intervals describe the 100-trial
 Monte Carlo uncertainty, not the uncertainty band for f.
 
-draws.npz contains observations, residuals, fitted and bootstrap coefficients,
+draws.npz contains observations, resampled row indices, residuals, fitted and bootstrap coefficients,
 bootstrap maxima, grid predictions, SEs, radii, and truth diagnostics. Per-case
 JSON files record the contract and hashes. summary.json and CSVs summarize them.
 Plots use Matplotlib defaults and vector PDF output only.

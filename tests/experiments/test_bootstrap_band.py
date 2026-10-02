@@ -8,7 +8,7 @@ import pytest
 
 from experiments.bootstrap_band import (
     bootstrap_band, collect_outputs, evaluate_band, features,
-    load_bootstrap_band_manifest, run_case,
+    load_bootstrap_band_manifest, run_case, refit_pairs,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -31,9 +31,11 @@ def test_ols_se_and_each_bootstrap_refit_match_independent_lstsq():
     se = sigma * np.sqrt(np.einsum("ij,jk,ik->i", evaluation, cov, evaluation))
     np.testing.assert_allclose(result["beta_hat"], beta, atol=1e-12)
     np.testing.assert_allclose(result["standard_error"], se, atol=1e-12)
-    z = np.random.default_rng(18).normal(size=(29, len(x)))
+    indices = np.random.default_rng(18).integers(0, len(x), size=(29, len(x)))
+    np.testing.assert_array_equal(result["bootstrap_indices"], indices)
+    assert all(len(np.unique(rows)) < len(x) for rows in indices)
     independent_fits = np.stack([
-        np.linalg.lstsq(p, p @ beta + sigma * draw, rcond=None)[0] for draw in z
+        np.linalg.lstsq(p[rows], y[rows], rcond=None)[0] for rows in indices
     ])
     np.testing.assert_allclose(result["bootstrap_beta"], independent_fits, atol=1e-12)
     maxima = np.max(np.abs((independent_fits - beta) @ evaluation.T) / se, axis=1)
@@ -141,3 +143,9 @@ def test_manifest_rejects_invalid_inputs(tmp_path, section, key, value):
     path.write_text(json.dumps(payload))
     with pytest.raises(ValueError):
         load_bootstrap_band_manifest(path)
+
+
+def test_rank_deficient_resample_fails_without_redrawing():
+    x, y, _ = dataset()
+    with pytest.raises(ValueError, match="replicate 0.*rank-deficient"):
+        refit_pairs(features(x), y, np.zeros((1, len(x)), dtype=int))

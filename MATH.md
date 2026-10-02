@@ -665,6 +665,84 @@ writes a distinct result tree without changing the original three-axis sweep.
 
 Source: `src/experiments/bootstrap_band_sweep.py`.
 
+### 7.4 Fixed-bandwidth Gaussian-support envelope
+
+This separate, non-bootstrap experiment uses the same quadratic truth,
+$p(a)=(1,a,a^2)^\top$, iid $a_j\sim N(0,1)$, and
+$y_j=p(a_j)^\top\beta_0+\sigma_\varepsilon\epsilon_j$ with iid
+$\epsilon_j\sim N(0,1)$ as section 7.3. It fixes $\sigma_\varepsilon=1$ and
+reuses the same named design/observation seed streams and nested training
+prefixes across the dense $N$ axis. One OLS coefficient vector is shared by
+all action queries; the estimation errors at different actions are therefore
+dependent, with covariance $\sigma_\varepsilon^2p(a)^\top Vp(a')$.
+
+The action and coverage domain is the entire real line. The fixed Gaussian
+bandwidth is $b=0.1$, with no $N$-dependent bandwidth or kernel-density
+normalization. Direct off-grid evaluation is
+
+$$
+C_N(a)=\sum_{j=1}^{N}\exp\!\left[-\frac{(a_j-a)^2}{2b^2}\right],\qquad
+r_N(a)=\frac{q_{1-\alpha/2}\widehat\sigma}{\sqrt{C_N(a)}},\qquad
+\widehat f_{\mathrm{LCB},N}(a)=p(a)^\top\widehat\beta-r_N(a),
+$$
+
+where $\alpha=0.05$, $q_{0.975}=\Phi^{-1}(0.975)$, and
+$\widehat\sigma^2=\|y-P\widehat\beta\|^2/(N-3)$. Log-sum-exp is only a
+numerically stable evaluation of this same finite Gaussian sum. The repository
+first-order optimizer minimizes $-\widehat f_{\mathrm{LCB},N}$ without action
+bounds; starts are initializations, not a finite candidate grid. Both the
+true-reference and lower-envelope reported actions come from that optimizer.
+The support penalty tends to infinity in either tail, so the lower envelope
+tends to minus infinity. A conservative numerical interval-bound check may
+verify the optimizer's global objective gap; unlike the polynomial bootstrap
+certificate, it is not exact-arithmetic proof. Uncertified results are labeled.
+
+The two-sided simultaneous coverage event for each dataset is
+
+$$
+C_r=\mathbf1\left\{
+  [p(a)^\top(\widehat\beta-\beta_0)]^2C_N(a)
+  \le q_{0.975}^2\widehat\sigma^2\quad\forall a\in\mathbb R
+\right\}.
+$$
+
+An adaptive interval upper bound checks the complete finite line; an
+analytical Gaussian-tail bound covers both infinite tails. A point violating
+the inequality proves noncoverage; if numerical bounds cannot resolve a case,
+it remains indeterminate rather than being classified by a display grid.
+Plots sample a finite display only and do not define the objective or coverage.
+Coverage rates use resolved datasets with explicit unresolved counts and Wilson
+intervals. Width is $r_N(a^\star)$ and regret is
+$f(a^\star)-f(\widehat a_{\mathrm{LCB},N})$. The pointwise Gaussian quantile
+and kernel-support heuristic do **not** imply 95% simultaneous coverage; the
+sweep empirically evaluates that claim.
+
+Source: `src/experiments/coverage_kernel_sweep.py`.
+
+The paired $q$ follow-up replays the exact saved actions, observations, OLS
+coefficients, residual scales, and repository-optimizer true reference from
+the dense $N$ sweep. It changes only the standardized envelope coefficient
+$q>0$ in $\lambda_{r,N}(q)=q\widehat\sigma_{r,N}$, using the same support
+$C_{r,N}(a)$ and the same two-sided, all-real coverage event. The original
+$q=\Phi^{-1}(0.975)$ row is replayed verbatim from its saved optimizer output.
+For each fixed dataset and $N$, the width at $a^\star$ is linear in $q$ and
+the coverage indicator is nondecreasing in $q$; true regret need not be
+monotone because the optimizing action can change. Coverage and regret remain
+empirical evaluations on the same datasets used to display this sweep, not
+an independently validated choice of $q$ that guarantees coverage.
+
+Source: `src/experiments/coverage_kernel_parameter_sweep.py`.
+
+The paired $b$ follow-up holds $q=\Phi^{-1}(0.975)$ and changes only the
+Gaussian bandwidth in the same **unnormalized** support sum. For fixed
+$a,a_j$, each kernel term increases with $b$; hence $C_{r,N,b}(a)$ is
+nondecreasing, the radius is nonincreasing, and the two-sided coverage event
+is nonincreasing in $b$. The smoothing shape and overall support scale change
+together: this sweep does not isolate a normalized kernel-density bandwidth.
+Regret need not be monotone. The original $b=0.1$ rows are likewise replayed
+verbatim with optimizer and artifact provenance.
+
+Source: `src/experiments/coverage_kernel_parameter_sweep.py`.
 ### 7.4 Empirical coverage Pareto replay
 
 At fixed $\sigma=1$, the saved 2000 bootstrap supremum brackets at each $N$

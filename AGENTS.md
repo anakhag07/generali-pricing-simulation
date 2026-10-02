@@ -388,6 +388,31 @@ Changing the `models` array is the supported model swap. Available keys are
 
 ### Key Components
 
+- `src/experiments/coverage_kernel_sweep.py` and its reporting companion
+  implement `kind: "coverage_kernel_n_sweep"` (MATH.md §7.4). The fixed
+  Gaussian bandwidth `b=0.1` and two-sided Gaussian quantile define a
+  support-based radius for the quadratic OLS fit. The manifest pairs the same
+  100 datasets and 14 training sizes as the dense bootstrap sweep, without
+  bootstrap resampling or a B axis. The repository optimizer supplies every
+  reported action; conservative interval bounds certify the LCB gap and
+  all-real two-sided containment, with explicit unresolved counts. Three
+  default-Matplotlib PDFs, saved streams/fits, and source hashes make the run
+  reproducible. `test_coverage_kernel_sweep.py` checks formula, gradient,
+  paired streams, optimizer provenance, and artifact generation.
+
+- `src/experiments/coverage_kernel_parameter_sweep.py` and its reporting
+  companion replay the saved Gaussian-support N sweep for two one-at-a-time
+  axes: `kind: "coverage_kernel_q_sweep"` changes q at b=0.1, and
+  `kind: "coverage_kernel_b_sweep"` changes b at the original Gaussian
+  quantile. All 100 datasets and 14 N prefixes remain paired. The baseline
+  setting reuses its exact saved repository-optimizer result; other actions
+  use the repository optimizer and all-real gap verifier. Saved source
+  artifacts and source-code hashes are checked before replay. For the
+  unnormalized support sum, increasing b mechanically narrows the envelope,
+  so this is not an isolated density-smoothing comparison. Full N×axis CSVs
+  and four preselected N curves in each of three default-Matplotlib PDFs are
+  documented by MATH.md §7.4 and tested in
+  `test_coverage_kernel_parameter_sweep.py`.
 - `src/experiments/bootstrap_cartesian_coverage.py` extends completed N/B coverage
   runs using the `grid` and `reuse_projects` fields of the joint-coverage manifest
   kind. It verifies data/seed/numerical-source contracts and artifact hashes,

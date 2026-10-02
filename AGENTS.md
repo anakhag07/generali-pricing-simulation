@@ -413,6 +413,26 @@ Changing the `models` array is the supported model swap. Available keys are
   and four preselected N curves in each of three default-Matplotlib PDFs are
   documented by MATH.md §7.4 and tested in
   `test_coverage_kernel_parameter_sweep.py`.
+- `src/experiments/bootstrap_cartesian_coverage.py` extends completed N/B coverage
+  runs using the `grid` and `reuse_projects` fields of the joint-coverage manifest
+  kind. It verifies data/seed/numerical-source contracts and artifact hashes,
+  retains each longest saved bootstrap prefix, and fits only missing suffixes.
+  Each N is checkpointed separately. The collector validates all Cartesian
+  cells and writes coverage and pointwise Wilson-uncertainty heatmaps; existing
+  diagonal/controlled artifacts are preserved. The production manifest is
+  `bootstrap_ols_cartesian_coverage.json`; see MATH §7.6,
+  `docs/bootstrap_cartesian_coverage.md` and `test_bootstrap_cartesian_coverage.py`.
+
+- `src/experiments/bootstrap_joint_coverage.py` implements the dedicated joint
+  N/B coverage-only manifest through the shared launcher. It reuses the existing
+  pairs refitter, named streams and whole-line certificates; no optimizer action
+  or extra objective is introduced. `bootstrap_ols_joint_coverage.json` fixes
+  N=B from 20 to 5000 and 2000 outer datasets, grouped ten per CPU array task.
+  Every dataset is checkpointed, with row-index hashes and seed/shape metadata
+  for compact deterministic replay. Collection validates all datasets and
+  reports only empirical coverage and Wilson intervals in CSV/PDF. See
+  `docs/bootstrap_joint_coverage.md`, MATH §7.5 and
+  `tests/experiments/test_bootstrap_joint_coverage.py`.
 
 - `src/experiments/bootstrap_band_sweep.py` and its `_reporting.py` companion
   implement `kind: "bootstrap_ols_controlled_sweep"` through the shared manifest
@@ -423,11 +443,14 @@ Changing the `models` array is the supported model swap. Available keys are
   sign cells verify returned actions' global gaps; they never select actions.
   Report width at the true optimum, not infinite whole-line maximum width.
   Three metric PDFs and per-dataset NPZ/JSONs keep failed/unbounded/degenerate
-  optimization denominators explicit. The historical grid and all-real replay
-  are unchanged. `test_bootstrap_band_sweep.py` checks pairing, refit identities,
+  optimization denominators explicit. Historical outputs remain unchanged; new runs use pairs-specific names.
+  `docs/bootstrap_pairs.md` records the sampling and representation contract.
+  ORCD array tasks each own one independent dataset; the dependent collector
+  validates and aggregates all 100 datasets. `test_bootstrap_band_sweep.py` checks pairing, refit identities,
   exact sign cells, analytical gradients, unconstrained solver use, and replay.
-  `bootstrap_ols_dense_n_sweep.json` fixes sigma=1 and B=500 for a paired,
-  14-point training-size sweep from N=25 through N=5000.
+  `bootstrap_ols_dense_n_sweep.json` fixes sigma=1 and B=2000 for a paired,
+  16-point training-size sweep from N=20 through N=5000. The combined sweep
+  fixes baseline N=100 and includes fine B and sigma grids; axes are separate.
 
 - `src/experiments/bootstrap_band_continuous.py` analytically replays the saved
   bootstrap OLS experiment on the whole real line (MATH.md §7.2). It computes
@@ -447,7 +470,7 @@ Changing the `models` array is the supported model swap. Available keys are
   suprema, exact roots with multiplicity, numerical-proposal recovery, source
   replay, saved certificates, and PDF collection.
 
-- `src/experiments/bootstrap_band.py` implements the direct Gaussian parametric
+- `src/experiments/bootstrap_band.py` implements the original-row pairs
   bootstrap OLS band of MATH.md §7.1. It fits observations, uses the original
   prediction SE in bootstrap denominators, and reports finite-grid coverage.
   `bootstrap_band(...)` has no truth argument; `evaluate_band(...)` is separate.

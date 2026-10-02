@@ -192,6 +192,10 @@ def main(argv: list[str] | None = None) -> None:
         from experiments.bootstrap_band_continuous import load_manifest, build_launch_plan
         manifest = load_manifest(args.manifest)
         plan = build_launch_plan(manifest, runs_root=args.runs_root, force=bool(args.force))
+    elif kind == "bootstrap_ols_joint_coverage":
+        from experiments.bootstrap_joint_coverage import load_manifest, build_launch_plan
+        manifest = load_manifest(args.manifest)
+        plan = build_launch_plan(manifest, runs_root=args.runs_root, force=bool(args.force))
     elif kind == "bootstrap_ols_controlled_sweep":
         from experiments.bootstrap_band_sweep import load_manifest, build_launch_plan
         manifest = load_manifest(args.manifest)

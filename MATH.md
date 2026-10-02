@@ -453,12 +453,21 @@ $$
 \widehat s(a)=\widehat\sigma\sqrt{p(a)^\top(P^\top P)^{-1}p(a)}.
 $$
 
-The implementation uses reduced QR solves, avoiding the normal-equation
-inverse. Conditional on the fitted dataset it generates $B$ independent
-Gaussian parametric bootstrap responses and refits at the fixed design:
+The original fit uses reduced QR solves. Conditional on the observed dataset,
+each pairs-bootstrap replicate samples $n$ row indices independently and
+uniformly with replacement. Both the input and response use the same indices:
 
 $$
-y_b^{\ast}=P\widehat\beta+\widehat\sigma Z_b,\qquad Z_b\sim N(0,I_n),\qquad
+I_{bi}\sim\mathrm{Uniform}\{1,\ldots,n\},\qquad
+P^*_{b,i,:}=P_{I_{bi},:},\qquad y^*_{b,i}=y_{I_{bi}},\qquad
+\widehat\beta_b^*=(P_b^{*\top}P_b^*)^{-1}P_b^{*\top}y_b^*.
+$$
+
+Refits use numerical least squares without normal equations. Rank-deficient
+resamples fail explicitly rather than being redrawn or discarded. No Gaussian
+noise is generated inside the bootstrap. The calibration statistic is:
+
+$$
 T_b^{\ast}=\max_{a\in\mathcal{G}}
 \frac{|p(a)^\top(\widehat\beta_b^{\ast}-\widehat\beta)|}{\widehat s(a)}.
 $$
@@ -555,28 +564,49 @@ Source: `src/experiments/bootstrap_band_continuous.py`.
 ### 7.3 Controlled all-real bootstrap sweeps and LCB regret
 
 The controlled experiment keeps $a_i\sim N(0,1)$ and
-$f(a)=5a-5a^2$ on all of $\mathbb{R}$. Independent seed streams generate the
-training actions, standardized observation errors, and bootstrap Gaussian
-errors. Training samples are nested across $N$; observation and bootstrap
-errors are paired across positive $\sigma$; bootstrap samples are nested
-across $B$. Each independent dataset index owns all these paired settings.
+$f(a)=5a-5a^2$ on all of $\mathbb{R}$. Independent seed streams generate
+training actions, standardized observation errors, and bootstrap row-selection
+uniforms. Original dataset seeds are unchanged from the parametric experiment.
+Training samples are nested across $N$. For shared iid $U_{bi}\sim U[0,1)$,
+zero-based indices $I_{bi}^{(N)}=\lfloor N U_{bi}\rfloor$ select the same
+observed input/response row. The first $N$ columns are used at size $N$, and
+bootstrap samples use prefixes across $B$. Noise settings reuse these indices.
 
-With a thin QR factorization $P=QR$, the bootstrap coefficient perturbations
-can be refitted without materializing bootstrap responses:
+For each design, first fit and resample its actual responses at noise scale one.
+With $V=(P^\top P)^{-1}$, define standardized pairs-refit perturbations
 
 $$
-d_b=R^{-1}Q^\top Z_b,\qquad
-\widehat\beta_b^*=\widehat\beta+\widehat\sigma d_b,\qquad
-T_b^*=\sup_{a\in\mathbb{R}}\frac{|p(a)^\top d_b|}{\sqrt{p(a)^\top Vp(a)}}.
+d_b=\frac{\widehat\beta_b^*-\widehat\beta}{\widehat\sigma},\qquad
+T_b^*=\sup_{a\in\mathbb R}
+\frac{|p(a)^\top d_b|}{\sqrt{p(a)^\top Vp(a)}}.
 $$
 
-This is algebraically the same Gaussian parametric bootstrap with the original
-fit's standard error fixed in every denominator. Section 7.2 certifies its
-all-real statistics and containment. No truth is used in calibration.
-For paired positive noise scales, $e_\sigma=\sigma e_1$ and
-$r_{\delta,\sigma}=\sigma r_{\delta,1}$ (up to OLS rounding), so coverage
-indicators are identical. Increasing $B$ estimates the same quantile more
-precisely; it is not an additional observation and need not decrease width.
+This is an actual refit on observed pairs, not an independent perturbation
+of the fitted model. Calibration receives only observed inputs, responses and
+row indices. Section 7.2 certifies its all-real suprema and containment.
+For full-rank resamples of the correctly specified quadratic model and paired
+positive noise scales, OLS equivariance gives
+$\widehat\beta_{b,\sigma}^*=\widehat\beta_\sigma+\widehat\sigma_\sigma d_b$.
+Thus $e_\sigma=\sigma e_1$ and $r_{\delta,\sigma}=\sigma r_{\delta,1}$ (up to
+rounding), allowing cached standardized refits/certificates across sigma.
+Coverage indicators are identical across paired sigma settings.
+
+Increasing $B$ estimates the same empirical-bootstrap quantile more precisely;
+it need not decrease regret or width. Increasing $N$ supplies more information.
+Under iid sampling, finite moments, a nonsingular population design and a
+continuous limiting supremum distribution, as both $N,B\to\infty$,
+
+$$
+\Pr\{ |\widehat f(a)-f(a)|\le r_\delta(a)\ \forall a\in\mathbb R\}
+\longrightarrow 1-\delta.
+$$
+
+For this fixed-dimensional quadratic family the normalized basis has finite
+tail limits, so coefficient-bootstrap consistency extends to the whole-line
+standardized supremum. Unstandardized root-N uniform error/width rates apply
+only on compact intervals, or pointwise; the whole-line maximum width is
+infinite. Finite-N/B coverage remains approximate, distinct from exact
+polynomial verification of each represented band's containment.
 
 The repository optimizer minimizes $-L(a)$ without action bounds, initialized
 at the manifest's starts in $[0,1]$, where
@@ -626,11 +656,11 @@ The finite-$B$, fixed-denominator bootstrap remains approximate sampling
 coverage, not an exact finite-sample confidence theorem.
 
 The dense sample-size follow-up uses the same definitions with
-$\sigma=1$, $B=500$, and
-$N\in\{25,50,75,100,150,200,300,500,750,1000,1500,2000,3000,5000\}$.
+$\sigma=1$, $B=2000$, and
+$N\in\{20,25,30,50,75,100,150,200,300,500,750,1000,1500,2000,3000,5000\}$.
 For each dataset index, all conditions use prefixes of the same length-5000
-training-action and observation-error streams, while each design receives 500
-bootstrap refits. It therefore isolates the effect of training sample size and
+training-action and observation-error streams, while each design receives 2000
+pairs-bootstrap refits. It therefore isolates the effect of training sample size and
 writes a distinct result tree without changing the original three-axis sweep.
 
 Source: `src/experiments/bootstrap_band_sweep.py`.
@@ -713,6 +743,75 @@ Regret need not be monotone. The original $b=0.1$ rows are likewise replayed
 verbatim with optimizer and artifact provenance.
 
 Source: `src/experiments/coverage_kernel_parameter_sweep.py`.
+### 7.4 Empirical coverage Pareto replay
+
+At fixed $\sigma=1$, the saved 2000 bootstrap supremum brackets at each $N$
+allow reconstruction of every manifest $B$ using its prefix and the same
+`higher` quantile of the certified upper endpoints. The observed statistic's
+certified bracket determines containment whenever it lies strictly to one
+side of the threshold; ambiguous cases use the exact polynomial test in §7.2.
+All original N/B sweep containment indicators must match this reconstruction.
+No bootstrap draw, model fit, or optimizer action is generated by this replay.
+
+Write $\widehat C(N,B)=R^{-1}\sum_{r=1}^R C_r(N,B)$. The descriptive empirical
+Pareto objectives, all minimized, are
+
+$$
+\left(N,\ B,\ |\widehat C(N,B)-(1-\delta)|\right).
+$$
+
+A measured configuration is dominated when another has no larger value in any
+component and a strictly smaller value in at least one. Thus overcoverage and
+undercoverage are penalized symmetrically. This is a comparison among measured
+configurations, not optimization of an action objective. Integer covered counts
+and an exact rational target preserve ties above and below the target.
+The highlighted frontier depends on the 100-dataset coverage estimates; it is
+exploratory, not a certified population frontier. Wilson intervals are pointwise
+and do not account for selecting configurations from the full grid. Connected
+or interpolated continuous coverage surfaces are not assumed.
+
+Source: `scratch/plot_bootstrap_coverage_frontier.py`.
+
+### 7.5 Dedicated joint N/B coverage sweep
+
+The dedicated experiment applies the unchanged construction of §7.3 to
+explicit pairs $(N_j,B_j)$, with both coordinates increasing. The default path
+has $N_j=B_j\in\{20,50,100,200,500,1000,2000,3000,5000\}$, $\sigma=1$,
+$\delta=0.05$, and $R=2000$ independent outer datasets. It reports only
+
+$$
+\widehat C_j=\frac{1}{R}\sum_{r=1}^R
+\mathbf{1}\{ |\widehat f_{r,N_j}(a)-f(a)|\leq
+\widehat c_{r,N_j,B_j}\widehat s_{r,N_j}(a)\quad\forall a\in\mathbb R\}.
+$$
+
+Each bootstrap quantile uses the same certified upper endpoints and `higher`
+order-statistic convention as §7.3. Confidence intervals for $\widehat C_j$
+are pointwise Wilson intervals over independent outer datasets. Settings share
+nested observations and bootstrap uniform prefixes, so comparisons across
+settings are paired. Neither $\widehat C_j$ nor its population counterpart is
+constrained to be monotone. No ranking or additional minimization objective is
+introduced. Fixed confidence level targets asymptotic coverage $1-\delta$.
+
+Source: `src/experiments/bootstrap_joint_coverage.py`.
+
+### 7.6 Cartesian N/B coverage replay and extension
+
+The Cartesian extension evaluates the same $C_r(N,B)$ in §7.5 at all 81
+combinations of the nine N and B values. Original fitted coefficients and
+standard errors are retained. For each N, reuse the longest compatible saved
+bootstrap sequence of length $K_N$. Compute only replicates $K_N+1,\ldots,5000$
+from the original uniform stream, then calibrate each B using the first B
+certified supremum brackets and the unchanged `higher` quantile. Reusing
+prefixes introduces no new statistical approximation. Exact saved containment
+outcomes on the diagonal must agree with replay. No optimizer action is chosen.
+
+Every cell reports $\widehat C(N,B)=R^{-1}\sum_r C_r(N,B)$ with $R=2000$ and
+pointwise Wilson intervals. Heatmap cells are discrete settings, not samples of
+an interpolated coverage surface. Lower/upper interval bounds and half-widths
+quantify Monte Carlo uncertainty; they are not simultaneous across grid cells.
+
+Source: `src/experiments/bootstrap_cartesian_coverage.py`.
 
 ## 8. Gradients and Estimators
 

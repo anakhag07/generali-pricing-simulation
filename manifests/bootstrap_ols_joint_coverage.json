@@ -1,0 +1,20 @@
+{
+  "kind": "bootstrap_ols_joint_coverage",
+  "name": "bootstrap-ols-pairs-joint-coverage",
+  "domain": "real_line",
+  "bootstrap_method": "pairs",
+  "design": {"type": "iid_normal", "mean": 0.0, "std": 1.0},
+  "truth": {"coefficients": [0.0, 5.0, -5.0]},
+  "sigma": 1.0,
+  "delta": 0.05,
+  "datasets": 2000,
+  "settings": [
+    {"N": 20, "B": 20}, {"N": 50, "B": 50}, {"N": 100, "B": 100},
+    {"N": 200, "B": 200}, {"N": 500, "B": 500}, {"N": 1000, "B": 1000},
+    {"N": 2000, "B": 2000}, {"N": 3000, "B": 3000}, {"N": 5000, "B": 5000}
+  ],
+  "supremum_tolerance": 1e-8,
+  "seeds": {"master": 20260912, "design": 1301, "observation": 2301, "bootstrap": 3301},
+  "datasets_per_task": 10,
+  "launch": {"mode": "slurm", "array": "seed", "array_max_parallel": 8}
+}

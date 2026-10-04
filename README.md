@@ -53,6 +53,26 @@ pip install -e ".[dev]"
 pytest -q
 ```
 
+### Fixed offline bootstrap and optimization regret
+
+```bash
+PYTHONPATH=src python scripts/run_experiment_manifest.py manifests/offline_bootstrap.json --launch local
+```
+
+This experiment freezes one saved quadratic predictor and an offline dataset,
+then varies `N`, `B`, and `sigma` separately. Pairs bootstrap draws complete
+observed rows with replacement; rank-deficient resamples are redrawn from the
+same data. Homoskedastic noise and a saved GP-derived positive variance profile
+share the same actions and standardized observation errors. Noise-scale variants
+are prepared and saved before calibration.
+
+Three PDFs report whole-real-line containment, the transferred radius's
+components, and plug-in/LCB optimization regret with conditional regret bounds.
+Repository optimizers supply all actions. There is no outer-dataset coverage
+sweep: finite-`B` calibration certification is distinguished from the remaining
+finite-`N` bootstrap approximation guarantee. See
+[the offline experiment notes](docs/offline_bootstrap.md) and MATH.md §7.7.
+
 ### Controlled bootstrap envelope sweeps
 
 ```bash

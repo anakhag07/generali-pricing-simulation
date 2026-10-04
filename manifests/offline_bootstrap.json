@@ -1,0 +1,45 @@
+{
+  "kind": "offline_bootstrap",
+  "name": "offline-bootstrap-fixed-predictor",
+  "domain": "real_line",
+  "offline_data": {
+    "path": "/home/anakhag/projects/generali-pricing/results/bootstrap-ols-pairs-controlled-sweep/datasets/dataset-000/draws.npz",
+    "sha256": "13e23ef484c37ed37b44de861469e3f9420d80912bccf40a0f0a800bc7272e30",
+    "x_key": "training_actions",
+    "y_key": "N5000_sd1_B2000_y",
+    "source_sigma": 1.0
+  },
+  "predictor": {
+    "path": "/home/anakhag/projects/generali-pricing/results/bootstrap-ols-pairs-controlled-sweep/datasets/dataset-001/draws.npz",
+    "sha256": "1a54a96b04a7ad78bf2e3a2becdea74d98b5bb87957821cc0cc95725d46d734f",
+    "beta_key": "N100_sd1_B2000_beta_hat"
+  },
+  "truth": {"coefficients": [0.0, 5.0, -5.0]},
+  "baseline": {"N": 100, "B": 2000, "sigma": 1.0},
+  "axes": {"N": [25, 100, 500], "B": [200, 500, 2000], "sigma": [0.25, 1.0, 4.0]},
+  "delta": 0.05,
+  "bootstrap": {
+    "method": "pairs",
+    "quantile": "mc_upper",
+    "mc_failure_probability": 0.01,
+    "rank_deficient": "redraw",
+    "max_redraws": 1000
+  },
+  "profiles": [
+    {"name": "homoskedastic", "type": "constant"},
+    {"name": "heteroskedastic_gp", "type": "log_gp", "eta": 0.75}
+  ],
+  "gp": {"rank": 32, "lengthscale": 0.2},
+  "seeds": {"bootstrap": 3301, "bootstrap_redraw": 3302, "gp_profile": 4301},
+  "supremum_tolerance": 1e-08,
+  "optimizer": {
+    "step_rule": "l-bfgs-b",
+    "starts": [-2.0, 0.0, 0.5, 1.0, 2.0],
+    "t_steps": 1000,
+    "gradient_tolerance": 1e-09,
+    "ftol": 1e-14,
+    "global_gap_tolerance": 1e-07
+  },
+  "display_window": [0.0, 1.0],
+  "launch": {"mode": "local", "array": "none"}
+}

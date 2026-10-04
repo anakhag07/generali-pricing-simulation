@@ -388,6 +388,24 @@ Changing the `models` array is the supported model swap. Available keys are
 
 ### Key Components
 
+- `src/experiments/offline_bootstrap.py` owns the fixed-offline-data experiment
+  (`kind: "offline_bootstrap"`, `manifests/offline_bootstrap.json`). It loads a
+  saved predictor and observed data, freezes paired response variants, resamples
+  full-rank pairs, calibrates finite-B quantiles, and varies N/B/sigma separately
+  without outer-dataset simulation. Its `offline_bootstrap_math.py` companion
+  handles transferred-envelope containment and repository-optimizer actions
+  with whole-line gap certificates. The positive
+  finite-Fourier GP defines a saved variance profile, not correlated observation
+  errors; empirical RMS normalization covers the full saved action reservoir.
+  Dedicated GP, bootstrap, and rejection seeds preserve replay; full-batch
+  first-order optimization uses explicit deterministic starts.
+  Rank-deficient resamples are redrawn only for this new experiment; historical
+  bootstrap procedures remain unchanged. `offline_bootstrap_reporting.py`
+  writes three PDFs with explicit containment/optimization failures, fixed
+  predictor regret, and conditional bounds. Containment on R is not a sampling
+  coverage probability, and finite-B certification is not a finite-N bootstrap
+  theorem. See MATH.md §7.7 and `docs/offline_bootstrap.md`.
+
 - `src/experiments/coverage_kernel_sweep.py` and its reporting companion
   implement `kind: "coverage_kernel_n_sweep"` (MATH.md §7.4). The fixed
   Gaussian bandwidth `b=0.1` and two-sided Gaussian quantile define a

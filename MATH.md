@@ -834,6 +834,10 @@ this is explicitly empirical normalization, not a population integral. Values
 off the logged actions use the same analytic formula and fixed C. Conditional
 on the saved action design and profile, original Gaussian errors are independent.
 The GP defines a variance profile, not a shared additive observation error.
+Because C uses the complete archived action reservoir, hypothetical observation
+pairs are not iid unconditionally. The independent-error covariance statement
+conditions on that complete design and the GP draw. An iid pairs-bootstrap
+theorem cannot be applied without accounting for this normalization dependence.
 
 Calibration has only x, y, and independent row-selection randomness as inputs.
 Each replicate resamples N complete observed pairs with replacement, then refits

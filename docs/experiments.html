@@ -51,6 +51,12 @@
                    pattern=".+" required>
 
 
+            <h2>Submodules</h2>
+            <ul>
+                    <li><a href="experiments/offline_bootstrap.html">offline_bootstrap</a></li>
+                    <li><a href="experiments/offline_bootstrap_math.html">offline_bootstrap_math</a></li>
+                    <li><a href="experiments/offline_bootstrap_reporting.html">offline_bootstrap_reporting</a></li>
+            </ul>
 
             <h2>API Documentation</h2>
                 <ul class="memberlist">
@@ -449,6 +455,27 @@
                         </li>
                         <li>
                                 <a class="function" href="#ExperimentConfig.to_dict">to_dict</a>
+                        </li>
+                </ul>
+
+            </li>
+            <li>
+                    <a class="class" href="#OfflineBootstrapManifest">OfflineBootstrapManifest</a>
+                            <ul class="memberlist">
+                        <li>
+                                <a class="function" href="#OfflineBootstrapManifest.__init__">OfflineBootstrapManifest</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#OfflineBootstrapManifest.name">name</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#OfflineBootstrapManifest.payload">payload</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#OfflineBootstrapManifest.source_path">source_path</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#OfflineBootstrapManifest.launch">launch</a>
                         </li>
                 </ul>
 
@@ -1004,51 +1031,57 @@ experiments    </h1>
 </span><span id="L-31"><a href="#L-31"><span class="linenos">31</span></a>    <span class="n">load_continuous_gp_decomposition_manifest</span><span class="p">,</span>
 </span><span id="L-32"><a href="#L-32"><span class="linenos">32</span></a><span class="p">)</span>
 </span><span id="L-33"><a href="#L-33"><span class="linenos">33</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.paths</span><span class="w"> </span><span class="kn">import</span> <span class="n">results_root</span>
-</span><span id="L-34"><a href="#L-34"><span class="linenos">34</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.results</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConstantBaselineResult</span><span class="p">,</span> <span class="n">EstimatorResult</span><span class="p">,</span> <span class="n">ExperimentResult</span><span class="p">,</span> <span class="n">OptimizationTrace</span><span class="p">,</span> <span class="n">PolicyEvaluation</span>
-</span><span id="L-35"><a href="#L-35"><span class="linenos">35</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.run</span><span class="w"> </span><span class="kn">import</span> <span class="n">run_experiment</span>
-</span><span id="L-36"><a href="#L-36"><span class="linenos">36</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.seeds</span><span class="w"> </span><span class="kn">import</span> <span class="n">ResolvedSeedSetup</span><span class="p">,</span> <span class="n">SeedSetup</span><span class="p">,</span> <span class="n">resolve_seed_setup</span>
-</span><span id="L-37"><a href="#L-37"><span class="linenos">37</span></a>
-</span><span id="L-38"><a href="#L-38"><span class="linenos">38</span></a><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
-</span><span id="L-39"><a href="#L-39"><span class="linenos">39</span></a>    <span class="s2">&quot;CorrectnessSpec&quot;</span><span class="p">,</span>
-</span><span id="L-40"><a href="#L-40"><span class="linenos">40</span></a>    <span class="s2">&quot;ContinuousPolicyLCBManifest&quot;</span><span class="p">,</span>
-</span><span id="L-41"><a href="#L-41"><span class="linenos">41</span></a>    <span class="s2">&quot;ContinuousPolicyLCBSpec&quot;</span><span class="p">,</span>
-</span><span id="L-42"><a href="#L-42"><span class="linenos">42</span></a>    <span class="s2">&quot;ContinuousPolicyValueSpec&quot;</span><span class="p">,</span>
-</span><span id="L-43"><a href="#L-43"><span class="linenos">43</span></a>    <span class="s2">&quot;ContinuousGPVariableLCBManifest&quot;</span><span class="p">,</span>
-</span><span id="L-44"><a href="#L-44"><span class="linenos">44</span></a>    <span class="s2">&quot;ContinuousGPVariableLCBSpec&quot;</span><span class="p">,</span>
-</span><span id="L-45"><a href="#L-45"><span class="linenos">45</span></a>    <span class="s2">&quot;ContinuousGPDecompositionManifest&quot;</span><span class="p">,</span>
-</span><span id="L-46"><a href="#L-46"><span class="linenos">46</span></a>    <span class="s2">&quot;ContinuousGPDecompositionSpec&quot;</span><span class="p">,</span>
-</span><span id="L-47"><a href="#L-47"><span class="linenos">47</span></a>    <span class="s2">&quot;ExperimentConfig&quot;</span><span class="p">,</span>
-</span><span id="L-48"><a href="#L-48"><span class="linenos">48</span></a>    <span class="s2">&quot;get_config&quot;</span><span class="p">,</span>
-</span><span id="L-49"><a href="#L-49"><span class="linenos">49</span></a>    <span class="s2">&quot;list_configs&quot;</span><span class="p">,</span>
-</span><span id="L-50"><a href="#L-50"><span class="linenos">50</span></a>    <span class="s2">&quot;ExecutedRun&quot;</span><span class="p">,</span>
-</span><span id="L-51"><a href="#L-51"><span class="linenos">51</span></a>    <span class="s2">&quot;default_reporter_stack&quot;</span><span class="p">,</span>
-</span><span id="L-52"><a href="#L-52"><span class="linenos">52</span></a>    <span class="s2">&quot;execute_experiment_run&quot;</span><span class="p">,</span>
-</span><span id="L-53"><a href="#L-53"><span class="linenos">53</span></a>    <span class="s2">&quot;evaluate_continuous_policy_lcb_seed&quot;</span><span class="p">,</span>
-</span><span id="L-54"><a href="#L-54"><span class="linenos">54</span></a>    <span class="s2">&quot;evaluate_continuous_gp_variable_lcb_seed&quot;</span><span class="p">,</span>
-</span><span id="L-55"><a href="#L-55"><span class="linenos">55</span></a>    <span class="s2">&quot;evaluate_continuous_gp_decomposition_seed&quot;</span><span class="p">,</span>
-</span><span id="L-56"><a href="#L-56"><span class="linenos">56</span></a>    <span class="s2">&quot;FinitePolicyLCBManifest&quot;</span><span class="p">,</span>
-</span><span id="L-57"><a href="#L-57"><span class="linenos">57</span></a>    <span class="s2">&quot;FinitePolicyLCBSpec&quot;</span><span class="p">,</span>
-</span><span id="L-58"><a href="#L-58"><span class="linenos">58</span></a>    <span class="s2">&quot;LCBSeedResult&quot;</span><span class="p">,</span>
-</span><span id="L-59"><a href="#L-59"><span class="linenos">59</span></a>    <span class="s2">&quot;evaluate_finite_policy_lcb_seed&quot;</span><span class="p">,</span>
-</span><span id="L-60"><a href="#L-60"><span class="linenos">60</span></a>    <span class="s2">&quot;load_finite_policy_lcb_manifest&quot;</span><span class="p">,</span>
-</span><span id="L-61"><a href="#L-61"><span class="linenos">61</span></a>    <span class="s2">&quot;load_continuous_policy_lcb_manifest&quot;</span><span class="p">,</span>
-</span><span id="L-62"><a href="#L-62"><span class="linenos">62</span></a>    <span class="s2">&quot;load_continuous_gp_variable_lcb_manifest&quot;</span><span class="p">,</span>
-</span><span id="L-63"><a href="#L-63"><span class="linenos">63</span></a>    <span class="s2">&quot;load_continuous_gp_decomposition_manifest&quot;</span><span class="p">,</span>
-</span><span id="L-64"><a href="#L-64"><span class="linenos">64</span></a>    <span class="s2">&quot;results_root&quot;</span><span class="p">,</span>
-</span><span id="L-65"><a href="#L-65"><span class="linenos">65</span></a>    <span class="s2">&quot;LaunchContext&quot;</span><span class="p">,</span>
-</span><span id="L-66"><a href="#L-66"><span class="linenos">66</span></a>    <span class="s2">&quot;LaunchPlan&quot;</span><span class="p">,</span>
-</span><span id="L-67"><a href="#L-67"><span class="linenos">67</span></a>    <span class="s2">&quot;add_launch_args&quot;</span><span class="p">,</span>
-</span><span id="L-68"><a href="#L-68"><span class="linenos">68</span></a>    <span class="s2">&quot;run_launch_plan&quot;</span><span class="p">,</span>
-</span><span id="L-69"><a href="#L-69"><span class="linenos">69</span></a>    <span class="s2">&quot;ConstantBaselineResult&quot;</span><span class="p">,</span>
-</span><span id="L-70"><a href="#L-70"><span class="linenos">70</span></a>    <span class="s2">&quot;EstimatorResult&quot;</span><span class="p">,</span>
-</span><span id="L-71"><a href="#L-71"><span class="linenos">71</span></a>    <span class="s2">&quot;ExperimentResult&quot;</span><span class="p">,</span>
-</span><span id="L-72"><a href="#L-72"><span class="linenos">72</span></a>    <span class="s2">&quot;OptimizationTrace&quot;</span><span class="p">,</span>
-</span><span id="L-73"><a href="#L-73"><span class="linenos">73</span></a>    <span class="s2">&quot;PolicyEvaluation&quot;</span><span class="p">,</span>
-</span><span id="L-74"><a href="#L-74"><span class="linenos">74</span></a>    <span class="s2">&quot;run_experiment&quot;</span><span class="p">,</span>
-</span><span id="L-75"><a href="#L-75"><span class="linenos">75</span></a>    <span class="s2">&quot;SeedSetup&quot;</span><span class="p">,</span>
-</span><span id="L-76"><a href="#L-76"><span class="linenos">76</span></a>    <span class="s2">&quot;ResolvedSeedSetup&quot;</span><span class="p">,</span>
-</span><span id="L-77"><a href="#L-77"><span class="linenos">77</span></a>    <span class="s2">&quot;resolve_seed_setup&quot;</span><span class="p">,</span>
-</span><span id="L-78"><a href="#L-78"><span class="linenos">78</span></a><span class="p">]</span>
+</span><span id="L-34"><a href="#L-34"><span class="linenos">34</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments</span><span class="w"> </span><span class="kn">import</span> <span class="n">offline_bootstrap</span><span class="p">,</span> <span class="n">offline_bootstrap_math</span><span class="p">,</span> <span class="n">offline_bootstrap_reporting</span>
+</span><span id="L-35"><a href="#L-35"><span class="linenos">35</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.offline_bootstrap</span><span class="w"> </span><span class="kn">import</span> <span class="n">OfflineBootstrapManifest</span>
+</span><span id="L-36"><a href="#L-36"><span class="linenos">36</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.results</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConstantBaselineResult</span><span class="p">,</span> <span class="n">EstimatorResult</span><span class="p">,</span> <span class="n">ExperimentResult</span><span class="p">,</span> <span class="n">OptimizationTrace</span><span class="p">,</span> <span class="n">PolicyEvaluation</span>
+</span><span id="L-37"><a href="#L-37"><span class="linenos">37</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.run</span><span class="w"> </span><span class="kn">import</span> <span class="n">run_experiment</span>
+</span><span id="L-38"><a href="#L-38"><span class="linenos">38</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.seeds</span><span class="w"> </span><span class="kn">import</span> <span class="n">ResolvedSeedSetup</span><span class="p">,</span> <span class="n">SeedSetup</span><span class="p">,</span> <span class="n">resolve_seed_setup</span>
+</span><span id="L-39"><a href="#L-39"><span class="linenos">39</span></a>
+</span><span id="L-40"><a href="#L-40"><span class="linenos">40</span></a><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="L-41"><a href="#L-41"><span class="linenos">41</span></a>    <span class="s2">&quot;CorrectnessSpec&quot;</span><span class="p">,</span>
+</span><span id="L-42"><a href="#L-42"><span class="linenos">42</span></a>    <span class="s2">&quot;ContinuousPolicyLCBManifest&quot;</span><span class="p">,</span>
+</span><span id="L-43"><a href="#L-43"><span class="linenos">43</span></a>    <span class="s2">&quot;ContinuousPolicyLCBSpec&quot;</span><span class="p">,</span>
+</span><span id="L-44"><a href="#L-44"><span class="linenos">44</span></a>    <span class="s2">&quot;ContinuousPolicyValueSpec&quot;</span><span class="p">,</span>
+</span><span id="L-45"><a href="#L-45"><span class="linenos">45</span></a>    <span class="s2">&quot;ContinuousGPVariableLCBManifest&quot;</span><span class="p">,</span>
+</span><span id="L-46"><a href="#L-46"><span class="linenos">46</span></a>    <span class="s2">&quot;ContinuousGPVariableLCBSpec&quot;</span><span class="p">,</span>
+</span><span id="L-47"><a href="#L-47"><span class="linenos">47</span></a>    <span class="s2">&quot;ContinuousGPDecompositionManifest&quot;</span><span class="p">,</span>
+</span><span id="L-48"><a href="#L-48"><span class="linenos">48</span></a>    <span class="s2">&quot;ContinuousGPDecompositionSpec&quot;</span><span class="p">,</span>
+</span><span id="L-49"><a href="#L-49"><span class="linenos">49</span></a>    <span class="s2">&quot;ExperimentConfig&quot;</span><span class="p">,</span>
+</span><span id="L-50"><a href="#L-50"><span class="linenos">50</span></a>    <span class="s2">&quot;OfflineBootstrapManifest&quot;</span><span class="p">,</span>
+</span><span id="L-51"><a href="#L-51"><span class="linenos">51</span></a>    <span class="s2">&quot;offline_bootstrap&quot;</span><span class="p">,</span>
+</span><span id="L-52"><a href="#L-52"><span class="linenos">52</span></a>    <span class="s2">&quot;offline_bootstrap_math&quot;</span><span class="p">,</span>
+</span><span id="L-53"><a href="#L-53"><span class="linenos">53</span></a>    <span class="s2">&quot;offline_bootstrap_reporting&quot;</span><span class="p">,</span>
+</span><span id="L-54"><a href="#L-54"><span class="linenos">54</span></a>    <span class="s2">&quot;get_config&quot;</span><span class="p">,</span>
+</span><span id="L-55"><a href="#L-55"><span class="linenos">55</span></a>    <span class="s2">&quot;list_configs&quot;</span><span class="p">,</span>
+</span><span id="L-56"><a href="#L-56"><span class="linenos">56</span></a>    <span class="s2">&quot;ExecutedRun&quot;</span><span class="p">,</span>
+</span><span id="L-57"><a href="#L-57"><span class="linenos">57</span></a>    <span class="s2">&quot;default_reporter_stack&quot;</span><span class="p">,</span>
+</span><span id="L-58"><a href="#L-58"><span class="linenos">58</span></a>    <span class="s2">&quot;execute_experiment_run&quot;</span><span class="p">,</span>
+</span><span id="L-59"><a href="#L-59"><span class="linenos">59</span></a>    <span class="s2">&quot;evaluate_continuous_policy_lcb_seed&quot;</span><span class="p">,</span>
+</span><span id="L-60"><a href="#L-60"><span class="linenos">60</span></a>    <span class="s2">&quot;evaluate_continuous_gp_variable_lcb_seed&quot;</span><span class="p">,</span>
+</span><span id="L-61"><a href="#L-61"><span class="linenos">61</span></a>    <span class="s2">&quot;evaluate_continuous_gp_decomposition_seed&quot;</span><span class="p">,</span>
+</span><span id="L-62"><a href="#L-62"><span class="linenos">62</span></a>    <span class="s2">&quot;FinitePolicyLCBManifest&quot;</span><span class="p">,</span>
+</span><span id="L-63"><a href="#L-63"><span class="linenos">63</span></a>    <span class="s2">&quot;FinitePolicyLCBSpec&quot;</span><span class="p">,</span>
+</span><span id="L-64"><a href="#L-64"><span class="linenos">64</span></a>    <span class="s2">&quot;LCBSeedResult&quot;</span><span class="p">,</span>
+</span><span id="L-65"><a href="#L-65"><span class="linenos">65</span></a>    <span class="s2">&quot;evaluate_finite_policy_lcb_seed&quot;</span><span class="p">,</span>
+</span><span id="L-66"><a href="#L-66"><span class="linenos">66</span></a>    <span class="s2">&quot;load_finite_policy_lcb_manifest&quot;</span><span class="p">,</span>
+</span><span id="L-67"><a href="#L-67"><span class="linenos">67</span></a>    <span class="s2">&quot;load_continuous_policy_lcb_manifest&quot;</span><span class="p">,</span>
+</span><span id="L-68"><a href="#L-68"><span class="linenos">68</span></a>    <span class="s2">&quot;load_continuous_gp_variable_lcb_manifest&quot;</span><span class="p">,</span>
+</span><span id="L-69"><a href="#L-69"><span class="linenos">69</span></a>    <span class="s2">&quot;load_continuous_gp_decomposition_manifest&quot;</span><span class="p">,</span>
+</span><span id="L-70"><a href="#L-70"><span class="linenos">70</span></a>    <span class="s2">&quot;results_root&quot;</span><span class="p">,</span>
+</span><span id="L-71"><a href="#L-71"><span class="linenos">71</span></a>    <span class="s2">&quot;LaunchContext&quot;</span><span class="p">,</span>
+</span><span id="L-72"><a href="#L-72"><span class="linenos">72</span></a>    <span class="s2">&quot;LaunchPlan&quot;</span><span class="p">,</span>
+</span><span id="L-73"><a href="#L-73"><span class="linenos">73</span></a>    <span class="s2">&quot;add_launch_args&quot;</span><span class="p">,</span>
+</span><span id="L-74"><a href="#L-74"><span class="linenos">74</span></a>    <span class="s2">&quot;run_launch_plan&quot;</span><span class="p">,</span>
+</span><span id="L-75"><a href="#L-75"><span class="linenos">75</span></a>    <span class="s2">&quot;ConstantBaselineResult&quot;</span><span class="p">,</span>
+</span><span id="L-76"><a href="#L-76"><span class="linenos">76</span></a>    <span class="s2">&quot;EstimatorResult&quot;</span><span class="p">,</span>
+</span><span id="L-77"><a href="#L-77"><span class="linenos">77</span></a>    <span class="s2">&quot;ExperimentResult&quot;</span><span class="p">,</span>
+</span><span id="L-78"><a href="#L-78"><span class="linenos">78</span></a>    <span class="s2">&quot;OptimizationTrace&quot;</span><span class="p">,</span>
+</span><span id="L-79"><a href="#L-79"><span class="linenos">79</span></a>    <span class="s2">&quot;PolicyEvaluation&quot;</span><span class="p">,</span>
+</span><span id="L-80"><a href="#L-80"><span class="linenos">80</span></a>    <span class="s2">&quot;run_experiment&quot;</span><span class="p">,</span>
+</span><span id="L-81"><a href="#L-81"><span class="linenos">81</span></a>    <span class="s2">&quot;SeedSetup&quot;</span><span class="p">,</span>
+</span><span id="L-82"><a href="#L-82"><span class="linenos">82</span></a>    <span class="s2">&quot;ResolvedSeedSetup&quot;</span><span class="p">,</span>
+</span><span id="L-83"><a href="#L-83"><span class="linenos">83</span></a>    <span class="s2">&quot;resolve_seed_setup&quot;</span><span class="p">,</span>
+</span><span id="L-84"><a href="#L-84"><span class="linenos">84</span></a><span class="p">]</span>
 </span></pre></div>
 
 
@@ -3390,6 +3423,90 @@ experiments    </h1>
 
             <div class="docstring"><p>Serialize config to dictionary for JSON output.</p>
 </div>
+
+
+                            </div>
+                </section>
+                <section id="OfflineBootstrapManifest">
+                            <input id="OfflineBootstrapManifest-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr class">
+                    <div class="decorator decorator-dataclass">@dataclass(frozen=True)</div>
+
+    <span class="def">class</span>
+    <span class="name">OfflineBootstrapManifest</span>:
+
+                <label class="view-source-button" for="OfflineBootstrapManifest-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#OfflineBootstrapManifest"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="OfflineBootstrapManifest-38"><a href="#OfflineBootstrapManifest-38"><span class="linenos">38</span></a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="OfflineBootstrapManifest-39"><a href="#OfflineBootstrapManifest-39"><span class="linenos">39</span></a><span class="k">class</span><span class="w"> </span><span class="nc">OfflineBootstrapManifest</span><span class="p">:</span>
+</span><span id="OfflineBootstrapManifest-40"><a href="#OfflineBootstrapManifest-40"><span class="linenos">40</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Validated manifest for one saved dataset and one unchanged predictor.&quot;&quot;&quot;</span>
+</span><span id="OfflineBootstrapManifest-41"><a href="#OfflineBootstrapManifest-41"><span class="linenos">41</span></a>
+</span><span id="OfflineBootstrapManifest-42"><a href="#OfflineBootstrapManifest-42"><span class="linenos">42</span></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="OfflineBootstrapManifest-43"><a href="#OfflineBootstrapManifest-43"><span class="linenos">43</span></a>    <span class="n">payload</span><span class="p">:</span> <span class="nb">dict</span>
+</span><span id="OfflineBootstrapManifest-44"><a href="#OfflineBootstrapManifest-44"><span class="linenos">44</span></a>    <span class="n">source_path</span><span class="p">:</span> <span class="n">Path</span>
+</span><span id="OfflineBootstrapManifest-45"><a href="#OfflineBootstrapManifest-45"><span class="linenos">45</span></a>    <span class="n">launch</span><span class="p">:</span> <span class="n">PolicyLCBLaunchSpec</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Validated manifest for one saved dataset and one unchanged predictor.</p>
+</div>
+
+
+                            <div id="OfflineBootstrapManifest.__init__" class="classattr">
+                                <div class="attr function">
+
+        <span class="name">OfflineBootstrapManifest</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">name</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">payload</span><span class="p">:</span> <span class="nb">dict</span>,</span><span class="param">	<span class="n">source_path</span><span class="p">:</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span>,</span><span class="param">	<span class="n">launch</span><span class="p">:</span> <span class="n">experiments</span><span class="o">.</span><span class="n">policy_lcb</span><span class="o">.</span><span class="n">common</span><span class="o">.</span><span class="n">PolicyLCBLaunchSpec</span></span>)</span>
+
+
+    </div>
+    <a class="headerlink" href="#OfflineBootstrapManifest.__init__"></a>
+
+
+
+                            </div>
+                            <div id="OfflineBootstrapManifest.name" class="classattr">
+                                <div class="attr variable">
+            <span class="name">name</span><span class="annotation">: str</span>
+
+
+    </div>
+    <a class="headerlink" href="#OfflineBootstrapManifest.name"></a>
+
+
+
+                            </div>
+                            <div id="OfflineBootstrapManifest.payload" class="classattr">
+                                <div class="attr variable">
+            <span class="name">payload</span><span class="annotation">: dict</span>
+
+
+    </div>
+    <a class="headerlink" href="#OfflineBootstrapManifest.payload"></a>
+
+
+
+                            </div>
+                            <div id="OfflineBootstrapManifest.source_path" class="classattr">
+                                <div class="attr variable">
+            <span class="name">source_path</span><span class="annotation">: pathlib.Path</span>
+
+
+    </div>
+    <a class="headerlink" href="#OfflineBootstrapManifest.source_path"></a>
+
+
+
+                            </div>
+                            <div id="OfflineBootstrapManifest.launch" class="classattr">
+                                <div class="attr variable">
+            <span class="name">launch</span><span class="annotation">: experiments.policy_lcb.common.PolicyLCBLaunchSpec</span>
+
+
+    </div>
+    <a class="headerlink" href="#OfflineBootstrapManifest.launch"></a>
+
 
 
                             </div>

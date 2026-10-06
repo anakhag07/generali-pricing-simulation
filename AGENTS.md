@@ -388,6 +388,12 @@ Changing the `models` array is the supported model swap. Available keys are
 
 ### Key Components
 
+- `formal/` contains the pinned Lean/mathlib project for bootstrap-calibration
+  proofs. Its README records the verification boundary and build commands.
+  A compiled reduction with statistical hypotheses does not establish those
+  hypotheses for the pairs-bootstrap implementation. Keep this distinction
+  explicit in `docs/bootstrap_finite_sample_candidate.tex` and reports.
+
 - `src/experiments/offline_bootstrap.py` owns the fixed-offline-data experiment
   (`kind: "offline_bootstrap"`, `manifests/offline_bootstrap.json`). It loads a
   saved predictor and observed data, freezes paired response variants, resamples

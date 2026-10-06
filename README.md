@@ -3,6 +3,9 @@
 Pricing simulation and black-box optimization demo with pluggable objectives,
 policies, and gradient estimators. More detailed docs can be viewed [here](https://anakhag07.github.io/generali-pricing-simulation/index.html).
 
+Lean proof sources for bootstrap calibration are in [formal/](formal/README.md).
+Their README distinguishes verified components from the unfinished finite-N theorem.
+
 ## Quickstart
 
 ```bash

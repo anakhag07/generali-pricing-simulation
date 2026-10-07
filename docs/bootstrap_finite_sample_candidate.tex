@@ -9,7 +9,7 @@
 \newcommand{\E}{\mathbb E}
 \newcommand{\R}{\mathbb R}
 \newcommand{\TV}{d_{\mathrm{TV}}}
-\title{A finite-sample candidate bound for the existing\protect\\
+\title{A Lean-verified finite-sample bound for\protect\\
 quadratic pairs-bootstrap calibration}
 \author{}
 \date{October 6, 2026}
@@ -17,15 +17,19 @@ quadratic pairs-bootstrap calibration}
 \maketitle
 
 \noindent\textbf{Verification status.}
-This is a mathematical candidate with a complete proposed derivation, not a
-claim of complete Lean verification. In particular, the Gaussian comparison,
-multinomial moment identities, matrix bounds, and their connection to the
-implemented procedure remain separate formalization obligations. Lean 4.19.0
-has checked the finite-law bootstrap quantile theorem, the final abstract
-probability reduction, and the deterministic envelope lemmas, with no proof
-placeholders or custom axioms. These are in \texttt{formal/}; checking these
-components does not verify this specialized statistical theorem.
-No originality claim is made here.
+The main finite-sample coverage theorem and the transferred predictor-error
+certificate below are proved in Lean 4.19.0 with mathlib v4.19.0. The proof
+derives the bootstrap approximation error from the stated Gaussian quadratic
+model, the actual accepted pairs law, and its multinomial moments; bootstrap
+validity is not an assumption. It includes original-coordinate OLS, the
+observed residual standard deviation, the sorted certified scores, and the
+supremum over all real actions. The complete project builds, and the final
+theorems use only \texttt{propext}, \texttt{Classical.choice}, and
+\texttt{Quot.sound}, with no proof placeholders or custom axioms.
+The verification is of the ideal mathematical procedure, not its floating-point
+implementation. The simplified rate, numerical diagnostics, and batch-abort
+corollary are outside the audited main theorem. The constants remain vacuous
+at the archived experiment sizes. Originality is not established.
 
 \section{Scope and the unchanged calibration rule}
 
@@ -120,7 +124,7 @@ These three moment quantities are nonnegative. For any fixed $a\in(0,1)$
 \end{align}
 There is no unknown population constant in this expression.
 
-\begin{theorem}[Candidate finite-sample coverage]\label{thm:main}
+\begin{theorem}[Finite-sample coverage; Lean verified]\label{thm:main}
 Under the preceding assumptions, for every deterministic
 $0<\tau<1-\delta$,
 \begin{align}
@@ -133,6 +137,10 @@ $0<\tau<1-\delta$,
 \end{align}
 The same lower bound holds for
 $|\widehat f(a)-f(a)|\le r(a)$ simultaneously over all real actions.
+On that same event the excess radius also satisfies
+\[
+ 0\le r(u)-|\widehat f(u)-f(u)|\le2w(u)\qquad\text{for every }u\in\R.
+\]
 The bound is clipped below at zero if desired. The probability integrates
 over hypothetical observation noise and the bootstrap randomness; it is not
 a posterior probability conditional on the already observed response vector.
@@ -153,8 +161,11 @@ $\eta=\eta_n\to0$ and choose $B_n$ so that \eqref{eq:rank} remains feasible.
 For example, $(1-\delta)^{B_n}\le\eta_n$ permits at least $k=B_n$.
 This is a deliberately conservative rate; feasibility alone does not establish
 efficiency of the finite-$B_n$ quantile choice.
+Equation~\eqref{eq:simple} and this asymptotic-rate discussion are analytic
+corollaries in this note; the final Lean theorem uses \eqref{eq:epsilon}
+directly and does not formalize those corollaries.
 
-\section{Proof of the candidate theorem}
+\section{Proof of the theorem}
 
 \subsection{Whitening and cancellation of the fixed scale}
 
@@ -404,6 +415,9 @@ Alternatively, counting an abort as failure gives
                       -Bq_{\mathrm{sing}}^{K+1}.
 \]
 The bound for abort probability is the union bound over replicates.
+Lean proves the individual first-accepted return law and retry-failure
+probability. The displayed batch-abort correction is not assembled into
+the main formal theorem, whose resamples have the accepted law directly.
 Pseudorandom generators are modeled here as the specified independent random
 draws; their deterministic implementation is not a probability proof.
 
@@ -435,42 +449,80 @@ These rounded numerical diagnostics are not Lean-certified. They use the
 existing \texttt{training\_actions} array from dataset 000 in the saved
 controlled pairs-bootstrap sweep, whose manifest SHA-256 is
 \texttt{13e23ef484c37ed37b44de861469e3f9420d80912bccf40a0f0a800bc7272e30}.
-The theorem is an explicit consistency bound and a possible formalization
-route, not a certification of nominal 95\% coverage for those experiments.
+The verified bound does not certify nominal 95\% coverage for those
+experiments. Improving its numerical constants is separate mathematical work.
 
-\section{Formalization obligations}
+\section{Completed Lean proof and verification boundary}
 
-A complete Lean proof of Theorem~\ref{thm:main} must connect all of the
-following, without replacing them by assumptions bearing the same names:
+The project in \texttt{formal/} pins Lean 4.19.0 and mathlib v4.19.0.
+The original-coordinate certificate is in
+\texttt{ObservedCalibration.lean}, in the namespace
+\texttt{BootstrapCalibration.QuadraticCalibrationDesign}:
+\begin{quote}\small
+\texttt{finite\_sample\_predictor\_certificate}\par
+\texttt{finite\_sample\_predictor\_certificate\_accepted}
+\end{quote}
+The second version requires score certificates only for accepted resamples;
+\texttt{AcceptedEndpoints.lean} proves a harmless zero extension on rejected
+draws, which have zero mass under the accepted law. These theorems construct
+a measurable confidence event with the probability bound in
+\eqref{eq:coverage}. On this event they prove both the error bound and the
+excess-radius bound for every real action and every frozen predictor.
+Their proof chain includes the following:
 \begin{enumerate}
-\item OLS whitening, the exact pairs-refit identity, and the residual
-projection under the stated Gaussian model.
-\item The three finite multinomial moment identities, the rank probability,
-and the law after successful finite rejection sampling.
-\item Matrix inverse perturbation bounds, the stable-event covariance
-calculation, and the $L^2$ Frobenius estimates.
-\item The Gaussian density/affinity calculation and total-variation
-inequality, including singular covariance and mixture comparison.
-\item Continuity of the Gaussian norm CDF, conditional independence of the
-two resamples, and the pointwise CDF second-moment estimate.
-\item The finite-$B$ order-statistic/binomial guarantee, the deterministic
-threshold reduction, and the transferred predictor-error inequality.
+\item \texttt{MultinomialMoments.lean} and \texttt{DesignMoments.lean}
+derive the arbitrary-$n$ count moments and the exact $\alpha,\gamma,\zeta$
+formulas from iid uniform row draws. \texttt{QuadraticRank.lean} proves
+the exact singularity probability for distinct quadratic actions.
+\item \texttt{OLS.lean}, \texttt{Whitening.lean}, and
+\texttt{RegressionInterpretation.lean} prove the original OLS and weighted
+refit identities, inverse-Gram standard errors, and the equality between
+the observable residual SD and its normalized noise representation.
+\item \texttt{GaussianComparison.lean}, \texttt{GaussianLinearImage.lean},
+and \texttt{SpectralComparison.lean} prove the Gaussian bounded-test
+comparison from density integrals, characteristic functions, and spectral
+identities, including singular covariance.
+\item \texttt{StableCovariance.lean} and \texttt{OLSBootstrapError.lean}
+derive the inverse perturbation and covariance estimates and the exact
+closed-form bound \eqref{eq:epsilon}. \texttt{AcceptedLaw.lean} supplies
+the one- and two-draw conditioning factors.
+\item \texttt{TwoReplicas.lean} and \texttt{GaussianPairsMSE.lean}
+derive the actual conditional-CDF second-moment estimate from the two
+accepted resamples sharing the same observation noise.
+\item \texttt{SupremumStatistic.lean}, \texttt{QuadraticStatistic.lean},
+and \texttt{NormCDF.lean} handle the continuum supremum, null norm level
+sets, and an exact interior CDF threshold.
+\item \texttt{OrderStatistic.lean} and
+\texttt{OrderStatisticMeasurable.lean} identify the actual sorted score,
+including ties, measurability, and positive-scale equivariance.
+\texttt{IntegratedCalibration.lean} combines the finite-$B$ binomial
+guarantee with the observation law without assuming independence between
+the target statistic and its random critical value.
+\item \texttt{Main.lean} composes the design-dependent coverage bound;
+\texttt{ResidualScale.lean} and \texttt{StudentizedCalibration.lean}
+instantiate the fitted residual scale and prove it positive almost surely.
+\texttt{ObservedCalibration.lean} and \texttt{Envelope.lean} conclude the
+original-coordinate predictor-radius certificate.
 \end{enumerate}
-The abstract components of item 6 have compiled, but still need to be
-instantiated for the conditional accepted-count law and integrated over the
-observation noise. This also requires the actual sorted upper endpoint's rank
-property and its positive-scale identity. The finite-$N$ mean-square estimate
-is an explicit premise of the checked reduction, not a verified conclusion
-about OLS. Exact finite enumeration separately checks the stated count moments
-for $n=3,\ldots,30$; this is not a proof for all $n$. No finite-sample
-bootstrap theorem should be described as fully Lean-verified until all the
-statistical obligations are discharged.
+Run \texttt{lake build} and
+\texttt{lake env lean BootstrapCalibration.lean} from \texttt{formal/}
+to compile the project and print its theorem-axiom audit. The completed main
+theorems depend only on \texttt{propext}, \texttt{Classical.choice}, and
+\texttt{Quot.sound}. There are no proof placeholders, custom statistical
+axioms, or assumed bootstrap-coverage conclusions.
 
-\section{Bounded originality comparison after mathematical audit}
+The hypotheses still require the stated correctly specified Gaussian model,
+distinct fixed actions, and measurable upper scores that dominate the actual
+bootstrap statistic. The formal proof does not verify floating-point OLS,
+NumPy's rank tolerance, numerical supremum certification, or the Python/SciPy
+binomial-rank selector. Equation~\eqref{eq:simple}, its rate discussion, the
+archived numerical diagnostics, and the complete batch-retry coverage
+corollary are outside the audited main theorem.
 
-An independent mathematical audit checked the derivation above; the Lean
-checks currently cover components and reductions, not the complete specialized
-theorem. The following primary-source comparison does not change that status.
+\section{Bounded originality comparison after Lean verification}
+
+After the complete theorem compiled and its assumptions and axioms were
+audited, a targeted comparison revisited the following primary sources.
 The closest conceptual predecessor is the two-replicate $L^2$ argument of
 B\"ucher and Kojadinovic~\cite{bk}. Our calculation is a quantitative
 specialization of that known mechanism. Regression bootstrap validity,
@@ -479,12 +531,16 @@ Monte Carlo error accounting also have established predecessors below.
 
 The potentially useful contribution is the assembled, explicit leverage-based
 bound for this exact-rank quadratic pairs rule, including its real-line norm,
-fixed-denominator cancellation, finite rejection, finite $B$, and transfer to
+fixed-denominator cancellation, exact-rank conditioning, finite $B$, and transfer to
 a frozen predictor. This bounded search has not established that the assembled
 result is original. No improvement in rate or assumptions is claimed, and the
-current constants are vacuous for the archived designs. The predictor transfer
-and the binomial order-statistic guarantee are elementary ingredients, not
-independent novelty claims.
+current constants are vacuous for the archived designs. The continuum
+supremum, fixed-scale cancellation, predictor transfer, and binomial
+order-statistic guarantee are not independent novelty claims. A defensible
+description is a formally verified finite-sample specialization for exact-rank
+quadratic pairs-bootstrap calibration using established two-replica and
+Gaussian-comparison methods. The exact assembled theorem was not located in
+the checked results; this is not a priority or exhaustive-literature claim.
 
 {\small
 \begin{thebibliography}{6}
@@ -492,16 +548,17 @@ independent novelty claims.
 D. A. Freedman (1981),
 \href{https://doi.org/10.1214/aos/1176345638}{\emph{Bootstrapping regression models}}.
 Section 2, Theorem 2.1 gives a Mallows-distance comparison for fixed-design
-error laws; Section 3 treats the correlation-model bootstrap. This predates
-our regression-bootstrap target, but is not the explicit rank-conditioned
-finite-sample theorem above.
+residual resampling. Section 3, Theorem 3.1 proves asymptotic pairs-bootstrap
+OLS validity for the random-design correlation model. Our result conditions
+on a fixed quadratic design and gives explicit finite-$n$, finite-$B$
+constants for the exact-rank accepted law.
 
 \bibitem{bk}
 A. B\"ucher and I. Kojadinovic (2019),
 \href{https://arxiv.org/abs/1706.01031}{\emph{A note on conditional versus joint
 unconditional weak convergence in bootstrap consistency results}}.
 Lemma 2.3 and its proof use two conditional replicas and an $L^2$ product
-identity; Section 4 treats Monte Carlo quantiles. Their result is asymptotic
+identity; Lemma 4.2 treats Monte Carlo quantiles. Their result is asymptotic
 and traces the mechanism to earlier work.
 
 \bibitem{abr}
@@ -519,6 +576,8 @@ misspecification}}.
 Theorem 2.2 and Corollary 2.3 give nonasymptotic coverage errors for
 multiplier-bootstrap likelihood regions under a small modeling bias;
 they already establish finite-sample bootstrap validity in a different setting.
+Their multipliers are independent, whereas our accepted multinomial counts
+are dependent and enter a random inverse Gram matrix.
 
 \bibitem{cck}
 V. Chernozhukov, D. Chetverikov and K. Kato (2016),

@@ -898,23 +898,36 @@ linearly or monotonically. Increasing N need not remove the discrepancy floor.
 Sources: `src/experiments/offline_bootstrap.py`,
 `src/experiments/offline_bootstrap_math.py` and their reporting companion.
 
-### 7.8 Formal proof components and the remaining finite-N obligation
+### 7.8 Lean-verified finite-sample bootstrap certificate
 
-The pinned Lean project in `formal/` verifies finite-B calibration for any
-finite bootstrap law, including ties and conservative score bounds. It also
-verifies the deterministic transferred-radius bound
-$$0\le r(a)-|\widehat f(a)-f(a)|\le2w(a)$$
-on auxiliary containment, and the following conditional statistical reduction:
-if a deterministic threshold has true CDF value $1-\delta-\tau$, its bootstrap
-CDF has mean-square discrepancy at most $\varepsilon$, and finite-B mass
-calibration fails with probability at most $\eta$, then coverage is at least
-$$1-\delta-\tau-\eta-\varepsilon/\tau^2.$$
-The reduction does not establish its mean-square premise for quadratic pairs
-bootstrap. `docs/bootstrap_finite_sample_candidate.tex` proposes an explicit
-design-dependent bound from Gaussian and multinomial calculations; those
-calculations are not yet fully formalized, and its present numerical constants
-are vacuous for the existing experiment sizes. See `formal/README.md` for exact
-verification scope and reproduction. Runtime inference metadata stays unchanged.
+The pinned Lean project in `formal/` verifies the complete finite-sample
+certificate for the ideal exact-rank homoskedastic Gaussian quadratic setup,
+conditional on a fixed distinct-action design with N≥5. For an arbitrary
+frozen predictor and measurable certified bootstrap score upper endpoints,
+coverage over observation noise and accepted pairs resamples is at least
+$$1-\delta-\tau-\eta-\varepsilon_a/\tau^2.$$
+Here $0<\tau<1-\delta\le1$, $0<a<1$, $\eta\ge0$, and the selected
+rank $k\in\{1,\ldots,B\}$ satisfies
+$\Pr\{\operatorname{Binomial}(B,1-\delta)\ge k\}\le\eta$.
+The explicit design-dependent $\varepsilon_a$ is given in
+`docs/bootstrap_finite_sample_candidate.tex`. The final theorem derives it
+from the actual multinomial law, rank acceptance, Gaussian comparison, and
+stable covariance moments; no CDF-approximation or coverage premise remains.
+
+`QuadraticCalibrationDesign.finite_sample_predictor_certificate_accepted` in
+`formal/BootstrapCalibration/ObservedCalibration.lean` supplies a measurable
+confidence event. On that event, simultaneously over all real actions,
+$$|\widehat f(a)-f(a)|\le r(a),\qquad
+0\le r(a)-|\widehat f(a)-f(a)|\le2w(a).$$
+The band uses original OLS, the observed residual SD, and the actual sorted
+conservative critical value. All exported axiom audits use only Lean's standard
+foundational axioms, with no placeholders or custom statistical axioms.
+
+The theorem does not verify floating-point fitting/rank/certification code,
+heteroskedastic or misspecified models, or the note's simplified asymptotic
+corollaries. Its present closed-form constants are vacuous for the archived
+experiment sizes. See `formal/README.md` for exact scope and reproduction.
+Runtime inference metadata stays unchanged.
 
 ## 8. Gradients and Estimators
 

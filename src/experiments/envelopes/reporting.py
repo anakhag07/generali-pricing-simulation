@@ -439,11 +439,10 @@ def _calibration_figure(data, view):
     axes[0].set_title("Analytical envelope and the observed calibration responses")
     axes[0].set_ylabel("Context-adjusted response")
     axes[0].legend()
-    axes[1].plot(a, view["mean_radius"], label="Total radius r = discrepancy + w")
-    axes[1].plot(a, view["mean_width"], label="Analytical uncertainty width w")
-    axes[1].plot(a, view["mean_discrepancy"], label="Predictor–OLS discrepancy")
-    axes[1].set_title(f"Radius components averaged across all {len(data.X)} contexts")
-    axes[1].set_ylabel("Mean radius component")
+    half_width = np.ma.masked_where(view["empty"], (view["upper"]-view["lower"])/2)
+    axes[1].plot(a, half_width, label="Half-width of the same common envelope: (U - L) / 2")
+    axes[1].set_title(f"Common-envelope half-width after collapsing all {len(data.X)} contexts")
+    axes[1].set_ylabel("Common-envelope half-width")
     axes[1].set_ylim(bottom=0)
     axes[1].legend()
     edges = view["histogram_edges"]
@@ -462,14 +461,15 @@ def _calibration_figure(data, view):
         ax.set_xlim(-2, 2)
     fig.supxlabel(
         "Display only: subtract $" + _context_formula(view["coefficients"]) + "$ from responses and model values.\n"
-        "The shaded band targets the true mean response, not noisy observations; its common overlap is not the mean radius.\n"
+        "Middle panel: half-width of the same common band above; empty intersections are omitted.\n"
+        "The band targets the true mean response, not noisy observations; individual context radii are unchanged.\n"
         "Width w uses the full context–action design; histogram density alone does not determine it.", fontsize=10,
     )
     return fig
 
 
 def write_calibration_plot(project: Path, destination: Path) -> Path:
-    """Align saved calibration action counts, radius components, and the common analytical envelope."""
+    """Align saved action counts with the common analytical envelope and its half-width."""
     from .core import CalibrationData
 
     summary, arrays, provenance = _comparison_case(project)
@@ -494,7 +494,9 @@ def write_calibration_plot(project: Path, destination: Path) -> Path:
         "semantics": "Replay saved diagnostic arrays on the existing [-2,2] action window. "
                      "The common adjusted envelope matches plot 1 and is not an individual or mean radius. "
                      "Observed y-g(x) retains observation noise; coverage concerns the true mean response. "
-                     "Width, discrepancy, and total radius are equally averaged across all target contexts. "
+                     "The middle panel shows (upper-lower)/2 of that same intersection, with empty intersections masked. "
+                     "This is the half-width about the common interval midpoint, not the mean predictor or an individual context radius. "
+                     "Saved mean width, discrepancy, and radius remain diagnostics and are not plotted. "
                      "Histogram bins count actual calibration actions; out-of-window draws are explicitly counted. "
                      "The linear width uses global joint context-action leverage, not inverse local histogram density. "
                      "No new fits, observations, PCA, or coverage claims are produced.",

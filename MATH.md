@@ -986,20 +986,24 @@ Finite-target checking makes only a finite-set floating-point claim.
 
 Sources: `src/experiments/envelopes/`; usage: `docs/uncertainty_envelopes.md`.
 
-For the calibration-data visualization only, center the observed context matrix
-X and compute its full SVD. Let v_1 be the first right singular vector, with its
-first nonzero loading made positive, and t_i=(x_i-bar{x})'v_1. PCA uses neither
-logged actions nor responses and introduces no new randomness. Its explained
-variance fraction is s_1^2/sum_j s_j^2. A model with affine coefficients beta
-has the reference slice
-$$f_{\rm slice}(t,a)=\beta_0+\beta_x'\bar x
-                   +(\beta_x'v_1)t+\beta_a a,$$
-which sets the other centered PC scores to zero. The plotted observations are
-the original (a_i,t_i,Y_i); their vertical deviations from the true slice also
-include beta_x'(x_i-bar{x}-t_i v_1), not just observation noise. These slices
-replay the true, supplied-predictor, and saved auxiliary coefficients; no new
-response regression or envelope fit is performed. Since X has isotropic normal
-population covariance, the leading direction is specific to the sampled design.
+For the calibration action-support display, plot the same common-overlap
+band above, with observed responses adjusted as Y_i-g(x_i). These are noisy
+observations, not the truth values tested by mean-response coverage. All axes
+share the existing [-2,2] diagnostic window; counts explicitly record the
+calibration actions outside it. Histogram bins count logged actions only and
+do not affect fitting or radius evaluation. At each saved diagnostic action,
+plot arithmetic means across all target contexts of r_i(a), w_i(a), and
+D_i(a)=|fhat_i(a)-ftilde_i(a)|, so mean(r)=mean(w)+mean(D). The common-overlap
+band is an intersection and its half-width is not mean(r).
+
+The analytical width uses global joint-design leverage, not inverse local
+histogram density. Write B=[1,X], b=(1,x')', gamma=(B'B)^(-1)B'a_logged,
+and S=||a_logged-B gamma||^2. Block inversion of Q gives
+$$phi(x,a)'Q^{-1}phi(x,a)
+ = b'(B'B)^{-1}b + (a-b'gamma)^2/S.$$
+This explains wider uncertainty away from the design's fitted action trend;
+the histogram alone cannot determine leverage. Display averages replay saved
+width/discrepancy/radius arrays without new observations, model fits, or PCA.
 
 ## 8. Gradients and Estimators
 

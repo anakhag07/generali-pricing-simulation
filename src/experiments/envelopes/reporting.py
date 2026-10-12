@@ -7,7 +7,6 @@ import json
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
 import numpy as np
 
 from experiments.provenance import file_record, write_provenance
@@ -221,8 +220,9 @@ def _comparison_case(project):
     with np.load(point_record["path"], allow_pickle=False) as saved:
         arrays = {key: np.asarray(saved[key], dtype=float) for key in
                   ("X", "actions", "center", "truth", "radius", "excess", "weights")}
-        if "component_auxiliary" in saved:
-            arrays["auxiliary"] = np.asarray(saved["component_auxiliary"], dtype=float)
+        for key in ("auxiliary", "width", "discrepancy"):
+            if f"component_{key}" in saved:
+                arrays[key] = np.asarray(saved[f"component_{key}"], dtype=float)
     size = len(arrays["actions"])
     if (arrays["X"].ndim != 2 or arrays["X"].shape[0] != size
             or any(value.shape != (size,) for key, value in arrays.items() if key != "X")
@@ -400,100 +400,103 @@ def write_comparison(projects, destination: Path) -> list[Path]:
     return paths
 
 
-def _calibration_projection(summary, data, fit):
-    problem = summary["manifest"]["problem"]
-    if any(problem[name]["type"] != "linear" for name in ("truth", "predictor")):
-        raise ValueError("Calibration reference planes require declared linear models.")
-    if fit["metadata"].get("construction") != "linear_known_variance_transfer":
-        raise ValueError("Calibration reference planes require the saved linear auxiliary fit.")
-    mean = data.X.mean(axis=0)
-    centered = data.X-mean
-    _, singular_values, directions = np.linalg.svd(centered, full_matrices=False)
-    if not len(singular_values) or singular_values[0] <= 0:
-        raise ValueError("Calibration PCA requires nonzero context variation.")
-    pc1 = directions[0].copy()
-    # Fix the otherwise arbitrary SVD sign, without changing the projection.
-    if pc1[np.flatnonzero(pc1)[0]] < 0:
-        pc1 *= -1
-    coefficients = {name: np.asarray(problem[name]["coefficients"], dtype=float)
-                    for name in ("truth", "predictor")}
-    coefficients["auxiliary"] = np.asarray(fit["state"]["beta"], dtype=float)
-    planes = {}
-    for name, beta in coefficients.items():
-        if beta.shape != (data.X.shape[1]+2,) or not np.isfinite(beta).all():
-            raise ValueError("Calibration planes require dimension-matched finite coefficients.")
-        planes[name] = {"intercept": float(beta[0] + mean @ beta[1:-1]),
-                        "action_slope": float(beta[-1]),
-                        "pc1_slope": float(pc1 @ beta[1:-1])}
-    return {"context_mean": mean, "pc1": pc1, "scores": centered @ pc1,
-            "singular_values": singular_values,
-            "explained_variance_ratio": float(singular_values[0]**2 / (singular_values**2).sum()),
-            "planes": planes}
+def _calibration_action_view(summary, arrays, data):
+    if summary["manifest"]["envelope"]["type"] != "linear_known_variance_transfer":
+        raise ValueError("Action-support display requires the saved linear transfer construction.")
+    view = _aligned_comparison(summary, arrays)
+    if not np.array_equal(view["contexts"], data.X):
+        raise ValueError("Calibration contexts must match the saved diagnostic contexts.")
+    if not {"width", "discrepancy", "auxiliary"} <= arrays.keys():
+        raise ValueError("Action-support display requires saved width and discrepancy components.")
+    if (np.any(arrays["width"] < 0) or np.any(arrays["discrepancy"] < 0)
+            or not np.allclose(arrays["radius"], arrays["width"]+arrays["discrepancy"],
+                               rtol=1e-12, atol=1e-12)
+            or not np.allclose(arrays["discrepancy"], np.abs(arrays["center"]-arrays["auxiliary"]),
+                               rtol=1e-12, atol=1e-12)):
+        raise ValueError("Saved radius components disagree with the linear transfer construction.")
+    count = len(data.X)
+    diagnostic_actions = arrays["actions"].reshape(count, -1)[0]
+    window = (diagnostic_actions >= -2) & (diagnostic_actions <= 2)
+    view.update({f"mean_{key}": arrays[key].reshape(count, -1)[:, window].mean(axis=0)
+                 for key in ("radius", "width", "discrepancy")})
+    view["adjusted_responses"] = data.y-view["g"]
+    view["observed_in_window"] = (data.actions >= -2) & (data.actions <= 2)
+    view["histogram_counts"], view["histogram_edges"] = np.histogram(data.actions, bins=np.linspace(-2, 2, 9))
+    return view
 
 
-def _calibration_figure(data, projection):
-    fig = plt.figure(figsize=(11, 9), constrained_layout=True)
-    ax = fig.add_subplot(111, projection="3d", computed_zorder=False)
-    scores = projection["scores"]
-    actions, contexts = np.meshgrid(np.linspace(data.actions.min(), data.actions.max(), 9),
-                                   np.linspace(scores.min(), scores.max(), 9))
-    handles = []
-    for index, (name, label) in enumerate((("truth", "True f"),
-                                         ("predictor", "Frozen predictor"),
-                                         ("auxiliary", "Saved auxiliary OLS fit"))):
-        plane = projection["planes"][name]
-        response = plane["intercept"] + plane["action_slope"]*actions + plane["pc1_slope"]*contexts
-        ax.plot_wireframe(actions, contexts, response, rstride=4, cstride=4,
-                          color=f"C{index}", alpha=.7, zorder=1)
-        handles.append(Line2D([], [], color=f"C{index}",
-                              label=f"{label}: slopes a = {plane['action_slope']:.3f}, PC1 = {plane['pc1_slope']:.3f}"))
-    # Keep the actual observations visible above reference wireframes; no
-    # coordinates, response values, camera angles, or box aspects are adjusted.
-    scatter = ax.scatter(data.actions, scores, data.y, color="C3", s=20,
-                         depthshade=False, zorder=10, label=f"{len(data.y)} observed responses")
-    ax.legend(handles=[scatter, *handles])
-    ax.set_xlabel("Action a")
-    ax.set_ylabel("Centered context PC1 score")
-    ax.set_zlabel("Observed / model response")
-    fig.suptitle("Single calibration dataset and linear model slopes")
+def _calibration_figure(data, view):
+    fig, axes = plt.subplots(3, 1, figsize=(11, 12), sharex=True, constrained_layout=True)
+    fig.suptitle("Calibration action draws and the analytical-from-linear-f radius")
+    a = view["actions"]
+    observed = view["observed_in_window"]
+    axes[0].plot(a, view["truth"], label="True f, context-adjusted")
+    predictor, = axes[0].plot(a, view["mean_predictor"], label="Mean frozen predictor, context-adjusted")
+    axes[0].fill_between(a, view["lower"], view["upper"], where=~view["empty"],
+                         color=predictor.get_color(), alpha=.2, label="Common envelope from plot 1")
+    axes[0].scatter(data.actions[observed], view["adjusted_responses"][observed],
+                    color="C2", s=20, label="Observed responses, context-adjusted")
+    axes[0].set_title("Analytical envelope and the observed calibration responses")
+    axes[0].set_ylabel("Context-adjusted response")
+    axes[0].legend()
+    axes[1].plot(a, view["mean_radius"], label="Total radius r = discrepancy + w")
+    axes[1].plot(a, view["mean_width"], label="Analytical uncertainty width w")
+    axes[1].plot(a, view["mean_discrepancy"], label="Predictor–OLS discrepancy")
+    axes[1].set_title(f"Radius components averaged across all {len(data.X)} contexts")
+    axes[1].set_ylabel("Mean radius component")
+    axes[1].set_ylim(bottom=0)
+    axes[1].legend()
+    edges = view["histogram_edges"]
+    axes[2].stairs(view["histogram_counts"], edges, fill=True, alpha=.4,
+                   label="Calibration action counts (bin width 0.5)")
+    axes[2].plot(data.actions[observed], np.zeros(observed.sum()), "|",
+                  label="One tick per observed action")
+    below, above = int((data.actions < -2).sum()), int((data.actions > 2).sum())
+    axes[2].set_title(f"Action draws: {observed.sum()} of {len(data.y)} in the displayed window; "
+                      f"{below} below -2, {above} above 2")
+    axes[2].set_ylabel("Calibration observations per bin")
+    axes[2].set_ylim(bottom=0)
+    axes[2].legend()
+    for ax in axes:
+        ax.set_xlabel("Action a (same window as plot 1)")
+        ax.set_xlim(-2, 2)
     fig.supxlabel(
-        f"PCA uses centered contexts only; PC1 explains {100*projection['explained_variance_ratio']:.1f}% of their sample variation.\n"
-        "Reference planes set the other PC scores to zero; observed points retain those components and noise.\n"
-        "This PCA direction is sample-specific. All models are replayed without refitting.", fontsize=10,
+        "Display only: subtract $" + _context_formula(view["coefficients"]) + "$ from responses and model values.\n"
+        "The shaded band targets the true mean response, not noisy observations; its common overlap is not the mean radius.\n"
+        "Width w uses the full context–action design; histogram density alone does not determine it.", fontsize=10,
     )
     return fig
 
 
 def write_calibration_plot(project: Path, destination: Path) -> Path:
-    """Replay raw calibration responses against action and context PC1, with saved linear model slices."""
+    """Align saved calibration action counts, radius components, and the common analytical envelope."""
     from .core import CalibrationData
 
-    summary, _, provenance = _comparison_case(project)
+    summary, arrays, provenance = _comparison_case(project)
     artifacts = summary["repetitions"][0]["artifacts"]
     with np.load(artifacts["calibration"]["path"], allow_pickle=False) as saved:
         data = CalibrationData(saved["X"], saved["actions"], saved["y"])
-    fit = json.loads(Path(artifacts["fit"]["path"]).read_text())
-    projection = _calibration_projection(summary, data, fit)
+    view = _calibration_action_view(summary, arrays, data)
     destination = Path(destination)
     if destination.resolve() == Path(project).resolve():
         raise ValueError("Use a separate calibration report output directory.")
     destination.mkdir(parents=True, exist_ok=True)
     path = destination / "03_calibration_dataset.pdf"
     with plt.style.context("default"), plt.rc_context(_STYLE):
-        figure = _calibration_figure(data, projection)
+        figure = _calibration_figure(data, view)
         try:
             figure.savefig(path, format="pdf")
         finally:
             plt.close(figure)
-    write_provenance(destination / "calibration_pca.json", {
-        "project": provenance, "projection": projection, "source": file_record(__file__),
-        "plot": file_record(path),
-        "semantics": "Full deterministic SVD of centered, unscaled calibration contexts only. "
-                     "PC1 has its first nonzero loading positive. Actions and responses are excluded from PCA. "
-                     "Scatter coordinates are the original actions, projected centered contexts, and raw observed responses. "
-                     "Reference planes evaluate the original models at x = context_mean + score * pc1, "
-                     "setting all omitted centered PC scores to zero. Observations retain omitted-context effects and noise. "
-                     "Coefficients are replayed, not refitted. Isotropic population contexts have no preferred PCA direction. "
-                     "This visualization does not change the envelope construction, coverage target, or guarantees.",
+    write_provenance(destination / "calibration_action_support.json", {
+        "project": provenance, "view": view, "source": file_record(__file__),
+        "plot": file_record(path), "outside_window": int((~view["observed_in_window"]).sum()),
+        "semantics": "Replay saved diagnostic arrays on the existing [-2,2] action window. "
+                     "The common adjusted envelope matches plot 1 and is not an individual or mean radius. "
+                     "Observed y-g(x) retains observation noise; coverage concerns the true mean response. "
+                     "Width, discrepancy, and total radius are equally averaged across all target contexts. "
+                     "Histogram bins count actual calibration actions; out-of-window draws are explicitly counted. "
+                     "The linear width uses global joint context-action leverage, not inverse local histogram density. "
+                     "No new fits, observations, PCA, or coverage claims are produced.",
     })
     return path

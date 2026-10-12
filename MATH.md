@@ -929,6 +929,20 @@ Multipliers at least one retain this bound; smaller multipliers are allowed
 only without claiming this analytical guarantee. A constant-radius adapter
 and user-provided builders support evaluation without inheriting the theorem.
 
+For a literal constant radius c>=0 and affine truth/predictor, write their
+difference on each fixed context as h_i(a)=u_i+v a. All-real containment
+holds exactly when v=0 and |u_i|<=c for every context; if v!=0, the absolute
+error eventually exceeds every finite c. For a declared bounded interval
+[L,U], checking |h_i(L)|<=c and |h_i(U)|<=c certifies the entire interval,
+because absolute affine error is convex. These are containment decisions,
+not optimizer actions or choices of an optimal radius. In the supplied
+synthetic example the slopes are 1.7 and 2.0, so literal c=3 fails on R even
+when it covers a plotted bounded window. A fixed constant radius does not
+depend on the calibration responses: conditional on fixed truth, predictor,
+and design, its coverage probability is zero or one on the declared domain.
+Truth-based verification of that event is separate from the writeup's
+distributional lower bound of 1-delta for its data-dependent construction.
+
 Analytical runs use one saved calibration realization and a separately typed
 probability statement. Empirical runs freeze Z and the predictor and redraw
 independent response vectors; each repetition refits the entire construction.

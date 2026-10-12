@@ -194,6 +194,47 @@ def check_linear_containment(
     )
 
 
+def check_constant_linear_containment(
+    envelope: FittedEnvelope, truth, target: TargetDomain,
+) -> ContainmentResult:
+    """Certify a literal constant radius for affine truth/predictor on every real action."""
+    if target.kind != "real_line":
+        raise ValueError("The constant affine checker requires a real_line target.")
+    if not isinstance(truth, LinearModel) or not isinstance(envelope.center, LinearModel):
+        raise ValueError("The constant affine checker requires LinearModel truth and predictor.")
+    if envelope.metadata.get("construction") != "constant_radius":
+        raise ValueError("The constant affine checker requires the literal constant_radius construction.")
+    radius = float(envelope.state["radius"])
+    if not np.isfinite(radius) or radius < 0:
+        raise ValueError("Constant radius must be finite and nonnegative.")
+    p = target.contexts.shape[1] + 2
+    if len(truth.coefficients) != p or len(envelope.center.coefficients) != p:
+        raise ValueError("Model and target context dimensions disagree.")
+    exact_radius = _rational(radius)
+    slope = _rational(envelope.center.coefficients[-1]) - _rational(truth.coefficients[-1])
+    details = {
+        "context_count": len(target.contexts), "radius_exact": str(exact_radius),
+        "action_slope_difference": str(slope), "slope_mismatch": slope != 0,
+        "arithmetic": "Exact rational comparison of stored floating-point coefficients, contexts, and constant radius; does not enclose floating-point evaluation error.",
+    }
+    if slope != 0:
+        details["reason"] = "Unequal action slopes make the absolute prediction error exceed every finite constant radius in the tails."
+        return ContainmentResult("violated", "constant_affine_all_real", "real_line", details)
+    contexts = []
+    for index, context in enumerate(target.contexts):
+        difference = (_affine_polynomial(envelope.center.coefficients, context)
+                      - _affine_polynomial(truth.coefficients, context))
+        gap = abs(difference.nth(0))
+        contexts.append({"context_index": index, "absolute_error_exact": str(gap),
+                         "covered": bool(gap <= exact_radius)})
+    details["contexts"] = contexts
+    details["reason"] = "Equal action slopes leave a constant prediction error on each context fiber."
+    return ContainmentResult(
+        "covered" if all(row["covered"] for row in contexts) else "violated",
+        "constant_affine_all_real", "real_line", details,
+    )
+
+
 def linear_guarantee(
     data: CalibrationData, truth, predictor, target: TargetDomain,
     settings: dict, noise_std: float,

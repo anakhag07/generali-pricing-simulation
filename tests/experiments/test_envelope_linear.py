@@ -4,7 +4,8 @@ from scipy.linalg import hadamard
 
 from experiments.envelopes.core import CalibrationData, FittedEnvelope, TargetDomain
 from experiments.envelopes.linear import (
-    LinearModel, check_linear_containment, features, fit_linear_transfer, linear_guarantee,
+    LinearModel, check_constant_linear_containment, check_linear_containment,
+    features, fit_linear_transfer, linear_guarantee,
 )
 
 
@@ -167,3 +168,47 @@ def test_multiplier_scales_width_only_and_repeated_queries_are_deterministic():
     np.testing.assert_allclose(first.components["discrepancy"], second.components["discrepancy"])
     np.testing.assert_allclose(first.components["width"]*.25, second.components["width"])
     np.testing.assert_array_equal(second.radius, reduced.evaluate(data.X, data.actions).radius)
+
+
+def constant_envelope(coefficients, radius):
+    return FittedEnvelope(
+        LinearModel(coefficients), lambda X, a: np.full(len(a), radius),
+        state={"radius": radius}, metadata={"construction": "constant_radius"},
+    )
+
+
+def test_literal_constant_detects_arbitrarily_distant_tail_failure():
+    fit = constant_envelope([0., 0., np.nextafter(1., 2.)], 3.)
+    truth = LinearModel([0., 0., 1.])
+    X, actions = np.zeros((3, 1)), np.array([-2., 0., 2.])
+    evaluated = fit.evaluate(X, actions)
+    assert np.all(np.abs(evaluated.center-truth(X, actions)) <= evaluated.radius)
+    result = check_constant_linear_containment(fit, truth, TargetDomain([[0.]]))
+    assert result.status == "violated"
+    assert result.details["slope_mismatch"]
+    assert "tails" in result.details["reason"]
+
+
+@pytest.mark.parametrize("contexts,expected", [
+    ([[-1.], [0.]], "covered"),
+    ([[-1.], [1.]], "covered"),  # Equality at x=1 is included.
+    ([[-1.], [3.]], "violated"),
+])
+def test_literal_constant_with_equal_slopes_checks_contextual_error(contexts, expected):
+    fit = constant_envelope([.5, .5, 2.], 1.)
+    truth = LinearModel([0., 0., 2.])
+    result = check_constant_linear_containment(fit, truth, TargetDomain(contexts))
+    assert result.status == expected
+    assert not result.details["slope_mismatch"]
+    assert result.details["contexts"][0]["absolute_error_exact"] == "0"
+
+
+def test_literal_constant_checker_rejects_other_construction_or_finite_target():
+    fit = constant_envelope([0., 0., 1.], 3.)
+    truth = LinearModel([0., 0., 1.])
+    with pytest.raises(ValueError, match="real_line"):
+        check_constant_linear_containment(fit, truth, TargetDomain([[0.]], [0., 1.]))
+    with pytest.raises(ValueError, match="literal constant_radius"):
+        check_constant_linear_containment(
+            represented_envelope([0., 0., 1.], [0., 0., 1.]), truth, TargetDomain([[0.]]),
+        )

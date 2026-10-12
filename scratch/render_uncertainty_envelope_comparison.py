@@ -23,6 +23,10 @@ def main():
         "uncertainty-envelopes-constant-3", "uncertainty-envelopes-writeup",
     )]
     destination = args.runs_root / "uncertainty-envelopes-comparison"
+    previous_plots = [destination / name for name in ("01_envelope_slices.pdf", "02_radius_excess.pdf")
+                      if (destination / name).exists()]
+    previous_summary = destination / "comparison.json"
+    previous_metadata = previous_summary.read_bytes() if previous_plots and previous_summary.exists() else None
     paths = write_comparison(projects, destination)
     summaries = [json.loads((project / "summary.json").read_text()) for project in projects]
     constant = summaries[0]
@@ -65,11 +69,25 @@ def main():
     }
     (destination / "window_certificate.json").write_text(json.dumps(certificate, indent=2)+"\n")
     table = []
-    for label, summary in zip(("Constant radius 3", "Writeup transfer"), summaries):
+    for label, summary in zip(("constant radius = 3", "analytical-from-linear-f radius"), summaries):
         row = summary["repetitions"][0]
         table.append({"construction": label, "all_real_containment": row["containment"]["status"],
                       **row["metrics"]})
     write_rows_csv(destination / "metrics.csv", table, list(table[0]))
+    # Keep the earlier context-slice figures available, but present only the
+    # new two-panel comparison in the result directory after successful replay.
+    if previous_plots:
+        archive = destination / "previous-context-slices"
+        archive.mkdir(exist_ok=True)
+        for previous in previous_plots:
+            archived = archive / previous.name
+            if archived.exists():
+                archived = archive / f"{previous.stem}-{file_record(previous)['sha256'][:12]}.pdf"
+            previous.replace(archived)
+        if previous_metadata is not None:
+            archived_metadata = archive / "comparison.json"
+            if not archived_metadata.exists():
+                archived_metadata.write_bytes(previous_metadata)
     print(json.dumps({"metrics": table, "constant_interval_covered": certificate["covered"],
                       "plots": list(map(str, paths))}, indent=2))
 

@@ -243,10 +243,10 @@ def _comparison_case(project):
         raise ValueError("Comparison target differs from saved calibration/diagnostic contexts.")
     method = summary["manifest"]["envelope"]
     if method["type"] == "constant_radius":
-        label = f"Constant radius r = {method['radius']:g}"
+        label = f"constant radius = {method['radius']:g}"
     elif method["type"] == "linear_known_variance_transfer":
         multiplier = method.get("width_multiplier", 1.)
-        label = ("Writeup transfer radius" if multiplier == 1 else
+        label = ("analytical-from-linear-f radius" if multiplier == 1 else
                  f"Linear transfer (width multiplier {multiplier:g})")
     else:
         label = summary["name"]
@@ -262,69 +262,99 @@ def _comparison_case(project):
     return summary, arrays, provenance
 
 
-def _comparison_slices(summary, arrays):
+def _aligned_comparison(summary, arrays):
     count = summary["target"]["context_count"]
-    if count < 3 or len(arrays["actions"]) % count:
-        raise ValueError("Comparison requires at least three context-major diagnostic blocks.")
+    if count < 1 or len(arrays["actions"]) % count:
+        raise ValueError("Comparison requires context-major diagnostic blocks.")
     actions = arrays["actions"].reshape(count, -1)
     contexts = arrays["X"].reshape(count, actions.shape[1], -1)
     if (not np.all(actions == actions[0]) or np.any(np.diff(actions[0]) <= 0)
             or not np.all(contexts == contexts[:, :1, :])):
         raise ValueError("Comparison requires shared increasing actions within fixed context blocks.")
+    spec = summary["manifest"]["problem"]["truth"]
+    if spec["type"] != "linear":
+        raise ValueError("Context adjustment requires a declared additive linear truth.")
+    coefficients = np.asarray(spec["coefficients"], dtype=float)
+    X = contexts[:, 0, :]
+    if coefficients.shape != (X.shape[1]+2,) or not np.isfinite(coefficients).all():
+        raise ValueError("Context adjustment requires dimension-matched finite truth coefficients.")
+    g = coefficients[0] + X @ coefficients[1:-1]
+    if not np.allclose(arrays["truth"].reshape(count, -1),
+                       g[:, None] + coefficients[-1]*actions, rtol=1e-12, atol=1e-12):
+        raise ValueError("Saved truth does not match the declared additive linear truth.")
     chosen = (actions[0] >= -2) & (actions[0] <= 2)
     window = actions[0, chosen]
     if len(window) < 2 or window[0] != -2 or window[-1] != 2:
         raise ValueError("Saved diagnostics must include the comparison window endpoints -2 and 2.")
-    return window, contexts[:3, 0, :], {
-        key: value.reshape(count, -1)[:3, chosen]
-        for key, value in arrays.items() if key != "X"
-    }
+    center = arrays["center"].reshape(count, -1)[:, chosen] - g[:, None]
+    radius = arrays["radius"].reshape(count, -1)[:, chosen]
+    # Intersect response intervals across every context. These endpoint
+    # reductions do not select an action, optimizer solution, or context to plot.
+    lower = np.maximum.reduce(center-radius, axis=0)
+    upper = np.minimum.reduce(center+radius, axis=0)
+    truth = coefficients[-1]*window
+    empty = lower > upper
+    return {"actions": window, "contexts": X, "truth": truth,
+            "mean_predictor": center.mean(axis=0), "lower": lower, "upper": upper,
+            "empty": empty, "covered": (~empty) & (lower <= truth) & (truth <= upper),
+            "g": g, "coefficients": coefficients}
 
 
-def _envelope_comparison_figure(cases, slices):
-    fig, axes = plt.subplots(3, 2, figsize=(14, 12), sharey="row", constrained_layout=True)
-    fig.suptitle("Saved envelope slices at contexts 0, 1, and 2")
-    for column, ((_, _, provenance), (actions, contexts, values)) in enumerate(zip(cases, slices)):
-        for index in range(3):
-            ax = axes[index, column]
-            ax.plot(actions, values["truth"][index], label="True f")
-            center = values["center"][index]
-            line, = ax.plot(actions, center, label="Frozen predictor")
-            radius = values["radius"][index]
-            ax.fill_between(actions, center-radius, center+radius,
-                            color=line.get_color(), alpha=.2, label="Predictor ± radius")
-            if "auxiliary" in values:
-                ax.plot(actions, values["auxiliary"][index], label="Auxiliary fit")
-            coordinates = ", ".join(f"{value:.2f}" for value in contexts[index])
-            ax.set_title(f"{provenance['label']}\nContext {index}: x = ({coordinates})")
-            ax.set_xlabel("Action a")
-            ax.set_ylabel("Response value")
-            ax.set_xlim(-2, 2)
-            ax.legend()
-    return fig
+def _context_formula(coefficients):
+    terms = []
+    if coefficients[0] != 0:
+        terms.append(f"{coefficients[0]:g}")
+    for index, coefficient in enumerate(coefficients[1:-1], start=1):
+        if coefficient == 0:
+            continue
+        magnitude = "" if abs(coefficient) == 1 else f"{abs(coefficient):g}"
+        term = magnitude + f"x_{index}"
+        terms.append(("-" if coefficient < 0 else ("+" if terms else "")) + term)
+    return "g(x)=" + ("".join(terms) if terms else "0")
 
 
-def _radius_comparison_figure(cases, slices):
-    fig, axes = plt.subplots(2, 2, figsize=(14, 9), sharey="row", constrained_layout=True)
-    fig.suptitle("Radius and signed excess at contexts 0, 1, and 2")
-    for column, ((_, _, provenance), (actions, _, values)) in enumerate(zip(cases, slices)):
-        for row, key in enumerate(("radius", "excess")):
-            ax = axes[row, column]
-            for index in range(3):
-                ax.plot(actions, values[key][index], label=f"Context {index}")
-            if key == "excess":
-                ax.axhline(0, color="black", linestyle="--", label="Zero excess")
-            ax.set_title(provenance["label"])
-            ax.set_xlabel("Action a")
-            ax.set_ylabel("Radius r(x, a)" if key == "radius" else
-                          r"Signed excess $r(x,a)-|\hat f(x,a)-f(x,a)|$")
-            ax.set_xlim(-2, 2)
-            ax.legend()
+def _coverage_comparison_figure(cases, aligned):
+    fig, axes = plt.subplots(1, 2, figsize=(15, 7), sharey=True, constrained_layout=True)
+    count = cases[0][0]["target"]["context_count"]
+    fig.suptitle(f"Simultaneous envelope containment across all {count} contexts")
+    formula = _context_formula(aligned[0]["coefficients"])
+    fig.supxlabel(
+        "Display adjustment only: subtract $" + formula + "$ from truth, predictions, and envelope endpoints.\n"
+        "Radii and coverage are unchanged. Shading is the common overlap, not an individual radius.\n"
+        "Blue inside the overlap means every context is covered at that action; drawn curves join sampled actions.",
+        fontsize=10,
+    )
+    for ax, (summary, _, provenance), values in zip(axes, cases, aligned):
+        a = values["actions"]
+        ax.plot(a, values["truth"], label="True f, context-adjusted")
+        line, = ax.plot(a, values["mean_predictor"], label="Mean frozen predictor, context-adjusted")
+        ax.fill_between(a, values["lower"], values["upper"], where=~values["empty"],
+                        color=line.get_color(), alpha=.2, label=f"Common envelope across {count} contexts")
+        outside = ~values["covered"] & ~values["empty"]
+        if np.any(outside):
+            ax.plot(a[outside], values["truth"][outside], "o", color="C3", label="At least one context not covered")
+        if np.any(values["empty"]):
+            ax.plot(a[values["empty"]], values["truth"][values["empty"]], "x", color="C3",
+                    label="Empty common overlap")
+        containment = provenance["containment"]
+        status = {"covered": "verified", "violated": "fails", "unknown": "unknown"}[containment["status"]]
+        domain = "All real actions" if containment["domain"] == "real_line" else "Declared finite target"
+        statement = summary["coverage"]["analytical"]
+        probability = "No analytical probability guarantee supplied"
+        if statement is not None:
+            relation = "at least" if statement["kind"] == "lower_bound" else "exactly"
+            probability = f"Coverage probability: {relation} {100*statement['value']:g}%"
+        ax.set_title(f"{provenance['label']}\n{domain}: {status}\n{probability}")
+        metrics = provenance["metrics"]
+        ax.legend(title=f"Mean radius: {metrics['radius_mean']:.3f}; mean excess: {metrics['excess_mean']:.3f}")
+        ax.set_xlabel("Action a")
+        ax.set_ylabel("Context-adjusted response value")
+        ax.set_xlim(-2, 2)
     return fig
 
 
 def write_comparison(projects, destination: Path) -> list[Path]:
-    """Compare two saved single realizations at contexts 0–2 on actions [-2, 2]."""
+    """Plot two common envelopes after subtracting known context-only truth shifts."""
     projects = list(projects)
     if len(projects) != 2:
         raise ValueError("Comparison requires exactly two saved projects.")
@@ -332,27 +362,38 @@ def write_comparison(projects, destination: Path) -> list[Path]:
     for key in ("X", "actions", "center", "truth", "weights"):
         if not np.array_equal(cases[0][1][key], cases[1][1][key]):
             raise ValueError(f"Comparison requires identical saved diagnostic {key}.")
-    slices = [_comparison_slices(summary, arrays) for summary, arrays, _ in cases]
+    if cases[0][0]["manifest"]["problem"]["truth"] != cases[1][0]["manifest"]["problem"]["truth"]:
+        raise ValueError("Comparison requires the same declared truth for context adjustment.")
+    aligned = [_aligned_comparison(summary, arrays) for summary, arrays, _ in cases]
     destination = Path(destination)
     if any(destination.resolve() == Path(project).resolve() for project in projects):
         raise ValueError("Use a separate comparison output directory.")
     destination.mkdir(parents=True, exist_ok=True)
-    paths = [destination / "01_envelope_slices.pdf", destination / "02_radius_excess.pdf"]
+    paths = [destination / "01_coverage_comparison.pdf"]
     with plt.style.context("default"), plt.rc_context(_STYLE):
-        for create, path in zip((_envelope_comparison_figure, _radius_comparison_figure), paths):
-            figure = create(cases, slices)
-            try:
-                figure.savefig(path, format="pdf")
-            finally:
-                plt.close(figure)
+        figure = _coverage_comparison_figure(cases, aligned)
+        try:
+            figure.savefig(paths[0], format="pdf")
+        finally:
+            plt.close(figure)
+    arrays_path = destination / "adjusted_coverage.npz"
+    np.savez_compressed(arrays_path,
+                        **{key: aligned[0][key] for key in ("actions", "contexts", "truth", "mean_predictor", "g")},
+                        **{key: np.stack([row[key] for row in aligned])
+                           for key in ("lower", "upper", "empty", "covered")})
     write_provenance(destination / "comparison.json", {
         "projects": [provenance for _, _, provenance in cases],
-        "context_indices": [0, 1, 2], "context_values": slices[0][1],
+        "context_count": len(aligned[0]["contexts"]), "context_values": aligned[0]["contexts"],
+        "context_adjustment": {"formula": _context_formula(aligned[0]["coefficients"]),
+                               "truth_coefficients": aligned[0]["coefficients"],
+                               "source": "Known synthetic truth, not estimated from observations."},
+        "sampled_action_coverage": [bool(row["covered"].all()) for row in aligned],
         "action_window": [-2., 2.], "source": file_record(__file__),
-        "plots": [file_record(path) for path in paths],
-        "semantics": "Curves join saved finite diagnostic values for display. "
-                     "No refitting, action selection, or continuum coverage inference is performed. "
-                     "Each saved analytical probability statement, realized containment decision, "
-                     "target domain, and finite diagnostic metric retains its original meaning.",
+        "plots": [file_record(path) for path in paths], "aligned_arrays": file_record(arrays_path),
+        "semantics": "Subtract the same context-only truth contribution from truth, predictions, and interval endpoints. "
+                     "Shading intersects the adjusted intervals across every saved context; empty intersections are not shaded. "
+                     "The mean adjusted predictor is for orientation only. Radii and original finite diagnostic metrics are unchanged. "
+                     "Curves join saved finite diagnostic values. Floating-point alignment is not a new continuous certificate. "
+                     "Saved full-domain containment and analytical probability statements are displayed separately, without refitting or optimization.",
     })
     return paths

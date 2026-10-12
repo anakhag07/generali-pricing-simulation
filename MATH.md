@@ -943,6 +943,32 @@ and design, its coverage probability is zero or one on the declared domain.
 Truth-based verification of that event is separate from the writeup's
 distributional lower bound of 1-delta for its data-dependent construction.
 
+For the paired coverage display, decompose the additive contextual truth as
+$$f(x,a)=g(x)+h(a),\qquad
+g(x)=\beta_0+\beta_x'x,\qquad h(a)=\beta_a a.$$
+At every saved diagnostic action, subtract the known synthetic context term
+g(x_i) from each context's saved truth, predictor, and envelope endpoints.
+The adjusted intervals and their intersection across all target contexts are
+$$I_i(a)=[\widehat f(x_i,a)-g(x_i)-r(x_i,a),\,
+          \widehat f(x_i,a)-g(x_i)+r(x_i,a)],$$
+$$L(a)=\max_i\{\widehat f(x_i,a)-g(x_i)-r(x_i,a)\},\qquad
+  U(a)=\min_i\{\widehat f(x_i,a)-g(x_i)+r(x_i,a)\}.$$
+The common interval is empty when L(a)>U(a). Otherwise the common true response
+h(a) lies inside [L(a),U(a)] if and only if every context's original envelope
+covers its truth at that action. Taking endpoint maxima/minima here is set
+intersection across contexts, not action optimization or radius selection.
+The shaded intersection is not an individual context's radius or envelope,
+and its width must not be interpreted as twice a representative radius.
+The mean adjusted frozen predictor
+$$\overline m(a)=\frac1n\sum_{i=1}^n[\widehat f(x_i,a)-g(x_i)]$$
+provides orientation only; neither coverage nor the intersection endpoints are
+defined relative to that mean. The g adjustment uses truth only in evaluation,
+never in fitting or construction. In the supplied example g(x)=x_1-0.5x_2+0.25x_3
+and h(a)=2a. Its frozen predictor is hand specified; the auxiliary OLS model is
+the fitted object. This view reuses saved responses, fits, radii, and diagnostic
+locations without refitting. Connected finite diagnostic values visualize the
+intersection; continuum guarantees still come from the separate certificates.
+
 Analytical runs use one saved calibration realization and a separately typed
 probability statement. Empirical runs freeze Z and the predictor and redraw
 independent response vectors; each repetition refits the entire construction.

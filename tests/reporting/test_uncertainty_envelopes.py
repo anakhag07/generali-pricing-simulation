@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from copy import deepcopy
 
 from matplotlib.axes import Axes
 from matplotlib.backends.backend_agg import FigureCanvasAgg
@@ -11,6 +12,7 @@ import numpy as np
 import pytest
 
 from experiments.envelopes.core import aggregate_coverage
+from experiments.envelopes import reporting
 from experiments.envelopes.reporting import write_comparison, write_reports
 from experiments.provenance import file_record
 
@@ -134,32 +136,36 @@ def test_empirical_aggregate_must_match_saved_outcomes(tmp_path):
         write_reports(tmp_path)
 
 
-def _comparison_project(project, *, transfer=False, context_shift=0.):
+def _comparison_project(project, *, transfer=False, context_shift=0., predictor_context_coefficient=1.):
     directory = project / "repetitions" / "000000"
     directory.mkdir(parents=True)
     contexts = np.array([[1., 0., -1.], [.2, .3, .4], [-.5, -.6, -.7]]) + context_shift
     X = np.repeat(contexts, 5, axis=0)
     actions = np.tile(np.linspace(-2, 2, 5), 3)
-    center = X[:, 0] + actions
-    truth = center - .25
+    center = predictor_context_coefficient*X[:, 0] + actions
+    truth = X[:, 0] + actions - .25
     radius = .5 + .1*actions**2 if transfer else np.full(len(actions), 3.)
     points = {"X": X, "actions": actions, "center": center, "truth": truth,
-              "radius": radius, "excess": radius-.25, "weights": np.full(len(actions), 1/len(actions))}
+              "radius": radius, "excess": radius-np.abs(center-truth), "weights": np.full(len(actions), 1/len(actions))}
     if transfer:
         points["component_auxiliary"] = truth+.1
     np.savez(directory / "points.npz", **points)
     np.savez(directory / "calibration.npz", X=contexts, actions=np.zeros(3), y=np.zeros(3))
     method = {"type": "linear_known_variance_transfer"} if transfer else {"type": "constant_radius", "radius": 3.}
-    manifest = {"envelope": method, "target": {"actions": {"type": "real_line"}}}
+    manifest = {"envelope": method, "target": {"actions": {"type": "real_line"}},
+                "problem": {"truth": {"type": "linear", "coefficients": [-.25, 1., 0., 0., 1.]},
+                            "predictor": {"type": "linear", "coefficients": [0., predictor_context_coefficient, 0., 0., 1.]}}}
     contract = {"manifest": manifest}
     digest = hashlib.sha256(json.dumps(contract, sort_keys=True).encode()).hexdigest()
     (project / "contract.json").write_text(json.dumps({"sha256": digest, **contract}))
     analytical = ({"kind": "lower_bound", "value": .95, "event": "simultaneous coverage",
                    "conditioning": "fixed design", "assumptions": ["fixture"], "derivation": "fixture"}
                   if transfer else None)
-    row = {"index": 0, "status": "covered", "contract_sha256": digest,
-           "analytical": analytical, "metrics": {"radius_mean": float(radius.mean())},
-           "containment": {"status": "covered", "domain": "real_line", "method": "fixture"},
+    status = "covered" if np.all(points["excess"] >= 0) else "violated"
+    row = {"index": 0, "status": status, "contract_sha256": digest,
+           "analytical": analytical, "metrics": {"radius_mean": float(radius.mean()),
+                                                  "excess_mean": float(points["excess"].mean())},
+           "containment": {"status": status, "domain": "real_line", "method": "fixture"},
            "artifacts": {"points": file_record(directory / "points.npz"),
                          "calibration": file_record(directory / "calibration.npz")}}
     row_path = directory / "summary.json"
@@ -175,7 +181,7 @@ def _comparison_project(project, *, transfer=False, context_shift=0.):
     return project
 
 
-def test_comparison_replays_full_width_six_and_preserves_coverage_semantics(tmp_path, monkeypatch):
+def test_comparison_replays_common_overlap_and_preserves_coverage_semantics(tmp_path, monkeypatch):
     projects = [_comparison_project(tmp_path / "constant"),
                 _comparison_project(tmp_path / "writeup", transfer=True)]
     inputs = {path: path.read_bytes() for project in projects for path in project.rglob("*") if path.is_file()}
@@ -190,11 +196,10 @@ def test_comparison_replays_full_width_six_and_preserves_coverage_semantics(tmp_
     monkeypatch.setattr(Axes, "fill_between", capture)
     destination = tmp_path / "comparison"
     paths = write_comparison(projects, destination)
-    assert [path.name for path in paths] == ["01_envelope_slices.pdf", "02_radius_excess.pdf"]
+    assert [path.name for path in paths] == ["01_coverage_comparison.pdf"]
     assert all(path.read_bytes().startswith(b"%PDF-") for path in paths)
-    for width in bands[:3]:
-        np.testing.assert_allclose(width, 6.)
-    assert [len(figure.axes) for figure in figures] == [6, 4]
+    np.testing.assert_allclose(bands[0], 6.)
+    assert [len(figure.axes) for figure in figures] == [2]
     assert all(ax.get_xlabel() and ax.get_ylabel() for figure in figures for ax in figure.axes)
     for figure in figures:
         # Check layout coordinates in memory without saving a raster preview.
@@ -217,13 +222,101 @@ def test_comparison_replays_full_width_six_and_preserves_coverage_semantics(tmp_
             assert box.x0 >= page.x0-.5 and box.y0 >= page.y0-.5, label
             assert box.x1 <= page.x1+.5 and box.y1 <= page.y1+.5, label
     assert figures[0].axes[0].get_shared_y_axes().joined(figures[0].axes[0], figures[0].axes[1])
-    assert figures[1].axes[0].get_shared_y_axes().joined(figures[1].axes[0], figures[1].axes[1])
     provenance = json.loads((destination / "comparison.json").read_text())
-    assert provenance["context_indices"] == [0, 1, 2]
     assert provenance["projects"][0]["coverage"]["analytical"] is None
     assert provenance["projects"][1]["coverage"]["analytical"]["kind"] == "lower_bound"
+    with np.load(destination / "adjusted_coverage.npz") as adjusted:
+        assert adjusted["contexts"].shape == (3, 3)
+        assert adjusted["lower"].shape == adjusted["upper"].shape == (2, 5)
+        np.testing.assert_allclose(adjusted["truth"], adjusted["actions"])
+        np.testing.assert_allclose(adjusted["mean_predictor"], adjusted["actions"]+.25)
+        np.testing.assert_allclose(adjusted["upper"][0]-adjusted["lower"][0], 6.)
+        assert adjusted["covered"].all() and not adjusted["empty"].any()
     assert all(path.read_bytes() == value for path, value in inputs.items())
     assert not list(destination.rglob("*.png"))
+
+
+def _aligned_inputs():
+    contexts = np.array([[-1.], [-.25], [.25], [1.]])
+    actions = np.array([-2., 0., 2.])
+    X = np.repeat(contexts, len(actions), axis=0)
+    a = np.tile(actions, len(contexts))
+    truth = X[:, 0]+a
+    center = 2*X[:, 0]+a
+    radii = np.array([[1.2, .5, 1.2], [.3, 1., .3], [.3, 1., .3], [1.2, 2., .5]])
+    summary = {"target": {"context_count": 4, "context_dim": 1},
+               "manifest": {"problem": {
+                   "truth": {"type": "linear", "coefficients": [0., 1., 1.]},
+                   "predictor": {"type": "linear", "coefficients": [0., 2., 1.]},
+               }}}
+    arrays = {"X": X, "actions": a, "truth": truth, "center": center,
+              "radius": radii.ravel(), "excess": radii.ravel()-np.abs(center-truth),
+              "weights": np.full(len(a), 1/len(a))}
+    return summary, arrays
+
+
+def test_common_overlap_checks_all_contexts_when_mean_prediction_hides_failure():
+    summary, arrays = _aligned_inputs()
+    aligned = reporting._aligned_comparison(summary, arrays)
+    shape = (4, 3)
+    individual_covered = np.abs(arrays["center"]-arrays["truth"]) <= arrays["radius"]
+    np.testing.assert_array_equal(aligned["covered"], individual_covered.reshape(shape).all(axis=0))
+    assert individual_covered.reshape(shape)[:3, -1].all()
+    assert not individual_covered.reshape(shape)[3, -1]
+    np.testing.assert_array_equal(aligned["covered"], [True, False, False])
+    np.testing.assert_array_equal(aligned["empty"], [False, False, True])
+    np.testing.assert_allclose(aligned["mean_predictor"], aligned["truth"])
+    shifted_centers = arrays["center"].reshape(shape)-aligned["g"][:, None]
+    radii = arrays["radius"].reshape(shape)
+    np.testing.assert_allclose(aligned["lower"], np.max(shifted_centers-radii, axis=0))
+    np.testing.assert_allclose(aligned["upper"], np.min(shifted_centers+radii, axis=0))
+    assert len(aligned["contexts"]) == 4
+
+
+def test_context_adjustment_is_invariant_to_shared_context_function_and_preserves_radii():
+    summary, arrays = _aligned_inputs()
+    before_radius = arrays["radius"].copy()
+    original = reporting._aligned_comparison(summary, arrays)
+    changed_summary, changed_arrays = deepcopy(summary), deepcopy(arrays)
+    shift = -.3+2*arrays["X"][:, 0]
+    changed_arrays["truth"] += shift
+    changed_arrays["center"] += shift
+    changed_summary["manifest"]["problem"]["truth"]["coefficients"] = [-.3, 3., 1.]
+    changed_summary["manifest"]["problem"]["predictor"]["coefficients"] = [-.3, 4., 1.]
+    changed = reporting._aligned_comparison(changed_summary, changed_arrays)
+    for key in ("actions", "truth", "mean_predictor", "lower", "upper", "covered", "empty"):
+        np.testing.assert_allclose(changed[key], original[key], atol=1e-14)
+    np.testing.assert_allclose(changed["g"]-original["g"], [-2.3, -.8, .2, 1.7])
+    np.testing.assert_array_equal(arrays["radius"], before_radius)
+    np.testing.assert_array_equal(changed_arrays["radius"], before_radius)
+
+
+def test_context_alignment_rejects_nonlinear_truth():
+    summary, arrays = _aligned_inputs()
+    summary["manifest"]["problem"]["truth"] = {"type": "python", "callable": "example:nonlinear"}
+    with pytest.raises(ValueError, match="linear"):
+        reporting._aligned_comparison(summary, arrays)
+
+
+def test_empty_common_intersection_is_not_shaded_as_valid_band(tmp_path, monkeypatch):
+    projects = [_comparison_project(tmp_path / "constant", predictor_context_coefficient=10.),
+                _comparison_project(tmp_path / "writeup", transfer=True, predictor_context_coefficient=10.)]
+    calls = []
+    original = Axes.fill_between
+
+    def capture(ax, actions, lower, upper, *args, **kwargs):
+        calls.append((np.asarray(lower), np.asarray(upper), kwargs))
+        return original(ax, actions, lower, upper, *args, **kwargs)
+
+    monkeypatch.setattr(Axes, "fill_between", capture)
+    write_comparison(projects, tmp_path / "comparison")
+    assert calls
+    for lower, upper, kwargs in calls:
+        valid = lower <= upper
+        where = np.asarray(kwargs.get("where", np.ones_like(valid)), dtype=bool)
+        # An empty common interval must be masked, rather than filled with its
+        # inverted bounds as though it were a valid simultaneous envelope.
+        assert not np.any(where & ~valid)
 
 
 def test_comparison_rejects_different_diagnostic_contexts(tmp_path):

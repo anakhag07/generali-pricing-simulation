@@ -421,6 +421,16 @@ Changing the `models` array is the supported model swap. Available keys are
   renders successfully; the source experiments' reports are preserved.
   The constant-3/writeup manifests retain a shared design and diagnostic window;
   interval endpoint containment is separate from the all-real certificate.
+  `reporting.write_calibration_plot` replays the same observed dataset into
+  `03_calibration_dataset.pdf` (action, centered-context PC1, raw response).
+  Full deterministic SVD uses contexts only; its first nonzero PC1 loading is
+  positive. Reference wireframes are original model slices with omitted PC
+  scores zero, not regressions on reduced data. Raw observations retain omitted
+  context components and noise. `calibration_pca.json` records the projection,
+  plane coefficients, and provenance. `tests/reporting/test_envelope_calibration_plot.py`
+  checks projection semantics, model slices, raw observations, and artifact replay.
+  `docs/uncertainty_envelopes_simulation.tex` is the standalone mathematical
+  description of the concrete paired simulation, ready to copy into a writeup.
 
 - `src/experiments/offline_bootstrap.py` owns the fixed-offline-data experiment
   (`kind: "offline_bootstrap"`, `manifests/offline_bootstrap.json`). It loads a

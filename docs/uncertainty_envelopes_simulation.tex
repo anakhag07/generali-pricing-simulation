@@ -1,0 +1,79 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath,amssymb}
+
+\begin{document}
+
+\section{Simulation Instantiation for Linear $f$}
+
+We use contexts $x\in\mathbb R^3$, scalar actions $a\in\mathbb R$, and
+$n=60$ calibration observations. Independently across observations and between
+streams, we draw
+\[
+ x_i\sim\mathcal N(0,I_3),\qquad a_i\sim\mathcal N(0,1),\qquad
+ \varepsilon_i\sim\mathcal N(0,1),\qquad
+ y_i=f(x_i,a_i)+\varepsilon_i.
+\]
+The true response and frozen predictor are
+\begin{align*}
+ f(x,a)&=x_1-0.5x_2+0.25x_3+2a,\\
+ \widehat f(x,a)&=0.2+0.8x_1-0.4x_2+0.5x_3+1.7a.
+\end{align*}
+The predictor is hand specified: it is not fitted, and there is no separate
+predictor-training dataset. Both constructions below share the same saved
+calibration dataset. These analytical launches use one realization and do not
+redraw calibration responses.
+
+For the auxiliary fit, let $\phi(x,a)=(1,x_1,x_2,x_3,a)^\top$, so $p=5$.
+The design $P\in\mathbb R^{60\times5}$ has rows $\phi(x_i,a_i)^\top$;
+its full column rank is checked before fitting. With $Q=P^\top P$, ordinary
+least squares gives $\widetilde\beta=Q^{-1}P^\top y$ and
+$\widetilde f(x,a)=\phi(x,a)^\top\widetilde\beta$; the implementation uses
+QR and triangular solves. Taking the known noise bound $\sigma=1$ and
+$\delta=0.05$, the two radii and their envelopes are
+\begin{align*}
+ r_{\mathrm{const}}(x,a)&=3,\\
+ w_\delta(x,a)&=\sigma\sqrt{p/\delta}
+       \sqrt{\phi(x,a)^\top Q^{-1}\phi(x,a)}
+       =10\sqrt{\phi(x,a)^\top Q^{-1}\phi(x,a)},\\
+ r_\delta(x,a)&=|\widehat f(x,a)-\widetilde f(x,a)|+w_\delta(x,a),\\
+ E_r(x,a)&=[\widehat f(x,a)-r(x,a),\ \widehat f(x,a)+r(x,a)].
+\end{align*}
+Thus the constant construction has full width $6$. No residual estimate
+replaces $\sigma$ in the analytical construction.
+
+Coverage means simultaneous containment at the observed contexts and every
+real action:
+\[
+ \mathcal C_r=\{f(x_i,a)\in E_r(x_i,a)
+                 \text{ for all }i=1,\ldots,60\text{ and }a\in\mathbb R\}.
+\]
+The exact-arithmetic moment bound gives $\Pr(\mathcal C_{r_\delta}\mid P)\ge0.95$.
+This is a sampling-probability lower bound, distinct from the realized
+containment decision for the saved dataset. Dimension enters through $p$ and
+the design, without an additional context/action union bound. The all-real
+checker uses exact rational polynomial signs for stored numerical coefficients;
+it does not enclose floating-point fitting or evaluation error. The constant radius fails
+on $\mathbb R$ because the predictor and truth have different action slopes,
+even when it covers the displayed bounded window.
+
+Tightness is measured by $r(x,a)$ and signed excess
+$s_r(x,a)=r(x,a)-|\widehat f(x,a)-f(x,a)|$, retaining negative values.
+Means and inverse-empirical-CDF quantiles at $0.5$ and $0.9$ give equal weight
+to all $60\times101$ pairs $(x_i,-2+4j/100)$, $j=0,\ldots,100$.
+This finite diagnostic measure is separate from both the Gaussian logging
+law and the all-real coverage target. For the context-adjusted display only,
+subtracting $g(x)=x_1-0.5x_2+0.25x_3$ leaves the common truth $2a$;
+saved radii and coverage decisions are unchanged.
+
+The calibration scatter plots raw $y_i$ against $a_i$ and
+$t_i=v_1^\top(x_i-\bar x)$, where $v_1$ is the leading principal direction of
+the centered contexts (41.6\% of sample context variation). Reference planes
+evaluate each saved model at $x=\bar x+t v_1$; points retain the other context
+components and noise. This projection is for visualization only.
+
+Seed roots $1101$, $1102$, $1103$, and $1104$ control contexts, logged actions,
+observations, and method randomness, respectively. Observation and method
+seeds are derived with the repository's \texttt{derive\_seed} using the label
+\texttt{repetition:0}. The deterministic linear method consumes no random draws.
+
+\end{document}

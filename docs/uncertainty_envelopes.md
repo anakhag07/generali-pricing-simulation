@@ -444,6 +444,36 @@ radii. It performs no refitting and writes to
 - `window_certificate.json`: exact endpoint checks certifying the constant
   band's containment throughout `[-2,2]` at all 60 contexts. Convexity of the
   absolute affine error extends the endpoint checks to the whole interval.
+- `03_calibration_dataset.pdf`: the shared 60 raw observations plotted against
+  action and the leading principal-component score of centered contexts.
+  Reference wireframes show the truth, frozen predictor, and saved auxiliary
+  OLS model, with their action and PC1 slopes in the legend. These are model
+  slices at zero omitted PC scores; the observations retain omitted-context
+  effects and noise. No models are refitted.
+- `calibration_pca.json`: context mean, PC1 loadings/scores, singular values,
+  explained variance, reference-plane coefficients, and source/artifact hashes.
+
+The PCA uses centered contexts only, without scaling or using actions or
+responses. Full deterministic SVD adds no random seed stream; its sign is fixed
+by making the first nonzero loading positive. In this saved dataset PC1 explains
+41.6% of context variation. Since the population context covariance is the
+identity, its leading direction is specific to this sample. PCA is for display
+only and has no role in fitting, radius construction, or coverage guarantees.
+
+To generate only the calibration plot from the saved writeup run:
+
+```python
+from experiments.envelopes.reporting import write_calibration_plot
+from experiments.paths import results_root
+
+root = results_root()
+write_calibration_plot(root / "uncertainty-envelopes-writeup",
+                       root / "uncertainty-envelopes-comparison")
+```
+
+[The standalone LaTeX section](uncertainty_envelopes_simulation.tex) records the
+exact simulation models, sampling, fitting, radii, coverage target, and metrics.
+Copy its section body into the mathematical writeup.
 
 The previous context-slice and radius/excess comparison PDFs are archived only
 after the replacement PDF renders successfully. The source experiments' own

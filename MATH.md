@@ -986,6 +986,21 @@ Finite-target checking makes only a finite-set floating-point claim.
 
 Sources: `src/experiments/envelopes/`; usage: `docs/uncertainty_envelopes.md`.
 
+For the calibration-data visualization only, center the observed context matrix
+X and compute its full SVD. Let v_1 be the first right singular vector, with its
+first nonzero loading made positive, and t_i=(x_i-bar{x})'v_1. PCA uses neither
+logged actions nor responses and introduces no new randomness. Its explained
+variance fraction is s_1^2/sum_j s_j^2. A model with affine coefficients beta
+has the reference slice
+$$f_{\rm slice}(t,a)=\beta_0+\beta_x'\bar x
+                   +(\beta_x'v_1)t+\beta_a a,$$
+which sets the other centered PC scores to zero. The plotted observations are
+the original (a_i,t_i,Y_i); their vertical deviations from the true slice also
+include beta_x'(x_i-bar{x}-t_i v_1), not just observation noise. These slices
+replay the true, supplied-predictor, and saved auxiliary coefficients; no new
+response regression or envelope fit is performed. Since X has isotropic normal
+population covariance, the leading direction is specific to the sampled design.
+
 ## 8. Gradients and Estimators
 
 For a differentiable action objective and policy, the population chain rule is

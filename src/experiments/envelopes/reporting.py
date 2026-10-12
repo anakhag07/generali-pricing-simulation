@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 import numpy as np
 
 from experiments.provenance import file_record, write_provenance
@@ -397,3 +398,102 @@ def write_comparison(projects, destination: Path) -> list[Path]:
                      "Saved full-domain containment and analytical probability statements are displayed separately, without refitting or optimization.",
     })
     return paths
+
+
+def _calibration_projection(summary, data, fit):
+    problem = summary["manifest"]["problem"]
+    if any(problem[name]["type"] != "linear" for name in ("truth", "predictor")):
+        raise ValueError("Calibration reference planes require declared linear models.")
+    if fit["metadata"].get("construction") != "linear_known_variance_transfer":
+        raise ValueError("Calibration reference planes require the saved linear auxiliary fit.")
+    mean = data.X.mean(axis=0)
+    centered = data.X-mean
+    _, singular_values, directions = np.linalg.svd(centered, full_matrices=False)
+    if not len(singular_values) or singular_values[0] <= 0:
+        raise ValueError("Calibration PCA requires nonzero context variation.")
+    pc1 = directions[0].copy()
+    # Fix the otherwise arbitrary SVD sign, without changing the projection.
+    if pc1[np.flatnonzero(pc1)[0]] < 0:
+        pc1 *= -1
+    coefficients = {name: np.asarray(problem[name]["coefficients"], dtype=float)
+                    for name in ("truth", "predictor")}
+    coefficients["auxiliary"] = np.asarray(fit["state"]["beta"], dtype=float)
+    planes = {}
+    for name, beta in coefficients.items():
+        if beta.shape != (data.X.shape[1]+2,) or not np.isfinite(beta).all():
+            raise ValueError("Calibration planes require dimension-matched finite coefficients.")
+        planes[name] = {"intercept": float(beta[0] + mean @ beta[1:-1]),
+                        "action_slope": float(beta[-1]),
+                        "pc1_slope": float(pc1 @ beta[1:-1])}
+    return {"context_mean": mean, "pc1": pc1, "scores": centered @ pc1,
+            "singular_values": singular_values,
+            "explained_variance_ratio": float(singular_values[0]**2 / (singular_values**2).sum()),
+            "planes": planes}
+
+
+def _calibration_figure(data, projection):
+    fig = plt.figure(figsize=(11, 9), constrained_layout=True)
+    ax = fig.add_subplot(111, projection="3d", computed_zorder=False)
+    scores = projection["scores"]
+    actions, contexts = np.meshgrid(np.linspace(data.actions.min(), data.actions.max(), 9),
+                                   np.linspace(scores.min(), scores.max(), 9))
+    handles = []
+    for index, (name, label) in enumerate((("truth", "True f"),
+                                         ("predictor", "Frozen predictor"),
+                                         ("auxiliary", "Saved auxiliary OLS fit"))):
+        plane = projection["planes"][name]
+        response = plane["intercept"] + plane["action_slope"]*actions + plane["pc1_slope"]*contexts
+        ax.plot_wireframe(actions, contexts, response, rstride=4, cstride=4,
+                          color=f"C{index}", alpha=.7, zorder=1)
+        handles.append(Line2D([], [], color=f"C{index}",
+                              label=f"{label}: slopes a = {plane['action_slope']:.3f}, PC1 = {plane['pc1_slope']:.3f}"))
+    # Keep the actual observations visible above reference wireframes; no
+    # coordinates, response values, camera angles, or box aspects are adjusted.
+    scatter = ax.scatter(data.actions, scores, data.y, color="C3", s=20,
+                         depthshade=False, zorder=10, label=f"{len(data.y)} observed responses")
+    ax.legend(handles=[scatter, *handles])
+    ax.set_xlabel("Action a")
+    ax.set_ylabel("Centered context PC1 score")
+    ax.set_zlabel("Observed / model response")
+    fig.suptitle("Single calibration dataset and linear model slopes")
+    fig.supxlabel(
+        f"PCA uses centered contexts only; PC1 explains {100*projection['explained_variance_ratio']:.1f}% of their sample variation.\n"
+        "Reference planes set the other PC scores to zero; observed points retain those components and noise.\n"
+        "This PCA direction is sample-specific. All models are replayed without refitting.", fontsize=10,
+    )
+    return fig
+
+
+def write_calibration_plot(project: Path, destination: Path) -> Path:
+    """Replay raw calibration responses against action and context PC1, with saved linear model slices."""
+    from .core import CalibrationData
+
+    summary, _, provenance = _comparison_case(project)
+    artifacts = summary["repetitions"][0]["artifacts"]
+    with np.load(artifacts["calibration"]["path"], allow_pickle=False) as saved:
+        data = CalibrationData(saved["X"], saved["actions"], saved["y"])
+    fit = json.loads(Path(artifacts["fit"]["path"]).read_text())
+    projection = _calibration_projection(summary, data, fit)
+    destination = Path(destination)
+    if destination.resolve() == Path(project).resolve():
+        raise ValueError("Use a separate calibration report output directory.")
+    destination.mkdir(parents=True, exist_ok=True)
+    path = destination / "03_calibration_dataset.pdf"
+    with plt.style.context("default"), plt.rc_context(_STYLE):
+        figure = _calibration_figure(data, projection)
+        try:
+            figure.savefig(path, format="pdf")
+        finally:
+            plt.close(figure)
+    write_provenance(destination / "calibration_pca.json", {
+        "project": provenance, "projection": projection, "source": file_record(__file__),
+        "plot": file_record(path),
+        "semantics": "Full deterministic SVD of centered, unscaled calibration contexts only. "
+                     "PC1 has its first nonzero loading positive. Actions and responses are excluded from PCA. "
+                     "Scatter coordinates are the original actions, projected centered contexts, and raw observed responses. "
+                     "Reference planes evaluate the original models at x = context_mean + score * pc1, "
+                     "setting all omitted centered PC scores to zero. Observations retain omitted-context effects and noise. "
+                     "Coefficients are replayed, not refitted. Isotropic population contexts have no preferred PCA direction. "
+                     "This visualization does not change the envelope construction, coverage target, or guarantees.",
+    })
+    return path

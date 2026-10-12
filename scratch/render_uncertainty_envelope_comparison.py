@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 import sympy as sp
 
-from experiments.envelopes.reporting import write_comparison
+from experiments.envelopes.reporting import write_calibration_plot, write_comparison
 from experiments.paths import results_root
 from experiments.provenance import file_record
 from experiments.sweep_reporting import write_rows_csv
@@ -28,6 +28,7 @@ def main():
     previous_summary = destination / "comparison.json"
     previous_metadata = previous_summary.read_bytes() if previous_plots and previous_summary.exists() else None
     paths = write_comparison(projects, destination)
+    paths.append(write_calibration_plot(projects[1], destination))
     summaries = [json.loads((project / "summary.json").read_text()) for project in projects]
     constant = summaries[0]
     config = constant["manifest"]

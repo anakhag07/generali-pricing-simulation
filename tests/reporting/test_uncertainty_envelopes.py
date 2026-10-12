@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+import hashlib
 import json
 
 from matplotlib.axes import Axes
+from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.figure import Figure
+from matplotlib.text import Text
 import numpy as np
 import pytest
 
 from experiments.envelopes.core import aggregate_coverage
-from experiments.envelopes.reporting import write_reports
+from experiments.envelopes.reporting import write_comparison, write_reports
 from experiments.provenance import file_record
 
 
@@ -129,3 +132,125 @@ def test_empirical_aggregate_must_match_saved_outcomes(tmp_path):
     (tmp_path / "summary.json").write_text(json.dumps(summary), encoding="utf-8")
     with pytest.raises(ValueError, match="counts disagree"):
         write_reports(tmp_path)
+
+
+def _comparison_project(project, *, transfer=False, context_shift=0.):
+    directory = project / "repetitions" / "000000"
+    directory.mkdir(parents=True)
+    contexts = np.array([[1., 0., -1.], [.2, .3, .4], [-.5, -.6, -.7]]) + context_shift
+    X = np.repeat(contexts, 5, axis=0)
+    actions = np.tile(np.linspace(-2, 2, 5), 3)
+    center = X[:, 0] + actions
+    truth = center - .25
+    radius = .5 + .1*actions**2 if transfer else np.full(len(actions), 3.)
+    points = {"X": X, "actions": actions, "center": center, "truth": truth,
+              "radius": radius, "excess": radius-.25, "weights": np.full(len(actions), 1/len(actions))}
+    if transfer:
+        points["component_auxiliary"] = truth+.1
+    np.savez(directory / "points.npz", **points)
+    np.savez(directory / "calibration.npz", X=contexts, actions=np.zeros(3), y=np.zeros(3))
+    method = {"type": "linear_known_variance_transfer"} if transfer else {"type": "constant_radius", "radius": 3.}
+    manifest = {"envelope": method, "target": {"actions": {"type": "real_line"}}}
+    contract = {"manifest": manifest}
+    digest = hashlib.sha256(json.dumps(contract, sort_keys=True).encode()).hexdigest()
+    (project / "contract.json").write_text(json.dumps({"sha256": digest, **contract}))
+    analytical = ({"kind": "lower_bound", "value": .95, "event": "simultaneous coverage",
+                   "conditioning": "fixed design", "assumptions": ["fixture"], "derivation": "fixture"}
+                  if transfer else None)
+    row = {"index": 0, "status": "covered", "contract_sha256": digest,
+           "analytical": analytical, "metrics": {"radius_mean": float(radius.mean())},
+           "containment": {"status": "covered", "domain": "real_line", "method": "fixture"},
+           "artifacts": {"points": file_record(directory / "points.npz"),
+                         "calibration": file_record(directory / "calibration.npz")}}
+    row_path = directory / "summary.json"
+    row_path.write_text(json.dumps(row))
+    (directory / "completion.json").write_text(json.dumps({"summary": file_record(row_path)}))
+    summary = {"name": project.name, "manifest": manifest,
+               "target": {"kind": "real_line", "context_count": 3, "context_dim": 3},
+               "coverage": {"analytical": analytical, "empirical": None},
+               "contract_sha256": digest, "complete": True, "successful": True,
+               "requested_repetitions": 1, "repetitions": [row],
+               "repetition_records": [file_record(row_path)]}
+    (project / "summary.json").write_text(json.dumps(summary))
+    return project
+
+
+def test_comparison_replays_full_width_six_and_preserves_coverage_semantics(tmp_path, monkeypatch):
+    projects = [_comparison_project(tmp_path / "constant"),
+                _comparison_project(tmp_path / "writeup", transfer=True)]
+    inputs = {path: path.read_bytes() for project in projects for path in project.rglob("*") if path.is_file()}
+    figures = _capture_figures(monkeypatch)
+    bands = []
+    original = Axes.fill_between
+
+    def capture(ax, actions, lower, upper, *args, **kwargs):
+        bands.append(np.asarray(upper)-np.asarray(lower))
+        return original(ax, actions, lower, upper, *args, **kwargs)
+
+    monkeypatch.setattr(Axes, "fill_between", capture)
+    destination = tmp_path / "comparison"
+    paths = write_comparison(projects, destination)
+    assert [path.name for path in paths] == ["01_envelope_slices.pdf", "02_radius_excess.pdf"]
+    assert all(path.read_bytes().startswith(b"%PDF-") for path in paths)
+    for width in bands[:3]:
+        np.testing.assert_allclose(width, 6.)
+    assert [len(figure.axes) for figure in figures] == [6, 4]
+    assert all(ax.get_xlabel() and ax.get_ylabel() for figure in figures for ax in figure.axes)
+    for figure in figures:
+        # Check layout coordinates in memory without saving a raster preview.
+        # Matplotlib retains tick-label objects outside the view; check only
+        # text that is actually drawn, not those unused tick objects.
+        drawn = []
+        original_draw = Text.draw
+
+        def record_text(text, renderer, *args, **kwargs):
+            if text.get_visible() and text.get_text():
+                drawn.append((text.get_text(), text.get_window_extent(renderer)))
+            return original_draw(text, renderer, *args, **kwargs)
+
+        canvas = FigureCanvasAgg(figure)
+        with monkeypatch.context() as drawing:
+            drawing.setattr(Text, "draw", record_text)
+            canvas.draw()
+        page = figure.bbox
+        for label, box in drawn:
+            assert box.x0 >= page.x0-.5 and box.y0 >= page.y0-.5, label
+            assert box.x1 <= page.x1+.5 and box.y1 <= page.y1+.5, label
+    assert figures[0].axes[0].get_shared_y_axes().joined(figures[0].axes[0], figures[0].axes[1])
+    assert figures[1].axes[0].get_shared_y_axes().joined(figures[1].axes[0], figures[1].axes[1])
+    provenance = json.loads((destination / "comparison.json").read_text())
+    assert provenance["context_indices"] == [0, 1, 2]
+    assert provenance["projects"][0]["coverage"]["analytical"] is None
+    assert provenance["projects"][1]["coverage"]["analytical"]["kind"] == "lower_bound"
+    assert all(path.read_bytes() == value for path, value in inputs.items())
+    assert not list(destination.rglob("*.png"))
+
+
+def test_comparison_rejects_different_diagnostic_contexts(tmp_path):
+    projects = [_comparison_project(tmp_path / "constant"),
+                _comparison_project(tmp_path / "writeup", transfer=True, context_shift=.1)]
+    with pytest.raises(ValueError, match="identical saved diagnostic X"):
+        write_comparison(projects, tmp_path / "comparison")
+    assert not (tmp_path / "comparison").exists()
+
+
+def test_comparison_checks_completion_hash_before_reading_saved_results(tmp_path):
+    projects = [_comparison_project(tmp_path / "constant"),
+                _comparison_project(tmp_path / "writeup", transfer=True)]
+    completion_path = projects[1] / "repetitions" / "000000" / "completion.json"
+    completion = json.loads(completion_path.read_text())
+    completion["summary"]["sha256"] = "0"*64
+    completion_path.write_text(json.dumps(completion))
+    with pytest.raises(ValueError, match="Saved artifact changed"):
+        write_comparison(projects, tmp_path / "comparison")
+
+
+def test_comparison_rejects_edited_radius_label_in_project_summary(tmp_path):
+    projects = [_comparison_project(tmp_path / "constant"),
+                _comparison_project(tmp_path / "writeup", transfer=True)]
+    path = projects[0] / "summary.json"
+    summary = json.loads(path.read_text())
+    summary["manifest"]["envelope"]["radius"] = 30.
+    path.write_text(json.dumps(summary))
+    with pytest.raises(ValueError, match="manifest or contract identity"):
+        write_comparison(projects, tmp_path / "comparison")

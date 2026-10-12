@@ -898,6 +898,54 @@ linearly or monotonically. Increasing N need not remove the discrepancy floor.
 Sources: `src/experiments/offline_bootstrap.py`,
 `src/experiments/offline_bootstrap_math.py` and their reporting companion.
 
+### 7.8 Uncertainty-envelopes: interchangeable construction and evaluation
+
+The `uncertainty_envelopes` manifest separates truth, a frozen predictor,
+envelope construction, containment checking, and probability evaluation.
+For any nonnegative finite radius, the common diagnostics are
+$$b(x,a)=|\widehat f(x,a)-f(x,a)|,\qquad s(x,a)=r(x,a)-b(x,a).$$
+Signed excess s is never clipped. Means and quantiles use explicitly saved
+finite diagnostic locations and weights, not an implicit uniform law on R.
+Finite diagnostic locations do not determine the continuous coverage domain.
+
+The initial adapter has phi(x,a)=(1,x',a)', p=d+2, full-column-rank
+P with rows phi(x_i,a_i)', and Q=P'P. Conditional on the frozen logged
+design Z, errors have zero means, zero cross-covariances, and variances at
+most the known sigma_bound squared. The truth equals phi'beta0 on the target.
+QR solves produce the auxiliary OLS fit beta_tilde; no residual variance is
+substituted for the known variance bound. The construction is
+$$w(x,a)^2=\sigma_{bound}^2(p/\delta)\phi(x,a)'Q^{-1}\phi(x,a),
+\qquad r(x,a)=|\widehat f(x,a)-\widetilde f(x,a)|+w(x,a).$$
+With e=beta_tilde-beta0, E[e'Qe|Z]<=p sigma_bound^2. Markov and
+Cauchy--Schwarz imply simultaneous auxiliary containment with probability
+at least 1-delta, hence transferred-envelope containment. This is a lower
+bound, not an exact probability. On auxiliary containment,
+$$0\le r-|\widehat f-f|\le 2w.$$
+At logged rows, sum_i phi_i'Q^{-1}phi_i=p, providing a normalization check.
+Context dimension enters p and leverage, without an additional union bound.
+
+The built-in optional width_multiplier multiplies w, not the discrepancy.
+Multipliers at least one retain this bound; smaller multipliers are allowed
+only without claiming this analytical guarantee. A constant-radius adapter
+and user-provided builders support evaluation without inheriting the theorem.
+
+Analytical runs use one saved calibration realization and a separately typed
+probability statement. Empirical runs freeze Z and the predictor and redraw
+independent response vectors; each repetition refits the entire construction.
+Any method randomness is independent of response randomness. Inner bootstrap
+resamples, when supplied by an adapter, are not outer coverage repetitions.
+Unknown containment and failed fits remain in counts; no empirical point
+estimate is emitted unless all requested repetitions are decisively evaluated.
+
+All-real linear containment is decided from polynomial signs on each observed
+context fiber. It certifies the mathematical polynomial defined by stored
+floating-point fit coefficients/covariance interpreted as exact rationals;
+it does not enclose floating-point OLS or evaluation error. Failure of the
+coefficient sufficient event does not imply failed envelope containment.
+Finite-target checking makes only a finite-set floating-point claim.
+
+Sources: `src/experiments/envelopes/`; usage: `docs/uncertainty_envelopes.md`.
+
 ## 8. Gradients and Estimators
 
 For a differentiable action objective and policy, the population chain rule is

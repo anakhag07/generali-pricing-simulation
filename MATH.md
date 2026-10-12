@@ -813,6 +813,91 @@ quantify Monte Carlo uncertainty; they are not simultaneous across grid cells.
 
 Source: `src/experiments/bootstrap_cartesian_coverage.py`.
 
+### 7.7 Fixed offline pairs bootstrap, transferred envelope, and regret
+
+This experiment loads a checksummed archive of observations and a separately
+saved quadratic predictor. No population observations are drawn during fitting
+or bootstrap calibration. N takes nested prefixes of the archived rows; B takes
+prefixes of row resamples; sigma changes only explicitly saved synthetic response
+variants. The three axes vary separately around one baseline. Historical results
+are preserved. The predictor is fixed across every condition.
+
+Preparation alone may use synthetic truth to derive paired response snapshots:
+$$y_i^{(\sigma,h)}=p(a_i)^\top\beta_0+\sigma h(a_i)z_i,$$
+where actions and standardized errors are replayed from the archive. For a
+baseline archive at sigma0, z_i=(y_i-p(a_i)'beta0)/sigma0. The homoskedastic profile
+is h=1. The heteroskedastic profile is h(a)=exp(eta G(a))/C, with the exact
+finite-Fourier GP of the existing GP core. A dedicated GP seed generates its
+coefficients once. C is the root mean square of exp(eta G) over the entire saved
+action reservoir, so the two profiles have the same average variance there;
+this is explicitly empirical normalization, not a population integral. Values
+off the logged actions use the same analytic formula and fixed C. Conditional
+on the saved action design and profile, original Gaussian errors are independent.
+The GP defines a variance profile, not a shared additive observation error.
+Because C uses the complete archived action reservoir, hypothetical observation
+pairs are not iid unconditionally. The independent-error covariance statement
+conditions on that complete design and the GP draw. An iid pairs-bootstrap
+theorem cannot be applied without accounting for this normalization dependence.
+
+Calibration has only x, y, and independent row-selection randomness as inputs.
+Each replicate resamples N complete observed pairs with replacement, then refits
+quadratic OLS. Rank-deficient resamples are redrawn from that same dataset using
+a separate rejection stream; attempts and accepted indices are saved. A finite
+retry limit fails explicitly. Thus the specified bootstrap law is conditioned
+on full column rank, and any bootstrap validity theorem must cover that law.
+N-specific seed derivation preserves B prefixes and reuses indices across sigma
+and noise profiles. No fresh observation noise is added by bootstrap resampling.
+
+The original auxiliary fit supplies beta_tilde, V=(P'P)^(-1), and the fixed
+weight s(a)=sigma_hat sqrt(p(a)'V p(a)). Bootstrap calibration uses
+$$T_b^*=\sup_{a\in\mathbb R}|p(a)^\top(\widetilde\beta_b^*-\widetilde\beta)|/s(a),
+\quad w(a)=c s(a),\quad r(a)=|\widehat f(a)-\widetilde f(a)|+w(a).$$
+Under heteroskedasticity s is a positive weighting function, not a consistent
+heteroskedastic standard error. The exact sampling covariance benchmark is
+$$V_{\rm oracle}=(P^\top P)^{-1}P^\top\operatorname{diag}(\sigma^2h(a_i)^2)P(P^\top P)^{-1}.$$
+It is used only after calibration for diagnostics, never to set the radius.
+
+The empirical higher quantile is available. The default conservative quantile
+uses the smallest k<=B satisfying Pr(Binomial(B,1-delta)<=k-1)>=1-eta_mc.
+Using the kth order statistic of certified upper supremum bounds then contains
+at least 1-delta of the specified conditional bootstrap law with Monte Carlo
+confidence at least 1-eta_mc (ties are conservative). Insufficient B is rejected.
+This is NOT a probability guarantee for unknown truth. Such a guarantee still
+requires a finite-N bootstrap approximation bound. No outer-data coverage rate
+or numerical value for that unproved error term is reported.
+
+All functions and containment certificates cover R, including both tails;
+plots on [0,1] are visualization only. Let b1=beta_tilde and
+b2=2 beta_hat-beta_tilde, and q(a)=c^2 s(a)^2. Then
+$$L(a)=\min\{p(a)'b_1,p(a)'b_2\}-\sqrt{q(a)},\qquad
+U(a)=\max\{p(a)'b_1,p(a)'b_2\}+\sqrt{q(a)}.$$
+L>t is equivalent to the four strict polynomial inequalities
+p'b_j-t>0 and (p'b_j-t)^2-q>0, j=1,2. Exact rational sign cells therefore verify
+global LCB levels without selecting actions. Substituting t=f(a), and similarly
+testing f>U, certifies final-envelope containment. Auxiliary containment uses
+q-[p'(beta_tilde-beta0)]^2>=0. Certificates apply to represented coefficients;
+they do not enclose OLS roundoff relative to an ideal exact-arithmetic fit.
+
+Repository solvers supply the true-reference, fixed-predictor and LCB actions;
+all-real sign tests verify a global objective gap <=1e-7. No action grid, roots,
+or direct optimizer substitutes select a reported action. The bootstrap
+supremum brackets use tolerance 1e-8. The LCB has an absolute-value kink;
+unsuccessful or uncertified solves retain status/attempts rather than masquerade
+as certified optima. On simultaneous coverage, for any comparator a,
+$$f(a)-f(a_{\rm LCB})\le 2r(a)+\epsilon_{\rm LCB}.$$
+For an approximate repository truth reference a_ref with gap epsilon_ref,
+$$R_{\rm LCB}\le 2r(a_{\rm ref})+\epsilon_{\rm LCB}+\epsilon_{\rm ref}.$$
+Reported regret is bracketed by the value difference to a_ref and that difference
+plus epsilon_ref. The plug-in bound is r(a_ref)+r(a_plugin)+epsilon_plugin
++epsilon_ref. These certificates are conditional on containment; a failed
+containment check is not repaired by an optimizer success flag. Pure positive
+sigma scaling preserves the auxiliary coverage event and scales w linearly;
+the fixed predictor's discrepancy means neither total r nor regret need scale
+linearly or monotonically. Increasing N need not remove the discrepancy floor.
+
+Sources: `src/experiments/offline_bootstrap.py`,
+`src/experiments/offline_bootstrap_math.py` and their reporting companion.
+
 ## 8. Gradients and Estimators
 
 For a differentiable action objective and policy, the population chain rule is

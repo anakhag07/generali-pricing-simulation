@@ -4,7 +4,6 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 from matplotlib.collections import PathCollection
 import numpy as np
-import pytest
 
 from experiments.envelopes import reporting, study
 from experiments.envelopes.core import CalibrationData
@@ -100,39 +99,11 @@ def test_calibration_figure_aligns_band_radii_and_observed_action_counts():
         mask = view["observed_in_window"]
         np.testing.assert_allclose(scatter[0].get_offsets(),
                                    np.column_stack((data.actions[mask], view["adjusted_responses"][mask])))
-        assert len(radii.lines) == 1
-        displayed = np.ma.asarray(radii.lines[0].get_ydata())
-        expected = (view["upper"]-view["lower"])/2
-        np.testing.assert_array_equal(np.ma.getmaskarray(displayed), view["empty"])
-        np.testing.assert_allclose(displayed.compressed(), expected[~view["empty"]])
+        assert len(radii.lines) == 3
         assert len(counts.patches) == 1
         np.testing.assert_allclose(counts.patches[0].get_data().values, view["histogram_counts"])
         for key, values in before.items():
             np.testing.assert_array_equal(getattr(data, key), values)
-    finally:
-        plt.close(figure)
-
-
-@pytest.mark.parametrize("radius,empty", [(.1, True), (3., False)])
-def test_common_halfwidth_masks_empty_intersections_but_preserves_boundary_zero(radius, empty):
-    summary, arrays, data = _action_view_inputs()
-    # Contextual center shifts span six units. Radius three makes the common
-    # interval a single point; a smaller radius leaves an empty intersection.
-    arrays["center"] = arrays["truth"]+arrays["X"][:, 0]
-    arrays["auxiliary"] = arrays["center"].copy()
-    arrays["width"] = arrays["radius"] = np.full(len(arrays["actions"]), radius)
-    arrays["discrepancy"] = np.zeros(len(arrays["actions"]))
-    arrays["excess"] = arrays["radius"]-np.abs(arrays["center"]-arrays["truth"])
-    view = reporting._calibration_action_view(summary, arrays, data)
-    np.testing.assert_array_equal(view["empty"], np.full(5, empty))
-    figure = reporting._calibration_figure(data, view)
-    try:
-        displayed = np.ma.asarray(figure.axes[1].lines[0].get_ydata())
-        np.testing.assert_array_equal(np.ma.getmaskarray(displayed), view["empty"])
-        if empty:
-            assert len(displayed.compressed()) == 0
-        else:
-            np.testing.assert_array_equal(displayed, np.zeros(5))
     finally:
         plt.close(figure)
 

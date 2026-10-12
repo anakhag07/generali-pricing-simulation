@@ -991,15 +991,10 @@ band above, with observed responses adjusted as Y_i-g(x_i). These are noisy
 observations, not the truth values tested by mean-response coverage. All axes
 share the existing [-2,2] diagnostic window; counts explicitly record the
 calibration actions outside it. Histogram bins count logged actions only and
-do not affect fitting or radius evaluation. The middle panel uses the same
-context collapse as the top panel: its common-envelope half-width is
-$$H(a)=(U(a)-L(a))/2\quad\text{when }L(a)\le U(a).$$
-Empty intersections are masked, never displayed as zero or negative radii.
-This is the radius about the common interval's midpoint (L+U)/2, not about
-the mean predictor. Saved arithmetic means of r_i(a), w_i(a), and
-D_i(a)=|fhat_i(a)-ftilde_i(a)| remain available as diagnostics, with
-mean(r)=mean(w)+mean(D), but are not drawn in this panel. The intersection's
-half-width H is not mean(r) or any individual context's constructed radius.
+do not affect fitting or radius evaluation. At each saved diagnostic action,
+plot arithmetic means across all target contexts of r_i(a), w_i(a), and
+D_i(a)=|fhat_i(a)-ftilde_i(a)|, so mean(r)=mean(w)+mean(D). The common-overlap
+band is an intersection and its half-width is not mean(r).
 
 The analytical width uses global joint-design leverage, not inverse local
 histogram density. Write B=[1,X], b=(1,x')', gamma=(B'B)^(-1)B'a_logged,
@@ -1007,8 +1002,8 @@ and S=||a_logged-B gamma||^2. Block inversion of Q gives
 $$phi(x,a)'Q^{-1}phi(x,a)
  = b'(B'B)^{-1}b + (a-b'gamma)^2/S.$$
 This explains wider uncertainty away from the design's fitted action trend;
-the histogram alone cannot determine leverage. The display replays saved
-intervals without new observations, model fits, or PCA.
+the histogram alone cannot determine leverage. Display averages replay saved
+width/discrepancy/radius arrays without new observations, model fits, or PCA.
 
 ## 8. Gradients and Estimators
 

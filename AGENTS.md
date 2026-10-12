@@ -424,14 +424,12 @@ Changing the `models` array is the supported model swap. Available keys are
   `reporting.write_calibration_plot` replays the same observed dataset into
   `03_calibration_dataset.pdf` with three shared-action panels on [-2,2]:
   the original adjusted common envelope/truth/mean predictor plus noisy y-g(x),
-  the same all-context intersection's half-width H(a)=(U(a)-L(a))/2, and
+  all-context means of radius/auxiliary width/predictor discrepancy, and
   logged-action counts in width-0.5 bins with a rug. The fixed dataset has
   58/60 actions in the window and two above 2, explicitly noted. Width uses
   global joint-design leverage, not inverse local action density; the common
-  intersection half-width is not the mean radius and is masked where L>U.
-  No refits are performed; individual radii and coverage guarantees are unchanged.
-  `calibration_action_support.json` records curves, counts, and provenance,
-  retaining mean radius/width/discrepancy diagnostics without plotting them.
+  intersection half-width is not the mean radius. No refits are performed.
+  `calibration_action_support.json` records curves, counts, and provenance.
   `tests/reporting/test_envelope_calibration_plot.py` checks the saved-data
   display and artifact replay.
   `docs/uncertainty_envelopes_simulation.tex` is the standalone mathematical

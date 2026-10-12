@@ -72,6 +72,8 @@ nonlinear truth, saved calibration data, the constant-radius example, and replay
 The [paired constant-3 comparison](docs/uncertainty_envelopes.md#render-the-constant-3-versus-writeup-comparison)
 replays saved results into two panels showing overlap across all contexts after
 subtracting their known contribution to truth; it does not refit either radius.
+A second figure compares the common overlap's half-width and the smallest
+signed excess across contexts for both constructions.
 Its calibration figure aligns the adjusted observations/envelope, mean radius
 components, and logged-action counts on one action axis. A
 [LaTeX section](docs/uncertainty_envelopes_simulation.tex) records the exact

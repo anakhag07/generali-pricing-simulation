@@ -435,12 +435,20 @@ radii. It performs no refitting and writes to
   the common truth after removing the context contribution, the mean adjusted
   frozen predictor, and the intersection of adjusted envelopes across all
   60 contexts. An on-plot note states the context adjustment.
+- `02_radius_excess.pdf`: two axes overlay both constructions, using the same
+  intersection across all 60 contexts. They show its half-width and the
+  smallest signed excess across contexts, rather than three selected contexts.
 - `adjusted_coverage.npz`: saved common lower/upper endpoints, common truth,
   mean adjusted predictor, and empty-intersection/coverage flags for the
   diagnostic actions. These derived arrays remain traceable to the original
   hashed point artifacts.
+- `collapsed_tightness.npz`: shared actions, signed half-spans `(U-L)/2`, signed
+  excess curves, and empty-intersection flags for both constructions. Negative
+  half-spans denote empty intersections and are masked in the radius plot.
 - `metrics.csv` and `comparison.json`: full 60-context diagnostics, coverage
-  statements, and input/source/output identities.
+  statements, and input/source/output identities. The CSV's original mean
+  radius and mean excess metrics are unchanged; the JSON also records the
+  new comparison PDF and derived NPZ.
 - `window_certificate.json`: exact endpoint checks certifying the constant
   band's containment throughout `[-2,2]` at all 60 contexts. Convexity of the
   absolute affine error extends the endpoint checks to the whole interval.
@@ -478,8 +486,8 @@ write_calibration_plot(root / "uncertainty-envelopes-writeup",
 exact simulation models, sampling, fitting, radii, coverage target, and metrics.
 Copy its section body into the mathematical writeup.
 
-The previous context-slice and radius/excess comparison PDFs are archived only
-after the replacement PDF renders successfully. The source experiments' own
+The previous context-slice layouts are archived only after the replacement
+comparison PDFs render successfully. The source experiments' own
 coverage and radius/excess reports remain available.
 
 For this additive truth, write
@@ -505,6 +513,22 @@ there is no common covered interval. The shading summarizes all contexts;
 it is not any individual radius or band. In particular, even the constant-3
 panel's common intersection need not have width 6, although every original
 context-specific band has width 6.
+
+The second comparison PDF uses these same endpoints `L=common_lower` and
+`U=common_upper` and common truth `h(a)=2*a`:
+
+```text
+H(a) = (U(a) - L(a)) / 2
+S(a) = min(h(a) - L(a), U(a) - h(a))
+     = min_i [radius(x_i,a) - abs(predictor(x_i,a) - f(x_i,a))].
+```
+
+`H` is masked when `L>U`, because an empty intersection has no half-width.
+`S` retains negative values even there: it measures the least coverage margin
+among all contexts at that action. These displayed quantities describe the
+common intersection; they do not replace the original per-context radii or
+mean tightness metrics. The calibration figure's middle panel remains the
+all-context means of radius, auxiliary width, and discrepancy.
 
 The mean adjusted frozen-predictor curve gives orientation only. It is not
 the center used to define coverage, and distances from that mean to the

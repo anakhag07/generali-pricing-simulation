@@ -354,8 +354,41 @@ def _coverage_comparison_figure(cases, aligned):
     return fig
 
 
+def _collapsed_tightness(aligned):
+    return {"half_span": (aligned["upper"]-aligned["lower"])/2,
+            "excess": np.minimum(aligned["truth"]-aligned["lower"],
+                                 aligned["upper"]-aligned["truth"])}
+
+
+def _radius_excess_comparison_figure(cases, aligned, tightness):
+    fig, axes = plt.subplots(1, 2, figsize=(13, 6), constrained_layout=True)
+    count = len(aligned[0]["contexts"])
+    fig.suptitle(f"Radius and signed excess after collapsing all {count} contexts")
+    for (_, _, provenance), values, metrics in zip(cases, aligned, tightness):
+        half_width = np.ma.masked_where(values["empty"], metrics["half_span"])
+        axes[0].plot(values["actions"], half_width, label=provenance["label"])
+        axes[1].plot(values["actions"], metrics["excess"], label=provenance["label"])
+    axes[0].set_title("Half-width of the common envelope in plot 1")
+    axes[0].set_ylabel("Common-envelope half-width (U - L) / 2")
+    axes[0].set_ylim(bottom=0)
+    axes[1].set_title("Signed excess relative to the common truth")
+    axes[1].set_ylabel("Signed excess min(f - L, U - f), context-adjusted")
+    axes[1].axhline(0, color="0.5", linestyle="--", label="Zero excess: coverage boundary")
+    for ax in axes:
+        ax.set_xlabel("Action a")
+        ax.set_xlim(-2, 2)
+        ax.legend()
+    fig.supxlabel(
+        "Same context adjustment and interval intersection as plot 1; one curve per construction.\n"
+        "Common half-width is not an individual radius. Signed excess equals the smallest excess across all contexts.\n"
+        "Negative excess means at least one context is not covered; half-width is omitted for empty intersections.",
+        fontsize=10,
+    )
+    return fig
+
+
 def write_comparison(projects, destination: Path) -> list[Path]:
-    """Plot two common envelopes after subtracting known context-only truth shifts."""
+    """Plot common envelopes and their radius/excess diagnostics after removing known context shifts."""
     projects = list(projects)
     if len(projects) != 2:
         raise ValueError("Comparison requires exactly two saved projects.")
@@ -366,22 +399,30 @@ def write_comparison(projects, destination: Path) -> list[Path]:
     if cases[0][0]["manifest"]["problem"]["truth"] != cases[1][0]["manifest"]["problem"]["truth"]:
         raise ValueError("Comparison requires the same declared truth for context adjustment.")
     aligned = [_aligned_comparison(summary, arrays) for summary, arrays, _ in cases]
+    tightness = [_collapsed_tightness(values) for values in aligned]
     destination = Path(destination)
     if any(destination.resolve() == Path(project).resolve() for project in projects):
         raise ValueError("Use a separate comparison output directory.")
     destination.mkdir(parents=True, exist_ok=True)
-    paths = [destination / "01_coverage_comparison.pdf"]
+    paths = [destination / "01_coverage_comparison.pdf", destination / "02_radius_excess.pdf"]
     with plt.style.context("default"), plt.rc_context(_STYLE):
-        figure = _coverage_comparison_figure(cases, aligned)
-        try:
-            figure.savefig(paths[0], format="pdf")
-        finally:
-            plt.close(figure)
+        figures = (_coverage_comparison_figure(cases, aligned),
+                   _radius_excess_comparison_figure(cases, aligned, tightness))
+        for figure, path in zip(figures, paths):
+            try:
+                figure.savefig(path, format="pdf")
+            finally:
+                plt.close(figure)
     arrays_path = destination / "adjusted_coverage.npz"
     np.savez_compressed(arrays_path,
                         **{key: aligned[0][key] for key in ("actions", "contexts", "truth", "mean_predictor", "g")},
                         **{key: np.stack([row[key] for row in aligned])
                            for key in ("lower", "upper", "empty", "covered")})
+    tightness_path = destination / "collapsed_tightness.npz"
+    np.savez_compressed(tightness_path, actions=aligned[0]["actions"],
+                        empty=np.stack([values["empty"] for values in aligned]),
+                        **{key: np.stack([metrics[key] for metrics in tightness])
+                           for key in ("half_span", "excess")})
     write_provenance(destination / "comparison.json", {
         "projects": [provenance for _, _, provenance in cases],
         "context_count": len(aligned[0]["contexts"]), "context_values": aligned[0]["contexts"],
@@ -391,9 +432,13 @@ def write_comparison(projects, destination: Path) -> list[Path]:
         "sampled_action_coverage": [bool(row["covered"].all()) for row in aligned],
         "action_window": [-2., 2.], "source": file_record(__file__),
         "plots": [file_record(path) for path in paths], "aligned_arrays": file_record(arrays_path),
+        "collapsed_tightness": file_record(tightness_path),
         "semantics": "Subtract the same context-only truth contribution from truth, predictions, and interval endpoints. "
                      "Shading intersects the adjusted intervals across every saved context; empty intersections are not shaded. "
                      "The mean adjusted predictor is for orientation only. Radii and original finite diagnostic metrics are unchanged. "
+                     "The radius/excess PDF uses this same intersection: half-width (U-L)/2 is masked when empty, "
+                     "while signed excess min(truth-L,U-truth) is preserved even when negative. "
+                     "This excess equals the smallest original pointwise excess across contexts; it is not a context average. "
                      "Curves join saved finite diagnostic values. Floating-point alignment is not a new continuous certificate. "
                      "Saved full-domain containment and analytical probability statements are displayed separately, without refitting or optimization.",
     })

@@ -969,6 +969,20 @@ the fitted object. This view reuses saved responses, fits, radii, and diagnostic
 locations without refitting. Connected finite diagnostic values visualize the
 intersection; continuum guarantees still come from the separate certificates.
 
+The paired `02_radius_excess.pdf` uses that same context collapse. For the
+nonempty common interval, its midpoint and half-width are
+$$M(a)=(L(a)+U(a))/2,\qquad H(a)=(U(a)-L(a))/2.$$
+The collapsed signed excess is
+$$S(a)=\min\{h(a)-L(a),\ U(a)-h(a)\}
+      =\min_i\{r(x_i,a)-|\widehat f(x_i,a)-f(x_i,a)|\}.$$
+For nonempty intervals, S=H-|M-h|; for empty intervals the endpoint-margin
+formula still gives negative S, while H is masked rather than shown as a
+negative radius. Zero S includes boundary coverage. Thus S>=0 exactly when
+every context is covered at that diagnostic action. Neither curve averages
+over contexts; H is the common band's half-width, not an individual radius.
+Original pointwise radius/excess summaries remain unchanged. Endpoint and
+margin reductions aggregate contexts only and do not select an action optimum.
+
 Analytical runs use one saved calibration realization and a separately typed
 probability statement. Empirical runs freeze Z and the predictor and redraw
 independent response vectors; each repetition refits the entire construction.

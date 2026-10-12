@@ -196,10 +196,10 @@ def test_comparison_replays_common_overlap_and_preserves_coverage_semantics(tmp_
     monkeypatch.setattr(Axes, "fill_between", capture)
     destination = tmp_path / "comparison"
     paths = write_comparison(projects, destination)
-    assert [path.name for path in paths] == ["01_coverage_comparison.pdf"]
+    assert [path.name for path in paths] == ["01_coverage_comparison.pdf", "02_radius_excess.pdf"]
     assert all(path.read_bytes().startswith(b"%PDF-") for path in paths)
     np.testing.assert_allclose(bands[0], 6.)
-    assert [len(figure.axes) for figure in figures] == [2]
+    assert [len(figure.axes) for figure in figures] == [2, 2]
     assert all(ax.get_xlabel() and ax.get_ylabel() for figure in figures for ax in figure.axes)
     for figure in figures:
         # Check layout coordinates in memory without saving a raster preview.
@@ -232,6 +232,16 @@ def test_comparison_replays_common_overlap_and_preserves_coverage_semantics(tmp_
         np.testing.assert_allclose(adjusted["mean_predictor"], adjusted["actions"]+.25)
         np.testing.assert_allclose(adjusted["upper"][0]-adjusted["lower"][0], 6.)
         assert adjusted["covered"].all() and not adjusted["empty"].any()
+        with np.load(destination / "collapsed_tightness.npz") as tightness:
+            np.testing.assert_array_equal(tightness["actions"], adjusted["actions"])
+            np.testing.assert_array_equal(tightness["empty"], adjusted["empty"])
+            np.testing.assert_allclose(tightness["half_span"], (adjusted["upper"]-adjusted["lower"])/2)
+            np.testing.assert_allclose(tightness["excess"], np.minimum(
+                adjusted["truth"]-adjusted["lower"], adjusted["upper"]-adjusted["truth"],
+            ))
+            for method in range(2):
+                np.testing.assert_allclose(figures[1].axes[0].lines[method].get_ydata(), tightness["half_span"][method])
+                np.testing.assert_allclose(figures[1].axes[1].lines[method].get_ydata(), tightness["excess"][method])
     assert all(path.read_bytes() == value for path, value in inputs.items())
     assert not list(destination.rglob("*.png"))
 
@@ -273,6 +283,28 @@ def test_common_overlap_checks_all_contexts_when_mean_prediction_hides_failure()
     assert len(aligned["contexts"]) == 4
 
 
+def test_collapsed_signed_excess_equals_smallest_individual_excess_even_when_empty():
+    summary, arrays = _aligned_inputs()
+    aligned = reporting._aligned_comparison(summary, arrays)
+    tightness = reporting._collapsed_tightness(aligned)
+    np.testing.assert_allclose(tightness["excess"], arrays["excess"].reshape(4, 3).min(axis=0))
+    np.testing.assert_array_equal(tightness["excess"] >= 0, aligned["covered"])
+    assert tightness["half_span"][-1] < 0
+    assert tightness["excess"][-1] < 0
+    midpoint = (aligned["lower"]+aligned["upper"])/2
+    np.testing.assert_allclose(tightness["excess"], tightness["half_span"]-np.abs(aligned["truth"]-midpoint))
+
+
+def test_collapsed_tightness_distinguishes_touching_truth_from_empty_or_missed_truth():
+    tightness = reporting._collapsed_tightness({
+        "lower": np.array([-1., 0., 2., 1.]),
+        "upper": np.array([1., 0., 1., 1.]),
+        "truth": np.array([.5, 0., 1.5, 2.]),
+    })
+    np.testing.assert_allclose(tightness["half_span"], [1., 0., -.5, 0.])
+    np.testing.assert_allclose(tightness["excess"], [.5, 0., -.5, -1.])
+
+
 def test_context_adjustment_is_invariant_to_shared_context_function_and_preserves_radii():
     summary, arrays = _aligned_inputs()
     before_radius = arrays["radius"].copy()
@@ -302,6 +334,7 @@ def test_empty_common_intersection_is_not_shaded_as_valid_band(tmp_path, monkeyp
     projects = [_comparison_project(tmp_path / "constant", predictor_context_coefficient=10.),
                 _comparison_project(tmp_path / "writeup", transfer=True, predictor_context_coefficient=10.)]
     calls = []
+    figures = _capture_figures(monkeypatch)
     original = Axes.fill_between
 
     def capture(ax, actions, lower, upper, *args, **kwargs):
@@ -317,6 +350,17 @@ def test_empty_common_intersection_is_not_shaded_as_valid_band(tmp_path, monkeyp
         # An empty common interval must be masked, rather than filled with its
         # inverted bounds as though it were a valid simultaneous envelope.
         assert not np.any(where & ~valid)
+    radius, excess = figures[1].axes
+    assert len(radius.lines) == 2
+    for line in radius.lines:
+        assert np.ma.getmaskarray(line.get_ydata()).all()
+    for line in excess.lines[:2]:
+        assert np.all(line.get_ydata() < 0)
+        assert not np.ma.getmaskarray(line.get_ydata()).any()
+    with np.load(tmp_path / "comparison" / "collapsed_tightness.npz") as tightness:
+        assert tightness["empty"].all()
+        assert np.isfinite(tightness["half_span"]).all() and np.all(tightness["half_span"] < 0)
+        assert np.isfinite(tightness["excess"]).all() and np.all(tightness["excess"] < 0)
 
 
 def test_comparison_rejects_different_diagnostic_contexts(tmp_path):

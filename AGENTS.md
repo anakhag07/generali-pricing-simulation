@@ -408,7 +408,7 @@ Changing the `models` array is the supported model swap. Available keys are
   `docs/uncertainty_envelopes.md`. Existing bootstrap experiments are unchanged.
   `linear.check_constant_linear_containment` checks literal constant radii
   against affine truth/predictor on the real line. `reporting.write_comparison`
-  verifies paired saved diagnostics and renders one two-panel
+  verifies paired saved diagnostics and renders a two-panel
   `01_coverage_comparison.pdf`. It subtracts the known additive context term
   g(x) and intersects adjusted envelopes across all contexts; common truth
   inside that intersection means every context is covered at that action.
@@ -417,7 +417,13 @@ Changing the `models` array is the supported model swap. Available keys are
   hand specified in the paired manifests; auxiliary OLS is fitted. Saved
   sources/responses/radii are replayed without refitting. `adjusted_coverage.npz`
   and `comparison.json` preserve derived endpoints, flags, and provenance.
-  The rendering driver archives older comparison PDFs only after replacement
+  Its `02_radius_excess.pdf` overlays both constructions in two axes using
+  that same all-context intersection: half-width H=(U-L)/2 masked when empty,
+  and signed excess S=min(h-L,U-h)=min_i(r_i-|fhat_i-f_i|), retaining negatives
+  even when the intersection is empty. `collapsed_tightness.npz` saves those
+  curves and empty flags; `comparison.json` records both PDF/NPZ artifacts.
+  Existing mean radius/excess metrics in `metrics.csv` are unchanged.
+  The rendering driver archives the old coverage slices only after replacement
   renders successfully; the source experiments' reports are preserved.
   The constant-3/writeup manifests retain a shared design and diagnostic window;
   interval endpoint containment is separate from the all-real certificate.

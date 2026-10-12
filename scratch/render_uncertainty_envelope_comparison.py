@@ -23,7 +23,7 @@ def main():
         "uncertainty-envelopes-constant-3", "uncertainty-envelopes-writeup",
     )]
     destination = args.runs_root / "uncertainty-envelopes-comparison"
-    previous_plots = [destination / name for name in ("01_envelope_slices.pdf", "02_radius_excess.pdf")
+    previous_plots = [destination / name for name in ("01_envelope_slices.pdf",)
                       if (destination / name).exists()]
     previous_summary = destination / "comparison.json"
     previous_metadata = previous_summary.read_bytes() if previous_plots and previous_summary.exists() else None
@@ -75,8 +75,8 @@ def main():
         table.append({"construction": label, "all_real_containment": row["containment"]["status"],
                       **row["metrics"]})
     write_rows_csv(destination / "metrics.csv", table, list(table[0]))
-    # Keep the earlier context-slice figures available, but present only the
-    # new two-panel comparison in the result directory after successful replay.
+    # Retire the old coverage slices after successful replay. The current
+    # 02_radius_excess.pdf is now part of the paired comparison, not an archive.
     if previous_plots:
         archive = destination / "previous-context-slices"
         archive.mkdir(exist_ok=True)

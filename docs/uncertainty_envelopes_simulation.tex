@@ -65,6 +65,12 @@ law and the all-real coverage target. For the context-adjusted display only,
 subtracting $g(x)=x_1-0.5x_2+0.25x_3$ leaves the common truth $2a$;
 saved radii and coverage decisions are unchanged.
 
+For the common intersection $[L(a),U(a)]$ of all adjusted envelopes, a separate
+comparison plots its half-width $H=(U-L)/2$ (masked when empty) and
+$S=\min\{2a-L,U-2a\}=\min_i s_r(x_i,a)$, retaining negative values even
+for empty intersections. Both constructions are overlaid; the original mean
+radius and excess metrics remain unchanged.
+
 The calibration figure shares an action axis on $[-2,2]$ across three panels:
 the original adjusted common band, truth, and mean adjusted frozen predictor
 with noisy $y_i-g(x_i)$;

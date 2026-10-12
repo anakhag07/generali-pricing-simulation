@@ -408,8 +408,17 @@ Changing the `models` array is the supported model swap. Available keys are
   `docs/uncertainty_envelopes.md`. Existing bootstrap experiments are unchanged.
   `linear.check_constant_linear_containment` checks literal constant radii
   against affine truth/predictor on the real line. `reporting.write_comparison`
-  verifies paired saved diagnostics and renders envelope/radius/excess slices
-  at fixed context indices; it does not refit or select extremal contexts.
+  verifies paired saved diagnostics and renders one two-panel
+  `01_coverage_comparison.pdf`. It subtracts the known additive context term
+  g(x) and intersects adjusted envelopes across all contexts; common truth
+  inside that intersection means every context is covered at that action.
+  The overlap shading is not an individual radius. The mean adjusted frozen
+  predictor is orientation only, not the coverage reference. The predictor is
+  hand specified in the paired manifests; auxiliary OLS is fitted. Saved
+  sources/responses/radii are replayed without refitting. `adjusted_coverage.npz`
+  and `comparison.json` preserve derived endpoints, flags, and provenance.
+  The rendering driver archives older comparison PDFs only after replacement
+  renders successfully; the source experiments' reports are preserved.
   The constant-3/writeup manifests retain a shared design and diagnostic window;
   interval endpoint containment is separate from the all-real certificate.
 

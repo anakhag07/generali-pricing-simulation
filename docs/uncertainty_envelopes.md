@@ -410,31 +410,82 @@ logged actions, responses, truth, predictor, and seeds. The constant constructio
 uses the literal radius `r=3` (full band width 6). The writeup construction uses
 `r=abs(predictor-auxiliary_OLS)+w` with `sigma_bound=1`, `delta=.05`, and `p=5`,
 so `w=10*sqrt(phi' Q_inverse phi)`. Neither radius is optimized.
+The frozen predictor is hand specified by the manifest coefficients; the
+auxiliary OLS model is the object fitted to calibration observations.
+
+To create the paired experiments initially:
 
 ```bash
 PYTHONPATH=src python scripts/run_experiment_manifest.py manifests/uncertainty-envelopes-constant-3.json --launch local
 PYTHONPATH=src python scripts/run_experiment_manifest.py manifests/uncertainty-envelopes-writeup.json --launch local
+```
+
+To render or replace the comparison from their existing saved arrays:
+
+```bash
 PYTHONPATH=src python scratch/render_uncertainty_envelope_comparison.py
 ```
 
-The final command replays saved point arrays without fitting. It writes to
+The rendering command preserves the source experiments, responses, fits, and
+radii. It performs no refitting and writes to
 `results/uncertainty-envelopes-comparison/`:
 
-- `01_envelope_slices.pdf`: truth, predictor, and the two bands on shared axes,
-  at contexts 0, 1, and 2 in saved order.
-- `02_radius_excess.pdf`: radius and signed excess versus action for those
-  same contexts. Lines connect diagnostic samples for visualization only.
+- `01_coverage_comparison.pdf`: one PDF with two panels named
+  `constant radius = 3` and `analytical-from-linear-f radius`. Each panel shows
+  the common truth after removing the context contribution, the mean adjusted
+  frozen predictor, and the intersection of adjusted envelopes across all
+  60 contexts. An on-plot note states the context adjustment.
+- `adjusted_coverage.npz`: saved common lower/upper endpoints, common truth,
+  mean adjusted predictor, and empty-intersection/coverage flags for the
+  diagnostic actions. These derived arrays remain traceable to the original
+  hashed point artifacts.
 - `metrics.csv` and `comparison.json`: full 60-context diagnostics, coverage
-  statements, and input/source identities.
+  statements, and input/source/output identities.
 - `window_certificate.json`: exact endpoint checks certifying the constant
   band's containment throughout `[-2,2]` at all 60 contexts. Convexity of the
   absolute affine error extends the endpoint checks to the whole interval.
 
-Both metric tables use equal weight on the same 60-by-101 diagnostic locations
-in `[-2,2]`. The plotting window and metrics do not limit the all-real coverage
-checks. For these models, the predictor's action slope is 1.7 and truth's is
-2.0, so every finite constant radius fails somewhere on the real line. Radius 3
-covers this displayed window. Since this baseline and predictor are fixed,
-its coverage event does not change when calibration responses are redrawn.
-It is not a fitted 95% calibration procedure. The writeup construction has the
-separate theoretical lower bound of .95 and a realized all-real certificate.
+The previous context-slice and radius/excess comparison PDFs are archived only
+after the replacement PDF renders successfully. The source experiments' own
+coverage and radius/excess reports remain available.
+
+For this additive truth, write
+
+```text
+g(x) = beta_0 + beta_x' x = x_1 - 0.5*x_2 + 0.25*x_3
+f(x,a) - g(x) = h(a) = 2*a.
+```
+
+Subtracting `g(x_i)` from each saved context's truth, predictor, and envelope
+endpoints puts every context on the same response scale. It leaves each radius
+and coverage decision unchanged. At each saved action, the shaded overlap is
+
+```text
+common_lower(a) = max_i [predictor(x_i,a) - g(x_i) - radius(x_i,a)]
+common_upper(a) = min_i [predictor(x_i,a) - g(x_i) + radius(x_i,a)].
+```
+
+The blue common-truth line is inside this intersection exactly when every
+context's original envelope contains its truth at that action. If the common
+lower endpoint exceeds the upper endpoint, the intersection is empty and
+there is no common covered interval. The shading summarizes all contexts;
+it is not any individual radius or band. In particular, even the constant-3
+panel's common intersection need not have width 6, although every original
+context-specific band has width 6.
+
+The mean adjusted frozen-predictor curve gives orientation only. It is not
+the center used to define coverage, and distances from that mean to the
+intersection boundaries are not the constructed radii. The known synthetic
+`g(x)` is used only for this evaluation display, never for fitting the envelope.
+Lines join saved diagnostic actions for visualization; they do not replace the
+separate continuum containment checks.
+
+The metrics use equal weight on the same 60-by-101 diagnostic locations in
+`[-2,2]` and retain the original per-context radius and signed excess. The
+plotting window and metrics do not limit the all-real coverage checks. For
+these models, the predictor's action slope is 1.7 and truth's is 2.0, so every
+finite constant radius fails somewhere on the real line. Radius 3 covers this
+displayed window. Since this baseline and predictor are fixed, its coverage
+event does not change when calibration responses are redrawn. It is not a
+fitted 95% calibration procedure. The writeup construction has the separate
+theoretical lower bound of .95 and a realized all-real certificate.

@@ -388,6 +388,25 @@ Changing the `models` array is the supported model swap. Available keys are
 
 ### Key Components
 
+- `src/experiments/envelopes/` implements `kind: "uncertainty_envelopes"`
+  through the shared manifest launcher. `core.py` owns data/target/envelope
+  records, typed coverage results, finite containment, signed excess metrics,
+  and complete-denominator empirical aggregation. `linear.py` supplies contextual
+  OLS known-variance transfer, the conditional moment bound, and exact-rational
+  all-real containment for represented coefficients (MATH.md §7.8).
+  `study.py` owns validated adapter selection, named context/action/observation/
+  method seed streams, saved or synthetic calibration inputs, per-repetition
+  checkpoints, source/artifact identity, collection, and local/Slurm launch.
+  Python builders receive observed data, the frozen predictor, target, settings,
+  and method RNG; they never receive truth. `reporting.py` replays verified
+  point artifacts into two vector PDFs without fitting. Analytical bounds,
+  realized containment, and empirical estimates remain distinct; unknown,
+  failed, or missing repetitions suppress empirical estimates. Diagnostic grids
+  do not define continuum coverage. No action optimizer/reference is involved.
+  The `uncertainty-envelopes*.json` manifests cover analytical, repeated-response,
+  and constant-radius cases; usage and custom adapters are documented in
+  `docs/uncertainty_envelopes.md`. Existing bootstrap experiments are unchanged.
+
 - `src/experiments/offline_bootstrap.py` owns the fixed-offline-data experiment
   (`kind: "offline_bootstrap"`, `manifests/offline_bootstrap.json`). It loads a
   saved predictor and observed data, freezes paired response variants, resamples

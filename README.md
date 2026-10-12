@@ -53,6 +53,23 @@ pip install -e ".[dev]"
 pytest -q
 ```
 
+### Uncertainty-envelopes
+
+```bash
+PYTHONPATH=src python scripts/run_experiment_manifest.py manifests/uncertainty-envelopes.json --launch local
+PYTHONPATH=src python scripts/run_experiment_manifest.py manifests/uncertainty-envelopes-empirical.json --launch local
+```
+
+The first launch checks one contextual linear envelope analytically; the second
+estimates coverage across repeated calibration responses at a frozen design.
+Both report radius and signed excess conservatism at declared diagnostic
+locations. Truth, radius construction, coverage procedure, and containment
+checker are replaceable; analytical probability bounds remain separate from
+realized containment and empirical estimates. Results go to
+`results/uncertainty-envelopes/` and `results/uncertainty-envelopes-empirical/`.
+See [the usage guide](docs/uncertainty_envelopes.md) for custom radius functions,
+nonlinear truth, saved calibration data, the constant-radius example, and replay.
+
 ### Fixed offline bootstrap and optimization regret
 
 ```bash

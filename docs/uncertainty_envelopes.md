@@ -447,19 +447,22 @@ radii. It performs no refitting and writes to
 - `03_calibration_dataset.pdf`: three panels sharing the action axis `[-2,2]`.
   The top retains the analytical construction's original adjusted common band,
   truth, and mean frozen predictor, and adds the observed `y_i-g(x_i)` points.
-  The middle shows means across all 60 contexts of total radius, auxiliary
-  width, and predictor/auxiliary discrepancy. The bottom shows logged-action
+  The middle shows one curve, `H(a)=(common_upper(a)-common_lower(a))/2`, for
+  exactly the same all-context intersection shown above; it is masked where
+  that intersection is empty. The bottom shows logged-action
   counts in bins of width 0.5, plus a rug marking the individual actions.
 - `calibration_action_support.json`: the displayed curves, action-support
-  counts, and source/artifact provenance.
+  counts, and source/artifact provenance. Mean radius, auxiliary width, and
+  predictor/auxiliary discrepancy remain saved diagnostics but are not plotted.
 
 The calibration display shows 58 of the 60 logged actions in `[-2,2]`; the two
 actions above 2 are explicitly noted. It preserves the saved data, fitted
 auxiliary model, and radius construction without refitting. The noisy response
 points need not lie within the shaded overlap: the envelope targets the true
-mean response, not noisy individual observations. The middle panel uses equal
-weight across all contexts; the common intersection's half-width is not the
-mean constructed radius. Analytical width depends on the full joint design
+mean response, not noisy individual observations. Both upper panels use the
+same intersection across all 60 contexts. Its half-width is not the mean
+constructed radius, and neither individual radii nor their guarantees change.
+Analytical width depends on the full joint design
 through `phi' Q_inverse phi`, not inverse local action density, so histogram
 counts alone do not determine its shape.
 

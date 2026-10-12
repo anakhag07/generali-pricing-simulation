@@ -65,11 +65,14 @@ law and the all-real coverage target. For the context-adjusted display only,
 subtracting $g(x)=x_1-0.5x_2+0.25x_3$ leaves the common truth $2a$;
 saved radii and coverage decisions are unchanged.
 
-The calibration scatter plots raw $y_i$ against $a_i$ and
-$t_i=v_1^\top(x_i-\bar x)$, where $v_1$ is the leading principal direction of
-the centered contexts (41.6\% of sample context variation). Reference planes
-evaluate each saved model at $x=\bar x+t v_1$; points retain the other context
-components and noise. This projection is for visualization only.
+The calibration figure shares an action axis on $[-2,2]$ across three panels:
+the original adjusted common band, truth, and mean adjusted frozen predictor
+with noisy $y_i-g(x_i)$;
+all-context means of $r_\delta$, $w_\delta$, and
+$|\widehat f-\widetilde f|$; and logged-action counts in width-$0.5$ bins
+with a rug. It displays 58 of 60 draws; two lie above $2$. Width uses joint-design
+leverage, not inverse local action density. The common intersection's half-width
+is not the mean radius. No model is refitted for this display.
 
 Seed roots $1101$, $1102$, $1103$, and $1104$ control contexts, logged actions,
 observations, and method randomness, respectively. Observation and method

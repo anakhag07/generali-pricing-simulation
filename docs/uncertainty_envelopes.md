@@ -444,21 +444,24 @@ radii. It performs no refitting and writes to
 - `window_certificate.json`: exact endpoint checks certifying the constant
   band's containment throughout `[-2,2]` at all 60 contexts. Convexity of the
   absolute affine error extends the endpoint checks to the whole interval.
-- `03_calibration_dataset.pdf`: the shared 60 raw observations plotted against
-  action and the leading principal-component score of centered contexts.
-  Reference wireframes show the truth, frozen predictor, and saved auxiliary
-  OLS model, with their action and PC1 slopes in the legend. These are model
-  slices at zero omitted PC scores; the observations retain omitted-context
-  effects and noise. No models are refitted.
-- `calibration_pca.json`: context mean, PC1 loadings/scores, singular values,
-  explained variance, reference-plane coefficients, and source/artifact hashes.
+- `03_calibration_dataset.pdf`: three panels sharing the action axis `[-2,2]`.
+  The top retains the analytical construction's original adjusted common band,
+  truth, and mean frozen predictor, and adds the observed `y_i-g(x_i)` points.
+  The middle shows means across all 60 contexts of total radius, auxiliary
+  width, and predictor/auxiliary discrepancy. The bottom shows logged-action
+  counts in bins of width 0.5, plus a rug marking the individual actions.
+- `calibration_action_support.json`: the displayed curves, action-support
+  counts, and source/artifact provenance.
 
-The PCA uses centered contexts only, without scaling or using actions or
-responses. Full deterministic SVD adds no random seed stream; its sign is fixed
-by making the first nonzero loading positive. In this saved dataset PC1 explains
-41.6% of context variation. Since the population context covariance is the
-identity, its leading direction is specific to this sample. PCA is for display
-only and has no role in fitting, radius construction, or coverage guarantees.
+The calibration display shows 58 of the 60 logged actions in `[-2,2]`; the two
+actions above 2 are explicitly noted. It preserves the saved data, fitted
+auxiliary model, and radius construction without refitting. The noisy response
+points need not lie within the shaded overlap: the envelope targets the true
+mean response, not noisy individual observations. The middle panel uses equal
+weight across all contexts; the common intersection's half-width is not the
+mean constructed radius. Analytical width depends on the full joint design
+through `phi' Q_inverse phi`, not inverse local action density, so histogram
+counts alone do not determine its shape.
 
 To generate only the calibration plot from the saved writeup run:
 

@@ -1,0 +1,59 @@
+import BootstrapCalibration.Envelope
+import BootstrapCalibration.Coverage
+import BootstrapCalibration.Conditioning
+import BootstrapCalibration.FiniteBootstrap
+import BootstrapCalibration.MultinomialMoments
+import BootstrapCalibration.OLS
+import BootstrapCalibration.TwoReplicas
+import BootstrapCalibration.IntegratedCalibration
+import BootstrapCalibration.AcceptedLaw
+import BootstrapCalibration.DesignMoments
+import BootstrapCalibration.GaussianComparison
+import BootstrapCalibration.NormCDF
+import BootstrapCalibration.ObservedCalibration
+
+-- This file imports completed modules only. An incomplete statistical
+-- obligation is documented in the proof note, never filled with `sorry`.
+
+#print axioms BootstrapCalibration.error_le_radius
+#print axioms BootstrapCalibration.radius_accuracy
+#print axioms BootstrapCalibration.radius_minimal
+#print axioms BootstrapCalibration.simultaneous_transfer
+#print axioms BootstrapCalibration.conditioning_error
+#print axioms BootstrapCalibration.two_draw_conditioning_error
+#print axioms BootstrapCalibration.random_threshold_coverage
+#print axioms BootstrapCalibration.coverage_of_cdf_mean_square
+#print axioms BootstrapCalibration.FiniteLaw.quantile_failure_le
+#print axioms BootstrapCalibration.FiniteLaw.quantile_mass_confidence
+#print axioms BootstrapCalibration.multinomial_second
+#print axioms BootstrapCalibration.multinomial_cross
+#print axioms BootstrapCalibration.multinomial_fourth
+#print axioms BootstrapCalibration.multinomial_square_cross
+#print axioms BootstrapCalibration.multinomial_square_variance
+#print axioms BootstrapCalibration.multinomial_square_covariance
+#print axioms BootstrapCalibration.OLS.weighted_refit_signal_noise
+#print axioms BootstrapCalibration.OLS.coefficientMap_cross_covariance
+#print axioms BootstrapCalibration.OLS.covariance_error_numerator
+#print axioms BootstrapCalibration.FiniteLaw.integrated_mass_centered_square
+#print axioms BootstrapCalibration.FiniteLaw.unconditional_quantile_failure
+#print axioms BootstrapCalibration.FiniteLaw.coverage_of_pair_comparisons
+#print axioms BootstrapCalibration.FiniteLaw.accepted_expectation_error
+#print axioms BootstrapCalibration.FiniteLaw.two_accepted_expectation_error
+#print axioms BootstrapCalibration.DesignMoments.multinomial_design_alpha
+#print axioms BootstrapCalibration.diagonal_gaussian_event_sq_le
+#print axioms BootstrapCalibration.exists_norm_threshold
+#print axioms BootstrapCalibration.DesignMoments.multinomial_matrix_gamma
+#print axioms BootstrapCalibration.DesignMoments.multinomial_matrix_zeta
+#print axioms BootstrapCalibration.FiniteLaw.firstAccepted_conditional_return
+#print axioms BootstrapCalibration.QuadraticRank.pairs_gram_singular_probability
+#print axioms BootstrapCalibration.gaussian_linearImage_bounded_test_le
+#print axioms BootstrapCalibration.gaussian_bootstrap_cdf_mse
+#print axioms BootstrapCalibration.measurable_sortedCritical_joint
+#print axioms BootstrapCalibration.sortedCritical_pos_mul
+#print axioms BootstrapCalibration.OLSBootstrapError.covarianceCalibrationError_le
+#print axioms BootstrapCalibration.QuadraticCalibrationDesign.finite_sample_bound
+#print axioms BootstrapCalibration.QuadraticCalibrationDesign.finite_sample_studentized_bound
+#print axioms BootstrapCalibration.RegressionInterpretation.weightedScore_eq
+#print axioms BootstrapCalibration.QuadraticCalibrationDesign.finite_sample_predictor_certificate
+
+#print axioms BootstrapCalibration.QuadraticCalibrationDesign.finite_sample_predictor_certificate_accepted

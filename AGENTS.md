@@ -388,6 +388,20 @@ Changing the `models` array is the supported model swap. Available keys are
 
 ### Key Components
 
+- `formal/` contains the pinned Lean/mathlib project for bootstrap-calibration
+  proofs. Its README records the verification boundary and build commands.
+  `ObservedCalibration.lean` completes the original-coordinate finite-sample
+  certificate for the exact-rank homoskedastic Gaussian quadratic pairs rule,
+  including the observed residual scale and accepted-only certified scores.
+  This mathematical verification does not certify floating-point fits, rank
+  tolerances, or numerical score certificates. Keep that boundary explicit in
+  `docs/bootstrap_finite_sample_candidate.tex` and reports.
+  Component modules separate finite sampling and conditioning, arbitrary-N
+  count/design moments, OLS matrix algebra, Gaussian density comparison,
+  two-replica integration, and norm-CDF thresholds. Audit exported theorem
+  axioms in `formal/BootstrapCalibration.lean`; do not replace an unfinished
+  model-to-distribution connection with an assumed bootstrap-validity bound.
+
 - `src/experiments/offline_bootstrap.py` owns the fixed-offline-data experiment
   (`kind: "offline_bootstrap"`, `manifests/offline_bootstrap.json`). It loads a
   saved predictor and observed data, freezes paired response variants, resamples

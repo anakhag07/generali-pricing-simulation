@@ -406,6 +406,12 @@ Changing the `models` array is the supported model swap. Available keys are
   The `uncertainty-envelopes*.json` manifests cover analytical, repeated-response,
   and constant-radius cases; usage and custom adapters are documented in
   `docs/uncertainty_envelopes.md`. Existing bootstrap experiments are unchanged.
+  `linear.check_constant_linear_containment` checks literal constant radii
+  against affine truth/predictor on the real line. `reporting.write_comparison`
+  verifies paired saved diagnostics and renders envelope/radius/excess slices
+  at fixed context indices; it does not refit or select extremal contexts.
+  The constant-3/writeup manifests retain a shared design and diagnostic window;
+  interval endpoint containment is separate from the all-real certificate.
 
 - `src/experiments/offline_bootstrap.py` owns the fixed-offline-data experiment
   (`kind: "offline_bootstrap"`, `manifests/offline_bootstrap.json`). It loads a

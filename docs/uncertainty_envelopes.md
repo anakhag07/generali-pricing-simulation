@@ -261,6 +261,12 @@ correct target kind. A theorem procedure must return the typed probability
 statement with assumptions and derivation. Unknown cases cannot establish
 continuous coverage by falling back silently to diagnostic points.
 
+The supplied `uncertainty-envelopes-constant-3.json` uses the Python checker
+`experiments.envelopes.linear:check_constant_linear_containment`. It checks a
+literal constant radius for affine truth/predictor over the whole real line:
+unequal action slopes imply failure; equal slopes reduce the check to the
+contextual intercept errors. This checker supplies realized containment only.
+
 Custom noise uses `calibration.noise` with the same Python specification and
 the signature `noise(X, actions, mean, options, rng) -> y`. It returns the full
 response vector, including the mean. It uses observation randomness, independently
@@ -396,3 +402,39 @@ construction-neutral records and metrics, `linear.py` holds the initial
 mathematics, `study.py` handles manifests/adapters/seeding/artifacts, and
 `reporting.py` replays the saved diagnostics. Bootstrap calibration can later
 be supplied as another builder without changing the metrics or outer runner.
+
+## Render the constant-3 versus writeup comparison
+
+The following paired launches retain the same 60 three-dimensional contexts,
+logged actions, responses, truth, predictor, and seeds. The constant construction
+uses the literal radius `r=3` (full band width 6). The writeup construction uses
+`r=abs(predictor-auxiliary_OLS)+w` with `sigma_bound=1`, `delta=.05`, and `p=5`,
+so `w=10*sqrt(phi' Q_inverse phi)`. Neither radius is optimized.
+
+```bash
+PYTHONPATH=src python scripts/run_experiment_manifest.py manifests/uncertainty-envelopes-constant-3.json --launch local
+PYTHONPATH=src python scripts/run_experiment_manifest.py manifests/uncertainty-envelopes-writeup.json --launch local
+PYTHONPATH=src python scratch/render_uncertainty_envelope_comparison.py
+```
+
+The final command replays saved point arrays without fitting. It writes to
+`results/uncertainty-envelopes-comparison/`:
+
+- `01_envelope_slices.pdf`: truth, predictor, and the two bands on shared axes,
+  at contexts 0, 1, and 2 in saved order.
+- `02_radius_excess.pdf`: radius and signed excess versus action for those
+  same contexts. Lines connect diagnostic samples for visualization only.
+- `metrics.csv` and `comparison.json`: full 60-context diagnostics, coverage
+  statements, and input/source identities.
+- `window_certificate.json`: exact endpoint checks certifying the constant
+  band's containment throughout `[-2,2]` at all 60 contexts. Convexity of the
+  absolute affine error extends the endpoint checks to the whole interval.
+
+Both metric tables use equal weight on the same 60-by-101 diagnostic locations
+in `[-2,2]`. The plotting window and metrics do not limit the all-real coverage
+checks. For these models, the predictor's action slope is 1.7 and truth's is
+2.0, so every finite constant radius fails somewhere on the real line. Radius 3
+covers this displayed window. Since this baseline and predictor are fixed,
+its coverage event does not change when calibration responses are redrawn.
+It is not a fitted 95% calibration procedure. The writeup construction has the
+separate theoretical lower bound of .95 and a realized all-real certificate.

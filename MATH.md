@@ -1097,6 +1097,68 @@ reports introduce no stochastic process, optimizer, interpolation rule, or
 new confidence guarantee. Saved report data records source provenance,
 repetition selection, action window, selected rows, and the plotted arrays.
 
+### 7.9 Fixed-design wild bootstrap with a bounded GP variance profile
+
+The `wild_bootstrap_envelopes` study compares thesis sections 1.2 and 1.3
+using the same contextual affine truth, frozen predictor, and auxiliary OLS
+fit. Hold p=d+2 fixed, draw the largest design once, and use row prefixes
+across n. All coverage events include every calibration context and every
+real action. The diagnostic action window [-2,2] only defines displays and
+equal-weight mean widths, never calibration or containment.
+
+The independently seeded environment is one exact finite-rank Gaussian
+process on t=a+c'x:
+$$G(t)=m^{-1/2}\sum_{k=1}^m[A_k\cos(\omega_k t)+B_k\sin(\omega_k t)],
+\quad A_k,B_k\stackrel{iid}{\sim}N(0,1),$$
+with deterministic frequencies from `FiniteFourierGPSpec`. Its covariance is
+$m^{-1}\sum_k\cos(\omega_k(t-s))$; it is not an interpolated squared-exponential
+GP. At every real query use this same Fourier formula and
+$$\sigma(x,a)=\sigma_{\min}+(\sigma_{\max}-\sigma_{\min})
+\operatorname{expit}(\eta G(a+c'x)),\qquad
+Y_i=\phi_i'\beta_0+\sigma(x_i,a_i)z_i,\quad z_i\stackrel{iid}{\sim}N(0,1).$$
+Condition on the entire saved design and GP profile. Responses are independent
+under that conditioning, with zero-mean errors and variances bounded globally
+by sigma_max squared. The known cap does not come from a sampled grid maximum.
+The environment, contexts, actions, observations, and wild multipliers have
+distinct seed streams; n prefixes pair observations, B prefixes pair
+multipliers, and all delta values and methods share the same fitted data.
+
+Let Q=P'P, V=Q^{-1}, beta_tilde=Q^{-1}P'Y, e_tilde=Y-P beta_tilde, and
+ell_P(x,a)=sqrt(phi'V phi). Section 1.3 uses raw residuals (no HC2/HC3
+adjustment) and independent Rademacher multipliers:
+$$\beta_b^*-\widetilde\beta=Q^{-1}P'(\widetilde\epsilon\odot\xi_b),
+\qquad T_b^*=\sup_{i,a\in\mathbb R}
+\frac{|\phi(x_i,a)'(\beta_b^*-\widetilde\beta)|}{\ell_P(x_i,a)}.$$
+Take the empirical higher 1-delta quantile of the first B statistics, with no
+additional Monte Carlo inflation. The width is q_hat ell_P; the analytical
+width is sigma_max sqrt(p/delta) ell_P. No noise standard error is estimated.
+Both transfer to the same predictor using r=|fhat-ftilde|+w.
+
+The all-real statistic is the norm of coefficient projections: with
+H_i=[(1,x_i',0)',e_a], M_i=H_i' V H_i and h_i=H_i'e,
+$$T(e)^2=\max_i h_i'M_i^{-1}h_i.$$
+Equivalently its threshold event is that q^2 M_i-h_i h_i' is positive
+semidefinite for every i. This includes both action tails; no sampled action
+grid defines the statistic. These are coefficient-norm/containment calculations,
+not selection of a downstream optimizer action. This study reports no pricing
+optimum, optimizer shift, or regret. Numerical boundary checks must not turn
+an ambiguous floating-point decision into a claimed exact certificate.
+
+One outer repetition supplies one joint auxiliary-coverage indicator and one
+joint transferred-envelope indicator. Report binomial Wilson intervals across
+independent response/multiplier repetitions at the frozen environment; never
+substitute context-averaged coverage. Increasing B reduces quantile Monte Carlo
+error only. Increasing n at fixed p can improve bootstrap approximation under
+regularity (including vanishing maximum leverage); neither finite-n coverage
+nor monotone convergence is guaranteed. The analytical method retains the
+finite-sample lower bound 1-delta, while bootstrap validity remains asymptotic
+and conditional on the required approximation. Simulated performance is not
+a proof of that approximation. The saved first repetition supplies slices;
+it is not selected for favorable coverage.
+
+Sources: `src/experiments/envelopes/wild.py`,
+`src/experiments/envelopes/wild_study.py`, and its reporting companion.
+
 ## 8. Gradients and Estimators
 
 For a differentiable action objective and policy, the population chain rule is

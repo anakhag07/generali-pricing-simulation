@@ -474,6 +474,22 @@ Changing the `models` array is the supported model swap. Available keys are
   fits, CSV, and provenance live in `results/uncertainty-envelopes-dimension-sweep/`.
   This is a width illustration, not an optimizer or coverage experiment.
 
+- `src/experiments/envelopes/wild.py` owns raw-residual wild-bootstrap
+  coefficient draws and all-real
+  auxiliary/transferred coverage calculations (MATH.md §7.9).
+  `wild_study.py` implements `kind: "wild_bootstrap_envelopes"` through the
+  shared manifest launcher and the bounded finite-Fourier GP variance profile;
+  `wild_reporting.py` owns saved-result PDFs.
+  `manifests/uncertainty-envelopes-wild-bootstrap.json` declares fixed p=5,
+  paired n/B/delta sweeps, 2,000 outer repetitions, and separate profile,
+  context, action, observation, and multiplier seed streams. The GP profile is
+  frozen; errors are independent conditional on it and the frozen design.
+  Coverage is joint over all saved contexts and every real action, not a
+  context average or a diagnostic-grid check. Bootstrap coverage is empirical,
+  with no finite-sample guarantee or monotonicity claim. This study performs
+  no downstream action optimization or regret calculation. Usage and artifact
+  interpretation are in `docs/wild_bootstrap_envelopes.md`.
+
 - `src/experiments/offline_bootstrap.py` owns the fixed-offline-data experiment
   (`kind: "offline_bootstrap"`, `manifests/offline_bootstrap.json`). It loads a
   saved predictor and observed data, freezes paired response variants, resamples
@@ -1298,6 +1314,8 @@ exclude `tests/objective/test_jax_prepared_glm*`, `tests/optimization/test_jax_*
 | Test File | Area |
 |---|---|
 | `test_envelope_core.py` | Finite-target per-context containment requires coverage of every declared action, including mixed outcomes |
+| `test_envelope_wild.py` | Raw-residual wild bootstrap, all-real auxiliary statistics, and transferred containment |
+| `test_envelope_wild_study.py` | Bounded GP profile, wild-bootstrap manifest, paired seeds/prefixes, saved-study replay, artifact identity, collection, and launch routing |
 | `test_config.py` | ExperimentConfig validation rules |
 | `test_config_template.py` | Config template scaffold |
 | `test_correctness_spec.py` | CorrectnessSpec gradient source modes; `denoised_exact` full-chain unwrap to the clean objective |
@@ -1357,6 +1375,7 @@ exclude `tests/objective/test_jax_prepared_glm*`, `tests/optimization/test_jax_*
 | `test_policy_objective_contribution_summary.py` | Customer objective/profit spread diagnostic plot |
 | `test_comparison_plots.py` | aggregate comparison curve plots and grouped final-metric bar charts |
 | `test_envelope_diagnostics.py` | Context-average simultaneous coverage and unresolved counts, exact finite-target replay, mean-radius decomposition, stable norm-ranked slices, saved-fit replay, and artifact identity |
+| `test_wild_envelope_reporting.py` | Separate auxiliary/transferred joint coverage, auxiliary widths, sweep completeness, saved-context identity, and PDF rendering |
 
 #### `tests/scripts/`
 | Test File | Area |

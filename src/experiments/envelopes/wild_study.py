@@ -1,0 +1,356 @@
+"""Paired fixed-design wild-bootstrap coverage and width sweeps (MATH §7.9)."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, replace
+from functools import lru_cache
+import hashlib
+from importlib.metadata import version
+import json
+import math
+import os
+from pathlib import Path
+import tempfile
+from types import SimpleNamespace
+
+import numpy as np
+from scipy.special import expit
+
+from experiments.launch import LaunchPlan
+from experiments.policy_lcb.common import read_json, write_json_atomic, wilson_interval
+from experiments.policy_lcb.continuous_gp_core import FiniteFourierGPSpec, FourierGPDraw
+from experiments.provenance import array_sha256, file_record
+from experiments.seeds import derive_seed
+from experiments.slurm import CPU_PROFILE
+from experiments.sweep_reporting import write_rows_csv
+from .linear import LinearModel, features
+from .wild import WildLinearDesign
+
+MANIFEST_KIND = "wild_bootstrap_envelopes"
+
+
+def _save_arrays(path, **arrays):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, temporary = tempfile.mkstemp(dir=path.parent, suffix=".npz")
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            np.savez_compressed(handle, **arrays)
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+@dataclass(frozen=True)
+class WildEnvelopeManifest:
+    """Explicit fixed environment, paired sweep axes, and launch settings."""
+
+    payload: dict
+    source_path: Path
+    launch: SimpleNamespace
+
+    @property
+    def name(self):
+        """Return the result directory slug."""
+        return self.payload["name"]
+
+
+def load_manifest(path):
+    """Validate the fixed-design comparison before generating observations."""
+    path = Path(path).resolve()
+    p = read_json(path)
+    if p.get("kind") != MANIFEST_KIND:
+        raise ValueError(f"Require kind={MANIFEST_KIND}.")
+    name = p["name"]
+    if (not isinstance(name, str) or not name or name in {".", ".."}
+            or any(c not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_" for c in name)):
+        raise ValueError("Require a safe project name.")
+    d = p["design"]["context_dim"]
+    if isinstance(d, bool) or not isinstance(d, int) or d < 1:
+        raise ValueError("Require a positive context dimension.")
+    if p["design"]["distribution"] != "independent_standard_normal":
+        raise ValueError("The design must use independent standard normal coordinates/actions.")
+    for model in ("truth", "predictor"):
+        if LinearModel(p[model]["coefficients"]).context_dim != d:
+            raise ValueError("Model and design dimensions disagree.")
+    if p["target"] != {"contexts": "calibration", "actions": "real_line"}:
+        raise ValueError("Require every calibration context and all real actions.")
+    for key, minimum in (("n_values", d+3), ("B_values", 2)):
+        vals = p[key]
+        if (not vals or any(isinstance(v, bool) or not isinstance(v, int) or v < minimum for v in vals)
+                or vals != sorted(set(vals))):
+            raise ValueError(f"Require sorted unique valid {key}.")
+    if (not p["deltas"] or len(set(p["deltas"])) != len(p["deltas"])
+            or any(isinstance(v, bool) or not isinstance(v, (float, int)) or not 0 < v < 1 for v in p["deltas"])):
+        raise ValueError("Require unique deltas strictly in (0,1).")
+    for key, axis in (("n", "n_values"), ("B", "B_values"), ("delta", "deltas")):
+        if p["baseline"][key] not in p[axis]:
+            raise ValueError("The baseline must occur in every sweep axis.")
+    for key, minimum in (("repetitions", 2), ("repetitions_per_task", 1)):
+        value = p[key]
+        if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
+            raise ValueError(f"Invalid {key}.")
+    if p["bootstrap"] != {"multipliers": "rademacher", "residuals": "raw", "quantile": "higher"}:
+        raise ValueError("This comparison implements the raw-residual Rademacher higher-quantile rule.")
+    noise = p["noise"]
+    if noise["type"] != "bounded_fourier_gp_scale":
+        raise ValueError("Require the bounded Fourier GP scale profile.")
+    bounds = np.array([noise["sigma_min"], noise["sigma_max"], noise["amplitude"]], dtype=float)
+    if not np.isfinite(bounds).all() or not 0 < bounds[0] < bounds[1] or bounds[2] <= 0:
+        raise ValueError("Require positive bounded varying noise scales and GP amplitude.")
+    if isinstance(noise["rank"], bool) or not isinstance(noise["rank"], int):
+        raise ValueError("GP rank must be an integer.")
+    FiniteFourierGPSpec(noise["rank"], noise["lengthscale"])
+    projection = np.asarray(noise["context_projection"], dtype=float)
+    if projection.shape != (d,) or not np.isfinite(projection).all():
+        raise ValueError("GP context projection must match context dimension.")
+    seeds = p["seeds"]
+    if (set(seeds) != {"contexts", "actions", "observations", "method", "profile"}
+            or any(isinstance(v, bool) or not isinstance(v, int) or v < 0 for v in seeds.values())
+            or len(set(seeds.values())) != 5):
+        raise ValueError("Require five distinct nonnegative integer seed roots.")
+    action = p["diagnostics"]["actions"]
+    if (not np.isfinite([action["min"], action["max"]]).all() or action["min"] >= action["max"]
+            or isinstance(action["count"], bool) or not isinstance(action["count"], int) or action["count"] < 2):
+        raise ValueError("Invalid diagnostic action grid.")
+    launch = p["launch"]
+    if launch["mode"] not in {"local", "auto", "slurm"} or launch["array"] not in {"none", "repetition"}:
+        raise ValueError("Invalid launch policy.")
+    parallel = launch.get("array_max_parallel")
+    if parallel is not None and (isinstance(parallel, bool) or not isinstance(parallel, int) or parallel < 1):
+        raise ValueError("Invalid array concurrency.")
+    return WildEnvelopeManifest(p, path, SimpleNamespace(**{**launch, "array_max_parallel": parallel}))
+
+
+def _sources():
+    root = Path(__file__).parents[1]
+    return [file_record(root / name) for name in (
+        "envelopes/wild.py", "envelopes/wild_study.py", "envelopes/linear.py",
+        "envelopes/core.py", "policy_lcb/continuous_gp_core.py", "seeds/streams.py",
+        "bootstrap_band_continuous.py", "offline_bootstrap_math.py", "policy_lcb/common.py",
+    )]
+
+
+def _contract(manifest):
+    payload = {"manifest": manifest.payload, "sources": _sources(),
+               "packages": {name: version(name) for name in ("numpy", "scipy", "sympy")}}
+    digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+    return digest, payload
+
+
+def noise_scale(X, actions, settings, gp_cos, gp_sin):
+    """Evaluate the saved analytic GP scale with a global known upper bound."""
+    draw = FourierGPDraw(FiniteFourierGPSpec(settings["rank"], settings["lengthscale"]),
+                         tuple(gp_cos), tuple(gp_sin))
+    t = np.asarray(actions) + np.asarray(X) @ np.asarray(settings["context_projection"])
+    return settings["sigma_min"] + (settings["sigma_max"]-settings["sigma_min"]) * expit(
+        settings["amplitude"] * draw.evaluate(t))
+
+
+@lru_cache(maxsize=4)
+def _environment(payload_json):
+    p = json.loads(payload_json)
+    nmax, d, seeds = max(p["n_values"]), p["design"]["context_dim"], p["seeds"]
+    X = np.random.default_rng(seeds["contexts"]).normal(size=(nmax, d))
+    actions = np.random.default_rng(seeds["actions"]).normal(size=nmax)
+    coefficients = np.random.default_rng(seeds["profile"]).normal(size=(2, p["noise"]["rank"]))
+    sigma = noise_scale(X, actions, p["noise"], *coefficients)
+    spec = p["diagnostics"]["actions"]
+    grid = np.linspace(spec["min"], spec["max"], spec["count"])
+    snapshot = {"X": X, "actions": actions, "sigma": sigma,
+                "gp_cos": coefficients[0], "gp_sin": coefficients[1], "actions_grid": grid}
+    designs, mean_ell = [], []
+    for n in p["n_values"]:
+        design = WildLinearDesign(X[:n], actions[:n])
+        phi = features(np.repeat(X[:n], len(grid), axis=0), np.tile(grid, n))
+        mean_ell.append(float(np.sqrt(np.einsum("ij,jk,ik->i", phi, design.covariance, phi)).mean()))
+        designs.append(design)
+    return snapshot, designs, np.array(mean_ell)
+
+
+def _prepare(manifest, runs_root, force=False):
+    project = Path(runs_root) / manifest.name
+    project.mkdir(parents=True, exist_ok=True)
+    digest, contract = _contract(manifest)
+    metadata, arrays_path = project / "environment.json", project / "environment.npz"
+    snapshot, designs, mean_ell = _environment(json.dumps(manifest.payload, sort_keys=True))
+    if metadata.exists() and not force:
+        saved = read_json(metadata)
+        if saved["contract_sha256"] != digest or saved["arrays"] != file_record(arrays_path):
+            raise ValueError("Saved environment or source contract changed; use a new result name or --force.")
+        with np.load(arrays_path, allow_pickle=False) as archived:
+            for key, value in {**snapshot, "mean_ell": mean_ell}.items():
+                if not np.array_equal(value, archived[key]):
+                    raise ValueError("Regenerated environment differs from archived inputs.")
+    else:
+        _save_arrays(arrays_path, **snapshot, mean_ell=mean_ell)
+        write_json_atomic(metadata, {"contract_sha256": digest, "contract": contract,
+                                    "arrays": file_record(arrays_path)})
+    return project, digest, snapshot, designs, mean_ell
+
+
+def _run_repetition(manifest, index, project, digest, snapshot, designs, mean_ell, force=False):
+    p = manifest.payload
+    output = project / "repetitions" / f"rep-{index:05d}.npz"
+    metadata = output.with_suffix(".json")
+    if metadata.exists() and not force:
+        record = read_json(metadata)
+        if record["contract_sha256"] != digest or record["arrays"] != file_record(output):
+            raise ValueError(f"Stale repetition {index}; use a new result name or --force.")
+        return record
+    seeds = {key: derive_seed(p["seeds"][key], f"repetition:{index}") for key in ("observations", "method")}
+    nmax, bmax = len(snapshot["X"]), max(p["B_values"])
+    innovations = np.random.default_rng(seeds["observations"]).normal(size=nmax)
+    multipliers = 2*np.random.default_rng(seeds["method"]).integers(0, 2, size=(bmax, nmax), dtype=np.int8)-1
+    truth = np.asarray(p["truth"]["coefficients"])
+    predictor = np.asarray(p["predictor"]["coefficients"])
+    shape = (len(p["n_values"]), len(p["B_values"]), len(p["deltas"]), 2)
+    critical, auxiliary, transferred = np.zeros(shape), np.zeros(shape, dtype=bool), np.zeros(shape, dtype=bool)
+    betas, statistics, truth_statistics = [], [], []
+    for ni, (n, design) in enumerate(zip(p["n_values"], designs)):
+        y = design.design @ truth + snapshot["sigma"][:n]*innovations[:n]
+        beta, errors = design.bootstrap_errors(y, multipliers[:, :n])
+        boot_statistics = design.statistics(errors)
+        true_statistic = float(design.statistics((beta-truth)[None, :])[0])
+        betas.append(beta)
+        statistics.append(boot_statistics)
+        truth_statistics.append(true_statistic)
+        decisions = {}
+        for bi, b in enumerate(p["B_values"]):
+            for di, delta in enumerate(p["deltas"]):
+                analytical = p["noise"]["sigma_max"]*np.sqrt(len(truth)/delta)
+                bootstrap = float(np.quantile(boot_statistics[:b], 1-delta, method="higher"))
+                for mi, value in enumerate((analytical, bootstrap)):
+                    critical[ni, bi, di, mi] = value
+                    covered = true_statistic <= value
+                    auxiliary[ni, bi, di, mi] = covered
+                    if value not in decisions:
+                        decisions[value] = bool(covered or design.transferred_contains(beta, predictor, truth, value))
+                    transferred[ni, bi, di, mi] = decisions[value]
+    output.parent.mkdir(parents=True, exist_ok=True)
+    _save_arrays(output, beta=betas, bootstrap_statistics=statistics,
+                        truth_statistics=truth_statistics, critical=critical,
+                        auxiliary_covered=auxiliary, transferred_covered=transferred,
+                        innovations=innovations)
+    record = {"index": index, "contract_sha256": digest, "seeds": seeds,
+              "multiplier_shape": [bmax, nmax], "multiplier_sha256": array_sha256(multipliers),
+              "arrays": file_record(output)}
+    write_json_atomic(metadata, record)
+    return record
+
+
+def run_repetition(manifest, index, runs_root, force=False):
+    """Run or replay one independent response/multiplier repetition."""
+    if not 0 <= index < manifest.payload["repetitions"]:
+        raise IndexError(index)
+    state = _prepare(manifest, runs_root, force=force)
+    return _run_repetition(manifest, index, *state, force=force)
+
+
+def _example(p, snapshot, designs, first):
+    ni = p["n_values"].index(p["baseline"]["n"])
+    bi = p["B_values"].index(p["baseline"]["B"])
+    di = p["deltas"].index(p["baseline"]["delta"])
+    n, grid = p["baseline"]["n"], snapshot["actions_grid"]
+    X = snapshot["X"][:n]
+    repeated, tiled = np.repeat(X, len(grid), axis=0), np.tile(grid, n)
+    phi = features(repeated, tiled)
+    ell = np.sqrt(np.einsum("ij,jk,ik->i", phi, designs[ni].covariance, phi)).reshape(n, -1)
+    example = {"X": X, "actions_grid": grid}
+    for name, coefficients in (("truth", p["truth"]["coefficients"]),
+                               ("predictor", p["predictor"]["coefficients"]),
+                               ("auxiliary", first["beta"][ni])):
+        example[name] = (phi @ coefficients).reshape(n, -1)
+    example["analytical_width"] = first["critical"][ni, bi, di, 0]*ell
+    example["bootstrap_width"] = first["critical"][ni, bi, di, 1]*ell
+    example["sigma_grid"] = noise_scale(repeated, tiled, p["noise"], snapshot["gp_cos"], snapshot["gp_sin"]).reshape(n, -1)
+    return example
+
+
+def collect(manifest, runs_root):
+    """Validate complete paired repetitions and report joint coverage and width."""
+    project, digest, snapshot, designs, mean_ell = _prepare(manifest, runs_root)
+    p = manifest.payload
+    records, aggregate_arrays, first = [], [], None
+    for index in range(p["repetitions"]):
+        path = project / "repetitions" / f"rep-{index:05d}.json"
+        record = read_json(path)
+        arrays_path = path.with_suffix(".npz")
+        if record["index"] != index or record["contract_sha256"] != digest or record["arrays"] != file_record(arrays_path):
+            raise ValueError("Incomplete or stale sweep collection.")
+        with np.load(arrays_path, allow_pickle=False) as arrays:
+            if index == 0:
+                first = {key: arrays[key] for key in arrays.files}
+            aggregate_arrays.append({key: arrays[key] for key in ("critical", "auxiliary_covered", "transferred_covered")})
+        records.append(file_record(path))
+    critical = np.stack([a["critical"] for a in aggregate_arrays])
+    auxiliary = np.stack([a["auxiliary_covered"] for a in aggregate_arrays])
+    transferred = np.stack([a["transferred_covered"] for a in aggregate_arrays])
+    metrics = []
+    for ni, n in enumerate(p["n_values"]):
+        for bi, b in enumerate(p["B_values"]):
+            for di, delta in enumerate(p["deltas"]):
+                for mi, method in enumerate(("analytical", "wild_bootstrap")):
+                    values = critical[:, ni, bi, di, mi]
+                    row = {"n": n, "B": b, "delta": delta, "method": method,
+                           "repetitions": p["repetitions"], "mean_width": float(values.mean()*mean_ell[ni]),
+                           "width_ratio": float((values/critical[:, ni, bi, di, 0]).mean()),
+                           "mean_critical": float(values.mean()),
+                           "max_leverage": float(np.max(designs[ni].leverage))}
+                    for prefix, decisions in (("auxiliary", auxiliary), ("transferred", transferred)):
+                        count = int(decisions[:, ni, bi, di, mi].sum())
+                        lo, hi = wilson_interval(count, p["repetitions"])
+                        row.update({f"{prefix}_covered_count": count, f"{prefix}_coverage": count/p["repetitions"],
+                                    f"{prefix}_lower": lo, f"{prefix}_upper": hi})
+                    metrics.append(row)
+    csv = project / "coverage_width_summary.csv"
+    write_rows_csv(csv, metrics, list(metrics[0]))
+    example = _example(p, snapshot, designs, first)
+    example_path = project / "example.npz"
+    _save_arrays(example_path, **example)
+    summary = {"manifest": p, "contract_sha256": digest, "metrics": metrics,
+               "environment": file_record(project / "environment.json"), "repetitions": records,
+               "csv": file_record(csv), "example": file_record(example_path),
+               "coverage_event": "All calibration contexts and all real actions jointly; auxiliary and transferred events separately.",
+               "bootstrap_claim": "Empirical study; no finite-sample bootstrap coverage guarantee.",
+               "analytical_claim": "Finite-sample coverage at least 1-delta conditional on design and GP profile.",
+               "numerics": "Double-precision coefficient norm and algebraic all-real checks; not an enclosure of ideal exact-arithmetic fitting error."}
+    from .wild_reporting import write_reports
+    plots = write_reports(summary, snapshot, example, project / "plots")
+    summary["plots"] = [file_record(path) for path in plots]
+    summary["reporting_source"] = file_record(Path(__file__).with_name("wild_reporting.py"))
+    documentation = Path(__file__).parents[3] / "docs" / "wild_bootstrap_envelopes.md"
+    experiment = project / "EXPERIMENT.md"
+    experiment.write_text(documentation.read_text()+"\n\n## Saved experiment manifest\n\n```json\n"+
+                          json.dumps(p, indent=2)+"\n```\n")
+    summary["documentation"] = file_record(experiment)
+    write_json_atomic(project / "summary.json", summary)
+    print(f"Completed wild-bootstrap envelope comparison: {project}", flush=True)
+    return summary
+
+
+def build_launch_plan(manifest, *, runs_root=None, force=False):
+    """Use the existing local/Slurm launcher with checkpointed response repeats."""
+    p = manifest.payload
+    count = math.ceil(p["repetitions"]/p["repetitions_per_task"])
+    def run_task(index, context):
+        if not 0 <= index < count:
+            raise IndexError(index)
+        state = _prepare(manifest, context.runs_root, force=force)
+        indices = range(index*p["repetitions_per_task"], min((index+1)*p["repetitions_per_task"], p["repetitions"]))
+        for repetition in indices:
+            _run_repetition(manifest, repetition, *state, force=force)
+            if (repetition+1) % 20 == 0 or repetition == indices.stop-1:
+                print(f"Completed repetition {repetition+1}/{p['repetitions']}", flush=True)
+        return {"repetitions": list(indices)}
+    def run_all(context):
+        for index in range(count):
+            run_task(index, context)
+        return collect(manifest, context.runs_root)
+    return LaunchPlan(name=manifest.name, task_count=count, requires_jax=False,
+                      run_task=run_task, run_all=run_all,
+                      collect=lambda context: collect(manifest, context.runs_root),
+                      runs_root=runs_root, default_launch=manifest.launch.mode,
+                      default_array=manifest.launch.array == "repetition",
+                      slurm_profile=replace(CPU_PROFILE, cpus_per_task=1, memory="4G"))

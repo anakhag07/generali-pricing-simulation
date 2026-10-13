@@ -89,6 +89,14 @@ components, and logged-action counts on one action axis. A
 [LaTeX section](docs/uncertainty_envelopes_simulation.tex) records the exact
 simulation instantiation.
 
+For a fixed-design comparison of analytical and wild-bootstrap envelopes under
+a frozen GP variance profile, run
+`PYTHONPATH=src python scripts/run_experiment_manifest.py manifests/uncertainty-envelopes-wild-bootstrap.json --launch local`.
+This sweeps sample size, bootstrap count, and confidence level with paired draws,
+reporting joint all-real-action coverage and mean widths. See the
+[wild-bootstrap guide](docs/wild_bootstrap_envelopes.md) for the noise model,
+seed contract, and interpretation of empirical coverage.
+
 ### Fixed offline bootstrap and optimization regret
 
 ```bash

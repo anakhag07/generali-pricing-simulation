@@ -200,6 +200,10 @@ def main(argv: list[str] | None = None) -> None:
         from experiments.bootstrap_band_sweep import load_manifest, build_launch_plan
         manifest = load_manifest(args.manifest)
         plan = build_launch_plan(manifest, runs_root=args.runs_root, force=bool(args.force))
+    elif kind == "wild_bootstrap_envelopes":
+        from experiments.envelopes.wild_study import load_manifest, build_launch_plan
+        manifest = load_manifest(args.manifest)
+        plan = build_launch_plan(manifest, runs_root=args.runs_root, force=bool(args.force))
     elif kind == "uncertainty_envelopes":
         from experiments.envelopes import load_manifest, build_launch_plan
         manifest = load_manifest(args.manifest)

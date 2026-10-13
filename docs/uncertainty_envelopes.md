@@ -420,6 +420,34 @@ PYTHONPATH=src python scripts/run_experiment_manifest.py manifests/uncertainty-e
 PYTHONPATH=src python scripts/run_experiment_manifest.py manifests/uncertainty-envelopes-writeup.json --launch local
 ```
 
+For a simpler comparison from the saved runs:
+
+```bash
+PYTHONPATH=src python scratch/render_uncertainty_envelope_comparison.py --simple
+```
+
+This adds `04_simple_comparison.pdf` and `simple_comparison.json` under
+`results/uncertainty-envelopes-comparison/`, preserving the earlier figures.
+It reuses the saved 60-context diagnostics on `[-2,2]` without refitting,
+new random draws, context adjustment, or interval intersection. Each panel
+contains one curve per construction:
+
+- **Smallest coverage margin:** `min_i [r_i(a) - abs(predictor_i(a)-truth_i(a))]`.
+  Values at or above zero mean every saved context is covered at that action;
+  negative values mean at least one context is missed.
+- **Mean envelope radius:** the mean of the 60 individual radii at each action.
+  The constant construction stays at exactly 3; a smaller radius means a
+  narrower band, with coverage assessed separately in the other panel.
+
+Both constructions cover this displayed window. The margin curves summarize
+one saved realization at sampled actions, not a coverage probability or a new
+continuum certificate; connecting lines are visualization only. The existing
+all-real certificates remain separate: the constant construction fails in
+the tails, while the analytical construction is covered for this realization
+and has a theoretical probability lower bound of 95% under its assumptions.
+The simple view uses known simulation truth to assess error and needs no
+context adjustment.
+
 To render or replace the comparison from their existing saved arrays:
 
 ```bash
@@ -513,6 +541,16 @@ there is no common covered interval. The shading summarizes all contexts;
 it is not any individual radius or band. In particular, even the constant-3
 panel's common intersection need not have width 6, although every original
 context-specific band has width 6.
+
+For the saved constant-3 run, the adjusted centers are `1.7*a + b_i`, where
+`b_i = 0.2 - 0.2*x_i1 + 0.1*x_i2 + 0.25*x_i3`. Their intercepts range from
+`-0.7252484289` to `0.9721804378`. Consequently the common half-width is
+`3 - (max(b_i)-min(b_i))/2 = 2.1512855666`, rather than 3 (or exactly 2.25).
+Subtracting the context term preserves every individual width; intersecting
+the shifted intervals is the step that narrows the common band. This display
+uses the known synthetic context contribution, an oracle available in the
+simulation. It is optional and is not part of the envelope construction or
+calibration; with real data that contribution would generally be unknown.
 
 The second comparison PDF uses these same endpoints `L=common_lower` and
 `U=common_upper` and common truth `h(a)=2*a`:

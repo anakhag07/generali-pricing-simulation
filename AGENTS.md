@@ -423,6 +423,13 @@ Changing the `models` array is the supported model swap. Available keys are
   even when the intersection is empty. `collapsed_tightness.npz` saves those
   curves and empty flags; `comparison.json` records both PDF/NPZ artifacts.
   Existing mean radius/excess metrics in `metrics.csv` are unchanged.
+  `scratch/render_uncertainty_envelope_comparison.py --simple` adds
+  `04_simple_comparison.pdf` and `simple_comparison.json` from the same saved
+  diagnostics, preserving previous figures. Its two panels show minimum
+  signed excess across contexts and mean individual radius on [-2,2], without
+  context adjustment or interval intersection. The constant-radius curve is 3.
+  Sampled coverage margins are neither coverage probabilities nor continuum
+  certificates; source certificates remain separate. No refit or new draw occurs.
   The rendering driver archives the old coverage slices only after replacement
   renders successfully; the source experiments' reports are preserved.
   The constant-3/writeup manifests retain a shared design and diagnostic window;

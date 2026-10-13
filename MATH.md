@@ -983,6 +983,17 @@ over contexts; H is the common band's half-width, not an individual radius.
 Original pointwise radius/excess summaries remain unchanged. Endpoint and
 margin reductions aggregate contexts only and do not select an action optimum.
 
+The optional `04_simple_comparison.pdf` uses the original saved pointwise
+diagnostics directly, without context adjustment or interval intersection:
+$$C(a)=\min_{1\le i\le n}s(x_i,a),\qquad
+  \overline r(a)=\frac1n\sum_{i=1}^n r(x_i,a).$$
+Here C equals S above, but its definition does not require an additive truth.
+C>=0 means all saved contexts are covered at that diagnostic action; negative
+C means at least one is missed. The mean radius uses equal context weights
+and equals 3 for the constant-3 construction. These are diagnostic curves for
+one saved realization, not estimates of coverage probability or a replacement
+for continuum certificates. Lines connecting their samples are visualization.
+
 Analytical runs use one saved calibration realization and a separately typed
 probability statement. Empirical runs freeze Z and the predictor and redraw
 independent response vectors; each repetition refits the entire construction.

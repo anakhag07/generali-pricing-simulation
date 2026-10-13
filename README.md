@@ -74,7 +74,11 @@ replays saved results into two panels showing overlap across all contexts after
 subtracting their known contribution to truth; it does not refit either radius.
 A second figure compares the common overlap's half-width and the smallest
 signed excess across contexts for both constructions.
-Its calibration figure aligns the adjusted observations/envelope, mean radius
+For a simpler view, run `PYTHONPATH=src python scratch/render_uncertainty_envelope_comparison.py --simple`.
+It adds `04_simple_comparison.pdf` with two curves per panel: smallest coverage
+margin and mean individual radius. This view needs no context adjustment;
+the constant-radius curve stays at 3. Existing comparison figures are preserved.
+The calibration figure aligns the adjusted observations/envelope, mean radius
 components, and logged-action counts on one action axis. A
 [LaTeX section](docs/uncertainty_envelopes_simulation.tex) records the exact
 simulation instantiation.

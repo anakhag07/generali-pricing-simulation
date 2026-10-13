@@ -65,6 +65,24 @@ def test_width_figure_uses_auxiliary_width_not_transferred_radius(saved_report):
         plt.close(fig)
 
 
+def test_shared_width_axis_contains_curves_for_every_delta(saved_report):
+    summary, _, example = saved_report
+    # A smaller delta produces much wider bands in later shared-axis panels.
+    for row in summary["metrics"]:
+        if row["delta"] == .05:
+            row["mean_width"] *= 10
+    fig = wild_reporting._width_figure(summary, example)
+    try:
+        for ax in fig.axes:
+            lower, upper = ax.get_ylim()
+            for line in ax.lines:
+                values = line.get_ydata()
+                assert np.all(values >= lower)
+                assert np.all(values <= upper)
+    finally:
+        plt.close(fig)
+
+
 def test_missing_and_duplicate_sweep_points_are_rejected(saved_report):
     summary, _, _ = saved_report
     broken = deepcopy(summary)

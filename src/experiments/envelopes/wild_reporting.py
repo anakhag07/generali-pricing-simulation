@@ -96,7 +96,7 @@ def _width_figure(summary, example):
                     marker="o", color=color, label=label)
         _sweep_axis(ax, p["n_values"], "n")
         ax.set_ylabel(r"Mean half-width $\overline{w}_\delta$")
-        ax.set_ylim(bottom=0)
+    axes[0].set_ylim(bottom=0)
     axes[0].legend()
     actions = np.asarray(example["actions_grid"])
     fig.supxlabel(

@@ -150,7 +150,9 @@ def check_linear_containment(
         raise ValueError("The affine all-real checker requires a real_line target.")
     if not isinstance(truth, LinearModel) or not isinstance(envelope.center, LinearModel):
         raise ValueError("The affine all-real checker requires LinearModel truth and predictor.")
-    if envelope.metadata.get("construction") != "linear_known_variance_transfer":
+    if envelope.metadata.get("construction") not in {
+        "linear_known_variance_transfer", "linear_wild_bootstrap_transfer",
+    }:
         raise ValueError("The affine all-real checker requires the linear transfer construction.")
     p = target.contexts.shape[1] + 2
     beta = np.asarray(envelope.state["beta"], dtype=float)

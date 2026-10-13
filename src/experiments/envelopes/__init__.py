@@ -1,6 +1,7 @@
 """Reusable uncertainty-envelope construction, coverage, and tightness studies."""
 
-from . import core, linear, reporting, study, diagnostics
+from . import core, linear, reporting, study, diagnostics, wild
+from .wild import WildLinearDesign
 from .core import (
     CalibrationData, ContainmentResult, EnvelopeValues, FittedEnvelope,
     ProbabilityStatement, TargetDomain, aggregate_coverage,
@@ -10,7 +11,7 @@ from .study import EnvelopeManifest, build_launch_plan, collect, load_manifest, 
 from .diagnostics import write_diagnostic_reports
 
 __all__ = [
-    "core", "linear", "reporting", "study", "diagnostics",
+    "core", "linear", "reporting", "study", "diagnostics", "wild", "WildLinearDesign",
     "CalibrationData", "ContainmentResult", "EnvelopeValues", "FittedEnvelope",
     "ProbabilityStatement", "TargetDomain", "aggregate_coverage",
     "check_finite_containment", "evaluate_tightness", "EnvelopeManifest",

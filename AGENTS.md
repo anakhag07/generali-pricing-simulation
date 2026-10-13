@@ -403,6 +403,24 @@ Changing the `models` array is the supported model swap. Available keys are
   realized containment, and empirical estimates remain distinct; unknown,
   failed, or missing repetitions suppress empirical estimates. Diagnostic grids
   do not define continuum coverage. No action optimizer/reference is involved.
+  `diagnostics.py` owns reusable `write_diagnostic_reports`, exported from
+  `experiments.envelopes` and called by collection alongside the legacy reports.
+  It writes `reports/diagnostics/01_context_coverage.pdf`,
+  `02_mean_envelope.pdf`, `03_radius_decomposition.pdf`,
+  `04_context_slices.pdf`, and `diagnostics.json` with saved curves/provenance.
+  Coverage averages per-context simultaneous-action certificates across the
+  requested repetitions; a diagnostic-window check never replaces the declared
+  target. Missing/unknown outcomes remain unresolved, not dropped.
+  New finite-target checks save one per-context certificate covering every
+  declared action; constant-affine all-real checks record every context as
+  uncovered when truth and predictor action slopes differ. Mean/slice
+  curves use one saved successful realization and equal context weights,
+  independent of flattened diagnostic weights. They use raw response coordinates.
+  Slice selection deterministically uses low/lower-median/high Euclidean norms;
+  normal-context centrality is not a guarantee of coverage difficulty.
+  The transfer decomposition averages absolute discrepancy before adding width.
+  A literal constant radius has no native decomposition; an optional verified
+  paired analytical project supplies only an external auxiliary slice reference.
   The `uncertainty-envelopes*.json` manifests cover analytical, repeated-response,
   and constant-radius cases; usage and custom adapters are documented in
   `docs/uncertainty_envelopes.md`. Existing bootstrap experiments are unchanged.
@@ -1271,6 +1289,7 @@ exclude `tests/objective/test_jax_prepared_glm*`, `tests/optimization/test_jax_*
 #### `tests/experiments/`
 | Test File | Area |
 |---|---|
+| `test_envelope_core.py` | Finite-target per-context containment requires coverage of every declared action, including mixed outcomes |
 | `test_config.py` | ExperimentConfig validation rules |
 | `test_config_template.py` | Config template scaffold |
 | `test_correctness_spec.py` | CorrectnessSpec gradient source modes; `denoised_exact` full-chain unwrap to the clean objective |
@@ -1329,6 +1348,7 @@ exclude `tests/objective/test_jax_prepared_glm*`, `tests/optimization/test_jax_*
 | `test_policy_delta_u_elasticity.py` | Delta-u histogram and reference sensitivity policy diagnostic plots |
 | `test_policy_objective_contribution_summary.py` | Customer objective/profit spread diagnostic plot |
 | `test_comparison_plots.py` | aggregate comparison curve plots and grouped final-metric bar charts |
+| `test_envelope_diagnostics.py` | Context-average simultaneous coverage and unresolved counts, exact finite-target replay, mean-radius decomposition, stable norm-ranked slices, saved-fit replay, and artifact identity |
 
 #### `tests/scripts/`
 | Test File | Area |

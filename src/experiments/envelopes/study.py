@@ -474,7 +474,9 @@ def collect(manifest, runs_root=None, force=False, *, plots=True):
     _write_json(project/"summary.json", summary)
     if plots:
         from .reporting import write_reports
-        summary["plots"] = [file_record(path) for path in write_reports(project)]
+        from .diagnostics import write_diagnostic_reports
+        paths = write_reports(project) + write_diagnostic_reports(project)
+        summary["plots"] = [file_record(path) for path in paths]
         _write_json(project/"summary.json", summary)
     print(f"Uncertainty envelopes: {project} ({len(rows)}/{manifest.repetitions} repetitions; "
           f"{sum(row['status'] == 'fit_failed' for row in rows)} failed)", flush=True)

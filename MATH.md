@@ -1030,6 +1030,57 @@ This explains wider uncertainty away from the design's fitted action trend;
 the histogram alone cannot determine leverage. Display averages replay saved
 width/discrepancy/radius arrays without new observations, model fits, or PCA.
 
+The reusable per-experiment diagnostic reports replay the original coordinates
+without subtracting context effects or intersecting intervals. For repetition
+j and target context x_i, define simultaneous action coverage on the declared
+coverage domain A by
+$$c_{ji}=\mathbf{1}\{\forall a\in A:\;
+ |\widehat f_j(x_i,a)-f(x_i,a)|\le r_{\delta,j}(x_i,a)\},\qquad
+ \overline c=\frac{1}{Jn}\sum_{j=1}^{J}\sum_{i=1}^{n}c_{ji}.$$
+The coverage bar uses saved containment certificates, or all declared locations
+for a finite target, rather than checking only the diagnostic action window.
+Unknown, failed, and missing evaluations remain in the requested denominator;
+an exact value is shown only when every c_ji is known. This is the average
+fraction of contexts whose entire action domain is covered, not the joint
+all-context event $\prod_i c_{ji}$. A single saved realization is not a coverage
+probability estimate. Any repeated-response interpretation retains the original
+fixed-design sampling contract and is distinct from an analytical lower bound.
+
+Mean and slice curves use one saved successful repetition (the first by default,
+or an explicit repetition index). For that repetition, arithmetic context means
+at each saved diagnostic action are
+$$\overline f(a)=\frac1n\sum_i f(x_i,a),\qquad
+ \overline{\widehat f}(a)=\frac1n\sum_i\widehat f(x_i,a),\qquad
+ \overline r_\delta(a)=\frac1n\sum_i r_\delta(x_i,a).$$
+The mean envelope is $[\overline{\widehat f}-\overline r_\delta,
+\overline{\widehat f}+\overline r_\delta]$. Its containment of $\overline f$
+does not imply containment at every context. These means use equal context
+weights, not the flattened context/action diagnostic weights and not averages
+across response repetitions. Where native transfer components are saved,
+$$\overline D(a)=\frac1n\sum_i
+ |\widehat f(x_i,a)-\widetilde f(x_i,a)|,\qquad
+ \overline w_\delta(a)=\frac1n\sum_i w_\delta(x_i,a),\qquad
+ \overline r_\delta(a)=\overline D(a)+\overline w_\delta(a).$$
+The absolute discrepancy is averaged before summing with the auxiliary width;
+it is not the absolute difference of the mean fitted functions. A directly
+specified constant radius c has no native auxiliary fit or such decomposition.
+An optional matched analytical project's auxiliary fit may be shown as an
+explicit external reference in its slices, but must not be used to decompose c.
+Matching requires identical saved contexts, diagnostic actions, truth, center,
+and calibration data; it consumes no randomness and fits no additional model.
+
+Context slices select the lowest, lower-median, and highest ranks of
+$\|x_i\|_2$ with stable ties resolved by the original row index. The zero-based
+median rank is $\lfloor(n-1)/2\rfloor$; duplicate selected indices are removed
+for small n. For standard-normal contexts, this is a centrality display, not a
+claim that radius or coverage difficulty is monotone in the norm. Each slice
+shows unadjusted truth, predictor, available auxiliary fit, and predictor plus
+or minus its own radius. Connected saved action samples are visualization only;
+all-real or other continuous-domain claims still use the saved checker. The
+reports introduce no stochastic process, optimizer, interpolation rule, or
+new confidence guarantee. Saved report data records source provenance,
+repetition selection, action window, selected rows, and the plotted arrays.
+
 ## 8. Gradients and Estimators
 
 For a differentiable action objective and policy, the population chain rule is

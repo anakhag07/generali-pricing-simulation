@@ -353,6 +353,8 @@ Each result directory contains:
   in separate panels.
 - `reports/02_radius_excess.pdf`: radius and signed-excess histograms over the
   saved finite diagnostic measure.
+- `reports/diagnostics/`: the four per-experiment PDFs and `diagnostics.json`
+  described below, generated automatically during collection.
 
 `points.npz` retains contexts, actions, center, truth, radius, absolute error,
 excess, normalized weights, and any construction components. Fit or evaluation
@@ -402,6 +404,107 @@ construction-neutral records and metrics, `linear.py` holds the initial
 mathematics, `study.py` handles manifests/adapters/seeding/artifacts, and
 `reporting.py` replays the saved diagnostics. Bootstrap calibration can later
 be supplied as another builder without changing the metrics or outer runner.
+
+## Standard diagnostic reports
+
+Every uncertainty-envelope collection creates four separate PDFs under
+`reports/diagnostics/`. The same reporting function can replay saved experiments
+without fitting a model or drawing new data:
+
+```bash
+PYTHONPATH=src python - <<'PY'
+from experiments.envelopes import write_diagnostic_reports
+from experiments.paths import results_root
+
+for path in write_diagnostic_reports(results_root() / "uncertainty-envelopes"):
+    print(path)
+PY
+```
+
+The plots use standard Matplotlib formatting and original response coordinates;
+there is no context adjustment or intersection across contexts. Their precise
+meanings are:
+
+1. **`01_context_coverage.pdf`: simultaneous coverage averaged over contexts.**
+   A context is covered only if its truth lies in its envelope at every action
+   in the experiment's declared coverage domain. The bar averages these binary
+   indicators over contexts and requested response repetitions, using saved
+   containment results. Its footnote states the domain, generation method,
+   and repetition count. A single realized bar is not an estimated sampling
+   probability. It is also distinct from the joint event that every context
+   is simultaneously covered. Unknown, failed, or missing evaluations remain
+   in the denominator; an exact coverage value is withheld when unresolved.
+2. **`02_mean_envelope.pdf`: mean envelope, truth, and radius.** At each saved
+   action, take equal-weight arithmetic means across contexts. The response
+   panel shows mean truth and mean predictor with the band
+   `mean(f_hat) +/- mean(r_delta)`; the radius panel shows `mean(r_delta)`.
+   Containment of the mean truth does not prove coverage of every context.
+   The constant-3 experiment has mean radius exactly 3 and full band width 6.
+3. **`03_radius_decomposition.pdf`: mean radius components.** For the linear
+   transfer construction, `mean(abs(f_hat - f_tilde)) + mean(w_delta)` equals
+   `mean(r_delta)`. The absolute value is taken before averaging. A directly
+   specified constant radius has no auxiliary-fit/width decomposition; its
+   report displays the supplied radius and explains that limitation. Custom
+   constructions without saved native components likewise do not invent them.
+4. **`04_context_slices.pdf`: representative context slices.** The selected
+   contexts have the lowest, lower-median-ranked, and highest Euclidean norms.
+   Norm ties retain the original row order, and duplicate selected rows are
+   removed for very small context sets. Each panel shows true `f`, frozen
+   `f_hat`, auxiliary `f_tilde` when available, and `f_hat +/- r_delta`.
+   For standard-normal contexts, norm indicates centrality; it is a proxy for
+   exploring difficulty, not a claim that a higher norm always means worse
+   coverage or a wider envelope.
+
+The mean, decomposition, and slice plots use the first successful saved
+repetition by default. Pass `repetition_index=...` to select another saved
+realization; the coverage bar still aggregates the requested study repetitions.
+Context means do not use `tightness.weights` and do not average over response
+repetitions. All drawn curves join saved diagnostic actions for visualization.
+Finite samples cannot certify a continuous action domain.
+
+`diagnostics.json` records the plotted arrays, coverage aggregation, selected
+repetition, selected context rows and norms, and source provenance.
+`source_summary.json` preserves the exact input summary; an external auxiliary
+reference also saves `auxiliary_summary.json`. These snapshots remain verifiable
+when later collection updates the source projects' plot lists. Direct
+replay leaves the experiment's original fit, data, and legacy reports intact;
+collection also updates the aggregate output records.
+
+To generate separate reports for the paired constant-3 and analytical linear
+experiments, including the analytical fit as an explicitly labeled external
+reference in the constant-radius slices:
+
+```bash
+PYTHONPATH=src python - <<'PY'
+from experiments.envelopes import write_diagnostic_reports
+from experiments.paths import results_root
+
+root = results_root()
+analytical = root / "uncertainty-envelopes-writeup"
+write_diagnostic_reports(analytical)
+write_diagnostic_reports(
+    root / "uncertainty-envelopes-constant-3",
+    auxiliary_project=analytical,
+)
+PY
+```
+
+The optional `auxiliary_project` must match the saved contexts, diagnostic
+actions, truth, center, and calibration data. Its fitted `f_tilde` is a reference
+for the constant-radius slices only; it did not construct that radius and its
+components do not sum to 3. Without this argument, a constant-radius report has
+no auxiliary line.
+
+The supplied pair targets all real actions, while its diagnostic window is
+`[-2,2]`. The saved constant-3 experiment therefore has 0% action-simultaneous
+context coverage and the saved analytical experiment has 100%, even though
+both cover truth throughout the plotted window. The predictor/truth slope
+mismatch eventually defeats every finite constant radius on the real line.
+These are realized containment results for the saved datasets; the analytical
+construction's 95% probability lower bound is a separate statement.
+
+`src/experiments/envelopes/diagnostics.py` owns this reusable replay and
+`write_diagnostic_reports` is exported from `experiments.envelopes`.
 
 ## Render the constant-3 versus writeup comparison
 

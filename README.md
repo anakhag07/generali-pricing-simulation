@@ -69,6 +69,12 @@ realized containment and empirical estimates. Results go to
 `results/uncertainty-envelopes/` and `results/uncertainty-envelopes-empirical/`.
 See [the usage guide](docs/uncertainty_envelopes.md) for custom radius functions,
 nonlinear truth, saved calibration data, the constant-radius example, and replay.
+Each collection also writes four PDFs under `reports/diagnostics/`: simultaneous
+action coverage averaged over contexts, the mean envelope and truth, radius
+components, and low/median/high context-norm slices. These use original response
+coordinates, with no context adjustment. The
+[diagnostic report guide](docs/uncertainty_envelopes.md#standard-diagnostic-reports)
+explains coverage domains, constant-radius components, and replay from saved data.
 The [paired constant-3 comparison](docs/uncertainty_envelopes.md#render-the-constant-3-versus-writeup-comparison)
 replays saved results into two panels showing overlap across all contexts after
 subtracting their known contribution to truth; it does not refit either radius.

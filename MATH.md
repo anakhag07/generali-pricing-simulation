@@ -924,6 +924,22 @@ $$0\le r-|\widehat f-f|\le 2w.$$
 At logged rows, sum_i phi_i'Q^{-1}phi_i=p, providing a normalization check.
 Context dimension enters p and leverage, without an additional union bound.
 
+The one-off linear dimension sweep keeps sigma and delta fixed and adds
+zero-coefficient standard-normal covariates to both truth and predictor.
+The explicit square-root-p factor does not describe all dimension dependence:
+leverage is typically of order p/n, giving auxiliary width of order
+p/sqrt(n). Thus fixed n and n proportional to p have different scaling.
+On the logged design rows the exact identity is
+$$\sqrt{\frac1n\sum_i w_\delta(X_i,A_i)^2}
+  =\frac{\sigma p}{\sqrt{n\delta}}.$$
+This RMS identity is a numerical check, not an equality for arithmetic mean
+width on the context-by-action plotting grid. That mean is computed directly
+using the repository's fitted envelope. The total radius also contains the
+absolute predictor/auxiliary discrepancy. Square-root-p reference curves
+are anchored at p=5 rather than fitted to the sweep. The sweep uses
+n=12p with p=5,10,...,100; p=d+2. The original three-dimensional
+signal is retained, and all added coefficients are zero.
+
 The built-in optional width_multiplier multiplies w, not the discrepancy.
 Multipliers at least one retain this bound; smaller multipliers are allowed
 only without claiming this analytical guarantee. A constant-radius adapter

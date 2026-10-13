@@ -465,6 +465,14 @@ Changing the `models` array is the supported model swap. Available keys are
   display and artifact replay.
   `docs/uncertainty_envelopes_simulation.tex` is the standalone mathematical
   description of the concrete paired simulation, ready to copy into a writeup.
+  `scratch/plot_linear_envelope_dimension_sweep.py` extends the saved analytical
+  example with zero-coefficient nuisance covariates for p=d+2=5,10,...,100.
+  It uses n=12p and paired existing seed streams, preserving
+  the original n=60,p=5 calibration case. It fits via `fit_linear_transfer`,
+  averages radius/components over calibration contexts and saved diagnostic
+  actions, and checks the separate logged-row RMS identity. The PDF, inputs,
+  fits, CSV, and provenance live in `results/uncertainty-envelopes-dimension-sweep/`.
+  This is a width illustration, not an optimizer or coverage experiment.
 
 - `src/experiments/offline_bootstrap.py` owns the fixed-offline-data experiment
   (`kind: "offline_bootstrap"`, `manifests/offline_bootstrap.json`). It loads a

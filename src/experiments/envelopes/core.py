@@ -199,7 +199,13 @@ def check_finite_containment(envelope, truth, target):
     evaluated = envelope.evaluate(X, a)
     error = np.abs(evaluated.center-values(truth(X, a), len(a), "truth"))
     failed = np.flatnonzero(error > evaluated.radius)
-    details = {"point_count": len(a), "numerics": "floating-point evaluation; no rounding enclosure"}
+    covered = (error <= evaluated.radius).reshape(len(target.contexts), -1).all(axis=1)
+    details = {
+        "point_count": len(a), "context_count": len(target.contexts),
+        "contexts": [{"context_index": index, "covered": bool(value)}
+                     for index, value in enumerate(covered)],
+        "numerics": "floating-point evaluation; no rounding enclosure",
+    }
     if len(failed):
         index = int(failed[0])
         details["witness"] = {"context": X[index].tolist(), "action": float(a[index]),

@@ -218,6 +218,8 @@ def check_constant_linear_containment(
         "arithmetic": "Exact rational comparison of stored floating-point coefficients, contexts, and constant radius; does not enclose floating-point evaluation error.",
     }
     if slope != 0:
+        details["contexts"] = [{"context_index": index, "covered": False}
+                               for index in range(len(target.contexts))]
         details["reason"] = "Unequal action slopes make the absolute prediction error exceed every finite constant radius in the tails."
         return ContainmentResult("violated", "constant_affine_all_real", "real_line", details)
     contexts = []

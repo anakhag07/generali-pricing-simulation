@@ -183,10 +183,14 @@ def test_literal_constant_detects_arbitrarily_distant_tail_failure():
     X, actions = np.zeros((3, 1)), np.array([-2., 0., 2.])
     evaluated = fit.evaluate(X, actions)
     assert np.all(np.abs(evaluated.center-truth(X, actions)) <= evaluated.radius)
-    result = check_constant_linear_containment(fit, truth, TargetDomain([[0.]]))
+    result = check_constant_linear_containment(fit, truth, TargetDomain([[-10.], [0.], [10.]]))
     assert result.status == "violated"
     assert result.details["slope_mismatch"]
     assert "tails" in result.details["reason"]
+    assert result.details["context_count"] == 3
+    assert result.details["contexts"] == [
+        {"context_index": index, "covered": False} for index in range(3)
+    ]
 
 
 @pytest.mark.parametrize("contexts,expected", [

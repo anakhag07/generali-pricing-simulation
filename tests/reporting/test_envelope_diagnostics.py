@@ -160,6 +160,59 @@ def test_component_decomposition_averages_absolute_discrepancy_before_summing():
     np.testing.assert_array_equal(np.abs(averages["center"]-averages["auxiliary"]), 0.)
 
 
+def test_repetition_average_preserves_absolute_discrepancy_and_coverage_events():
+    grids = {index: _grid(count=2) for index in range(2)}
+    for index, auxiliary in enumerate((2., -2.)):
+        grid = grids[index]
+        grid["auxiliary"] = np.full_like(grid["center"], auxiliary)
+        grid["discrepancy"] = np.abs(grid["center"]-grid["auxiliary"])
+        grid["width"] = np.full_like(grid["center"], 1.+2*index)
+        grid["radius"] = grid["discrepancy"]+grid["width"]
+        grid["truth"][:] = 4.
+        grid["excess"] = grid["radius"]-np.abs(grid["center"]-grid["truth"])
+    summary = _summary([_row("violated", contexts=[False, False]),
+                        _row("covered", index=1, contexts=[True, True])], count=2)
+    average = diagnostics._average_repetition_grids(summary, grids)
+    for key in ("X", "actions", "truth", "center"):
+        np.testing.assert_array_equal(average[key], grids[0][key])
+    np.testing.assert_array_equal(average["auxiliary"], 0.)
+    np.testing.assert_array_equal(average["discrepancy"], 2.)
+    np.testing.assert_array_equal(average["width"], 2.)
+    np.testing.assert_array_equal(average["radius"], 4.)
+    np.testing.assert_array_equal(average["excess"], 0.)
+    # Averaged endpoints cover the truth; only one actual dataset covered it.
+    assert diagnostics._coverage(summary, grids)["mean"] == .5
+    np.testing.assert_array_equal(grids[0]["radius"], 3.)
+    np.testing.assert_array_equal(grids[1]["radius"], 5.)
+
+
+@pytest.mark.parametrize("failure", ["missing", "failed", "missing_points"])
+def test_repetition_average_rejects_incomplete_saved_fits(failure):
+    rows = [_row("covered"), _row("covered", index=1)]
+    grids = {index: _grid() for index in range(2)}
+    if failure == "missing":
+        rows.pop()
+        grids.pop(1)
+    elif failure == "failed":
+        rows[1]["status"] = "fit_failed"
+    else:
+        grids.pop(1)
+    with pytest.raises(ValueError, match="every requested repetition"):
+        diagnostics._average_repetition_grids(_summary(rows, requested=2), grids)
+
+
+@pytest.mark.parametrize("changed", ["X", "actions", "truth", "center", "component_keys"])
+def test_repetition_average_requires_fixed_locations_and_models(changed):
+    grids = {index: _grid() for index in range(2)}
+    if changed == "component_keys":
+        grids[1]["width"] = np.ones_like(grids[1]["center"])
+    else:
+        grids[1][changed] += .1
+    summary = _summary([_row("covered"), _row("covered", index=1)])
+    with pytest.raises(ValueError, match="identical contexts, actions, truth, center"):
+        diagnostics._average_repetition_grids(summary, grids)
+
+
 @pytest.mark.parametrize("inconsistent", ["component_sum", "absolute_discrepancy"])
 def test_replay_rejects_component_errors_that_cancel_in_the_mean(tmp_path, inconsistent):
     contexts = np.array([[0.], [1.]])
@@ -237,13 +290,17 @@ def test_context_slices_use_stable_norm_order_and_lower_median(contexts, expecte
     np.testing.assert_array_equal(diagnostics._slice_indices(np.asarray(contexts)), expected)
 
 
-def test_reports_replay_a_saved_fit_and_reject_tampered_inputs(tmp_path, monkeypatch):
+@pytest.mark.parametrize("average_repetitions", [False, True])
+def test_reports_replay_a_saved_fit_and_reject_tampered_inputs(
+        tmp_path, monkeypatch, average_repetitions):
     manifest_path = Path(__file__).parents[2]/"manifests"/"uncertainty-envelopes.json"
     payload = json.loads(manifest_path.read_text())
     payload["calibration"].update(n=8, context_dim=1)
     payload["problem"]["truth"]["coefficients"] = [0., .5, 1.]
     payload["problem"]["predictor"]["coefficients"] = [.2, .4, .8]
     payload["tightness"]["actions"]["count"] = 5
+    if average_repetitions:
+        payload["coverage"].update(mode="empirical", repetitions=3, redraw="responses", confidence=.95)
     local_manifest = tmp_path/"manifest.json"
     local_manifest.write_text(json.dumps(payload))
     specification = study.load_manifest(local_manifest)
@@ -256,13 +313,24 @@ def test_reports_replay_a_saved_fit_and_reject_tampered_inputs(tmp_path, monkeyp
 
     monkeypatch.setattr(study, "fit_linear_transfer", forbidden_fit)
     monkeypatch.setattr(study, "run_repetition", forbidden_fit)
-    paths = diagnostics.write_diagnostic_reports(project)
+    paths = diagnostics.write_diagnostic_reports(project, average_repetitions=average_repetitions)
     assert len(paths) == 4
     assert all(path.parent == project/"reports"/"diagnostics" for path in paths)
     assert all(path.suffix == ".pdf" and path.read_bytes().startswith(b"%PDF-") for path in paths)
     assert (project/"reports"/"diagnostics"/"diagnostics.json").is_file()
     assert all(path.read_bytes() == contents for path, contents in original.items())
     assert not list(project.rglob("*.png"))
+    report = json.loads((project/"reports"/"diagnostics"/"diagnostics.json").read_text())
+    assert report["average_repetitions"] == average_repetitions
+    assert report["averaged_repetition_count"] == (3 if average_repetitions else None)
+    assert report["selected_repetition"] == (None if average_repetitions else 0)
+    if average_repetitions:
+        saved = [diagnostics._load_grid(row, summary["target"]) for row in summary["repetitions"]]
+        for key in ("radius", "auxiliary", "width", "discrepancy", "excess"):
+            np.testing.assert_allclose(report["grid"][key], np.mean([grid[key] for grid in saved], axis=0))
+        assert "all 3 requested calibration datasets" in report["semantics"]
+        with pytest.raises(ValueError, match="either an explicit repetition or an average"):
+            diagnostics.write_diagnostic_reports(project, repetition_index=0, average_repetitions=True)
 
     collected = study.collect(specification, tmp_path/"runs", plots=True)
     assert len(collected["plots"]) == 6

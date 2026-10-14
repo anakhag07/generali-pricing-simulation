@@ -89,6 +89,14 @@ components, and logged-action counts on one action axis. A
 [LaTeX section](docs/uncertainty_envelopes_simulation.tex) records the exact
 simulation instantiation.
 
+The `uncertainty-envelopes-constant-3-2000.json` and
+`uncertainty-envelopes-analytical-radius-2000.json` manifests repeat the original
+fixed-design comparison across 2,000 paired response datasets. Replay their
+mean radii and coverage with
+`PYTHONPATH=src python scratch/render_uncertainty_envelope_comparison.py --average`.
+Per-construction diagnostics support `write_diagnostic_reports(...,
+average_repetitions=True)` to average every envelope and slice as well.
+
 For a fixed-design comparison of analytical and wild-bootstrap envelopes under
 a frozen GP variance profile, run
 `PYTHONPATH=src python scripts/run_experiment_manifest.py manifests/uncertainty-envelopes-wild-bootstrap.json --launch local`.

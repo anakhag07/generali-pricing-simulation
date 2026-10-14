@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import json
 from copy import deepcopy
+from pathlib import Path
 
 from matplotlib.axes import Axes
 from matplotlib.backends.backend_agg import FigureCanvasAgg
@@ -391,3 +393,70 @@ def test_comparison_rejects_edited_radius_label_in_project_summary(tmp_path):
     path.write_text(json.dumps(summary))
     with pytest.raises(ValueError, match="manifest or contract identity"):
         write_comparison(projects, tmp_path / "comparison")
+
+
+@pytest.fixture
+def average_comparison(monkeypatch, tmp_path):
+    source = Path(__file__).resolve().parents[2] / "scratch" / "render_uncertainty_envelope_comparison.py"
+    spec = importlib.util.spec_from_file_location("average_envelope_comparison", source)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    projects = [tmp_path / "constant", tmp_path / "analytical"]
+    actions = np.array([-2., 0., 2.])
+    contexts = np.array([[-1.], [1.]])
+    truth = contexts + actions
+    radii = [np.array([[1., 7., 3.], [5., 3., 5.]]),
+             np.array([[7., 1., 9.], [3., 5., 1.]])]
+    summaries, grids = [], {}
+    for method, project in enumerate(projects):
+        rows = []
+        for index in range(2):
+            key = (method, index)
+            rows.append({"index": index, "grid_key": key,
+                         "artifacts": {"calibration": {"sha256": f"dataset-{index}", "bytes": 100 + index}}})
+            radius = np.full((2, 3), 3.) if method == 0 else radii[index]
+            grids[key] = {"X": contexts, "actions": actions, "truth": truth,
+                          "center": truth + 2., "radius": radius, "excess": radius - 2.}
+        summaries.append({"complete": True, "successful": True, "requested_repetitions": 2,
+                          "target": {"context_count": 2}, "repetitions": rows})
+    monkeypatch.setattr(module, "_load_project", lambda project: summaries[projects.index(project)])
+    monkeypatch.setattr(module, "_load_grid", lambda row, target: grids[row["grid_key"]])
+    return module, projects, summaries, grids
+
+
+def test_average_comparison_reduces_context_margins_before_averaging_datasets(average_comparison):
+    module, projects, summaries, grids = average_comparison
+    loaded, curves = module._average_curves(projects)
+    assert loaded == summaries
+    assert [curve["label"] for curve in curves] == ["constant radius = 3", "analytical-radius"]
+    np.testing.assert_array_equal(curves[1]["actions"], [-2., 0., 2.])
+    np.testing.assert_allclose(curves[0]["mean_radius"], 3.)
+    np.testing.assert_allclose(curves[0]["minimum_excess"], 1.)
+    np.testing.assert_allclose(curves[1]["mean_radius"], [4., 4., 4.5])
+    np.testing.assert_allclose(curves[1]["minimum_excess"], [0., 0., 0.])
+    # Different contexts limit the two draws; reducing an averaged surface
+    # would hide those failures and incorrectly report positive margins.
+    average_then_minimum = ((grids[(1, 0)]["excess"] + grids[(1, 1)]["excess"]) / 2).min(axis=0)
+    np.testing.assert_allclose(average_then_minimum, [2., 2., 1.])
+    assert np.all(curves[1]["minimum_excess"] < average_then_minimum)
+
+
+@pytest.mark.parametrize("field", ["sha256", "bytes", "index"])
+def test_average_comparison_rejects_unpaired_response_datasets(average_comparison, field):
+    module, projects, summaries, _ = average_comparison
+    row = summaries[1]["repetitions"][1]
+    if field == "index":
+        row["index"] = 99
+    else:
+        row["artifacts"]["calibration"][field] = "other" if field == "sha256" else 999
+    with pytest.raises(ValueError, match="same response datasets"):
+        module._average_curves(projects)
+
+
+@pytest.mark.parametrize("field,value", [("complete", False), ("successful", False),
+                                         ("requested_repetitions", 3)])
+def test_average_comparison_rejects_incomplete_or_unequal_repetitions(average_comparison, field, value):
+    module, projects, summaries, _ = average_comparison
+    summaries[1][field] = value
+    with pytest.raises(ValueError, match="equally many complete, successful repetitions"):
+        module._average_curves(projects)

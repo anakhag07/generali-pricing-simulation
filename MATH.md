@@ -1062,7 +1062,7 @@ all-context event $\prod_i c_{ji}$. A single saved realization is not a coverage
 probability estimate. Any repeated-response interpretation retains the original
 fixed-design sampling contract and is distinct from an analytical lower bound.
 
-Mean and slice curves use one saved successful repetition (the first by default,
+By default, mean and slice curves use one saved successful repetition (the first,
 or an explicit repetition index). For that repetition, arithmetic context means
 at each saved diagnostic action are
 $$\overline f(a)=\frac1n\sum_i f(x_i,a),\qquad
@@ -1084,6 +1084,20 @@ An optional matched analytical project's auxiliary fit may be shown as an
 explicit external reference in its slices, but must not be used to decompose c.
 Matching requires identical saved contexts, diagnostic actions, truth, center,
 and calibration data; it consumes no randomness and fits no additional model.
+
+With `average_repetitions=True`, complete repeated-response studies instead use
+equal averages across every requested realization, retaining the fixed design:
+$$\overline r_\delta(a)=\frac{1}{Mn}\sum_{j=1}^{M}\sum_{i=1}^{n}r_{\delta,j}(x_i,a).$$
+The absolute discrepancy is evaluated within each realization before averaging;
+it is not reconstructed from the mean auxiliary prediction. Slice bands also
+average their radii across all M realizations at the same selected context.
+The paired mean minimum-margin curve is
+$$\overline m(a)=\frac1M\sum_{j=1}^{M}\min_i\{r_{\delta,j}(x_i,a)
+-|\widehat f(x_i,a)-f(x_i,a)|\}.$$
+Its positive value does not certify coverage. Joint empirical coverage remains
+the average of the saved whole-domain containment indicators, not a containment
+test of the averaged bands. Missing, failed, or unknown repetitions suppress
+the repeated comparison instead of being dropped.
 
 Context slices select the lowest, lower-median, and highest ranks of
 $\|x_i\|_2$ with stable ties resolved by the original row index. The zero-based

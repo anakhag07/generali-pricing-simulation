@@ -47,7 +47,7 @@ def _sweep_axis(ax, values, sweep):
 def _coverage_figure(summary, sweep, event):
     p = summary["manifest"]
     fig, axes = _panels(p["deltas"])
-    title = (r"Auxiliary coverage: $\widetilde f\pm w_\delta$" if event == "auxiliary"
+    title = (r"$\widehat f$ coverage" if event == "auxiliary"
              else r"Transferred-envelope coverage: $\widehat f\pm r_\delta$")
     fig.suptitle(title)
     lower_limits = []
@@ -85,7 +85,7 @@ def _coverage_figure(summary, sweep, event):
 def _width_figure(summary, example):
     p = summary["manifest"]
     fig, axes = _panels(p["deltas"])
-    fig.suptitle("Mean auxiliary half-width")
+    fig.suptitle(r"$w_\delta$ (half width)")
     for ax, delta in zip(axes, p["deltas"]):
         for method, label, color in _METHODS:
             rows = _rows(summary, "n", delta, method)

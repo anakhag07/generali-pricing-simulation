@@ -223,3 +223,66 @@ def test_wide_bound_report_retains_all_conditions_when_points_coincide(tmp_path,
     provenance = json.loads((destination / "provenance.json").read_text())
     assert {record["path"] for record in provenance["inputs"]} == {str(path.resolve()) for path in paths}
     assert provenance["coincident_points"] == [[.5], [1.], [10., 100., 1000., None]]
+
+
+@pytest.fixture
+def saved_outlier_summaries(tmp_path, saved_leverage_summaries):
+    manifests = Path(__file__).parents[2] / "manifests"
+    paths = []
+    for index, value in enumerate((3, 10, 20, 40, 100, 1000)):
+        template = saved_leverage_summaries[index % len(saved_leverage_summaries)]
+        summary = json.loads(template.read_text())
+        manifest = json.loads((manifests / f"wild-bootstrap-outlier-{value}.json").read_text())
+        manifest.update(repetitions=8, repetitions_per_task=2)
+        summary["manifest"] = manifest
+        summary["metrics"][0]["max_leverage"] = (.03, .26, .58, .85, .97, .9997)[index]
+        path = tmp_path / f"summary-outlier-{value}.json"
+        path.write_text(json.dumps(summary))
+        paths.append(path)
+    return paths
+
+
+def test_outlier_report_retains_fixed_bulk_and_sorted_conditions(tmp_path, saved_outlier_summaries):
+    destination = tmp_path / "outlier-report"
+    before = plt.get_fignums()
+    output = wild_reporting.write_leverage_report(list(reversed(saved_outlier_summaries)), destination)
+    assert output.read_bytes().startswith(b"%PDF")
+    assert plt.get_fignums() == before
+    with (destination / "coverage_vs_leverage.csv").open(newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    assert [float(row["outlier_action"]) for row in rows] == [3., 10., 20., 40., 100., 1000.]
+    assert [float(row["truncation_bound"]) for row in rows] == [3.] * 6
+    for path, row in zip(saved_outlier_summaries, rows):
+        saved = json.loads(path.read_text())["metrics"][0]
+        assert float(row["max_leverage"]) == saved["max_leverage"]
+        for event in ("auxiliary", "transferred"):
+            assert int(row[f"{event}_covered_count"]) == saved[f"{event}_covered_count"]
+            for statistic in ("coverage", "lower", "upper"):
+                assert float(row[f"{event}_{statistic}"]) == saved[f"{event}_{statistic}"]
+    provenance = json.loads((destination / "provenance.json").read_text())
+    assert provenance["sweep_axis"] == "outlier_action"
+    assert provenance["coincident_points"] == [[3.], [10.], [20.], [40.], [100.], [1000.]]
+    assert {record["path"] for record in provenance["inputs"]} == {
+        str(path.resolve()) for path in saved_outlier_summaries
+    }
+
+
+@pytest.mark.parametrize("setting", ["bulk_bound", "override_index"])
+def test_outlier_report_rejects_changed_bulk_or_moved_row(tmp_path, saved_outlier_summaries, setting):
+    path = saved_outlier_summaries[-1]
+    summary = json.loads(path.read_text())
+    design = summary["manifest"]["design"]
+    if setting == "bulk_bound":
+        design["truncation_bound"] = 10.
+    else:
+        design["action_override"]["index"] = 1
+    path.write_text(json.dumps(summary))
+    with pytest.raises(ValueError, match="otherwise identical study manifests"):
+        wild_reporting.write_leverage_report(saved_outlier_summaries, tmp_path / "report")
+
+
+def test_leverage_report_rejects_mixed_outlier_and_bound_sweeps(
+        tmp_path, saved_outlier_summaries, saved_leverage_summaries):
+    paths = [saved_leverage_summaries[0], *saved_outlier_summaries[:2]]
+    with pytest.raises(ValueError, match="otherwise identical study manifests"):
+        wild_reporting.write_leverage_report(paths, tmp_path / "report")

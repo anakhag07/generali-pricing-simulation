@@ -20,10 +20,10 @@ _METHODS = (("analytical", "Analytical", "C0"),
 
 
 def write_leverage_report(summary_paths, destination) -> Path:
-    """Compare fixed-n normal truncations, including the unbounded limit, with coverage intervals."""
+    """Compare fixed-n truncation or single-outlier studies with pointwise coverage intervals."""
     destination = Path(destination)
     destination.mkdir(parents=True, exist_ok=True)
-    rows, inputs, signatures, bounds = [], [], [], []
+    rows, inputs, signatures, conditions, axes = [], [], [], [], []
     for path in map(Path, summary_paths):
         summary = json.loads(path.read_text())
         p = summary["manifest"]
@@ -31,13 +31,21 @@ def write_leverage_report(summary_paths, destination) -> Path:
             raise ValueError("Leverage report requires truncated-normal studies.")
         signature = json.loads(json.dumps(p))
         signature.pop("name")
-        bound = signature["design"].pop("truncation_bound")
+        bound = p["design"]["truncation_bound"]
+        if "action_override" in signature["design"]:
+            axis = "outlier_action"
+            condition = signature["design"]["action_override"].pop("value")
+        else:
+            axis = "truncation_bound"
+            condition = signature["design"].pop("truncation_bound")
         signatures.append(signature)
-        bounds.append(bound)
+        conditions.append(condition)
+        axes.append(axis)
         metrics = [row for row in summary["metrics"] if row["method"] == "wild_bootstrap"]
         if len(metrics) != 1:
             raise ValueError("Require one fixed n, B, and delta per study.")
         row = dict(metrics[0], truncation_bound=bound)
+        row[axis] = condition
         if row["repetitions"] != p["repetitions"]:
             raise ValueError("Coverage repetition counts disagree.")
         for event in ("auxiliary", "transferred"):
@@ -45,10 +53,12 @@ def write_leverage_report(summary_paths, destination) -> Path:
                 raise ValueError("Coverage estimate disagrees with saved count.")
         rows.append(row)
         inputs.append(file_record(path))
-    if len(rows) < 2 or len(set(bounds)) != len(bounds) or any(s != signatures[0] for s in signatures):
-        raise ValueError("Require distinct bounds and otherwise identical study manifests.")
+    if (len(rows) < 2 or len(set(axes)) != 1 or len(set(conditions)) != len(conditions)
+            or any(s != signatures[0] for s in signatures)):
+        raise ValueError("Require distinct sweep values and otherwise identical study manifests.")
+    axis = axes[0]
     # This orders a diagnostic axis, never an optimizer solution.
-    rows.sort(key=lambda row: np.inf if row["truncation_bound"] is None else row["truncation_bound"])
+    rows.sort(key=lambda row: np.inf if row[axis] is None else row[axis])
     # Coincident estimates share one marker, without jittering measured leverage.
     groups = {}
     for row in rows:
@@ -63,9 +73,12 @@ def write_leverage_report(summary_paths, destination) -> Path:
             low, high = row["auxiliary_lower"], row["auxiliary_upper"]
             if not 0 <= low <= coverage <= high <= 1:
                 raise ValueError("Invalid auxiliary coverage interval.")
-            labels = ["Unbounded" if item["truncation_bound"] is None
-                      else f"±{item['truncation_bound']:g}" for item in group]
-            label = "Bounds " + ", ".join(labels) if labels != ["Unbounded"] else "Unbounded normal"
+            if axis == "outlier_action":
+                label = "Moved observation a = " + ", ".join(f"{item[axis]:g}" for item in group)
+            else:
+                labels = ["Unbounded" if item[axis] is None
+                          else f"±{item[axis]:g}" for item in group]
+                label = "Bounds " + ", ".join(labels) if labels != ["Unbounded"] else "Unbounded normal"
             ax.errorbar(row["max_leverage"], coverage,
                         yerr=[[coverage-low], [high-coverage]],
                         fmt="o", capsize=3, label=label)
@@ -86,7 +99,8 @@ def write_leverage_report(summary_paths, destination) -> Path:
         "intervals": "Pointwise 95% Wilson intervals across independent response/bootstrap repetitions.",
         "coverage_event": "Auxiliary band contains truth simultaneously for every real action.",
         "interpretation": "Fixed designs; maximum leverage does not determine coverage uniquely.",
-        "coincident_points": [[item["truncation_bound"] for item in group]
+        "sweep_axis": axis,
+        "coincident_points": [[item[axis] for item in group]
                                for group in groups.values()],
         "coincidence_tolerance": "Displayed coordinates and interval endpoints agree to 12 decimal places.",
     }, indent=2) + "\n")

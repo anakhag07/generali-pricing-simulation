@@ -206,6 +206,10 @@ If lower-priority docs are stale, update them in the same task.
   and constant noise; `wild_reporting.write_leverage_report` compares saved
   summaries. For zero contexts, `wild.py` caches one identical context fiber
   for the all-real statistic but retains every observed row leverage.
+  An explicit `truncation_bound: null` uses the unbounded normal inverse CDF
+  with the same uniforms. Missing bounds remain invalid. The wide-bound
+  report retains every condition and groups coincident coordinates without
+  jitter; old saved studies keep their original source provenance.
 
 Before adding code, inspect the surrounding module structure and choose the narrowest sensible location for the change.
 

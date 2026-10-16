@@ -67,3 +67,37 @@ At coverage near 95%, 2000 repetitions give roughly one percentage point of
 marginal 95% Monte Carlo uncertainty. Small differences or overlapping
 intervals do not establish that leverage has no effect. Paired outcomes can
 resolve differences more precisely because conditions share random draws.
+
+## Wide-bound comparison
+
+The follow-up compares bounds 0.5, 1, 10, 100, 1000, and an unbounded standard
+normal, retaining all settings above. Additional manifests use suffixes `100`,
+`1000`, and `unbounded`. The unbounded manifest specifies `truncation_bound:
+null`, interpreted as inverse-CDF sampling on the whole real line using the
+same uniforms. Omitting the bound is invalid. The underlying normal location
+and standard deviation remain 0 and 1; these bounds do not rescale the data.
+No new seed stream is required. The legacy independent-standard-normal
+generator for other experiments continues to use its original normal draws.
+
+The earlier 0.5, 1, and 10 results are replayed from their exact saved summaries
+and repetitions with original provenance. Only the three additional conditions
+need new runs. This preserves the earlier comparison and its artifacts. A
+changed numerical source contract prevents resuming old conditions with the
+new source; do not use `--force` to overwrite them solely to make this report.
+
+After running the three additional manifests with the existing entry point:
+
+```bash
+PYTHONPATH=src python scratch/plot_wild_bootstrap_leverage.py --wide-bounds
+```
+
+The extended report is written to `wild-bootstrap-leverage-wide-bounds/`.
+It retains six rows in the CSV. Conditions whose leverage, coverage, and
+interval endpoints coincide to 12 decimal places share one plotted marker
+with a combined legend label; no leverage jitter is introduced. The report
+provenance records those groups and hashes every input summary.
+
+For the paired seed used here, bounds 10, 100, 1000, and unbounded produce
+identical floating-point action arrays. Their realized action range is about
+[-2.697,2.559]. A large permitted interval does not force observations into its
+tails, so this extension is not a large-leverage perturbation of the design.

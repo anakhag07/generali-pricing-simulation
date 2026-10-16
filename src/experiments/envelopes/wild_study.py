@@ -74,10 +74,12 @@ def load_manifest(path):
     if distribution not in {"independent_standard_normal", "independent_truncated_standard_normal"}:
         raise ValueError("The design must use independent standard normal or truncated-normal coordinates/actions.")
     if distribution == "independent_truncated_standard_normal":
-        bound = p["design"].get("truncation_bound")
-        if (isinstance(bound, bool) or not isinstance(bound, (float, int))
-                or not np.isfinite(bound) or bound <= 0):
-            raise ValueError("Require a finite positive truncation_bound.")
+        if "truncation_bound" not in p["design"]:
+            raise ValueError("Require explicit truncation_bound; null means unbounded.")
+        bound = p["design"]["truncation_bound"]
+        if bound is not None and (isinstance(bound, bool) or not isinstance(bound, (float, int))
+                                  or not np.isfinite(bound) or bound <= 0):
+            raise ValueError("Require a finite positive truncation_bound or null for unbounded.")
     for model in ("truth", "predictor"):
         if LinearModel(p[model]["coefficients"]).context_dim != d:
             raise ValueError("Model and design dimensions disagree.")
@@ -170,6 +172,7 @@ def _environment(payload_json):
     context_rng, action_rng = (np.random.default_rng(seeds[key]) for key in ("contexts", "actions"))
     if p["design"]["distribution"] == "independent_truncated_standard_normal":
         bound = p["design"]["truncation_bound"]
+        bound = np.inf if bound is None else bound
         # Shared uniforms pair bounds; samples follow a truncated law, not clipping.
         X = truncnorm.ppf(context_rng.random((nmax, d)), -bound, bound)
         actions = truncnorm.ppf(action_rng.random(nmax), -bound, bound)

@@ -1174,6 +1174,14 @@ across bounds, with independent seeds for each outer repetition. No centering
 or standardization is applied. Context and profile seeds are unused in this
 special case, retained only for compatibility with the existing seed schema.
 
+The wide-bound extension uses $c\in\{0.5,1,10,100,1000,\infty\}$.
+An explicit JSON `null` bound represents $c=\infty$, with
+$F_{[-\infty,\infty]}^{-1}=\Phi^{-1}$. It uses the same uniforms and seed
+streams as finite bounds. Normal location and scale remain 0 and 1;
+increasing the truncation bound does not rescale the underlying distribution.
+Existing finite-bound artifacts may be replayed with their original provenance.
+The original standard-normal RNG path is unchanged for other studies.
+
 With $S_{aa}=\sum_i(a_i-\bar a)^2$, observed leverage is
 $$h_i=1/n+(a_i-\bar a)^2/S_{aa},\qquad h_n=\max_i h_i.$$
 Each response dataset contributes one simultaneous auxiliary coverage event

@@ -3,7 +3,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from scipy.stats import truncnorm
+from scipy.stats import norm, truncnorm
 
 from experiments.envelopes import wild_study as study
 from experiments.envelopes.core import TargetDomain
@@ -183,6 +183,28 @@ def test_gaussian_environment_preserves_original_draws(manifest_path):
     np.testing.assert_array_equal(snapshot["gp_sin"], coefficients[1])
 
 
+@pytest.mark.parametrize("context_dim", [0, 2])
+@pytest.mark.parametrize("bound", [10., 100., 1000., None])
+def test_wide_and_unbounded_designs_match_paired_normal_quantiles(manifest_path, context_dim, bound):
+    payload = _truncated_payload(manifest_path, bound, context_dim)
+    manifest_path.write_text(json.dumps(payload))
+    manifest = study.load_manifest(manifest_path)
+    snapshot, _, _ = study._environment(json.dumps(manifest.payload, sort_keys=True))
+    for name, seed_name in (("X", "contexts"), ("actions", "actions")):
+        uniforms = np.random.default_rng(payload["seeds"][seed_name]).random(snapshot[name].shape)
+        np.testing.assert_allclose(snapshot[name], norm.ppf(uniforms), rtol=0, atol=1e-14)
+        assert np.isfinite(snapshot[name]).all()
+    np.testing.assert_array_equal(snapshot["sigma"], np.full(20, .5))
+
+
+def test_missing_truncation_bound_is_not_treated_as_unbounded(manifest_path):
+    payload = _truncated_payload(manifest_path, None)
+    del payload["design"]["truncation_bound"]
+    manifest_path.write_text(json.dumps(payload))
+    with pytest.raises(ValueError, match="explicit truncation_bound"):
+        study.load_manifest(manifest_path)
+
+
 def test_scalar_leverage_and_bootstrap_are_affine_invariant():
     actions = np.array([-2., -.9, -.3, 0., .2, .4, .8, 1., 3.])
     contexts = np.empty((len(actions), 0))
@@ -240,7 +262,7 @@ def test_zero_context_repetitions_keep_pairing_and_all_real_statistic(manifest_p
     np.testing.assert_array_equal(saved[0], saved[1])
 
 
-@pytest.mark.parametrize("bound", [0., -1., float("inf"), float("nan"), True, None])
+@pytest.mark.parametrize("bound", [0., -1., float("inf"), float("nan"), True])
 def test_invalid_truncation_bounds_fail_before_sampling(manifest_path, bound):
     manifest_path.write_text(json.dumps(_truncated_payload(manifest_path, bound)))
     with pytest.raises(ValueError, match="truncation_bound"):

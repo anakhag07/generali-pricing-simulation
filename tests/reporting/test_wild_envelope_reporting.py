@@ -1,12 +1,17 @@
 """Guard the statistical meanings of the wild-envelope comparison figures."""
 
 from copy import deepcopy
+import csv
+import hashlib
+import json
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
 from experiments.envelopes import wild_reporting
+from experiments.policy_lcb.common import wilson_interval
 
 
 @pytest.fixture
@@ -109,3 +114,87 @@ def test_all_reports_are_pdfs_and_leave_no_open_figures(tmp_path, saved_report):
     assert all(path.suffix == ".pdf" and path.read_bytes().startswith(b"%PDF") for path in paths)
     assert len(list(tmp_path.iterdir())) == 7
     assert plt.get_fignums() == before
+
+
+@pytest.fixture
+def saved_leverage_summaries(tmp_path):
+    manifests = Path(__file__).parents[2] / "manifests"
+    paths = []
+    for index, label in enumerate(("0p5", "1", "3", "10")):
+        manifest = json.loads((manifests / f"wild-bootstrap-leverage-bound-{label}.json").read_text())
+        manifest.update(repetitions=8, repetitions_per_task=2)
+        row = {
+            **manifest["baseline"], "method": "wild_bootstrap", "repetitions": 8,
+            "max_leverage": .015 + index * .005,
+        }
+        for event, count in (("auxiliary", 8-index), ("transferred", 8-max(0, index-1))):
+            lower, upper = wilson_interval(count, 8)
+            row.update({
+                f"{event}_covered_count": count, f"{event}_coverage": count/8,
+                f"{event}_lower": lower, f"{event}_upper": upper,
+            })
+        path = tmp_path / f"summary-{label}.json"
+        path.write_text(json.dumps({"manifest": manifest, "metrics": [row]}))
+        paths.append(path)
+    return paths
+
+
+@pytest.mark.parametrize("setting", ["n", "noise", "seeds"])
+def test_leverage_report_rejects_unpaired_study_settings(tmp_path, saved_leverage_summaries, setting):
+    path = saved_leverage_summaries[-1]
+    summary = json.loads(path.read_text())
+    manifest = summary["manifest"]
+    if setting == "n":
+        manifest["n_values"] = [301]
+        manifest["baseline"]["n"] = summary["metrics"][0]["n"] = 301
+    elif setting == "noise":
+        manifest["noise"]["sigma_max"] = .75
+    else:
+        manifest["seeds"]["observations"] += 100
+    path.write_text(json.dumps(summary))
+    with pytest.raises(ValueError, match="otherwise identical study manifests"):
+        wild_reporting.write_leverage_report(saved_leverage_summaries, tmp_path / "report")
+
+
+@pytest.mark.parametrize("event", ["auxiliary", "transferred"])
+def test_leverage_report_rejects_coverage_inconsistent_with_saved_count(tmp_path, saved_leverage_summaries, event):
+    path = saved_leverage_summaries[-1]
+    summary = json.loads(path.read_text())
+    summary["metrics"][0][f"{event}_coverage"] += .01
+    path.write_text(json.dumps(summary))
+    with pytest.raises(ValueError, match="Coverage estimate disagrees with saved count"):
+        wild_reporting.write_leverage_report(saved_leverage_summaries, tmp_path / "report")
+
+
+def test_leverage_report_preserves_counts_and_records_pdf_csv_provenance(tmp_path, saved_leverage_summaries):
+    destination = tmp_path / "report"
+    before = plt.get_fignums()
+    output = wild_reporting.write_leverage_report(list(reversed(saved_leverage_summaries)), destination)
+    assert output.suffix == ".pdf" and output.read_bytes().startswith(b"%PDF")
+    assert plt.get_fignums() == before
+    assert {path.name for path in destination.iterdir()} == {
+        "coverage_vs_leverage.pdf", "coverage_vs_leverage.csv", "provenance.json",
+    }
+    with (destination / "coverage_vs_leverage.csv").open(newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    assert [float(row["truncation_bound"]) for row in rows] == [.5, 1., 3., 10.]
+    for path, row in zip(saved_leverage_summaries, rows):
+        saved = json.loads(path.read_text())["metrics"][0]
+        assert float(row["max_leverage"]) == saved["max_leverage"]
+        for event in ("auxiliary", "transferred"):
+            count = int(row[f"{event}_covered_count"])
+            assert count == saved[f"{event}_covered_count"]
+            assert float(row[f"{event}_coverage"]) == count/int(row["repetitions"])
+            assert float(row[f"{event}_lower"]) == saved[f"{event}_lower"]
+            assert float(row[f"{event}_upper"]) == saved[f"{event}_upper"]
+    provenance = json.loads((destination / "provenance.json").read_text())
+    assert {record["path"] for record in provenance["inputs"]} == {
+        str(path.resolve()) for path in saved_leverage_summaries
+    }
+    assert {Path(record["path"]).name for record in provenance["outputs"]} == {
+        "coverage_vs_leverage.pdf", "coverage_vs_leverage.csv",
+    }
+    for record in provenance["inputs"] + provenance["outputs"] + [provenance["source"]]:
+        data = Path(record["path"]).read_bytes()
+        assert record["bytes"] == len(data)
+        assert record["sha256"] == hashlib.sha256(data).hexdigest()

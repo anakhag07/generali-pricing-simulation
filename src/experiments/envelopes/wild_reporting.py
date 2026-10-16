@@ -3,16 +3,82 @@
 from __future__ import annotations
 
 from pathlib import Path
+import json
 
 import matplotlib.pyplot as plt
 from matplotlib.ticker import PercentFormatter, ScalarFormatter
 import numpy as np
+
+from experiments.provenance import file_record
+from experiments.sweep_reporting import write_rows_csv
 
 from .diagnostics import _slice_indices
 from .reporting import _STYLE
 
 _METHODS = (("analytical", "Analytical", "C0"),
             ("wild_bootstrap", "Wild bootstrap", "C1"))
+
+
+def write_leverage_report(summary_paths, destination) -> Path:
+    """Compare saved fixed-n truncated-normal studies with pointwise coverage intervals."""
+    destination = Path(destination)
+    destination.mkdir(parents=True, exist_ok=True)
+    rows, inputs, signatures, bounds = [], [], [], []
+    for path in map(Path, summary_paths):
+        summary = json.loads(path.read_text())
+        p = summary["manifest"]
+        if p["design"]["distribution"] != "independent_truncated_standard_normal":
+            raise ValueError("Leverage report requires truncated-normal studies.")
+        signature = json.loads(json.dumps(p))
+        signature.pop("name")
+        bound = signature["design"].pop("truncation_bound")
+        signatures.append(signature)
+        bounds.append(bound)
+        metrics = [row for row in summary["metrics"] if row["method"] == "wild_bootstrap"]
+        if len(metrics) != 1:
+            raise ValueError("Require one fixed n, B, and delta per study.")
+        row = dict(metrics[0], truncation_bound=bound)
+        if row["repetitions"] != p["repetitions"]:
+            raise ValueError("Coverage repetition counts disagree.")
+        for event in ("auxiliary", "transferred"):
+            if row[f"{event}_coverage"] != row[f"{event}_covered_count"] / p["repetitions"]:
+                raise ValueError("Coverage estimate disagrees with saved count.")
+        rows.append(row)
+        inputs.append(file_record(path))
+    if len(rows) < 2 or len(set(bounds)) != len(bounds) or any(s != signatures[0] for s in signatures):
+        raise ValueError("Require distinct bounds and otherwise identical study manifests.")
+    # This orders a diagnostic axis, never an optimizer solution.
+    rows.sort(key=lambda row: row["truncation_bound"])
+    with plt.style.context("default"), plt.rc_context(_STYLE):
+        fig, ax = plt.subplots(figsize=(7.2, 4.8), constrained_layout=True)
+        for row in rows:
+            coverage = row["auxiliary_coverage"]
+            low, high = row["auxiliary_lower"], row["auxiliary_upper"]
+            if not 0 <= low <= coverage <= high <= 1:
+                raise ValueError("Invalid auxiliary coverage interval.")
+            bound = row["truncation_bound"]
+            ax.errorbar(row["max_leverage"], coverage,
+                        yerr=[[coverage-low], [high-coverage]],
+                        fmt="o", capsize=3, label=f"Bounds [-{bound:g}, {bound:g}]")
+        ax.axhline(1-rows[0]["delta"], color="0.5", linestyle="--", label="Nominal coverage")
+        ax.set_xlabel(r"Maximum observed leverage $h_n$")
+        ax.set_ylabel("Simultaneous auxiliary coverage")
+        ax.set_title("Wild-bootstrap coverage versus maximum leverage")
+        ax.yaxis.set_major_formatter(PercentFormatter(1))
+        ax.legend()
+        output = destination / "coverage_vs_leverage.pdf"
+        fig.savefig(output, format="pdf")
+        plt.close(fig)
+    csv = destination / "coverage_vs_leverage.csv"
+    write_rows_csv(csv, rows, list(rows[0]))
+    (destination / "provenance.json").write_text(json.dumps({
+        "inputs": inputs, "source": file_record(Path(__file__)),
+        "outputs": [file_record(output), file_record(csv)],
+        "intervals": "Pointwise 95% Wilson intervals across independent response/bootstrap repetitions.",
+        "coverage_event": "Auxiliary band contains truth simultaneously for every real action.",
+        "interpretation": "Four fixed designs; maximum leverage does not determine coverage uniquely.",
+    }, indent=2) + "\n")
+    return output
 
 
 def _rows(summary, sweep, delta, method):
@@ -183,6 +249,10 @@ def _noise_figure(summary, example, indices):
 
 def write_reports(summary, snapshot, example, destination) -> list[Path]:
     """Render saved joint coverage, auxiliary widths, and example context slices as PDFs."""
+    if np.asarray(example["X"]).shape[1] == 0:
+        # Action-only conditions are compared by write_leverage_report; there
+        # are no distinct context slices to display.
+        return []
     destination = Path(destination)
     destination.mkdir(parents=True, exist_ok=True)
     indices = _validate_example(snapshot, example)

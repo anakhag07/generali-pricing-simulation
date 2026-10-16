@@ -250,9 +250,9 @@
 </span><span id="L-14"><a href="#L-14"><span class="linenos"> 14</span></a>
 </span><span id="L-15"><a href="#L-15"><span class="linenos"> 15</span></a>
 </span><span id="L-16"><a href="#L-16"><span class="linenos"> 16</span></a><span class="k">def</span><span class="w"> </span><span class="nf">locations</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">actions</span><span class="p">):</span>
-</span><span id="L-17"><a href="#L-17"><span class="linenos"> 17</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate paired finite contexts/actions without implicit broadcasting.&quot;&quot;&quot;</span>
+</span><span id="L-17"><a href="#L-17"><span class="linenos"> 17</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate paired finite contexts/actions, allowing zero context columns.&quot;&quot;&quot;</span>
 </span><span id="L-18"><a href="#L-18"><span class="linenos"> 18</span></a>    <span class="n">X</span><span class="p">,</span> <span class="n">actions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">actions</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-</span><span id="L-19"><a href="#L-19"><span class="linenos"> 19</span></a>    <span class="k">if</span> <span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">2</span> <span class="ow">or</span> <span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">1</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">X</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
+</span><span id="L-19"><a href="#L-19"><span class="linenos"> 19</span></a>    <span class="k">if</span> <span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">2</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">X</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
 </span><span id="L-20"><a href="#L-20"><span class="linenos"> 20</span></a>            <span class="ow">or</span> <span class="n">actions</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">X</span><span class="p">),)</span>
 </span><span id="L-21"><a href="#L-21"><span class="linenos"> 21</span></a>            <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">X</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">actions</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()):</span>
 </span><span id="L-22"><a href="#L-22"><span class="linenos"> 22</span></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Require finite X of shape (n,d) and actions of shape (n,).&quot;</span><span class="p">)</span>
@@ -476,17 +476,17 @@
             <span class="name">Model</span>        =
 <span class="default_value">collections.abc.Callable[[numpy.ndarray, numpy.ndarray], numpy.ndarray]</span>
 
-
+        
     </div>
     <a class="headerlink" href="#Model"></a>
-
-
+    
+    
 
                 </section>
                 <section id="locations">
                             <input id="locations-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">locations</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">X</span>, </span><span class="param"><span class="n">actions</span></span><span class="return-annotation">):</span></span>
 
@@ -495,9 +495,9 @@
     </div>
     <a class="headerlink" href="#locations"></a>
             <div class="pdoc-code codehilite"><pre><span></span><span id="locations-17"><a href="#locations-17"><span class="linenos">17</span></a><span class="k">def</span><span class="w"> </span><span class="nf">locations</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">actions</span><span class="p">):</span>
-</span><span id="locations-18"><a href="#locations-18"><span class="linenos">18</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate paired finite contexts/actions without implicit broadcasting.&quot;&quot;&quot;</span>
+</span><span id="locations-18"><a href="#locations-18"><span class="linenos">18</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate paired finite contexts/actions, allowing zero context columns.&quot;&quot;&quot;</span>
 </span><span id="locations-19"><a href="#locations-19"><span class="linenos">19</span></a>    <span class="n">X</span><span class="p">,</span> <span class="n">actions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">actions</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-</span><span id="locations-20"><a href="#locations-20"><span class="linenos">20</span></a>    <span class="k">if</span> <span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">2</span> <span class="ow">or</span> <span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">1</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">X</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
+</span><span id="locations-20"><a href="#locations-20"><span class="linenos">20</span></a>    <span class="k">if</span> <span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">2</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">X</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
 </span><span id="locations-21"><a href="#locations-21"><span class="linenos">21</span></a>            <span class="ow">or</span> <span class="n">actions</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">X</span><span class="p">),)</span>
 </span><span id="locations-22"><a href="#locations-22"><span class="linenos">22</span></a>            <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">X</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">actions</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()):</span>
 </span><span id="locations-23"><a href="#locations-23"><span class="linenos">23</span></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Require finite X of shape (n,d) and actions of shape (n,).&quot;</span><span class="p">)</span>
@@ -505,7 +505,7 @@
 </span></pre></div>
 
 
-            <div class="docstring"><p>Validate paired finite contexts/actions without implicit broadcasting.</p>
+            <div class="docstring"><p>Validate paired finite contexts/actions, allowing zero context columns.</p>
 </div>
 
 
@@ -513,7 +513,7 @@
                 <section id="values">
                             <input id="values-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">values</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">result</span>, </span><span class="param"><span class="n">size</span>, </span><span class="param"><span class="n">name</span></span><span class="return-annotation">):</span></span>
 
@@ -571,47 +571,47 @@
 
                             <div id="CalibrationData.__init__" class="classattr">
                                 <div class="attr function">
-
+            
         <span class="name">CalibrationData</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">X</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>, </span><span class="param"><span class="n">actions</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>, </span><span class="param"><span class="n">y</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span></span>)</span>
 
-
+        
     </div>
     <a class="headerlink" href="#CalibrationData.__init__"></a>
-
-
+    
+    
 
                             </div>
                             <div id="CalibrationData.X" class="classattr">
                                 <div class="attr variable">
             <span class="name">X</span><span class="annotation">: numpy.ndarray</span>
 
-
+        
     </div>
     <a class="headerlink" href="#CalibrationData.X"></a>
-
-
+    
+    
 
                             </div>
                             <div id="CalibrationData.actions" class="classattr">
                                 <div class="attr variable">
             <span class="name">actions</span><span class="annotation">: numpy.ndarray</span>
 
-
+        
     </div>
     <a class="headerlink" href="#CalibrationData.actions"></a>
-
-
+    
+    
 
                             </div>
                             <div id="CalibrationData.y" class="classattr">
                                 <div class="attr variable">
             <span class="name">y</span><span class="annotation">: numpy.ndarray</span>
 
-
+        
     </div>
     <a class="headerlink" href="#CalibrationData.y"></a>
-
-
+    
+    
 
                             </div>
                 </section>
@@ -667,25 +667,25 @@
 
                             <div id="TargetDomain.__init__" class="classattr">
                                 <div class="attr function">
-
+            
         <span class="name">TargetDomain</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">contexts</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>, </span><span class="param"><span class="n">actions</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span>)</span>
 
-
+        
     </div>
     <a class="headerlink" href="#TargetDomain.__init__"></a>
-
-
+    
+    
 
                             </div>
                             <div id="TargetDomain.contexts" class="classattr">
                                 <div class="attr variable">
             <span class="name">contexts</span><span class="annotation">: numpy.ndarray</span>
 
-
+        
     </div>
     <a class="headerlink" href="#TargetDomain.contexts"></a>
-
-
+    
+    
 
                             </div>
                             <div id="TargetDomain.actions" class="classattr">
@@ -693,11 +693,11 @@
             <span class="name">actions</span><span class="annotation">: numpy.ndarray | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#TargetDomain.actions"></a>
-
-
+    
+    
 
                             </div>
                             <div id="TargetDomain.kind" class="classattr">
@@ -724,7 +724,7 @@
                             <div id="TargetDomain.points" class="classattr">
                                         <input id="TargetDomain.points-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">points</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span></span><span class="return-annotation">):</span></span>
 
@@ -749,7 +749,7 @@
                 <section id="cartesian_locations">
                             <input id="cartesian_locations-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">cartesian_locations</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">contexts</span>, </span><span class="param"><span class="n">actions</span></span><span class="return-annotation">):</span></span>
 
@@ -797,47 +797,47 @@
 
                             <div id="EnvelopeValues.__init__" class="classattr">
                                 <div class="attr function">
-
+            
         <span class="name">EnvelopeValues</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">center</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>,</span><span class="param">	<span class="n">radius</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span>,</span><span class="param">	<span class="n">components</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">factory</span><span class="o">&gt;</span></span>)</span>
 
-
+        
     </div>
     <a class="headerlink" href="#EnvelopeValues.__init__"></a>
-
-
+    
+    
 
                             </div>
                             <div id="EnvelopeValues.center" class="classattr">
                                 <div class="attr variable">
             <span class="name">center</span><span class="annotation">: numpy.ndarray</span>
 
-
+        
     </div>
     <a class="headerlink" href="#EnvelopeValues.center"></a>
-
-
+    
+    
 
                             </div>
                             <div id="EnvelopeValues.radius" class="classattr">
                                 <div class="attr variable">
             <span class="name">radius</span><span class="annotation">: numpy.ndarray</span>
 
-
+        
     </div>
     <a class="headerlink" href="#EnvelopeValues.radius"></a>
-
-
+    
+    
 
                             </div>
                             <div id="EnvelopeValues.components" class="classattr">
                                 <div class="attr variable">
             <span class="name">components</span><span class="annotation">: dict[str, numpy.ndarray]</span>
 
-
+        
     </div>
     <a class="headerlink" href="#EnvelopeValues.components"></a>
-
-
+    
+    
 
                             </div>
                 </section>
@@ -884,58 +884,58 @@
 
                             <div id="FittedEnvelope.__init__" class="classattr">
                                 <div class="attr function">
-
+            
         <span class="name">FittedEnvelope</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">center</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>,</span><span class="param">	<span class="n">radius</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>,</span><span class="param">	<span class="n">state</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">factory</span><span class="o">&gt;</span>,</span><span class="param">	<span class="n">metadata</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">factory</span><span class="o">&gt;</span>,</span><span class="param">	<span class="n">components</span><span class="p">:</span> <span class="n">Callable</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></span>)</span>
 
-
+        
     </div>
     <a class="headerlink" href="#FittedEnvelope.__init__"></a>
-
-
+    
+    
 
                             </div>
                             <div id="FittedEnvelope.center" class="classattr">
                                 <div class="attr variable">
             <span class="name">center</span><span class="annotation">: Callable[[numpy.ndarray, numpy.ndarray], numpy.ndarray]</span>
 
-
+        
     </div>
     <a class="headerlink" href="#FittedEnvelope.center"></a>
-
-
+    
+    
 
                             </div>
                             <div id="FittedEnvelope.radius" class="classattr">
                                 <div class="attr variable">
             <span class="name">radius</span><span class="annotation">: Callable[[numpy.ndarray, numpy.ndarray], numpy.ndarray]</span>
 
-
+        
     </div>
     <a class="headerlink" href="#FittedEnvelope.radius"></a>
-
-
+    
+    
 
                             </div>
                             <div id="FittedEnvelope.state" class="classattr">
                                 <div class="attr variable">
             <span class="name">state</span><span class="annotation">: dict[str, typing.Any]</span>
 
-
+        
     </div>
     <a class="headerlink" href="#FittedEnvelope.state"></a>
-
-
+    
+    
 
                             </div>
                             <div id="FittedEnvelope.metadata" class="classattr">
                                 <div class="attr variable">
             <span class="name">metadata</span><span class="annotation">: dict[str, typing.Any]</span>
 
-
+        
     </div>
     <a class="headerlink" href="#FittedEnvelope.metadata"></a>
-
-
+    
+    
 
                             </div>
                             <div id="FittedEnvelope.components" class="classattr">
@@ -943,17 +943,17 @@
             <span class="name">components</span><span class="annotation">: Callable | None</span>        =
 <span class="default_value">None</span>
 
-
+        
     </div>
     <a class="headerlink" href="#FittedEnvelope.components"></a>
-
-
+    
+    
 
                             </div>
                             <div id="FittedEnvelope.evaluate" class="classattr">
                                         <input id="FittedEnvelope.evaluate-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">evaluate</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">X</span>, </span><span class="param"><span class="n">actions</span></span><span class="return-annotation">):</span></span>
 
@@ -1021,64 +1021,64 @@
 
                             <div id="ContainmentResult.__init__" class="classattr">
                                 <div class="attr function">
-
+            
         <span class="name">ContainmentResult</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">status</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">method</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">domain</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">details</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">factory</span><span class="o">&gt;</span></span>)</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ContainmentResult.__init__"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ContainmentResult.status" class="classattr">
                                 <div class="attr variable">
             <span class="name">status</span><span class="annotation">: str</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ContainmentResult.status"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ContainmentResult.method" class="classattr">
                                 <div class="attr variable">
             <span class="name">method</span><span class="annotation">: str</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ContainmentResult.method"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ContainmentResult.domain" class="classattr">
                                 <div class="attr variable">
             <span class="name">domain</span><span class="annotation">: str</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ContainmentResult.domain"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ContainmentResult.details" class="classattr">
                                 <div class="attr variable">
             <span class="name">details</span><span class="annotation">: dict[str, typing.Any]</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ContainmentResult.details"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ContainmentResult.to_dict" class="classattr">
                                         <input id="ContainmentResult.to_dict-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">to_dict</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span></span><span class="return-annotation">):</span></span>
 
@@ -1141,86 +1141,86 @@
 
                             <div id="ProbabilityStatement.__init__" class="classattr">
                                 <div class="attr function">
-
+            
         <span class="name">ProbabilityStatement</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">kind</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">value</span><span class="p">:</span> <span class="nb">float</span>,</span><span class="param">	<span class="n">event</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">conditioning</span><span class="p">:</span> <span class="nb">str</span>,</span><span class="param">	<span class="n">assumptions</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>,</span><span class="param">	<span class="n">derivation</span><span class="p">:</span> <span class="nb">str</span></span>)</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ProbabilityStatement.__init__"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ProbabilityStatement.kind" class="classattr">
                                 <div class="attr variable">
             <span class="name">kind</span><span class="annotation">: str</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ProbabilityStatement.kind"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ProbabilityStatement.value" class="classattr">
                                 <div class="attr variable">
             <span class="name">value</span><span class="annotation">: float</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ProbabilityStatement.value"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ProbabilityStatement.event" class="classattr">
                                 <div class="attr variable">
             <span class="name">event</span><span class="annotation">: str</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ProbabilityStatement.event"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ProbabilityStatement.conditioning" class="classattr">
                                 <div class="attr variable">
             <span class="name">conditioning</span><span class="annotation">: str</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ProbabilityStatement.conditioning"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ProbabilityStatement.assumptions" class="classattr">
                                 <div class="attr variable">
             <span class="name">assumptions</span><span class="annotation">: tuple[str, ...]</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ProbabilityStatement.assumptions"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ProbabilityStatement.derivation" class="classattr">
                                 <div class="attr variable">
             <span class="name">derivation</span><span class="annotation">: str</span>
 
-
+        
     </div>
     <a class="headerlink" href="#ProbabilityStatement.derivation"></a>
-
-
+    
+    
 
                             </div>
                             <div id="ProbabilityStatement.to_dict" class="classattr">
                                         <input id="ProbabilityStatement.to_dict-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">to_dict</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span></span><span class="return-annotation">):</span></span>
 
@@ -1243,7 +1243,7 @@
                 <section id="evaluate_tightness">
                             <input id="evaluate_tightness-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">evaluate_tightness</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">envelope</span>, </span><span class="param"><span class="n">truth</span>, </span><span class="param"><span class="n">X</span>, </span><span class="param"><span class="n">actions</span>, </span><span class="param"><span class="n">weights</span><span class="o">=</span><span class="kc">None</span></span><span class="return-annotation">):</span></span>
 
@@ -1289,7 +1289,7 @@
                 <section id="check_finite_containment">
                             <input id="check_finite_containment-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">check_finite_containment</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">envelope</span>, </span><span class="param"><span class="n">truth</span>, </span><span class="param"><span class="n">target</span></span><span class="return-annotation">):</span></span>
 
@@ -1327,7 +1327,7 @@
                 <section id="aggregate_coverage">
                             <input id="aggregate_coverage-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-
+            
         <span class="def">def</span>
         <span class="name">aggregate_coverage</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">records</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span>, </span><span class="param"><span class="n">expected</span><span class="p">:</span> <span class="nb">int</span>, </span><span class="param"><span class="n">confidence</span><span class="o">=</span><span class="mf">0.95</span></span><span class="return-annotation">):</span></span>
 

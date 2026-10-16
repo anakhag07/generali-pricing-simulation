@@ -14,9 +14,9 @@ Model = Callable[[np.ndarray, np.ndarray], np.ndarray]
 
 
 def locations(X, actions):
-    """Validate paired finite contexts/actions without implicit broadcasting."""
+    """Validate paired finite contexts/actions, allowing zero context columns."""
     X, actions = np.asarray(X, dtype=float), np.asarray(actions, dtype=float)
-    if (X.ndim != 2 or X.shape[1] < 1 or len(X) == 0
+    if (X.ndim != 2 or len(X) == 0
             or actions.shape != (len(X),)
             or not np.isfinite(X).all() or not np.isfinite(actions).all()):
         raise ValueError("Require finite X of shape (n,d) and actions of shape (n,).")

@@ -97,6 +97,12 @@ reporting joint all-real-action coverage and mean widths. See the
 [wild-bootstrap guide](docs/wild_bootstrap_envelopes.md) for the noise model,
 seed contract, and interpretation of empirical coverage.
 
+For maximum-leverage versus coverage at fixed sample size, use the four
+`manifests/wild-bootstrap-leverage-bound-*.json` manifests. This action-only
+study varies the truncation of standard-normal logged actions while holding
+noise, n, B, and delta fixed. See the [leverage diagnostic](docs/wild_bootstrap_leverage.md)
+for execution and the combined coverage plot.
+
 ### Fixed offline bootstrap and optimization regret
 
 ```bash

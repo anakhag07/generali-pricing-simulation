@@ -1159,6 +1159,41 @@ it is not selected for favorable coverage.
 Sources: `src/experiments/envelopes/wild.py`,
 `src/experiments/envelopes/wild_study.py`, and its reporting companion.
 
+### 7.10 Truncated-normal leverage and wild-bootstrap coverage
+
+The fixed-n leverage diagnostic specializes section 7.9 to no contexts,
+$$\phi(a)=(1,a)^\mathsf T,\quad f(a)=1+a,\quad
+\widehat f(a)=1.2+0.8a,\quad Y_i=f(a_i)+0.5Z_i,$$
+where the $Z_i$ are independent standard normal observation errors. For each
+bound $c\in\{0.5,1,3,10\}$, generate $n=300$ logged actions by
+$$a_i^{(c)}=F_{[-c,c]}^{-1}(U_i),\qquad U_i\stackrel{\mathrm{iid}}\sim U(0,1),$$
+where $F_{[-c,c]}$ is the standard-normal CDF conditioned on $[-c,c]$.
+The actions seed supplies one shared vector of uniforms across bounds. Freeze
+each design; reuse observation innovations and independent Rademacher draws
+across bounds, with independent seeds for each outer repetition. No centering
+or standardization is applied. Context and profile seeds are unused in this
+special case, retained only for compatibility with the existing seed schema.
+
+With $S_{aa}=\sum_i(a_i-\bar a)^2$, observed leverage is
+$$h_i=1/n+(a_i-\bar a)^2/S_{aa},\qquad h_n=\max_i h_i.$$
+Each response dataset contributes one simultaneous auxiliary coverage event
+$$\mathbf1\{T(\widetilde\beta-\beta^\star)\le\widehat q_{0.95}\},$$
+using the existing all-real-action statistic and raw-residual bootstrap.
+For $B=1999$, NumPy's higher empirical quantile at 0.95 selects order
+statistic 1900, equal to $\lceil B(1-\delta)\rceil$ for $\delta=0.05$.
+The diagnostic uses 2000 response/bootstrap repetitions per fixed design and
+pointwise 95% Wilson intervals for each coverage frequency. Coverage concerns
+all $a\in\mathbb R$, not a plotting grid; exact affine functions define all
+off-grid queries. Numerical coefficient statistics retain section 7.9's
+floating-point limitations. There is no stochastic objective surface,
+downstream optimization, or reported optimizer action in this diagnostic.
+
+The plot compares the four realized designs, not a universal coverage function
+of $h_n$. Maximum leverage bounds bootstrap approximation error; it does not
+determine that error or guarantee monotonic empirical coverage. Constant noise,
+sample size, feature count, bootstrap count, and confidence level remove those
+sources of variation. The target action domain remains the same across bounds.
+
 ## 8. Gradients and Estimators
 
 For a differentiable action objective and policy, the population chain rule is

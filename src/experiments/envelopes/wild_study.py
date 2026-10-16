@@ -1,4 +1,4 @@
-"""Paired fixed-design wild-bootstrap coverage and width sweeps (MATH §7.9)."""
+"""Paired fixed-design wild-bootstrap coverage and width sweeps (MATH §7.9–7.10)."""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ from types import SimpleNamespace
 
 import numpy as np
 from scipy.special import expit
+from scipy.stats import truncnorm
 
 from experiments.launch import LaunchPlan
 from experiments.policy_lcb.common import read_json, write_json_atomic, wilson_interval
@@ -67,10 +68,16 @@ def load_manifest(path):
             or any(c not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_" for c in name)):
         raise ValueError("Require a safe project name.")
     d = p["design"]["context_dim"]
-    if isinstance(d, bool) or not isinstance(d, int) or d < 1:
-        raise ValueError("Require a positive context dimension.")
-    if p["design"]["distribution"] != "independent_standard_normal":
-        raise ValueError("The design must use independent standard normal coordinates/actions.")
+    if isinstance(d, bool) or not isinstance(d, int) or d < 0:
+        raise ValueError("Require a nonnegative context dimension.")
+    distribution = p["design"]["distribution"]
+    if distribution not in {"independent_standard_normal", "independent_truncated_standard_normal"}:
+        raise ValueError("The design must use independent standard normal or truncated-normal coordinates/actions.")
+    if distribution == "independent_truncated_standard_normal":
+        bound = p["design"].get("truncation_bound")
+        if (isinstance(bound, bool) or not isinstance(bound, (float, int))
+                or not np.isfinite(bound) or bound <= 0):
+            raise ValueError("Require a finite positive truncation_bound.")
     for model in ("truth", "predictor"):
         if LinearModel(p[model]["coefficients"]).context_dim != d:
             raise ValueError("Model and design dimensions disagree.")
@@ -94,17 +101,23 @@ def load_manifest(path):
     if p["bootstrap"] != {"multipliers": "rademacher", "residuals": "raw", "quantile": "higher"}:
         raise ValueError("This comparison implements the raw-residual Rademacher higher-quantile rule.")
     noise = p["noise"]
-    if noise["type"] != "bounded_fourier_gp_scale":
-        raise ValueError("Require the bounded Fourier GP scale profile.")
-    bounds = np.array([noise["sigma_min"], noise["sigma_max"], noise["amplitude"]], dtype=float)
-    if not np.isfinite(bounds).all() or not 0 < bounds[0] < bounds[1] or bounds[2] <= 0:
-        raise ValueError("Require positive bounded varying noise scales and GP amplitude.")
-    if isinstance(noise["rank"], bool) or not isinstance(noise["rank"], int):
-        raise ValueError("GP rank must be an integer.")
-    FiniteFourierGPSpec(noise["rank"], noise["lengthscale"])
-    projection = np.asarray(noise["context_projection"], dtype=float)
-    if projection.shape != (d,) or not np.isfinite(projection).all():
-        raise ValueError("GP context projection must match context dimension.")
+    if noise["type"] == "constant":
+        sigma = noise["sigma_max"]
+        if (isinstance(sigma, bool) or not isinstance(sigma, (float, int))
+                or not np.isfinite(sigma) or sigma <= 0):
+            raise ValueError("Require a finite positive constant noise sigma_max.")
+    elif noise["type"] == "bounded_fourier_gp_scale":
+        bounds = np.array([noise["sigma_min"], noise["sigma_max"], noise["amplitude"]], dtype=float)
+        if not np.isfinite(bounds).all() or not 0 < bounds[0] < bounds[1] or bounds[2] <= 0:
+            raise ValueError("Require positive bounded varying noise scales and GP amplitude.")
+        if isinstance(noise["rank"], bool) or not isinstance(noise["rank"], int):
+            raise ValueError("GP rank must be an integer.")
+        FiniteFourierGPSpec(noise["rank"], noise["lengthscale"])
+        projection = np.asarray(noise["context_projection"], dtype=float)
+        if projection.shape != (d,) or not np.isfinite(projection).all():
+            raise ValueError("GP context projection must match context dimension.")
+    else:
+        raise ValueError("Require constant noise or the bounded Fourier GP scale profile.")
     seeds = p["seeds"]
     if (set(seeds) != {"contexts", "actions", "observations", "method", "profile"}
             or any(isinstance(v, bool) or not isinstance(v, int) or v < 0 for v in seeds.values())
@@ -140,7 +153,9 @@ def _contract(manifest):
 
 
 def noise_scale(X, actions, settings, gp_cos, gp_sin):
-    """Evaluate the saved analytic GP scale with a global known upper bound."""
+    """Evaluate the constant or saved analytic GP scale with a known upper bound."""
+    if settings["type"] == "constant":
+        return np.full(np.shape(actions), settings["sigma_max"], dtype=float)
     draw = FourierGPDraw(FiniteFourierGPSpec(settings["rank"], settings["lengthscale"]),
                          tuple(gp_cos), tuple(gp_sin))
     t = np.asarray(actions) + np.asarray(X) @ np.asarray(settings["context_projection"])
@@ -152,9 +167,17 @@ def noise_scale(X, actions, settings, gp_cos, gp_sin):
 def _environment(payload_json):
     p = json.loads(payload_json)
     nmax, d, seeds = max(p["n_values"]), p["design"]["context_dim"], p["seeds"]
-    X = np.random.default_rng(seeds["contexts"]).normal(size=(nmax, d))
-    actions = np.random.default_rng(seeds["actions"]).normal(size=nmax)
-    coefficients = np.random.default_rng(seeds["profile"]).normal(size=(2, p["noise"]["rank"]))
+    context_rng, action_rng = (np.random.default_rng(seeds[key]) for key in ("contexts", "actions"))
+    if p["design"]["distribution"] == "independent_truncated_standard_normal":
+        bound = p["design"]["truncation_bound"]
+        # Shared uniforms pair bounds; samples follow a truncated law, not clipping.
+        X = truncnorm.ppf(context_rng.random((nmax, d)), -bound, bound)
+        actions = truncnorm.ppf(action_rng.random(nmax), -bound, bound)
+    else:
+        X = context_rng.normal(size=(nmax, d))
+        actions = action_rng.normal(size=nmax)
+    coefficients = (np.empty((2, 0)) if p["noise"]["type"] == "constant" else
+                    np.random.default_rng(seeds["profile"]).normal(size=(2, p["noise"]["rank"])))
     sigma = noise_scale(X, actions, p["noise"], *coefficients)
     spec = p["diagnostics"]["actions"]
     grid = np.linspace(spec["min"], spec["max"], spec["count"])
@@ -163,7 +186,8 @@ def _environment(payload_json):
     designs, mean_ell = [], []
     for n in p["n_values"]:
         design = WildLinearDesign(X[:n], actions[:n])
-        phi = features(np.repeat(X[:n], len(grid), axis=0), np.tile(grid, n))
+        contexts = X[:1] if d == 0 else X[:n]
+        phi = features(np.repeat(contexts, len(grid), axis=0), np.tile(grid, len(contexts)))
         mean_ell.append(float(np.sqrt(np.einsum("ij,jk,ik->i", phi, design.covariance, phi)).mean()))
         designs.append(design)
     return snapshot, designs, np.array(mean_ell)
@@ -314,13 +338,16 @@ def collect(manifest, runs_root):
                "csv": file_record(csv), "example": file_record(example_path),
                "coverage_event": "All calibration contexts and all real actions jointly; auxiliary and transferred events separately.",
                "bootstrap_claim": "Empirical study; no finite-sample bootstrap coverage guarantee.",
-               "analytical_claim": "Finite-sample coverage at least 1-delta conditional on design and GP profile.",
+               "analytical_claim": "Finite-sample coverage at least 1-delta conditional on fixed design and noise profile.",
                "numerics": "Double-precision coefficient norm and algebraic all-real checks; not an enclosure of ideal exact-arithmetic fitting error."}
     from .wild_reporting import write_reports
     plots = write_reports(summary, snapshot, example, project / "plots")
     summary["plots"] = [file_record(path) for path in plots]
     summary["reporting_source"] = file_record(Path(__file__).with_name("wild_reporting.py"))
-    documentation = Path(__file__).parents[3] / "docs" / "wild_bootstrap_envelopes.md"
+    guide = ("wild_bootstrap_leverage.md"
+             if p["design"]["distribution"] == "independent_truncated_standard_normal"
+             else "wild_bootstrap_envelopes.md")
+    documentation = Path(__file__).parents[3] / "docs" / guide
     experiment = project / "EXPERIMENT.md"
     experiment.write_text(documentation.read_text()+"\n\n## Saved experiment manifest\n\n```json\n"+
                           json.dumps(p, indent=2)+"\n```\n")

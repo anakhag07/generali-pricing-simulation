@@ -23,7 +23,9 @@ class WildLinearDesign:
         inverse = solve_triangular(self._triangular, np.eye(p))
         self.covariance = inverse @ inverse.T
         self.leverage = np.sum(self._orthogonal**2, axis=1)
-        self._contexts = self.design[:, :-1]
+        # With no contexts every action fiber is identical; retain all rows only
+        # for fitting and observed leverage, not for repeated supremum checks.
+        self._contexts = self.design[:1, :-1] if X.shape[1] == 0 else self.design[:, :-1]
         self._cross = self._contexts @ self.covariance[:-1, -1]
         self._constant = np.einsum(
             "ij,jk,ik->i", self._contexts, self.covariance[:-1, :-1], self._contexts,

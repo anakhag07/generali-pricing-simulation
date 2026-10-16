@@ -199,6 +199,14 @@ If lower-priority docs are stale, update them in the same task.
 
 ## Code Organization
 
+- `manifests/wild-bootstrap-leverage-bound-*.json` run the fixed-n action-only
+  truncated-normal leverage diagnostic through the existing wild-bootstrap
+  runner. `docs/wild_bootstrap_leverage.md` and MATH section 7.10 describe it.
+  `wild_study.py` supports zero contexts, optional truncated-normal designs,
+  and constant noise; `wild_reporting.write_leverage_report` compares saved
+  summaries. For zero contexts, `wild.py` caches one identical context fiber
+  for the all-real statistic but retains every observed row leverage.
+
 Before adding code, inspect the surrounding module structure and choose the narrowest sensible location for the change.
 
 Guidelines:

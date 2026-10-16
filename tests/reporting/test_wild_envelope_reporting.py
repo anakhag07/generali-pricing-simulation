@@ -198,3 +198,28 @@ def test_leverage_report_preserves_counts_and_records_pdf_csv_provenance(tmp_pat
         data = Path(record["path"]).read_bytes()
         assert record["bytes"] == len(data)
         assert record["sha256"] == hashlib.sha256(data).hexdigest()
+
+
+def test_wide_bound_report_retains_all_conditions_when_points_coincide(tmp_path, saved_leverage_summaries):
+    paths = [saved_leverage_summaries[index] for index in (0, 1, 3)]
+    template = json.loads(paths[-1].read_text())
+    for bound, label in ((100., "100"), (1000., "1000"), (None, "unbounded")):
+        summary = deepcopy(template)
+        summary["manifest"]["name"] = f"wild-bootstrap-leverage-{label}"
+        summary["manifest"]["design"]["truncation_bound"] = bound
+        path = tmp_path / f"summary-{label}.json"
+        path.write_text(json.dumps(summary))
+        paths.append(path)
+    destination = tmp_path / "wide-report"
+    wild_reporting.write_leverage_report(list(reversed(paths)), destination)
+    with (destination / "coverage_vs_leverage.csv").open(newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    assert [float(row["truncation_bound"]) if row["truncation_bound"] else None
+            for row in rows] == [.5, 1., 10., 100., 1000., None]
+    for row in rows[2:]:
+        assert float(row["max_leverage"]) == template["metrics"][0]["max_leverage"]
+        for event in ("auxiliary", "transferred"):
+            assert int(row[f"{event}_covered_count"]) == template["metrics"][0][f"{event}_covered_count"]
+    provenance = json.loads((destination / "provenance.json").read_text())
+    assert {record["path"] for record in provenance["inputs"]} == {str(path.resolve()) for path in paths}
+    assert provenance["coincident_points"] == [[.5], [1.], [10., 100., 1000., None]]

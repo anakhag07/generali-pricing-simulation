@@ -20,7 +20,7 @@ _METHODS = (("analytical", "Analytical", "C0"),
 
 
 def write_leverage_report(summary_paths, destination) -> Path:
-    """Compare saved fixed-n truncated-normal studies with pointwise coverage intervals."""
+    """Compare fixed-n normal truncations, including the unbounded limit, with coverage intervals."""
     destination = Path(destination)
     destination.mkdir(parents=True, exist_ok=True)
     rows, inputs, signatures, bounds = [], [], [], []
@@ -48,18 +48,27 @@ def write_leverage_report(summary_paths, destination) -> Path:
     if len(rows) < 2 or len(set(bounds)) != len(bounds) or any(s != signatures[0] for s in signatures):
         raise ValueError("Require distinct bounds and otherwise identical study manifests.")
     # This orders a diagnostic axis, never an optimizer solution.
-    rows.sort(key=lambda row: row["truncation_bound"])
+    rows.sort(key=lambda row: np.inf if row["truncation_bound"] is None else row["truncation_bound"])
+    # Coincident estimates share one marker, without jittering measured leverage.
+    groups = {}
+    for row in rows:
+        key = tuple(round(row[name], 12) for name in
+                    ("max_leverage", "auxiliary_coverage", "auxiliary_lower", "auxiliary_upper"))
+        groups.setdefault(key, []).append(row)
     with plt.style.context("default"), plt.rc_context(_STYLE):
         fig, ax = plt.subplots(figsize=(7.2, 4.8), constrained_layout=True)
-        for row in rows:
+        for group in groups.values():
+            row = group[0]
             coverage = row["auxiliary_coverage"]
             low, high = row["auxiliary_lower"], row["auxiliary_upper"]
             if not 0 <= low <= coverage <= high <= 1:
                 raise ValueError("Invalid auxiliary coverage interval.")
-            bound = row["truncation_bound"]
+            labels = ["Unbounded" if item["truncation_bound"] is None
+                      else f"±{item['truncation_bound']:g}" for item in group]
+            label = "Bounds " + ", ".join(labels) if labels != ["Unbounded"] else "Unbounded normal"
             ax.errorbar(row["max_leverage"], coverage,
                         yerr=[[coverage-low], [high-coverage]],
-                        fmt="o", capsize=3, label=f"Bounds [-{bound:g}, {bound:g}]")
+                        fmt="o", capsize=3, label=label)
         ax.axhline(1-rows[0]["delta"], color="0.5", linestyle="--", label="Nominal coverage")
         ax.set_xlabel(r"Maximum observed leverage $h_n$")
         ax.set_ylabel("Simultaneous auxiliary coverage")
@@ -76,7 +85,10 @@ def write_leverage_report(summary_paths, destination) -> Path:
         "outputs": [file_record(output), file_record(csv)],
         "intervals": "Pointwise 95% Wilson intervals across independent response/bootstrap repetitions.",
         "coverage_event": "Auxiliary band contains truth simultaneously for every real action.",
-        "interpretation": "Four fixed designs; maximum leverage does not determine coverage uniquely.",
+        "interpretation": "Fixed designs; maximum leverage does not determine coverage uniquely.",
+        "coincident_points": [[item["truncation_bound"] for item in group]
+                               for group in groups.values()],
+        "coincidence_tolerance": "Displayed coordinates and interval endpoints agree to 12 decimal places.",
     }, indent=2) + "\n")
     return output
 

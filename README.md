@@ -103,6 +103,8 @@ study varies the truncation of standard-normal logged actions while holding
 noise, n, B, and delta fixed. See the [leverage diagnostic](docs/wild_bootstrap_leverage.md)
 for execution and the combined coverage plot, including the extension to
 bounds 100, 1000, and unbounded normal.
+The `manifests/wild-bootstrap-outlier-*.json` follow-up fixes the [-3,3] sample
+and moves one observation to drive maximum leverage toward 1.
 
 ### Fixed offline bootstrap and optimization regret
 

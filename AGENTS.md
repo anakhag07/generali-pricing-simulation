@@ -210,6 +210,11 @@ If lower-priority docs are stale, update them in the same task.
   with the same uniforms. Missing bounds remain invalid. The wide-bound
   report retains every condition and groups coincident coordinates without
   jitter; old saved studies keep their original source provenance.
+  `manifests/wild-bootstrap-outlier-*.json` use a deterministic
+  `design.action_override` (fixed index, prescribed value) to vary one action
+  while preserving all other rows. MATH section 7.11 records the formula;
+  observed hat-matrix leverage is always at most 1. Outlier reports require
+  the same bulk distribution and moved-row index across all conditions.
 
 Before adding code, inspect the surrounding module structure and choose the narrowest sensible location for the change.
 

@@ -1202,6 +1202,42 @@ determine that error or guarantee monotonic empirical coverage. Constant noise,
 sample size, feature count, bootstrap count, and confidence level remove those
 sources of variation. The target action domain remains the same across bounds.
 
+### 7.11 One moved observation with a fixed truncated-normal bulk
+
+Use the same 300 inverse-CDF draws from $N(0,1)$ conditioned on [-3,3]
+and replace the preselected row 0 action with
+$$t\in\{3,10,20,40,100,1000\}.$$
+All other 299 actions stay exactly fixed. This is a deterministic design
+modification, so it introduces no new random process or seed stream. The
+truth, frozen predictor, independent constant-variance Gaussian observation
+errors, bootstrap scheme, 2000 repetitions, and all-real coverage event remain
+as in section 7.10. Every condition shares observation innovations and wild
+multipliers; the moved row retains its own response noise and its response mean
+is recomputed from the same true linear model. It is a high-leverage design
+row, not a response contamination or model misspecification.
+
+Let $m=n-1$, let $\mu$ be the fixed bulk mean, and let
+$S=\sum_{i\ne0}(a_i-\mu)^2>0$ be its centered sum of squares. Define
+$u=t-\mu$. The full design's centered sum of squares and moved-row leverage are
+$$S_{aa}=S+\frac{m}{n}u^2,\qquad
+h_0(t)=\frac1n+\frac{(m/n)^2u^2}{S+(m/n)u^2}.$$
+Therefore $h_0(t)\to1$ as $|t|\to\infty$. All observed leverages are diagonal
+entries of the orthogonal projection $H=X(X^\mathsf TX)^{-1}X^\mathsf T$,
+so $0\le h_i\le1$ and $h_n=\max_i h_i\le1$. Values 2 or 10 are impossible
+for the document's definition. The observed maximum is computed over all rows;
+the moved row is not assumed to be the largest before checking.
+
+The primary diagnostic remains simultaneous auxiliary-band coverage against
+the actual $h_n$, with pointwise 95% Wilson intervals. The full transferred
+envelope coverage is retained separately. Under constant noise variance,
+$$\mathbb E[\widetilde\varepsilon_i^2\mid X]=\sigma^2(1-h_i),$$
+which explains why a highly influential row has a suppressed raw bootstrap
+residual. No leverage adjustment, target-grid approximation, or downstream
+optimizer is introduced. The supplied outlier locations are prescribed design
+conditions, not optimized actions. This experiment conditions on one bulk
+realization; it does not establish a universal coverage curve determined only
+by maximum leverage.
+
 ## 8. Gradients and Estimators
 
 For a differentiable action objective and policy, the population chain rule is

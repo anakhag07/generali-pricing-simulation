@@ -1,4 +1,4 @@
-"""Paired fixed-design wild-bootstrap coverage and width sweeps (MATH §7.9–7.10)."""
+"""Paired fixed-design wild-bootstrap coverage and width sweeps (MATH §7.9–7.11)."""
 
 from __future__ import annotations
 
@@ -90,6 +90,17 @@ def load_manifest(path):
         if (not vals or any(isinstance(v, bool) or not isinstance(v, int) or v < minimum for v in vals)
                 or vals != sorted(set(vals))):
             raise ValueError(f"Require sorted unique valid {key}.")
+    if "action_override" in p["design"]:
+        override = p["design"]["action_override"]
+        if not isinstance(override, dict) or set(override) != {"index", "value"}:
+            raise ValueError("Require action_override with exactly index and value.")
+        index, value = override["index"], override["value"]
+        if (isinstance(index, bool) or not isinstance(index, int)
+                or not 0 <= index < min(p["n_values"])):
+            raise ValueError("action_override index must occur in every sample-size prefix.")
+        if (isinstance(value, bool) or not isinstance(value, (float, int))
+                or not np.isfinite(value)):
+            raise ValueError("action_override value must be finite and numeric.")
     if (not p["deltas"] or len(set(p["deltas"])) != len(p["deltas"])
             or any(isinstance(v, bool) or not isinstance(v, (float, int)) or not 0 < v < 1 for v in p["deltas"])):
         raise ValueError("Require unique deltas strictly in (0,1).")
@@ -179,6 +190,10 @@ def _environment(payload_json):
     else:
         X = context_rng.normal(size=(nmax, d))
         actions = action_rng.normal(size=nmax)
+    if "action_override" in p["design"]:
+        override = p["design"]["action_override"]
+        # This prescribed design change consumes no draws; noise uses its new location.
+        actions[override["index"]] = override["value"]
     coefficients = (np.empty((2, 0)) if p["noise"]["type"] == "constant" else
                     np.random.default_rng(seeds["profile"]).normal(size=(2, p["noise"]["rank"])))
     sigma = noise_scale(X, actions, p["noise"], *coefficients)

@@ -276,3 +276,87 @@ def test_invalid_constant_noise_fails_before_sampling(manifest_path, sigma):
     manifest_path.write_text(json.dumps(payload))
     with pytest.raises(ValueError, match="sigma_max"):
         study.load_manifest(manifest_path)
+
+
+@pytest.mark.parametrize("override", [
+    None, [], {"index": 0}, {"index": 0, "value": 10, "extra": 1},
+    {"index": True, "value": 10}, {"index": 0., "value": 10},
+    {"index": -1, "value": 10}, {"index": 12, "value": 10},
+    {"index": 0, "value": True}, {"index": 0, "value": "10"},
+    {"index": 0, "value": float("inf")}, {"index": 0, "value": float("nan")},
+])
+def test_invalid_action_override_fails_before_sampling(manifest_path, override):
+    payload = _truncated_payload(manifest_path, 3.)
+    payload["design"]["action_override"] = override
+    manifest_path.write_text(json.dumps(payload))
+    with pytest.raises(ValueError, match="action_override"):
+        study.load_manifest(manifest_path)
+
+
+def test_moved_observation_preserves_bulk_and_matches_leverage_formula(manifest_path):
+    payload = _truncated_payload(manifest_path, 3.)
+    payload["n_values"] = [300]
+    payload["baseline"]["n"] = 300
+    original, _, _ = study._environment(json.dumps(payload, sort_keys=True))
+    bulk = original["actions"][1:]
+    m, n = len(bulk), len(original["actions"])
+    bulk_ss = np.sum((bulk-bulk.mean())**2)
+    maxima = []
+    for location in (3., 10., 20., 40., 100., 1000.):
+        payload["design"]["action_override"] = {"index": 0, "value": location}
+        manifest_path.write_text(json.dumps(payload))
+        manifest = study.load_manifest(manifest_path)
+        snapshot, (design,), _ = study._environment(json.dumps(manifest.payload, sort_keys=True))
+        assert snapshot["actions"][0] == location
+        np.testing.assert_array_equal(snapshot["actions"][1:], bulk)
+        assert np.all(np.abs(bulk) < 3.)
+        np.testing.assert_array_equal(snapshot["X"], original["X"])
+        np.testing.assert_array_equal(snapshot["sigma"], original["sigma"])
+        squared_distance = (location-bulk.mean())**2
+        expected = 1/n + (m/n)**2*squared_distance/(bulk_ss+(m/n)*squared_distance)
+        assert design.leverage[0] == pytest.approx(expected, abs=1e-14)
+        assert np.all((design.leverage >= 0) & (design.leverage <= 1))
+        maxima.append(np.max(design.leverage))
+        errors = np.array([[.1, -.2], [-.3, .5], [0., 0.]])
+        np.testing.assert_allclose(design.statistics(errors)**2,
+                                   np.sum((errors @ design.design.T)**2, axis=1), rtol=1e-12)
+    assert np.all(np.diff(maxima) > 0)
+    assert maxima[-1] > .999
+
+
+def test_action_override_precedes_location_dependent_noise(manifest_path):
+    payload = study.load_manifest(manifest_path).payload
+    original, _, _ = study._environment(json.dumps(payload, sort_keys=True))
+    payload["design"]["action_override"] = {"index": 0, "value": 10.}
+    manifest_path.write_text(json.dumps(payload))
+    manifest = study.load_manifest(manifest_path)
+    snapshot, _, _ = study._environment(json.dumps(manifest.payload, sort_keys=True))
+    np.testing.assert_array_equal(snapshot["X"], original["X"])
+    np.testing.assert_array_equal(snapshot["actions"][1:], original["actions"][1:])
+    np.testing.assert_array_equal(snapshot["sigma"][1:], original["sigma"][1:])
+    np.testing.assert_array_equal(snapshot["sigma"], study.noise_scale(
+        snapshot["X"], snapshot["actions"], payload["noise"], snapshot["gp_cos"], snapshot["gp_sin"]))
+    assert snapshot["sigma"][0] != original["sigma"][0]
+
+
+def test_moved_observation_preserves_response_and_multiplier_pairing(manifest_path, tmp_path):
+    records, saved = [], []
+    for location in (3., 1000.):
+        payload = _truncated_payload(manifest_path, 3.)
+        payload["name"] = f"moved-{int(location)}"
+        payload["design"]["action_override"] = {"index": 0, "value": location}
+        manifest_path.write_text(json.dumps(payload))
+        manifest = study.load_manifest(manifest_path)
+        record = study.run_repetition(manifest, 0, tmp_path / "runs")
+        records.append(record)
+        snapshot, designs, _ = study._environment(json.dumps(payload, sort_keys=True))
+        with np.load(record["arrays"]["path"]) as arrays:
+            saved.append(arrays["innovations"])
+            for ni, (n, design) in enumerate(zip(payload["n_values"], designs)):
+                y = 1. + snapshot["actions"][:n] + .5*arrays["innovations"][:n]
+                np.testing.assert_allclose(arrays["beta"][ni], design.fit(y), rtol=0, atol=1e-14)
+                error = arrays["beta"][ni] - payload["truth"]["coefficients"]
+                assert arrays["truth_statistics"][ni] == pytest.approx(np.linalg.norm(design.design @ error))
+    assert records[0]["seeds"] == records[1]["seeds"]
+    assert records[0]["multiplier_sha256"] == records[1]["multiplier_sha256"]
+    np.testing.assert_array_equal(saved[0], saved[1])

@@ -101,3 +101,51 @@ For the paired seed used here, bounds 10, 100, 1000, and unbounded produce
 identical floating-point action arrays. Their realized action range is about
 [-2.697,2.559]. A large permitted interval does not force observations into its
 tails, so this extension is not a large-leverage perturbation of the design.
+
+## One moved observation
+
+The stronger leverage comparison fixes the base truncated-normal sample to
+[-3,3] and replaces the preselected row 0 action with 3, 10, 20, 40, 100, or
+1000. The remaining 299 actions stay exactly the same. These are six
+deterministic realizations of one design row, not six newly sampled datasets.
+The response mean at the moved row is recomputed from f(a)=1+a, and its
+independent observation noise remains N(0,0.5^2). The predictor, sample size,
+bootstrap count, confidence level, and paired repetition seed streams are
+unchanged. The action override is deterministic and needs no new seed stream.
+
+Observed leverage is a diagonal entry of the projection matrix H, so it is
+bounded by 1. Moving the row farther away makes its leverage approach 1;
+values 2 or 10 cannot be attained for the proof's h_n. The six prescribed
+positions produce maximum leverages approximately 0.0346, 0.2613, 0.5825,
+0.8473, 0.9719, and 0.9997. The exact bulk-dependent formula is in MATH section
+7.11. Numerical fitting still uses the existing QR implementation.
+
+Run the six `manifests/wild-bootstrap-outlier-<position>.json` manifests through
+the existing entry point, for example:
+
+```bash
+PYTHONPATH=src OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 \
+python scripts/run_experiment_manifest.py \
+  manifests/wild-bootstrap-outlier-3.json --launch local
+```
+
+After all six finish, generate the comparison with:
+
+```bash
+PYTHONPATH=src python scratch/plot_wild_bootstrap_leverage.py --single-outlier
+```
+
+The report goes to `wild-bootstrap-single-outlier/`. Its CSV retains both
+the moved action and actual maximum leverage, all auxiliary and transferred
+coverage results, and Wilson intervals. The report requires an identical
+bulk distribution, row index, noise, and seed policy across conditions.
+Coverage concerns every real action, using the same coefficient statistic;
+it is not restricted to [-3,3] or a finite rendering grid. The existing
+representation and numeric-precision caveats above apply. All studies remain
+conditional on this single fixed bulk realization.
+
+Raw OLS residual variance at row i is sigma^2*(1-h_i), so a highly influential
+row can have a very small bootstrap residual. This construction tests the
+resulting effect on bootstrap calibration. The primary figure uses auxiliary
+coverage; transferred-envelope coverage remains a distinct quantity because
+its discrepancy term can conceal auxiliary undercoverage.

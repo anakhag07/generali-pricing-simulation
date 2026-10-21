@@ -898,6 +898,50 @@ linearly or monotonically. Increasing N need not remove the discrepancy floor.
 Sources: `src/experiments/offline_bootstrap.py`,
 `src/experiments/offline_bootstrap_math.py` and their reporting companion.
 
+### 7.8 Wild-bootstrap data-location illustration
+
+The standalone driver `scratch/run_wild_data_location.py` uses
+$f(a)=5a-5a^2$ on $\mathcal A=\mathbb R$. The two designs are
+$a_i=\mu+\sqrt{0.45}Z_i$, with $\mu\in\{0.5,2.5\}$, $n=300$, and
+$y_i=f(a_i)+\varepsilon_i$, where the independent $Z_i,\varepsilon_i$ are
+standard normal. Named streams derived from run seed 20261021 control design,
+noise, wild multipliers, and optimizer directions. Innovations and multipliers
+are paired across locations; each design is frozen after generation.
+
+With $p(a)=(1,a,a^2)^\top$, $P_{i,:}=p(a_i)^\top$, fit quadratic OLS
+$\widehat\beta$ by QR. For $B=1999$ independent Rademacher multiplier vectors,
+
+$$
+e=y-P\widehat\beta,\qquad
+y_b^*=P\widehat\beta+e\odot\xi_b,\qquad
+d_b=(P^\top P)^{-1}P^\top(e\odot\xi_b).
+$$
+
+Use raw residuals (no leverage adjustment), $V=(P^\top P)^{-1}$,
+$\ell(a)=\sqrt{p(a)^\top Vp(a)}$, and the all-real statistic
+$T_b=\sup_{a\in\mathbb R}|p(a)^\top d_b|/\ell(a)$.
+Section 7.2's polynomial certificate with scale 1 brackets each statistic
+to relative/absolute tolerance $10^{-8}$. The critical value is order statistic
+$k=\lceil B(1-0.05)\rceil$ of the certified upper bounds. This sorts bootstrap
+statistics only; it never selects an action. The frozen band is
+$\widehat f(a)\pm r(a)$, with $\widehat f(a)=p(a)^\top\widehat\beta$ and
+$r(a)=T_{(k)}\ell(a)$. It targets simultaneous conditional-mean coverage on
+the entire real line. Nominal 95% bootstrap coverage is approximate at this
+sample size; a realized exact containment check is not a sampling guarantee.
+The bootstrap error covariance between queries is
+$p(a)^\top V P^\top\operatorname{diag}(e_i^2)PVp(b)$.
+
+The repository Stein-difference solver queries $-(\widehat f-r)$ directly,
+with no interpolation, resampling, clipping, or action constraints. Starts are
+$-0.5,1.5,4$, Gaussian perturbation SD is 0.01, directions per estimate are 64,
+constant step size is 0.05, gradient stopping tolerance is $10^{-5}$, and the
+cap is 1000 updates. Only returned endpoints compete for the largest lower-bound
+value. Repository first-order optimization supplies the truth marker. Existing
+polynomial threshold checks certify the reported endpoints' all-real objective
+gaps against $10^{-6}$ without supplying replacement actions. Plot grids only
+render these continuous functions. The complete experiment and results are
+documented in the sibling thesis's `chapters/10-21-update.tex`.
+
 ## 8. Gradients and Estimators
 
 For a differentiable action objective and policy, the population chain rule is

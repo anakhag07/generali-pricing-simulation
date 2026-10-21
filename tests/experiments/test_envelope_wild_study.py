@@ -39,6 +39,63 @@ def test_profile_has_global_cap_and_exact_deterministic_offgrid_evaluation(manif
                                   p["noise"], snapshot["gp_cos"], snapshot["gp_sin"]))
 
 
+@pytest.mark.parametrize("variant", ["centered_exponential", "independent_standardized_t3"])
+def test_distribution_perturbations_preserve_pairing(manifest_path, tmp_path, variant):
+    from scipy.special import log_ndtr
+    from scipy.stats import t
+    baseline = study.load_manifest(manifest_path)
+    original = study.run_repetition(baseline, 0, tmp_path / "runs")
+    base_snapshot, _, _ = study._environment(json.dumps(baseline.payload, sort_keys=True))
+    p = json.loads(manifest_path.read_text())
+    p["name"] += "-variant"
+    if variant == "centered_exponential":
+        p["noise"]["innovation_distribution"] = variant
+    else:
+        p["design"]["distribution"] = variant
+    manifest_path.write_text(json.dumps(p))
+    manifest = study.load_manifest(manifest_path)
+    changed = study.run_repetition(manifest, 0, tmp_path / "runs")
+    snapshot, designs, _ = study._environment(json.dumps(manifest.payload, sort_keys=True))
+    assert changed["multiplier_sha256"] == original["multiplier_sha256"]
+    assert changed["seeds"] == original["seeds"]
+    for key in ("gp_cos", "gp_sin", "actions_grid"):
+        np.testing.assert_array_equal(snapshot[key], base_snapshot[key])
+    with np.load(changed["arrays"]["path"]) as arrays, np.load(original["arrays"]["path"]) as base_arrays:
+        if variant == "centered_exponential":
+            np.testing.assert_array_equal(arrays["innovations"], -log_ndtr(-base_arrays["innovations"])-1)
+            for key in ("X", "actions", "sigma"):
+                np.testing.assert_array_equal(snapshot[key], base_snapshot[key])
+        else:
+            np.testing.assert_array_equal(arrays["innovations"], base_arrays["innovations"])
+            for key in ("X", "actions"):
+                np.testing.assert_allclose(snapshot[key], t.ppf(norm.cdf(base_snapshot[key]), 3)/np.sqrt(3), rtol=1e-10)
+            assert not np.array_equal(snapshot["sigma"], base_snapshot["sigma"])
+            np.testing.assert_array_equal(snapshot["sigma"], study.noise_scale(snapshot["X"], snapshot["actions"],
+                                         p["noise"], snapshot["gp_cos"], snapshot["gp_sin"]))
+        assert np.all(~arrays["auxiliary_covered"] | arrays["transferred_covered"])
+    for design, n in zip(designs, p["n_values"]):
+        assert np.linalg.matrix_rank(design.design) == design.design.shape[1]
+        np.testing.assert_array_equal(design.design[:, 1:-1], snapshot["X"][:n])
+    assert study.run_repetition(manifest, 0, tmp_path / "runs") == changed
+
+
+def test_t3_transform_retains_extreme_tails_without_clipping():
+    z = np.array([-12., -9., -1., 0., 1., 9., 12.])
+    actual = study._standardized_t3(z)
+    assert np.isfinite(actual).all()
+    assert np.all(np.diff(actual) > 0)
+    np.testing.assert_array_equal(actual, -actual[::-1])
+    assert actual[-1] > actual[-2] * 1000
+
+
+def test_unknown_innovation_law_fails_before_sampling(manifest_path):
+    p = json.loads(manifest_path.read_text())
+    p["noise"]["innovation_distribution"] = "cauchy"
+    manifest_path.write_text(json.dumps(p))
+    with pytest.raises(ValueError, match="innovations"):
+        study.load_manifest(manifest_path)
+
+
 def test_repetition_replays_paired_prefixes_and_quantiles(manifest_path, tmp_path):
     manifest = study.load_manifest(manifest_path)
     record = study.run_repetition(manifest, 0, tmp_path / "runs")

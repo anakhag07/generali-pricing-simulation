@@ -14,8 +14,8 @@ import tempfile
 from types import SimpleNamespace
 
 import numpy as np
-from scipy.special import expit
-from scipy.stats import truncnorm
+from scipy.special import expit, log_ndtr, ndtr
+from scipy.stats import t, truncnorm
 
 from experiments.launch import LaunchPlan
 from experiments.policy_lcb.common import read_json, write_json_atomic, wilson_interval
@@ -72,8 +72,9 @@ def load_manifest(path):
     if isinstance(d, bool) or not isinstance(d, int) or d < 0:
         raise ValueError("Require a nonnegative context dimension.")
     distribution = p["design"]["distribution"]
-    if distribution not in {"independent_standard_normal", "independent_truncated_standard_normal"}:
-        raise ValueError("The design must use independent standard normal or truncated-normal coordinates/actions.")
+    if distribution not in {"independent_standard_normal", "independent_truncated_standard_normal",
+                             "independent_standardized_t3"}:
+        raise ValueError("Require independent normal, truncated-normal, or standardized-t3 coordinates/actions.")
     if distribution == "independent_truncated_standard_normal":
         if "truncation_bound" not in p["design"]:
             raise ValueError("Require explicit truncation_bound; null means unbounded.")
@@ -133,6 +134,8 @@ def load_manifest(path):
     # Accept the old manifest spelling, but record the exact current rank rule.
     bootstrap["quantile"] = "order_statistic"
     noise = p["noise"]
+    if noise.get("innovation_distribution", "standard_normal") not in {"standard_normal", "centered_exponential"}:
+        raise ValueError("Require standard_normal or centered_exponential innovations.")
     if noise["type"] == "constant":
         sigma = noise["sigma_max"]
         if (isinstance(sigma, bool) or not isinstance(sigma, (float, int))
@@ -195,6 +198,11 @@ def noise_scale(X, actions, settings, gp_cos, gp_sin):
         settings["amplitude"] * draw.evaluate(t))
 
 
+def _standardized_t3(normal_draws):
+    # Symmetry uses the small tail: no upper-CDF rounding, clipping or new draws.
+    return np.sign(normal_draws) * t.isf(ndtr(-np.abs(normal_draws)), df=3) / np.sqrt(3.)
+
+
 @lru_cache(maxsize=4)
 def _environment(payload_json):
     p = json.loads(payload_json)
@@ -209,6 +217,8 @@ def _environment(payload_json):
     else:
         X = context_rng.normal(size=(nmax, d))
         actions = action_rng.normal(size=nmax)
+        if p["design"]["distribution"] == "independent_standardized_t3":
+            X, actions = _standardized_t3(X), _standardized_t3(actions)
     if "action_override" in p["design"]:
         override = p["design"]["action_override"]
         # This prescribed design change consumes no draws; noise uses its new location.
@@ -270,6 +280,8 @@ def _run_repetition(manifest, index, project, digest, snapshot, designs, mean_el
     seeds = {key: derive_seed(p["seeds"][key], f"repetition:{index}") for key in ("observations", "method")}
     nmax, bmax = len(snapshot["X"]), max(p["B_values"])
     innovations = np.random.default_rng(seeds["observations"]).normal(size=nmax)
+    if p["noise"].get("innovation_distribution", "standard_normal") == "centered_exponential":
+        innovations = -log_ndtr(-innovations)-1.
     multipliers = 2*np.random.default_rng(seeds["method"]).integers(0, 2, size=(bmax, nmax), dtype=np.int8)-1
     truth = np.asarray(p["truth"]["coefficients"])
     predictor = np.asarray(p["predictor"]["coefficients"])

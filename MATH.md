@@ -1382,6 +1382,46 @@ coverage estimate. No new draws, fitting, optimization, or coverage checks are
 needed. Keep the same three deltas, paired sizes, and 95% Wilson intervals;
 omit the analytical comparator from these two replayed coverage figures.
 
+### 7.15 Paired distribution perturbations
+
+Keep $g=f-\widehat f$, the affine features, raw-residual Rademacher bootstrap,
+and paired $(n,B)$ schedule unchanged. Transform the original independent
+standard-normal streams $Z$ (CDF $\Phi$) deterministically:
+
+* Noise variant: $\xi=-\log\Phi(-Z)-1\sim\mathrm{Exp}(1)-1$ and
+  $\epsilon_i=\sigma(X_i,A_i)\xi_i$. Mean, variance, third and fourth central
+  moments are $0,1,2,9$, so $K=9^{1/4}\sigma_{\max}$ in Section 7.14,
+  replacing the Gaussian $3^{1/4}\sigma_{\max}$.
+* Design variant: independently transform every context coordinate and logged
+  action to $F_{t_3}^{-1}(\Phi(Z))/\sqrt3$. Mean zero, variance one, infinite
+  fourth moment. Observation innovations stay normal. The fixed-design theorem
+  requires full column rank and controls leverage; it needs no fourth moment
+  for the design distribution.
+
+No clipping or empirical normalization is used. Evaluate t quantiles using the
+smaller Gaussian tail and symmetry, and exponential innovations with
+`log_ndtr(-Z)`. Existing context, action, observation, profile and multiplier
+seed streams retain their roles; no additional random process is introduced.
+The variants reuse normal ranks, prefixes and multipliers. Each law freezes one
+design; 2,000 repetitions vary responses and bootstrap draws. The same frozen
+Fourier GP scale function is evaluated analytically at the new design points;
+observation errors remain conditionally independent.
+
+Coverage is joint over calibration contexts and every real action, determined
+by coefficient checks. The window $[-2,2]$ is only for rendering/width summaries,
+with no interpolation in the proof. No objective optimization is involved.
+Use $\max\{0,1-\delta-\rho_n-\tau_n-(1-\delta)/(B+1)\}$ with the appropriate
+$K$, recording the untruncated bound too. No Gaussian-only refinement is used
+for the exponential noise.
+
+Implementation plan: extend the existing manifest runner's distribution choices;
+verify unchanged Gaussian replay, paired transforms and moment constants with
+small complete local studies. A post-collection replay compares Gaussian and
+perturbed wild coverage with Wilson intervals and law-specific finite bounds.
+Radius, context-slice and context-averaged figures contain the perturbed study
+only, retaining OLS and wild overlays. Submit the two production arrays and
+dependent report jobs after validation.
+
 ## 8. Gradients and Estimators
 
 For a differentiable action objective and policy, the population chain rule is

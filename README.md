@@ -57,9 +57,10 @@ pytest -q
 
 For the standalone quadratic wild-bootstrap data-location illustration, run
 `python scratch/run_wild_data_location.py`. It compares normal logging means
-0.5 and 2.5 with variance 0.45, saves query-only Stein optimization traces under
-the sibling `results/wild-data-location-20261021/`, and writes three vector PDFs
-to the sibling thesis's `figures/10-21-update/`. Both destinations can be
+0.5 and 10 with variance 0.45, saves query-only Stein optimization traces under
+the sibling `results/wild-data-location-20261021-mean10/`, and writes three vector PDFs
+to the sibling thesis's `figures/10-21-update-mean10/`. The earlier mean-2.5 run
+remains in the corresponding directories without `-mean10`. Both destinations can be
 overridden with `--output-dir` and `--figure-dir`; see MATH.md §7.8 and the
 thesis's `chapters/10-21-update.tex` for the full setup.
 

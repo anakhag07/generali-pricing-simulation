@@ -30,13 +30,13 @@ from objective.base import Objective
 from optimization.solvers import run_first_order_minimize, run_stein_difference_minimize
 
 CONFIG = {
-    "run_seed": 20261021, "n": 300, "variance": 0.45, "means": [0.5, 2.5],
+    "run_seed": 20261021, "n": 300, "variance": 0.45, "means": [0.5, 10.0],
     "noise_sd": 1.0, "bootstrap_draws": 1999, "delta": 0.05,
     "starts": [-0.5, 1.5, 4.0], "step_rule": "constant", "step_size": 0.05,
     "t_steps": 1000, "n_grad_samples": 64, "smoothing_sd": 0.01,
     "gradient_tolerance": 1e-5, "statistic_tolerance": 1e-8,
     "global_gap_tolerance": 1e-6, "display_window": [-0.25, 1.25],
-    "logging_window": [-1.5, 4.5],
+    "logging_windows": [[-1.5, 4.5], [-1.5, 12.0]],
     "truth_coefficients": [0.0, 5.0, -5.0],
 }
 
@@ -151,7 +151,6 @@ def plot_figures(output, figure_dir, bands, summary):
                          "xtick.labelsize": 10, "ytick.labelsize": 10,
                          "legend.fontsize": 10, "figure.titlesize": 16})
     grid = np.linspace(*CONFIG["display_window"], 1201)
-    density_grid = np.linspace(*CONFIG["logging_window"], 1201)
     truth = features(grid) @ CONFIG["truth_coefficients"]
     reference = summary["truth_reference"]
     fig, ax = plt.subplots(figsize=(7, 4.8), constrained_layout=True)
@@ -163,6 +162,7 @@ def plot_figures(output, figure_dir, bands, summary):
     fig.savefig(figure_dir / "01_true_objective.pdf", format="pdf")
     plt.close(fig)
     for index, (label, band) in enumerate(bands.items(), start=2):
+        density_grid = np.linspace(*CONFIG["logging_windows"][index-2], 1201)
         result = summary["settings"][label]
         fitted, radius = band_values(band, grid)
         fig, (ax, data_ax) = plt.subplots(2, 1, figsize=(7, 8),
@@ -200,9 +200,9 @@ def plot_figures(output, figure_dir, bands, summary):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path,
-                        default=ROOT.parent / "results/wild-data-location-20261021")
+                        default=ROOT.parent / "results/wild-data-location-20261021-mean10")
     parser.add_argument("--figure-dir", type=Path,
-                        default=ROOT.parent / "MEng-Thesis/figures/10-21-update")
+                        default=ROOT.parent / "MEng-Thesis/figures/10-21-update-mean10")
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
     args.figure_dir.mkdir(parents=True, exist_ok=True)
@@ -238,13 +238,16 @@ def main():
         bands[label] = band
         np.savez_compressed(args.output_dir / f"{label}_band.npz", **band)
         attempts, selected = optimize_band(band, seeds.optimizer_seed, args.output_dir, label)
-        _, radius_at_true = band_values(band, [reference["action"]])
+        fit_at_true, radius_at_true = band_values(band, [reference["action"]])
         certificate = QuadraticErrorCertificate(band["covariance"], 1.)
         covered = certificate.contains(certificate.difference(band["beta"], beta0), band["critical"])
         summary["settings"][label] = {
             "mean": mean, "beta": band["beta"].tolist(), "critical": band["critical"],
             "critical_low": band["critical_low"], "max_leverage": band["max_leverage"],
             "half_width_at_true_optimum": float(radius_at_true[0]),
+            "fit_at_true_optimum": float(fit_at_true[0]),
+            "band_at_true_optimum": [float(fit_at_true[0]-radius_at_true[0]),
+                                     float(fit_at_true[0]+radius_at_true[0])],
             "observations_within_0p25_of_true_optimum": int(np.sum(np.abs(actions-reference["action"]) <= .25)),
             "realized_all_real_containment": bool(covered), "attempts": attempts,
             "selected": selected,

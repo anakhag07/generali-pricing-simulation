@@ -902,11 +902,14 @@ Sources: `src/experiments/offline_bootstrap.py`,
 
 The standalone driver `scratch/run_wild_data_location.py` uses
 $f(a)=5a-5a^2$ on $\mathcal A=\mathbb R$. The two designs are
-$a_i=\mu+\sqrt{0.45}Z_i$, with $\mu\in\{0.5,2.5\}$, $n=300$, and
+$a_i=\mu+\sqrt{0.45}Z_i$, with $\mu\in\{0.5,10\}$, $n=300$, and
 $y_i=f(a_i)+\varepsilon_i$, where the independent $Z_i,\varepsilon_i$ are
 standard normal. Named streams derived from run seed 20261021 control design,
 noise, wild multipliers, and optimizer directions. Innovations and multipliers
-are paired across locations; each design is frozen after generation.
+are paired across locations; each design is frozen after generation. This
+follow-up changes only the second mean from 2.5 to 10, retaining the earlier
+seed streams and optimizer settings. Its artifacts use the `-mean10` suffix;
+the earlier run remains available for comparison.
 
 With $p(a)=(1,a,a^2)^\top$, $P_{i,:}=p(a_i)^\top$, fit quadratic OLS
 $\widehat\beta$ by QR. For $B=1999$ independent Rademacher multiplier vectors,

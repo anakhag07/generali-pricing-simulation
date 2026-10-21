@@ -107,6 +107,7 @@ The [finite-sample replay](docs/wild_bootstrap_envelopes.md#finite-sample-covera
 compares the saved wild-bootstrap coverage with the thesis's explicit lower bound.
 For centered-exponential noise and standardized-t3 design variants of that
 baseline, see [the distribution sweeps](docs/wild_bootstrap_envelopes.md#distribution-perturbations).
+The same guide includes [saved-input and paired width diagnostics](docs/wild_bootstrap_envelopes.md#input-distributions-and-paired-mean-width-changes).
 
 For maximum-leverage versus coverage at fixed sample size, use the
 `manifests/wild-bootstrap-leverage-bound-*.json` manifests. This action-only

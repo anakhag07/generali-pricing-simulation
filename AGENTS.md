@@ -1424,6 +1424,12 @@ OLS/wild widths, slices and context averages remain in `plots/`. Preserve the
 saved Gaussian baseline and use its exact seed roots/rank coupling. The
 exponential fourth moment is 9, not the Gaussian 3; never apply a Gaussian-only
 bound refinement to that variant. See MATH §7.15 and the wild-bootstrap guide.
+`scratch/plot_wild_distribution_changes.py` adds saved-input distribution PDFs
+and paired wild mean-half-width comparisons (`plots/comparison/09_*`, `10_*`).
+It verifies saved repetition hashes and reconstructs the original width metric;
+its paired Monte Carlo intervals describe simulation precision, not envelope
+coverage. Supply both variants together for the 36-comparison adjustment. See
+MATH §7.16. This replay does not modify the simulation sources or saved draws.
 
 ### README.md
 Keep README concise—a quick-start and overview only. Update when:

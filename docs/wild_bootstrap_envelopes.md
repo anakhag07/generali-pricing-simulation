@@ -423,3 +423,34 @@ OLS/wild diagnostics; use the `comparison/` versions for distribution
 comparisons. Selected contexts are fixed across pairs within each variant,
 using response repetition 0 and delta .05. Baseline files are read only.
 Saved manifests, source hashes, seeds and report provenance support replay.
+
+### Input distributions and paired mean-width changes
+
+Replay both completed variants together to add input-distribution and wild-only
+mean-half-width comparisons:
+
+```bash
+PYTHONPATH=src python scratch/plot_wild_distribution_changes.py \
+  /path/to/exponential-run/summary.json /path/to/t3-run/summary.json \
+  --baseline /path/to/residual-heteroskedastic-paired-nb/summary.json
+```
+
+Each run receives additional vector PDFs under `plots/comparison/`:
+
+* `09_noise_distribution.pdf` (exponential run): generating innovation
+  densities and saved heteroskedastic errors from repetition 0.
+* `09_source_data_distribution.pdf` (t3 run): generating source densities and
+  empirical absolute-tail frequencies of all saved context/action values.
+* `10_mean_half_width_vs_pairs.pdf`: Gaussian versus variant mean residual
+  half-width, then their paired difference at every `(n,B)` and delta.
+
+Half-widths use the original context/action-window average, followed by the
+mean over all 2,000 repetitions. The script verifies each reconstructed mean
+against the original summary. Pointwise Monte Carlo intervals accompany the
+width curves; paired-difference intervals use a Bonferroni adjustment over all
+36 variant/pair/delta comparisons. These are approximate Monte Carlo intervals
+conditional on the frozen designs, not band-coverage guarantees. Numeric
+differences, percentages and intervals are in
+`10_mean_half_width_statistics.csv`; input hashes are in
+`distribution_and_width_provenance.json`. No new draws or simulations are used.
+See MATH §7.16 for the exact formulas.

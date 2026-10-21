@@ -205,7 +205,7 @@ def _moved_distribution(items):
         ax.scatter([item["action"]], [0.], color="C2", zorder=3, clip_on=False)
         h = item["leverage"][item["moved"]]
         # Explicitly requested label above the moved dot; no figure-level text layout.
-        ax.annotate(rf"$h_0={h:.5f}$", (item["action"], 0), xytext=(0, 7),
+        ax.annotate(rf"$h_{{{item['moved']}}}={h:.5f}$", (item["action"], 0), xytext=(0, 7),
                     textcoords="offset points", ha="center", va="bottom", fontsize=10)
         ax.set_xscale("symlog", linthresh=4)
         ax.set_xlim(min(-4., float(bulk.min())-1), max(i["action"] for i in items)*3)
@@ -220,8 +220,9 @@ def _moved_band_figure(items, means, *, radii=False):
     fig, axes = plt.subplots(len(items), 2, figsize=(12, 3.2*len(items)),
                             sharex=True, sharey="col", squeeze=False, constrained_layout=True)
     delta = items[0]["p"]["baseline"]["delta"]
+    n, b = (items[0]["p"]["baseline"][key] for key in ("n", "B"))
     title = "Context-averaged radii" if radii else "Context-averaged bands"
-    fig.suptitle(rf"{title}: $\delta={delta:g}$, response repetition 0")
+    fig.suptitle(title + "\n" + rf"$n={n}$, $B={b}$, $\delta={delta:g}$; response repetition 0")
     for row_axes, item, mean in zip(axes, items, means):
         a = item["example"]["actions_grid"]
         for col, ax in enumerate(row_axes):

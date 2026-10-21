@@ -11,11 +11,11 @@ empirical order statistic, and five seed roots. Override only action row 0 with
 fixed. These use the first 300 rows of the original residual environment, not
 the old action-only experiment's truncated-normal bulk.
 
-- [ ] Add six explicit manifests using the existing experiment runner.
-- [ ] Extend the existing leverage report to accept normal moved-point designs.
-- [ ] Replay saved environments and repetition-0 bands into distribution,
+- [x] Add six explicit manifests using the existing experiment runner.
+- [x] Extend the existing leverage report to accept normal moved-point designs.
+- [x] Replay saved environments and repetition-0 bands into distribution,
   context-averaged band, and separate lower/upper radius PDFs with CSV provenance.
-- [ ] Check frozen bulk/profile and paired innovations/multipliers, contextual
+- [x] Check frozen bulk/profile and paired innovations/multipliers, contextual
   leverage, and transfer-before-average semantics; run focused regression tests.
 - [ ] Run all conditions, regenerate reports, validate PDFs and document results.
 
@@ -73,7 +73,8 @@ r_upper=[w+g_tilde]+ (MATH section 7.9). Display actions remain [-2,2], matching
 the earlier context-averaged report; this is not the confidence domain.
 
 Run each `manifests/residual-leverage-outlier-*.json` with
-`scripts/run_experiment_manifest.py`, then replay:
+`scripts/run_experiment_manifest.py --launch slurm --no-array` (put the manifest
+path before the flags), then replay:
 
 ```bash
 PYTHONPATH=src python scratch/plot_wild_bootstrap_leverage.py \
@@ -85,3 +86,21 @@ PYTHONPATH=src python scratch/plot_wild_bootstrap_leverage.py \
 All illustrations are saved as vector PDFs with plotted CSV data and hashes of
 their source artifacts. The reporting path validates the summary's environment,
 saved example and repetition-0 provenance, and unchanged bulk across conditions.
+
+## Execution notes
+
+The 106 focused mathematical, study-runner, and reporting tests passed. A small
+end-to-end runner/replay smoke study also passed. Regeneration uses the full
+pdoc command; unrelated absolute-path/whitespace churn in unchanged modules is
+discarded. PDF inspection renders pages only in memory; no raster artifacts are
+saved.
+
+The original residual environment was checked byte-for-byte at the array level:
+all 300 contexts, all 299 unmoved actions/noise scales, and the Fourier profile
+coefficients agree exactly. The first local timing pilot is preserved separately
+under `results/residual-leverage-local-pilot-3/`: compute-node path aliases differ
+from the local sandbox, and paths participate in the existing source contract.
+Production repetitions are prepared and collected on compute nodes. Initial
+short array batches were replaced by one serial job per condition to avoid
+scheduler overhead, retaining successfully completed checkpoints. This changes
+neither manifests nor random draws. No optimizer exception was required.

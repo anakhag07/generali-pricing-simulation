@@ -50,12 +50,13 @@ def test_repetition_replays_paired_prefixes_and_quantiles(manifest_path, tmp_pat
         np.testing.assert_array_equal(arrays["innovations"], innovations)
         for ni, n in enumerate(p["n_values"]):
             y = designs[ni].design @ p["truth"]["coefficients"] + snapshot["sigma"][:n]*innovations[:n]
-            beta, errors = designs[ni].bootstrap_errors(y, multipliers[:, :n])
+            beta, errors = designs[ni].bootstrap_errors(y, multipliers[:, :n],
+                         predictor=designs[ni].design @ p["predictor"]["coefficients"])
             np.testing.assert_array_equal(arrays["beta"][ni], beta)
             np.testing.assert_array_equal(arrays["bootstrap_statistics"][ni], designs[ni].statistics(errors))
             for bi, b in enumerate(p["B_values"]):
                 for di, delta in enumerate(p["deltas"]):
-                    assert arrays["critical"][ni, bi, di, 1] == np.quantile(arrays["bootstrap_statistics"][ni, :b], 1-delta, method="higher")
+                    assert arrays["critical"][ni, bi, di, 1] == np.sort(arrays["bootstrap_statistics"][ni, :b])[int(np.ceil(b*(1-delta)))-1]
         assert np.all(~arrays["auxiliary_covered"] | arrays["transferred_covered"])
     assert study.run_repetition(manifest, 0, tmp_path / "runs") == record
     other = study.run_repetition(manifest, 1, tmp_path / "runs")
@@ -246,12 +247,12 @@ def test_zero_context_repetitions_keep_pairing_and_all_real_statistic(manifest_p
         with np.load(record["arrays"]["path"]) as arrays:
             saved.append(arrays["innovations"])
             for ni, design in enumerate(designs):
-                error = arrays["beta"][ni] - payload["truth"]["coefficients"]
+                error = arrays["beta"][ni] - (np.asarray(payload["truth"]["coefficients"])-payload["predictor"]["coefficients"])
                 independent = np.linalg.norm(design.design @ error)
                 assert arrays["truth_statistics"][ni] == pytest.approx(independent)
                 for bi, b in enumerate(payload["B_values"]):
                     for di, delta in enumerate(payload["deltas"]):
-                        critical = np.quantile(arrays["bootstrap_statistics"][ni, :b], 1-delta, method="higher")
+                        critical = np.sort(arrays["bootstrap_statistics"][ni, :b])[int(np.ceil(b*(1-delta)))-1]
                         assert arrays["critical"][ni, bi, di, 1] == critical
                         assert arrays["auxiliary_covered"][ni, bi, di, 1] == (independent <= critical)
             example = study._example(payload, snapshot, designs, arrays)
@@ -354,9 +355,37 @@ def test_moved_observation_preserves_response_and_multiplier_pairing(manifest_pa
             saved.append(arrays["innovations"])
             for ni, (n, design) in enumerate(zip(payload["n_values"], designs)):
                 y = 1. + snapshot["actions"][:n] + .5*arrays["innovations"][:n]
-                np.testing.assert_allclose(arrays["beta"][ni], design.fit(y), rtol=0, atol=1e-14)
-                error = arrays["beta"][ni] - payload["truth"]["coefficients"]
+                np.testing.assert_allclose(arrays["beta"][ni], design.fit(y-design.design @ payload["predictor"]["coefficients"]), rtol=0, atol=1e-14)
+                error = arrays["beta"][ni] - (np.asarray(payload["truth"]["coefficients"])-payload["predictor"]["coefficients"])
                 assert arrays["truth_statistics"][ni] == pytest.approx(np.linalg.norm(design.design @ error))
     assert records[0]["seeds"] == records[1]["seeds"]
     assert records[0]["multiplier_sha256"] == records[1]["multiplier_sha256"]
     np.testing.assert_array_equal(saved[0], saved[1])
+
+
+def test_quadratic_residual_end_to_end_and_exact_empirical_rank(tmp_path):
+    original = Path(__file__).parents[2] / 'manifests/uncertainty-envelopes-quadratic-residual-outlier.json'
+    payload = json.loads(original.read_text())
+    payload.update(name='quadratic-smoke', n_values=[12], B_values=[10], deltas=[.2],
+                   baseline={'n': 12, 'B': 10, 'delta': .2}, repetitions=2)
+    payload['diagnostics']['actions']['count'] = 7
+    path = tmp_path / 'quadratic.json'
+    path.write_text(json.dumps(payload))
+    manifest = study.load_manifest(path)
+    for index in range(2):
+        record = study.run_repetition(manifest, index, tmp_path)
+        with np.load(record['arrays']['path']) as arrays:
+            assert arrays['beta'].shape == (1, 3)
+            assert arrays['critical'][0, 0, 0, 1] == np.sort(arrays['bootstrap_statistics'][0])[7]
+            assert np.all(arrays['bootstrap_statistics_lower'] <= arrays['bootstrap_statistics'])
+            assert np.all(~arrays['auxiliary_covered'] | arrays['transferred_covered'])
+    summary = study.collect(manifest, tmp_path)
+    assert summary['band_target'] == 'residual'
+    assert len(summary['plots']) == 7
+    with np.load(summary['example']['path']) as example:
+        np.testing.assert_allclose(example['residual_truth'], example['truth']-example['predictor'])
+        np.testing.assert_allclose(example['bootstrap_lower'], np.minimum(example['predictor'], example['auxiliary']-example['bootstrap_width']))
+        np.testing.assert_allclose(example['bootstrap_upper'], np.maximum(example['predictor'], example['auxiliary']+example['bootstrap_width']))
+    assert all('moved_radius_lower' in row for row in summary['metrics'])
+    for record in summary['plots']:
+        assert Path(record['path']).read_bytes().startswith(b'%PDF-')

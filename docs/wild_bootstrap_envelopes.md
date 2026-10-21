@@ -2,7 +2,8 @@
 
 This study compares the analytical width from thesis §1.2 with the raw-residual
 wild-bootstrap width from §1.3. Both use the same contextual linear truth,
-frozen predictor, and fitted auxiliary OLS model. The primary result is joint
+frozen predictor, and OLS fit to $R=Y-\widehat f$. The target is the conditional
+mean residual $g=f-\widehat f$. The primary result is joint
 auxiliary-band coverage; transferred-envelope coverage is a separate secondary
 result. Mathematical definitions are in
 [MATH.md §7.9](../MATH.md#79-fixed-design-wild-bootstrap-with-a-bounded-gp-variance-profile).
@@ -91,9 +92,9 @@ average coverage over newly drawn GP profiles or designs.
 For design matrix P with rows $\phi(x_i,a_i)^{\mathsf T}$, let
 $Q=P^{\mathsf T}P$, $V=Q^{-1}$, and
 $\ell_P(x,a)=\sqrt{\phi(x,a)^{\mathsf T}V\phi(x,a)}$.
-Fit OLS once to obtain $\widetilde\beta$, auxiliary predictions
-$\widetilde f=\phi^{\mathsf T}\widetilde\beta$, and raw residuals
-$\widetilde\epsilon=Y-P\widetilde\beta$.
+Fit OLS to $R=Y-\widehat f$ to obtain $\widetilde\beta$, residual predictions
+$\widetilde g=\phi^{\mathsf T}\widetilde\beta$, and fitted noise errors
+$\widetilde\epsilon=R-P\widetilde\beta$.
 
 The analytical width is
 $$w_{\delta}^{\mathrm{analytical}}(x,a)
@@ -109,27 +110,25 @@ T_b^*=\sup_{i,\,a\in\mathbb R}
 \frac{|\phi(x_i,a)^{\mathsf T}e_b^*|}{\ell_P(x_i,a)}.$$
 The raw residuals receive no HC2/HC3 leverage adjustment. The denominator is
 geometric leverage, not an estimated noise standard error. Use the empirical
-`higher` quantile at $1-\delta$ of the first B statistics without additional
-Monte Carlo inflation, and define
+order statistic of rank $\lceil B(1-\delta)\rceil$ among the first B statistics
+without additional Monte Carlo inflation, and define
 $$w_{\delta}^{\mathrm{wild}}(x,a)
 =\widehat q_{1-\delta}\,\ell_P(x,a).$$
 
-For either method, transfer the auxiliary width to the same frozen predictor:
-$$r_\delta(x,a)=|\widehat f(x,a)-\widetilde f(x,a)|+w_\delta(x,a).$$
-Auxiliary-band containment implies transferred-envelope containment by the
-triangle inequality; failure of the auxiliary event does not imply failure of
-the transferred event.
+For either method, use separate nonnegative radii:
+$$r_\delta^{\mathrm{lower}}=[w_\delta-\widetilde g]_+,
+\qquad r_\delta^{\mathrm{upper}}=[w_\delta+\widetilde g]_+.$$
+The resulting interval contains both the shifted residual band and the frozen
+predictor. Residual-band containment implies transferred-envelope containment.
 
 ## Joint coverage and continuum checks
 
-Each outer repetition contributes one primary indicator
-$$C_{\mathrm{aux}}=\mathbf1\{
-\forall i,\ \forall a\in\mathbb R:
-|\widetilde f(x_i,a)-f(x_i,a)|\le w_\delta(x_i,a)\}$$
-and one secondary indicator
-$$C_{\mathrm{transfer}}=\mathbf1\{
-\forall i,\ \forall a\in\mathbb R:
-|\widehat f(x_i,a)-f(x_i,a)|\le r_\delta(x_i,a)\}.$$
+Each outer repetition records the two events separately:
+$$C_{\mathrm{aux}}=\mathbf1\{\forall i,\ \forall a\in\mathbb R:
+|\widetilde g(x_i,a)-g(x_i,a)|\le w_\delta(x_i,a)\},$$
+$$C_{\mathrm{transfer}}=\mathbf1\{\forall i,\ \forall a\in\mathbb R:
+-r_\delta^{\mathrm{lower}}(x_i,a)\le g(x_i,a)
+\le r_\delta^{\mathrm{upper}}(x_i,a)\}.$$
 The empirical coverage is the mean of these joint indicators across independent
 outer repetitions. Pointwise 95% Wilson intervals quantify that simulation
 uncertainty; they are not simultaneous confidence intervals for the entire sweep.
@@ -143,7 +142,7 @@ $$T(e)^2=\max_i h_i^{\mathsf T}M_i^{-1}h_i.$$
 This includes action tails. Transferred containment is checked separately on
 the all-real domain. Auxiliary statistics and quantiles use floating-point
 arithmetic; their comparisons are numerical evaluations, not exact certificates.
-The transferred check splits affine absolute values into sign regions and
+The transferred check splits signed residual inequalities into sign regions and
 checks the resulting quadratics over their full intervals in extended precision.
 Near-boundary cases use the existing exact-rational polynomial checker on that
 context. This fallback certifies the formula defined by stored floating-point
@@ -159,6 +158,41 @@ finite-sample bootstrap approximation. Increasing n at fixed p can improve
 that approximation under suitable regularity, including vanishing maximum
 leverage. Neither coverage nor width is required to improve monotonically
 over the saved sweep settings.
+
+## Quadratic moved-point residual study
+
+`manifests/uncertainty-envelopes-quadratic-residual.json` supplies the unchanged
+truncated-normal design; `uncertainty-envelopes-quadratic-residual-outlier.json`
+moves row zero to 20. Copy the latter with a new result name to use
+3, 10, 40, 100, or 1000. Both use $f(a)=5a-5a^2$, the saved frozen predictor
+(coefficients and artifact provenance in the manifests), $\sigma=0.5$, $n=300$,
+$B=1999$, and $\delta=0.05$. Full coverage sweeps are not part of implementation
+validation.
+
+With `design.action_degree: 2` and zero contexts, features are $(1,a,a^2)$.
+The exact polynomial defines every off-grid query on $\mathbb R$; plotted
+connections only visualize it. All actions share the same fitted coefficients,
+with covariance $\sigma^2\phi(a)^\top V\phi(b)$ under constant noise. Existing
+polynomial certificates bracket the all-real bootstrap supremum; upper endpoints
+are used for the empirical quantile. With tolerance $\eta=10^{-8}$, brackets
+satisfy $s_+-s_-\le2\eta\max(1,s_+)$. Coverage checks include both tails and
+certify stored floating-point polynomials interpreted as rationals. See
+[MATH §7.12](../MATH.md#712-quadratic-residual-bands).
+There are no optimizer queries or reported optimizer actions.
+
+Both manifests reuse the existing action, observation, and multiplier streams;
+only the preselected action changes. Response means and predictor values are
+recomputed there. Raw residuals can collapse at high leverage, so the moved-point
+study tests a possible failure of bootstrap coverage; it is not evidence of
+uniform validity over arbitrary outliers. The analytical comparison retains its
+conditional variance-bound guarantee.
+
+New summaries explicitly record `band_target: residual`. Historical artifacts
+without this field retain their original function-target meaning, and their
+source contracts prevent resuming them with this implementation. The old
+manifest spelling `quantile: higher` is accepted as an input alias but normalized
+to `order_statistic`; the original NumPy quantile convention can select a
+different rank for some B and delta. Use a new result name for new runs.
 
 ## Seeds, pairing, and reporting
 
@@ -199,9 +233,11 @@ Each result directory contains:
   and the saved array artifact hash. Subsequent repetitions use sequential names.
 - `coverage_width_summary.csv` and `summary.json`: coverage counts and Wilson
   intervals, mean widths and their analytical ratios, mean critical values,
-  maximum design leverage, and artifact provenance.
+  maximum design leverage, separate lower/upper radii and coverage margins,
+  moved-point radii when applicable, and artifact provenance.
 - `example.npz`: the first repetition's baseline truth, predictor, auxiliary
-  fit, widths, and noise-profile arrays used for the slice plots.
+  corrected fit, residual truth/fit, asymmetric bounds, widths, and noise-profile
+  arrays used for the slice plots. Saved `beta` coefficients now fit the residual.
 - `EXPERIMENT.md`: this representation guide followed by the actual saved
   manifest.
 - `plots/`: the seven PDFs listed below.

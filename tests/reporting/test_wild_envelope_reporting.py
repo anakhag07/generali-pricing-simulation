@@ -286,3 +286,23 @@ def test_leverage_report_rejects_mixed_outlier_and_bound_sweeps(
     paths = [saved_leverage_summaries[0], *saved_outlier_summaries[:2]]
     with pytest.raises(ValueError, match="otherwise identical study manifests"):
         wild_reporting.write_leverage_report(paths, tmp_path / "report")
+
+
+def test_residual_slices_use_saved_asymmetric_bounds(saved_report):
+    summary, snapshot, example = saved_report
+    summary['band_target'] = 'residual'
+    example['residual_fit'] = example['auxiliary']-example['predictor']
+    example['residual_truth'] = example['truth']-example['predictor']
+    for method in ('analytical', 'bootstrap'):
+        example[f'{method}_lower'] = np.minimum(example['predictor'], example['auxiliary']-example[f'{method}_width'])
+        example[f'{method}_upper'] = np.maximum(example['predictor'], example['auxiliary']+example[f'{method}_width'])
+    wild_reporting._validate_example(snapshot, example)
+    fig = wild_reporting._slices_figure(summary, example, (0,), 'wild_bootstrap', 'Wild bootstrap')
+    try:
+        vertices = fig.axes[0].collections[0].get_paths()[0].vertices
+        for action, lower, upper in zip(example['actions_grid'], example['bootstrap_lower'][0], example['bootstrap_upper'][0]):
+            heights = vertices[vertices[:, 0] == action, 1]
+            assert heights.min() == pytest.approx(lower)
+            assert heights.max() == pytest.approx(upper)
+    finally:
+        plt.close(fig)

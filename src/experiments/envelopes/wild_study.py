@@ -24,8 +24,7 @@ from experiments.provenance import array_sha256, file_record
 from experiments.seeds import derive_seed
 from experiments.slurm import CPU_PROFILE
 from experiments.sweep_reporting import write_rows_csv
-from .linear import LinearModel, features
-from .wild import WildLinearDesign
+from .wild import WildLinearDesign, residual_radii
 
 MANIFEST_KIND = "wild_bootstrap_envelopes"
 
@@ -63,6 +62,8 @@ def load_manifest(path):
     p = read_json(path)
     if p.get("kind") != MANIFEST_KIND:
         raise ValueError(f"Require kind={MANIFEST_KIND}.")
+    if p.setdefault("band_target", "residual") != "residual":
+        raise ValueError("New wild-envelope runs require band_target=residual.")
     name = p["name"]
     if (not isinstance(name, str) or not name or name in {".", ".."}
             or any(c not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_" for c in name)):
@@ -80,12 +81,19 @@ def load_manifest(path):
         if bound is not None and (isinstance(bound, bool) or not isinstance(bound, (float, int))
                                   or not np.isfinite(bound) or bound <= 0):
             raise ValueError("Require a finite positive truncation_bound or null for unbounded.")
+    degree = p["design"].get("action_degree", 1)
+    if isinstance(degree, bool) or degree not in (1, 2) or (degree == 2 and d != 0):
+        raise ValueError("Require contextual affine or action-only quadratic features.")
+    tolerance = p.get("supremum_tolerance", 1e-8)
+    if isinstance(tolerance, bool) or not isinstance(tolerance, (float, int)) or not 0 < tolerance < 1e-3:
+        raise ValueError("Require a positive small supremum_tolerance.")
     for model in ("truth", "predictor"):
-        if LinearModel(p[model]["coefficients"]).context_dim != d:
+        coefficients = np.asarray(p[model]["coefficients"], dtype=float)
+        if coefficients.shape != (d+degree+1,) or not np.isfinite(coefficients).all():
             raise ValueError("Model and design dimensions disagree.")
     if p["target"] != {"contexts": "calibration", "actions": "real_line"}:
         raise ValueError("Require every calibration context and all real actions.")
-    for key, minimum in (("n_values", d+3), ("B_values", 2)):
+    for key, minimum in (("n_values", d+degree+2), ("B_values", 2)):
         vals = p[key]
         if (not vals or any(isinstance(v, bool) or not isinstance(v, int) or v < minimum for v in vals)
                 or vals != sorted(set(vals))):
@@ -111,8 +119,13 @@ def load_manifest(path):
         value = p[key]
         if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
             raise ValueError(f"Invalid {key}.")
-    if p["bootstrap"] != {"multipliers": "rademacher", "residuals": "raw", "quantile": "higher"}:
-        raise ValueError("This comparison implements the raw-residual Rademacher higher-quantile rule.")
+    bootstrap = p["bootstrap"]
+    if (set(bootstrap) != {"multipliers", "residuals", "quantile"}
+            or bootstrap["multipliers"] != "rademacher" or bootstrap["residuals"] != "raw"
+            or bootstrap["quantile"] not in {"higher", "order_statistic"}):
+        raise ValueError("Require raw residuals, Rademacher multipliers, and the empirical order statistic.")
+    # Accept the old manifest spelling, but record the exact current rank rule.
+    bootstrap["quantile"] = "order_statistic"
     noise = p["noise"]
     if noise["type"] == "constant":
         sigma = noise["sigma_max"]
@@ -203,9 +216,11 @@ def _environment(payload_json):
                 "gp_cos": coefficients[0], "gp_sin": coefficients[1], "actions_grid": grid}
     designs, mean_ell = [], []
     for n in p["n_values"]:
-        design = WildLinearDesign(X[:n], actions[:n])
+        design = WildLinearDesign(X[:n], actions[:n],
+                                  action_degree=p["design"].get("action_degree", 1),
+                                  supremum_tolerance=p.get("supremum_tolerance", 1e-8))
         contexts = X[:1] if d == 0 else X[:n]
-        phi = features(np.repeat(contexts, len(grid), axis=0), np.tile(grid, len(contexts)))
+        phi = design.features(np.repeat(contexts, len(grid), axis=0), np.tile(grid, len(contexts)))
         mean_ell.append(float(np.sqrt(np.einsum("ij,jk,ik->i", phi, design.covariance, phi)).mean()))
         designs.append(design)
     return snapshot, designs, np.array(mean_ell)
@@ -247,34 +262,63 @@ def _run_repetition(manifest, index, project, digest, snapshot, designs, mean_el
     multipliers = 2*np.random.default_rng(seeds["method"]).integers(0, 2, size=(bmax, nmax), dtype=np.int8)-1
     truth = np.asarray(p["truth"]["coefficients"])
     predictor = np.asarray(p["predictor"]["coefficients"])
+    residual_truth = truth-predictor
     shape = (len(p["n_values"]), len(p["B_values"]), len(p["deltas"]), 2)
     critical, auxiliary, transferred = np.zeros(shape), np.zeros(shape, dtype=bool), np.zeros(shape, dtype=bool)
-    betas, statistics, truth_statistics = [], [], []
+    betas, statistics, statistic_lower, truth_statistics = [], [], [], []
+    diagnostics = {name: np.zeros(shape) for name in
+                   ("mean_radius_lower", "mean_radius_upper", "mean_margin_lower", "mean_margin_upper",
+                    "moved_radius_lower", "moved_radius_upper")}
     for ni, (n, design) in enumerate(zip(p["n_values"], designs)):
         y = design.design @ truth + snapshot["sigma"][:n]*innovations[:n]
-        beta, errors = design.bootstrap_errors(y, multipliers[:, :n])
-        boot_statistics = design.statistics(errors)
-        true_statistic = float(design.statistics((beta-truth)[None, :])[0])
+        beta, errors = design.bootstrap_errors(y, multipliers[:, :n], predictor=design.design @ predictor)
+        bounds = design.statistic_bounds(errors)
+        boot_statistics = bounds[:, 1]
+        true_statistic = float(design.statistics((beta-residual_truth)[None, :])[0])
         betas.append(beta)
         statistics.append(boot_statistics)
+        statistic_lower.append(bounds[:, 0])
         truth_statistics.append(true_statistic)
+        grid = snapshot["actions_grid"]
+        contexts = snapshot["X"][:1] if snapshot["X"].shape[1] == 0 else snapshot["X"][:n]
+        repeated, tiled = np.repeat(contexts, len(grid), axis=0), np.tile(grid, len(contexts))
+        phi = design.features(repeated, tiled)
+        geometry = design.residual_components(repeated, tiled, beta, 1.)
+        fitted_grid, ell = geometry["residual_fit"], geometry["width"]
+        truth_grid = phi @ residual_truth
+        moved = p["design"].get("action_override", {}).get("index")
+        if moved is not None:
+            moved_geometry = design.residual_components(snapshot["X"][moved:moved+1],
+                             snapshot["actions"][moved:moved+1], beta, 1.)
         decisions = {}
         for bi, b in enumerate(p["B_values"]):
             for di, delta in enumerate(p["deltas"]):
                 analytical = p["noise"]["sigma_max"]*np.sqrt(len(truth)/delta)
-                bootstrap = float(np.quantile(boot_statistics[:b], 1-delta, method="higher"))
+                order = math.ceil(b*(1-delta))-1
+                bootstrap = float(np.partition(boot_statistics[:b], order)[order])
                 for mi, value in enumerate((analytical, bootstrap)):
                     critical[ni, bi, di, mi] = value
-                    covered = true_statistic <= value
+                    covered = design.auxiliary_contains(beta, residual_truth, value)
                     auxiliary[ni, bi, di, mi] = covered
                     if value not in decisions:
-                        decisions[value] = bool(covered or design.transferred_contains(beta, predictor, truth, value))
+                        decisions[value] = bool(covered or design.residual_contains(beta, residual_truth, value))
                     transferred[ni, bi, di, mi] = decisions[value]
+                    lower, upper = residual_radii(fitted_grid, value*ell)
+                    key = (ni, bi, di, mi)
+                    diagnostics["mean_radius_lower"][key] = lower.mean()
+                    diagnostics["mean_radius_upper"][key] = upper.mean()
+                    diagnostics["mean_margin_lower"][key] = (truth_grid+lower).mean()
+                    diagnostics["mean_margin_upper"][key] = (upper-truth_grid).mean()
+                    if moved is not None:
+                        lo, hi = residual_radii(moved_geometry["residual_fit"], value*moved_geometry["width"])
+                        diagnostics["moved_radius_lower"][key] = lo[0]
+                        diagnostics["moved_radius_upper"][key] = hi[0]
     output.parent.mkdir(parents=True, exist_ok=True)
     _save_arrays(output, beta=betas, bootstrap_statistics=statistics,
+                        bootstrap_statistics_lower=statistic_lower,
                         truth_statistics=truth_statistics, critical=critical,
                         auxiliary_covered=auxiliary, transferred_covered=transferred,
-                        innovations=innovations)
+                        innovations=innovations, **diagnostics)
     record = {"index": index, "contract_sha256": digest, "seeds": seeds,
               "multiplier_shape": [bmax, nmax], "multiplier_sha256": array_sha256(multipliers),
               "arrays": file_record(output)}
@@ -297,15 +341,22 @@ def _example(p, snapshot, designs, first):
     n, grid = p["baseline"]["n"], snapshot["actions_grid"]
     X = snapshot["X"][:n]
     repeated, tiled = np.repeat(X, len(grid), axis=0), np.tile(grid, n)
-    phi = features(repeated, tiled)
+    phi = designs[ni].features(repeated, tiled)
     ell = np.sqrt(np.einsum("ij,jk,ik->i", phi, designs[ni].covariance, phi)).reshape(n, -1)
     example = {"X": X, "actions_grid": grid}
     for name, coefficients in (("truth", p["truth"]["coefficients"]),
                                ("predictor", p["predictor"]["coefficients"]),
-                               ("auxiliary", first["beta"][ni])):
+                               ("residual_fit", first["beta"][ni])):
         example[name] = (phi @ coefficients).reshape(n, -1)
+    example["residual_truth"] = example["truth"]-example["predictor"]
+    example["auxiliary"] = example["predictor"]+example["residual_fit"]
     example["analytical_width"] = first["critical"][ni, bi, di, 0]*ell
     example["bootstrap_width"] = first["critical"][ni, bi, di, 1]*ell
+    for method in ("analytical", "bootstrap"):
+        lower, upper = residual_radii(example["residual_fit"], example[f"{method}_width"])
+        example[f"{method}_radius_lower"], example[f"{method}_radius_upper"] = lower, upper
+        example[f"{method}_lower"] = example["predictor"]-lower
+        example[f"{method}_upper"] = example["predictor"]+upper
     example["sigma_grid"] = noise_scale(repeated, tiled, p["noise"], snapshot["gp_cos"], snapshot["gp_sin"]).reshape(n, -1)
     return example
 
@@ -324,7 +375,9 @@ def collect(manifest, runs_root):
         with np.load(arrays_path, allow_pickle=False) as arrays:
             if index == 0:
                 first = {key: arrays[key] for key in arrays.files}
-            aggregate_arrays.append({key: arrays[key] for key in ("critical", "auxiliary_covered", "transferred_covered")})
+            aggregate_arrays.append({key: arrays[key] for key in arrays.files
+                                     if key.startswith(("mean_", "moved_")) or key in
+                                     ("critical", "auxiliary_covered", "transferred_covered")})
         records.append(file_record(path))
     critical = np.stack([a["critical"] for a in aggregate_arrays])
     auxiliary = np.stack([a["auxiliary_covered"] for a in aggregate_arrays])
@@ -340,6 +393,9 @@ def collect(manifest, runs_root):
                            "width_ratio": float((values/critical[:, ni, bi, di, 0]).mean()),
                            "mean_critical": float(values.mean()),
                            "max_leverage": float(np.max(designs[ni].leverage))}
+                    for name in aggregate_arrays[0]:
+                        if name.startswith("mean_") or (name.startswith("moved_") and "action_override" in p["design"]):
+                            row[name] = float(np.mean([a[name][ni, bi, di, mi] for a in aggregate_arrays]))
                     for prefix, decisions in (("auxiliary", auxiliary), ("transferred", transferred)):
                         count = int(decisions[:, ni, bi, di, mi].sum())
                         lo, hi = wilson_interval(count, p["repetitions"])
@@ -351,20 +407,18 @@ def collect(manifest, runs_root):
     example = _example(p, snapshot, designs, first)
     example_path = project / "example.npz"
     _save_arrays(example_path, **example)
-    summary = {"manifest": p, "contract_sha256": digest, "metrics": metrics,
+    summary = {"manifest": p, "band_target": "residual", "contract_sha256": digest, "metrics": metrics,
                "environment": file_record(project / "environment.json"), "repetitions": records,
                "csv": file_record(csv), "example": file_record(example_path),
-               "coverage_event": "All calibration contexts and all real actions jointly; auxiliary and transferred events separately.",
+               "coverage_event": "Residual g=f-fhat inside g_tilde +/- w, and f inside the asymmetric predictor envelope; all calibration contexts and all real actions jointly.",
                "bootstrap_claim": "Empirical study; no finite-sample bootstrap coverage guarantee.",
                "analytical_claim": "Finite-sample coverage at least 1-delta conditional on fixed design and noise profile.",
-               "numerics": "Double-precision coefficient norm and algebraic all-real checks; not an enclosure of ideal exact-arithmetic fitting error."}
+               "numerics": "Affine coefficient statistics; quadratic certified supremum brackets with upper endpoints. All-real containment uses stored floating-point coefficients, not an enclosure of fitting roundoff."}
     from .wild_reporting import write_reports
     plots = write_reports(summary, snapshot, example, project / "plots")
     summary["plots"] = [file_record(path) for path in plots]
     summary["reporting_source"] = file_record(Path(__file__).with_name("wild_reporting.py"))
-    guide = ("wild_bootstrap_leverage.md"
-             if p["design"]["distribution"] == "independent_truncated_standard_normal"
-             else "wild_bootstrap_envelopes.md")
+    guide = "wild_bootstrap_envelopes.md"
     documentation = Path(__file__).parents[3] / "docs" / guide
     experiment = project / "EXPERIMENT.md"
     experiment.write_text(documentation.read_text()+"\n\n## Saved experiment manifest\n\n```json\n"+

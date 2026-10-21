@@ -1,5 +1,9 @@
 # Maximum leverage and wild-bootstrap coverage
 
+Historical saved results described here use the function target. New runs use
+the residual target and asymmetric transfer documented in
+[wild_bootstrap_envelopes.md](wild_bootstrap_envelopes.md). Use new result names.
+
 This fixed-design diagnostic compares raw-residual wild-bootstrap coverage
 against maximum observed leverage for standard-normal logged actions truncated
 to [-0.5,0.5], [-1,1], [-3,3], and [-10,10]. Actions are not centered,

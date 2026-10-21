@@ -1482,3 +1482,10 @@ Run tests:
 conda activate simulation_env
 pytest -q
 ```
+
+- The active wild-envelope workflow targets `g=f-fhat` and saves residual fit
+  coefficients, separate lower/upper radii, and both joint coverage events.
+  `WildLinearDesign` supports action-only quadratic features with the existing
+  polynomial certificates; the `quadratic-residual` manifests preserve the
+  frozen-predictor provenance and moved-point seed pairing. Historical symmetric
+  helpers and artifacts remain explicitly labeled for replay.

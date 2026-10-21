@@ -14,6 +14,7 @@ from experiments.sweep_reporting import write_rows_csv
 
 from .diagnostics import _slice_indices
 from .reporting import _STYLE
+from .wild import residual_radii
 
 _METHODS = (("analytical", "Analytical", "C0"),
             ("wild_bootstrap", "Wild bootstrap", "C1"))
@@ -31,6 +32,7 @@ def write_leverage_report(summary_paths, destination) -> Path:
             raise ValueError("Leverage report requires truncated-normal studies.")
         signature = json.loads(json.dumps(p))
         signature.pop("name")
+        signature["band_target"] = summary.get("band_target", p.get("band_target", "function"))
         bound = p["design"]["truncation_bound"]
         if "action_override" in signature["design"]:
             axis = "outlier_action"
@@ -141,6 +143,9 @@ def _coverage_figure(summary, sweep, event):
     fig, axes = _panels(p["deltas"])
     title = (r"Auxiliary coverage: $\widetilde f\pm w_\delta$" if event == "auxiliary"
              else r"Transferred-envelope coverage: $\widehat f\pm r_\delta$")
+    if summary.get("band_target") == "residual":
+        title = (r"Residual-band coverage: $\widetilde g\pm w_\delta$" if event == "auxiliary"
+                 else "Asymmetric transferred-envelope coverage")
     fig.suptitle(title)
     lower_limits = []
     for ax, delta in zip(axes, p["deltas"]):
@@ -214,7 +219,15 @@ def _validate_example(snapshot, example):
             raise ValueError(f"Invalid saved example array: {key}.")
         if key.endswith("width") and np.any(values < 0):
             raise ValueError("Auxiliary widths must be nonnegative.")
-    return _slice_indices(X)
+    if "residual_fit" in example:
+        if not np.allclose(example["residual_truth"], example["truth"]-example["predictor"]):
+            raise ValueError("Saved residual truth disagrees with truth minus predictor.")
+        for method in ("analytical", "bootstrap"):
+            lower, upper = residual_radii(example["residual_fit"], example[f"{method}_width"])
+            if (not np.allclose(example[f"{method}_lower"], example["predictor"]-lower)
+                    or not np.allclose(example[f"{method}_upper"], example["predictor"]+upper)):
+                raise ValueError("Saved bounds disagree with the asymmetric residual transfer.")
+    return (0,) if X.shape[1] == 0 else _slice_indices(X)
 
 
 def _slice_panels(example, indices):
@@ -223,7 +236,7 @@ def _slice_panels(example, indices):
     ranks = ("Central", "Median norm", "Outer") if len(indices) == 3 else ("Central", "Outer")
     for ax, index, rank in zip(axes[0], indices, ranks):
         norm = np.linalg.norm(example["X"][index])
-        ax.set_title(rank + rf": $\|x_i\|_2={norm:.2f}$")
+        ax.set_title("Action-only model" if example["X"].shape[1] == 0 else rank + rf": $\|x_i\|_2={norm:.2f}$")
         ax.set_xlabel("Action $a$")
     return fig, axes[0]
 
@@ -240,15 +253,21 @@ def _slices_figure(summary, example, indices, method, label):
         radius = np.abs(predictor-auxiliary)+width
         ax.plot(a, truth, color="C0", label=r"$f(x_i,a)$")
         ax.plot(a, predictor, "--", color="C1", label=r"$\widehat f(x_i,a)$")
-        ax.plot(a, auxiliary, ":", color="C2", label=r"$\widetilde f(x_i,a)$")
-        ax.fill_between(a, predictor-radius, predictor+radius, color="C1", alpha=.2,
-                        label=r"$\widehat f(x_i,a)\pm r_\delta(x_i,a)$")
+        residual_target = summary.get("band_target") == "residual"
+        ax.plot(a, auxiliary, ":", color="C2",
+                label=r"$\widehat f+\widetilde g$" if residual_target else r"$\widetilde f(x_i,a)$")
+        prefix = "analytical" if method == "analytical" else "bootstrap"
+        lower, upper = ((example[f"{prefix}_lower"][index], example[f"{prefix}_upper"][index])
+                        if residual_target else (predictor-radius, predictor+radius))
+        ax.fill_between(a, lower, upper, color="C1", alpha=.2,
+                        label="Transferred envelope" if residual_target else r"$\widehat f(x_i,a)\pm r_\delta(x_i,a)$")
         ax.set_ylabel(r"Response $f(x_i,a)$")
     axes[0].legend()
     fig.supxlabel(
         rf"First saved dataset; $n={p['baseline']['n']}$, $B={p['baseline']['B']}$;"
-        " contexts selected by smallest, median, and largest norm."
-        "\nContext norm measures centrality; these slices illustrate one realization.",
+        + (" one action-only realization." if example["X"].shape[1] == 0 else
+           " contexts selected by smallest, median, and largest norm."
+           "\nContext norm measures centrality; these slices illustrate one realization."),
         fontsize=10,
     )
     return fig
@@ -266,8 +285,10 @@ def _noise_figure(summary, example, indices):
         ax.set_ylim(bottom=0)
     axes[0].legend()
     fig.supxlabel(
-        "One fixed GP volatility profile; independent Gaussian observation errors conditional on that profile."
-        "\nThe known variance cap holds for all inputs; it is not estimated from the displayed actions.",
+        ("Constant noise scale; independent Gaussian observation errors."
+         if p["noise"].get("type") == "constant" else
+         "One fixed GP volatility profile; independent Gaussian observation errors conditional on that profile.")
+        + "\nThe known variance cap holds for all inputs; it is not estimated from the displayed actions.",
         fontsize=10,
     )
     return fig
@@ -275,7 +296,7 @@ def _noise_figure(summary, example, indices):
 
 def write_reports(summary, snapshot, example, destination) -> list[Path]:
     """Render saved joint coverage, auxiliary widths, and example context slices as PDFs."""
-    if np.asarray(example["X"]).shape[1] == 0:
+    if np.asarray(example["X"]).shape[1] == 0 and summary.get("band_target") != "residual":
         # Action-only conditions are compared by write_leverage_report; there
         # are no distinct context slices to display.
         return []

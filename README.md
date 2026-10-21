@@ -1409,3 +1409,8 @@ remains for its CSV-only output.
 
 See `AGENTS.md` for development workflow, code organization, and testing
 guidelines.
+
+The wild-bootstrap envelope runner now fits the residual `Y - fhat` and reports
+separate lower/upper radii. Quadratic baseline and moved-point manifests are
+`manifests/uncertainty-envelopes-quadratic-residual*.json`; see
+[the envelope guide](docs/wild_bootstrap_envelopes.md).

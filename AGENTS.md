@@ -222,6 +222,11 @@ If lower-priority docs are stale, update them in the same task.
   replays saved moved-point environments/examples into distribution, averaged
   band, and asymmetric-radius PDFs/CSVs. Plot labels distinguish the moved row's
   contextual leverage from maximum observed leverage. Transfer before averaging.
+  `noise.moved_observation_sigma` optionally overrides only the moved row's
+  observation SD, requires `design.action_override`, and cannot exceed sigma_max.
+  The background GP/off-grid scale evaluation remains unchanged. The manifests
+  `residual-leverage-fixed-noise-outlier-*.json` and
+  `docs/residual_leverage_fixed_noise.md` define the fixed-scale follow-up.
 
 Before adding code, inspect the surrounding module structure and choose the narrowest sensible location for the change.
 

@@ -14,6 +14,53 @@ from experiments.envelopes import wild_reporting
 from experiments.policy_lcb.common import wilson_interval
 
 
+def test_finite_sample_terms_use_gaussian_fourth_moment_and_keep_vacuous_raw_bound():
+    terms = wild_reporting._finite_sample_terms(5, .4419334613569795, 99, .05, .15, 1.)
+    assert terms["K"]**4 == pytest.approx(3.)
+    assert terms["C_p_kappa"] == pytest.approx(1866593.1182788361)
+    assert terms["rho_n"] == pytest.approx(14548.852269906698)
+    assert terms["tau_n"] == pytest.approx(7274.426134953349)
+    assert terms["raw_lower_bound"] == pytest.approx(-21822.337904860047)
+    assert terms["finite_B_correction"] == pytest.approx(.0095)
+    assert terms["order_rank"] == 95
+    assert terms["order_statistic_raw_lower_bound"] == pytest.approx(-21822.328404860047)
+    assert terms["lower_bound"] == 0.
+
+
+def test_finite_sample_terms_preserve_positive_bound_and_quantile_rounding():
+    terms = wild_reporting._finite_sample_terms(1, 1e-30, 1, .05, 1., 1.)
+    error = terms["rho_n"] + terms["tau_n"]
+    assert terms["order_rank"] == 1
+    assert terms["raw_lower_bound"] == pytest.approx(.475-error)
+    assert terms["order_statistic_raw_lower_bound"] == pytest.approx(.5-error)
+    assert 0 < terms["lower_bound"] == terms["raw_lower_bound"]
+    with pytest.raises(ValueError, match="noise bounds"):
+        wild_reporting._finite_sample_terms(1, .1, 99, .05, 0., 1.)
+
+
+@pytest.mark.parametrize("event", ["auxiliary", "transferred"])
+def test_finite_sample_figure_keeps_wild_counts_and_omits_ols(saved_report, event):
+    summary, _, _ = saved_report
+    p = summary["manifest"]
+    pairs = set(zip(p["n_values"], p["B_values"]))
+    summary["metrics"] = [row for row in summary["metrics"] if (row["n"], row["B"]) in pairs]
+    references = [{**row, "lower_bound": .3, "raw_lower_bound": .3}
+                  for row in summary["metrics"] if row["method"] == "wild_bootstrap"]
+    fig = wild_reporting._paired_metrics_figure(summary, event, finite_sample=references)
+    try:
+        for ax, delta in zip(fig.axes, p["deltas"]):
+            assert len(ax.containers) == 1
+            observed = ax.containers[0].lines[0]
+            expected = wild_reporting._paired_rows(summary, delta, "wild_bootstrap")
+            np.testing.assert_allclose(observed.get_ydata(), [r[f"{event}_coverage"] for r in expected])
+            target = [line for line in ax.lines if line.get_label().startswith("Finite-sample")]
+            assert len(target) == 1
+            np.testing.assert_allclose(target[0].get_ydata(), [.3, .3])
+            assert all("OLS" not in label and "Target" not in label for label in ax.get_legend_handles_labels()[1])
+    finally:
+        plt.close(fig)
+
+
 @pytest.fixture
 def saved_report():
     manifest = {

@@ -9,12 +9,12 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import PercentFormatter, ScalarFormatter
 import numpy as np
 
-from experiments.provenance import file_record
+from experiments.provenance import file_record, write_provenance
 from experiments.sweep_reporting import write_rows_csv
 
 from .diagnostics import _slice_indices
 from .reporting import _STYLE
-from .wild import residual_radii
+from .wild import WildLinearDesign, residual_radii
 
 _METHODS = (("analytical", "Analytical", "C0"),
             ("wild_bootstrap", "Wild bootstrap", "C1"))
@@ -345,14 +345,117 @@ def _paired_axis(ax, p):
     ax.set_xlabel("Paired sizes (n, B)")
 
 
-def _paired_metrics_figure(summary, event=None):
+def _finite_sample_terms(p, h, B, delta, sigma_min, sigma_max):
+    if not (p >= 1 and 0 < h <= 1 and B >= 1 and 0 < delta < 1
+            and 0 < sigma_min <= sigma_max):
+        raise ValueError("Invalid finite-sample dimension, leverage, quantile, or noise bounds.")
+    # Gaussian fourth moments are 3 sigma^4; K is a fourth-moment scale.
+    K = 3**.25 * sigma_max
+    kappa = K / sigma_min
+    cp = 42 * p**.25 + 16
+    dp = np.sqrt(p) + (2 * 3**.25 + np.sqrt(3)) * p
+    C = 7 * cp * p * kappa**3 + 2 * dp * kappa**2
+    common = C**(2/3) * h**(1/3)
+    rho, tau = 2**(1/3) * common, 2**(-2/3) * common
+    k = int(np.ceil(B * (1-delta)))
+    correction = (1-delta) / (B+1)
+    raw = 1-delta-rho-tau-correction
+    exact = k / (B+1)-rho-tau
+    return {"feature_dimension": p, "max_leverage": h,
+            "sigma_min": sigma_min, "sigma_max": sigma_max, "K": K,
+            "kappa": kappa, "c_p": cp, "d_p": dp, "C_p_kappa": C,
+            "rho_n": rho, "tau_n": tau, "order_rank": k,
+            "finite_B_correction": correction, "raw_lower_bound": raw,
+            "order_statistic_raw_lower_bound": exact, "lower_bound": max(0., raw)}
+
+
+def write_finite_sample_coverage_report(summary_path, thesis_path, destination=None) -> list[Path]:
+    """Replay paired wild-bootstrap coverage against the thesis's explicit finite-sample bound."""
+    summary_path, thesis_path = Path(summary_path), Path(thesis_path)
+    project = summary_path.parent
+    summary = json.loads(summary_path.read_text())
     p = summary["manifest"]
+    if (p.get("kind") != "wild_bootstrap_envelopes" or p.get("band_target") != "residual"
+            or p.get("sweep_mode") != "paired"
+            or p["bootstrap"] != {"multipliers": "rademacher", "quantile": "order_statistic",
+                                  "residuals": "raw"}):
+        raise ValueError("Require the paired Gaussian-noise residual study with raw Rademacher bootstrap.")
+    inputs = [file_record(summary_path), file_record(thesis_path)]
+    environment_path = project / "environment.json"
+    actual = file_record(environment_path)
+    if any(actual[k] != summary["environment"][k] for k in ("sha256", "bytes")):
+        raise ValueError("Saved environment metadata changed.")
+    inputs.append(actual)
+    environment = json.loads(environment_path.read_text())
+    if (environment["contract"]["manifest"] != p
+            or environment["contract_sha256"] != summary["contract_sha256"]):
+        raise ValueError("Saved environment does not match the summary.")
+    arrays_path = project / "environment.npz"
+    actual = file_record(arrays_path)
+    if any(actual[k] != environment["arrays"][k] for k in ("sha256", "bytes")):
+        raise ValueError("Saved design arrays changed.")
+    inputs.append(actual)
+    with np.load(arrays_path, allow_pickle=False) as arrays:
+        X, actions = arrays["X"], arrays["actions"]
+    designs = {n: WildLinearDesign(X[:n], actions[:n],
+                                   action_degree=p["design"].get("action_degree", 1))
+               for n in p["n_values"]}
+    noise = p["noise"]
+    if noise["type"] not in ("constant", "bounded_fourier_gp_scale"):
+        raise ValueError("Require known positive Gaussian noise-scale bounds.")
+    sigma_min = noise["sigma_min"] if noise["type"] != "constant" else noise["sigma_max"]
+    rows = []
+    for delta in p["deltas"]:
+        for saved in _paired_rows(summary, delta, "wild_bootstrap"):
+            design = designs[saved["n"]]
+            h = float(design.leverage.max())
+            if not np.isclose(h, saved["max_leverage"], rtol=1e-12, atol=1e-14):
+                raise ValueError("Saved maximum leverage disagrees with the frozen design.")
+            for event in ("auxiliary", "transferred"):
+                if (saved["repetitions"] != p["repetitions"] or saved[f"{event}_coverage"]
+                        != saved[f"{event}_covered_count"] / p["repetitions"]):
+                    raise ValueError("Coverage must agree with saved counts and repetitions.")
+            rows.append({**saved, **_finite_sample_terms(
+                design.design.shape[1], h, saved["B"], delta, sigma_min, noise["sigma_max"])})
+    destination = Path(destination) if destination else project / "plots/finite_sample"
+    destination.mkdir(parents=True, exist_ok=True)
+    outputs = []
+    with plt.style.context("default"), plt.rc_context(_STYLE):
+        for event, name in (("auxiliary", "01_residual_coverage_vs_pairs"),
+                            ("transferred", "02_transferred_coverage_vs_pairs")):
+            fig = _paired_metrics_figure(summary, event, finite_sample=rows)
+            output = destination / f"{name}.pdf"
+            try:
+                fig.savefig(output, format="pdf")
+            finally:
+                plt.close(fig)
+            outputs.append(output)
+    csv = destination / "finite_sample_terms.csv"
+    write_rows_csv(csv, rows, list(rows[0]))
+    write_provenance(destination / "provenance.json", {
+        "inputs": inputs, "source": file_record(__file__),
+        "design_source": file_record(Path(__file__).with_name("wild.py")),
+        "outputs": [file_record(path) for path in [*outputs, csv]],
+        "thesis_equations": ["eq:wild-bootstrap-main-coverage", "eq:wild-bootstrap-rho-tau"],
+        "noise_moments": "Independent Gaussian errors: K = 3^(1/4) sigma_max; global manifest bounds.",
+        "plotted_bound": "max(0, 1-delta-rho_n-tau_n-(1-delta)/(B+1))",
+        "scope": "Same lower bound for residual and transferred joint coverage over all calibration contexts and real actions.",
+        "replay": "Original saved counts and Wilson intervals; no new simulation or bootstrap draws.",
+        "all_raw_bounds_negative": all(row["raw_lower_bound"] < 0 for row in rows),
+    })
+    return outputs
+
+
+def _paired_metrics_figure(summary, event=None, *, finite_sample=None):
+    p = summary["manifest"]
+    if finite_sample is not None and event not in ("auxiliary", "transferred"):
+        raise ValueError("Finite-sample references apply only to coverage figures.")
     fig, axes = _panels(p["deltas"])
     title = ("Mean residual-band half-width" if event is None else
              "Residual-band coverage" if event == "auxiliary" else "Transferred-envelope coverage")
-    fig.suptitle(title)
+    fig.suptitle("Wild-bootstrap " + title.lower() if finite_sample is not None else title)
     for ax, delta in zip(axes, p["deltas"]):
-        for method, label, color in _METHODS:
+        for method, label, color in (_METHODS if finite_sample is None else _METHODS[1:]):
             label = "OLS variance bound" if method == "analytical" else label
             rows = _paired_rows(summary, delta, method)
             x = np.arange(len(rows))
@@ -366,7 +469,13 @@ def _paired_metrics_figure(summary, event=None):
                     raise ValueError("Invalid paired coverage or Wilson intervals.")
                 ax.errorbar(x, y, yerr=[y-lower, upper-y], marker="o", capsize=3, color=color, label=label)
         if event is not None:
-            ax.axhline(1-delta, linestyle="--", color="0.5", label=r"Target $1-\delta$")
+            if finite_sample is None:
+                ax.axhline(1-delta, linestyle="--", color="0.5", label=r"Target $1-\delta$")
+            else:
+                references = _paired_rows({"manifest": p, "metrics": finite_sample}, delta, "wild_bootstrap")
+                ax.plot(np.arange(len(references)), [r["lower_bound"] for r in references],
+                        linestyle="--", marker="o", color="0.5",
+                        label="Finite-sample lower bound\n(clipped at 0)")
             ax.yaxis.set_major_formatter(PercentFormatter(1))
         _paired_axis(ax, p)
         ax.set_ylabel("Simultaneous coverage" if event else r"Mean half-width $\overline{w}_\delta$")
@@ -378,6 +487,8 @@ def _paired_metrics_figure(summary, event=None):
         axes[0].set_ylim(top=1.015)
     description = ("All calibration contexts and every real action; 95% Wilson intervals."
                    if event else "Mean over calibration contexts and the action window [-2,2].")
+    if finite_sample is not None and all(r["raw_lower_bound"] < 0 for r in finite_sample):
+        description += "\nThe theorem's untruncated lower bound is negative at every pair."
     fig.supxlabel(f"{p['repetitions']:,} response repetitions per pair. " + description, fontsize=10)
     return fig
 

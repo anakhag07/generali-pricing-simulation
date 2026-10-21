@@ -1500,6 +1500,14 @@ pytest -q
   saved inputs and mathematical sources, uses repetition 0 at baseline delta,
   and averages over all n calibration contexts. Transfer endpoints before
   averaging; do not clip context means or average only the three saved slices.
+- `scratch/plot_wild_finite_sample_coverage.py` calls
+  `wild_reporting.write_finite_sample_coverage_report` to replay only paired
+  coverage plots 1 and 2 into `plots/finite_sample/`, without OLS. The thesis's
+  explicit approximation constants use Gaussian fourth moments and the known
+  global noise bounds. Save raw terms even when negative bounds require a zero
+  probability floor; do not infer rho/tau from empirical coverage or omit the
+  finite-B correction. Verify maximum leverage from the saved design and keep
+  original summary/report artifacts unchanged. See MATH §7.14.
 
 - Wild-envelope source contracts include canonical absolute paths as well as
   hashes. Slurm may record `/orcd/home/002/...` where an interactive session

@@ -103,6 +103,8 @@ paired conditions, with coverage and envelope slices at shared contexts; see
 [the paired-sweep guide](docs/wild_bootstrap_envelopes.md#increasing-n-and-b-together).
 To replay context-averaged residual bands beside transferred envelopes, see
 [the averaging command](docs/wild_bootstrap_envelopes.md#context-averaged-bands).
+The [finite-sample replay](docs/wild_bootstrap_envelopes.md#finite-sample-coverage-reference)
+compares the saved wild-bootstrap coverage with the thesis's explicit lower bound.
 
 For maximum-leverage versus coverage at fixed sample size, use the
 `manifests/wild-bootstrap-leverage-bound-*.json` manifests. This action-only

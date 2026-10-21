@@ -75,6 +75,35 @@ original row indices are saved in `paired_examples.npz`. Shared vertical axes
 within each context allow widths to be compared across rows. The plotting
 window remains [-2,2]; it does not define the confidence domain.
 
+### Finite-sample coverage reference
+
+Regenerate only coverage plots 1 and 2, with wild bootstrap and the thesis's
+finite-sample reference:
+
+```bash
+PYTHONPATH=src python scratch/plot_wild_finite_sample_coverage.py /home/anakhag/projects/generali-pricing/results/residual-heteroskedastic-paired-nb/summary.json /home/anakhag/projects/generali-pricing/MEng-Thesis/chapters/uncertainty-envelope.tex
+```
+
+The PDFs are in `plots/finite_sample/`, preserving the original reports. They
+reuse the same saved coverage counts, 95% Wilson intervals, pairs, and deltas,
+and omit OLS. The connected reference is
+$$\max\{0,1-\delta-\rho_n-\tau_n-(1-\delta)/(B+1)\}.$$
+The same bound applies to residual and transferred simultaneous coverage.
+The Gaussian fourth-moment scale is $K=3^{1/4}\sigma_{\max}$, using the
+manifest's global noise bounds $\underline\sigma=0.15$ and $\sigma_{\max}=1$.
+The theorem's explicit $C_{p,\kappa}$, $\rho_n$, and $\tau_n$ are specified in
+[MATH.md §7.14](../MATH.md#714-finite-sample-wild-bootstrap-coverage-reference).
+Maximum leverage is verified against each saved design prefix.
+
+For this sweep, $C_{p,\kappa}\approx1.867\times10^6$ and every raw lower bound
+is negative. The displayed guarantee is therefore 0%, which is valid but
+uninformative. At delta=0.05 the raw bound ranges from about -21,822 to -7,431.
+`finite_sample_terms.csv` retains every correction term, both the expanded
+bound and the tighter $\lceil B(1-\delta)\rceil/(B+1)-\rho_n-\tau_n$ bound,
+and the plotted value. The provenance sidecar records the thesis, code, and
+saved-input hashes. No bootstrap approximation error is estimated from the
+empirical coverage, and no new simulations are run.
+
 ### Context-averaged bands
 
 Replay the completed paired sweep without new fits or bootstrap draws:
@@ -206,7 +235,8 @@ There are no downstream optimizer queries, action-boundary constraints,
 reported pricing optima, or regret calculations in this study.
 
 The analytical lower bound and bootstrap empirical coverage have different
-interpretations. Bootstrap coverage is not given a finite-sample guarantee.
+interpretations. The original reports use the nominal bootstrap reference;
+the separate finite-sample replay above evaluates the thesis's explicit bound.
 Increasing B reduces quantile Monte Carlo error; it does not repair a biased
 finite-sample bootstrap approximation. Increasing n at fixed p can improve
 that approximation under suitable regularity, including vanishing maximum

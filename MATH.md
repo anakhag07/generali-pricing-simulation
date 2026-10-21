@@ -1351,6 +1351,37 @@ They are neither bands evaluated at the mean context nor averages over response
 repetitions. Replay saved coefficients and critical values on the existing
 action grid, introducing no random draws or optimizer queries.
 
+### 7.14 Finite-sample wild-bootstrap coverage reference
+
+Replay the same paired residual sweep and its existing joint coverage counts.
+The thesis `uncertainty-envelope.tex`, equations
+`wild-bootstrap-main-coverage` and `wild-bootstrap-rho-tau`, gives
+$$L_{n,B,\delta}=1-\delta-\rho_n-\tau_n-\frac{1-\delta}{B+1},
+\qquad L^{\mathrm{order}}_{n,B,\delta}
+=\frac{\lceil B(1-\delta)\rceil}{B+1}-\rho_n-\tau_n\ge L_{n,B,\delta}.$$
+Both the residual band and transferred envelope have this same lower bound;
+transfer preserves the residual-containment event. Use the expanded $L$ for
+the requested plotted reference and retain both versions in the numeric table.
+For the existing independent Gaussian observation errors,
+$E[\varepsilon_i^4\mid\mathcal Z]=3\sigma_i^4$; thus the manifest's global
+scale bounds give $K=3^{1/4}\sigma_{\max}$ and
+$\underline\sigma=\sigma_{\min}$ (equal to $\sigma_{\max}$ for constant noise).
+These are known model bounds, not estimated residual moments. With feature
+dimension $p$ and observed-design maximum leverage $h_n$,
+$$\kappa=K/\underline\sigma,\quad c_p=42p^{1/4}+16,\quad
+d_p=\sqrt p+(2\cdot3^{1/4}+\sqrt3)p,\quad
+C_{p,\kappa}=7c_pp\kappa^3+2d_p\kappa^2,$$
+$$\rho_n=2^{1/3}C_{p,\kappa}^{2/3}h_n^{1/3},\qquad
+\tau_n=2^{-2/3}C_{p,\kappa}^{2/3}h_n^{1/3}.$$
+Verify saved $h_n$ against the frozen design's QR leverage. Preserve raw terms
+even when they exceed one; plot $\max(0,L)$ as the probability lower bound.
+For the completed sweep, $p=5$, $\sigma_{\min}=0.15$, $\sigma_{\max}=1$ and
+$C_{p,\kappa}\approx1.867\times10^6$: every raw bound is negative. This is a
+vacuous guarantee, not evidence of a finite-sample violation or a numerical
+coverage estimate. No new draws, fitting, optimization, or coverage checks are
+needed. Keep the same three deltas, paired sizes, and 95% Wilson intervals;
+omit the analytical comparator from these two replayed coverage figures.
+
 ## 8. Gradients and Estimators
 
 For a differentiable action objective and policy, the population chain rule is

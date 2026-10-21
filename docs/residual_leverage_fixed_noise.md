@@ -10,13 +10,13 @@ SD fixed. Use its original pre-move value, 0.6991976375961079, recorded at actio
 truth/predictor coefficients, GP coefficients, seeds, n=300, B=1999, delta=0.05,
 and 2000 repetitions remain the same. New result names preserve prior studies.
 
-- [ ] Add a validated scalar `noise.moved_observation_sigma` option to the
+- [x] Add a validated scalar `noise.moved_observation_sigma` option to the
   existing runner, applying it only to `design.action_override.index`.
-- [ ] Add six explicit manifests with the frozen scale and original seeds.
-- [ ] Test the single-row change, unchanged bulk/scales/geometry, response
+- [x] Add six explicit manifests with the frozen scale and original seeds.
+- [x] Test the single-row change, unchanged bulk/scales/geometry, response
   pairing across locations, fresh repetitions, and rejection above the known cap.
-- [ ] Run through the existing manifest entry point on six one-CPU Slurm jobs.
-- [ ] Replay the same four PDFs, validate all artifacts and inspect the PDFs.
+- [x] Run through the existing manifest entry point on six one-CPU Slurm jobs.
+- [x] Replay the same four PDFs, validate all artifacts and inspect the PDFs.
 
 No bootstrap, optimizer, figure-layout, or seed-system change is needed.
 The option is absent by default, preserving legacy behavior. The numerical
@@ -73,3 +73,31 @@ separate residual half-width/transferred radii as vector PDFs, plus CSV data,
 source/artifact provenance, and this experiment document.
 
 Reference environment SHA-256: `d4bc0cd734468ae5d3279e26fbd8a399151837348d146a68f9946376abe9e250`.
+
+## Completed results
+
+All six conditions completed 2000 repetitions (12000 total). The moved row
+has SD 0.6991976375961079 everywhere; all other rows retain their original
+heteroskedastic scales. Coverage below is joint across all calibration contexts
+and all real actions.
+
+| Moved action | Maximum leverage | Residual coverage | Pointwise 95% Wilson interval | Transferred coverage |
+|---:|---:|---:|---:|---:|
+| 3 | 0.056188 | 93.05% | [91.85%, 94.08%] | 95.65% |
+| 10 | 0.257419 | 92.40% | [91.16%, 93.48%] | 94.75% |
+| 20 | 0.577627 | 89.50% | [88.08%, 90.77%] | 92.70% |
+| 40 | 0.845438 | 85.15% | [83.52%, 86.64%] | 89.75% |
+| 100 | 0.971640 | 81.75% | [80.00%, 83.38%] | 87.75% |
+| 1000 | 0.999709 | 81.35% | [79.58%, 83.00%] | 87.45% |
+
+Residual coverage decreases along this realized sweep, from 93.05% to 81.35%.
+The prior rebound at action 40 disappears. This empirical sequence does not
+establish a universal monotonicity theorem. The analytical variance-cap bands
+covered all 2000 datasets in every condition. The four PDF layouts and display
+windows match the earlier study; band/radius illustrations still use repetition 0.
+
+Validation: 116 focused tests passed; a two-condition manifest-runner and
+reporting smoke test passed; all four regenerated PDFs opened as vector PDFs
+and were visually inspected in memory, with no raster artifacts saved.
+`execution.json` records the six one-CPU Slurm jobs and manifest hashes;
+`repetition_validation.json` records the full saved-dataset audit.

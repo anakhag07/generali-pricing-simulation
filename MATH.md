@@ -1123,16 +1123,22 @@ The environment, contexts, actions, observations, and wild multipliers have
 distinct seed streams; n prefixes pair observations, B prefixes pair
 multipliers, and all delta values and methods share the same fitted data.
 
-Let Q=P'P, V=Q^{-1}, beta_tilde=Q^{-1}P'Y, e_tilde=Y-P beta_tilde, and
+For new runs, set R=Y-fhat at the logged rows and target g=f-fhat.
+Let Q=P'P, V=Q^{-1}, beta_tilde=Q^{-1}P'R, e_tilde=R-P beta_tilde, and
 ell_P(x,a)=sqrt(phi'V phi). Section 1.3 uses raw residuals (no HC2/HC3
 adjustment) and independent Rademacher multipliers:
 $$\beta_b^*-\widetilde\beta=Q^{-1}P'(\widetilde\epsilon\odot\xi_b),
 \qquad T_b^*=\sup_{i,a\in\mathbb R}
 \frac{|\phi(x_i,a)'(\beta_b^*-\widetilde\beta)|}{\ell_P(x_i,a)}.$$
-Take the empirical higher 1-delta quantile of the first B statistics, with no
-additional Monte Carlo inflation. The width is q_hat ell_P; the analytical
+Take order statistic ceil(B*(1-delta)) of the first B statistics, with no
+additional Monte Carlo inflation (the historical NumPy higher rule differs
+for some B and delta). The width is q_hat ell_P; the analytical
 width is sigma_max sqrt(p/delta) ell_P. No noise standard error is estimated.
-Both transfer to the same predictor using r=|fhat-ftilde|+w.
+Both use residual radii r_lower=[w-g_tilde]_+, r_upper=[w+g_tilde]_+.
+The residual-band event is |g_tilde-g|<=w everywhere; the transferred event
+is -r_lower<=g<=r_upper everywhere. Save and measure both separately.
+Historical artifacts without band_target=residual retain their function-target
+fit and symmetric transfer; they cannot be resumed under the new source contract.
 
 The all-real statistic is the norm of coefficient projections: with
 H_i=[(1,x_i',0)',e_a], M_i=H_i' V H_i and h_i=H_i'e,
@@ -1237,6 +1243,54 @@ optimizer is introduced. The supplied outlier locations are prescribed design
 conditions, not optimized actions. This experiment conditions on one bulk
 realization; it does not establish a universal coverage curve determined only
 by maximum leverage.
+
+### 7.12 Quadratic residual bands
+
+`wild_bootstrap_envelopes` accepts `design.action_degree=2` for zero-context
+quadratic fits, alongside the existing contextual affine basis. The supplied
+predictor remains fixed; subtract its values before fitting or bootstrapping.
+The quadratic manifest fixes f(u)=5u-5u² and the saved independent predictor
+coefficients [0.10142434006958467, 4.824476863339917, -5.127996631955374].
+The residual coefficients are truth minus predictor coefficients.
+
+Use QR OLS, phi=(1,u,u²), and the existing QuadraticErrorCertificate with
+sigma_hat=1: the denominator is sqrt(phi'V phi), without a second noise scale.
+Each bootstrap statistic uses the certified upper endpoint of a supremum
+bracket with hi-lo <= 2*tol*max(1,hi), tol=1e-8. Calibration and containment
+cover the entire real line including both tails. Values at off-grid inputs
+use the exact polynomial formulas, never interpolation. This is a coefficient
+statistic, not a downstream optimizer action or an optimization reference.
+
+For g_tilde=phi'beta, the signed residual g, and w²=q² phi'V phi, write
+ d=g_tilde-g. Auxiliary containment is w²-d²>=0 for every real u.
+Transferred containment fails exactly when either strict conjunction is feasible:
+(-g>0, d>0, d²-w²>0) or (g>0, -d>0, d²-w²>0).
+Use the existing exact rational polynomial sign-cell checker for these events;
+do not use grid coverage or the old symmetric-radius containment checker.
+The affine case uses the same signed inequalities on each context fiber.
+
+Saved artifacts include residual coefficients, residual and transferred coverage,
+both radii and signed margins, the fixed predictor, and target metadata. The
+asymmetric function band is [fhat-r_lower,fhat+r_upper]. Reporting preserves
+historical function-target artifacts based on their saved target metadata.
+
+Representation/implementation checklist:
+- [x] Retain the existing data, multiplier, profile, and repetition seed streams;
+  subtracting predictor values and changing features introduces no random process.
+  Designs are fixed per condition; n and B use shared prefixes; delta and moved
+  positions reuse the same draws. Observation noise is independent conditional
+  on the frozen design/profile. Fits share coefficients across queried inputs.
+- [x] Reuse wild.py geometry, wild_study.py launch/provenance, polynomial
+  certificates, and wild_reporting.py rather than adding another runner.
+- [x] Keep old symmetric helpers for explicitly historical replay. New residual
+  runs use a distinct source contract and result names, never relabel old fits.
+- [x] Check residual refits against independent least squares, signed all-real
+  containment including tail/equality cases, and a quadratic manifest/replay.
+- [x] Update public API docs and verify saved plots show the asymmetric bounds.
+
+Theoretical coverage is the thesis's conditional bootstrap-approximation bound,
+not an unconditional finite-sample 95% assertion. High leverage can suppress
+raw fitted residuals; increasing B does not repair that design failure.
 
 ## 8. Gradients and Estimators
 

@@ -129,3 +129,70 @@ def test_invalid_design_draws_and_queries_are_rejected():
         design.envelope(LinearModel([0., 0., 0.]), np.zeros(3), -1.)
     with pytest.raises(ValueError, match="Critical"):
         design.envelope(LinearModel([0., 0., 0.]), np.zeros(3), 1e300)
+
+
+@pytest.mark.parametrize('moved', [3., 10., 20., 40., 100., 1000.])
+def test_quadratic_residual_bootstrap_agrees_with_translated_response_fit(moved):
+    rng = np.random.default_rng(1301)
+    actions = np.clip(rng.normal(size=300), -3., 3.)
+    actions[0] = moved
+    design = WildLinearDesign(np.empty((300, 0)), actions, action_degree=2)
+    predictor_coeff = np.array([.10142434006958467, 4.824476863339917, -5.127996631955374])
+    predictor = design.design @ predictor_coeff
+    y = design.design @ [0., 5., -5.] + .5*rng.normal(size=300)
+    signs = rng.choice([-1, 1], size=(10, 300))
+    direct, direct_errors = design.bootstrap_errors(y, signs)
+    residual, residual_errors = design.bootstrap_errors(y, signs, predictor=predictor)
+    np.testing.assert_allclose(residual, direct-predictor_coeff, atol=2e-9)
+    np.testing.assert_allclose(residual_errors, direct_errors, atol=2e-9)
+    # Independent refits check that wild draws use fitted noise errors, not R itself.
+    observed = y-predictor
+    errors = observed-design.design@residual
+    refit = np.linalg.lstsq(design.design, design.design@residual+errors*signs[0], rcond=None)[0]
+    np.testing.assert_allclose(residual_errors[0], refit-residual, atol=2e-9)
+
+
+@pytest.mark.parametrize('degree', [1, 2])
+def test_signed_transfer_is_distinct_from_residual_band_and_symmetric_transfer(degree):
+    from experiments.envelopes.wild import residual_radii
+    design = WildLinearDesign(np.empty((9, 0)), np.linspace(-2, 2, 9), action_degree=degree)
+    for sign in (-1., 1.):
+        truth = np.r_[sign, np.zeros(degree)]
+        fitted = 2*truth
+        assert not design.auxiliary_contains(fitted, truth, 0.)
+        assert design.residual_contains(fitted, truth, 0.)
+        assert not design.residual_contains(-fitted, truth, 0.)
+        assert design.residual_contains(fitted, np.zeros(degree+1), 0.)
+    lower, upper = residual_radii(np.array([-2., 0., 2.]), .5)
+    np.testing.assert_array_equal(lower, [2.5, .5, 0.])
+    np.testing.assert_array_equal(upper, [0., .5, 2.5])
+
+
+def test_quadratic_certificates_include_action_tails_and_bracket_suprema():
+    design = WildLinearDesign(np.empty((9, 0)), np.linspace(-2, 2, 9), action_degree=2)
+    errors = np.array([[0., 0., 1.], [.3, -.2, .1]])
+    bounds = design.statistic_bounds(errors)
+    assert np.all(bounds[:, 1]-bounds[:, 0] <= 2e-8*np.maximum(1., bounds[:, 1]))
+    for error, (lo, hi) in zip(errors, bounds):
+        assert design.auxiliary_contains(error, np.zeros(3), hi)
+        assert not design.auxiliary_contains(error, np.zeros(3), max(0., lo-1e-7))
+    assert not design.residual_contains(np.zeros(3), errors[0], 1e-5)
+    assert design.residual_contains(errors[0], errors[0], 0.)
+
+
+def test_affine_signed_fast_check_matches_exact_polynomial_certificate():
+    import sympy as sp
+    from experiments.envelopes.wild import _residual_polynomials_contain
+    from experiments.bootstrap_band_continuous import VARIABLE
+    rng = np.random.default_rng(1301)
+    design = WildLinearDesign(rng.normal(size=(12, 1)), rng.normal(size=12))
+    for _ in range(5):
+        beta, truth = rng.normal(size=(2, 3))
+        critical = float(rng.uniform(.1, 5.))
+        expected = True
+        for x in design.X:
+            basis = sp.Matrix([1, sp.Rational(float(x[0])), VARIABLE])
+            poly = lambda v: sp.Poly((basis.T*sp.Matrix(v).applyfunc(lambda c: sp.Rational(float(c))))[0], VARIABLE)
+            q = sp.Poly((basis.T*sp.Matrix(design.covariance).applyfunc(lambda c: sp.Rational(float(c)))*basis)[0], VARIABLE)
+            expected &= _residual_polynomials_contain(poly(truth), poly(beta), q, critical)
+        assert design.residual_contains(beta, truth, critical) == expected

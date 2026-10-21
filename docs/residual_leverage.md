@@ -17,7 +17,7 @@ the old action-only experiment's truncated-normal bulk.
   context-averaged band, and separate lower/upper radius PDFs with CSV provenance.
 - [x] Check frozen bulk/profile and paired innovations/multipliers, contextual
   leverage, and transfer-before-average semantics; run focused regression tests.
-- [ ] Run all conditions, regenerate reports, validate PDFs and document results.
+- [x] Run all conditions, regenerate reports, validate PDFs and document results.
 
 No numerical model or bootstrap algorithm changes are needed. Reporting stays
 in `src/experiments/envelopes/wild_reporting.py`; the existing replay launcher
@@ -104,3 +104,33 @@ Production repetitions are prepared and collected on compute nodes. Initial
 short array batches were replaced by one serial job per condition to avoid
 scheduler overhead, retaining successfully completed checkpoints. This changes
 neither manifests nor random draws. No optimizer exception was required.
+
+## Completed results
+
+All six conditions completed 2000 repetitions (12000 total). The following
+coverage is the joint residual-band event over all contexts and real actions.
+
+| Moved action | Maximum leverage | Wild coverage | Pointwise 95% Wilson interval | Transferred coverage |
+|---:|---:|---:|---:|---:|
+| 3 | 0.056188 | 93.15% | [91.96%, 94.18%] | 95.50% |
+| 10 | 0.257419 | 91.95% | [90.68%, 93.06%] | 94.35% |
+| 20 | 0.577627 | 91.95% | [90.68%, 93.06%] | 94.30% |
+| 40 | 0.845438 | 93.75% | [92.60%, 94.73%] | 94.80% |
+| 100 | 0.971640 | 83.65% | [81.96%, 85.21%] | 88.80% |
+| 1000 | 0.999709 | 71.85% | [69.84%, 73.78%] | 82.65% |
+
+The analytical variance-cap band covered in all 2000 repetitions at every
+condition; this observed frequency is distinct from its theoretical lower bound.
+Wild coverage is below nominal and drops substantially at the two most extreme
+positions. The intermediate behavior is not monotonic. In particular, the
+moved point has noise SD about 0.184 at action 40, 0.663 at action 100, and
+0.903 at action 1000, so leverage alone is not a controlled explanation of
+every difference. Displayed context means are repetition-0 illustrations, not
+coverage averages over repetitions or evidence of joint containment.
+
+Production jobs 26513568, 26513576, 26513579, 26513585, 26513592, and 26513595
+completed after permitting the checkpointed workload to use `mit_preemptable`
+as well as `mit_normal`, with one CPU and a ten-minute wall limit per condition.
+All four final vector PDFs were regenerated from the committed reporting source,
+opened with a PDF parser, and visually inspected in memory for clipping,
+overlap, readability, and labels. No raster copies were saved.

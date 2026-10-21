@@ -1123,6 +1123,15 @@ The environment, contexts, actions, observations, and wild multipliers have
 distinct seed streams; n prefixes pair observations, B prefixes pair
 multipliers, and all delta values and methods share the same fitted data.
 
+An optional `noise.moved_observation_sigma=s_j` overrides only the observation
+SD of row j=`design.action_override.index`. For moved action A,
+$$Y_j(A)=\phi(x_j,A)'\beta_0+s_j z_j,\qquad 0<s_j\le\sigma_{\max}.$$
+Every other row retains its GP-based scale. The same z vector is paired across
+locations, with fresh independent vectors across response repetitions. This is
+a row-level observation override, not a change to the continuous GP profile or
+its off-grid evaluation. The fixed-noise leverage experiment takes s_j from
+that row's original pre-move saved scale (see `docs/residual_leverage_fixed_noise.md`).
+
 For new runs, set R=Y-fhat at the logged rows and target g=f-fhat.
 Let Q=P'P, V=Q^{-1}, beta_tilde=Q^{-1}P'R, e_tilde=R-P beta_tilde, and
 ell_P(x,a)=sqrt(phi'V phi). Section 1.3 uses raw residuals (no HC2/HC3

@@ -57,7 +57,7 @@ class WildEnvelopeManifest:
 
 
 def load_manifest(path):
-    """Validate the fixed-design comparison before generating observations."""
+    """Validate the fixed design and optional moved-row noise scale before sampling."""
     path = Path(path).resolve()
     p = read_json(path)
     if p.get("kind") != MANIFEST_KIND:
@@ -150,6 +150,13 @@ def load_manifest(path):
             raise ValueError("GP context projection must match context dimension.")
     else:
         raise ValueError("Require constant noise or the bounded Fourier GP scale profile.")
+    if "moved_observation_sigma" in noise:
+        sigma = noise["moved_observation_sigma"]
+        if "action_override" not in p["design"]:
+            raise ValueError("moved_observation_sigma requires design.action_override.")
+        if (isinstance(sigma, bool) or not isinstance(sigma, (float, int))
+                or not np.isfinite(sigma) or not 0 < sigma <= noise["sigma_max"]):
+            raise ValueError("moved_observation_sigma must be positive and at most sigma_max.")
     seeds = p["seeds"]
     if (set(seeds) != {"contexts", "actions", "observations", "method", "profile"}
             or any(isinstance(v, bool) or not isinstance(v, int) or v < 0 for v in seeds.values())
@@ -185,7 +192,7 @@ def _contract(manifest):
 
 
 def noise_scale(X, actions, settings, gp_cos, gp_sin):
-    """Evaluate the constant or saved analytic GP scale with a known upper bound."""
+    """Evaluate the background scale; observation-row overrides are applied separately."""
     if settings["type"] == "constant":
         return np.full(np.shape(actions), settings["sigma_max"], dtype=float)
     draw = FourierGPDraw(FiniteFourierGPSpec(settings["rank"], settings["lengthscale"]),
@@ -216,6 +223,9 @@ def _environment(payload_json):
     coefficients = (np.empty((2, 0)) if p["noise"]["type"] == "constant" else
                     np.random.default_rng(seeds["profile"]).normal(size=(2, p["noise"]["rank"])))
     sigma = noise_scale(X, actions, p["noise"], *coefficients)
+    if "moved_observation_sigma" in p["noise"]:
+        # Override only the moved observation, retaining the background GP and cap.
+        sigma[p["design"]["action_override"]["index"]] = p["noise"]["moved_observation_sigma"]
     spec = p["diagnostics"]["actions"]
     grid = np.linspace(spec["min"], spec["max"], spec["count"])
     snapshot = {"X": X, "actions": actions, "sigma": sigma,

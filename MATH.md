@@ -1422,6 +1422,39 @@ Radius, context-slice and context-averaged figures contain the perturbed study
 only, retaining OLS and wild overlays. Submit the two production arrays and
 dependent report jobs after validation.
 
+### 7.16 Distribution and mean-width diagnostics from saved repetitions
+
+Replay the artifacts from Section 7.15 without generating observations or
+bootstrap draws. Show the normal density against $e^{-(z+1)}1\{z\ge-1\}$
+for standardized noise, and histogram the saved heteroskedastic errors
+$\epsilon_i=\sigma_i\xi_i$ from response repetition 0. For the design variant,
+the univariate source density is $\sqrt3\,p_{t_3}(\sqrt3 v)$. Compare its
+density with the normal density and plot the empirical two-sided tail frequency
+of all saved context coordinates and logged actions. The density window is a
+visualization only; the empirical tail panel includes every saved observation.
+
+For repetition $r$, pair $j=(n_j,B_j)$ and confidence parameter $\delta$,
+reconstruct the original mean residual-band half-width exactly as
+$$W_{r,j,\delta}=q^*_{r,j,\delta}\,\overline\ell_j,\qquad
+\overline\ell_j=\frac{1}{n_j|G|}\sum_{i=1}^{n_j}\sum_{a\in G}
+\sqrt{\phi(X_i,a)^\top(\Phi_j^\top\Phi_j)^{-1}\phi(X_i,a)},$$
+where $G$ is the original 101-point action grid on $[-2,2]$, and both $q^*$
+and $\overline\ell_j$ are saved artifacts. Average $W$ over the $R=2000$
+repetitions; verify this reproduces `summary.metrics.mean_width`. These are
+residual half-widths, not the asymmetric transferred radii.
+
+Use the shared repetition seeds to form $D_r=W_r^{\mathrm{variant}}-
+W_r^{\mathrm{Gaussian}}$. Report $\overline D$, relative change
+$100\overline D/\overline W^{\mathrm{Gaussian}}$, and Monte Carlo standard
+error $s_D/\sqrt R$. Pointwise approximate 95% intervals use
+$\overline D\pm t_{R-1,.975}s_D/\sqrt R$. Also report Bonferroni-adjusted
+intervals with quantile $t_{R-1,1-.05/(2m)}$, where $m$ counts all displayed
+variant/pair/delta comparisons (36 for these two sweeps). Width curves use
+pointwise mean intervals; paired-difference panels use the adjusted intervals.
+These describe Monte Carlo precision conditional on the frozen designs and
+profile; they are not the finite-sample band-coverage guarantee, nor uncertainty
+over newly drawn designs. No optimizer is used.
+
 ## 8. Gradients and Estimators
 
 For a differentiable action objective and policy, the population chain rule is

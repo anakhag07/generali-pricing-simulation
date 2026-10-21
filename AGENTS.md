@@ -1413,6 +1413,18 @@ exclude `tests/objective/test_jax_prepared_glm*`, `tests/optimization/test_jax_*
 
 ## Documentation and Maintenance
 
+The residual paired-n/B distribution variants use
+`manifests/uncertainty-envelopes-residual-centered-exponential.json` and
+`manifests/uncertainty-envelopes-residual-t3-design.json`. Both extend the existing
+`envelopes/wild_study.py` runner. After collection,
+`scratch/report_wild_distribution_sweep.py` replays baseline/variant wild coverage
+and law-specific finite bounds via `wild_reporting.py`, and the existing
+context-average renderer. Comparison PDFs live in `plots/comparison/`; variant
+OLS/wild widths, slices and context averages remain in `plots/`. Preserve the
+saved Gaussian baseline and use its exact seed roots/rank coupling. The
+exponential fourth moment is 9, not the Gaussian 3; never apply a Gaussian-only
+bound refinement to that variant. See MATH §7.15 and the wild-bootstrap guide.
+
 ### README.md
 Keep README concise—a quick-start and overview only. Update when:
 - setup or execution steps change

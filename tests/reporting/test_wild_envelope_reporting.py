@@ -38,6 +38,44 @@ def test_finite_sample_terms_preserve_positive_bound_and_quantile_rounding():
         wild_reporting._finite_sample_terms(1, .1, 99, .05, 0., 1.)
 
 
+def test_exponential_bound_uses_its_fourth_moment():
+    gaussian = wild_reporting._finite_sample_terms(5, .2, 99, .05, .15, 1.)
+    exponential = wild_reporting._finite_sample_terms(5, .2, 99, .05, .15, 1., fourth_moment=9.)
+    assert exponential["K"] == pytest.approx(np.sqrt(3))
+    assert exponential["K"]**4 == pytest.approx(9.)
+    assert exponential["rho_n"] > gaussian["rho_n"]
+    assert exponential["raw_lower_bound"] < gaussian["raw_lower_bound"]
+
+
+@pytest.mark.parametrize("event", ["auxiliary", "transferred"])
+def test_distribution_comparison_uses_wild_counts_and_both_bounds(saved_report, event):
+    baseline, _, _ = saved_report
+    p = baseline["manifest"]
+    pairs = set(zip(p["n_values"], p["B_values"]))
+    baseline["metrics"] = [r for r in baseline["metrics"] if (r["n"], r["B"]) in pairs]
+    variant = deepcopy(baseline)
+    for row in variant["metrics"]:
+        row[f"{event}_coverage"] -= .1
+        row[f"{event}_lower"] -= .1
+        row[f"{event}_upper"] -= .1
+    bounds = [[{**r, "lower_bound": value, "raw_lower_bound": value}
+               for r in baseline["metrics"] if r["method"] == "wild_bootstrap"] for value in (.4, .2)]
+    fig = wild_reporting._distribution_coverage_figure(baseline, variant, "Exponential", event, bounds)
+    try:
+        for ax, delta in zip(fig.axes, p["deltas"]):
+            assert len(ax.containers) == 2
+            for container, summary in zip(ax.containers, (baseline, variant)):
+                expected = wild_reporting._paired_rows(summary, delta, "wild_bootstrap")
+                np.testing.assert_allclose(container.lines[0].get_ydata(), [r[f"{event}_coverage"] for r in expected])
+            targets = [line for line in ax.lines if "bound (" in line.get_label()]
+            assert len(targets) == 2
+            np.testing.assert_allclose(targets[0].get_ydata(), .4)
+            np.testing.assert_allclose(targets[1].get_ydata(), .2)
+            assert all("OLS" not in label for label in ax.get_legend_handles_labels()[1])
+    finally:
+        plt.close(fig)
+
+
 @pytest.mark.parametrize("event", ["auxiliary", "transferred"])
 def test_finite_sample_figure_keeps_wild_counts_and_omits_ols(saved_report, event):
     summary, _, _ = saved_report

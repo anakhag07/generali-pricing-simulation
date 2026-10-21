@@ -284,10 +284,12 @@ def _noise_figure(summary, example, indices):
         ax.set_ylabel(r"Noise standard deviation $\sigma(x_i,a)$")
         ax.set_ylim(bottom=0)
     axes[0].legend()
+    law = ("centered-exponential" if p["noise"].get("innovation_distribution") == "centered_exponential"
+           else "Gaussian")
     fig.supxlabel(
-        ("Constant noise scale; independent Gaussian observation errors."
+        (f"Constant noise scale; independent {law} observation errors."
          if p["noise"].get("type") == "constant" else
-         "One fixed GP volatility profile; independent Gaussian observation errors conditional on that profile.")
+         f"One fixed GP volatility profile; independent {law} errors conditional on the design and profile.")
         + "\nThe known variance cap holds for all inputs; it is not estimated from the displayed actions.",
         fontsize=10,
     )
@@ -345,12 +347,12 @@ def _paired_axis(ax, p):
     ax.set_xlabel("Paired sizes (n, B)")
 
 
-def _finite_sample_terms(p, h, B, delta, sigma_min, sigma_max):
+def _finite_sample_terms(p, h, B, delta, sigma_min, sigma_max, fourth_moment=3.):
     if not (p >= 1 and 0 < h <= 1 and B >= 1 and 0 < delta < 1
-            and 0 < sigma_min <= sigma_max):
+            and 0 < sigma_min <= sigma_max and np.isfinite(fourth_moment) and fourth_moment >= 1):
         raise ValueError("Invalid finite-sample dimension, leverage, quantile, or noise bounds.")
-    # Gaussian fourth moments are 3 sigma^4; K is a fourth-moment scale.
-    K = 3**.25 * sigma_max
+    # Standardized innovations have fourth moment 3 (normal) or 9 (Exp(1)-1).
+    K = fourth_moment**.25 * sigma_max
     kappa = K / sigma_min
     cp = 42 * p**.25 + 16
     dp = np.sqrt(p) + (2 * 3**.25 + np.sqrt(3)) * p
@@ -363,14 +365,14 @@ def _finite_sample_terms(p, h, B, delta, sigma_min, sigma_max):
     exact = k / (B+1)-rho-tau
     return {"feature_dimension": p, "max_leverage": h,
             "sigma_min": sigma_min, "sigma_max": sigma_max, "K": K,
+            "innovation_fourth_moment": fourth_moment,
             "kappa": kappa, "c_p": cp, "d_p": dp, "C_p_kappa": C,
             "rho_n": rho, "tau_n": tau, "order_rank": k,
             "finite_B_correction": correction, "raw_lower_bound": raw,
             "order_statistic_raw_lower_bound": exact, "lower_bound": max(0., raw)}
 
 
-def write_finite_sample_coverage_report(summary_path, thesis_path, destination=None) -> list[Path]:
-    """Replay paired wild-bootstrap coverage against the thesis's explicit finite-sample bound."""
+def _finite_sample_inputs(summary_path, thesis_path):
     summary_path, thesis_path = Path(summary_path), Path(thesis_path)
     project = summary_path.parent
     summary = json.loads(summary_path.read_text())
@@ -379,7 +381,7 @@ def write_finite_sample_coverage_report(summary_path, thesis_path, destination=N
             or p.get("sweep_mode") != "paired"
             or p["bootstrap"] != {"multipliers": "rademacher", "quantile": "order_statistic",
                                   "residuals": "raw"}):
-        raise ValueError("Require the paired Gaussian-noise residual study with raw Rademacher bootstrap.")
+        raise ValueError("Require the paired residual study with raw Rademacher bootstrap.")
     inputs = [file_record(summary_path), file_record(thesis_path)]
     environment_path = project / "environment.json"
     actual = file_record(environment_path)
@@ -402,8 +404,12 @@ def write_finite_sample_coverage_report(summary_path, thesis_path, destination=N
                for n in p["n_values"]}
     noise = p["noise"]
     if noise["type"] not in ("constant", "bounded_fourier_gp_scale"):
-        raise ValueError("Require known positive Gaussian noise-scale bounds.")
+        raise ValueError("Require known positive noise-scale bounds.")
     sigma_min = noise["sigma_min"] if noise["type"] != "constant" else noise["sigma_max"]
+    law = noise.get("innovation_distribution", "standard_normal")
+    if law not in {"standard_normal", "centered_exponential"}:
+        raise ValueError("Unknown innovation fourth moment.")
+    fourth_moment = 9. if law == "centered_exponential" else 3.
     rows = []
     for delta in p["deltas"]:
         for saved in _paired_rows(summary, delta, "wild_bootstrap"):
@@ -416,7 +422,14 @@ def write_finite_sample_coverage_report(summary_path, thesis_path, destination=N
                         != saved[f"{event}_covered_count"] / p["repetitions"]):
                     raise ValueError("Coverage must agree with saved counts and repetitions.")
             rows.append({**saved, **_finite_sample_terms(
-                design.design.shape[1], h, saved["B"], delta, sigma_min, noise["sigma_max"])})
+                design.design.shape[1], h, saved["B"], delta, sigma_min, noise["sigma_max"], fourth_moment)})
+    return summary, inputs, rows
+
+
+def write_finite_sample_coverage_report(summary_path, thesis_path, destination=None) -> list[Path]:
+    """Replay paired wild coverage using the declared Gaussian or exponential fourth moment."""
+    summary, inputs, rows = _finite_sample_inputs(summary_path, thesis_path)
+    project = Path(summary_path).parent
     destination = Path(destination) if destination else project / "plots/finite_sample"
     destination.mkdir(parents=True, exist_ok=True)
     outputs = []
@@ -437,11 +450,121 @@ def write_finite_sample_coverage_report(summary_path, thesis_path, destination=N
         "design_source": file_record(Path(__file__).with_name("wild.py")),
         "outputs": [file_record(path) for path in [*outputs, csv]],
         "thesis_equations": ["eq:wild-bootstrap-main-coverage", "eq:wild-bootstrap-rho-tau"],
-        "noise_moments": "Independent Gaussian errors: K = 3^(1/4) sigma_max; global manifest bounds.",
+        "noise_moments": {"law": summary["manifest"]["noise"].get("innovation_distribution", "standard_normal"),
+                          "fourth_moment": rows[0]["innovation_fourth_moment"],
+                          "K": "fourth_moment^(1/4) sigma_max; global manifest bounds"},
         "plotted_bound": "max(0, 1-delta-rho_n-tau_n-(1-delta)/(B+1))",
         "scope": "Same lower bound for residual and transferred joint coverage over all calibration contexts and real actions.",
         "replay": "Original saved counts and Wilson intervals; no new simulation or bootstrap draws.",
         "all_raw_bounds_negative": all(row["raw_lower_bound"] < 0 for row in rows),
+    })
+    return outputs
+
+
+def _distribution_comparison_label(baseline, variant):
+    base, changed = (json.loads(json.dumps(s["manifest"])) for s in (baseline, variant))
+    for p in (base, changed):
+        p.pop("name")
+        p.pop("launch")
+        p["noise"].setdefault("innovation_distribution", "standard_normal")
+    if (base["design"]["distribution"] != "independent_standard_normal"
+            or base["noise"]["innovation_distribution"] != "standard_normal"):
+        raise ValueError("Comparison baseline must have Gaussian design and noise.")
+    if changed["noise"]["innovation_distribution"] == "centered_exponential":
+        changed["noise"]["innovation_distribution"] = "standard_normal"
+        label = "Centered exponential noise"
+    elif changed["design"]["distribution"] == "independent_standardized_t3":
+        changed["design"]["distribution"] = "independent_standard_normal"
+        label = r"Standardized $t_3$ design"
+    else:
+        raise ValueError("Require exactly one approved distribution perturbation.")
+    if base != changed:
+        raise ValueError("Baseline and variant differ beyond the declared distribution.")
+    return label
+
+
+def _distribution_coverage_figure(baseline, variant, label, event, finite_rows=None):
+    p = variant["manifest"]
+    fig, axes = _panels(p["deltas"])
+    title = "Residual-band" if event == "auxiliary" else "Transferred-envelope"
+    fig.suptitle(f"{title} coverage: wild bootstrap")
+    for ax, delta in zip(axes, p["deltas"]):
+        for index, (summary, name) in enumerate(((baseline, "Gaussian baseline"), (variant, label))):
+            rows = _paired_rows(summary, delta, "wild_bootstrap")
+            x = np.arange(len(rows))
+            y, lower, upper = (np.array([r[f"{event}_{key}"] for r in rows])
+                               for key in ("coverage", "lower", "upper"))
+            if (not np.isfinite([y, lower, upper]).all() or np.any(lower > y)
+                    or np.any(y > upper) or np.any(lower < 0) or np.any(upper > 1)):
+                raise ValueError("Invalid coverage or Wilson intervals.")
+            ax.errorbar(x, y, yerr=[y-lower, upper-y], marker="o", capsize=3,
+                        color=f"C{index}", label=name)
+            if finite_rows is not None:
+                refs = _paired_rows({"manifest": p, "metrics": finite_rows[index]}, delta, "wild_bootstrap")
+                ax.plot(x, [r["lower_bound"] for r in refs], color=f"C{index}",
+                        linestyle="--" if index == 0 else ":", marker="o" if index == 0 else "x",
+                        label=f"{name} bound (clipped at 0)")
+        if finite_rows is None:
+            ax.axhline(1-delta, linestyle="--", color="0.5", label=r"Nominal $1-\delta$")
+        _paired_axis(ax, p)
+        ax.set_ylabel("Simultaneous coverage")
+        ax.yaxis.set_major_formatter(PercentFormatter(1))
+    axes[0].legend()
+    axes[0].set_ylim(top=1.015)
+    text = f"{p['repetitions']:,} response repetitions; 95% Wilson intervals; one frozen design per law."
+    if finite_rows is not None and all(r["raw_lower_bound"] < 0 for rows in finite_rows for r in rows):
+        text += "\nBoth untruncated theorem bounds are negative at every pair."
+    fig.supxlabel(text, fontsize=10)
+    return fig
+
+
+def write_distribution_comparison(summary_path, baseline_path, thesis_path, destination=None) -> list[Path]:
+    """Compare saved paired wild coverage and leverage, with law-specific theorem bounds."""
+    variant, variant_inputs, variant_rows = _finite_sample_inputs(summary_path, thesis_path)
+    baseline, baseline_inputs, baseline_rows = _finite_sample_inputs(baseline_path, thesis_path)
+    label = _distribution_comparison_label(baseline, variant)
+    destination = Path(destination) if destination else Path(summary_path).parent / "plots/comparison"
+    destination.mkdir(parents=True, exist_ok=True)
+    outputs = []
+    with plt.style.context("default"), plt.rc_context(_STYLE):
+        for finite in (False, True):
+            directory = destination / "finite_sample" if finite else destination
+            directory.mkdir(exist_ok=True)
+            for event, stem in (("auxiliary", "01_residual_coverage_vs_pairs"),
+                                ("transferred", "02_transferred_coverage_vs_pairs")):
+                fig = _distribution_coverage_figure(baseline, variant, label, event,
+                          (baseline_rows, variant_rows) if finite else None)
+                path = directory / f"{stem}.pdf"
+                try:
+                    fig.savefig(path, format="pdf")
+                finally:
+                    plt.close(fig)
+                outputs.append(path)
+        fig, ax = plt.subplots(constrained_layout=True, figsize=(8, 5))
+        for summary, name in ((baseline, "Gaussian baseline"), (variant, label)):
+            rows = _paired_rows(summary, summary["manifest"]["baseline"]["delta"], "wild_bootstrap")
+            ax.plot([r["n"] for r in rows], [r["max_leverage"] for r in rows], marker="o", label=name)
+        ax.set(xlabel="Calibration sample size n", ylabel="Maximum leverage", title="Frozen-design maximum leverage")
+        ax.legend()
+        path = destination / "08_max_leverage.pdf"
+        try:
+            fig.savefig(path, format="pdf")
+        finally:
+            plt.close(fig)
+        outputs.append(path)
+    rows = [{"distribution": name, **row} for name, data in
+            (("gaussian_baseline", baseline_rows), ("perturbed", variant_rows)) for row in data]
+    csv = destination / "finite_sample_terms.csv"
+    write_rows_csv(csv, rows, list(rows[0]))
+    outputs.append(csv)
+    write_provenance(destination / "provenance.json", {
+        "inputs": [*baseline_inputs, *variant_inputs], "source": file_record(__file__),
+        "outputs": [file_record(path) for path in outputs], "variant": label,
+        "scope": "Wild bootstrap only; all calibration contexts and every real action jointly.",
+        "noise_moments": "Normal fourth moment 3; centered-exponential fourth moment 9. Global scale bounds.",
+        "plotted_bound": "max(0,1-delta-rho_n-tau_n-(1-delta)/(B+1)); raw bounds retained in CSV.",
+        "pairing": "Same underlying Gaussian ranks and seed streams; one frozen design per law.",
+        "replay": "Saved coverage counts and Wilson intervals; baseline artifacts are read only.",
     })
     return outputs
 

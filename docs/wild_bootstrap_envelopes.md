@@ -362,3 +362,64 @@ mathematics, `wild_study.py` owns manifest execution and saved studies, and
 `tests/experiments/test_envelope_wild.py`,
 `tests/experiments/test_envelope_wild_study.py`, and
 `tests/reporting/test_wild_envelope_reporting.py`.
+# Distribution perturbations
+
+Two variants of `residual-heteroskedastic-paired-nb` change one law at a time:
+
+| Manifest suffix | Design | Standardized observation innovation |
+|---|---|---|
+| `residual-centered-exponential` | Original independent normal contexts/actions | `Exp(1)-1` |
+| `residual-t3-design` | Independent `t3/sqrt(3)` contexts and logged actions | Original normal innovation |
+
+Use `manifests/uncertainty-envelopes-<suffix>.json` with the existing manifest
+runner. Each keeps the six pairs `(30,99), (60,199), (120,499), (300,999),
+(600,1999), (1200,3999)`, 2,000 response repetitions, deltas `.1,.05,.01`,
+affine truth/frozen predictor, bounded Fourier GP scale, raw residuals and
+Rademacher multipliers. Seeds are unchanged: contexts 1101, actions 1102,
+observations 1103, method 1104, profile 1105. There is no new random stream.
+
+Quantile transforms couple each new law to the ranks of its original normal
+draws: exponential innovations are `-log_ndtr(-Z)-1`; design draws are
+`t3.ppf(Phi(Z))/sqrt(3)`, evaluated with the small tail and symmetry. There is
+no clipping, empirical recentering or variance normalization. Errors are
+independent conditional on the design and frozen scale profile. Each law uses
+one frozen design and prefixes; repetitions vary observations and bootstrap
+multipliers. The GP function stays identical, but its values change when
+evaluated at the t-design locations. Leverage is measured, not assumed to rise
+monotonically. Coverage remains joint over calibration contexts and all real
+actions; the `[-2,2]` grid only renders bands and summarizes widths. No optimizer
+or grid-based optimization is involved.
+
+Centered exponential noise has mean 0, variance 1, third moment 2 and fourth
+moment 9. The theorem uses `K=9**.25*sigma_max`, versus `3**.25*sigma_max` for
+normal errors. The t3 design has variance 1 and infinite fourth moment, which
+does not violate the fixed-design noise-moment assumption. Each design prefix
+must remain full rank. MATH §7.15 gives the mathematical specification.
+
+After a variant's array and collector finish, run:
+
+```bash
+PYTHONPATH=src python scratch/report_wild_distribution_sweep.py \
+  /path/to/results/residual-heteroskedastic-centered-exponential-paired-nb/summary.json \
+  --baseline /path/to/results/residual-heteroskedastic-paired-nb/summary.json \
+  --thesis /path/to/MEng-Thesis/chapters/uncertainty-envelope.tex
+```
+
+Replace `centered-exponential` with `t3-design` for the second sweep. Production
+launches schedule this command after successful collection. It writes:
+
+* `plots/comparison/01_...pdf` and `02_...pdf`: saved Gaussian baseline versus
+  perturbed wild-bootstrap residual/transferred coverage, with Wilson intervals.
+* `plots/comparison/finite_sample/01_...pdf` and `02_...pdf`: the same curves
+  with each law's finite-sample lower bound; raw terms are retained in
+  `plots/comparison/finite_sample_terms.csv`, even when the plotted bound is zero.
+* `plots/comparison/08_max_leverage.pdf`: leverage at each frozen design prefix.
+* `plots/07_context_averaged_bands_by_pair.pdf`: variant-only residual bands
+  on the left, transferred envelopes on the right, with OLS/wild overlays.
+
+The collector's width, individual-context and noise PDFs (`03`–`06`) also
+contain only the variant. Its original `01`/`02` remain as within-variant
+OLS/wild diagnostics; use the `comparison/` versions for distribution
+comparisons. Selected contexts are fixed across pairs within each variant,
+using response repetition 0 and delta .05. Baseline files are read only.
+Saved manifests, source hashes, seeds and report provenance support replay.

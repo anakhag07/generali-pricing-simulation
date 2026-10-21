@@ -294,8 +294,12 @@ def _noise_figure(summary, example, indices):
     return fig
 
 
-def write_reports(summary, snapshot, example, destination) -> list[Path]:
-    """Render saved joint coverage, auxiliary widths, and example context slices as PDFs."""
+def write_reports(summary, snapshot, example, destination, *, paired_example=None) -> list[Path]:
+    """Render grid or paired-size coverage, widths, and saved context slices as PDFs."""
+    if summary["manifest"].get("sweep_mode") == "paired":
+        if paired_example is None:
+            raise ValueError("Paired reporting requires saved shared-context examples.")
+        return _write_paired_reports(summary, snapshot, paired_example, destination)
     if np.asarray(example["X"]).shape[1] == 0 and summary.get("band_target") != "residual":
         # Action-only conditions are compared by write_leverage_report; there
         # are no distinct context slices to display.
@@ -313,6 +317,140 @@ def write_reports(summary, snapshot, example, destination) -> list[Path]:
             ("05_analytical_context_slices", _slices_figure(summary, example, indices, "analytical", "Analytical")),
             ("06_wild_bootstrap_context_slices", _slices_figure(summary, example, indices, "wild_bootstrap", "Wild bootstrap")),
             ("07_noise_profile", _noise_figure(summary, example, indices)),
+        ]
+        for name, fig in figures:
+            path = destination / f"{name}.pdf"
+            try:
+                fig.savefig(path, format="pdf")
+            finally:
+                plt.close(fig)
+            paths.append(path)
+    return paths
+
+
+
+def _paired_rows(summary, delta, method):
+    p = summary["manifest"]
+    expected = list(zip(p["n_values"], p["B_values"]))
+    rows = [r for r in summary["metrics"] if r["delta"] == delta and r["method"] == method]
+    indexed = {(r["n"], r["B"]): r for r in rows}
+    if len(rows) != len(expected) or set(indexed) != set(expected):
+        raise ValueError("Require exactly the declared paired conditions in the report.")
+    return [indexed[pair] for pair in expected]
+
+
+def _paired_axis(ax, p):
+    positions = np.arange(len(p["n_values"]))
+    ax.set_xticks(positions, [f"({n},\n{b})" for n, b in zip(p["n_values"], p["B_values"])])
+    ax.set_xlabel("Paired sizes (n, B)")
+
+
+def _paired_metrics_figure(summary, event=None):
+    p = summary["manifest"]
+    fig, axes = _panels(p["deltas"])
+    title = ("Mean residual-band half-width" if event is None else
+             "Residual-band coverage" if event == "auxiliary" else "Transferred-envelope coverage")
+    fig.suptitle(title)
+    for ax, delta in zip(axes, p["deltas"]):
+        for method, label, color in _METHODS:
+            label = "OLS variance bound" if method == "analytical" else label
+            rows = _paired_rows(summary, delta, method)
+            x = np.arange(len(rows))
+            if event is None:
+                ax.plot(x, [r["mean_width"] for r in rows], marker="o", color=color, label=label)
+            else:
+                y, lower, upper = (np.array([r[f"{event}_{key}"] for r in rows])
+                                   for key in ("coverage", "lower", "upper"))
+                if (not np.isfinite([y, lower, upper]).all() or np.any(lower > y)
+                        or np.any(y > upper) or np.any(lower < 0) or np.any(upper > 1)):
+                    raise ValueError("Invalid paired coverage or Wilson intervals.")
+                ax.errorbar(x, y, yerr=[y-lower, upper-y], marker="o", capsize=3, color=color, label=label)
+        if event is not None:
+            ax.axhline(1-delta, linestyle="--", color="0.5", label=r"Target $1-\delta$")
+            ax.yaxis.set_major_formatter(PercentFormatter(1))
+        _paired_axis(ax, p)
+        ax.set_ylabel("Simultaneous coverage" if event else r"Mean half-width $\overline{w}_\delta$")
+    axes[0].legend()
+    if event is None:
+        axes[0].set_ylim(bottom=0)
+    else:
+        # Keep uncertainty intervals visible while retaining headroom above 100%.
+        axes[0].set_ylim(top=1.015)
+    description = ("All calibration contexts and every real action; 95% Wilson intervals."
+                   if event else "Mean over calibration contexts and the action window [-2,2].")
+    fig.supxlabel(f"{p['repetitions']:,} response repetitions per pair. " + description, fontsize=10)
+    return fig
+
+
+def _validate_paired_example(summary, snapshot, example):
+    p = summary["manifest"]
+    indices = np.asarray(example["context_indices"])
+    expected = _slice_indices(np.asarray(snapshot["X"])[:min(p["n_values"])])
+    if (not np.array_equal(indices, expected)
+            or not np.array_equal(example["X"], np.asarray(snapshot["X"])[indices])
+            or not np.array_equal(example["n_values"], p["n_values"])
+            or not np.array_equal(example["B_values"], p["B_values"])):
+        raise ValueError("Paired slices must retain the declared pairs and fixed smallest-prefix contexts.")
+    count = len(p["n_values"])
+    local_snapshot = {"X": example["X"]}
+    slices = []
+    for j in range(count):
+        local = {key: np.asarray(example[key])[j] for key in
+                 ("truth", "predictor", "auxiliary", "residual_truth", "residual_fit",
+                  "analytical_width", "bootstrap_width", "analytical_lower", "analytical_upper",
+                  "bootstrap_lower", "bootstrap_upper", "sigma_grid")}
+        local.update(X=example["X"], actions_grid=example["actions_grid"])
+        _validate_example(local_snapshot, local)
+        slices.append(local)
+    return slices
+
+
+def _paired_slices_figure(summary, example, slices, *, residual):
+    p = summary["manifest"]
+    count, k = len(slices), len(example["X"])
+    fig, axes = plt.subplots(count, k, figsize=(4.7*k, 3.2*count), sharex=True,
+                             sharey="col", squeeze=False, constrained_layout=True)
+    title = "Residual bands" if residual else "Transferred function envelopes"
+    fig.suptitle(title + rf": $\delta={p['baseline']['delta']:g}$, response repetition 0")
+    a = example["actions_grid"]
+    for j, (n, b, item) in enumerate(zip(p["n_values"], p["B_values"], slices)):
+        for c, index in enumerate(example["context_indices"]):
+            ax = axes[j, c]
+            for prefix, label, color in (("analytical", "OLS variance bound", "C0"),
+                                         ("bootstrap", "Wild bootstrap", "C1")):
+                if residual:
+                    lower = item["residual_fit"][c]-item[f"{prefix}_width"][c]
+                    upper = item["residual_fit"][c]+item[f"{prefix}_width"][c]
+                else:
+                    lower, upper = item[f"{prefix}_lower"][c], item[f"{prefix}_upper"][c]
+                ax.fill_between(a, lower, upper, color=color, alpha=.2, label=label)
+            if residual:
+                ax.plot(a, item["residual_truth"][c], color="C2", label=r"$g=f-\widehat f$")
+                ax.plot(a, item["residual_fit"][c], color="C3", linestyle="--", label=r"OLS fit $\widetilde g$")
+            else:
+                ax.plot(a, item["truth"][c], color="C2", label=r"Truth $f$")
+                ax.plot(a, item["predictor"][c], color="C3", linestyle="--", label=r"Predictor $\widehat f$")
+            norm = np.linalg.norm(example["X"][c])
+            ax.set_title(rf"$x_{{{index}}}$, $\|x\|={norm:.2f}$; $(n,B)=({n},{b})$")
+            ax.set_xlabel("Action $a$")
+            ax.set_ylabel("Mean residual" if residual else "Response")
+    axes[0, 0].legend()
+    return fig
+
+
+def _write_paired_reports(summary, snapshot, example, destination):
+    slices = _validate_paired_example(summary, snapshot, example)
+    destination = Path(destination)
+    destination.mkdir(parents=True, exist_ok=True)
+    paths = []
+    with plt.style.context("default"), plt.rc_context(_STYLE):
+        figures = [
+            ("01_residual_coverage_vs_pairs", _paired_metrics_figure(summary, "auxiliary")),
+            ("02_transferred_coverage_vs_pairs", _paired_metrics_figure(summary, "transferred")),
+            ("03_mean_width_vs_pairs", _paired_metrics_figure(summary)),
+            ("04_residual_bands_by_pair", _paired_slices_figure(summary, example, slices, residual=True)),
+            ("05_transferred_envelopes_by_pair", _paired_slices_figure(summary, example, slices, residual=False)),
+            ("06_heteroskedastic_noise", _noise_figure(summary, slices[0], np.arange(len(example["X"])))),
         ]
         for name, fig in figures:
             path = destination / f"{name}.pdf"

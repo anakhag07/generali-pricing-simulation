@@ -1292,6 +1292,50 @@ Theoretical coverage is the thesis's conditional bootstrap-approximation bound,
 not an unconditional finite-sample 95% assertion. High leverage can suppress
 raw fitted residuals; increasing B does not repair that design failure.
 
+### 7.13 Paired calibration-size and bootstrap-count sweep
+
+The heteroskedastic residual experiment can use `sweep_mode: paired` to run
+only the zipped `(n_values, B_values)` conditions. The approved schedule is
+(30,99), (60,199), (120,499), (300,999), (600,1999), (1200,3999), with 2,000
+response repetitions and delta in {0.10,0.05,0.01}. Both axes strictly increase;
+the baseline (300,999,0.05) is one of those conditions. This measures their
+combined effect, without identifying separate effects of n and B.
+
+Retain §7.9's d=3 normal design, contextual affine f and fixed predictor,
+shared finite-Fourier variance profile, and residual target g=f-fhat. All
+queries use their exact formulas, with no interpolation. Random inputs at
+different actions share the same fitted coefficients and frozen variance profile;
+observation innovations are independent conditional on that profile. Existing
+seed roots 1101–1105 remain unchanged. Every n uses a prefix of one maximum
+size design and innovation vector; every B uses the matching prefix of the
+same maximum-shape Rademacher matrix. No new stochastic process is introduced.
+
+The analytical OLS comparator is sigma_max sqrt(p/delta) ell, which remains
+valid under the known heteroskedastic variance cap. Both methods fit OLS to R;
+they differ in calibration of w. Coverage remains simultaneous over all n
+calibration contexts and every real action, checked by the existing coefficient
+and polynomial calculations, with their existing roundoff qualifications.
+Increasing n also enlarges this target set. Neither coverage nor interval
+width is required to change monotonically, and larger B reduces quantile
+Monte Carlo error rather than repairing finite-n bootstrap bias.
+
+For interpretation, save the first response repetition at every pair and
+select the central, median-norm, and outer context from the smallest-n prefix,
+using the existing deterministic selector. Hold these exact contexts fixed
+across pairs, without selecting on fit or coverage. Show residual bands and
+transferred function envelopes separately. A 101-action grid on [-2,2] renders
+these slices and width summaries; it never determines coverage or an optimizer
+action. There are no optimizer queries or reported optima in this experiment.
+
+Implementation/validation checklist:
+- [x] Reuse the manifest runner, Slurm launcher, seed streams, and certificates;
+  omit off-pair conditions and mark uncomputed array slots explicitly.
+- [x] Keep grid mode compatible; test paired-prefix replay and reject mismatched
+  axis lengths/baselines before sampling.
+- [x] Save shared-context slices and show OLS versus wild bootstrap for each
+  pair; verify plot inputs against saved bounds and regenerate PDF reports.
+- [ ] Regenerate public docs, run the paired sweep, and analyze saved summaries.
+
 ## 8. Gradients and Estimators
 
 For a differentiable action objective and policy, the population chain rule is

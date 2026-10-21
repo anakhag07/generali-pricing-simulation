@@ -115,6 +115,12 @@ def load_manifest(path):
     for key, axis in (("n", "n_values"), ("B", "B_values"), ("delta", "deltas")):
         if p["baseline"][key] not in p[axis]:
             raise ValueError("The baseline must occur in every sweep axis.")
+    mode = p.get("sweep_mode", "grid")
+    if mode not in {"grid", "paired"}:
+        raise ValueError("Require sweep_mode=grid or paired.")
+    if mode == "paired" and (len(p["n_values"]) != len(p["B_values"])
+            or (p["baseline"]["n"], p["baseline"]["B"]) not in zip(p["n_values"], p["B_values"])):
+        raise ValueError("Paired mode requires equally sized axes and a paired baseline.")
     for key, minimum in (("repetitions", 2), ("repetitions_per_task", 1)):
         value = p[key]
         if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
@@ -247,6 +253,11 @@ def _prepare(manifest, runs_root, force=False):
     return project, digest, snapshot, designs, mean_ell
 
 
+def _condition_mask(p):
+    shape = (len(p["n_values"]), len(p["B_values"]))
+    return np.eye(*shape, dtype=bool) if p.get("sweep_mode") == "paired" else np.ones(shape, dtype=bool)
+
+
 def _run_repetition(manifest, index, project, digest, snapshot, designs, mean_ell, force=False):
     p = manifest.payload
     output = project / "repetitions" / f"rep-{index:05d}.npz"
@@ -264,20 +275,22 @@ def _run_repetition(manifest, index, project, digest, snapshot, designs, mean_el
     predictor = np.asarray(p["predictor"]["coefficients"])
     residual_truth = truth-predictor
     shape = (len(p["n_values"]), len(p["B_values"]), len(p["deltas"]), 2)
-    critical, auxiliary, transferred = np.zeros(shape), np.zeros(shape, dtype=bool), np.zeros(shape, dtype=bool)
+    active = _condition_mask(p)
+    critical, auxiliary, transferred = np.full(shape, np.nan), np.zeros(shape, dtype=bool), np.zeros(shape, dtype=bool)
     betas, statistics, statistic_lower, truth_statistics = [], [], [], []
-    diagnostics = {name: np.zeros(shape) for name in
+    diagnostics = {name: np.full(shape, np.nan) for name in
                    ("mean_radius_lower", "mean_radius_upper", "mean_margin_lower", "mean_margin_upper",
                     "moved_radius_lower", "moved_radius_upper")}
     for ni, (n, design) in enumerate(zip(p["n_values"], designs)):
         y = design.design @ truth + snapshot["sigma"][:n]*innovations[:n]
-        beta, errors = design.bootstrap_errors(y, multipliers[:, :n], predictor=design.design @ predictor)
+        b_used = max(b for bi, b in enumerate(p["B_values"]) if active[ni, bi])
+        beta, errors = design.bootstrap_errors(y, multipliers[:b_used, :n], predictor=design.design @ predictor)
         bounds = design.statistic_bounds(errors)
         boot_statistics = bounds[:, 1]
         true_statistic = float(design.statistics((beta-residual_truth)[None, :])[0])
         betas.append(beta)
-        statistics.append(boot_statistics)
-        statistic_lower.append(bounds[:, 0])
+        statistics.append(np.pad(boot_statistics, (0, bmax-b_used), constant_values=np.nan))
+        statistic_lower.append(np.pad(bounds[:, 0], (0, bmax-b_used), constant_values=np.nan))
         truth_statistics.append(true_statistic)
         grid = snapshot["actions_grid"]
         contexts = snapshot["X"][:1] if snapshot["X"].shape[1] == 0 else snapshot["X"][:n]
@@ -292,6 +305,8 @@ def _run_repetition(manifest, index, project, digest, snapshot, designs, mean_el
                              snapshot["actions"][moved:moved+1], beta, 1.)
         decisions = {}
         for bi, b in enumerate(p["B_values"]):
+            if not active[ni, bi]:
+                continue
             for di, delta in enumerate(p["deltas"]):
                 analytical = p["noise"]["sigma_max"]*np.sqrt(len(truth)/delta)
                 order = math.ceil(b*(1-delta))-1
@@ -318,7 +333,7 @@ def _run_repetition(manifest, index, project, digest, snapshot, designs, mean_el
                         bootstrap_statistics_lower=statistic_lower,
                         truth_statistics=truth_statistics, critical=critical,
                         auxiliary_covered=auxiliary, transferred_covered=transferred,
-                        innovations=innovations, **diagnostics)
+                        innovations=innovations, active_conditions=active, **diagnostics)
     record = {"index": index, "contract_sha256": digest, "seeds": seeds,
               "multiplier_shape": [bmax, nmax], "multiplier_sha256": array_sha256(multipliers),
               "arrays": file_record(output)}
@@ -334,12 +349,14 @@ def run_repetition(manifest, index, runs_root, force=False):
     return _run_repetition(manifest, index, *state, force=force)
 
 
-def _example(p, snapshot, designs, first):
-    ni = p["n_values"].index(p["baseline"]["n"])
-    bi = p["B_values"].index(p["baseline"]["B"])
-    di = p["deltas"].index(p["baseline"]["delta"])
-    n, grid = p["baseline"]["n"], snapshot["actions_grid"]
-    X = snapshot["X"][:n]
+def _example(p, snapshot, designs, first, *, baseline=None, context_indices=None):
+    baseline = p["baseline"] if baseline is None else baseline
+    ni = p["n_values"].index(baseline["n"])
+    bi = p["B_values"].index(baseline["B"])
+    di = p["deltas"].index(baseline["delta"])
+    grid = snapshot["actions_grid"]
+    X = snapshot["X"][:baseline["n"]] if context_indices is None else snapshot["X"][context_indices]
+    n = len(X)
     repeated, tiled = np.repeat(X, len(grid), axis=0), np.tile(grid, n)
     phi = designs[ni].features(repeated, tiled)
     ell = np.sqrt(np.einsum("ij,jk,ik->i", phi, designs[ni].covariance, phi)).reshape(n, -1)
@@ -365,6 +382,7 @@ def collect(manifest, runs_root):
     """Validate complete paired repetitions and report joint coverage and width."""
     project, digest, snapshot, designs, mean_ell = _prepare(manifest, runs_root)
     p = manifest.payload
+    active = _condition_mask(p)
     records, aggregate_arrays, first = [], [], None
     for index in range(p["repetitions"]):
         path = project / "repetitions" / f"rep-{index:05d}.json"
@@ -373,6 +391,8 @@ def collect(manifest, runs_root):
         if record["index"] != index or record["contract_sha256"] != digest or record["arrays"] != file_record(arrays_path):
             raise ValueError("Incomplete or stale sweep collection.")
         with np.load(arrays_path, allow_pickle=False) as arrays:
+            if not np.array_equal(arrays["active_conditions"], active):
+                raise ValueError("Saved conditions disagree with the declared sweep mode.")
             if index == 0:
                 first = {key: arrays[key] for key in arrays.files}
             aggregate_arrays.append({key: arrays[key] for key in arrays.files
@@ -385,6 +405,8 @@ def collect(manifest, runs_root):
     metrics = []
     for ni, n in enumerate(p["n_values"]):
         for bi, b in enumerate(p["B_values"]):
+            if not active[ni, bi]:
+                continue
             for di, delta in enumerate(p["deltas"]):
                 for mi, method in enumerate(("analytical", "wild_bootstrap")):
                     values = critical[:, ni, bi, di, mi]
@@ -415,7 +437,22 @@ def collect(manifest, runs_root):
                "analytical_claim": "Finite-sample coverage at least 1-delta conditional on fixed design and noise profile.",
                "numerics": "Affine coefficient statistics; quadratic certified supremum brackets with upper endpoints. All-real containment uses stored floating-point coefficients, not an enclosure of fitting roundoff."}
     from .wild_reporting import write_reports
-    plots = write_reports(summary, snapshot, example, project / "plots")
+    if p.get("sweep_mode") == "paired":
+        from .diagnostics import _slice_indices
+        indices = _slice_indices(snapshot["X"][:min(p["n_values"])])
+        slices = [_example(p, snapshot, designs, first,
+                           baseline={"n": n, "B": b, "delta": p["baseline"]["delta"]},
+                           context_indices=indices) for n, b in zip(p["n_values"], p["B_values"])]
+        paired = {"X": slices[0]["X"], "actions_grid": snapshot["actions_grid"],
+                  "context_indices": indices, "n_values": p["n_values"], "B_values": p["B_values"]}
+        paired.update({key: np.stack([item[key] for item in slices]) for key in slices[0]
+                       if key not in {"X", "actions_grid"}})
+        paired_path = project / "paired_examples.npz"
+        _save_arrays(paired_path, **paired)
+        summary["paired_examples"] = file_record(paired_path)
+        plots = write_reports(summary, snapshot, example, project / "plots", paired_example=paired)
+    else:
+        plots = write_reports(summary, snapshot, example, project / "plots")
     summary["plots"] = [file_record(path) for path in plots]
     summary["reporting_source"] = file_record(Path(__file__).with_name("wild_reporting.py"))
     guide = "wild_bootstrap_envelopes.md"

@@ -306,3 +306,19 @@ def test_residual_slices_use_saved_asymmetric_bounds(saved_report):
             assert heights.max() == pytest.approx(upper)
     finally:
         plt.close(fig)
+
+
+def test_paired_reports_reject_off_pair_rows(saved_report):
+    summary, _, _ = saved_report
+    summary['manifest']['sweep_mode'] = 'paired'
+    with pytest.raises(ValueError, match='exactly the declared paired'):
+        wild_reporting._paired_rows(summary, .05, 'wild_bootstrap')
+    pairs = set(zip(summary['manifest']['n_values'], summary['manifest']['B_values']))
+    summary['metrics'] = [r for r in summary['metrics'] if (r['n'], r['B']) in pairs]
+    assert [(r['n'], r['B']) for r in wild_reporting._paired_rows(summary, .05, 'wild_bootstrap')] == [(3, 9), (6, 19)]
+    fig = wild_reporting._paired_metrics_figure(summary, 'auxiliary')
+    try:
+        np.testing.assert_allclose(fig.axes[0].containers[1].lines[0].get_ydata(), [.75, .8])
+        assert 'OLS variance bound' in fig.axes[0].get_legend_handles_labels()[1]
+    finally:
+        plt.close(fig)

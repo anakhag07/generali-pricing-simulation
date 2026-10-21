@@ -389,3 +389,61 @@ def test_quadratic_residual_end_to_end_and_exact_empirical_rank(tmp_path):
     assert all('moved_radius_lower' in row for row in summary['metrics'])
     for record in summary['plots']:
         assert Path(record['path']).read_bytes().startswith(b'%PDF-')
+
+
+@pytest.mark.parametrize('mutation', ['unequal_axes', 'crossed_baseline', 'unknown_mode'])
+def test_paired_schedule_rejects_inconsistent_settings(manifest_path, mutation):
+    p = json.loads(manifest_path.read_text())
+    p['sweep_mode'] = 'paired'
+    if mutation == 'unequal_axes':
+        p['B_values'] = [9, 19, 29]
+    elif mutation == 'crossed_baseline':
+        p['baseline']['B'] = 9
+    else:
+        p['sweep_mode'] = 'unknown'
+    manifest_path.write_text(json.dumps(p))
+    with pytest.raises(ValueError):
+        study.load_manifest(manifest_path)
+
+
+def test_paired_sweep_replays_only_paired_prefixes_and_fixed_context_slices(manifest_path, tmp_path):
+    from experiments.envelopes.diagnostics import _slice_indices
+    p = json.loads(manifest_path.read_text())
+    p['sweep_mode'] = 'paired'
+    manifest_path.write_text(json.dumps(p))
+    manifest = study.load_manifest(manifest_path)
+    p = manifest.payload
+    root = tmp_path / 'runs'
+    first = None
+    for index in range(p['repetitions']):
+        record = study.run_repetition(manifest, index, root)
+        with np.load(record['arrays']['path']) as arrays:
+            np.testing.assert_array_equal(arrays['active_conditions'], np.eye(2, dtype=bool))
+            assert np.isnan(arrays['critical'][0, 1]).all()
+            assert np.isnan(arrays['critical'][1, 0]).all()
+            assert np.isnan(arrays['bootstrap_statistics'][0, 9:]).all()
+            if index == 0:
+                first = {key: arrays[key] for key in arrays.files}
+    snapshot, designs, _ = study._environment(json.dumps(p, sort_keys=True))
+    signs = 2*np.random.default_rng(derive_seed(p['seeds']['method'], 'repetition:0')).integers(0, 2, (19, 20), dtype=np.int8)-1
+    for ni, (n, b) in enumerate(zip(p['n_values'], p['B_values'])):
+        design = designs[ni]
+        y = design.design @ p['truth']['coefficients'] + snapshot['sigma'][:n]*first['innovations'][:n]
+        beta, errors = design.bootstrap_errors(y, signs[:b, :n], predictor=design.design@p['predictor']['coefficients'])
+        np.testing.assert_array_equal(beta, first['beta'][ni])
+        np.testing.assert_array_equal(design.statistics(errors), first['bootstrap_statistics'][ni, :b])
+    summary = study.collect(manifest, root)
+    assert {(r['n'], r['B']) for r in summary['metrics']} == {(12, 9), (20, 19)}
+    assert len(summary['metrics']) == 8
+    with np.load(summary['paired_examples']['path']) as examples:
+        indices = _slice_indices(snapshot['X'][:12])
+        np.testing.assert_array_equal(examples['context_indices'], indices)
+        np.testing.assert_array_equal(examples['X'], snapshot['X'][indices])
+        np.testing.assert_array_equal(examples['truth'][0], examples['truth'][1])
+        for ni in range(2):
+            expected = study._example(p, snapshot, designs, first,
+                       baseline={'n': p['n_values'][ni], 'B': p['B_values'][ni], 'delta': .1}, context_indices=indices)
+            np.testing.assert_allclose(examples['bootstrap_lower'][ni], expected['bootstrap_lower'])
+            np.testing.assert_allclose(examples['bootstrap_upper'][ni], expected['bootstrap_upper'])
+    assert len(summary['plots']) == 6
+    assert all(Path(record['path']).read_bytes().startswith(b'%PDF-') for record in summary['plots'])

@@ -40,6 +40,41 @@ increases both the sample size and the number of contexts tested. Coverage
 always includes every real action at each of those contexts. The finite
 diagnostic window is used only for plots and mean-width summaries.
 
+## Increasing n and B together
+
+Run the paired heteroskedastic residual comparison with:
+
+```bash
+PYTHONPATH=src python scripts/run_experiment_manifest.py manifests/uncertainty-envelopes-residual-paired-nb.json --launch slurm --array --array-max-parallel 8
+```
+
+`"sweep_mode": "paired"` zips `n_values` and `B_values`; omitted mode retains
+the existing Cartesian grid. The supplied pairs are (30,99), (60,199),
+(120,499), (300,999), (600,1999), and (1200,3999), with 2,000 repetitions and
+confidence levels 90%, 95%, and 99%. All other contextual-model, variance-profile,
+and seed settings below are unchanged. Each pair uses only its declared B
+bootstrap draws. Saved `active_conditions` identifies computed array cells;
+uncomputed critical values, diagnostics, and bootstrap-statistic padding are
+NaN. Summary rows contain only the paired conditions.
+
+Both methods fit residual OLS. “OLS variance bound” labels the analytical
+known-variance-cap construction, which is valid with this heteroskedastic noise;
+it is not a homoskedastic estimated-standard-error interval. The comparison
+estimates the combined effect of increasing n and B, not their separate effects.
+Coverage is checked jointly over every calibration context and every real
+action. The target set therefore also grows with n. More bootstrap draws reduce
+quantile simulation error; neither empirical nor true coverage must increase
+monotonically along the schedule.
+
+Six PDFs show residual coverage, transferred-envelope coverage, mean residual
+half-width, residual-band slices, function-envelope slices, and the fixed noise
+profile. The slice panels use the first response repetition at all pairs and
+three identical X values: central, median-norm, and outer contexts selected
+from the smallest-n prefix before examining responses. These values and their
+original row indices are saved in `paired_examples.npz`. Shared vertical axes
+within each context allow widths to be compared across rows. The plotting
+window remains [-2,2]; it does not define the confidence domain.
+
 ## Frozen design and variance profile
 
 The contextual feature vector is

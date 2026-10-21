@@ -97,6 +97,11 @@ reporting joint all-real-action coverage and mean widths. See the
 [wild-bootstrap guide](docs/wild_bootstrap_envelopes.md) for the noise model,
 seed contract, and interpretation of empirical coverage.
 
+For joint increases in sample size and bootstrap count, use
+`manifests/uncertainty-envelopes-residual-paired-nb.json`. It reports only the
+paired conditions, with coverage and envelope slices at shared contexts; see
+[the paired-sweep guide](docs/wild_bootstrap_envelopes.md#increasing-n-and-b-together).
+
 For maximum-leverage versus coverage at fixed sample size, use the
 `manifests/wild-bootstrap-leverage-bound-*.json` manifests. This action-only
 study varies the truncation of standard-normal logged actions while holding

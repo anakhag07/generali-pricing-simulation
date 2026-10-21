@@ -1489,3 +1489,9 @@ pytest -q
   polynomial certificates; the `quadratic-residual` manifests preserve the
   frozen-predictor provenance and moved-point seed pairing. Historical symmetric
   helpers and artifacts remain explicitly labeled for replay.
+
+- The wild-envelope manifest supports `sweep_mode: paired` for zipped, increasing
+  n/B schedules. Repetition arrays mark uncomputed cells with `active_conditions`
+  and NaN numeric entries; summary rows omit them. `paired_examples.npz` retains
+  the same smallest-prefix contexts and first response repetition at each pair.
+  `wild_reporting.py` renders the six paired-sweep PDFs without changing grid-mode reports.

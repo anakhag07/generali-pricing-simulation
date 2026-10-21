@@ -1334,7 +1334,7 @@ Implementation/validation checklist:
   axis lengths/baselines before sampling.
 - [x] Save shared-context slices and show OLS versus wild bootstrap for each
   pair; verify plot inputs against saved bounds and regenerate PDF reports.
-- [ ] Regenerate public docs, run the paired sweep, and analyze saved summaries.
+- [x] Regenerate public docs, run the paired sweep, and analyze saved summaries.
 
 ## 8. Gradients and Estimators
 

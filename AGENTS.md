@@ -1495,3 +1495,9 @@ pytest -q
   and NaN numeric entries; summary rows omit them. `paired_examples.npz` retains
   the same smallest-prefix contexts and first response repetition at each pair.
   `wild_reporting.py` renders the six paired-sweep PDFs without changing grid-mode reports.
+
+- Wild-envelope source contracts include canonical absolute paths as well as
+  hashes. Slurm may record `/orcd/home/002/...` where an interactive session
+  sees `/home/...`; use the recorded prefix for imports and result paths when
+  replaying the collector. Identical hashes with different path aliases are
+  not a reason to force-overwrite completed repetitions.

@@ -215,6 +215,13 @@ If lower-priority docs are stale, update them in the same task.
   while preserving all other rows. MATH section 7.11 records the formula;
   observed hat-matrix leverage is always at most 1. Outlier reports require
   the same bulk distribution and moved-row index across all conditions.
+  `manifests/residual-leverage-outlier-*.json` retain the three-context normal
+  residual design and heteroskedastic profile at fixed n=300/B=1999.
+  `docs/residual_leverage.md` records this experiment and replay. The optional
+  `wild_reporting.write_leverage_report(..., diagnostics=True)` validates and
+  replays saved moved-point environments/examples into distribution, averaged
+  band, and asymmetric-radius PDFs/CSVs. Plot labels distinguish the moved row's
+  contextual leverage from maximum observed leverage. Transfer before averaging.
 
 Before adding code, inspect the surrounding module structure and choose the narrowest sensible location for the change.
 

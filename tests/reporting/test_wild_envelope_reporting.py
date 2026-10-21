@@ -139,6 +139,36 @@ def saved_leverage_summaries(tmp_path):
     return paths
 
 
+def test_context_mean_radii_transfer_before_averaging():
+    fit = np.array([[-2., 2.], [2., -2.]])
+    example = {key: np.zeros_like(fit) for key in ("truth", "predictor", "residual_truth")}
+    example["residual_fit"] = fit
+    for method in ("analytical", "bootstrap"):
+        example[f"{method}_width"] = np.ones_like(fit)
+        example[f"{method}_radius_lower"] = np.maximum(1-fit, 0)
+        example[f"{method}_radius_upper"] = np.maximum(1+fit, 0)
+        example[f"{method}_lower"] = -example[f"{method}_radius_lower"]
+        example[f"{method}_upper"] = example[f"{method}_radius_upper"]
+    means = wild_reporting._mean_bands(example)
+    np.testing.assert_array_equal(means["bootstrap_radius_lower"], [1.5, 1.5])
+    np.testing.assert_array_equal(means["bootstrap_radius_upper"], [1.5, 1.5])
+    np.testing.assert_array_equal(means["bootstrap_transferred_lower"], [-1.5, -1.5])
+    np.testing.assert_array_equal(means["bootstrap_residual_lower"], [-1., -1.])
+
+
+def test_normal_contextual_moved_point_report(tmp_path, saved_leverage_summaries):
+    for index, path in enumerate(saved_leverage_summaries):
+        summary = json.loads(path.read_text())
+        summary["band_target"] = "residual"
+        summary["manifest"]["design"] = {"distribution": "independent_standard_normal",
+            "context_dim": 3, "action_override": {"index": 0, "value": [3, 10, 20, 40][index]}}
+        path.write_text(json.dumps(summary))
+    output = wild_reporting.write_leverage_report(saved_leverage_summaries, tmp_path / "normal")
+    assert output.read_bytes().startswith(b"%PDF")
+    provenance = json.loads((output.parent / "provenance.json").read_text())
+    assert provenance["sweep_axis"] == "outlier_action"
+
+
 @pytest.mark.parametrize("setting", ["n", "noise", "seeds"])
 def test_leverage_report_rejects_unpaired_study_settings(tmp_path, saved_leverage_summaries, setting):
     path = saved_leverage_summaries[-1]

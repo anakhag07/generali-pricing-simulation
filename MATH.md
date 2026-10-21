@@ -1336,6 +1336,21 @@ Implementation/validation checklist:
   pair; verify plot inputs against saved bounds and regenerate PDF reports.
 - [x] Regenerate public docs, run the paired sweep, and analyze saved summaries.
 
+For the context-averaged display, retain response repetition 0 and average
+over all n calibration contexts at each pair. Writing $\langle h\rangle_n(a)
+=n^{-1}\sum_{i=1}^n h(x_i,a)$, the residual band is
+$$[\langle\widetilde g-w\rangle_n(a),
+   \langle\widetilde g+w\rangle_n(a)],$$
+and the transferred envelope is
+$$[\langle\widehat f-[w-\widetilde g]_+\rangle_n(a),
+   \langle\widehat f+[w+\widetilde g]_+\rangle_n(a)].$$
+Transfer each context's band before averaging: positive-part clipping does not
+commute with averaging. These empirical-context averages inherit containment
+on the original simultaneous-coverage event; no new calibration is performed.
+They are neither bands evaluated at the mean context nor averages over response
+repetitions. Replay saved coefficients and critical values on the existing
+action grid, introducing no random draws or optimizer queries.
+
 ## 8. Gradients and Estimators
 
 For a differentiable action objective and policy, the population chain rule is

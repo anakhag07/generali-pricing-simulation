@@ -75,6 +75,25 @@ original row indices are saved in `paired_examples.npz`. Shared vertical axes
 within each context allow widths to be compared across rows. The plotting
 window remains [-2,2]; it does not define the confidence domain.
 
+### Context-averaged bands
+
+Replay the completed paired sweep without new fits or bootstrap draws:
+
+```bash
+PYTHONPATH=src python scratch/plot_context_averaged_envelopes.py /home/anakhag/projects/generali-pricing/results/residual-heteroskedastic-paired-nb/summary.json
+```
+
+`plots/07_context_averaged_bands_by_pair.pdf` shows both methods at each pair,
+with residual bands on the left and transferred function envelopes on the right.
+Each curve averages over all n calibration contexts, using response repetition 0
+and the baseline confidence level. Transfer each context's band before averaging
+its endpoints; clipping an already averaged residual band gives different results.
+These are empirical-context means, not bands at the mean X or averages across
+response repetitions. The original simultaneous-coverage event implies containment
+of the corresponding context mean. A CSV saves plotted coordinates, and a JSON
+sidecar records hashes of the source, saved inputs, and outputs. Existing sweep
+reports and their summary remain unchanged.
+
 ## Frozen design and variance profile
 
 The contextual feature vector is

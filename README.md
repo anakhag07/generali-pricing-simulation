@@ -101,6 +101,8 @@ For joint increases in sample size and bootstrap count, use
 `manifests/uncertainty-envelopes-residual-paired-nb.json`. It reports only the
 paired conditions, with coverage and envelope slices at shared contexts; see
 [the paired-sweep guide](docs/wild_bootstrap_envelopes.md#increasing-n-and-b-together).
+To replay context-averaged residual bands beside transferred envelopes, see
+[the averaging command](docs/wild_bootstrap_envelopes.md#context-averaged-bands).
 
 For maximum-leverage versus coverage at fixed sample size, use the
 `manifests/wild-bootstrap-leverage-bound-*.json` manifests. This action-only

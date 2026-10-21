@@ -1495,6 +1495,11 @@ pytest -q
   and NaN numeric entries; summary rows omit them. `paired_examples.npz` retains
   the same smallest-prefix contexts and first response repetition at each pair.
   `wild_reporting.py` renders the six paired-sweep PDFs without changing grid-mode reports.
+- `scratch/plot_context_averaged_envelopes.py` replays a completed paired residual
+  sweep into a seventh PDF, coordinate CSV, and provenance JSON. It validates
+  saved inputs and mathematical sources, uses repetition 0 at baseline delta,
+  and averages over all n calibration contexts. Transfer endpoints before
+  averaging; do not clip context means or average only the three saved slices.
 
 - Wild-envelope source contracts include canonical absolute paths as well as
   hashes. Slurm may record `/orcd/home/002/...` where an interactive session

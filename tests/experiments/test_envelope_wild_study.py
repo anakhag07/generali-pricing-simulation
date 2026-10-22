@@ -14,7 +14,7 @@ from experiments.seeds import derive_seed
 
 @pytest.fixture
 def manifest_path(tmp_path):
-    original = Path(__file__).parents[2] / "manifests/uncertainty-envelopes-wild-bootstrap.json"
+    original = Path(__file__).parents[2] / "scratch/retired_experiments/wild_bootstrap_diagnostics/manifests/uncertainty-envelopes-wild-bootstrap.json"
     payload = json.loads(original.read_text())
     payload.update(name="wild-test", n_values=[12, 20], B_values=[9, 19],
                    deltas=[.2, .1], baseline={"n": 20, "B": 19, "delta": .1},
@@ -491,7 +491,7 @@ def test_moved_observation_preserves_response_and_multiplier_pairing(manifest_pa
 
 
 def test_quadratic_residual_end_to_end_and_exact_empirical_rank(tmp_path):
-    original = Path(__file__).parents[2] / 'manifests/uncertainty-envelopes-quadratic-residual-outlier.json'
+    original = Path(__file__).parents[2] / 'scratch/retired_experiments/wild_bootstrap_diagnostics/manifests/uncertainty-envelopes-quadratic-residual-outlier.json'
     payload = json.loads(original.read_text())
     payload.update(name='quadratic-smoke', n_values=[12], B_values=[10], deltas=[.2],
                    baseline={'n': 12, 'B': 10, 'delta': .2}, repetitions=2)

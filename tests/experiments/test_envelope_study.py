@@ -11,7 +11,7 @@ from experiments.envelopes import study
 
 @pytest.fixture
 def payload():
-    path = Path(__file__).parents[2]/"manifests"/"uncertainty-envelopes.json"
+    path = Path(__file__).parents[2]/"scratch/retired_experiments/uncertainty_envelopes/manifests/uncertainty-envelopes.json"
     result = json.loads(path.read_text())
     result["calibration"].update(n=8, context_dim=1)
     result["problem"]["truth"]["coefficients"] = [0., .5, 1.]

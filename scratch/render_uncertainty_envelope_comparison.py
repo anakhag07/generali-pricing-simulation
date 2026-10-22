@@ -13,6 +13,7 @@ import sympy as sp
 from experiments.envelopes.reporting import (
     _STYLE, _comparison_case, write_calibration_plot, write_comparison,
 )
+from experiments.envelopes.diagnostics import _load_project, _load_grid
 from experiments.paths import results_root
 from experiments.provenance import file_record, write_provenance
 from experiments.sweep_reporting import write_rows_csv
@@ -42,7 +43,7 @@ def _write_simple_comparison(projects, destination):
         if not np.array_equal(cases[0][1][key], cases[1][1][key]):
             raise ValueError(f"Comparison requires identical saved diagnostic {key}.")
     curves = []
-    for label, (summary, arrays, _) in zip(("Constant radius = 3", "Analytical radius"), cases):
+    for label, (summary, arrays, _) in zip(("constant radius = 3", "analytical-radius"), cases):
         count = summary["target"]["context_count"]
         actions = arrays["actions"].reshape(count, -1)
         contexts = arrays["X"].reshape(count, actions.shape[1], -1)
@@ -84,12 +85,102 @@ def _write_simple_comparison(projects, destination):
     return path
 
 
+def _average_curves(projects):
+    summaries = [_load_project(project) for project in projects]
+    total = summaries[0]["requested_repetitions"]
+    if any(not s["complete"] or not s["successful"]
+           or s["requested_repetitions"] != total
+           or len(s["repetitions"]) != total for s in summaries):
+        raise ValueError("Averaging requires equally many complete, successful repetitions.")
+    curves = []
+    reference = None
+    for label, summary in zip(("constant radius = 3", "analytical-radius"), summaries):
+        radius_sum = excess_sum = None
+        for row in summary["repetitions"]:
+            grid = _load_grid(row, summary["target"])
+            if reference is None:
+                reference = grid
+            if any(not np.array_equal(grid[key], reference[key])
+                   for key in ("X", "actions", "truth", "center")):
+                raise ValueError("Repeated comparison requires fixed, identical diagnostic models and locations.")
+            radius = grid["radius"].mean(axis=0)
+            # Reduce contexts within each dataset before averaging datasets.
+            excess = grid["excess"].min(axis=0)
+            radius_sum = radius.copy() if radius_sum is None else radius_sum + radius
+            excess_sum = excess.copy() if excess_sum is None else excess_sum + excess
+        curves.append({"label": label, "actions": reference["actions"],
+                       "mean_radius": radius_sum / total,
+                       "minimum_excess": excess_sum / total})
+    for left, right in zip(summaries[0]["repetitions"], summaries[1]["repetitions"]):
+        if left["index"] != right["index"] or any(
+                left["artifacts"]["calibration"][key] != right["artifacts"]["calibration"][key]
+                for key in ("sha256", "bytes")):
+            raise ValueError("Both constructions must use the same response datasets.")
+    return summaries, curves
+
+
+def _write_average_comparison(projects, destination):
+    summaries, curves = _average_curves(projects)
+    total = summaries[0]["requested_repetitions"]
+    coverage = [s["coverage"]["empirical"] for s in summaries]
+    if any(c is None or c["estimate"] is None for c in coverage):
+        raise ValueError("Joint coverage requires resolved empirical certificates for every dataset.")
+    destination.mkdir(parents=True, exist_ok=True)
+    paths = [destination / "01_coverage_comparison.pdf", destination / "02_radius_excess.pdf"]
+    with plt.style.context("default"), plt.rc_context(_STYLE):
+        fig, ax = plt.subplots(figsize=(7, 4.8), constrained_layout=True)
+        heights = [c["estimate"] for c in coverage]
+        bars = ax.bar([c["label"] for c in curves], heights, width=.3)
+        for i, c in enumerate(coverage):
+            lo, hi = c["interval"]
+            ax.errorbar(i, c["estimate"], yerr=[[c["estimate"]-lo], [hi-c["estimate"]]],
+                        fmt="none", color="black", capsize=3, elinewidth=.7, capthick=.7)
+        ax.bar_label(bars, labels=[f"{x:.1%}" for x in heights], padding=5)
+        ax.set(xlabel="Radius construction", ylabel="Joint simultaneous coverage",
+               title=f"Coverage across {total:,} datasets", ylim=(0, 1.12), xlim=(-.7, 1.7))
+        fig.supxlabel("Containment at all 60 fixed contexts and every real action.\n"
+                      "Error bars: 95% Wilson intervals across response datasets.", fontsize=10)
+        fig.savefig(paths[0], format="pdf")
+        plt.close(fig)
+        fig = _simple_figure(curves)
+        fig.axes[0].set_title("Mean smallest coverage margin")
+        fig.axes[0].set_ylabel("Mean of within-dataset smallest margins")
+        fig.axes[1].set_title("Mean envelope radius")
+        fig.suptitle(f"Equal averages across {total:,} response datasets")
+        fig.supxlabel("Margins first take the minimum over contexts within each dataset, then average datasets.\n"
+                      "A positive mean margin is not a coverage certificate; curves join diagnostic samples.", fontsize=10)
+        fig.savefig(paths[1], format="pdf")
+        plt.close(fig)
+    write_provenance(destination / "comparison.json", {
+        "projects": [file_record(project / "summary.json") for project in projects],
+        "contracts": [file_record(project / "contract.json") for project in projects],
+        "repetitions": total, "curves": curves, "joint_coverage": coverage,
+        "source": file_record(__file__), "plots": [file_record(p) for p in paths],
+        "semantics": "Paired response datasets at the original fixed n=60 design with Gaussian sigma=1. "
+                     "Contexts, truth, predictor, constant radius 3, and named seed streams are unchanged. "
+                     "Each dataset has equal weight. Radius is averaged over contexts and datasets; "
+                     "minimum excess is reduced over contexts before averaging datasets. Coverage uses "
+                     "saved all-real certificates, not averaged curves or a finite diagnostic grid. "
+                     "No action optimization is involved.",
+    })
+    return paths
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--runs-root", type=Path, default=results_root())
     parser.add_argument("--simple", action="store_true",
                         help="Replay only the concise coverage-margin and individual-radius view.")
+    parser.add_argument("--average", action="store_true",
+                        help="Replay the paired 2000-response experiments with equal dataset averages.")
     args = parser.parse_args()
+    if args.average:
+        projects = [args.runs_root / name for name in (
+            "uncertainty-envelopes-constant-3-2000", "uncertainty-envelopes-analytical-radius-2000",
+        )]
+        destination = args.runs_root / "uncertainty-envelopes-comparison-2000"
+        print(*_write_average_comparison(projects, destination), sep="\n")
+        return
     projects = [args.runs_root / name for name in (
         "uncertainty-envelopes-constant-3", "uncertainty-envelopes-writeup",
     )]

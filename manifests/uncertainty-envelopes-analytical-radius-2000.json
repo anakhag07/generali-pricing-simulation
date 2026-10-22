@@ -1,0 +1,75 @@
+{
+  "kind": "uncertainty_envelopes",
+  "name": "uncertainty-envelopes-analytical-radius-2000",
+  "problem": {
+    "truth": {
+      "type": "linear",
+      "coefficients": [
+        0.0,
+        1.0,
+        -0.5,
+        0.25,
+        2.0
+      ]
+    },
+    "predictor": {
+      "type": "linear",
+      "coefficients": [
+        0.2,
+        0.8,
+        -0.4,
+        0.5,
+        1.7
+      ]
+    }
+  },
+  "calibration": {
+    "type": "synthetic",
+    "n": 60,
+    "context_dim": 3,
+    "noise": {
+      "type": "gaussian",
+      "std": 1.0
+    }
+  },
+  "envelope": {
+    "type": "linear_known_variance_transfer",
+    "delta": 0.05,
+    "sigma_bound": 1.0,
+    "width_multiplier": 1.0
+  },
+  "target": {
+    "contexts": "calibration",
+    "actions": {
+      "type": "real_line"
+    }
+  },
+  "coverage": {
+    "mode": "empirical",
+    "procedure": "linear_moment_bound",
+    "containment_checker": "affine_transfer_all_real",
+    "repetitions": 2000,
+    "redraw": "responses",
+    "confidence": 0.95
+  },
+  "tightness": {
+    "actions": {
+      "type": "linspace",
+      "min": -2.0,
+      "max": 2.0,
+      "count": 101
+    },
+    "weights": "uniform"
+  },
+  "seeds": {
+    "contexts": 1101,
+    "actions": 1102,
+    "observations": 1103,
+    "method": 1104
+  },
+  "launch": {
+    "mode": "local",
+    "array": "none",
+    "array_max_parallel": 4
+  }
+}

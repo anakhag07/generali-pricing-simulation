@@ -450,6 +450,15 @@ Changing the `models` array is the supported model swap. Available keys are
   The transfer decomposition averages absolute discrepancy before adding width.
   A literal constant radius has no native decomposition; an optional verified
   paired analytical project supplies only an external auxiliary slice reference.
+  `write_diagnostic_reports(..., average_repetitions=True)` instead averages
+  every complete requested realization at the same fixed design, preserving
+  mean absolute discrepancy rather than taking the absolute mean discrepancy.
+  The `uncertainty-envelopes-constant-3-2000.json` and
+  `uncertainty-envelopes-analytical-radius-2000.json` manifests preserve the
+  original n=60, sigma=1 example with 2,000 paired response draws. The comparison
+  driver's `--average` mode writes joint-coverage bars and mean radius/minimum
+  margin curves under `uncertainty-envelopes-comparison-2000/`; the context
+  minimum is computed within each realization before averaging realizations.
   The `uncertainty-envelopes*.json` manifests cover analytical, repeated-response,
   and constant-radius cases; usage and custom adapters are documented in
   `docs/uncertainty_envelopes.md`. Existing bootstrap experiments are unchanged.

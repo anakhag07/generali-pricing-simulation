@@ -159,22 +159,53 @@ def _averages(grid):
             ("center", "truth", "radius", "auxiliary", "width", "discrepancy") if key in grid}
 
 
+def _average_repetition_grids(summary, grids):
+    expected = set(range(summary["requested_repetitions"]))
+    if (not expected or set(grids) != expected
+            or any(row["status"] == "fit_failed" for row in summary["repetitions"])):
+        raise ValueError("Averaged diagnostics require every requested repetition to have a successful saved fit.")
+    first = grids[0]
+    fixed = {"X", "actions", "center", "truth"}
+    result = {key: value.copy() for key, value in first.items()}
+    for index in range(1, summary["requested_repetitions"]):
+        grid = grids[index]
+        if (grid.keys() != first.keys()
+                or any(not np.array_equal(grid[key], first[key]) for key in fixed)):
+            raise ValueError("Averaged diagnostics require identical contexts, actions, truth, center, and component keys.")
+        for key in grid.keys() - fixed:
+            # Discrepancies were made absolute for each fit before averaging.
+            result[key] += grid[key]
+    for key in result.keys() - fixed:
+        result[key] /= len(grids)
+    return result
+
+
+def _radius_label(summary):
+    envelope = summary["manifest"]["envelope"]
+    if envelope["type"] == "constant_radius":
+        return f"constant radius = {envelope['radius']:g}"
+    if envelope["type"] == "linear_known_variance_transfer":
+        return "analytical-radius"
+    return "Envelope radius"
+
+
 def _coverage_figure(summary, coverage):
     fig, ax = plt.subplots(figsize=(7, 4.8), constrained_layout=True)
     real_line = summary["target"]["kind"] == "real_line"
     domain = r"$\mathcal{A}=\mathbb{R}$" if real_line else r"$\mathcal{A}_{\mathrm{target}}$"
     height = coverage["covered_fraction"]
-    bars = ax.bar([domain], [height], label="Covered")
+    bars = ax.bar([domain], [height], width=.3, label="Covered")
     if coverage["mean"] is not None:
         ax.bar_label(bars, labels=[f"{height:.0%}"], padding=3)
     else:
-        ax.bar([domain], [coverage["unresolved_fraction"]], bottom=[height], label="Unresolved")
+        ax.bar([domain], [coverage["unresolved_fraction"]], bottom=[height], width=.3, label="Unresolved")
         ax.legend()
+    ax.set_xlim(-.6, .6)
     ax.set_ylim(0, 1.12)
     ax.yaxis.set_major_formatter(PercentFormatter(1))
     ax.set_xlabel("Action domain")
     ax.set_ylabel(r"Context-averaged coverage $\overline{c}$")
-    ax.set_title("Simultaneous coverage over actions")
+    ax.set_title(f"Simultaneous coverage over actions\n{_radius_label(summary)}")
     count, repeats = summary["target"]["context_count"], summary["requested_repetitions"]
     scope = "all real actions" if real_line else "every declared target action"
     note = (f"For each context, check containment for {scope} using saved certificates.\n"
@@ -186,7 +217,7 @@ def _coverage_figure(summary, coverage):
     return fig
 
 
-def _mean_figure(grid):
+def _mean_figure(grid, radius_label=None):
     fig, (ax, radius_ax) = plt.subplots(2, 1, figsize=(7, 7), sharex=True, constrained_layout=True)
     means = _averages(grid)
     a = grid["actions"]
@@ -195,7 +226,7 @@ def _mean_figure(grid):
     line, = ax.plot(a, means["center"], "--", marker=marker, label=r"$\overline{\widehat f}(a)$")
     _draw_band(ax, a, means["center"], means["radius"], line.get_color(),
                r"$\overline{\widehat f}(a)\pm\overline{r}_\delta(a)$")
-    ax.set_title("Context-averaged envelope")
+    ax.set_title("Context-averaged envelope" + (f": {radius_label}" if radius_label else ""))
     ax.set_xlabel(r"$a$")
     ax.set_ylabel(r"Mean response $\overline{f}(a)$")
     ax.legend()
@@ -207,7 +238,7 @@ def _mean_figure(grid):
     return fig
 
 
-def _components_figure(grid, constant):
+def _components_figure(grid, constant, radius_label=None):
     fig, ax = plt.subplots(figsize=(7, 4.8), constrained_layout=True)
     means, a = _averages(grid), grid["actions"]
     if {"width", "discrepancy"} <= means.keys():
@@ -218,12 +249,12 @@ def _components_figure(grid, constant):
         else:
             ax.stackplot(a, means["discrepancy"], means["width"], alpha=.35, labels=labels)
         ax.plot(a, means["radius"], color="C2", marker="o" if len(a) == 1 else None,
-                label=r"$\overline{r}_\delta(a)$")
+                label=radius_label or r"$\overline{r}_\delta(a)$")
         ax.set_title(r"$\overline{r}_\delta=\overline{|\widehat f-\widetilde f|}+\overline{w}_\delta$")
     else:
         ax.plot(a, means["radius"], marker="o" if len(a) == 1 else None,
-                label=r"$\overline{r}_\delta(a)$")
-        ax.set_title("Constant radius" if constant else "Envelope radius")
+                label=radius_label or r"$\overline{r}_\delta(a)$")
+        ax.set_title(radius_label or ("Constant radius" if constant else "Envelope radius"))
     ax.set_ylim(bottom=0)
     ax.set_xlabel(r"$a$")
     ax.set_ylabel("Mean radius contribution")
@@ -239,7 +270,7 @@ def _draw_band(ax, actions, center, radius, color, label):
         ax.fill_between(actions, center-radius, center+radius, color=color, alpha=.2, label=label)
 
 
-def _slices_figure(grid, indices, external):
+def _slices_figure(grid, indices, external, radius_label=None):
     fig, axes = plt.subplots(1, len(indices), figsize=(5*len(indices), 4.8),
                              sharey=True, squeeze=False, constrained_layout=True)
     ranks = ("Central", "Median norm", "Outer") if len(indices) == 3 else ("Central", "Outer")
@@ -252,7 +283,7 @@ def _slices_figure(grid, indices, external):
             label = r"$\widetilde f(x_i,a)$" + (" (reference)" if external else "")
             ax.plot(a, grid["auxiliary"][index], ":", marker=marker, label=label)
         _draw_band(ax, a, grid["center"][index], grid["radius"][index], center.get_color(),
-                   r"$\widehat f(x_i,a)\pm r_\delta(x_i,a)$")
+                   radius_label or r"$\widehat f(x_i,a)\pm r_\delta(x_i,a)$")
         ax.set_title(rank + rf": $\|x_{{{index}}}\|_2={np.linalg.norm(grid['X'][index]):.2f}$")
         ax.set_xlabel(r"$a$")
         ax.set_ylabel(r"$f(x_i,a)$")
@@ -261,38 +292,49 @@ def _slices_figure(grid, indices, external):
 
 
 def write_diagnostic_reports(project: Path, *, auxiliary_project: Path | None = None,
-                             repetition_index: int | None = None) -> list[Path]:
-    """Replay four standard context diagnostics; optionally overlay a verified paired auxiliary fit."""
+                             repetition_index: int | None = None,
+                             average_repetitions: bool = False) -> list[Path]:
+    """Replay context diagnostics for one saved fit or all requested repetitions, with an optional paired auxiliary."""
+    if average_repetitions and repetition_index is not None:
+        raise ValueError("Choose either an explicit repetition or an average across repetitions.")
     project = Path(project).resolve()
     summary = _load_project(project)
     grids = {row["index"]: _load_grid(row, summary["target"])
              for row in summary["repetitions"]
              if row["status"] != "fit_failed" and "points" in row["artifacts"]}
     coverage = _coverage(summary, grids)
-    selected = min(grids, default=None) if repetition_index is None else repetition_index
+    selected = (None if average_repetitions else
+                min(grids, default=None) if repetition_index is None else repetition_index)
     if repetition_index is not None and selected not in grids:
         raise ValueError("Requested repetition has no saved fitted diagnostics.")
-    grid = None if selected is None else grids[selected].copy()
+    grid = (_average_repetition_grids(summary, grids) if average_repetitions else
+            None if selected is None else grids[selected].copy())
     external = None
     if auxiliary_project is not None:
         other = _load_project(auxiliary_project)
-        rows = [row for row in other["repetitions"] if row["index"] == selected]
-        own = [row for row in summary["repetitions"] if row["index"] == selected]
-        if grid is None or not rows or rows[0]["status"] == "fit_failed":
+        own = {row["index"]: row for row in summary["repetitions"]
+               if average_repetitions or row["index"] == selected}
+        rows = [row for row in other["repetitions"] if row["index"] in own]
+        if (grid is None or not rows or len(rows) != len(own)
+                or any(row["status"] == "fit_failed" for row in rows)
+                or (average_repetitions and other["requested_repetitions"] != len(own))):
             raise ValueError("No matching saved auxiliary realization.")
-        reference = _load_grid(rows[0], other["target"])
-        if ("auxiliary" not in reference
-                or any(not np.array_equal(grid[key], reference[key])
-                       for key in ("X", "actions", "truth", "center"))
-                or any(own[0]["artifacts"]["calibration"][key]
-                       != rows[0]["artifacts"]["calibration"][key] for key in ("sha256", "bytes"))):
-            raise ValueError("Auxiliary reference must use identical calibration data and diagnostic models/locations.")
         if "auxiliary" in grid:
             raise ValueError("An external reference cannot replace a construction's own auxiliary fit.")
-        grid["auxiliary"] = reference["auxiliary"]
+        auxiliary = np.zeros_like(grid["center"])
+        for row in rows:
+            reference = _load_grid(row, other["target"])
+            if ("auxiliary" not in reference
+                    or any(not np.array_equal(grid[key], reference[key])
+                           for key in ("X", "actions", "truth", "center"))
+                    or any(own[row["index"]]["artifacts"]["calibration"][key]
+                           != row["artifacts"]["calibration"][key] for key in ("sha256", "bytes"))):
+                raise ValueError("Auxiliary reference must use identical calibration data and diagnostic models/locations.")
+            auxiliary += reference["auxiliary"]
+        grid["auxiliary"] = auxiliary / len(rows)
         external = {"source_project": str(Path(auxiliary_project).resolve()),
                     "contract": file_record(Path(auxiliary_project)/"contract.json"),
-                    "repetition": rows[0]}
+                    **({"repetitions": rows} if average_repetitions else {"repetition": rows[0]})}
     destination = project / "reports" / "diagnostics"
     destination.mkdir(parents=True, exist_ok=True)
     if external is not None:
@@ -305,15 +347,18 @@ def write_diagnostic_reports(project: Path, *, auxiliary_project: Path | None = 
         figures = [_coverage_figure(summary, coverage)]
         if grid is not None:
             constant = summary["manifest"]["envelope"]["type"] == "constant_radius"
-            figures += [_mean_figure(grid), _components_figure(grid, constant),
-                        _slices_figure(grid, indices, external is not None)]
-            base = f"Realization {selected}; equal averages over {len(grid['X'])} contexts."
+            label = _radius_label(summary)
+            figures += [_mean_figure(grid, label), _components_figure(grid, constant, label),
+                        _slices_figure(grid, indices, external is not None, label)]
+            realization = (f"Mean over {len(grids)} calibration datasets" if average_repetitions
+                           else f"Realization {selected}")
+            base = f"{realization}; equal averages over {len(grid['X'])} contexts."
             figures[1].supxlabel(base + "\nCoverage of the mean does not imply coverage at every context.", fontsize=10)
             component_note = base
             if not {"width", "discrepancy"} <= grid.keys():
                 component_note += "\nRadius specified directly; no discrepancy/width decomposition." if constant else "\nNo saved discrepancy/width decomposition."
             figures[2].supxlabel(component_note, fontsize=10)
-            slice_note = f"Realization {selected}; contexts selected by norm, with stable ties and the lower median rank."
+            slice_note = f"{realization}; contexts selected by norm, with stable ties and the lower median rank."
             if external is not None:
                 slice_note += "\nThe auxiliary curve is a paired analytical reference; it does not construct this radius."
             elif "auxiliary" not in grid:
@@ -336,6 +381,8 @@ def write_diagnostic_reports(project: Path, *, auxiliary_project: Path | None = 
         "summary": file_record(snapshot), "source_project": str(project),
         "contract": file_record(project/"contract.json"),
         "repetitions": summary["repetition_records"], "coverage": coverage,
+        "average_repetitions": average_repetitions,
+        "averaged_repetition_count": len(grids) if average_repetitions else None,
         "selected_repetition": selected, "slice_indices": indices,
         "slice_norms": [] if grid is None else np.linalg.norm(grid["X"][indices], axis=1),
         "grid": grid, "means": None if grid is None else _averages(grid),
@@ -344,7 +391,9 @@ def write_diagnostic_reports(project: Path, *, auxiliary_project: Path | None = 
         "semantics": "Coverage is simultaneous over declared target actions at each fixed context, "
                      "averaged equally over contexts and requested calibration repetitions, not the "
                      "joint all-context probability. Unknown, failed, and missing cases keep their "
-                     "denominator weight. Other plots use one explicit saved realization and equal "
+                     "denominator weight. Other plots use "
+                     + (f"all {len(grids)} requested calibration datasets" if average_repetitions
+                        else "one explicit saved realization") + " and equal "
                      "context weights. The mean band averages endpoints; it is not an intersection. "
                      "Components use the mean absolute discrepancy, not the absolute mean discrepancy. "
                      "Norm is a centrality proxy, not certified difficulty. Curves join saved diagnostic "

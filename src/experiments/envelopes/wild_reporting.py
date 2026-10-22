@@ -16,8 +16,8 @@ from .diagnostics import _slice_indices
 from .reporting import _STYLE
 from .wild import WildLinearDesign, residual_radii
 
-_METHODS = (("analytical", "Analytical", "C0"),
-            ("wild_bootstrap", "Wild bootstrap", "C1"))
+_METHODS = (("analytical", "analytical-radius", "C0"),
+            ("wild_bootstrap", "bootstrap", "C1"))
 
 
 def write_leverage_report(summary_paths, destination, *, diagnostics=False) -> Path:
@@ -327,7 +327,7 @@ def _sweep_axis(ax, values, sweep):
 def _coverage_figure(summary, sweep, event):
     p = summary["manifest"]
     fig, axes = _panels(p["deltas"])
-    title = (r"Auxiliary coverage: $\widetilde f\pm w_\delta$" if event == "auxiliary"
+    title = (r"$\widehat f$ coverage" if event == "auxiliary"
              else r"Transferred-envelope coverage: $\widehat f\pm r_\delta$")
     if summary.get("band_target") == "residual":
         title = (r"Residual-band coverage: $\widetilde g\pm w_\delta$" if event == "auxiliary"
@@ -347,7 +347,7 @@ def _coverage_figure(summary, sweep, event):
             lower_limits.extend(low)
             ax.errorbar([row[sweep] for row in rows], coverage,
                         yerr=[coverage-low, high-coverage], marker="o", color=color,
-                        capsize=3, label=label)
+                        capsize=3, elinewidth=.7, capthick=.7, label=label)
         ax.axhline(1-delta, color="0.5", linestyle="--", label=r"Target $1-\delta$")
         _sweep_axis(ax, p[f"{sweep}_values"], sweep)
         ax.set_ylabel("Simultaneous coverage")
@@ -368,7 +368,7 @@ def _coverage_figure(summary, sweep, event):
 def _width_figure(summary, example):
     p = summary["manifest"]
     fig, axes = _panels(p["deltas"])
-    fig.suptitle("Mean auxiliary half-width")
+    fig.suptitle(r"$w_\delta$ (half width)")
     for ax, delta in zip(axes, p["deltas"]):
         for method, label, color in _METHODS:
             rows = _rows(summary, "n", delta, method)
@@ -502,8 +502,8 @@ def write_reports(summary, snapshot, example, destination, *, paired_example=Non
             ("02_auxiliary_coverage_vs_B", _coverage_figure(summary, "B", "auxiliary")),
             ("03_mean_width_vs_n", _width_figure(summary, example)),
             ("04_transferred_coverage_vs_n", _coverage_figure(summary, "n", "transferred")),
-            ("05_analytical_context_slices", _slices_figure(summary, example, indices, "analytical", "Analytical")),
-            ("06_wild_bootstrap_context_slices", _slices_figure(summary, example, indices, "wild_bootstrap", "Wild bootstrap")),
+            ("05_analytical_context_slices", _slices_figure(summary, example, indices, "analytical", "analytical-radius")),
+            ("06_wild_bootstrap_context_slices", _slices_figure(summary, example, indices, "wild_bootstrap", "bootstrap")),
             ("07_noise_profile", _noise_figure(summary, example, indices)),
         ]
         for name, fig in figures:

@@ -1,0 +1,73 @@
+{
+  "kind": "wild_bootstrap_envelopes",
+  "name": "wild-bootstrap-outlier-1000",
+  "truth": {
+    "coefficients": [
+      1.0,
+      1.0
+    ]
+  },
+  "predictor": {
+    "coefficients": [
+      1.2,
+      0.8
+    ]
+  },
+  "design": {
+    "context_dim": 0,
+    "distribution": "independent_truncated_standard_normal",
+    "truncation_bound": 3.0,
+    "action_override": {
+      "index": 0,
+      "value": 1000.0
+    }
+  },
+  "target": {
+    "contexts": "calibration",
+    "actions": "real_line"
+  },
+  "noise": {
+    "type": "constant",
+    "sigma_max": 0.5
+  },
+  "bootstrap": {
+    "multipliers": "rademacher",
+    "residuals": "raw",
+    "quantile": "higher"
+  },
+  "n_values": [
+    300
+  ],
+  "B_values": [
+    1999
+  ],
+  "deltas": [
+    0.05
+  ],
+  "baseline": {
+    "n": 300,
+    "B": 1999,
+    "delta": 0.05
+  },
+  "repetitions": 2000,
+  "repetitions_per_task": 50,
+  "diagnostics": {
+    "actions": {
+      "min": -2.0,
+      "max": 2.0,
+      "count": 101
+    }
+  },
+  "seeds": {
+    "contexts": 1101,
+    "actions": 1102,
+    "observations": 1103,
+    "method": 1104,
+    "profile": 1105
+  },
+  "launch": {
+    "mode": "local",
+    "array": "none",
+    "array_max_parallel": 8
+  }
+}

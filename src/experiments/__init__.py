@@ -31,7 +31,7 @@ from experiments.policy_lcb.continuous_gp_decomposition import (
     load_continuous_gp_decomposition_manifest,
 )
 from experiments.paths import results_root
-from experiments import offline_bootstrap, offline_bootstrap_math, offline_bootstrap_reporting
+from experiments import envelopes, offline_bootstrap, offline_bootstrap_math, offline_bootstrap_reporting
 from experiments.offline_bootstrap import OfflineBootstrapManifest
 from experiments.results import ConstantBaselineResult, EstimatorResult, ExperimentResult, OptimizationTrace, PolicyEvaluation
 from experiments.run import run_experiment
@@ -47,6 +47,7 @@ __all__ = [
     "ContinuousGPDecompositionManifest",
     "ContinuousGPDecompositionSpec",
     "ExperimentConfig",
+    "envelopes",
     "OfflineBootstrapManifest",
     "offline_bootstrap",
     "offline_bootstrap_math",

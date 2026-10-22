@@ -199,6 +199,23 @@ If lower-priority docs are stale, update them in the same task.
 
 ## Code Organization
 
+- `manifests/wild-bootstrap-leverage-bound-*.json` run the fixed-n action-only
+  truncated-normal leverage diagnostic through the existing wild-bootstrap
+  runner. `docs/wild_bootstrap_leverage.md` and MATH section 7.10 describe it.
+  `wild_study.py` supports zero contexts, optional truncated-normal designs,
+  and constant noise; `wild_reporting.write_leverage_report` compares saved
+  summaries. For zero contexts, `wild.py` caches one identical context fiber
+  for the all-real statistic but retains every observed row leverage.
+  An explicit `truncation_bound: null` uses the unbounded normal inverse CDF
+  with the same uniforms. Missing bounds remain invalid. The wide-bound
+  report retains every condition and groups coincident coordinates without
+  jitter; old saved studies keep their original source provenance.
+  `manifests/wild-bootstrap-outlier-*.json` use a deterministic
+  `design.action_override` (fixed index, prescribed value) to vary one action
+  while preserving all other rows. MATH section 7.11 records the formula;
+  observed hat-matrix leverage is always at most 1. Outlier reports require
+  the same bulk distribution and moved-row index across all conditions.
+
 Before adding code, inspect the surrounding module structure and choose the narrowest sensible location for the change.
 
 Guidelines:
@@ -387,6 +404,108 @@ Changing the `models` array is the supported model swap. Available keys are
 `glm`, `xgb`, `monotone_spline_xgb`, and `exact_spline_xgb`.
 
 ### Key Components
+
+- `src/experiments/envelopes/` implements `kind: "uncertainty_envelopes"`
+  through the shared manifest launcher. `core.py` owns data/target/envelope
+  records, typed coverage results, finite containment, signed excess metrics,
+  and complete-denominator empirical aggregation. `linear.py` supplies contextual
+  OLS known-variance transfer, the conditional moment bound, and exact-rational
+  all-real containment for represented coefficients (MATH.md §7.8).
+  `study.py` owns validated adapter selection, named context/action/observation/
+  method seed streams, saved or synthetic calibration inputs, per-repetition
+  checkpoints, source/artifact identity, collection, and local/Slurm launch.
+  Python builders receive observed data, the frozen predictor, target, settings,
+  and method RNG; they never receive truth. `reporting.py` replays verified
+  point artifacts into two vector PDFs without fitting. Analytical bounds,
+  realized containment, and empirical estimates remain distinct; unknown,
+  failed, or missing repetitions suppress empirical estimates. Diagnostic grids
+  do not define continuum coverage. No action optimizer/reference is involved.
+  `diagnostics.py` owns reusable `write_diagnostic_reports`, exported from
+  `experiments.envelopes` and called by collection alongside the legacy reports.
+  It writes `reports/diagnostics/01_context_coverage.pdf`,
+  `02_mean_envelope.pdf`, `03_radius_decomposition.pdf`,
+  `04_context_slices.pdf`, and `diagnostics.json` with saved curves/provenance.
+  Coverage averages per-context simultaneous-action certificates across the
+  requested repetitions; a diagnostic-window check never replaces the declared
+  target. Missing/unknown outcomes remain unresolved, not dropped.
+  New finite-target checks save one per-context certificate covering every
+  declared action; constant-affine all-real checks record every context as
+  uncovered when truth and predictor action slopes differ. Mean/slice
+  curves use one saved successful realization and equal context weights,
+  independent of flattened diagnostic weights. They use raw response coordinates.
+  Slice selection deterministically uses low/lower-median/high Euclidean norms;
+  normal-context centrality is not a guarantee of coverage difficulty.
+  The transfer decomposition averages absolute discrepancy before adding width.
+  A literal constant radius has no native decomposition; an optional verified
+  paired analytical project supplies only an external auxiliary slice reference.
+  The `uncertainty-envelopes*.json` manifests cover analytical, repeated-response,
+  and constant-radius cases; usage and custom adapters are documented in
+  `docs/uncertainty_envelopes.md`. Existing bootstrap experiments are unchanged.
+  `linear.check_constant_linear_containment` checks literal constant radii
+  against affine truth/predictor on the real line. `reporting.write_comparison`
+  verifies paired saved diagnostics and renders a two-panel
+  `01_coverage_comparison.pdf`. It subtracts the known additive context term
+  g(x) and intersects adjusted envelopes across all contexts; common truth
+  inside that intersection means every context is covered at that action.
+  The overlap shading is not an individual radius. The mean adjusted frozen
+  predictor is orientation only, not the coverage reference. The predictor is
+  hand specified in the paired manifests; auxiliary OLS is fitted. Saved
+  sources/responses/radii are replayed without refitting. `adjusted_coverage.npz`
+  and `comparison.json` preserve derived endpoints, flags, and provenance.
+  Its `02_radius_excess.pdf` overlays both constructions in two axes using
+  that same all-context intersection: half-width H=(U-L)/2 masked when empty,
+  and signed excess S=min(h-L,U-h)=min_i(r_i-|fhat_i-f_i|), retaining negatives
+  even when the intersection is empty. `collapsed_tightness.npz` saves those
+  curves and empty flags; `comparison.json` records both PDF/NPZ artifacts.
+  Existing mean radius/excess metrics in `metrics.csv` are unchanged.
+  `scratch/render_uncertainty_envelope_comparison.py --simple` adds
+  `04_simple_comparison.pdf` and `simple_comparison.json` from the same saved
+  diagnostics, preserving previous figures. Its two panels show minimum
+  signed excess across contexts and mean individual radius on [-2,2], without
+  context adjustment or interval intersection. The constant-radius curve is 3.
+  Sampled coverage margins are neither coverage probabilities nor continuum
+  certificates; source certificates remain separate. No refit or new draw occurs.
+  The rendering driver archives the old coverage slices only after replacement
+  renders successfully; the source experiments' reports are preserved.
+  The constant-3/writeup manifests retain a shared design and diagnostic window;
+  interval endpoint containment is separate from the all-real certificate.
+  `reporting.write_calibration_plot` replays the same observed dataset into
+  `03_calibration_dataset.pdf` with three shared-action panels on [-2,2]:
+  the original adjusted common envelope/truth/mean predictor plus noisy y-g(x),
+  all-context means of radius/auxiliary width/predictor discrepancy, and
+  logged-action counts in width-0.5 bins with a rug. The fixed dataset has
+  58/60 actions in the window and two above 2, explicitly noted. Width uses
+  global joint-design leverage, not inverse local action density; the common
+  intersection half-width is not the mean radius. No refits are performed.
+  `calibration_action_support.json` records curves, counts, and provenance.
+  `tests/reporting/test_envelope_calibration_plot.py` checks the saved-data
+  display and artifact replay.
+  `docs/uncertainty_envelopes_simulation.tex` is the standalone mathematical
+  description of the concrete paired simulation, ready to copy into a writeup.
+  `scratch/plot_linear_envelope_dimension_sweep.py` extends the saved analytical
+  example with zero-coefficient nuisance covariates for p=d+2=5,10,...,100.
+  It uses n=12p and paired existing seed streams, preserving
+  the original n=60,p=5 calibration case. It fits via `fit_linear_transfer`,
+  averages radius/components over calibration contexts and saved diagnostic
+  actions, and checks the separate logged-row RMS identity. The PDF, inputs,
+  fits, CSV, and provenance live in `results/uncertainty-envelopes-dimension-sweep/`.
+  This is a width illustration, not an optimizer or coverage experiment.
+
+- `src/experiments/envelopes/wild.py` owns raw-residual wild-bootstrap
+  coefficient draws and all-real
+  auxiliary/transferred coverage calculations (MATH.md §7.9).
+  `wild_study.py` implements `kind: "wild_bootstrap_envelopes"` through the
+  shared manifest launcher and the bounded finite-Fourier GP variance profile;
+  `wild_reporting.py` owns saved-result PDFs.
+  `manifests/uncertainty-envelopes-wild-bootstrap.json` declares fixed p=5,
+  paired n/B/delta sweeps, 2,000 outer repetitions, and separate profile,
+  context, action, observation, and multiplier seed streams. The GP profile is
+  frozen; errors are independent conditional on it and the frozen design.
+  Coverage is joint over all saved contexts and every real action, not a
+  context average or a diagnostic-grid check. Bootstrap coverage is empirical,
+  with no finite-sample guarantee or monotonicity claim. This study performs
+  no downstream action optimization or regret calculation. Usage and artifact
+  interpretation are in `docs/wild_bootstrap_envelopes.md`.
 
 - `src/experiments/offline_bootstrap.py` owns the fixed-offline-data experiment
   (`kind: "offline_bootstrap"`, `manifests/offline_bootstrap.json`). It loads a
@@ -1211,6 +1330,9 @@ exclude `tests/objective/test_jax_prepared_glm*`, `tests/optimization/test_jax_*
 #### `tests/experiments/`
 | Test File | Area |
 |---|---|
+| `test_envelope_core.py` | Finite-target per-context containment requires coverage of every declared action, including mixed outcomes |
+| `test_envelope_wild.py` | Raw-residual wild bootstrap, all-real auxiliary statistics, and transferred containment |
+| `test_envelope_wild_study.py` | Bounded GP profile, wild-bootstrap manifest, paired seeds/prefixes, saved-study replay, artifact identity, collection, and launch routing |
 | `test_config.py` | ExperimentConfig validation rules |
 | `test_config_template.py` | Config template scaffold |
 | `test_correctness_spec.py` | CorrectnessSpec gradient source modes; `denoised_exact` full-chain unwrap to the clean objective |
@@ -1269,6 +1391,8 @@ exclude `tests/objective/test_jax_prepared_glm*`, `tests/optimization/test_jax_*
 | `test_policy_delta_u_elasticity.py` | Delta-u histogram and reference sensitivity policy diagnostic plots |
 | `test_policy_objective_contribution_summary.py` | Customer objective/profit spread diagnostic plot |
 | `test_comparison_plots.py` | aggregate comparison curve plots and grouped final-metric bar charts |
+| `test_envelope_diagnostics.py` | Context-average simultaneous coverage and unresolved counts, exact finite-target replay, mean-radius decomposition, stable norm-ranked slices, saved-fit replay, and artifact identity |
+| `test_wild_envelope_reporting.py` | Separate auxiliary/transferred joint coverage, auxiliary widths, sweep completeness, saved-context identity, and PDF rendering |
 
 #### `tests/scripts/`
 | Test File | Area |
@@ -1288,6 +1412,24 @@ exclude `tests/objective/test_jax_prepared_glm*`, `tests/optimization/test_jax_*
 | `test_state_vector.py` | `sample_states` shape and dtype |
 
 ## Documentation and Maintenance
+
+The residual paired-n/B distribution variants use
+`manifests/uncertainty-envelopes-residual-centered-exponential.json` and
+`manifests/uncertainty-envelopes-residual-t3-design.json`. Both extend the existing
+`envelopes/wild_study.py` runner. After collection,
+`scratch/report_wild_distribution_sweep.py` replays baseline/variant wild coverage
+and law-specific finite bounds via `wild_reporting.py`, and the existing
+context-average renderer. Comparison PDFs live in `plots/comparison/`; variant
+OLS/wild widths, slices and context averages remain in `plots/`. Preserve the
+saved Gaussian baseline and use its exact seed roots/rank coupling. The
+exponential fourth moment is 9, not the Gaussian 3; never apply a Gaussian-only
+bound refinement to that variant. See MATH §7.15 and the wild-bootstrap guide.
+`scratch/plot_wild_distribution_changes.py` adds saved-input distribution PDFs
+and paired wild mean-half-width comparisons (`plots/comparison/09_*`, `10_*`).
+It verifies saved repetition hashes and reconstructs the original width metric;
+its paired Monte Carlo intervals describe simulation precision, not envelope
+coverage. Supply both variants together for the 36-comparison adjustment. See
+MATH §7.16. This replay does not modify the simulation sources or saved draws.
 
 ### README.md
 Keep README concise—a quick-start and overview only. Update when:
@@ -1358,3 +1500,35 @@ Run tests:
 conda activate simulation_env
 pytest -q
 ```
+
+- The active wild-envelope workflow targets `g=f-fhat` and saves residual fit
+  coefficients, separate lower/upper radii, and both joint coverage events.
+  `WildLinearDesign` supports action-only quadratic features with the existing
+  polynomial certificates; the `quadratic-residual` manifests preserve the
+  frozen-predictor provenance and moved-point seed pairing. Historical symmetric
+  helpers and artifacts remain explicitly labeled for replay.
+
+- The wild-envelope manifest supports `sweep_mode: paired` for zipped, increasing
+  n/B schedules. Repetition arrays mark uncomputed cells with `active_conditions`
+  and NaN numeric entries; summary rows omit them. `paired_examples.npz` retains
+  the same smallest-prefix contexts and first response repetition at each pair.
+  `wild_reporting.py` renders the six paired-sweep PDFs without changing grid-mode reports.
+- `scratch/plot_context_averaged_envelopes.py` replays a completed paired residual
+  sweep into a seventh PDF, coordinate CSV, and provenance JSON. It validates
+  saved inputs and mathematical sources, uses repetition 0 at baseline delta,
+  and averages over all n calibration contexts. Transfer endpoints before
+  averaging; do not clip context means or average only the three saved slices.
+- `scratch/plot_wild_finite_sample_coverage.py` calls
+  `wild_reporting.write_finite_sample_coverage_report` to replay only paired
+  coverage plots 1 and 2 into `plots/finite_sample/`, without OLS. The thesis's
+  explicit approximation constants use Gaussian fourth moments and the known
+  global noise bounds. Save raw terms even when negative bounds require a zero
+  probability floor; do not infer rho/tau from empirical coverage or omit the
+  finite-B correction. Verify maximum leverage from the saved design and keep
+  original summary/report artifacts unchanged. See MATH §7.14.
+
+- Wild-envelope source contracts include canonical absolute paths as well as
+  hashes. Slurm may record `/orcd/home/002/...` where an interactive session
+  sees `/home/...`; use the recorded prefix for imports and result paths when
+  replaying the collector. Identical hashes with different path aliases are
+  not a reason to force-overwrite completed repetitions.

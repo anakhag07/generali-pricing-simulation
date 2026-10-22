@@ -53,6 +53,71 @@ pip install -e ".[dev]"
 pytest -q
 ```
 
+### Uncertainty-envelopes
+
+```bash
+PYTHONPATH=src python scripts/run_experiment_manifest.py manifests/uncertainty-envelopes.json --launch local
+PYTHONPATH=src python scripts/run_experiment_manifest.py manifests/uncertainty-envelopes-empirical.json --launch local
+```
+
+The first launch checks one contextual linear envelope analytically; the second
+estimates coverage across repeated calibration responses at a frozen design.
+Both report radius and signed excess conservatism at declared diagnostic
+locations. Truth, radius construction, coverage procedure, and containment
+checker are replaceable; analytical probability bounds remain separate from
+realized containment and empirical estimates. Results go to
+`results/uncertainty-envelopes/` and `results/uncertainty-envelopes-empirical/`.
+See [the usage guide](docs/uncertainty_envelopes.md) for custom radius functions,
+nonlinear truth, saved calibration data, the constant-radius example, and replay.
+Each collection also writes four PDFs under `reports/diagnostics/`: simultaneous
+action coverage averaged over contexts, the mean envelope and truth, radius
+components, and low/median/high context-norm slices. These use original response
+coordinates, with no context adjustment. The
+[diagnostic report guide](docs/uncertainty_envelopes.md#standard-diagnostic-reports)
+explains coverage domains, constant-radius components, and replay from saved data.
+The [paired constant-3 comparison](docs/uncertainty_envelopes.md#render-the-constant-3-versus-writeup-comparison)
+replays saved results into two panels showing overlap across all contexts after
+subtracting their known contribution to truth; it does not refit either radius.
+A second figure compares the common overlap's half-width and the smallest
+signed excess across contexts for both constructions.
+For a simpler view, run `PYTHONPATH=src python scratch/render_uncertainty_envelope_comparison.py --simple`.
+It adds `04_simple_comparison.pdf` with two curves per panel: smallest coverage
+margin and mean individual radius. This view needs no context adjustment;
+the constant-radius curve stays at 3. Existing comparison figures are preserved.
+The calibration figure aligns the adjusted observations/envelope, mean radius
+components, and logged-action counts on one action axis. A
+[LaTeX section](docs/uncertainty_envelopes_simulation.tex) records the exact
+simulation instantiation.
+
+For a fixed-design comparison of analytical and wild-bootstrap envelopes under
+a frozen GP variance profile, run
+`PYTHONPATH=src python scripts/run_experiment_manifest.py manifests/uncertainty-envelopes-wild-bootstrap.json --launch local`.
+This sweeps sample size, bootstrap count, and confidence level with paired draws,
+reporting joint all-real-action coverage and mean widths. See the
+[wild-bootstrap guide](docs/wild_bootstrap_envelopes.md) for the noise model,
+seed contract, and interpretation of empirical coverage.
+
+For joint increases in sample size and bootstrap count, use
+`manifests/uncertainty-envelopes-residual-paired-nb.json`. It reports only the
+paired conditions, with coverage and envelope slices at shared contexts; see
+[the paired-sweep guide](docs/wild_bootstrap_envelopes.md#increasing-n-and-b-together).
+To replay context-averaged residual bands beside transferred envelopes, see
+[the averaging command](docs/wild_bootstrap_envelopes.md#context-averaged-bands).
+The [finite-sample replay](docs/wild_bootstrap_envelopes.md#finite-sample-coverage-reference)
+compares the saved wild-bootstrap coverage with the thesis's explicit lower bound.
+For centered-exponential noise and standardized-t3 design variants of that
+baseline, see [the distribution sweeps](docs/wild_bootstrap_envelopes.md#distribution-perturbations).
+The same guide includes [saved-input and paired width diagnostics](docs/wild_bootstrap_envelopes.md#input-distributions-and-paired-mean-width-changes).
+
+For maximum-leverage versus coverage at fixed sample size, use the
+`manifests/wild-bootstrap-leverage-bound-*.json` manifests. This action-only
+study varies the truncation of standard-normal logged actions while holding
+noise, n, B, and delta fixed. See the [leverage diagnostic](docs/wild_bootstrap_leverage.md)
+for execution and the combined coverage plot, including the extension to
+bounds 100, 1000, and unbounded normal.
+The `manifests/wild-bootstrap-outlier-*.json` follow-up fixes the [-3,3] sample
+and moves one observation to drive maximum leverage toward 1.
+
 ### Fixed offline bootstrap and optimization regret
 
 ```bash
@@ -1356,3 +1421,8 @@ remains for its CSV-only output.
 
 See `AGENTS.md` for development workflow, code organization, and testing
 guidelines.
+
+The wild-bootstrap envelope runner now fits the residual `Y - fhat` and reports
+separate lower/upper radii. Quadratic baseline and moved-point manifests are
+`manifests/uncertainty-envelopes-quadratic-residual*.json`; see
+[the envelope guide](docs/wild_bootstrap_envelopes.md).

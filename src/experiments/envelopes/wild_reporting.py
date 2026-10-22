@@ -1,0 +1,696 @@
+"""Replay clean comparisons of analytical and wild-bootstrap envelope widths."""
+
+from __future__ import annotations
+
+from pathlib import Path
+import json
+
+import matplotlib.pyplot as plt
+from matplotlib.ticker import PercentFormatter, ScalarFormatter
+import numpy as np
+
+from experiments.provenance import file_record, write_provenance
+from experiments.sweep_reporting import write_rows_csv
+
+from .diagnostics import _slice_indices
+from .reporting import _STYLE
+from .wild import WildLinearDesign, residual_radii
+
+_METHODS = (("analytical", "Analytical", "C0"),
+            ("wild_bootstrap", "Wild bootstrap", "C1"))
+
+
+def write_leverage_report(summary_paths, destination) -> Path:
+    """Compare fixed-n truncation or single-outlier studies with pointwise coverage intervals."""
+    destination = Path(destination)
+    destination.mkdir(parents=True, exist_ok=True)
+    rows, inputs, signatures, conditions, axes = [], [], [], [], []
+    for path in map(Path, summary_paths):
+        summary = json.loads(path.read_text())
+        p = summary["manifest"]
+        if p["design"]["distribution"] != "independent_truncated_standard_normal":
+            raise ValueError("Leverage report requires truncated-normal studies.")
+        signature = json.loads(json.dumps(p))
+        signature.pop("name")
+        signature["band_target"] = summary.get("band_target", p.get("band_target", "function"))
+        bound = p["design"]["truncation_bound"]
+        if "action_override" in signature["design"]:
+            axis = "outlier_action"
+            condition = signature["design"]["action_override"].pop("value")
+        else:
+            axis = "truncation_bound"
+            condition = signature["design"].pop("truncation_bound")
+        signatures.append(signature)
+        conditions.append(condition)
+        axes.append(axis)
+        metrics = [row for row in summary["metrics"] if row["method"] == "wild_bootstrap"]
+        if len(metrics) != 1:
+            raise ValueError("Require one fixed n, B, and delta per study.")
+        row = dict(metrics[0], truncation_bound=bound)
+        row[axis] = condition
+        if row["repetitions"] != p["repetitions"]:
+            raise ValueError("Coverage repetition counts disagree.")
+        for event in ("auxiliary", "transferred"):
+            if row[f"{event}_coverage"] != row[f"{event}_covered_count"] / p["repetitions"]:
+                raise ValueError("Coverage estimate disagrees with saved count.")
+        rows.append(row)
+        inputs.append(file_record(path))
+    if (len(rows) < 2 or len(set(axes)) != 1 or len(set(conditions)) != len(conditions)
+            or any(s != signatures[0] for s in signatures)):
+        raise ValueError("Require distinct sweep values and otherwise identical study manifests.")
+    axis = axes[0]
+    # This orders a diagnostic axis, never an optimizer solution.
+    rows.sort(key=lambda row: np.inf if row[axis] is None else row[axis])
+    # Coincident estimates share one marker, without jittering measured leverage.
+    groups = {}
+    for row in rows:
+        key = tuple(round(row[name], 12) for name in
+                    ("max_leverage", "auxiliary_coverage", "auxiliary_lower", "auxiliary_upper"))
+        groups.setdefault(key, []).append(row)
+    with plt.style.context("default"), plt.rc_context(_STYLE):
+        fig, ax = plt.subplots(figsize=(7.2, 4.8), constrained_layout=True)
+        for group in groups.values():
+            row = group[0]
+            coverage = row["auxiliary_coverage"]
+            low, high = row["auxiliary_lower"], row["auxiliary_upper"]
+            if not 0 <= low <= coverage <= high <= 1:
+                raise ValueError("Invalid auxiliary coverage interval.")
+            if axis == "outlier_action":
+                label = "Moved observation a = " + ", ".join(f"{item[axis]:g}" for item in group)
+            else:
+                labels = ["Unbounded" if item[axis] is None
+                          else f"±{item[axis]:g}" for item in group]
+                label = "Bounds " + ", ".join(labels) if labels != ["Unbounded"] else "Unbounded normal"
+            ax.errorbar(row["max_leverage"], coverage,
+                        yerr=[[coverage-low], [high-coverage]],
+                        fmt="o", capsize=3, label=label)
+        ax.axhline(1-rows[0]["delta"], color="0.5", linestyle="--", label="Nominal coverage")
+        ax.set_xlabel(r"Maximum observed leverage $h_n$")
+        ax.set_ylabel("Simultaneous auxiliary coverage")
+        ax.set_title("Wild-bootstrap coverage versus maximum leverage")
+        ax.yaxis.set_major_formatter(PercentFormatter(1))
+        ax.legend()
+        output = destination / "coverage_vs_leverage.pdf"
+        fig.savefig(output, format="pdf")
+        plt.close(fig)
+    csv = destination / "coverage_vs_leverage.csv"
+    write_rows_csv(csv, rows, list(rows[0]))
+    (destination / "provenance.json").write_text(json.dumps({
+        "inputs": inputs, "source": file_record(Path(__file__)),
+        "outputs": [file_record(output), file_record(csv)],
+        "intervals": "Pointwise 95% Wilson intervals across independent response/bootstrap repetitions.",
+        "coverage_event": "Auxiliary band contains truth simultaneously for every real action.",
+        "interpretation": "Fixed designs; maximum leverage does not determine coverage uniquely.",
+        "sweep_axis": axis,
+        "coincident_points": [[item[axis] for item in group]
+                               for group in groups.values()],
+        "coincidence_tolerance": "Displayed coordinates and interval endpoints agree to 12 decimal places.",
+    }, indent=2) + "\n")
+    return output
+
+
+def _rows(summary, sweep, delta, method):
+    baseline = summary["manifest"]["baseline"]
+    fixed = "B" if sweep == "n" else "n"
+    selected = [row for row in summary["metrics"]
+                if row["method"] == method and row["delta"] == delta
+                and row[fixed] == baseline[fixed]]
+    selected.sort(key=lambda row: row[sweep])
+    expected = sorted(summary["manifest"][f"{sweep}_values"])
+    if [row[sweep] for row in selected] != expected:
+        raise ValueError(f"Incomplete or duplicate {method} {sweep} sweep at delta={delta}.")
+    return selected
+
+
+def _panels(deltas):
+    fig, axes = plt.subplots(1, len(deltas), figsize=(4.7*len(deltas), 4.8),
+                             sharey=True, squeeze=False, constrained_layout=True)
+    for ax, delta in zip(axes[0], deltas):
+        ax.set_title(rf"$\delta={delta:g}$")
+    return fig, axes[0]
+
+
+def _sweep_axis(ax, values, sweep):
+    ax.set_xscale("log")
+    ax.set_xticks(sorted(values))
+    ax.xaxis.set_major_formatter(ScalarFormatter())
+    ax.minorticks_off()
+    ax.set_xlabel("Calibration size $n$" if sweep == "n" else "Bootstrap draws $B$")
+
+
+def _coverage_figure(summary, sweep, event):
+    p = summary["manifest"]
+    fig, axes = _panels(p["deltas"])
+    title = (r"Auxiliary coverage: $\widetilde f\pm w_\delta$" if event == "auxiliary"
+             else r"Transferred-envelope coverage: $\widehat f\pm r_\delta$")
+    if summary.get("band_target") == "residual":
+        title = (r"Residual-band coverage: $\widetilde g\pm w_\delta$" if event == "auxiliary"
+                 else "Asymmetric transferred-envelope coverage")
+    fig.suptitle(title)
+    lower_limits = []
+    for ax, delta in zip(axes, p["deltas"]):
+        for method, label, color in _METHODS:
+            rows = _rows(summary, sweep, delta, method)
+            coverage = np.array([row[f"{event}_coverage"] for row in rows])
+            low = np.array([row[f"{event}_lower"] for row in rows])
+            high = np.array([row[f"{event}_upper"] for row in rows])
+            if (not np.isfinite([coverage, low, high]).all()
+                    or np.any(low < 0) or np.any(high > 1)
+                    or np.any(low > coverage) or np.any(high < coverage)):
+                raise ValueError("Coverage estimates and intervals must be ordered probabilities.")
+            lower_limits.extend(low)
+            ax.errorbar([row[sweep] for row in rows], coverage,
+                        yerr=[coverage-low, high-coverage], marker="o", color=color,
+                        capsize=3, label=label)
+        ax.axhline(1-delta, color="0.5", linestyle="--", label=r"Target $1-\delta$")
+        _sweep_axis(ax, p[f"{sweep}_values"], sweep)
+        ax.set_ylabel("Simultaneous coverage")
+        ax.yaxis.set_major_formatter(PercentFormatter(1))
+    # Shared bounds retain small-sample failures while making nominal coverage readable.
+    axes[0].set_ylim(max(0., min(.8, min(lower_limits)-.04)), 1.015)
+    axes[0].legend()
+    fixed = (rf"$B={p['baseline']['B']}$" if sweep == "n"
+             else rf"$n={p['baseline']['n']}$")
+    fig.supxlabel(
+        f"{p['repetitions']:,} repeated datasets at each frozen design; {fixed}; 95% Wilson intervals."
+        "\n" + r"Each success covers all calibration contexts and every $a\in\mathbb{R}$.",
+        fontsize=10,
+    )
+    return fig
+
+
+def _width_figure(summary, example):
+    p = summary["manifest"]
+    fig, axes = _panels(p["deltas"])
+    fig.suptitle("Mean auxiliary half-width")
+    for ax, delta in zip(axes, p["deltas"]):
+        for method, label, color in _METHODS:
+            rows = _rows(summary, "n", delta, method)
+            width = np.array([row["mean_width"] for row in rows])
+            if not np.isfinite(width).all() or np.any(width < 0):
+                raise ValueError("Mean auxiliary widths must be finite and nonnegative.")
+            ax.plot([row["n"] for row in rows], width,
+                    marker="o", color=color, label=label)
+        _sweep_axis(ax, p["n_values"], "n")
+        ax.set_ylabel(r"Mean half-width $\overline{w}_\delta$")
+    axes[0].set_ylim(bottom=0)
+    axes[0].legend()
+    actions = np.asarray(example["actions_grid"])
+    fig.supxlabel(
+        rf"$B={p['baseline']['B']}$; means over {p['repetitions']:,} datasets, calibration contexts,"
+        rf" and {len(actions)} equally weighted actions in $[{actions[0]:g},{actions[-1]:g}]$."
+        "\n" + r"The display-window mean summarizes width; coverage is checked over all real actions.",
+        fontsize=10,
+    )
+    return fig
+
+
+def _validate_example(snapshot, example):
+    X = np.asarray(example["X"])
+    actions = np.asarray(example["actions_grid"])
+    if (X.ndim != 2 or len(X) == 0 or actions.ndim != 1 or len(actions) == 0
+            or not np.isfinite(X).all() or not np.isfinite(actions).all()
+            or np.any(np.diff(actions) <= 0)
+            or not np.array_equal(X, np.asarray(snapshot["X"])[:len(X)])):
+        raise ValueError("Example must use saved calibration contexts and ordered diagnostic actions.")
+    for key in ("truth", "predictor", "auxiliary", "analytical_width", "bootstrap_width", "sigma_grid"):
+        values = np.asarray(example[key])
+        if values.shape != (len(X), len(actions)) or not np.isfinite(values).all():
+            raise ValueError(f"Invalid saved example array: {key}.")
+        if key.endswith("width") and np.any(values < 0):
+            raise ValueError("Auxiliary widths must be nonnegative.")
+    if "residual_fit" in example:
+        if not np.allclose(example["residual_truth"], example["truth"]-example["predictor"]):
+            raise ValueError("Saved residual truth disagrees with truth minus predictor.")
+        for method in ("analytical", "bootstrap"):
+            lower, upper = residual_radii(example["residual_fit"], example[f"{method}_width"])
+            if (not np.allclose(example[f"{method}_lower"], example["predictor"]-lower)
+                    or not np.allclose(example[f"{method}_upper"], example["predictor"]+upper)):
+                raise ValueError("Saved bounds disagree with the asymmetric residual transfer.")
+    return (0,) if X.shape[1] == 0 else _slice_indices(X)
+
+
+def _slice_panels(example, indices):
+    fig, axes = plt.subplots(1, len(indices), figsize=(4.7*len(indices), 4.8),
+                             sharey=True, squeeze=False, constrained_layout=True)
+    ranks = ("Central", "Median norm", "Outer") if len(indices) == 3 else ("Central", "Outer")
+    for ax, index, rank in zip(axes[0], indices, ranks):
+        norm = np.linalg.norm(example["X"][index])
+        ax.set_title("Action-only model" if example["X"].shape[1] == 0 else rank + rf": $\|x_i\|_2={norm:.2f}$")
+        ax.set_xlabel("Action $a$")
+    return fig, axes[0]
+
+
+def _slices_figure(summary, example, indices, method, label):
+    p = summary["manifest"]
+    fig, axes = _slice_panels(example, indices)
+    fig.suptitle(label + rf" envelope: $\delta={p['baseline']['delta']:g}$")
+    a = np.asarray(example["actions_grid"])
+    key = "analytical_width" if method == "analytical" else "bootstrap_width"
+    for ax, index in zip(axes, indices):
+        truth, predictor, auxiliary, width = (np.asarray(example[k])[index]
+                                              for k in ("truth", "predictor", "auxiliary", key))
+        radius = np.abs(predictor-auxiliary)+width
+        ax.plot(a, truth, color="C0", label=r"$f(x_i,a)$")
+        ax.plot(a, predictor, "--", color="C1", label=r"$\widehat f(x_i,a)$")
+        residual_target = summary.get("band_target") == "residual"
+        ax.plot(a, auxiliary, ":", color="C2",
+                label=r"$\widehat f+\widetilde g$" if residual_target else r"$\widetilde f(x_i,a)$")
+        prefix = "analytical" if method == "analytical" else "bootstrap"
+        lower, upper = ((example[f"{prefix}_lower"][index], example[f"{prefix}_upper"][index])
+                        if residual_target else (predictor-radius, predictor+radius))
+        ax.fill_between(a, lower, upper, color="C1", alpha=.2,
+                        label="Transferred envelope" if residual_target else r"$\widehat f(x_i,a)\pm r_\delta(x_i,a)$")
+        ax.set_ylabel(r"Response $f(x_i,a)$")
+    axes[0].legend()
+    fig.supxlabel(
+        rf"First saved dataset; $n={p['baseline']['n']}$, $B={p['baseline']['B']}$;"
+        + (" one action-only realization." if example["X"].shape[1] == 0 else
+           " contexts selected by smallest, median, and largest norm."
+           "\nContext norm measures centrality; these slices illustrate one realization."),
+        fontsize=10,
+    )
+    return fig
+
+
+def _noise_figure(summary, example, indices):
+    p = summary["manifest"]
+    fig, axes = _slice_panels(example, indices)
+    fig.suptitle("Bounded noise standard deviation")
+    a = np.asarray(example["actions_grid"])
+    for ax, index in zip(axes, indices):
+        ax.plot(a, np.asarray(example["sigma_grid"])[index], label=r"$\sigma(x_i,a)$")
+        ax.axhline(p["noise"]["sigma_max"], color="C1", linestyle="--", label=r"Cap $\sigma_{\max}$")
+        ax.set_ylabel(r"Noise standard deviation $\sigma(x_i,a)$")
+        ax.set_ylim(bottom=0)
+    axes[0].legend()
+    law = ("centered-exponential" if p["noise"].get("innovation_distribution") == "centered_exponential"
+           else "Gaussian")
+    fig.supxlabel(
+        (f"Constant noise scale; independent {law} observation errors."
+         if p["noise"].get("type") == "constant" else
+         f"One fixed GP volatility profile; independent {law} errors conditional on the design and profile.")
+        + "\nThe known variance cap holds for all inputs; it is not estimated from the displayed actions.",
+        fontsize=10,
+    )
+    return fig
+
+
+def write_reports(summary, snapshot, example, destination, *, paired_example=None) -> list[Path]:
+    """Render grid or paired-size coverage, widths, and saved context slices as PDFs."""
+    if summary["manifest"].get("sweep_mode") == "paired":
+        if paired_example is None:
+            raise ValueError("Paired reporting requires saved shared-context examples.")
+        return _write_paired_reports(summary, snapshot, paired_example, destination)
+    if np.asarray(example["X"]).shape[1] == 0 and summary.get("band_target") != "residual":
+        # Action-only conditions are compared by write_leverage_report; there
+        # are no distinct context slices to display.
+        return []
+    destination = Path(destination)
+    destination.mkdir(parents=True, exist_ok=True)
+    indices = _validate_example(snapshot, example)
+    paths = []
+    with plt.style.context("default"), plt.rc_context(_STYLE):
+        figures = [
+            ("01_auxiliary_coverage_vs_n", _coverage_figure(summary, "n", "auxiliary")),
+            ("02_auxiliary_coverage_vs_B", _coverage_figure(summary, "B", "auxiliary")),
+            ("03_mean_width_vs_n", _width_figure(summary, example)),
+            ("04_transferred_coverage_vs_n", _coverage_figure(summary, "n", "transferred")),
+            ("05_analytical_context_slices", _slices_figure(summary, example, indices, "analytical", "Analytical")),
+            ("06_wild_bootstrap_context_slices", _slices_figure(summary, example, indices, "wild_bootstrap", "Wild bootstrap")),
+            ("07_noise_profile", _noise_figure(summary, example, indices)),
+        ]
+        for name, fig in figures:
+            path = destination / f"{name}.pdf"
+            try:
+                fig.savefig(path, format="pdf")
+            finally:
+                plt.close(fig)
+            paths.append(path)
+    return paths
+
+
+
+def _paired_rows(summary, delta, method):
+    p = summary["manifest"]
+    expected = list(zip(p["n_values"], p["B_values"]))
+    rows = [r for r in summary["metrics"] if r["delta"] == delta and r["method"] == method]
+    indexed = {(r["n"], r["B"]): r for r in rows}
+    if len(rows) != len(expected) or set(indexed) != set(expected):
+        raise ValueError("Require exactly the declared paired conditions in the report.")
+    return [indexed[pair] for pair in expected]
+
+
+def _paired_axis(ax, p):
+    positions = np.arange(len(p["n_values"]))
+    ax.set_xticks(positions, [f"({n},\n{b})" for n, b in zip(p["n_values"], p["B_values"])])
+    ax.set_xlabel("Paired sizes (n, B)")
+
+
+def _finite_sample_terms(p, h, B, delta, sigma_min, sigma_max, fourth_moment=3.):
+    if not (p >= 1 and 0 < h <= 1 and B >= 1 and 0 < delta < 1
+            and 0 < sigma_min <= sigma_max and np.isfinite(fourth_moment) and fourth_moment >= 1):
+        raise ValueError("Invalid finite-sample dimension, leverage, quantile, or noise bounds.")
+    # Standardized innovations have fourth moment 3 (normal) or 9 (Exp(1)-1).
+    K = fourth_moment**.25 * sigma_max
+    kappa = K / sigma_min
+    cp = 42 * p**.25 + 16
+    dp = np.sqrt(p) + (2 * 3**.25 + np.sqrt(3)) * p
+    C = 7 * cp * p * kappa**3 + 2 * dp * kappa**2
+    common = C**(2/3) * h**(1/3)
+    rho, tau = 2**(1/3) * common, 2**(-2/3) * common
+    k = int(np.ceil(B * (1-delta)))
+    correction = (1-delta) / (B+1)
+    raw = 1-delta-rho-tau-correction
+    exact = k / (B+1)-rho-tau
+    return {"feature_dimension": p, "max_leverage": h,
+            "sigma_min": sigma_min, "sigma_max": sigma_max, "K": K,
+            "innovation_fourth_moment": fourth_moment,
+            "kappa": kappa, "c_p": cp, "d_p": dp, "C_p_kappa": C,
+            "rho_n": rho, "tau_n": tau, "order_rank": k,
+            "finite_B_correction": correction, "raw_lower_bound": raw,
+            "order_statistic_raw_lower_bound": exact, "lower_bound": max(0., raw)}
+
+
+def _finite_sample_inputs(summary_path, thesis_path):
+    summary_path, thesis_path = Path(summary_path), Path(thesis_path)
+    project = summary_path.parent
+    summary = json.loads(summary_path.read_text())
+    p = summary["manifest"]
+    if (p.get("kind") != "wild_bootstrap_envelopes" or p.get("band_target") != "residual"
+            or p.get("sweep_mode") != "paired"
+            or p["bootstrap"] != {"multipliers": "rademacher", "quantile": "order_statistic",
+                                  "residuals": "raw"}):
+        raise ValueError("Require the paired residual study with raw Rademacher bootstrap.")
+    inputs = [file_record(summary_path), file_record(thesis_path)]
+    environment_path = project / "environment.json"
+    actual = file_record(environment_path)
+    if any(actual[k] != summary["environment"][k] for k in ("sha256", "bytes")):
+        raise ValueError("Saved environment metadata changed.")
+    inputs.append(actual)
+    environment = json.loads(environment_path.read_text())
+    if (environment["contract"]["manifest"] != p
+            or environment["contract_sha256"] != summary["contract_sha256"]):
+        raise ValueError("Saved environment does not match the summary.")
+    arrays_path = project / "environment.npz"
+    actual = file_record(arrays_path)
+    if any(actual[k] != environment["arrays"][k] for k in ("sha256", "bytes")):
+        raise ValueError("Saved design arrays changed.")
+    inputs.append(actual)
+    with np.load(arrays_path, allow_pickle=False) as arrays:
+        X, actions = arrays["X"], arrays["actions"]
+    designs = {n: WildLinearDesign(X[:n], actions[:n],
+                                   action_degree=p["design"].get("action_degree", 1))
+               for n in p["n_values"]}
+    noise = p["noise"]
+    if noise["type"] not in ("constant", "bounded_fourier_gp_scale"):
+        raise ValueError("Require known positive noise-scale bounds.")
+    sigma_min = noise["sigma_min"] if noise["type"] != "constant" else noise["sigma_max"]
+    law = noise.get("innovation_distribution", "standard_normal")
+    if law not in {"standard_normal", "centered_exponential"}:
+        raise ValueError("Unknown innovation fourth moment.")
+    fourth_moment = 9. if law == "centered_exponential" else 3.
+    rows = []
+    for delta in p["deltas"]:
+        for saved in _paired_rows(summary, delta, "wild_bootstrap"):
+            design = designs[saved["n"]]
+            h = float(design.leverage.max())
+            if not np.isclose(h, saved["max_leverage"], rtol=1e-12, atol=1e-14):
+                raise ValueError("Saved maximum leverage disagrees with the frozen design.")
+            for event in ("auxiliary", "transferred"):
+                if (saved["repetitions"] != p["repetitions"] or saved[f"{event}_coverage"]
+                        != saved[f"{event}_covered_count"] / p["repetitions"]):
+                    raise ValueError("Coverage must agree with saved counts and repetitions.")
+            rows.append({**saved, **_finite_sample_terms(
+                design.design.shape[1], h, saved["B"], delta, sigma_min, noise["sigma_max"], fourth_moment)})
+    return summary, inputs, rows
+
+
+def write_finite_sample_coverage_report(summary_path, thesis_path, destination=None) -> list[Path]:
+    """Replay paired wild coverage using the declared Gaussian or exponential fourth moment."""
+    summary, inputs, rows = _finite_sample_inputs(summary_path, thesis_path)
+    project = Path(summary_path).parent
+    destination = Path(destination) if destination else project / "plots/finite_sample"
+    destination.mkdir(parents=True, exist_ok=True)
+    outputs = []
+    with plt.style.context("default"), plt.rc_context(_STYLE):
+        for event, name in (("auxiliary", "01_residual_coverage_vs_pairs"),
+                            ("transferred", "02_transferred_coverage_vs_pairs")):
+            fig = _paired_metrics_figure(summary, event, finite_sample=rows)
+            output = destination / f"{name}.pdf"
+            try:
+                fig.savefig(output, format="pdf")
+            finally:
+                plt.close(fig)
+            outputs.append(output)
+    csv = destination / "finite_sample_terms.csv"
+    write_rows_csv(csv, rows, list(rows[0]))
+    write_provenance(destination / "provenance.json", {
+        "inputs": inputs, "source": file_record(__file__),
+        "design_source": file_record(Path(__file__).with_name("wild.py")),
+        "outputs": [file_record(path) for path in [*outputs, csv]],
+        "thesis_equations": ["eq:wild-bootstrap-main-coverage", "eq:wild-bootstrap-rho-tau"],
+        "noise_moments": {"law": summary["manifest"]["noise"].get("innovation_distribution", "standard_normal"),
+                          "fourth_moment": rows[0]["innovation_fourth_moment"],
+                          "K": "fourth_moment^(1/4) sigma_max; global manifest bounds"},
+        "plotted_bound": "max(0, 1-delta-rho_n-tau_n-(1-delta)/(B+1))",
+        "scope": "Same lower bound for residual and transferred joint coverage over all calibration contexts and real actions.",
+        "replay": "Original saved counts and Wilson intervals; no new simulation or bootstrap draws.",
+        "all_raw_bounds_negative": all(row["raw_lower_bound"] < 0 for row in rows),
+    })
+    return outputs
+
+
+def _distribution_comparison_label(baseline, variant):
+    base, changed = (json.loads(json.dumps(s["manifest"])) for s in (baseline, variant))
+    for p in (base, changed):
+        p.pop("name")
+        p.pop("launch")
+        p["noise"].setdefault("innovation_distribution", "standard_normal")
+    if (base["design"]["distribution"] != "independent_standard_normal"
+            or base["noise"]["innovation_distribution"] != "standard_normal"):
+        raise ValueError("Comparison baseline must have Gaussian design and noise.")
+    if changed["noise"]["innovation_distribution"] == "centered_exponential":
+        changed["noise"]["innovation_distribution"] = "standard_normal"
+        label = "Centered exponential noise"
+    elif changed["design"]["distribution"] == "independent_standardized_t3":
+        changed["design"]["distribution"] = "independent_standard_normal"
+        label = r"Standardized $t_3$ design"
+    else:
+        raise ValueError("Require exactly one approved distribution perturbation.")
+    if base != changed:
+        raise ValueError("Baseline and variant differ beyond the declared distribution.")
+    return label
+
+
+def _distribution_coverage_figure(baseline, variant, label, event, finite_rows=None):
+    p = variant["manifest"]
+    fig, axes = _panels(p["deltas"])
+    title = "Residual-band" if event == "auxiliary" else "Transferred-envelope"
+    fig.suptitle(f"{title} coverage: wild bootstrap")
+    for ax, delta in zip(axes, p["deltas"]):
+        for index, (summary, name) in enumerate(((baseline, "Gaussian baseline"), (variant, label))):
+            rows = _paired_rows(summary, delta, "wild_bootstrap")
+            x = np.arange(len(rows))
+            y, lower, upper = (np.array([r[f"{event}_{key}"] for r in rows])
+                               for key in ("coverage", "lower", "upper"))
+            if (not np.isfinite([y, lower, upper]).all() or np.any(lower > y)
+                    or np.any(y > upper) or np.any(lower < 0) or np.any(upper > 1)):
+                raise ValueError("Invalid coverage or Wilson intervals.")
+            ax.errorbar(x, y, yerr=[y-lower, upper-y], marker="o", capsize=3,
+                        color=f"C{index}", label=name)
+            if finite_rows is not None:
+                refs = _paired_rows({"manifest": p, "metrics": finite_rows[index]}, delta, "wild_bootstrap")
+                ax.plot(x, [r["lower_bound"] for r in refs], color=f"C{index}",
+                        linestyle="--" if index == 0 else ":", marker="o" if index == 0 else "x",
+                        label=f"{name} bound (clipped at 0)")
+        if finite_rows is None:
+            ax.axhline(1-delta, linestyle="--", color="0.5", label=r"Nominal $1-\delta$")
+        _paired_axis(ax, p)
+        ax.set_ylabel("Simultaneous coverage")
+        ax.yaxis.set_major_formatter(PercentFormatter(1))
+    axes[0].legend()
+    axes[0].set_ylim(top=1.015)
+    text = f"{p['repetitions']:,} response repetitions; 95% Wilson intervals; one frozen design per law."
+    if finite_rows is not None and all(r["raw_lower_bound"] < 0 for rows in finite_rows for r in rows):
+        text += "\nBoth untruncated theorem bounds are negative at every pair."
+    fig.supxlabel(text, fontsize=10)
+    return fig
+
+
+def write_distribution_comparison(summary_path, baseline_path, thesis_path, destination=None) -> list[Path]:
+    """Compare saved paired wild coverage and leverage, with law-specific theorem bounds."""
+    variant, variant_inputs, variant_rows = _finite_sample_inputs(summary_path, thesis_path)
+    baseline, baseline_inputs, baseline_rows = _finite_sample_inputs(baseline_path, thesis_path)
+    label = _distribution_comparison_label(baseline, variant)
+    destination = Path(destination) if destination else Path(summary_path).parent / "plots/comparison"
+    destination.mkdir(parents=True, exist_ok=True)
+    outputs = []
+    with plt.style.context("default"), plt.rc_context(_STYLE):
+        for finite in (False, True):
+            directory = destination / "finite_sample" if finite else destination
+            directory.mkdir(exist_ok=True)
+            for event, stem in (("auxiliary", "01_residual_coverage_vs_pairs"),
+                                ("transferred", "02_transferred_coverage_vs_pairs")):
+                fig = _distribution_coverage_figure(baseline, variant, label, event,
+                          (baseline_rows, variant_rows) if finite else None)
+                path = directory / f"{stem}.pdf"
+                try:
+                    fig.savefig(path, format="pdf")
+                finally:
+                    plt.close(fig)
+                outputs.append(path)
+        fig, ax = plt.subplots(constrained_layout=True, figsize=(8, 5))
+        for summary, name in ((baseline, "Gaussian baseline"), (variant, label)):
+            rows = _paired_rows(summary, summary["manifest"]["baseline"]["delta"], "wild_bootstrap")
+            ax.plot([r["n"] for r in rows], [r["max_leverage"] for r in rows], marker="o", label=name)
+        ax.set(xlabel="Calibration sample size n", ylabel="Maximum leverage", title="Frozen-design maximum leverage")
+        ax.legend()
+        path = destination / "08_max_leverage.pdf"
+        try:
+            fig.savefig(path, format="pdf")
+        finally:
+            plt.close(fig)
+        outputs.append(path)
+    rows = [{"distribution": name, **row} for name, data in
+            (("gaussian_baseline", baseline_rows), ("perturbed", variant_rows)) for row in data]
+    csv = destination / "finite_sample_terms.csv"
+    write_rows_csv(csv, rows, list(rows[0]))
+    outputs.append(csv)
+    write_provenance(destination / "provenance.json", {
+        "inputs": [*baseline_inputs, *variant_inputs], "source": file_record(__file__),
+        "outputs": [file_record(path) for path in outputs], "variant": label,
+        "scope": "Wild bootstrap only; all calibration contexts and every real action jointly.",
+        "noise_moments": "Normal fourth moment 3; centered-exponential fourth moment 9. Global scale bounds.",
+        "plotted_bound": "max(0,1-delta-rho_n-tau_n-(1-delta)/(B+1)); raw bounds retained in CSV.",
+        "pairing": "Same underlying Gaussian ranks and seed streams; one frozen design per law.",
+        "replay": "Saved coverage counts and Wilson intervals; baseline artifacts are read only.",
+    })
+    return outputs
+
+
+def _paired_metrics_figure(summary, event=None, *, finite_sample=None):
+    p = summary["manifest"]
+    if finite_sample is not None and event not in ("auxiliary", "transferred"):
+        raise ValueError("Finite-sample references apply only to coverage figures.")
+    fig, axes = _panels(p["deltas"])
+    title = ("Mean residual-band half-width" if event is None else
+             "Residual-band coverage" if event == "auxiliary" else "Transferred-envelope coverage")
+    fig.suptitle("Wild-bootstrap " + title.lower() if finite_sample is not None else title)
+    for ax, delta in zip(axes, p["deltas"]):
+        for method, label, color in (_METHODS if finite_sample is None else _METHODS[1:]):
+            label = "OLS variance bound" if method == "analytical" else label
+            rows = _paired_rows(summary, delta, method)
+            x = np.arange(len(rows))
+            if event is None:
+                ax.plot(x, [r["mean_width"] for r in rows], marker="o", color=color, label=label)
+            else:
+                y, lower, upper = (np.array([r[f"{event}_{key}"] for r in rows])
+                                   for key in ("coverage", "lower", "upper"))
+                if (not np.isfinite([y, lower, upper]).all() or np.any(lower > y)
+                        or np.any(y > upper) or np.any(lower < 0) or np.any(upper > 1)):
+                    raise ValueError("Invalid paired coverage or Wilson intervals.")
+                ax.errorbar(x, y, yerr=[y-lower, upper-y], marker="o", capsize=3, color=color, label=label)
+        if event is not None:
+            if finite_sample is None:
+                ax.axhline(1-delta, linestyle="--", color="0.5", label=r"Target $1-\delta$")
+            else:
+                references = _paired_rows({"manifest": p, "metrics": finite_sample}, delta, "wild_bootstrap")
+                ax.plot(np.arange(len(references)), [r["lower_bound"] for r in references],
+                        linestyle="--", marker="o", color="0.5",
+                        label="Finite-sample lower bound\n(clipped at 0)")
+            ax.yaxis.set_major_formatter(PercentFormatter(1))
+        _paired_axis(ax, p)
+        ax.set_ylabel("Simultaneous coverage" if event else r"Mean half-width $\overline{w}_\delta$")
+    axes[0].legend()
+    if event is None:
+        axes[0].set_ylim(bottom=0)
+    else:
+        # Keep uncertainty intervals visible while retaining headroom above 100%.
+        axes[0].set_ylim(top=1.015)
+    description = ("All calibration contexts and every real action; 95% Wilson intervals."
+                   if event else "Mean over calibration contexts and the action window [-2,2].")
+    if finite_sample is not None and all(r["raw_lower_bound"] < 0 for r in finite_sample):
+        description += "\nThe theorem's untruncated lower bound is negative at every pair."
+    fig.supxlabel(f"{p['repetitions']:,} response repetitions per pair. " + description, fontsize=10)
+    return fig
+
+
+def _validate_paired_example(summary, snapshot, example):
+    p = summary["manifest"]
+    indices = np.asarray(example["context_indices"])
+    expected = _slice_indices(np.asarray(snapshot["X"])[:min(p["n_values"])])
+    if (not np.array_equal(indices, expected)
+            or not np.array_equal(example["X"], np.asarray(snapshot["X"])[indices])
+            or not np.array_equal(example["n_values"], p["n_values"])
+            or not np.array_equal(example["B_values"], p["B_values"])):
+        raise ValueError("Paired slices must retain the declared pairs and fixed smallest-prefix contexts.")
+    count = len(p["n_values"])
+    local_snapshot = {"X": example["X"]}
+    slices = []
+    for j in range(count):
+        local = {key: np.asarray(example[key])[j] for key in
+                 ("truth", "predictor", "auxiliary", "residual_truth", "residual_fit",
+                  "analytical_width", "bootstrap_width", "analytical_lower", "analytical_upper",
+                  "bootstrap_lower", "bootstrap_upper", "sigma_grid")}
+        local.update(X=example["X"], actions_grid=example["actions_grid"])
+        _validate_example(local_snapshot, local)
+        slices.append(local)
+    return slices
+
+
+def _paired_slices_figure(summary, example, slices, *, residual):
+    p = summary["manifest"]
+    count, k = len(slices), len(example["X"])
+    fig, axes = plt.subplots(count, k, figsize=(4.7*k, 3.2*count), sharex=True,
+                             sharey="col", squeeze=False, constrained_layout=True)
+    title = "Residual bands" if residual else "Transferred function envelopes"
+    fig.suptitle(title + rf": $\delta={p['baseline']['delta']:g}$, response repetition 0")
+    a = example["actions_grid"]
+    for j, (n, b, item) in enumerate(zip(p["n_values"], p["B_values"], slices)):
+        for c, index in enumerate(example["context_indices"]):
+            ax = axes[j, c]
+            for prefix, label, color in (("analytical", "OLS variance bound", "C0"),
+                                         ("bootstrap", "Wild bootstrap", "C1")):
+                if residual:
+                    lower = item["residual_fit"][c]-item[f"{prefix}_width"][c]
+                    upper = item["residual_fit"][c]+item[f"{prefix}_width"][c]
+                else:
+                    lower, upper = item[f"{prefix}_lower"][c], item[f"{prefix}_upper"][c]
+                ax.fill_between(a, lower, upper, color=color, alpha=.2, label=label)
+            if residual:
+                ax.plot(a, item["residual_truth"][c], color="C2", label=r"$g=f-\widehat f$")
+                ax.plot(a, item["residual_fit"][c], color="C3", linestyle="--", label=r"OLS fit $\widetilde g$")
+            else:
+                ax.plot(a, item["truth"][c], color="C2", label=r"Truth $f$")
+                ax.plot(a, item["predictor"][c], color="C3", linestyle="--", label=r"Predictor $\widehat f$")
+            norm = np.linalg.norm(example["X"][c])
+            ax.set_title(rf"$x_{{{index}}}$, $\|x\|={norm:.2f}$; $(n,B)=({n},{b})$")
+            ax.set_xlabel("Action $a$")
+            ax.set_ylabel("Mean residual" if residual else "Response")
+    axes[0, 0].legend()
+    return fig
+
+
+def _write_paired_reports(summary, snapshot, example, destination):
+    slices = _validate_paired_example(summary, snapshot, example)
+    destination = Path(destination)
+    destination.mkdir(parents=True, exist_ok=True)
+    paths = []
+    with plt.style.context("default"), plt.rc_context(_STYLE):
+        figures = [
+            ("01_residual_coverage_vs_pairs", _paired_metrics_figure(summary, "auxiliary")),
+            ("02_transferred_coverage_vs_pairs", _paired_metrics_figure(summary, "transferred")),
+            ("03_mean_width_vs_pairs", _paired_metrics_figure(summary)),
+            ("04_residual_bands_by_pair", _paired_slices_figure(summary, example, slices, residual=True)),
+            ("05_transferred_envelopes_by_pair", _paired_slices_figure(summary, example, slices, residual=False)),
+            ("06_heteroskedastic_noise", _noise_figure(summary, slices[0], np.arange(len(example["X"])))),
+        ]
+        for name, fig in figures:
+            path = destination / f"{name}.pdf"
+            try:
+                fig.savefig(path, format="pdf")
+            finally:
+                plt.close(fig)
+            paths.append(path)
+    return paths

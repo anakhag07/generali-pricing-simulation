@@ -1,0 +1,79 @@
+{
+  "kind": "wild_bootstrap_envelopes",
+  "name": "quadratic-residual-baseline",
+  "truth": {
+    "coefficients": [
+      0.0,
+      5.0,
+      -5.0
+    ]
+  },
+  "predictor": {
+    "coefficients": [
+      0.10142434006958467,
+      4.824476863339917,
+      -5.127996631955374
+    ],
+    "source": {
+      "path": "bootstrap-ols-pairs-controlled-sweep/datasets/dataset-001/draws.npz",
+      "key": "N100_sd1_B2000_beta_hat",
+      "sha256": "1a54a96b04a7ad78bf2e3a2becdea74d98b5bb87957821cc0cc95725d46d734f"
+    }
+  },
+  "design": {
+    "context_dim": 0,
+    "distribution": "independent_truncated_standard_normal",
+    "truncation_bound": 3.0,
+    "action_degree": 2
+  },
+  "target": {
+    "contexts": "calibration",
+    "actions": "real_line"
+  },
+  "noise": {
+    "type": "constant",
+    "sigma_max": 0.5
+  },
+  "bootstrap": {
+    "multipliers": "rademacher",
+    "residuals": "raw",
+    "quantile": "order_statistic"
+  },
+  "n_values": [
+    300
+  ],
+  "B_values": [
+    1999
+  ],
+  "deltas": [
+    0.05
+  ],
+  "baseline": {
+    "n": 300,
+    "B": 1999,
+    "delta": 0.05
+  },
+  "repetitions": 2000,
+  "repetitions_per_task": 50,
+  "diagnostics": {
+    "actions": {
+      "min": -2.0,
+      "max": 2.0,
+      "count": 101
+    }
+  },
+  "seeds": {
+    "contexts": 1101,
+    "actions": 1102,
+    "observations": 1103,
+    "method": 1104,
+    "profile": 1105
+  },
+  "launch": {
+    "mode": "local",
+    "array": "none",
+    "array_max_parallel": 8
+  },
+  "band_target": "residual",
+  "supremum_tolerance": 1e-08
+}

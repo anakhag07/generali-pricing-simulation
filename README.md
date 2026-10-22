@@ -135,6 +135,24 @@ For the same sweep with the moved observation's noise scale held fixed, use
 
 ### Fixed offline bootstrap and optimization regret
 
+For the standalone quadratic wild-bootstrap data-location illustration, run
+`python scratch/run_wild_data_location.py`. It compares normal logging means
+0.5 and 10 with variance 0.45, saves query-only Stein optimization traces under
+the sibling `results/wild-data-location-20261021-mean10/`, and writes three vector PDFs
+to the sibling thesis's `figures/10-21-update-mean10/`. The earlier mean-2.5 run
+remains in the corresponding directories without `-mean10`. Both destinations can be
+overridden with `--output-dir` and `--figure-dir`; see MATH.md §7.17 and the
+saved summaries for the full setup.
+
+The flat contextual follow-up is `python scratch/run_contextual_wild_data_location.py`
+(MATH.md §7.18). It adds three standard-normal covariates, uses action term
+`0.5a - 0.5a²`, calibrates a joint wild coefficient ellipsoid, and returns one
+repository Stein action per observed context. Outputs are in the sibling
+`results/wild-contextual-flat-20261021/`; the three vector PDFs are in the thesis's
+`figures/10-21-update-contextual-flat/`. Objective and action density share the
+horizontal axis with separate vertical scales. The current thesis note is
+`chapters/10-21-update.tex`. Both output destinations accept the same CLI overrides.
+
 ```bash
 PYTHONPATH=src python scripts/run_experiment_manifest.py manifests/offline_bootstrap.json --launch local
 ```

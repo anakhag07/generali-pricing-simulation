@@ -1478,6 +1478,111 @@ These describe Monte Carlo precision conditional on the frozen designs and
 profile; they are not the finite-sample band-coverage guarantee, nor uncertainty
 over newly drawn designs. No optimizer is used.
 
+### 7.17 Wild-bootstrap data-location illustration
+
+The standalone driver `scratch/run_wild_data_location.py` uses
+$f(a)=5a-5a^2$ on $\mathcal A=\mathbb R$. The two designs are
+$a_i=\mu+\sqrt{0.45}Z_i$, with $\mu\in\{0.5,10\}$, $n=300$, and
+$y_i=f(a_i)+\varepsilon_i$, where the independent $Z_i,\varepsilon_i$ are
+standard normal. Named streams derived from run seed 20261021 control design,
+noise, wild multipliers, and optimizer directions. Innovations and multipliers
+are paired across locations; each design is frozen after generation. This
+follow-up changes only the second mean from 2.5 to 10, retaining the earlier
+seed streams and optimizer settings. Its artifacts use the `-mean10` suffix;
+the earlier run remains available for comparison.
+
+With $p(a)=(1,a,a^2)^\top$, $P_{i,:}=p(a_i)^\top$, fit quadratic OLS
+$\widehat\beta$ by QR. For $B=1999$ independent Rademacher multiplier vectors,
+
+$$
+e=y-P\widehat\beta,\qquad
+y_b^*=P\widehat\beta+e\odot\xi_b,\qquad
+d_b=(P^\top P)^{-1}P^\top(e\odot\xi_b).
+$$
+
+Use raw residuals (no leverage adjustment), $V=(P^\top P)^{-1}$,
+$\ell(a)=\sqrt{p(a)^\top Vp(a)}$, and the all-real statistic
+$T_b=\sup_{a\in\mathbb R}|p(a)^\top d_b|/\ell(a)$.
+Section 7.2's polynomial certificate with scale 1 brackets each statistic
+to relative/absolute tolerance $10^{-8}$. The critical value is order statistic
+$k=\lceil B(1-0.05)\rceil$ of the certified upper bounds. This sorts bootstrap
+statistics only; it never selects an action. The frozen band is
+$\widehat f(a)\pm r(a)$, with $\widehat f(a)=p(a)^\top\widehat\beta$ and
+$r(a)=T_{(k)}\ell(a)$. It targets simultaneous conditional-mean coverage on
+the entire real line. Nominal 95% bootstrap coverage is approximate at this
+sample size; a realized exact containment check is not a sampling guarantee.
+The bootstrap error covariance between queries is
+$p(a)^\top V P^\top\operatorname{diag}(e_i^2)PVp(b)$.
+
+The repository Stein-difference solver queries $-(\widehat f-r)$ directly,
+with no interpolation, resampling, clipping, or action constraints. Starts are
+$-0.5,1.5,4$, Gaussian perturbation SD is 0.01, directions per estimate are 64,
+constant step size is 0.05, gradient stopping tolerance is $10^{-5}$, and the
+cap is 1000 updates. Only returned endpoints compete for the largest lower-bound
+value. Repository first-order optimization supplies the truth marker. Existing
+polynomial threshold checks certify the reported endpoints' all-real objective
+gaps against $10^{-6}$ without supplying replacement actions. Plot grids only
+render these continuous functions. The complete experiment and results are
+documented in the sibling thesis's `chapters/10-21-update.tex`.
+
+### 7.18 Flat contextual wild-bootstrap illustration
+
+`scratch/run_contextual_wild_data_location.py` uses $n=300$ fixed contexts
+$x_i\sim N(0,I_3)$, an independent context seed derived from run seed 20261021,
+and
+
+$$
+f(x,a)=x_1-0.5x_2+0.25x_3+0.5a-0.5a^2,\qquad
+\phi(x,a)=(1,x_1,x_2,x_3,a,a^2)^\top.
+$$
+
+Logging means remain 0.5 and 10, with action variance 0.45 and observation
+noise variance 1. The action innovations, observation errors, wild multipliers,
+and optimizer streams are retained from §7.17 and paired across settings.
+Contexts are also paired. Fit all six coefficients by QR, $P=QR$;
+raw-residual wild coefficient errors are
+$d_b=R^{-1}Q^\top(e\odot\xi_b)$ for the same $B=1999$ draws.
+
+The approved contextual calibration uses the coefficient statistic
+$T_b=\|R d_b\|_2$, rather than the scalar experiment's action supremum.
+Take order statistic $k=\lceil0.95B\rceil$ and set
+$r(x,a)=T_{(k)}\|R^{-\top}\phi(x,a)\|_2$.
+On $\|R(\widehat\beta-\beta_0)\|_2\le T_{(k)}$, Cauchy--Schwarz gives
+$|\widehat f(x,a)-f(x,a)|\le r(x,a)$ for every feature vector, hence jointly
+for every observed $x_i$ and every real $a$. This is a conservative joint band
+calibrated by the wild bootstrap, not an exact finite-sample 95% theorem.
+Its coefficient-ball bootstrap approximation has the same fixed-design
+moment/rank/leverage requirements. Exact per-context quartic nonnegativity
+checks additionally test the realized band on all real actions. The covariance
+of bootstrap errors at inputs $z,z'$ is
+$\phi(z)^\top V P^\top\operatorname{diag}(e_i^2)PV\phi(z')$, $V=(P^\top P)^{-1}$.
+The same saved coefficients and analytic radius formula answer every off-grid
+query; grids only render curves.
+
+There is one free action $\theta_i$ per observed context. The repository's
+Stein-difference solver optimizes their separable mean negative LCB in a single
+vectorized full-batch call, using its existing action-space estimator. The
+known policy Jacobian is the identity; model derivatives are unavailable.
+The solver step size is $n\times0.05$, which cancels the mean-gradient factor
+$1/n$ and retains a per-context ascent step of 0.05. Its gradient tolerance is
+$10^{-5}/\sqrt n$, corresponding to RMS action-gradient tolerance $10^{-5}$.
+All other settings match §7.17. Gaussian perturbations are shared across contexts
+by the existing action-space estimator and paired across settings. All actions
+are unrestricted. Three starts give three actual solver endpoints per context;
+each context selects the largest returned LCB value.
+
+For each context, collapsing its fixed features gives a quadratic fitted curve
+and positive quartic squared radius. Section 7.7's exact polynomial threshold
+test certifies every returned endpoint's objective gap against $10^{-6}$,
+without choosing an action. Thus if every selected endpoint is certified, the
+average personalized value is also within $10^{-6}$ of the separable global
+maximum. Repository first-order optimization supplies all true reference actions.
+Since context effects are additive, true reference actions coincide, while
+lower-bound actions may differ. Plots show context-averaged curves and mean
+actions; the plotted mean endpoint height is the mean *personalized* LCB value,
+which need not lie on the curve evaluated at the mean action. Density shares
+the horizontal action axis and uses a separate vertical axis.
+
 ## 8. Gradients and Estimators
 
 For a differentiable action objective and policy, the population chain rule is

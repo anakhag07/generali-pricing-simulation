@@ -1418,6 +1418,8 @@ exclude `tests/objective/test_jax_prepared_glm*`, `tests/optimization/test_jax_*
 #### `tests/scripts/`
 | Test File | Area |
 |---|---|
+| `test_wild_data_location.py` | `scratch/run_wild_data_location.py`: raw-residual wild refits, continuous value-only LCB queries, and all-real calibration certificates; current mean-10 outputs in shared `results/wild-data-location-20261021-mean10/` and sibling thesis `figures/10-21-update-mean10/`; earlier mean-2.5 artifacts omit the suffix |
+| `test_contextual_wild_data_location.py` | `scratch/run_contextual_wild_data_location.py`: six-coefficient wild refits, coefficient-ball simultaneous bounds, personalized continuous queries, and native u-space Stein mean-gradient scaling; outputs in shared `results/wild-contextual-flat-20261021/` and thesis `figures/10-21-update-contextual-flat/` |
 | `test_fixed_regression_noise_offset_grid_script.py` | Fixed-regression noise x theta-offset grid constants, warm `run_sweep` delegation, completion detection, metric reconstruction, and launch-plan sizing |
 | `test_noise_offset_grid_script.py` | Combined noise x theta-offset grid constants, variant naming round-trip, task specs, and axis-label definitions |
 | `test_planted_logistic_action_bias_sweep_script.py` | Planted-logistic action-bias sweep constants, row metrics, and CSV writing |

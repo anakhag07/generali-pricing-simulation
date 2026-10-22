@@ -1,9 +1,14 @@
 # Fixed offline pairs bootstrap and optimization regret
 
+This study is retired. Manifests and saved results are indexed in the
+[experiment archive](../scratch/retired_experiments/README.md); consult its
+recovery instructions before replay. Paths inside saved provenance remain
+unchanged.
+
 Run the manifest through the shared launcher:
 
 ```bash
-PYTHONPATH=src python scripts/run_experiment_manifest.py manifests/offline_bootstrap.json --launch local
+PYTHONPATH=src python scripts/run_experiment_manifest.py scratch/retired_experiments/bootstrap_ols/manifests/offline_bootstrap.json --launch local
 ```
 
 The experiment studies one saved offline dataset and one saved quadratic

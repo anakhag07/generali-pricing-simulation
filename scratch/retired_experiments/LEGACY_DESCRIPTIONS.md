@@ -463,4 +463,3 @@ Optimization step rules:
 separate from `ExperimentConfig.constant_u_baselines`, which only evaluates
 fixed-action reference points such as `(-0.3, 0.0, 0.2)` and shows them in
 `summary.json`, the console summary, and `plots/optimization/loss_curves.png`.
-

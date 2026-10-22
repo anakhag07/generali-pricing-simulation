@@ -52,6 +52,9 @@ The offline-bootstrap manifest specifically references datasets 000 and 001 in
 live beneath `scratch-results/`. Its saved snapshots also record absolute paths.
 Cartesian bootstrap reuses the joint and controlled studies; the kernel q/b
 sweeps reuse the N sweep. Recover those dependencies as a group if needed.
+The existing `scratch/plot_bootstrap_coverage_frontier.py` also reads the
+controlled sweep and verifies its original absolute source paths; use the same
+restoration procedure before that replay.
 
 For a new exploratory run based on an archived recipe, copy its configuration,
 resolve input paths against the archive, and choose a separate output location
@@ -71,3 +74,25 @@ move (Matplotlib encounters a NaN layout in `sigma_landmarks.png`). Archival doe
 not change that plotting implementation. Historical descriptions are retained
 in [LEGACY_DESCRIPTIONS.md](LEGACY_DESCRIPTIONS.md); the original files remain
 recoverable from base commit `b7faa26` as well.
+
+## Validation of this archival pass
+
+- Full suite in `simulation_env`: 1,259 passed, one existing failure in
+  `test_completed_manifest_outputs_produce_all_tables_and_plots` (the legacy
+  NaN-layout failure described above). No new tests or test exclusions were added.
+- All 18 archived manifests load and dispatch through the shared launcher
+  without running studies; all nine relocated Python modules import, and each
+  executable driver's `--help` works from its new path.
+- A local `main.main` demo passed with `fixed_regression_base`, 32 samples,
+  three steps, seed 7, and first-order, finite-difference, and Stein estimators.
+  Its artifacts are temporary; the full-data GPU demo was not launched.
+- Every archived manifest matches its original source hash. The two saved
+  offline-bootstrap inputs match their pinned SHA256 hashes after relocation.
+  All 45 active manifests and all tracked `src/` files are unchanged.
+- Source checks found no production imports of scratch; documentation links
+  resolve and `git diff --check` passes. No public API/docstrings changed, so
+  generated API documentation did not need regeneration.
+
+The shared roots now contain 90 active and 67 archived result directories.
+Detailed validation logs and before/after file-identity inventories for this
+session are in `/tmp/generali-retire-validation-20261022/`.

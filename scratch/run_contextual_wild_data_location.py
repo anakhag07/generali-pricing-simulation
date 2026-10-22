@@ -219,14 +219,14 @@ def plot_figures(output, figure_dir, bands, summary, contexts):
                         label="300 historical actions")
         ax.plot(grid, truth, color="C0", label="Mean true objective")
         ax.fill_between(grid, fitted-radius, fitted+radius, color="C1", alpha=.25,
-                        label="Mean nominal 95% band")
+                        label="Mean 95% envelope")
         ax.plot(grid, fitted, "--", color="C1", label=r"Mean fit $\widehat f$")
-        ax.plot(grid, fitted-radius, color="C2", label=r"Mean lower bound $\bar f_{0.05}$")
+        ax.plot(grid, fitted-radius, color="C3", label=r"Mean lower bound $\bar f_{0.05}$")
         ax.scatter([reference["mean_action"]], [reference["mean_value"]], marker="*", s=110,
-                   color="C3", zorder=5, label=r"Mean true optimum $\overline{a^\star}$")
+                   color="C3", zorder=5, label=rf"Mean true optimum $a^\star={reference['mean_action']:.1f}$")
         ax.scatter([result["mean_selected_action"]], [result["mean_personalized_lcb"]],
                    marker="X", s=70, color="C4", zorder=6,
-                   label=rf"Personalized mean $\overline{{\hat a}}={result['mean_selected_action']:.3f}$")
+                   label=rf"Optimizer-converged mean $\widetilde{{\hat a}}={result['mean_selected_action']:.3f}$")
         ax.set(xlabel="Action $a$", ylabel="Mean objective value",
                title=f"Setting {index-1}: historical action mean {result['mean']:g}")
         density_ax.set_ylabel("Action density")

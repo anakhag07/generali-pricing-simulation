@@ -1,0 +1,90 @@
+{
+  "kind": "wild_bootstrap_envelopes",
+  "name": "residual-leverage-fixed-noise-outlier-20",
+  "truth": {
+    "coefficients": [
+      0.0,
+      1.0,
+      -0.5,
+      0.25,
+      2.0
+    ]
+  },
+  "predictor": {
+    "coefficients": [
+      0.2,
+      0.8,
+      -0.4,
+      0.5,
+      1.7
+    ]
+  },
+  "design": {
+    "context_dim": 3,
+    "distribution": "independent_standard_normal",
+    "action_override": {
+      "index": 0,
+      "value": 20.0
+    }
+  },
+  "target": {
+    "contexts": "calibration",
+    "actions": "real_line"
+  },
+  "noise": {
+    "type": "bounded_fourier_gp_scale",
+    "sigma_min": 0.15,
+    "sigma_max": 1.0,
+    "amplitude": 2.0,
+    "rank": 16,
+    "lengthscale": 0.7,
+    "context_projection": [
+      0.7,
+      -0.4,
+      0.2
+    ],
+    "moved_observation_sigma": 0.6991976375961079
+  },
+  "bootstrap": {
+    "multipliers": "rademacher",
+    "residuals": "raw",
+    "quantile": "order_statistic"
+  },
+  "n_values": [
+    300
+  ],
+  "B_values": [
+    1999
+  ],
+  "deltas": [
+    0.05
+  ],
+  "baseline": {
+    "n": 300,
+    "B": 1999,
+    "delta": 0.05
+  },
+  "repetitions": 2000,
+  "repetitions_per_task": 50,
+  "diagnostics": {
+    "actions": {
+      "min": -2.0,
+      "max": 2.0,
+      "count": 101
+    }
+  },
+  "seeds": {
+    "contexts": 1101,
+    "actions": 1102,
+    "observations": 1103,
+    "method": 1104,
+    "profile": 1105
+  },
+  "launch": {
+    "mode": "slurm",
+    "array": "none",
+    "array_max_parallel": 1
+  },
+  "band_target": "residual",
+  "sweep_mode": "grid"
+}

@@ -170,6 +170,14 @@ independent, have mean zero, and have variances at most one. All reported
 coverage frequencies condition on that same environment. The study does not
 average coverage over newly drawn GP profiles or designs.
 
+For a controlled moved-point diagnostic, optional `noise.moved_observation_sigma`
+holds the observation SD of `design.action_override.index` at an explicit value.
+It must be positive and at most `sigma_max`. The override applies only to the
+saved observation-scale array, after evaluating the background profile. Fresh
+response innovations are still drawn each repetition. Background GP diagnostic
+grids retain their original meaning. See the
+[fixed-scale leverage study](residual_leverage_fixed_noise.md).
+
 ## Two widths from the same auxiliary fit
 
 For design matrix P with rows $\phi(x_i,a_i)^{\mathsf T}$, let

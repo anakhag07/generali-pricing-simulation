@@ -117,6 +117,13 @@ for execution and the combined coverage plot, including the extension to
 bounds 100, 1000, and unbounded normal.
 The `manifests/wild-bootstrap-outlier-*.json` follow-up fixes the [-3,3] sample
 and moves one observation to drive maximum leverage toward 1.
+The `manifests/residual-leverage-outlier-*.json` studies instead retain the full
+heteroskedastic contextual residual setup and move one action in its normal
+design. See [the residual leverage study](docs/residual_leverage.md) for the
+coverage, labeled data-distribution, context-averaged band, and radius reports.
+For the same sweep with the moved observation's noise scale held fixed, use
+`manifests/residual-leverage-fixed-noise-outlier-*.json`; see
+[the fixed-scale study](docs/residual_leverage_fixed_noise.md).
 
 ### Fixed offline bootstrap and optimization regret
 

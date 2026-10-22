@@ -397,6 +397,76 @@ def test_action_override_precedes_location_dependent_noise(manifest_path):
     assert snapshot["sigma"][0] != original["sigma"][0]
 
 
+@pytest.mark.parametrize("sigma", [0., -1., 1.01, float("inf"), float("nan"), True, "0.7"])
+def test_moved_observation_scale_rejects_invalid_or_unbounded_values(manifest_path, sigma):
+    payload = json.loads(manifest_path.read_text())
+    payload["design"]["action_override"] = {"index": 0, "value": 40.}
+    payload["noise"]["moved_observation_sigma"] = sigma
+    manifest_path.write_text(json.dumps(payload))
+    with pytest.raises(ValueError, match="moved_observation_sigma"):
+        study.load_manifest(manifest_path)
+
+
+def test_moved_observation_scale_requires_a_moved_row(manifest_path):
+    payload = json.loads(manifest_path.read_text())
+    payload["noise"]["moved_observation_sigma"] = .7
+    manifest_path.write_text(json.dumps(payload))
+    with pytest.raises(ValueError, match="requires design.action_override"):
+        study.load_manifest(manifest_path)
+
+
+def test_fixed_moved_scale_changes_only_noise_at_selected_row(manifest_path):
+    payload = study.load_manifest(manifest_path).payload
+    original, _, _ = study._environment(json.dumps(payload, sort_keys=True))
+    index = 2  # Check the configured row, rather than accidentally hard-coding row 0.
+    frozen_sigma = float(original["sigma"][index])
+    for location in (3., 40., 1000.):
+        payload["design"]["action_override"] = {"index": index, "value": location}
+        natural, natural_designs, _ = study._environment(json.dumps(payload, sort_keys=True))
+        fixed = json.loads(json.dumps(payload))
+        fixed["noise"]["moved_observation_sigma"] = frozen_sigma
+        manifest_path.write_text(json.dumps(fixed))
+        manifest = study.load_manifest(manifest_path)
+        snapshot, designs, _ = study._environment(json.dumps(manifest.payload, sort_keys=True))
+        for key in ("X", "actions", "gp_cos", "gp_sin", "actions_grid"):
+            np.testing.assert_array_equal(snapshot[key], natural[key])
+        np.testing.assert_array_equal(snapshot["sigma"], original["sigma"])
+        assert snapshot["sigma"][index] != natural["sigma"][index]
+        for design, natural_design in zip(designs, natural_designs):
+            np.testing.assert_array_equal(design.leverage, natural_design.leverage)
+        np.testing.assert_array_equal(study.noise_scale(
+            snapshot["X"], snapshot["actions"], fixed["noise"], snapshot["gp_cos"], snapshot["gp_sin"]),
+            natural["sigma"])
+
+
+def test_fixed_moved_scale_pairs_locations_but_draws_fresh_repetitions(manifest_path, tmp_path):
+    payload = study.load_manifest(manifest_path).payload
+    payload["noise"]["moved_observation_sigma"] = .7
+    saved = {}
+    for location in (3., 1000.):
+        payload["name"] = f"fixed-noise-{int(location)}"
+        payload["design"]["action_override"] = {"index": 0, "value": location}
+        manifest_path.write_text(json.dumps(payload))
+        manifest = study.load_manifest(manifest_path)
+        snapshot, designs, _ = study._environment(json.dumps(manifest.payload, sort_keys=True))
+        for repetition in (0, 1):
+            record = study.run_repetition(manifest, repetition, tmp_path / "runs")
+            with np.load(record["arrays"]["path"]) as arrays:
+                eps = snapshot["sigma"] * arrays["innovations"]
+                for ni, (n, design) in enumerate(zip(payload["n_values"], designs)):
+                    y = design.design @ payload["truth"]["coefficients"] + eps[:n]
+                    fitted = design.fit(y-design.design @ payload["predictor"]["coefficients"])
+                    np.testing.assert_allclose(arrays["beta"][ni], fitted, rtol=0, atol=1e-12)
+                saved[location, repetition] = (eps.copy(), record)
+    for repetition in (0, 1):
+        left, right = saved[3., repetition], saved[1000., repetition]
+        np.testing.assert_array_equal(left[0], right[0])
+        assert left[1]["seeds"] == right[1]["seeds"]
+        assert left[1]["multiplier_sha256"] == right[1]["multiplier_sha256"]
+    assert not np.array_equal(saved[3., 0][0], saved[3., 1][0])
+    assert saved[3., 0][0][0] != saved[3., 1][0][0]
+
+
 def test_moved_observation_preserves_response_and_multiplier_pairing(manifest_path, tmp_path):
     records, saved = [], []
     for location in (3., 1000.):

@@ -20,20 +20,23 @@ _METHODS = (("analytical", "Analytical", "C0"),
             ("wild_bootstrap", "Wild bootstrap", "C1"))
 
 
-def write_leverage_report(summary_paths, destination) -> Path:
-    """Compare fixed-n truncation or single-outlier studies with pointwise coverage intervals."""
+def write_leverage_report(summary_paths, destination, *, diagnostics=False) -> Path:
+    """Compare fixed-n leverage studies, optionally replaying moved-point bands and radii."""
+    summary_paths = list(map(Path, summary_paths))
     destination = Path(destination)
     destination.mkdir(parents=True, exist_ok=True)
     rows, inputs, signatures, conditions, axes = [], [], [], [], []
-    for path in map(Path, summary_paths):
+    for path in summary_paths:
         summary = json.loads(path.read_text())
         p = summary["manifest"]
-        if p["design"]["distribution"] != "independent_truncated_standard_normal":
-            raise ValueError("Leverage report requires truncated-normal studies.")
+        if (p["design"]["distribution"] != "independent_truncated_standard_normal"
+                and not (p["design"]["distribution"] == "independent_standard_normal"
+                         and "action_override" in p["design"])):
+            raise ValueError("Leverage report requires truncated-normal or normal moved-point studies.")
         signature = json.loads(json.dumps(p))
         signature.pop("name")
         signature["band_target"] = summary.get("band_target", p.get("band_target", "function"))
-        bound = p["design"]["truncation_bound"]
+        bound = p["design"].get("truncation_bound")
         if "action_override" in signature["design"]:
             axis = "outlier_action"
             condition = signature["design"]["action_override"].pop("value")
@@ -86,7 +89,8 @@ def write_leverage_report(summary_paths, destination) -> Path:
                         fmt="o", capsize=3, label=label)
         ax.axhline(1-rows[0]["delta"], color="0.5", linestyle="--", label="Nominal coverage")
         ax.set_xlabel(r"Maximum observed leverage $h_n$")
-        ax.set_ylabel("Simultaneous auxiliary coverage")
+        residual = signatures[0]["band_target"] == "residual"
+        ax.set_ylabel("Simultaneous residual-band coverage" if residual else "Simultaneous auxiliary coverage")
         ax.set_title("Wild-bootstrap coverage versus maximum leverage")
         ax.yaxis.set_major_formatter(PercentFormatter(1))
         ax.legend()
@@ -99,14 +103,196 @@ def write_leverage_report(summary_paths, destination) -> Path:
         "inputs": inputs, "source": file_record(Path(__file__)),
         "outputs": [file_record(output), file_record(csv)],
         "intervals": "Pointwise 95% Wilson intervals across independent response/bootstrap repetitions.",
-        "coverage_event": "Auxiliary band contains truth simultaneously for every real action.",
+        "coverage_event": "Auxiliary band contains its target jointly at every calibration context and every real action.",
         "interpretation": "Fixed designs; maximum leverage does not determine coverage uniquely.",
         "sweep_axis": axis,
         "coincident_points": [[item[axis] for item in group]
                                for group in groups.values()],
         "coincidence_tolerance": "Displayed coordinates and interval endpoints agree to 12 decimal places.",
     }, indent=2) + "\n")
+    if diagnostics:
+        _write_moved_diagnostics(summary_paths, destination)
     return output
+
+
+def _verified_arrays(project, record, inputs):
+    path = project / Path(record["path"]).name
+    actual = file_record(path)
+    if any(actual[key] != record[key] for key in ("sha256", "bytes")):
+        raise ValueError(f"Saved artifact changed: {path}")
+    inputs.append(actual)
+    with np.load(path, allow_pickle=False) as saved:
+        return dict(saved)
+
+
+def _moved_examples(summary_paths):
+    items, inputs = [], []
+    for path in summary_paths:
+        summary = json.loads(path.read_text())
+        p, project = summary["manifest"], path.parent
+        if p.get("band_target") != "residual" or "action_override" not in p["design"]:
+            raise ValueError("Moved-point diagnostics require saved residual studies.")
+        inputs.append(file_record(path))
+        metadata = []
+        for record, relative in ((summary["environment"], "environment.json"),
+                                 (summary["repetitions"][0], "repetitions/rep-00000.json")):
+            source = project / relative
+            actual = file_record(source)
+            if any(actual[key] != record[key] for key in ("sha256", "bytes")):
+                raise ValueError(f"Saved artifact changed: {source}")
+            inputs.append(actual)
+            metadata.append(json.loads(source.read_text()))
+        environment, repetition = metadata
+        if (environment["contract"]["manifest"] != p or repetition["index"] != 0
+                or any(m["contract_sha256"] != summary["contract_sha256"] for m in metadata)):
+            raise ValueError("Saved environment and repetition disagree with summary.")
+        snapshot = _verified_arrays(project, environment["arrays"], inputs)
+        first = _verified_arrays(project / "repetitions", repetition["arrays"], inputs)
+        example = _verified_arrays(project, summary["example"], inputs)
+        _validate_example(snapshot, example)
+        design = WildLinearDesign(snapshot["X"], snapshot["actions"])
+        row = next(r for r in summary["metrics"] if r["method"] == "wild_bootstrap")
+        if not np.isclose(np.max(design.leverage), row["max_leverage"], atol=1e-12, rtol=0):
+            raise ValueError("Saved maximum leverage disagrees with design.")
+        moved = p["design"]["action_override"]["index"]
+        items.append(dict(p=p, snapshot=snapshot, example=example, first=first,
+                          repetition=repetition, moved=moved, leverage=design.leverage,
+                          action=float(snapshot["actions"][moved])))
+    items.sort(key=lambda item: item["action"])
+    base = items[0]
+    for item in items[1:]:
+        mask = np.arange(len(item["snapshot"]["actions"])) != item["moved"]
+        for key in ("X", "gp_cos", "gp_sin", "actions_grid"):
+            if not np.array_equal(base["snapshot"][key], item["snapshot"][key]):
+                raise ValueError(f"Moved-point studies must share {key}.")
+        for key in ("actions", "sigma"):
+            if not np.array_equal(base["snapshot"][key][mask], item["snapshot"][key][mask]):
+                raise ValueError(f"Moved-point studies must share bulk {key}.")
+        if (base["repetition"]["seeds"] != item["repetition"]["seeds"]
+                or base["repetition"]["multiplier_sha256"] != item["repetition"]["multiplier_sha256"]
+                or not np.array_equal(base["first"]["innovations"], item["first"]["innovations"])):
+            raise ValueError("Moved-point studies must share innovations and multipliers.")
+    return items, inputs
+
+
+def _mean_bands(example):
+    keys = ("truth", "predictor", "residual_truth", "residual_fit")
+    means = {key: example[key].mean(axis=0) for key in keys}
+    for method in ("analytical", "bootstrap"):
+        means[f"{method}_width"] = example[f"{method}_width"].mean(axis=0)
+        for side, sign in (("lower", -1), ("upper", 1)):
+            means[f"{method}_residual_{side}"] = (
+                example["residual_fit"] + sign * example[f"{method}_width"]).mean(axis=0)
+            means[f"{method}_transferred_{side}"] = example[f"{method}_{side}"].mean(axis=0)
+            means[f"{method}_radius_{side}"] = example[f"{method}_radius_{side}"].mean(axis=0)
+    return means
+
+
+def _moved_distribution(items):
+    from scipy.stats import norm, truncnorm
+
+    fig, axes = plt.subplots(len(items), 1, figsize=(10, 2.5*len(items)),
+                              sharex=True, sharey=True, squeeze=False, constrained_layout=True)
+    fig.suptitle("Fixed normal bulk and one moved observation")
+    bulk = np.delete(items[0]["snapshot"]["actions"], items[0]["moved"])
+    a = np.linspace(min(-4., float(bulk.min())), max(4., float(bulk.max())), 401)
+    bound = items[0]["p"]["design"].get("truncation_bound")
+    density = norm.pdf(a) if bound is None else truncnorm.pdf(a, -bound, bound)
+    for ax, item in zip(axes[:, 0], items):
+        ax.hist(bulk, bins=20, density=True, alpha=.3, label=f"Fixed bulk: {len(bulk)} observations")
+        ax.plot(a, density, label="Parent normal: mean 0, SD 1" if bound is None
+                else f"Standard normal truncated to ±{bound:g}")
+        ax.scatter([item["action"]], [0.], color="C2", zorder=3, clip_on=False)
+        h = item["leverage"][item["moved"]]
+        # Explicitly requested label above the moved dot; no figure-level text layout.
+        ax.annotate(rf"$h_{{{item['moved']}}}={h:.5f}$", (item["action"], 0), xytext=(0, 7),
+                    textcoords="offset points", ha="center", va="bottom", fontsize=10)
+        ax.set_xscale("symlog", linthresh=4)
+        ax.set_xlim(min(-4., float(bulk.min())-1), max(i["action"] for i in items)*3)
+        ax.set_title(rf"$n={len(bulk)+1}$, moved $a={item['action']:g}$; maximum $h_n={max(item['leverage']):.5f}$")
+        ax.set_xlabel(r"Action $a$ (symlog; linear for $|a|\leq4$)")
+        ax.set_ylabel("Bulk density")
+    axes[0, 0].legend()
+    return fig
+
+
+def _moved_band_figure(items, means, *, radii=False):
+    fig, axes = plt.subplots(len(items), 2, figsize=(12, 3.2*len(items)),
+                            sharex=True, sharey="col", squeeze=False, constrained_layout=True)
+    delta = items[0]["p"]["baseline"]["delta"]
+    n, b = (items[0]["p"]["baseline"][key] for key in ("n", "B"))
+    title = "Context-averaged radii" if radii else "Context-averaged bands"
+    fig.suptitle(title + "\n" + rf"$n={n}$, $B={b}$, $\delta={delta:g}$; response repetition 0")
+    for row_axes, item, mean in zip(axes, items, means):
+        a = item["example"]["actions_grid"]
+        for col, ax in enumerate(row_axes):
+            for method, label, color in (("analytical", "OLS variance bound", "C0"),
+                                         ("bootstrap", "Wild bootstrap", "C1")):
+                if radii:
+                    if col == 0:
+                        ax.plot(a, mean[f"{method}_width"], color=color, label=label)
+                    else:
+                        for side, style in (("lower", "-"), ("upper", "--")):
+                            ax.plot(a, mean[f"{method}_radius_{side}"], color=color,
+                                    linestyle=style, label=f"{label}: {side}")
+                else:
+                    target = "residual" if col == 0 else "transferred"
+                    ax.fill_between(a, mean[f"{method}_{target}_lower"],
+                                    mean[f"{method}_{target}_upper"], color=color, alpha=.2, label=label)
+            if not radii:
+                lines = (("residual_truth", r"Mean residual $\overline{g}$"),
+                         ("residual_fit", r"Mean OLS fit $\overline{\widetilde g}$")) if col == 0 else (
+                         ("truth", r"Mean truth $\overline{f}$"), ("predictor", r"Mean predictor $\overline{\widehat f}$"))
+                for (key, label), color, style in zip(lines, ("C2", "C3"), ("-", "--")):
+                    ax.plot(a, mean[key], color=color, linestyle=style, label=label)
+            target = (("Residual half-width", "Transferred radii") if radii else
+                      ("Residual band", "Transferred envelope"))[col]
+            ax.set_title(rf"{target}; moved $a={item['action']:g}$, $h_n={max(item['leverage']):.4f}$")
+            ax.set_xlabel("Action $a$")
+            ax.set_ylabel("Context-averaged radius" if radii else
+                          ("Context-averaged residual" if col == 0 else "Context-averaged response"))
+    for ax in axes[0]:
+        ax.legend()
+    return fig
+
+
+def _write_moved_diagnostics(summary_paths, destination):
+    items, inputs = _moved_examples(summary_paths)
+    means = [_mean_bands(item["example"]) for item in items]
+    outputs = []
+    with plt.style.context("default"), plt.rc_context(_STYLE):
+        for stem, draw in (("data_distribution", lambda: _moved_distribution(items)),
+                           ("context_averaged_bands", lambda: _moved_band_figure(items, means)),
+                           ("context_averaged_radii", lambda: _moved_band_figure(items, means, radii=True))):
+            output = destination / f"{stem}.pdf"
+            fig = draw()
+            try:
+                fig.savefig(output, format="pdf")
+            finally:
+                plt.close(fig)
+            outputs.append(file_record(output))
+    curves = [{"moved_action": item["action"], "action": float(a),
+               **{key: float(value[k]) for key, value in mean.items()}}
+              for item, mean in zip(items, means)
+              for k, a in enumerate(item["example"]["actions_grid"])]
+    design_rows = [{"moved_action": item["action"], "row": k, "is_moved": k == item["moved"],
+                    "action": float(a), "leverage": float(item["leverage"][k]),
+                    "sigma": float(item["snapshot"]["sigma"][k]),
+                    **{f"x{j+1}": float(x) for j, x in enumerate(item["snapshot"]["X"][k])}}
+                   for item in items for k, a in enumerate(item["snapshot"]["actions"])]
+    for stem, rows in (("context_averaged_curves", curves), ("design_points", design_rows)):
+        output = destination / f"{stem}.csv"
+        write_rows_csv(output, rows, list(rows[0]))
+        outputs.append(file_record(output))
+    (destination / "diagnostics_provenance.json").write_text(json.dumps({
+        "inputs": inputs, "outputs": outputs, "source": file_record(__file__),
+        "geometry_source": file_record(Path(__file__).with_name("wild.py")),
+        "response_repetition": 0,
+        "context_average": "Equal weights on the same calibration contexts; transfer before averaging.",
+        "display_domain": "Saved diagnostic window only; coverage covers all real actions.",
+        "leverage": "Full contextual hat-matrix diagonal; moved-row and maximum leverage are distinct.",
+        "replay": "Saved examples and critical values; no new fits, draws, or optimizer actions.",
+    }, indent=2) + "\n")
 
 
 def _rows(summary, sweep, delta, method):

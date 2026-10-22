@@ -187,6 +187,10 @@ When modifying or adding code that implements a mathematical formula:
 
 ## Source of Truth
 
+The 2026-10-22 merge-first cleanup inventory is in
+`docs/local_work_cleanup_20261022.md`. It records the consolidated branches,
+unfinished t3 sweep, and Generali artifacts to retain during later archival.
+
 When behavior and documentation disagree, use this priority:
 
 1. Current implementation in the relevant source module

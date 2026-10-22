@@ -7,8 +7,8 @@ import pytest
 
 from experiments.configs import get_config
 from experiments.manifest import load_experiment_manifest
-from scripts import analyze_zeroth_order_envelopes as script
-from scripts.zeroth_order_landscape import (
+from scratch.retired_experiments.zeroth_order import analyze_zeroth_order_envelopes as script
+from scratch.retired_experiments.zeroth_order.zeroth_order_landscape import (
     finite_difference_population_gradient,
     find_stationary_points,
     global_minimum,
@@ -17,7 +17,7 @@ from scripts.zeroth_order_landscape import (
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-MANIFEST_PATH = REPO_ROOT / "manifests" / "zeroth_order_envelopes.json"
+MANIFEST_PATH = REPO_ROOT / "scratch/retired_experiments/zeroth_order/manifests/zeroth_order_envelopes.json"
 
 
 def test_population_gradient_helpers_match_quadratic_identity() -> None:

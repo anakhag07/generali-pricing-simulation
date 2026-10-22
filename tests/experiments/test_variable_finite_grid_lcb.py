@@ -211,7 +211,7 @@ def test_manifest_validation_resolves_seed_range_and_rejects_invalid_inputs() ->
 
 
 def test_committed_manifest_matches_the_characterization_cube() -> None:
-    path = Path(__file__).parents[2] / "manifests" / "variable_lcb_envelope_characterization.json"
+    path = Path(__file__).parents[2] / "scratch/retired_experiments/policy_lcb/manifests/variable_lcb_envelope_characterization.json"
     with path.open(encoding="utf-8") as handle:
         manifest = parse_variable_finite_grid_lcb_manifest(json.load(handle), source_path=path)
 

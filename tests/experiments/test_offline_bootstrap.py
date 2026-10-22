@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def _manifest(tmp_path):
-    payload = json.loads((ROOT / "manifests/offline_bootstrap.json").read_text())
+    payload = json.loads((ROOT / "scratch/retired_experiments/bootstrap_ols/manifests/offline_bootstrap.json").read_text())
     x = np.array([-1.2, -.9, -.6, -.3, 0., .3, .6, .9, 1.2, 1.4, -1.05, .45])
     errors = np.array([.3, -.1, .2, -.4, .5, -.2, .15, -.25, .35, -.05, .45, -.3])
     y = features(x) @ np.array([0., 5., -5.]) + errors

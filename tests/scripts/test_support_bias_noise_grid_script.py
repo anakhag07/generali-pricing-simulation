@@ -12,7 +12,7 @@ from objective.objectives import (
     PlantedLogisticObjective,
     UpperSupportHingeBias,
 )
-from scripts import run_support_bias_noise_grid as script
+from scratch.retired_experiments.noise_and_bias import run_support_bias_noise_grid as script
 
 
 def test_objective_layers_noise_on_support_bias() -> None:

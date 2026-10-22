@@ -9,7 +9,7 @@ from experiments import coverage_kernel_sweep as source
 from experiments import coverage_kernel_parameter_sweep as sweep
 
 
-MANIFESTS = Path(__file__).parents[2]/"manifests"
+MANIFESTS = Path(__file__).parents[2]/"scratch/retired_experiments/coverage_kernel/manifests"
 
 
 @pytest.fixture(scope="module")

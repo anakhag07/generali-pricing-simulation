@@ -78,7 +78,7 @@ def test_replay_manifest_outputs_exact_certificates_and_mathematical_pdfs(tmp_pa
     from experiments.bootstrap_band_continuous import load_manifest, run_replay_case, source_cases, collect
 
     root = Path(__file__).resolve().parents[2]
-    payload = json.loads((root / "manifests/bootstrap_ols_grid_band.json").read_text())
+    payload = json.loads((root / "scratch/retired_experiments/bootstrap_ols/manifests/bootstrap_ols_grid_band.json").read_text())
     payload["stage2"] = {"sample_sizes": [100], "noise_stds": [.5, 1, 2], "datasets": 2}
     payload["bootstrap"]["draws"] = 9
     payload["grid"]["count"] = 11
@@ -88,7 +88,7 @@ def test_replay_manifest_outputs_exact_certificates_and_mathematical_pdfs(tmp_pa
     for index in range(len(source_spec.cases())):
         run_case(source_spec, index, runs_root=tmp_path, force=False)
     collect_outputs(source_spec, runs_root=tmp_path)
-    replay = load_manifest(root / "manifests/bootstrap_ols_continuous_replay.json")
+    replay = load_manifest(root / "scratch/retired_experiments/bootstrap_ols/manifests/bootstrap_ols_continuous_replay.json")
     for source in source_cases(replay, tmp_path):
         run_replay_case(replay, source, tmp_path, False)
     collect(replay, tmp_path)

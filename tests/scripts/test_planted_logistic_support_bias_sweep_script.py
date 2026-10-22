@@ -7,7 +7,7 @@ import pytest
 
 from experiments.configs import get_config
 from objective.objectives import BiasedObjective, UpperSupportHingeBias
-from scripts import run_planted_logistic_support_bias_sweep as script
+from scratch.retired_experiments.noise_and_bias import run_planted_logistic_support_bias_sweep as script
 
 
 def _args(**overrides: object) -> SimpleNamespace:

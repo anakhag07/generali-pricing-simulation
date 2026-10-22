@@ -85,7 +85,7 @@ def test_rejects_unidentified_or_zero_variance_fits(x, y):
 
 
 def test_manifest_runner_replay_and_pdf_collection(tmp_path):
-    payload = json.loads((ROOT / "manifests/bootstrap_ols_grid_band.json").read_text())
+    payload = json.loads((ROOT / "scratch/retired_experiments/bootstrap_ols/manifests/bootstrap_ols_grid_band.json").read_text())
     payload["stage1"] = {"n": 20, "noise_std": 1.0}
     payload["stage2"] = {"sample_sizes": [10, 20], "noise_stds": [1.0], "datasets": 3}
     payload["bootstrap"]["draws"] = 19
@@ -127,7 +127,7 @@ def test_shared_cli_dispatch(monkeypatch, tmp_path):
     from scripts import run_experiment_manifest as cli
     captured = []
     monkeypatch.setattr(cli, "run_launch_plan", lambda plan, **kwargs: captured.append(plan))
-    cli.main([str(ROOT / "manifests/bootstrap_ols_grid_band.json"), "--launch", "local", "--runs-root", str(tmp_path)])
+    cli.main([str(ROOT / "scratch/retired_experiments/bootstrap_ols/manifests/bootstrap_ols_grid_band.json"), "--launch", "local", "--runs-root", str(tmp_path)])
     assert captured[0].task_count == 10
     assert captured[0].default_launch == "local"
 
@@ -137,7 +137,7 @@ def test_shared_cli_dispatch(monkeypatch, tmp_path):
     ("grid", "upper", 2), ("stage2", "noise_stds", [-1]),
 ])
 def test_manifest_rejects_invalid_inputs(tmp_path, section, key, value):
-    payload = json.loads((ROOT / "manifests/bootstrap_ols_grid_band.json").read_text())
+    payload = json.loads((ROOT / "scratch/retired_experiments/bootstrap_ols/manifests/bootstrap_ols_grid_band.json").read_text())
     payload[section][key] = value
     path = tmp_path / "bad.json"
     path.write_text(json.dumps(payload))

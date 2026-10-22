@@ -193,7 +193,7 @@ def test_manifest_validation_and_committed_full_cube() -> None:
     with pytest.raises(ValueError, match="real-line extension"):
         parse_continuous_gp_variable_lcb_manifest(invalid)
 
-    path = Path(__file__).parents[2] / "manifests" / "continuous_gp_variable_lcb.json"
+    path = Path(__file__).parents[2] / "scratch/retired_experiments/policy_lcb/manifests/continuous_gp_variable_lcb.json"
     committed = load_continuous_gp_variable_lcb_manifest(path)
     assert committed.spec.gp.rank == 32
     assert committed.spec.gp.lengthscale == 0.2

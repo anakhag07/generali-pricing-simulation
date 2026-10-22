@@ -16,11 +16,11 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def payload():
-    return json.loads((ROOT/"manifests/bootstrap_ols_controlled_sweep.json").read_text())
+    return json.loads((ROOT/"scratch/retired_experiments/bootstrap_ols/manifests/bootstrap_ols_controlled_sweep.json").read_text())
 
 
 def dense_n_payload():
-    return json.loads((ROOT/"manifests/bootstrap_ols_dense_n_sweep.json").read_text())
+    return json.loads((ROOT/"scratch/retired_experiments/bootstrap_ols/manifests/bootstrap_ols_dense_n_sweep.json").read_text())
 
 
 def test_lcb_gradient_matches_finite_difference():
@@ -229,7 +229,7 @@ def test_manifest_rejects_empty_axes_and_invalid_fixed_baseline(tmp_path):
 
 def test_shared_launcher_has_one_cpu_task_per_dataset(tmp_path):
     from experiments.bootstrap_band_sweep import build_launch_plan
-    manifest = load_manifest(ROOT/"manifests/bootstrap_ols_controlled_sweep.json")
+    manifest = load_manifest(ROOT/"scratch/retired_experiments/bootstrap_ols/manifests/bootstrap_ols_controlled_sweep.json")
     plan = build_launch_plan(manifest, runs_root=tmp_path)
     assert plan.task_count == 100
     assert plan.default_array

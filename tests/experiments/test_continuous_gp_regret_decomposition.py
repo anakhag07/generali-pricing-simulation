@@ -52,7 +52,7 @@ def _uncertainty() -> SmoothClippedUncertaintySpec:
 
 
 def _payload() -> dict[str, object]:
-    path = Path(__file__).parents[2] / "manifests" / "continuous_gp_regret_decomposition.json"
+    path = Path(__file__).parents[2] / "scratch/retired_experiments/policy_lcb/manifests/continuous_gp_regret_decomposition.json"
     payload = json.loads(path.read_text())
     payload["name"] = "decomposition-test"
     payload["gp"]["rank"] = 4  # type: ignore[index]
@@ -179,7 +179,7 @@ def test_manifest_grid_is_deduplicated_and_committed_contract_is_locked() -> Non
         "shape_robustness",
     }
     committed = load_continuous_gp_decomposition_manifest(
-        Path(__file__).parents[2] / "manifests" / "continuous_gp_regret_decomposition.json"
+        Path(__file__).parents[2] / "scratch/retired_experiments/policy_lcb/manifests/continuous_gp_regret_decomposition.json"
     )
     assert committed.spec.run_seeds == tuple(range(101, 301))
     assert committed.spec.diagnostic_run_seeds == (179, 116, 225)
@@ -193,7 +193,7 @@ def test_manifest_grid_is_deduplicated_and_committed_contract_is_locked() -> Non
 def test_seed_mapping_reuses_original_fourier_paths() -> None:
     decomposition = parse_continuous_gp_decomposition_manifest(_payload())
     old = load_continuous_gp_variable_lcb_manifest(
-        Path(__file__).parents[2] / "manifests" / "continuous_gp_variable_lcb.json"
+        Path(__file__).parents[2] / "scratch/retired_experiments/policy_lcb/manifests/continuous_gp_variable_lcb.json"
     )
     assert continuous_gp_decomposition_seed(decomposition.spec, 101) == continuous_gp_seed_for_run(
         old.spec, 101

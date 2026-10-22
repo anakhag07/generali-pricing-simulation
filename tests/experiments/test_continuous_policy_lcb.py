@@ -275,8 +275,7 @@ def test_manifest_parser_validates_continuous_contract(tmp_path: Path) -> None:
 def test_committed_manifest_matches_the_documented_seed_and_optimizer_contract() -> None:
     manifest_path = (
         Path(__file__).parents[2]
-        / "manifests"
-        / "continuous_policy_lcb_validation.json"
+        / "scratch/retired_experiments/policy_lcb/manifests/continuous_policy_lcb_validation.json"
     )
     manifest = load_continuous_policy_lcb_manifest(manifest_path)
 

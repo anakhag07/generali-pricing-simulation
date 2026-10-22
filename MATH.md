@@ -143,7 +143,7 @@ $$
 Identity uses $\varphi(x)=x$. For total degree $D$,
 
 $$
-\mathcal{A}_D=\{\alpha\in\mathbb{N}_{0}^{d}:1\leq|\alpha|_1\leq D\},
+\mathcal{A}_D=\lbrace \alpha\in\mathbb{N}_{0}^{d}:1\leq|\alpha|_1\leq D\rbrace,
 \qquad \varphi_D(x)=[x^{\alpha}:\alpha\in\mathcal{A}_D],
 $$
 
@@ -265,14 +265,14 @@ $[\mu,\mu\kappa]$.
 The smoothed nonconvex rung is
 
 $$
-f(w)=\frac{1}{2}\|w-w^{\star}\|^{2}
--a_0e^{-\|w-w^{\star}\|^{2}/(2s_0^{2})}
--\sum_j a_j\psi\!\left(\frac{\|w-c_j\|^{2}}{\rho_j^{2}}\right),
+f(w)=\frac{1}{2}\Vert w-w^{\star}\Vert ^{2}
+-a_0e^{-\Vert w-w^{\star}\Vert ^{2}/(2s_0^{2})}
+-\sum_j a_j\psi\!\left(\frac{\Vert w-c_j\Vert ^{2}}{\rho_j^{2}}\right),
 $$
 
 where $\psi(s)=e^{1-1/(1-s)}$ for $0\leq s<1$ and zero otherwise. Disjoint
 supports, positive clearance from $w^{\star}$, and
-$a_j<\frac{1}{2}(\|c_j-w^{\star}\|-\rho_j)^{2}$ preserve the unique global minimum.
+$a_j<\frac{1}{2}(\Vert c_j-w^{\star}\Vert -\rho_j)^{2}$ preserve the unique global minimum.
 Piecewise convex and double-well rungs remain explicit structural stubs.
 
 The proof-validation objective is
@@ -449,7 +449,7 @@ full column rank and $n>3$,
 
 $$
 \widehat\beta=(P^\top P)^{-1}P^\top y,\qquad
-\widehat\sigma^2=\frac{\|y-P\widehat\beta\|^2}{n-3},\qquad
+\widehat\sigma^2=\frac{\Vert y-P\widehat\beta\Vert ^2}{n-3},\qquad
 \widehat s(a)=\widehat\sigma\sqrt{p(a)^\top(P^\top P)^{-1}p(a)}.
 $$
 
@@ -458,9 +458,9 @@ each pairs-bootstrap replicate samples $n$ row indices independently and
 uniformly with replacement. Both the input and response use the same indices:
 
 $$
-I_{bi}\sim\mathrm{Uniform}\{1,\ldots,n\},\qquad
-P^*_{b,i,:}=P_{I_{bi},:},\qquad y^*_{b,i}=y_{I_{bi}},\qquad
-\widehat\beta_b^*=(P_b^{*\top}P_b^*)^{-1}P_b^{*\top}y_b^*.
+I_{bi}\sim\mathrm{Uniform}\lbrace 1,\ldots,n\rbrace,\qquad
+P^{\star}_{b,i,:}=P_{I_{bi},:},\qquad y^{\star}_{b,i}=y_{I_{bi}},\qquad
+\widehat\beta_b^{\star}=(P_b^{*\top}P_b^{\star})^{-1}P_b^{*\top}y_b^{\star}.
 $$
 
 Refits use numerical least squares without normal equations. Rank-deficient
@@ -576,8 +576,8 @@ For each design, first fit and resample its actual responses at noise scale one.
 With $V=(P^\top P)^{-1}$, define standardized pairs-refit perturbations
 
 $$
-d_b=\frac{\widehat\beta_b^*-\widehat\beta}{\widehat\sigma},\qquad
-T_b^*=\sup_{a\in\mathbb R}
+d_b=\frac{\widehat\beta_b^{\star}-\widehat\beta}{\widehat\sigma},\qquad
+T_b^{\star}=\sup_{a\in\mathbb{R}}
 \frac{|p(a)^\top d_b|}{\sqrt{p(a)^\top Vp(a)}}.
 $$
 
@@ -586,7 +586,7 @@ of the fitted model. Calibration receives only observed inputs, responses and
 row indices. Section 7.2 certifies its all-real suprema and containment.
 For full-rank resamples of the correctly specified quadratic model and paired
 positive noise scales, OLS equivariance gives
-$\widehat\beta_{b,\sigma}^*=\widehat\beta_\sigma+\widehat\sigma_\sigma d_b$.
+$\widehat\beta_{b,\sigma}^{\star}=\widehat\beta_\sigma+\widehat\sigma_\sigma d_b$.
 Thus $e_\sigma=\sigma e_1$ and $r_{\delta,\sigma}=\sigma r_{\delta,1}$ (up to
 rounding), allowing cached standardized refits/certificates across sigma.
 Coverage indicators are identical across paired sigma settings.
@@ -597,7 +597,7 @@ Under iid sampling, finite moments, a nonsingular population design and a
 continuous limiting supremum distribution, as both $N,B\to\infty$,
 
 $$
-\Pr\{ |\widehat f(a)-f(a)|\le r_\delta(a)\ \forall a\in\mathbb R\}
+\Pr\lbrace  |\widehat f(a)-f(a)|\leq r_\delta(a)\ \forall a\in\mathbb{R}\rbrace
 \longrightarrow 1-\delta.
 $$
 
@@ -657,7 +657,7 @@ coverage, not an exact finite-sample confidence theorem.
 
 The dense sample-size follow-up uses the same definitions with
 $\sigma=1$, $B=2000$, and
-$N\in\{20,25,30,50,75,100,150,200,300,500,750,1000,1500,2000,3000,5000\}$.
+$N\in\lbrace 20,25,30,50,75,100,150,200,300,500,750,1000,1500,2000,3000,5000\rbrace$.
 For each dataset index, all conditions use prefixes of the same length-5000
 training-action and observation-error streams, while each design receives 2000
 pairs-bootstrap refits. It therefore isolates the effect of training sample size and
@@ -687,7 +687,7 @@ r_N(a)=\frac{q_{1-\alpha/2}\widehat\sigma}{\sqrt{C_N(a)}},\qquad
 $$
 
 where $\alpha=0.05$, $q_{0.975}=\Phi^{-1}(0.975)$, and
-$\widehat\sigma^2=\|y-P\widehat\beta\|^2/(N-3)$. Log-sum-exp is only a
+$\widehat\sigma^2=\Vert y-P\widehat\beta\Vert ^2/(N-3)$. Log-sum-exp is only a
 numerically stable evaluation of this same finite Gaussian sum. The repository
 first-order optimizer minimizes $-\widehat f_{\mathrm{LCB},N}$ without action
 bounds; starts are initializations, not a finite candidate grid. Both the
@@ -700,10 +700,10 @@ certificate, it is not exact-arithmetic proof. Uncertified results are labeled.
 The two-sided simultaneous coverage event for each dataset is
 
 $$
-C_r=\mathbf1\left\{
+C_r=\mathbf{1}\left\lbrace
   [p(a)^\top(\widehat\beta-\beta_0)]^2C_N(a)
-  \le q_{0.975}^2\widehat\sigma^2\quad\forall a\in\mathbb R
-\right\}.
+  \leq q_{0.975}^2\widehat\sigma^2\quad\forall a\in\mathbb{R}
+\right\rbrace.
 $$
 
 An adaptive interval upper bound checks the complete finite line; an
@@ -776,13 +776,13 @@ Source: `scratch/plot_bootstrap_coverage_frontier.py`.
 
 The dedicated experiment applies the unchanged construction of §7.3 to
 explicit pairs $(N_j,B_j)$, with both coordinates increasing. The default path
-has $N_j=B_j\in\{20,50,100,200,500,1000,2000,3000,5000\}$, $\sigma=1$,
+has $N_j=B_j\in\lbrace 20,50,100,200,500,1000,2000,3000,5000\rbrace$, $\sigma=1$,
 $\delta=0.05$, and $R=2000$ independent outer datasets. It reports only
 
 $$
 \widehat C_j=\frac{1}{R}\sum_{r=1}^R
-\mathbf{1}\{ |\widehat f_{r,N_j}(a)-f(a)|\leq
-\widehat c_{r,N_j,B_j}\widehat s_{r,N_j}(a)\quad\forall a\in\mathbb R\}.
+\mathbf{1}\lbrace  |\widehat f_{r,N_j}(a)-f(a)|\leq
+\widehat c_{r,N_j,B_j}\widehat s_{r,N_j}(a)\quad\forall a\in\mathbb{R}\rbrace.
 $$
 
 Each bootstrap quantile uses the same certified upper endpoints and `higher`
@@ -823,7 +823,9 @@ variants. The three axes vary separately around one baseline. Historical results
 are preserved. The predictor is fixed across every condition.
 
 Preparation alone may use synthetic truth to derive paired response snapshots:
-$$y_i^{(\sigma,h)}=p(a_i)^\top\beta_0+\sigma h(a_i)z_i,$$
+$$
+y_i^{(\sigma,h)}=p(a_i)^\top\beta_0+\sigma h(a_i)z_i,
+$$
 where actions and standardized errors are replayed from the archive. For a
 baseline archive at sigma0, z_i=(y_i-p(a_i)'beta0)/sigma0. The homoskedastic profile
 is h=1. The heteroskedastic profile is h(a)=exp(eta G(a))/C, with the exact
@@ -850,11 +852,15 @@ and noise profiles. No fresh observation noise is added by bootstrap resampling.
 
 The original auxiliary fit supplies beta_tilde, V=(P'P)^(-1), and the fixed
 weight s(a)=sigma_hat sqrt(p(a)'V p(a)). Bootstrap calibration uses
-$$T_b^*=\sup_{a\in\mathbb R}|p(a)^\top(\widetilde\beta_b^*-\widetilde\beta)|/s(a),
-\quad w(a)=c s(a),\quad r(a)=|\widehat f(a)-\widetilde f(a)|+w(a).$$
+$$
+T_b^{\star}=\sup_{a\in\mathbb{R}}|p(a)^\top(\widetilde\beta_b^{\star}-\widetilde\beta)|/s(a),
+\quad w(a)=c s(a),\quad r(a)=|\widehat f(a)-\widetilde f(a)|+w(a).
+$$
 Under heteroskedasticity s is a positive weighting function, not a consistent
 heteroskedastic standard error. The exact sampling covariance benchmark is
-$$V_{\rm oracle}=(P^\top P)^{-1}P^\top\operatorname{diag}(\sigma^2h(a_i)^2)P(P^\top P)^{-1}.$$
+$$
+V_{\rm oracle}=(P^\top P)^{-1}P^\top\mathrm{diag}(\sigma^2h(a_i)^2)P(P^\top P)^{-1}.
+$$
 It is used only after calibration for diagnostics, never to set the radius.
 
 The empirical higher quantile is available. The default conservative quantile
@@ -869,8 +875,10 @@ or numerical value for that unproved error term is reported.
 All functions and containment certificates cover R, including both tails;
 plots on [0,1] are visualization only. Let b1=beta_tilde and
 b2=2 beta_hat-beta_tilde, and q(a)=c^2 s(a)^2. Then
-$$L(a)=\min\{p(a)'b_1,p(a)'b_2\}-\sqrt{q(a)},\qquad
-U(a)=\max\{p(a)'b_1,p(a)'b_2\}+\sqrt{q(a)}.$$
+$$
+L(a)=\min\lbrace p(a)'b_1,p(a)'b_2\rbrace-\sqrt{q(a)},\qquad
+U(a)=\max\lbrace p(a)'b_1,p(a)'b_2\rbrace+\sqrt{q(a)}.
+$$
 L>t is equivalent to the four strict polynomial inequalities
 p'b_j-t>0 and (p'b_j-t)^2-q>0, j=1,2. Exact rational sign cells therefore verify
 global LCB levels without selecting actions. Substituting t=f(a), and similarly
@@ -884,9 +892,13 @@ or direct optimizer substitutes select a reported action. The bootstrap
 supremum brackets use tolerance 1e-8. The LCB has an absolute-value kink;
 unsuccessful or uncertified solves retain status/attempts rather than masquerade
 as certified optima. On simultaneous coverage, for any comparator a,
-$$f(a)-f(a_{\rm LCB})\le 2r(a)+\epsilon_{\rm LCB}.$$
+$$
+f(a)-f(a_{\rm LCB})\leq 2r(a)+\epsilon_{\rm LCB}.
+$$
 For an approximate repository truth reference a_ref with gap epsilon_ref,
-$$R_{\rm LCB}\le 2r(a_{\rm ref})+\epsilon_{\rm LCB}+\epsilon_{\rm ref}.$$
+$$
+R_{\rm LCB}\leq 2r(a_{\rm ref})+\epsilon_{\rm LCB}+\epsilon_{\rm ref}.
+$$
 Reported regret is bracketed by the value difference to a_ref and that difference
 plus epsilon_ref. The plug-in bound is r(a_ref)+r(a_plugin)+epsilon_plugin
 +epsilon_ref. These certificates are conditional on containment; a failed
@@ -903,7 +915,9 @@ Sources: `src/experiments/offline_bootstrap.py`,
 The `uncertainty_envelopes` manifest separates truth, a frozen predictor,
 envelope construction, containment checking, and probability evaluation.
 For any nonnegative finite radius, the common diagnostics are
-$$b(x,a)=|\widehat f(x,a)-f(x,a)|,\qquad s(x,a)=r(x,a)-b(x,a).$$
+$$
+b(x,a)=|\widehat f(x,a)-f(x,a)|,\qquad s(x,a)=r(x,a)-b(x,a).
+$$
 Signed excess s is never clipped. Means and quantiles use explicitly saved
 finite diagnostic locations and weights, not an implicit uniform law on R.
 Finite diagnostic locations do not determine the continuous coverage domain.
@@ -914,13 +928,17 @@ design Z, errors have zero means, zero cross-covariances, and variances at
 most the known sigma_bound squared. The truth equals phi'beta0 on the target.
 QR solves produce the auxiliary OLS fit beta_tilde; no residual variance is
 substituted for the known variance bound. The construction is
-$$w(x,a)^2=\sigma_{bound}^2(p/\delta)\phi(x,a)'Q^{-1}\phi(x,a),
-\qquad r(x,a)=|\widehat f(x,a)-\widetilde f(x,a)|+w(x,a).$$
+$$
+w(x,a)^2=\sigma_{bound}^2(p/\delta)\phi(x,a)'Q^{-1}\phi(x,a),
+\qquad r(x,a)=|\widehat f(x,a)-\widetilde f(x,a)|+w(x,a).
+$$
 With e=beta_tilde-beta0, E[e'Qe|Z]<=p sigma_bound^2. Markov and
 Cauchy--Schwarz imply simultaneous auxiliary containment with probability
 at least 1-delta, hence transferred-envelope containment. This is a lower
 bound, not an exact probability. On auxiliary containment,
-$$0\le r-|\widehat f-f|\le 2w.$$
+$$
+0\leq r-|\widehat f-f|\leq 2w.
+$$
 At logged rows, sum_i phi_i'Q^{-1}phi_i=p, providing a normalization check.
 Context dimension enters p and leverage, without an additional union bound.
 
@@ -930,8 +948,10 @@ The explicit square-root-p factor does not describe all dimension dependence:
 leverage is typically of order p/n, giving auxiliary width of order
 p/sqrt(n). Thus fixed n and n proportional to p have different scaling.
 On the logged design rows the exact identity is
-$$\sqrt{\frac1n\sum_i w_\delta(X_i,A_i)^2}
-  =\frac{\sigma p}{\sqrt{n\delta}}.$$
+$$
+\sqrt{\frac{1}{n}\sum_i w_\delta(X_i,A_i)^2}
+  =\frac{\sigma p}{\sqrt{n\delta}}.
+$$
 This RMS identity is a numerical check, not an equality for arithmetic mean
 width on the context-by-action plotting grid. That mean is computed directly
 using the repository's fitted envelope. The total radius also contains the
@@ -960,15 +980,21 @@ Truth-based verification of that event is separate from the writeup's
 distributional lower bound of 1-delta for its data-dependent construction.
 
 For the paired coverage display, decompose the additive contextual truth as
-$$f(x,a)=g(x)+h(a),\qquad
-g(x)=\beta_0+\beta_x'x,\qquad h(a)=\beta_a a.$$
+$$
+f(x,a)=g(x)+h(a),\qquad
+g(x)=\beta_0+\beta_x'x,\qquad h(a)=\beta_a a.
+$$
 At every saved diagnostic action, subtract the known synthetic context term
 g(x_i) from each context's saved truth, predictor, and envelope endpoints.
 The adjusted intervals and their intersection across all target contexts are
-$$I_i(a)=[\widehat f(x_i,a)-g(x_i)-r(x_i,a),\,
-          \widehat f(x_i,a)-g(x_i)+r(x_i,a)],$$
-$$L(a)=\max_i\{\widehat f(x_i,a)-g(x_i)-r(x_i,a)\},\qquad
-  U(a)=\min_i\{\widehat f(x_i,a)-g(x_i)+r(x_i,a)\}.$$
+$$
+I_i(a)=[\widehat f(x_i,a)-g(x_i)-r(x_i,a),\,
+          \widehat f(x_i,a)-g(x_i)+r(x_i,a)],
+$$
+$$
+L(a)=\max_i\lbrace \widehat f(x_i,a)-g(x_i)-r(x_i,a)\rbrace,\qquad
+  U(a)=\min_i\lbrace \widehat f(x_i,a)-g(x_i)+r(x_i,a)\rbrace.
+$$
 The common interval is empty when L(a)>U(a). Otherwise the common true response
 h(a) lies inside [L(a),U(a)] if and only if every context's original envelope
 covers its truth at that action. Taking endpoint maxima/minima here is set
@@ -976,7 +1002,9 @@ intersection across contexts, not action optimization or radius selection.
 The shaded intersection is not an individual context's radius or envelope,
 and its width must not be interpreted as twice a representative radius.
 The mean adjusted frozen predictor
-$$\overline m(a)=\frac1n\sum_{i=1}^n[\widehat f(x_i,a)-g(x_i)]$$
+$$
+\overline{m}(a)=\frac{1}{n}\sum_{i=1}^n[\widehat f(x_i,a)-g(x_i)]
+$$
 provides orientation only; neither coverage nor the intersection endpoints are
 defined relative to that mean. The g adjustment uses truth only in evaluation,
 never in fitting or construction. In the supplied example g(x)=x_1-0.5x_2+0.25x_3
@@ -987,10 +1015,14 @@ intersection; continuum guarantees still come from the separate certificates.
 
 The paired `02_radius_excess.pdf` uses that same context collapse. For the
 nonempty common interval, its midpoint and half-width are
-$$M(a)=(L(a)+U(a))/2,\qquad H(a)=(U(a)-L(a))/2.$$
+$$
+M(a)=(L(a)+U(a))/2,\qquad H(a)=(U(a)-L(a))/2.
+$$
 The collapsed signed excess is
-$$S(a)=\min\{h(a)-L(a),\ U(a)-h(a)\}
-      =\min_i\{r(x_i,a)-|\widehat f(x_i,a)-f(x_i,a)|\}.$$
+$$
+S(a)=\min\lbrace h(a)-L(a),\ U(a)-h(a)\rbrace
+      =\min_i\lbrace r(x_i,a)-|\widehat f(x_i,a)-f(x_i,a)|\rbrace.
+$$
 For nonempty intervals, S=H-|M-h|; for empty intervals the endpoint-margin
 formula still gives negative S, while H is masked rather than shown as a
 negative radius. Zero S includes boundary coverage. Thus S>=0 exactly when
@@ -1001,8 +1033,10 @@ margin reductions aggregate contexts only and do not select an action optimum.
 
 The optional `04_simple_comparison.pdf` uses the original saved pointwise
 diagnostics directly, without context adjustment or interval intersection:
-$$C(a)=\min_{1\le i\le n}s(x_i,a),\qquad
-  \overline r(a)=\frac1n\sum_{i=1}^n r(x_i,a).$$
+$$
+C(a)=\min_{1\leq i\leq n}s(x_i,a),\qquad
+  \overline{r}(a)=\frac{1}{n}\sum_{i=1}^n r(x_i,a).
+$$
 Here C equals S above, but its definition does not require an additive truth.
 C>=0 means all saved contexts are covered at that diagnostic action; negative
 C means at least one is missed. The mean radius uses equal context weights
@@ -1040,8 +1074,10 @@ band is an intersection and its half-width is not mean(r).
 The analytical width uses global joint-design leverage, not inverse local
 histogram density. Write B=[1,X], b=(1,x')', gamma=(B'B)^(-1)B'a_logged,
 and S=||a_logged-B gamma||^2. Block inversion of Q gives
-$$phi(x,a)'Q^{-1}phi(x,a)
- = b'(B'B)^{-1}b + (a-b'gamma)^2/S.$$
+$$
+phi(x,a)'Q^{-1}phi(x,a)
+ = b'(B'B)^{-1}b + (a-b'gamma)^2/S.
+$$
 This explains wider uncertainty away from the design's fitted action trend;
 the histogram alone cannot determine leverage. Display averages replay saved
 width/discrepancy/radius arrays without new observations, model fits, or PCA.
@@ -1050,9 +1086,11 @@ The reusable per-experiment diagnostic reports replay the original coordinates
 without subtracting context effects or intersecting intervals. For repetition
 j and target context x_i, define simultaneous action coverage on the declared
 coverage domain A by
-$$c_{ji}=\mathbf{1}\{\forall a\in A:\;
- |\widehat f_j(x_i,a)-f(x_i,a)|\le r_{\delta,j}(x_i,a)\},\qquad
- \overline c=\frac{1}{Jn}\sum_{j=1}^{J}\sum_{i=1}^{n}c_{ji}.$$
+$$
+c_{ji}=\mathbf{1}\lbrace \forall a\in A:\;
+ |\widehat f_j(x_i,a)-f(x_i,a)|\leq r_{\delta,j}(x_i,a)\rbrace,\qquad
+ \overline{c}=\frac{1}{Jn}\sum_{j=1}^{J}\sum_{i=1}^{n}c_{ji}.
+$$
 The coverage bar uses saved containment certificates, or all declared locations
 for a finite target, rather than checking only the diagnostic action window.
 Unknown, failed, and missing evaluations remain in the requested denominator;
@@ -1065,18 +1103,22 @@ fixed-design sampling contract and is distinct from an analytical lower bound.
 By default, mean and slice curves use one saved successful repetition (the first,
 or an explicit repetition index). For that repetition, arithmetic context means
 at each saved diagnostic action are
-$$\overline f(a)=\frac1n\sum_i f(x_i,a),\qquad
- \overline{\widehat f}(a)=\frac1n\sum_i\widehat f(x_i,a),\qquad
- \overline r_\delta(a)=\frac1n\sum_i r_\delta(x_i,a).$$
-The mean envelope is $[\overline{\widehat f}-\overline r_\delta,
-\overline{\widehat f}+\overline r_\delta]$. Its containment of $\overline f$
+$$
+\overline{f}(a)=\frac{1}{n}\sum_i f(x_i,a),\qquad
+ \overline{\widehat f}(a)=\frac{1}{n}\sum_i\widehat f(x_i,a),\qquad
+ \overline{r}_\delta(a)=\frac{1}{n}\sum_i r_\delta(x_i,a).
+$$
+The mean envelope is $[\overline{\widehat f}-\overline{r}_\delta,
+\overline{\widehat f}+\overline{r}_\delta]$. Its containment of $\overline{f}$
 does not imply containment at every context. These means use equal context
 weights, not the flattened context/action diagnostic weights and not averages
 across response repetitions. Where native transfer components are saved,
-$$\overline D(a)=\frac1n\sum_i
+$$
+\overline{D}(a)=\frac{1}{n}\sum_i
  |\widehat f(x_i,a)-\widetilde f(x_i,a)|,\qquad
- \overline w_\delta(a)=\frac1n\sum_i w_\delta(x_i,a),\qquad
- \overline r_\delta(a)=\overline D(a)+\overline w_\delta(a).$$
+ \overline{w}_\delta(a)=\frac{1}{n}\sum_i w_\delta(x_i,a),\qquad
+ \overline{r}_\delta(a)=\overline{D}(a)+\overline{w}_\delta(a).
+$$
 The absolute discrepancy is averaged before summing with the auxiliary width;
 it is not the absolute difference of the mean fitted functions. A directly
 specified constant radius c has no native auxiliary fit or such decomposition.
@@ -1087,20 +1129,24 @@ and calibration data; it consumes no randomness and fits no additional model.
 
 With `average_repetitions=True`, complete repeated-response studies instead use
 equal averages across every requested realization, retaining the fixed design:
-$$\overline r_\delta(a)=\frac{1}{Mn}\sum_{j=1}^{M}\sum_{i=1}^{n}r_{\delta,j}(x_i,a).$$
+$$
+\overline{r}_\delta(a)=\frac{1}{Mn}\sum_{j=1}^{M}\sum_{i=1}^{n}r_{\delta,j}(x_i,a).
+$$
 The absolute discrepancy is evaluated within each realization before averaging;
 it is not reconstructed from the mean auxiliary prediction. Slice bands also
 average their radii across all M realizations at the same selected context.
 The paired mean minimum-margin curve is
-$$\overline m(a)=\frac1M\sum_{j=1}^{M}\min_i\{r_{\delta,j}(x_i,a)
--|\widehat f(x_i,a)-f(x_i,a)|\}.$$
+$$
+\overline{m}(a)=\frac{1}{M}\sum_{j=1}^{M}\min_i\lbrace r_{\delta,j}(x_i,a)
+-|\widehat f(x_i,a)-f(x_i,a)|\rbrace.
+$$
 Its positive value does not certify coverage. Joint empirical coverage remains
 the average of the saved whole-domain containment indicators, not a containment
 test of the averaged bands. Missing, failed, or unknown repetitions suppress
 the repeated comparison instead of being dropped.
 
 Context slices select the lowest, lower-median, and highest ranks of
-$\|x_i\|_2$ with stable ties resolved by the original row index. The zero-based
+$\Vert x_i\Vert_2$ with stable ties resolved by the original row index. The zero-based
 median rank is $\lfloor(n-1)/2\rfloor$; duplicate selected indices are removed
 for small n. For standard-normal contexts, this is a centrality display, not a
 claim that radius or coverage difficulty is monotone in the norm. Each slice
@@ -1122,14 +1168,18 @@ equal-weight mean widths, never calibration or containment.
 
 The independently seeded environment is one exact finite-rank Gaussian
 process on t=a+c'x:
-$$G(t)=m^{-1/2}\sum_{k=1}^m[A_k\cos(\omega_k t)+B_k\sin(\omega_k t)],
-\quad A_k,B_k\stackrel{iid}{\sim}N(0,1),$$
+$$
+G(t)=m^{-1/2}\sum_{k=1}^m[A_k\cos(\omega_k t)+B_k\sin(\omega_k t)],
+\quad A_k,B_k\overset{iid}{\sim}N(0,1),
+$$
 with deterministic frequencies from `FiniteFourierGPSpec`. Its covariance is
 $m^{-1}\sum_k\cos(\omega_k(t-s))$; it is not an interpolated squared-exponential
 GP. At every real query use this same Fourier formula and
-$$\sigma(x,a)=\sigma_{\min}+(\sigma_{\max}-\sigma_{\min})
-\operatorname{expit}(\eta G(a+c'x)),\qquad
-Y_i=\phi_i'\beta_0+\sigma(x_i,a_i)z_i,\quad z_i\stackrel{iid}{\sim}N(0,1).$$
+$$
+\sigma(x,a)=\sigma_{\min}+(\sigma_{\max}-\sigma_{\min})
+\mathrm{expit}(\eta G(a+c'x)),\qquad
+Y_i=\phi_i'\beta_0+\sigma(x_i,a_i)z_i,\quad z_i\overset{iid}{\sim}N(0,1).
+$$
 Condition on the entire saved design and GP profile. Responses are independent
 under that conditioning, with zero-mean errors and variances bounded globally
 by sigma_max squared. The known cap does not come from a sampled grid maximum.
@@ -1139,7 +1189,9 @@ multipliers, and all delta values and methods share the same fitted data.
 
 An optional `noise.moved_observation_sigma=s_j` overrides only the observation
 SD of row j=`design.action_override.index`. For moved action A,
-$$Y_j(A)=\phi(x_j,A)'\beta_0+s_j z_j,\qquad 0<s_j\le\sigma_{\max}.$$
+$$
+Y_j(A)=\phi(x_j,A)'\beta_0+s_j z_j,\qquad 0<s_j\leq\sigma_{\max}.
+$$
 Every other row retains its GP-based scale. The same z vector is paired across
 locations, with fresh independent vectors across response repetitions. This is
 a row-level observation override, not a change to the continuous GP profile or
@@ -1150,9 +1202,11 @@ For new runs, set R=Y-fhat at the logged rows and target g=f-fhat.
 Let Q=P'P, V=Q^{-1}, beta_tilde=Q^{-1}P'R, e_tilde=R-P beta_tilde, and
 ell_P(x,a)=sqrt(phi'V phi). Section 1.3 uses raw residuals (no HC2/HC3
 adjustment) and independent Rademacher multipliers:
-$$\beta_b^*-\widetilde\beta=Q^{-1}P'(\widetilde\epsilon\odot\xi_b),
-\qquad T_b^*=\sup_{i,a\in\mathbb R}
-\frac{|\phi(x_i,a)'(\beta_b^*-\widetilde\beta)|}{\ell_P(x_i,a)}.$$
+$$
+\beta_b^{\star}-\widetilde\beta=Q^{-1}P'(\widetilde\epsilon\odot\xi_b),
+\qquad T_b^{\star}=\sup_{i,a\in\mathbb{R}}
+\frac{|\phi(x_i,a)'(\beta_b^{\star}-\widetilde\beta)|}{\ell_P(x_i,a)}.
+$$
 Take order statistic ceil(B*(1-delta)) of the first B statistics, with no
 additional Monte Carlo inflation (the historical NumPy higher rule differs
 for some B and delta). The width is q_hat ell_P; the analytical
@@ -1165,7 +1219,9 @@ fit and symmetric transfer; they cannot be resumed under the new source contract
 
 The all-real statistic is the norm of coefficient projections: with
 H_i=[(1,x_i',0)',e_a], M_i=H_i' V H_i and h_i=H_i'e,
-$$T(e)^2=\max_i h_i'M_i^{-1}h_i.$$
+$$
+T(e)^2=\max_i h_i'M_i^{-1}h_i.
+$$
 Equivalently its threshold event is that q^2 M_i-h_i h_i' is positive
 semidefinite for every i. This includes both action tails; no sampled action
 grid defines the statistic. These are coefficient-norm/containment calculations,
@@ -1191,11 +1247,15 @@ Sources: `src/experiments/envelopes/wild.py`,
 ### 7.10 Truncated-normal leverage and wild-bootstrap coverage
 
 The fixed-n leverage diagnostic specializes section 7.9 to no contexts,
-$$\phi(a)=(1,a)^\mathsf T,\quad f(a)=1+a,\quad
-\widehat f(a)=1.2+0.8a,\quad Y_i=f(a_i)+0.5Z_i,$$
+$$
+\phi(a)=(1,a)^\mathsf{T},\quad f(a)=1+a,\quad
+\widehat f(a)=1.2+0.8a,\quad Y_i=f(a_i)+0.5Z_i,
+$$
 where the $Z_i$ are independent standard normal observation errors. For each
-bound $c\in\{0.5,1,3,10\}$, generate $n=300$ logged actions by
-$$a_i^{(c)}=F_{[-c,c]}^{-1}(U_i),\qquad U_i\stackrel{\mathrm{iid}}\sim U(0,1),$$
+bound $c\in\lbrace 0.5,1,3,10\rbrace$, generate $n=300$ logged actions by
+$$
+a_i^{(c)}=F_{[-c,c]}^{-1}(U_i),\qquad U_i\overset{\mathrm{iid}}{\sim} U(0,1),
+$$
 where $F_{[-c,c]}$ is the standard-normal CDF conditioned on $[-c,c]$.
 The actions seed supplies one shared vector of uniforms across bounds. Freeze
 each design; reuse observation innovations and independent Rademacher draws
@@ -1203,7 +1263,7 @@ across bounds, with independent seeds for each outer repetition. No centering
 or standardization is applied. Context and profile seeds are unused in this
 special case, retained only for compatibility with the existing seed schema.
 
-The wide-bound extension uses $c\in\{0.5,1,10,100,1000,\infty\}$.
+The wide-bound extension uses $c\in\lbrace 0.5,1,10,100,1000,\infty\rbrace$.
 An explicit JSON `null` bound represents $c=\infty$, with
 $F_{[-\infty,\infty]}^{-1}=\Phi^{-1}$. It uses the same uniforms and seed
 streams as finite bounds. Normal location and scale remain 0 and 1;
@@ -1212,15 +1272,19 @@ Existing finite-bound artifacts may be replayed with their original provenance.
 The original standard-normal RNG path is unchanged for other studies.
 
 With $S_{aa}=\sum_i(a_i-\bar a)^2$, observed leverage is
-$$h_i=1/n+(a_i-\bar a)^2/S_{aa},\qquad h_n=\max_i h_i.$$
+$$
+h_i=1/n+(a_i-\bar a)^2/S_{aa},\qquad h_n=\max_i h_i.
+$$
 Each response dataset contributes one simultaneous auxiliary coverage event
-$$\mathbf1\{T(\widetilde\beta-\beta^\star)\le\widehat q_{0.95}\},$$
+$$
+\mathbf{1}\lbrace T(\widetilde\beta-\beta^\star)\leq\widehat q_{0.95}\rbrace,
+$$
 using the existing all-real-action statistic and raw-residual bootstrap.
 For $B=1999$, NumPy's higher empirical quantile at 0.95 selects order
 statistic 1900, equal to $\lceil B(1-\delta)\rceil$ for $\delta=0.05$.
 The diagnostic uses 2000 response/bootstrap repetitions per fixed design and
 pointwise 95% Wilson intervals for each coverage frequency. Coverage concerns
-all $a\in\mathbb R$, not a plotting grid; exact affine functions define all
+all $a\in\mathbb{R}$, not a plotting grid; exact affine functions define all
 off-grid queries. Numerical coefficient statistics retain section 7.9's
 floating-point limitations. There is no stochastic objective surface,
 downstream optimization, or reported optimizer action in this diagnostic.
@@ -1235,7 +1299,9 @@ sources of variation. The target action domain remains the same across bounds.
 
 Use the same 300 inverse-CDF draws from $N(0,1)$ conditioned on [-3,3]
 and replace the preselected row 0 action with
-$$t\in\{3,10,20,40,100,1000\}.$$
+$$
+t\in\lbrace 3,10,20,40,100,1000\rbrace.
+$$
 All other 299 actions stay exactly fixed. This is a deterministic design
 modification, so it introduces no new random process or seed stream. The
 truth, frozen predictor, independent constant-variance Gaussian observation
@@ -1248,18 +1314,22 @@ row, not a response contamination or model misspecification.
 Let $m=n-1$, let $\mu$ be the fixed bulk mean, and let
 $S=\sum_{i\ne0}(a_i-\mu)^2>0$ be its centered sum of squares. Define
 $u=t-\mu$. The full design's centered sum of squares and moved-row leverage are
-$$S_{aa}=S+\frac{m}{n}u^2,\qquad
-h_0(t)=\frac1n+\frac{(m/n)^2u^2}{S+(m/n)u^2}.$$
+$$
+S_{aa}=S+\frac{m}{n}u^2,\qquad
+h_0(t)=\frac{1}{n}+\frac{(m/n)^2u^2}{S+(m/n)u^2}.
+$$
 Therefore $h_0(t)\to1$ as $|t|\to\infty$. All observed leverages are diagonal
-entries of the orthogonal projection $H=X(X^\mathsf TX)^{-1}X^\mathsf T$,
-so $0\le h_i\le1$ and $h_n=\max_i h_i\le1$. Values 2 or 10 are impossible
+entries of the orthogonal projection $H=X(X^\mathsf{T}X)^{-1}X^\mathsf{T}$,
+so $0\leq h_i\leq1$ and $h_n=\max_i h_i\leq1$. Values 2 or 10 are impossible
 for the document's definition. The observed maximum is computed over all rows;
 the moved row is not assumed to be the largest before checking.
 
 The primary diagnostic remains simultaneous auxiliary-band coverage against
 the actual $h_n$, with pointwise 95% Wilson intervals. The full transferred
 envelope coverage is retained separately. Under constant noise variance,
-$$\mathbb E[\widetilde\varepsilon_i^2\mid X]=\sigma^2(1-h_i),$$
+$$
+\mathbb{E}[\widetilde\varepsilon_i^2\mid X]=\sigma^2(1-h_i),
+$$
 which explains why a highly influential row has a suppressed raw bootstrap
 residual. No leverage adjustment, target-grid approximation, or downstream
 optimizer is introduced. The supplied outlier locations are prescribed design
@@ -1362,11 +1432,15 @@ Implementation/validation checklist:
 For the context-averaged display, retain response repetition 0 and average
 over all n calibration contexts at each pair. Writing $\langle h\rangle_n(a)
 =n^{-1}\sum_{i=1}^n h(x_i,a)$, the residual band is
-$$[\langle\widetilde g-w\rangle_n(a),
-   \langle\widetilde g+w\rangle_n(a)],$$
+$$
+[\langle\widetilde g-w\rangle_n(a),
+   \langle\widetilde g+w\rangle_n(a)],
+$$
 and the transferred envelope is
-$$[\langle\widehat f-[w-\widetilde g]_+\rangle_n(a),
-   \langle\widehat f+[w+\widetilde g]_+\rangle_n(a)].$$
+$$
+[\langle\widehat f-[w-\widetilde g]_+\rangle_n(a),
+   \langle\widehat f+[w+\widetilde g]_+\rangle_n(a)].
+$$
 Transfer each context's band before averaging: positive-part clipping does not
 commute with averaging. These empirical-context averages inherit containment
 on the original simultaneous-coverage event; no new calibration is performed.
@@ -1379,23 +1453,29 @@ action grid, introducing no random draws or optimizer queries.
 Replay the same paired residual sweep and its existing joint coverage counts.
 The thesis `uncertainty-envelope.tex`, equations
 `wild-bootstrap-main-coverage` and `wild-bootstrap-rho-tau`, gives
-$$L_{n,B,\delta}=1-\delta-\rho_n-\tau_n-\frac{1-\delta}{B+1},
-\qquad L^{\mathrm{order}}_{n,B,\delta}
-=\frac{\lceil B(1-\delta)\rceil}{B+1}-\rho_n-\tau_n\ge L_{n,B,\delta}.$$
+$$
+L_{n,B,\delta}=1-\delta-\rho_n-\tau_n-\frac{1-\delta}{B+1},
+\qquad L_{n,B,\delta}^{\mathrm{order}}
+=\frac{\lceil B(1-\delta)\rceil}{B+1}-\rho_n-\tau_n\geq L_{n,B,\delta}.
+$$
 Both the residual band and transferred envelope have this same lower bound;
 transfer preserves the residual-containment event. Use the expanded $L$ for
 the requested plotted reference and retain both versions in the numeric table.
 For the existing independent Gaussian observation errors,
-$E[\varepsilon_i^4\mid\mathcal Z]=3\sigma_i^4$; thus the manifest's global
+$E[\varepsilon_i^4\mid\mathcal{Z}]=3\sigma_i^4$; thus the manifest's global
 scale bounds give $K=3^{1/4}\sigma_{\max}$ and
-$\underline\sigma=\sigma_{\min}$ (equal to $\sigma_{\max}$ for constant noise).
+$\underline{\sigma}=\sigma_{\min}$ (equal to $\sigma_{\max}$ for constant noise).
 These are known model bounds, not estimated residual moments. With feature
 dimension $p$ and observed-design maximum leverage $h_n$,
-$$\kappa=K/\underline\sigma,\quad c_p=42p^{1/4}+16,\quad
-d_p=\sqrt p+(2\cdot3^{1/4}+\sqrt3)p,\quad
-C_{p,\kappa}=7c_pp\kappa^3+2d_p\kappa^2,$$
-$$\rho_n=2^{1/3}C_{p,\kappa}^{2/3}h_n^{1/3},\qquad
-\tau_n=2^{-2/3}C_{p,\kappa}^{2/3}h_n^{1/3}.$$
+$$
+\kappa=K/\underline{\sigma},\quad c_p=42p^{1/4}+16,\quad
+d_p=\sqrt{p}+(2\cdot3^{1/4}+\sqrt{3})p,\quad
+C_{p,\kappa}=7c_pp\kappa^3+2d_p\kappa^2,
+$$
+$$
+\rho_n=2^{1/3}C_{p,\kappa}^{2/3}h_n^{1/3},\qquad
+\tau_n=2^{-2/3}C_{p,\kappa}^{2/3}h_n^{1/3}.
+$$
 Verify saved $h_n$ against the frozen design's QR leverage. Preserve raw terms
 even when they exceed one; plot $\max(0,L)$ as the probability lower bound.
 For the completed sweep, $p=5$, $\sigma_{\min}=0.15$, $\sigma_{\max}=1$ and
@@ -1416,7 +1496,7 @@ standard-normal streams $Z$ (CDF $\Phi$) deterministically:
   moments are $0,1,2,9$, so $K=9^{1/4}\sigma_{\max}$ in Section 7.14,
   replacing the Gaussian $3^{1/4}\sigma_{\max}$.
 * Design variant: independently transform every context coordinate and logged
-  action to $F_{t_3}^{-1}(\Phi(Z))/\sqrt3$. Mean zero, variance one, infinite
+  action to $F_{t_3}^{-1}(\Phi(Z))/\sqrt{3}$. Mean zero, variance one, infinite
   fourth moment. Observation innovations stay normal. The fixed-design theorem
   requires full column rank and controls leverage; it needs no fourth moment
   for the design distribution.
@@ -1433,7 +1513,7 @@ observation errors remain conditionally independent.
 Coverage is joint over calibration contexts and every real action, determined
 by coefficient checks. The window $[-2,2]$ is only for rendering/width summaries,
 with no interpolation in the proof. No objective optimization is involved.
-Use $\max\{0,1-\delta-\rho_n-\tau_n-(1-\delta)/(B+1)\}$ with the appropriate
+Use $\max\lbrace 0,1-\delta-\rho_n-\tau_n-(1-\delta)/(B+1)\rbrace$ with the appropriate
 $K$, recording the untruncated bound too. No Gaussian-only refinement is used
 for the exponential noise.
 
@@ -1448,29 +1528,31 @@ dependent report jobs after validation.
 ### 7.16 Distribution and mean-width diagnostics from saved repetitions
 
 Replay the artifacts from Section 7.15 without generating observations or
-bootstrap draws. Show the normal density against $e^{-(z+1)}1\{z\ge-1\}$
+bootstrap draws. Show the normal density against $e^{-(z+1)}1\lbrace z\geq-1\rbrace$
 for standardized noise, and histogram the saved heteroskedastic errors
 $\epsilon_i=\sigma_i\xi_i$ from response repetition 0. For the design variant,
-the univariate source density is $\sqrt3\,p_{t_3}(\sqrt3 v)$. Compare its
+the univariate source density is $\sqrt{3}\,p_{t_3}(\sqrt{3} v)$. Compare its
 density with the normal density and plot the empirical two-sided tail frequency
 of all saved context coordinates and logged actions. The density window is a
 visualization only; the empirical tail panel includes every saved observation.
 
 For repetition $r$, pair $j=(n_j,B_j)$ and confidence parameter $\delta$,
 reconstruct the original mean residual-band half-width exactly as
-$$W_{r,j,\delta}=q^*_{r,j,\delta}\,\overline\ell_j,\qquad
-\overline\ell_j=\frac{1}{n_j|G|}\sum_{i=1}^{n_j}\sum_{a\in G}
-\sqrt{\phi(X_i,a)^\top(\Phi_j^\top\Phi_j)^{-1}\phi(X_i,a)},$$
-where $G$ is the original 101-point action grid on $[-2,2]$, and both $q^*$
-and $\overline\ell_j$ are saved artifacts. Average $W$ over the $R=2000$
+$$
+W_{r,j,\delta}=q^{\star}_{r,j,\delta}\,\overline{\ell}_j,\qquad
+\overline{\ell}_j=\frac{1}{n_j|G|}\sum_{i=1}^{n_j}\sum_{a\in G}
+\sqrt{\phi(X_i,a)^\top(\Phi_j^\top\Phi_j)^{-1}\phi(X_i,a)},
+$$
+where $G$ is the original 101-point action grid on $[-2,2]$, and both $q^{\star}$
+and $\overline{\ell}_j$ are saved artifacts. Average $W$ over the $R=2000$
 repetitions; verify this reproduces `summary.metrics.mean_width`. These are
 residual half-widths, not the asymmetric transferred radii.
 
 Use the shared repetition seeds to form $D_r=W_r^{\mathrm{variant}}-
-W_r^{\mathrm{Gaussian}}$. Report $\overline D$, relative change
-$100\overline D/\overline W^{\mathrm{Gaussian}}$, and Monte Carlo standard
-error $s_D/\sqrt R$. Pointwise approximate 95% intervals use
-$\overline D\pm t_{R-1,.975}s_D/\sqrt R$. Also report Bonferroni-adjusted
+W_r^{\mathrm{Gaussian}}$. Report $\overline{D}$, relative change
+$100\overline{D}/\overline{W}^{\mathrm{Gaussian}}$, and Monte Carlo standard
+error $s_D/\sqrt{R}$. Pointwise approximate 95% intervals use
+$\overline{D}\pm t_{R-1,.975}s_D/\sqrt{R}$. Also report Bonferroni-adjusted
 intervals with quantile $t_{R-1,1-.05/(2m)}$, where $m$ counts all displayed
 variant/pair/delta comparisons (36 for these two sweeps). Width curves use
 pointwise mean intervals; paired-difference panels use the adjusted intervals.
@@ -1481,8 +1563,8 @@ over newly drawn designs. No optimizer is used.
 ### 7.17 Wild-bootstrap data-location illustration
 
 The standalone driver `scratch/run_wild_data_location.py` uses
-$f(a)=5a-5a^2$ on $\mathcal A=\mathbb R$. The two designs are
-$a_i=\mu+\sqrt{0.45}Z_i$, with $\mu\in\{0.5,10\}$, $n=300$, and
+$f(a)=5a-5a^2$ on $\mathcal{A}=\mathbb{R}$. The two designs are
+$a_i=\mu+\sqrt{0.45}Z_i$, with $\mu\in\lbrace 0.5,10\rbrace$, $n=300$, and
 $y_i=f(a_i)+\varepsilon_i$, where the independent $Z_i,\varepsilon_i$ are
 standard normal. Named streams derived from run seed 20261021 control design,
 noise, wild multipliers, and optimizer directions. Innovations and multipliers
@@ -1496,13 +1578,13 @@ $\widehat\beta$ by QR. For $B=1999$ independent Rademacher multiplier vectors,
 
 $$
 e=y-P\widehat\beta,\qquad
-y_b^*=P\widehat\beta+e\odot\xi_b,\qquad
+y_b^{\star}=P\widehat\beta+e\odot\xi_b,\qquad
 d_b=(P^\top P)^{-1}P^\top(e\odot\xi_b).
 $$
 
 Use raw residuals (no leverage adjustment), $V=(P^\top P)^{-1}$,
 $\ell(a)=\sqrt{p(a)^\top Vp(a)}$, and the all-real statistic
-$T_b=\sup_{a\in\mathbb R}|p(a)^\top d_b|/\ell(a)$.
+$T_b=\sup_{a\in\mathbb{R}}|p(a)^\top d_b|/\ell(a)$.
 Section 7.2's polynomial certificate with scale 1 brackets each statistic
 to relative/absolute tolerance $10^{-8}$. The critical value is order statistic
 $k=\lceil B(1-0.05)\rceil$ of the certified upper bounds. This sorts bootstrap
@@ -1512,7 +1594,7 @@ $r(a)=T_{(k)}\ell(a)$. It targets simultaneous conditional-mean coverage on
 the entire real line. Nominal 95% bootstrap coverage is approximate at this
 sample size; a realized exact containment check is not a sampling guarantee.
 The bootstrap error covariance between queries is
-$p(a)^\top V P^\top\operatorname{diag}(e_i^2)PVp(b)$.
+$p(a)^\top V P^\top\mathrm{diag}(e_i^2)PVp(b)$.
 
 The repository Stein-difference solver queries $-(\widehat f-r)$ directly,
 with no interpolation, resampling, clipping, or action constraints. Starts are
@@ -1544,18 +1626,18 @@ raw-residual wild coefficient errors are
 $d_b=R^{-1}Q^\top(e\odot\xi_b)$ for the same $B=1999$ draws.
 
 The approved contextual calibration uses the coefficient statistic
-$T_b=\|R d_b\|_2$, rather than the scalar experiment's action supremum.
+$T_b=\Vert R d_b\Vert_2$, rather than the scalar experiment's action supremum.
 Take order statistic $k=\lceil0.95B\rceil$ and set
-$r(x,a)=T_{(k)}\|R^{-\top}\phi(x,a)\|_2$.
-On $\|R(\widehat\beta-\beta_0)\|_2\le T_{(k)}$, Cauchy--Schwarz gives
-$|\widehat f(x,a)-f(x,a)|\le r(x,a)$ for every feature vector, hence jointly
+$r(x,a)=T_{(k)}\Vert R^{-\top}\phi(x,a)\Vert_2$.
+On $\Vert R(\widehat\beta-\beta_0)\Vert_2\leq T_{(k)}$, Cauchy--Schwarz gives
+$|\widehat f(x,a)-f(x,a)|\leq r(x,a)$ for every feature vector, hence jointly
 for every observed $x_i$ and every real $a$. This is a conservative joint band
 calibrated by the wild bootstrap, not an exact finite-sample 95% theorem.
 Its coefficient-ball bootstrap approximation has the same fixed-design
 moment/rank/leverage requirements. Exact per-context quartic nonnegativity
 checks additionally test the realized band on all real actions. The covariance
 of bootstrap errors at inputs $z,z'$ is
-$\phi(z)^\top V P^\top\operatorname{diag}(e_i^2)PV\phi(z')$, $V=(P^\top P)^{-1}$.
+$\phi(z)^\top V P^\top\mathrm{diag}(e_i^2)PV\phi(z')$, $V=(P^\top P)^{-1}$.
 The same saved coefficients and analytic radius formula answer every off-grid
 query; grids only render curves.
 
@@ -1565,7 +1647,7 @@ vectorized full-batch call, using its existing action-space estimator. The
 known policy Jacobian is the identity; model derivatives are unavailable.
 The solver step size is $n\times0.05$, which cancels the mean-gradient factor
 $1/n$ and retains a per-context ascent step of 0.05. Its gradient tolerance is
-$10^{-5}/\sqrt n$, corresponding to RMS action-gradient tolerance $10^{-5}$.
+$10^{-5}/\sqrt{n}$, corresponding to RMS action-gradient tolerance $10^{-5}$.
 All other settings match §7.17. Gaussian perturbations are shared across contexts
 by the existing action-space estimator and paired across settings. All actions
 are unrestricted. Three starts give three actual solver endpoints per context;
@@ -1610,7 +1692,7 @@ $$
 J(\theta+\sigma\varepsilon_j)\varepsilon_j.
 $$
 
-For independent Rademacher vectors $\Delta_j\in\{-1,1\}^{d}$, SPSA uses
+For independent Rademacher vectors $\Delta_j\in\lbrace -1,1\rbrace^{d}$, SPSA uses
 
 $$
 \widehat{g}_{\rm SPSA}=
@@ -1640,7 +1722,7 @@ Armijo backtracking chooses $\alpha=\alpha_0\rho^{k}$ until
 
 $$
 J(\theta_t-\alpha\widehat{g}_t)
-\leq J(\theta_t)-c\alpha\|\widehat{g}_t\|^{2}.
+\leq J(\theta_t)-c\alpha\Vert \widehat{g}_t\Vert ^{2}.
 $$
 
 `l-bfgs-b` delegates unconstrained or box-constrained minimization to the

@@ -199,10 +199,11 @@ When modifying or adding code that implements a mathematical formula:
 
 The 2026-10-22 merge-first cleanup inventory is in
 `docs/local_work_cleanup_20261022.md`. It records the consolidated branches,
-historical t3 attempts, and Generali artifacts to retain. The first archival
-pass is indexed in `scratch/retired_experiments/relocations.json`; its recovery
-notes are in `scratch/retired_experiments/README.md`. The downstream module
-boundaries and stable-family convention are in `docs/experiment_workflow.md`.
+historical t3 attempts, and the Generali artifact inventory. Both archival
+passes are indexed in `scratch/retired_experiments/relocations.json` and
+`relocations_followup_20261022.json` in that same directory; recovery notes are in
+`scratch/retired_experiments/README.md`. The downstream module
+responsibilities and stable-family convention are in `docs/experiment_workflow.md`.
 
 When behavior and documentation disagree, use this priority:
 
@@ -216,34 +217,22 @@ If lower-priority docs are stale, update them in the same task.
 
 ## Code Organization
 
-- `manifests/wild-bootstrap-leverage-bound-*.json` run the fixed-n action-only
-  truncated-normal leverage diagnostic through the existing wild-bootstrap
-  runner. `docs/wild_bootstrap_leverage.md` and MATH section 7.10 describe it.
-  `wild_study.py` supports zero contexts, optional truncated-normal designs,
-  and constant noise; `wild_reporting.write_leverage_report` compares saved
-  summaries. For zero contexts, `wild.py` caches one identical context fiber
-  for the all-real statistic but retains every observed row leverage.
-  An explicit `truncation_bound: null` uses the unbounded normal inverse CDF
-  with the same uniforms. Missing bounds remain invalid. The wide-bound
-  report retains every condition and groups coincident coordinates without
-  jitter; old saved studies keep their original source provenance.
-  `manifests/wild-bootstrap-outlier-*.json` use a deterministic
-  `design.action_override` (fixed index, prescribed value) to vary one action
-  while preserving all other rows. MATH section 7.11 records the formula;
-  observed hat-matrix leverage is always at most 1. Outlier reports require
-  the same bulk distribution and moved-row index across all conditions.
-  `manifests/residual-leverage-outlier-*.json` retain the three-context normal
-  residual design and heteroskedastic profile at fixed n=300/B=1999.
-  `docs/residual_leverage.md` records this experiment and replay. The optional
-  `wild_reporting.write_leverage_report(..., diagnostics=True)` validates and
-  replays saved moved-point environments/examples into distribution, averaged
-  band, and asymmetric-radius PDFs/CSVs. Plot labels distinguish the moved row's
-  contextual leverage from maximum observed leverage. Transfer before averaging.
-  `noise.moved_observation_sigma` optionally overrides only the moved row's
-  observation SD, requires `design.action_override`, and cannot exceed sigma_max.
-  The background GP/off-grid scale evaluation remains unchanged. The manifests
-  `residual-leverage-fixed-noise-outlier-*.json` and
-  `docs/residual_leverage_fixed_noise.md` define the fixed-scale follow-up.
+- The active synthetic catalog retains the three paired residual-heteroskedastic
+  distribution manifests and six `residual-leverage-fixed-noise-outlier-*.json`
+  manifests. Terminal-distribution results, all residual-heteroskedastic report
+  folders, those six fixed-noise result folders, and current data-location
+  illustrations stay active. Earlier generic-envelope, wild-bootstrap leverage/
+  outlier, and varying-noise residual-leverage manifests are archived under
+  `scratch/retired_experiments/{uncertainty_envelopes,wild_bootstrap_diagnostics}/`.
+- Completed Generali optimization/analysis results, including two frontier
+  outputs formerly under the canonical `outputs/`, are now in `scratch-results/`
+  by explicit user request. Preserve Generali source, datasets, models, caches,
+  seven manifests, and reusable launchers. Archived results remain recoverable;
+  consult the follow-up relocation map before reading an old absolute path.
+- This is recipe/result retirement only. Shared envelope mathematics and current
+  runners remain in `src/` pending the staged plan in
+  `docs/experiment_workflow.md`. In particular, preserve the asymmetric residual
+  transfer, fixed moved-row noise, seed pairing, and source-contract checks.
 
 Before adding code, inspect the surrounding module structure and choose the narrowest sensible location for the change.
 
@@ -253,8 +242,9 @@ Guidelines:
   synthetic/Generali setting specification under `src/`. Concluded study-specific
   orchestration belongs in `scratch/`; preserve reusable mathematical helpers
   before retiring source modules. The first pass moved 18 historical manifests
-  and nine drivers into `scratch/retired_experiments/`, with an exact relocation
-  index there. Shared `src/` modules remain until their dependencies are separated.
+  and nine drivers into `scratch/retired_experiments/`; the follow-up archived
+  another 29 synthetic manifests. Both relocation indexes are there. Shared
+  `src/` modules remain until their dependencies are separated.
 - Classify new work before choosing files. Reproducible analyses use the
   existing manifest runner with a validated reporting recipe; reusable model,
   data, objective, and plotting behavior belongs under `src/`. Reserve scripts
@@ -542,7 +532,7 @@ Changing the `models` array is the supported model swap. Available keys are
   `wild_study.py` implements `kind: "wild_bootstrap_envelopes"` through the
   shared manifest launcher and the bounded finite-Fourier GP variance profile;
   `wild_reporting.py` owns saved-result PDFs.
-  `manifests/uncertainty-envelopes-wild-bootstrap.json` declares fixed p=5,
+  The archived `scratch/retired_experiments/wild_bootstrap_diagnostics/manifests/uncertainty-envelopes-wild-bootstrap.json` preserves the historical fixed p=5,
   paired n/B/delta sweeps, 2,000 outer repetitions, and separate profile,
   context, action, observation, and multiplier seed streams. The GP profile is
   frozen; errors are independent conditional on it and the frozen design.

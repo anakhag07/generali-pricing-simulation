@@ -3,7 +3,9 @@
 This records the merge-first snapshot, before experiment drivers and result
 directories were relocated. For the subsequent archival pass see
 [`scratch/retired_experiments/README.md`](../scratch/retired_experiments/README.md). Preserve the Generali experiments, models,
-data, caches, and saved policies for the next downstream analysis.
+data, caches, and saved policies for the next downstream analysis. The later
+user-approved follow-up archives completed Generali results while retaining
+source/data/models/configurations; consult the archive index for their locations.
 
 ## Branch inventory
 

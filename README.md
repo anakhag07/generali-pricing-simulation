@@ -53,57 +53,7 @@ pip install -e ".[dev]"
 pytest -q
 ```
 
-### Uncertainty-envelopes
-
-```bash
-PYTHONPATH=src python scripts/run_experiment_manifest.py manifests/uncertainty-envelopes.json --launch local
-PYTHONPATH=src python scripts/run_experiment_manifest.py manifests/uncertainty-envelopes-empirical.json --launch local
-```
-
-The first launch checks one contextual linear envelope analytically; the second
-estimates coverage across repeated calibration responses at a frozen design.
-Both report radius and signed excess conservatism at declared diagnostic
-locations. Truth, radius construction, coverage procedure, and containment
-checker are replaceable; analytical probability bounds remain separate from
-realized containment and empirical estimates. Results go to
-`results/uncertainty-envelopes/` and `results/uncertainty-envelopes-empirical/`.
-See [the usage guide](docs/uncertainty_envelopes.md) for custom radius functions,
-nonlinear truth, saved calibration data, the constant-radius example, and replay.
-Each collection also writes four PDFs under `reports/diagnostics/`: simultaneous
-action coverage averaged over contexts, the mean envelope and truth, radius
-components, and low/median/high context-norm slices. These use original response
-coordinates, with no context adjustment. The
-[diagnostic report guide](docs/uncertainty_envelopes.md#standard-diagnostic-reports)
-explains coverage domains, constant-radius components, and replay from saved data.
-The [paired constant-3 comparison](docs/uncertainty_envelopes.md#render-the-constant-3-versus-writeup-comparison)
-replays saved results into two panels showing overlap across all contexts after
-subtracting their known contribution to truth; it does not refit either radius.
-A second figure compares the common overlap's half-width and the smallest
-signed excess across contexts for both constructions.
-For a simpler view, run `PYTHONPATH=src python scratch/render_uncertainty_envelope_comparison.py --simple`.
-It adds `04_simple_comparison.pdf` with two curves per panel: smallest coverage
-margin and mean individual radius. This view needs no context adjustment;
-the constant-radius curve stays at 3. Existing comparison figures are preserved.
-The calibration figure aligns the adjusted observations/envelope, mean radius
-components, and logged-action counts on one action axis. A
-[LaTeX section](docs/uncertainty_envelopes_simulation.tex) records the exact
-simulation instantiation.
-
-The `uncertainty-envelopes-constant-3-2000.json` and
-`uncertainty-envelopes-analytical-radius-2000.json` manifests repeat the original
-fixed-design comparison across 2,000 paired response datasets. Replay their
-mean radii and coverage with
-`PYTHONPATH=src python scratch/render_uncertainty_envelope_comparison.py --average`.
-Per-construction diagnostics support `write_diagnostic_reports(...,
-average_repetitions=True)` to average every envelope and slice as well.
-
-For a fixed-design comparison of analytical and wild-bootstrap envelopes under
-a frozen GP variance profile, run
-`PYTHONPATH=src python scripts/run_experiment_manifest.py manifests/uncertainty-envelopes-wild-bootstrap.json --launch local`.
-This sweeps sample size, bootstrap count, and confidence level with paired draws,
-reporting joint all-real-action coverage and mean widths. See the
-[wild-bootstrap guide](docs/wild_bootstrap_envelopes.md) for the noise model,
-seed contract, and interpretation of empirical coverage.
+### Residual-heteroskedastic studies
 
 For joint increases in sample size and bootstrap count, use
 `manifests/uncertainty-envelopes-residual-paired-nb.json`. It reports only the
@@ -117,19 +67,8 @@ For centered-exponential noise and standardized-t3 design variants of that
 baseline, see [the distribution sweeps](docs/wild_bootstrap_envelopes.md#distribution-perturbations).
 The same guide includes [saved-input and paired width diagnostics](docs/wild_bootstrap_envelopes.md#input-distributions-and-paired-mean-width-changes).
 
-For maximum-leverage versus coverage at fixed sample size, use the
-`manifests/wild-bootstrap-leverage-bound-*.json` manifests. This action-only
-study varies the truncation of standard-normal logged actions while holding
-noise, n, B, and delta fixed. See the [leverage diagnostic](docs/wild_bootstrap_leverage.md)
-for execution and the combined coverage plot, including the extension to
-bounds 100, 1000, and unbounded normal.
-The `manifests/wild-bootstrap-outlier-*.json` follow-up fixes the [-3,3] sample
-and moves one observation to drive maximum leverage toward 1.
-The `manifests/residual-leverage-outlier-*.json` studies instead retain the full
-heteroskedastic contextual residual setup and move one action in its normal
-design. See [the residual leverage study](docs/residual_leverage.md) for the
-coverage, labeled data-distribution, context-averaged band, and radius reports.
-For the same sweep with the moved observation's noise scale held fixed, use
+For the retained residual-leverage sweep with the moved observation's noise
+scale held fixed, use
 `manifests/residual-leverage-fixed-noise-outlier-*.json`; see
 [the fixed-scale study](docs/residual_leverage_fixed_noise.md).
 
@@ -159,8 +98,10 @@ Concluded zeroth-order proof, policy/GP LCB, OLS/pairs-bootstrap, support-kernel
 and noise/bias studies are indexed in
 [`scratch/retired_experiments/`](scratch/retired_experiments/README.md). Their
 results are preserved under the shared `scratch-results/` root. The archive
-includes the exact relocation map and recovery constraints. Generali workflows
-and their saved data, models, policies, and results remain available.
+includes both relocation maps and recovery constraints. Completed Generali
+optimization/analysis results are now archived too; Generali source, datasets,
+trained models, caches, presets, and seven manifests remain available. The active
+catalog contains 16 manifests: seven Generali and nine retained residual studies.
 
 Requested changes normally belong to the same experiment family: extend its
 configuration and retain identifiable run revisions instead of creating another

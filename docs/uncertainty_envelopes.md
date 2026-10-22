@@ -1,5 +1,9 @@
 # Uncertainty-envelopes
 
+This study is retired. Its manifests and results are indexed in the
+[archive selection and recovery notes](../scratch/retired_experiments/README.md#follow-up-selection). The reusable mathematics remains available in `src/`; historical
+result contracts are unchanged.
+
 This experiment evaluates simultaneous coverage and radius/excess conservatism.
 Truth, the frozen predictor, radius construction, containment checker, and
 probability procedure are separate launch choices. The first construction uses
@@ -14,7 +18,7 @@ Run these commands from the checkout root after activating the environment:
 
 ```bash
 conda activate simulation_env
-PYTHONPATH=src python scripts/run_experiment_manifest.py manifests/uncertainty-envelopes.json --launch local
+PYTHONPATH=src python scripts/run_experiment_manifest.py scratch/retired_experiments/uncertainty_envelopes/manifests/uncertainty-envelopes.json --launch local
 ```
 
 This fits once using 60 calibration observations with three contextual
@@ -26,7 +30,7 @@ The repeated-calibration launch freezes the same contexts, logged actions, and
 predictor, then refits on 20 independent response vectors:
 
 ```bash
-PYTHONPATH=src python scripts/run_experiment_manifest.py manifests/uncertainty-envelopes-empirical.json --launch local
+PYTHONPATH=src python scripts/run_experiment_manifest.py scratch/retired_experiments/uncertainty_envelopes/manifests/uncertainty-envelopes-empirical.json --launch local
 ```
 
 Twenty repetitions are a small demonstration; copy the manifest and increase
@@ -34,14 +38,14 @@ Twenty repetitions are a small demonstration; copy the manifest and increase
 one repetition to each task:
 
 ```bash
-PYTHONPATH=src python scripts/run_experiment_manifest.py manifests/uncertainty-envelopes-empirical.json --launch slurm --array --array-max-parallel 4
+PYTHONPATH=src python scripts/run_experiment_manifest.py scratch/retired_experiments/uncertainty_envelopes/manifests/uncertainty-envelopes-empirical.json --launch slurm --array --array-max-parallel 4
 ```
 
 A supplied constant-radius baseline demonstrates a construction with no
 analytical probability claim:
 
 ```bash
-PYTHONPATH=src python scripts/run_experiment_manifest.py manifests/uncertainty-envelopes-constant.json --launch local
+PYTHONPATH=src python scripts/run_experiment_manifest.py scratch/retired_experiments/uncertainty_envelopes/manifests/uncertainty-envelopes-constant.json --launch local
 ```
 
 It checks radius 1 at the finite action set `[-2, -1, 0, 1, 2]` for every
@@ -66,7 +70,7 @@ python - <<'PY'
 import json
 from pathlib import Path
 
-p = json.loads(Path("manifests/uncertainty-envelopes-constant.json").read_text())
+p = json.loads(Path("scratch/retired_experiments/uncertainty_envelopes/manifests/uncertainty-envelopes-constant.json").read_text())
 p["name"] = "uncertainty-envelopes-radius-0p4"
 p["envelope"] = {"type": "constant_radius", "radius": 0.4}
 Path("manifests/uncertainty-envelopes-radius-0p4.json").write_text(
@@ -373,7 +377,7 @@ Rerunning an unchanged launch resumes verified saved repetitions. To collect
 and redraw reports without fitting:
 
 ```bash
-PYTHONPATH=src python scripts/run_experiment_manifest.py manifests/uncertainty-envelopes.json --launch local --collect
+PYTHONPATH=src python scripts/run_experiment_manifest.py scratch/retired_experiments/uncertainty_envelopes/manifests/uncertainty-envelopes.json --launch local --collect
 ```
 
 Collection reconstructs the frozen models and design to verify the source,
@@ -519,8 +523,8 @@ auxiliary OLS model is the object fitted to calibration observations.
 To create the paired experiments initially:
 
 ```bash
-PYTHONPATH=src python scripts/run_experiment_manifest.py manifests/uncertainty-envelopes-constant-3.json --launch local
-PYTHONPATH=src python scripts/run_experiment_manifest.py manifests/uncertainty-envelopes-writeup.json --launch local
+PYTHONPATH=src python scripts/run_experiment_manifest.py scratch/retired_experiments/uncertainty_envelopes/manifests/uncertainty-envelopes-constant-3.json --launch local
+PYTHONPATH=src python scripts/run_experiment_manifest.py scratch/retired_experiments/uncertainty_envelopes/manifests/uncertainty-envelopes-writeup.json --launch local
 ```
 
 For a simpler comparison from the saved runs:

@@ -1,5 +1,9 @@
 # Fixed-design wild-bootstrap envelopes
 
+The paired residual-heteroskedastic and fixed-noise residual-leverage studies
+remain active. Earlier generic/outlier/leverage manifests and results described
+here are archived; see the [archive selection and recovery notes](../scratch/retired_experiments/README.md#follow-up-selection). Historical results retain their original contracts.
+
 This study compares the analytical width from thesis §1.2 with the raw-residual
 wild-bootstrap width from §1.3. Both use the same contextual linear truth,
 frozen predictor, and OLS fit to $R=Y-\widehat f$. The target is the conditional
@@ -14,7 +18,7 @@ From the checkout root:
 
 ```bash
 conda activate simulation_env
-PYTHONPATH=src python scripts/run_experiment_manifest.py manifests/uncertainty-envelopes-wild-bootstrap.json --launch local
+PYTHONPATH=src python scripts/run_experiment_manifest.py scratch/retired_experiments/wild_bootstrap_diagnostics/manifests/uncertainty-envelopes-wild-bootstrap.json --launch local
 ```
 
 The manifest uses `kind: "wild_bootstrap_envelopes"`. Outputs go to
@@ -253,7 +257,7 @@ over the saved sweep settings.
 
 ## Quadratic moved-point residual study
 
-`manifests/uncertainty-envelopes-quadratic-residual.json` supplies the unchanged
+`scratch/retired_experiments/wild_bootstrap_diagnostics/manifests/uncertainty-envelopes-quadratic-residual.json` supplies the unchanged
 truncated-normal design; `uncertainty-envelopes-quadratic-residual-outlier.json`
 moves row zero to 20. Copy the latter with a new result name to use
 3, 10, 40, 100, or 1000. Both use $f(a)=5a-5a^2$, the saved frozen predictor
@@ -355,7 +359,7 @@ Rerunning the same manifest resumes verified saved repetitions. To collect
 complete saved results and regenerate plots without new response/bootstrap draws:
 
 ```bash
-PYTHONPATH=src python scripts/run_experiment_manifest.py manifests/uncertainty-envelopes-wild-bootstrap.json --launch local --collect
+PYTHONPATH=src python scripts/run_experiment_manifest.py scratch/retired_experiments/wild_bootstrap_diagnostics/manifests/uncertainty-envelopes-wild-bootstrap.json --launch local --collect
 ```
 
 Collection requires every requested repetition and verifies artifact hashes

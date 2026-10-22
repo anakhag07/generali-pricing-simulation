@@ -23,15 +23,63 @@ repair imports and checkout-root discovery. The 22 result directories contain
 entry's inode, relative path, mode, size, mtime, and symlink target; no saved
 artifact contents or provenance records were rewritten.
 
-Current Generali and wild-envelope workflows remain outside this retirement.
+The initial pass left Generali and current wild-envelope workflows active;
+the follow-up selection below supersedes its result-retention choices.
 Shared `src/` helpers are still available because current consumers use their
 mathematics. Existing tests retain coverage and import the archived drivers or
 load the archived manifests explicitly. Production code does not import scratch.
 
+## Follow-up selection
+
+At the user's request, the next pass moved another 29 synthetic manifests and
+76 result/output directories. See
+[relocations_followup_20261022.json](relocations_followup_20261022.json) for every
+old/new path and original manifest hash. This supplements the first relocation
+index without rewriting it.
+
+| Archived family | Manifests moved | Result/output directories moved |
+|---|---:|---:|
+| Generali completed optimizations and associated analyses | 0; seven stay active | 42: 40 from shared results plus two frontier outputs from the canonical checkout |
+| Generic uncertainty-envelope studies | 7 | 11, including the older generic wild-bootstrap result |
+| Earlier wild-bootstrap and residual-leverage diagnostics | 22 | 23 |
+
+The 76 moved directories contain 109,967 files (3,249,127,905 bytes). Atomic
+renames preserved every file's identity and metadata; all retained result trees
+have unchanged entry fingerprints. No saved contracts were rewritten. Shared
+results now have 16 directories and scratch-results has 143. Cache/log directories
+count toward the 16; the two top-level distribution launch metadata files remain.
+
+Keep the terminal-distribution sweep, all four `residual-heteroskedastic*` report
+folders, six fixed-noise residual-leverage runs, and three data-location
+illustration folders. The active manifest catalog now has 16 entries: seven
+Generali, three paired-residual distribution variants, and six fixed-noise
+residual-leverage settings. The fixed-noise runs were explicitly retained with
+their residual-heteroskedastic report.
+
+Generali datasets, trained models, shared caches, source modules, and reusable
+configurations were not retired. Completed optimization outputs and associated
+policy/model diagnostics were moved together. Before reusing a saved Generali
+policy, report, or reference run, resolve its recorded paths through the two
+relocation indexes and honor the source contract. Older absolute defaults in
+analysis drivers are historical locations, not archive-aware lookup rules.
+No extra drivers or `src/` modules moved in this pass.
+
+Follow-up validation: all 123 tests in the four affected envelope-study/reporting
+files passed. All 29 relocated manifests and all 16 retained manifests load
+through the shared launcher without executing studies. Original manifest bytes,
+retained result-tree fingerprints, source/driver stability, documentation links,
+and `git diff --check` were verified. The first-pass full-suite result below
+remains recorded separately; no runtime code changed in this follow-up. Logs and
+identity inventories are in `/tmp/generali-retire-followup-validation-20261022/`.
+
+The [next source-refactor plan](../../docs/experiment_workflow.md) specifies
+settings, established band methods, optimizer composition, family revisions,
+reporting, parity checks, and the later retirement of study-only orchestration.
+
 ## Reading and recovery
 
 Read summaries, tables, PDFs, and arrays directly at the new paths. Resolve an
-old path by matching its project prefix in `relocations.json` and retaining the
+old path by matching its project prefix in either relocation index and retaining the
 suffix. Original manifests/results can describe older configurations than the
 latest archived recipe; trust each saved run's contract, not similar names.
 For example, the historical `bootstrap-ols-grid-band` output is not a replacement
@@ -93,6 +141,7 @@ recoverable from base commit `b7faa26` as well.
   resolve and `git diff --check` passes. No public API/docstrings changed, so
   generated API documentation did not need regeneration.
 
-The shared roots now contain 90 active and 67 archived result directories.
+After the first pass the shared roots contained 90 active and 67 archived result
+directories; the follow-up counts above supersede those totals.
 Detailed validation logs and before/after file-identity inventories for this
 session are in `/tmp/generali-retire-validation-20261022/`.

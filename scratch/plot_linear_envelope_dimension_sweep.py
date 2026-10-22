@@ -113,10 +113,8 @@ def main():
     with plt.style.context("default"), plt.rc_context(_STYLE):
         fig, ax = plt.subplots(figsize=(7, 5), constrained_layout=True)
         p = np.array([row["p"] for row in records])
-        radius = np.array([row["mean_radius"] for row in records])
         width = np.array([row["mean_width"] for row in records])
-        ax.plot(p, radius, label=r"$\overline{r}_\delta$")
-        ax.plot(p, width, "--", label=r"$\overline{w}_\delta$")
+        ax.plot(p, width, "--", color="C1", label=r"$\overline{w}_\delta$")
         ax.plot(p, width[0]*np.sqrt(p/p[0]), ":", color="0.5", label=r"$\sqrt{p}$ reference")
         ax.set(title=r"Linear-envelope dimension scaling: $n=12p$", xlabel=r"$p=d+2$", ylabel="Mean half-width")
         ax.set_ylim(bottom=0)

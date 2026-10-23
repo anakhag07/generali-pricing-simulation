@@ -101,8 +101,8 @@
 </span><span id="L-12"><a href="#L-12"><span class="linenos"> 12</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.provenance</span><span class="w"> </span><span class="kn">import</span> <span class="n">file_record</span><span class="p">,</span> <span class="n">write_provenance</span>
 </span><span id="L-13"><a href="#L-13"><span class="linenos"> 13</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.sweep_reporting</span><span class="w"> </span><span class="kn">import</span> <span class="n">write_rows_csv</span>
 </span><span id="L-14"><a href="#L-14"><span class="linenos"> 14</span></a>
-</span><span id="L-15"><a href="#L-15"><span class="linenos"> 15</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.diagnostics</span><span class="w"> </span><span class="kn">import</span> <span class="n">_slice_indices</span>
-</span><span id="L-16"><a href="#L-16"><span class="linenos"> 16</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.reporting</span><span class="w"> </span><span class="kn">import</span> <span class="n">_STYLE</span>
+</span><span id="L-15"><a href="#L-15"><span class="linenos"> 15</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.plotting</span><span class="w"> </span><span class="kn">import</span> <span class="n">_slice_indices</span>
+</span><span id="L-16"><a href="#L-16"><span class="linenos"> 16</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.plotting</span><span class="w"> </span><span class="kn">import</span> <span class="n">_STYLE</span>
 </span><span id="L-17"><a href="#L-17"><span class="linenos"> 17</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.wild</span><span class="w"> </span><span class="kn">import</span> <span class="n">WildLinearDesign</span><span class="p">,</span> <span class="n">residual_radii</span>
 </span><span id="L-18"><a href="#L-18"><span class="linenos"> 18</span></a>
 </span><span id="L-19"><a href="#L-19"><span class="linenos"> 19</span></a><span class="n">_METHODS</span> <span class="o">=</span> <span class="p">((</span><span class="s2">&quot;analytical&quot;</span><span class="p">,</span> <span class="s2">&quot;analytical-radius&quot;</span><span class="p">,</span> <span class="s2">&quot;C0&quot;</span><span class="p">),</span>
@@ -976,7 +976,7 @@
                 <section id="write_leverage_report">
                             <input id="write_leverage_report-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">write_leverage_report</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">summary_paths</span>, </span><span class="param"><span class="n">destination</span>, </span><span class="param"><span class="o">*</span>, </span><span class="param"><span class="n">diagnostics</span><span class="o">=</span><span class="kc">False</span></span><span class="return-annotation">) -> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span>:</span></span>
 
@@ -1088,7 +1088,7 @@
                 <section id="write_reports">
                             <input id="write_reports-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">write_reports</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">summary</span>,</span><span class="param">	<span class="n">snapshot</span>,</span><span class="param">	<span class="n">example</span>,</span><span class="param">	<span class="n">destination</span>,</span><span class="param">	<span class="o">*</span>,</span><span class="param">	<span class="n">paired_example</span><span class="o">=</span><span class="kc">None</span></span><span class="return-annotation">) -> <span class="nb">list</span><span class="p">[</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">]</span>:</span></span>
 
@@ -1139,7 +1139,7 @@
                 <section id="write_finite_sample_coverage_report">
                             <input id="write_finite_sample_coverage_report-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">write_finite_sample_coverage_report</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">summary_path</span>, </span><span class="param"><span class="n">thesis_path</span>, </span><span class="param"><span class="n">destination</span><span class="o">=</span><span class="kc">None</span></span><span class="return-annotation">) -> <span class="nb">list</span><span class="p">[</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">]</span>:</span></span>
 
@@ -1191,7 +1191,7 @@
                 <section id="write_distribution_comparison">
                             <input id="write_distribution_comparison-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">write_distribution_comparison</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">summary_path</span>,</span><span class="param">	<span class="n">baseline_path</span>,</span><span class="param">	<span class="n">thesis_path</span>,</span><span class="param">	<span class="n">destination</span><span class="o">=</span><span class="kc">None</span></span><span class="return-annotation">) -> <span class="nb">list</span><span class="p">[</span><span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">]</span>:</span></span>
 

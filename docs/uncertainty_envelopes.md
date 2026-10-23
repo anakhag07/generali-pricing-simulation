@@ -1,5 +1,10 @@
 # Uncertainty-envelopes
 
+This generic study is retired to `scratch/retired_experiments/studies/envelopes/`.
+Use the archived dispatcher for a fresh exploratory run; recover recorded sources
+for historical replay. Shared fitting and the retained residual/wild workflow
+are documented in [experiment_workflow.md](experiment_workflow.md).
+
 This study is retired. Its manifests and results are indexed in the
 [archive selection and recovery notes](../scratch/retired_experiments/README.md#follow-up-selection). The reusable mathematics remains available in `src/`; historical
 result contracts are unchanged.

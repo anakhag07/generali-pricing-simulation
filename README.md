@@ -105,8 +105,9 @@ catalog contains 16 manifests: seven Generali and nine retained residual studies
 
 Requested changes normally belong to the same experiment family: extend its
 configuration and retain identifiable run revisions instead of creating another
-project for each adjustment. The [downstream cleanup plan](docs/experiment_workflow.md)
-records the intended optimization, uncertainty-band, and setting interfaces.
+project for each adjustment. The [experiment workflow guide](docs/experiment_workflow.md)
+describes optimization-only, band-only, and band-based optimization through the
+existing manifest runner, including saved-state replay and explicit Generali settings.
 Natural-language experiment requests should use these existing manifests and
 presets; clarify unresolved scientific choices before launching. The detailed
 agent workflow is in [AGENTS.md](AGENTS.md#natural-language-experiment-requests).

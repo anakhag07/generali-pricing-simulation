@@ -281,8 +281,9 @@ If lower-priority docs are stale, update them in the same task.
   by explicit user request. Preserve Generali source, datasets, models, caches,
   seven manifests, and reusable launchers. Archived results remain recoverable;
   consult the follow-up relocation map before reading an old absolute path.
-- This is recipe/result retirement only. Shared envelope mathematics and current
-  runners remain in `src/` pending the staged plan in
+- Concluded study orchestration now also lives in
+  `scratch/retired_experiments/studies/`; shared mathematics and current runners
+  remain in `src/`. The implemented interface is documented in
   `docs/experiment_workflow.md`. In particular, preserve the asymmetric residual
   transfer, fixed moved-row noise, seed pairing, and source-contract checks.
 
@@ -295,8 +296,8 @@ Guidelines:
   orchestration belongs in `scratch/`; preserve reusable mathematical helpers
   before retiring source modules. The first pass moved 18 historical manifests
   and nine drivers into `scratch/retired_experiments/`; the follow-up archived
-  another 29 synthetic manifests. Both relocation indexes are there. Shared
-  `src/` modules remain until their dependencies are separated.
+  another 29 synthetic manifests. Both relocation indexes are there. Shared mathematics remain in `src/`; production code must not import scratch.
+  Source moves and recovery paths are recorded in `source_relocations_20261023.json`.
 - Classify new work before choosing files. Reproducible analyses use the
   existing manifest runner with a validated reporting recipe; reusable model,
   data, objective, and plotting behavior belongs under `src/`. Reserve scripts
@@ -342,7 +343,7 @@ for a one-off exploratory script. The manifest is the orchestration source of
 truth; do not hide sweep axes, seed policy, optimizer choices, truth references,
 or Slurm behavior in Python constants when they can be expressed in the manifest.
 
-Required manifest fields:
+Required fields for optimization-only manifests (band exceptions below):
 - `name`: project/result directory slug.
 - `objective.preset`: registered config preset. Optional `objective.overrides`
   are the base objective/data-ladder overrides.
@@ -356,7 +357,7 @@ Required manifest fields:
   pins individual seed streams. There is no implicit seed-vary policy in a
   manifest.
 - `truth`: explicit source of derived metrics. Allowed `source` values are
-  `clean_base_objective` (the denoised/debiased base objective after stripping
+  `none` (no truth-derived metrics), `clean_base_objective` (the denoised/debiased base objective after stripping
   manifest objective modifications) and `summary_json` with explicit `path` and
   `estimator`. Do not invent a default truth run.
 - `launch`: explicit `mode` (`local`, `slurm`, or `auto`) and `array`
@@ -390,10 +391,21 @@ the same config key; labeled entries may provide nested `overrides`, which is
 the preferred way to toggle noise/bias objective modifications or data-ladder
 settings while keeping names readable.
 
-Manifest reruns are completion-aware: a variant is skipped unless `--force` is
-passed when every requested `summary-seed-<seed>.json` exists at the variant
-root. This makes rerunning a manifest cheap while preserving normal
-`run_sweep(...)` outputs for missing work.
+Manifest execution verifies `run-contract.json` before resuming or skipping.
+The contract binds variant/seed choices, source/package identity and referenced
+inputs. Resume runs only missing seeds. A changed contract or completed-run
+`--force` requires a fresh location in the same family; never overwrite results.
+Legacy summaries remain readable for reporting, but are not verified resumes.
+
+The existing optimization manifest accepts `task: optimize` (default), `band`,
+or `optimize_with_band`. Band-only omits objective/optimizer/optimizer seeds;
+setting provenance owns its observations and multipliers. Band optimization uses
+the registered `band_policy` preset and explicit endpoint/sense/policy/optimizer.
+`truth.source: none` preserves unavailable truth. Settings are existing synthetic
+study references, explicit observed NPZ inputs, or explicit Generali support rows.
+See `docs/experiment_workflow.md` for fields, capabilities and saved artifacts.
+Do not expand method applicability, infer a Generali calibration response, or
+substitute a new stochastic representation merely to fit this interface.
 
 Default artifact structure:
 - Project root: `results/<manifest-name>/EXPERIMENT.md`, project-level
@@ -404,7 +416,9 @@ Default artifact structure:
   `seed_grid_summary.csv`, seed metric bar plots, seed frontier plot, and seed
   loss bands.
 - Seed run leaves: `seeds/seed-<seed>/` with the normal reporter artifacts.
-  Heavy per-seed plots are off unless `per_seed_plots: true` is in the manifest.
+  Heavy per-seed plots are off unless `per_seed_plots: true` is in the manifest
+  (unsupported for band tasks, which save numeric endpoint exports). Seed-sweep
+  metric, frontier and loss-band outputs are PDFs.
 
 Default launch array structure:
 - `launch.array: "variant"` creates `LaunchPlan.task_count = len(variants)` and
@@ -483,8 +497,9 @@ Changing the `models` array is the supported model swap. Available keys are
 
 ### Key Components
 
-- `src/experiments/envelopes/` implements `kind: "uncertainty_envelopes"`
-  through the shared manifest launcher. `core.py` owns data/target/envelope
+- `scratch/retired_experiments/studies/envelopes/` preserves the concluded
+  `kind: "uncertainty_envelopes"` study through its archived launcher. Shared
+  `src/experiments/envelopes/` owns reusable fitting/evaluation/replay; `core.py` owns data/target/envelope
   records, typed coverage results, finite containment, signed excess metrics,
   and complete-denominator empirical aggregation. `linear.py` supplies contextual
   OLS known-variance transfer, the conditional moment bound, and exact-rational
@@ -499,7 +514,7 @@ Changing the `models` array is the supported model swap. Available keys are
   failed, or missing repetitions suppress empirical estimates. Diagnostic grids
   do not define continuum coverage. No action optimizer/reference is involved.
   `diagnostics.py` owns reusable `write_diagnostic_reports`, exported from
-  `experiments.envelopes` and called by collection alongside the legacy reports.
+  `scratch.retired_experiments.studies.envelopes` and called by archived collection.
   It writes `reports/diagnostics/01_context_coverage.pdf`,
   `02_mean_envelope.pdf`, `03_radius_decomposition.pdf`,
   `04_context_slices.pdf`, and `diagnostics.json` with saved curves/provenance.
@@ -594,7 +609,7 @@ Changing the `models` array is the supported model swap. Available keys are
   no downstream action optimization or regret calculation. Usage and artifact
   interpretation are in `docs/wild_bootstrap_envelopes.md`.
 
-- `src/experiments/offline_bootstrap.py` owns the fixed-offline-data experiment
+- `scratch/retired_experiments/studies/offline_bootstrap.py` owns the fixed-offline-data experiment
   (`kind: "offline_bootstrap"`, `manifests/offline_bootstrap.json`). It loads a
   saved predictor and observed data, freezes paired response variants, resamples
   full-rank pairs, calibrates finite-B quantiles, and varies N/B/sigma separately
@@ -612,7 +627,7 @@ Changing the `models` array is the supported model swap. Available keys are
   coverage probability, and finite-B certification is not a finite-N bootstrap
   theorem. See MATH.md §7.7 and `docs/offline_bootstrap.md`.
 
-- `src/experiments/coverage_kernel_sweep.py` and its reporting companion
+- `scratch/retired_experiments/studies/coverage_kernel_sweep.py` and its reporting companion
   implement `kind: "coverage_kernel_n_sweep"` (MATH.md §7.4). The fixed
   Gaussian bandwidth `b=0.1` and two-sided Gaussian quantile define a
   support-based radius for the quadratic OLS fit. The manifest pairs the same
@@ -624,7 +639,7 @@ Changing the `models` array is the supported model swap. Available keys are
   reproducible. `test_coverage_kernel_sweep.py` checks formula, gradient,
   paired streams, optimizer provenance, and artifact generation.
 
-- `src/experiments/coverage_kernel_parameter_sweep.py` and its reporting
+- `scratch/retired_experiments/studies/coverage_kernel_parameter_sweep.py` and its reporting
   companion replay the saved Gaussian-support N sweep for two one-at-a-time
   axes: `kind: "coverage_kernel_q_sweep"` changes q at b=0.1, and
   `kind: "coverage_kernel_b_sweep"` changes b at the original Gaussian
@@ -637,7 +652,7 @@ Changing the `models` array is the supported model swap. Available keys are
   and four preselected N curves in each of three default-Matplotlib PDFs are
   documented by MATH.md §7.4 and tested in
   `test_coverage_kernel_parameter_sweep.py`.
-- `src/experiments/bootstrap_cartesian_coverage.py` extends completed N/B coverage
+- `scratch/retired_experiments/studies/bootstrap_cartesian_coverage.py` extends completed N/B coverage
   runs using the `grid` and `reuse_projects` fields of the joint-coverage manifest
   kind. It verifies data/seed/numerical-source contracts and artifact hashes,
   retains each longest saved bootstrap prefix, and fits only missing suffixes.
@@ -647,7 +662,7 @@ Changing the `models` array is the supported model swap. Available keys are
   `bootstrap_ols_cartesian_coverage.json`; see MATH §7.6,
   `docs/bootstrap_cartesian_coverage.md` and `test_bootstrap_cartesian_coverage.py`.
 
-- `src/experiments/bootstrap_joint_coverage.py` implements the dedicated joint
+- `scratch/retired_experiments/studies/bootstrap_joint_coverage.py` implements the dedicated joint
   N/B coverage-only manifest through the shared launcher. It reuses the existing
   pairs refitter, named streams and whole-line certificates; no optimizer action
   or extra objective is introduced. `bootstrap_ols_joint_coverage.json` fixes
@@ -658,7 +673,7 @@ Changing the `models` array is the supported model swap. Available keys are
   `docs/bootstrap_joint_coverage.md`, MATH §7.5 and
   `tests/experiments/test_bootstrap_joint_coverage.py`.
 
-- `src/experiments/bootstrap_band_sweep.py` and its `_reporting.py` companion
+- `scratch/retired_experiments/studies/bootstrap_band_sweep.py` and its `_reporting.py` companion
   implement `kind: "bootstrap_ols_controlled_sweep"` through the shared manifest
   launcher. They pair normal inputs/observation noise/bootstrap streams across
   any requested subset of sigma/N/B, certify bootstrap containment on R, and
@@ -676,7 +691,7 @@ Changing the `models` array is the supported model swap. Available keys are
   16-point training-size sweep from N=20 through N=5000. The combined sweep
   fixes baseline N=100 and includes fine B and sigma grids; axes are separate.
 
-- `src/experiments/bootstrap_band_continuous.py` analytically replays the saved
+- `scratch/retired_experiments/studies/bootstrap_band_continuous.py` analytically replays the saved
   bootstrap OLS experiment on the whole real line (MATH.md §7.2). It computes
   coverage statistics from the quartic stationary equation/tail limit, then
   certifies supremum brackets and actual containment via exact rational
@@ -694,7 +709,7 @@ Changing the `models` array is the supported model swap. Available keys are
   suprema, exact roots with multiplicity, numerical-proposal recovery, source
   replay, saved certificates, and PDF collection.
 
-- `src/experiments/bootstrap_band.py` implements the original-row pairs
+- `scratch/retired_experiments/studies/bootstrap_band.py` implements the original-row pairs
   bootstrap OLS band of MATH.md §7.1. It fits observations, uses the original
   prediction SE in bootstrap denominators, and reports finite-grid coverage.
   `bootstrap_band(...)` has no truth argument; `evaluate_band(...)` is separate.
@@ -704,7 +719,7 @@ Changing the `models` array is the supported model swap. Available keys are
   is the requested coverage statistic, not an optimized action. There are no
   optimizer selections or coefficient ellipsoids. Calibration is approximate,
   and does not establish continuous or exact finite-sample coverage.
-- `src/experiments/bootstrap_band_reporting.py` regenerates five PDF-only
+- `scratch/retired_experiments/studies/bootstrap_band_reporting.py` regenerates five PDF-only
   diagnostic figures from saved data. Per-condition NPZs preserve observations,
   OLS/bootstrap coefficients, bootstrap maxima, and grid bands. Summary hashes
   validate the source/manifest contract and artifacts before completion reuse.

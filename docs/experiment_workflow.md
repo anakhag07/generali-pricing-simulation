@@ -220,6 +220,14 @@ map each former module to its archive path; this is not a drop-in import alias.
 
 Validation on `refactor/experiment-band-workflow` (2026-10-23):
 
+- PR review follow-up: 63 focused workflow/manifest/provenance/execution/sweep
+  checks passed. The full suite completed with 1,292 passes and one failure:
+  the existing legacy proof-validation NaN plotting case. The declared Markdown
+  dev dependency was available via the temporary test directory. The small
+  repository-optimizer demo and CLI help check passed; public docs regenerated.
+  Regression coverage includes source-cache invalidation (including timestamp
+  collisions), changed input artifacts, partial-run integrity, missing/mismatched
+  endpoint exports, completed optimization `--force`, and the empty-seed guard.
 - 117 focused retained-study, archive, band and Generali preparation checks passed;
   31 final workflow/manifest/sweep checks passed after the resume/PDF updates.
 - The full suite completed with 1,268 passes and two failures. One is the already

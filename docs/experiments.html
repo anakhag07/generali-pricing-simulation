@@ -54,6 +54,7 @@
             <h2>Submodules</h2>
             <ul>
                     <li><a href="experiments/envelopes.html">envelopes</a></li>
+                    <li><a href="experiments/band_workflow.html">band_workflow</a></li>
             </ul>
 
             <h2>API Documentation</h2>
@@ -672,17 +673,45 @@ experiments    </h1>
 </span><span id="L-4"><a href="#L-4"><span class="linenos"> 4</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.execution</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExecutedRun</span><span class="p">,</span> <span class="n">default_reporter_stack</span><span class="p">,</span> <span class="n">execute_experiment_run</span>
 </span><span id="L-5"><a href="#L-5"><span class="linenos"> 5</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.launch</span><span class="w"> </span><span class="kn">import</span> <span class="n">LaunchContext</span><span class="p">,</span> <span class="n">LaunchPlan</span><span class="p">,</span> <span class="n">add_launch_args</span><span class="p">,</span> <span class="n">run_launch_plan</span>
 </span><span id="L-6"><a href="#L-6"><span class="linenos"> 6</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.paths</span><span class="w"> </span><span class="kn">import</span> <span class="n">results_root</span>
-</span><span id="L-7"><a href="#L-7"><span class="linenos"> 7</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.results</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConstantBaselineResult</span><span class="p">,</span> <span class="n">EstimatorResult</span><span class="p">,</span> <span class="n">ExperimentResult</span><span class="p">,</span> <span class="n">OptimizationTrace</span><span class="p">,</span> <span class="n">PolicyEvaluation</span>
-</span><span id="L-8"><a href="#L-8"><span class="linenos"> 8</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.run</span><span class="w"> </span><span class="kn">import</span> <span class="n">run_experiment</span>
-</span><span id="L-9"><a href="#L-9"><span class="linenos"> 9</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.seeds</span><span class="w"> </span><span class="kn">import</span> <span class="n">ResolvedSeedSetup</span><span class="p">,</span> <span class="n">SeedSetup</span><span class="p">,</span> <span class="n">resolve_seed_setup</span>
-</span><span id="L-10"><a href="#L-10"><span class="linenos">10</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">PreparedSetting</span><span class="p">,</span> <span class="n">prepare_setting</span>
-</span><span id="L-11"><a href="#L-11"><span class="linenos">11</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments</span><span class="w"> </span><span class="kn">import</span> <span class="n">envelopes</span>
-</span><span id="L-12"><a href="#L-12"><span class="linenos">12</span></a>
-</span><span id="L-13"><a href="#L-13"><span class="linenos">13</span></a><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;CorrectnessSpec&quot;</span><span class="p">,</span> <span class="s2">&quot;ExperimentConfig&quot;</span><span class="p">,</span> <span class="s2">&quot;get_config&quot;</span><span class="p">,</span> <span class="s2">&quot;list_configs&quot;</span><span class="p">,</span> <span class="s2">&quot;ExecutedRun&quot;</span><span class="p">,</span>
-</span><span id="L-14"><a href="#L-14"><span class="linenos">14</span></a>    <span class="s2">&quot;default_reporter_stack&quot;</span><span class="p">,</span> <span class="s2">&quot;execute_experiment_run&quot;</span><span class="p">,</span> <span class="s2">&quot;LaunchContext&quot;</span><span class="p">,</span> <span class="s2">&quot;LaunchPlan&quot;</span><span class="p">,</span> <span class="s2">&quot;add_launch_args&quot;</span><span class="p">,</span>
-</span><span id="L-15"><a href="#L-15"><span class="linenos">15</span></a>    <span class="s2">&quot;run_launch_plan&quot;</span><span class="p">,</span> <span class="s2">&quot;results_root&quot;</span><span class="p">,</span> <span class="s2">&quot;ConstantBaselineResult&quot;</span><span class="p">,</span> <span class="s2">&quot;EstimatorResult&quot;</span><span class="p">,</span> <span class="s2">&quot;ExperimentResult&quot;</span><span class="p">,</span>
-</span><span id="L-16"><a href="#L-16"><span class="linenos">16</span></a>    <span class="s2">&quot;OptimizationTrace&quot;</span><span class="p">,</span> <span class="s2">&quot;PolicyEvaluation&quot;</span><span class="p">,</span> <span class="s2">&quot;run_experiment&quot;</span><span class="p">,</span> <span class="s2">&quot;ResolvedSeedSetup&quot;</span><span class="p">,</span> <span class="s2">&quot;SeedSetup&quot;</span><span class="p">,</span>
-</span><span id="L-17"><a href="#L-17"><span class="linenos">17</span></a>    <span class="s2">&quot;resolve_seed_setup&quot;</span><span class="p">,</span> <span class="s2">&quot;PreparedSetting&quot;</span><span class="p">,</span> <span class="s2">&quot;prepare_setting&quot;</span><span class="p">,</span> <span class="s2">&quot;envelopes&quot;</span><span class="p">]</span>
+</span><span id="L-7"><a href="#L-7"><span class="linenos"> 7</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.results</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+</span><span id="L-8"><a href="#L-8"><span class="linenos"> 8</span></a>    <span class="n">ConstantBaselineResult</span><span class="p">,</span>
+</span><span id="L-9"><a href="#L-9"><span class="linenos"> 9</span></a>    <span class="n">EstimatorResult</span><span class="p">,</span>
+</span><span id="L-10"><a href="#L-10"><span class="linenos">10</span></a>    <span class="n">ExperimentResult</span><span class="p">,</span>
+</span><span id="L-11"><a href="#L-11"><span class="linenos">11</span></a>    <span class="n">OptimizationTrace</span><span class="p">,</span>
+</span><span id="L-12"><a href="#L-12"><span class="linenos">12</span></a>    <span class="n">PolicyEvaluation</span><span class="p">,</span>
+</span><span id="L-13"><a href="#L-13"><span class="linenos">13</span></a><span class="p">)</span>
+</span><span id="L-14"><a href="#L-14"><span class="linenos">14</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.run</span><span class="w"> </span><span class="kn">import</span> <span class="n">run_experiment</span>
+</span><span id="L-15"><a href="#L-15"><span class="linenos">15</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.seeds</span><span class="w"> </span><span class="kn">import</span> <span class="n">ResolvedSeedSetup</span><span class="p">,</span> <span class="n">SeedSetup</span><span class="p">,</span> <span class="n">resolve_seed_setup</span>
+</span><span id="L-16"><a href="#L-16"><span class="linenos">16</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">PreparedSetting</span><span class="p">,</span> <span class="n">prepare_setting</span>
+</span><span id="L-17"><a href="#L-17"><span class="linenos">17</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments</span><span class="w"> </span><span class="kn">import</span> <span class="n">band_workflow</span><span class="p">,</span> <span class="n">envelopes</span>
+</span><span id="L-18"><a href="#L-18"><span class="linenos">18</span></a>
+</span><span id="L-19"><a href="#L-19"><span class="linenos">19</span></a><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="L-20"><a href="#L-20"><span class="linenos">20</span></a>    <span class="s2">&quot;CorrectnessSpec&quot;</span><span class="p">,</span>
+</span><span id="L-21"><a href="#L-21"><span class="linenos">21</span></a>    <span class="s2">&quot;ExperimentConfig&quot;</span><span class="p">,</span>
+</span><span id="L-22"><a href="#L-22"><span class="linenos">22</span></a>    <span class="s2">&quot;get_config&quot;</span><span class="p">,</span>
+</span><span id="L-23"><a href="#L-23"><span class="linenos">23</span></a>    <span class="s2">&quot;list_configs&quot;</span><span class="p">,</span>
+</span><span id="L-24"><a href="#L-24"><span class="linenos">24</span></a>    <span class="s2">&quot;ExecutedRun&quot;</span><span class="p">,</span>
+</span><span id="L-25"><a href="#L-25"><span class="linenos">25</span></a>    <span class="s2">&quot;default_reporter_stack&quot;</span><span class="p">,</span>
+</span><span id="L-26"><a href="#L-26"><span class="linenos">26</span></a>    <span class="s2">&quot;execute_experiment_run&quot;</span><span class="p">,</span>
+</span><span id="L-27"><a href="#L-27"><span class="linenos">27</span></a>    <span class="s2">&quot;LaunchContext&quot;</span><span class="p">,</span>
+</span><span id="L-28"><a href="#L-28"><span class="linenos">28</span></a>    <span class="s2">&quot;LaunchPlan&quot;</span><span class="p">,</span>
+</span><span id="L-29"><a href="#L-29"><span class="linenos">29</span></a>    <span class="s2">&quot;add_launch_args&quot;</span><span class="p">,</span>
+</span><span id="L-30"><a href="#L-30"><span class="linenos">30</span></a>    <span class="s2">&quot;run_launch_plan&quot;</span><span class="p">,</span>
+</span><span id="L-31"><a href="#L-31"><span class="linenos">31</span></a>    <span class="s2">&quot;results_root&quot;</span><span class="p">,</span>
+</span><span id="L-32"><a href="#L-32"><span class="linenos">32</span></a>    <span class="s2">&quot;ConstantBaselineResult&quot;</span><span class="p">,</span>
+</span><span id="L-33"><a href="#L-33"><span class="linenos">33</span></a>    <span class="s2">&quot;EstimatorResult&quot;</span><span class="p">,</span>
+</span><span id="L-34"><a href="#L-34"><span class="linenos">34</span></a>    <span class="s2">&quot;ExperimentResult&quot;</span><span class="p">,</span>
+</span><span id="L-35"><a href="#L-35"><span class="linenos">35</span></a>    <span class="s2">&quot;OptimizationTrace&quot;</span><span class="p">,</span>
+</span><span id="L-36"><a href="#L-36"><span class="linenos">36</span></a>    <span class="s2">&quot;PolicyEvaluation&quot;</span><span class="p">,</span>
+</span><span id="L-37"><a href="#L-37"><span class="linenos">37</span></a>    <span class="s2">&quot;run_experiment&quot;</span><span class="p">,</span>
+</span><span id="L-38"><a href="#L-38"><span class="linenos">38</span></a>    <span class="s2">&quot;ResolvedSeedSetup&quot;</span><span class="p">,</span>
+</span><span id="L-39"><a href="#L-39"><span class="linenos">39</span></a>    <span class="s2">&quot;SeedSetup&quot;</span><span class="p">,</span>
+</span><span id="L-40"><a href="#L-40"><span class="linenos">40</span></a>    <span class="s2">&quot;resolve_seed_setup&quot;</span><span class="p">,</span>
+</span><span id="L-41"><a href="#L-41"><span class="linenos">41</span></a>    <span class="s2">&quot;PreparedSetting&quot;</span><span class="p">,</span>
+</span><span id="L-42"><a href="#L-42"><span class="linenos">42</span></a>    <span class="s2">&quot;prepare_setting&quot;</span><span class="p">,</span>
+</span><span id="L-43"><a href="#L-43"><span class="linenos">43</span></a>    <span class="s2">&quot;envelopes&quot;</span><span class="p">,</span>
+</span><span id="L-44"><a href="#L-44"><span class="linenos">44</span></a>    <span class="s2">&quot;band_workflow&quot;</span><span class="p">,</span>
+</span><span id="L-45"><a href="#L-45"><span class="linenos">45</span></a><span class="p">]</span>
 </span></pre></div>
 
 

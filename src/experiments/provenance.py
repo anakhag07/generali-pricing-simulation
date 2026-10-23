@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import tempfile
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -64,4 +66,44 @@ def _jsonable(value: Any) -> Any:
     return value
 
 
-__all__ = ["array_sha256", "file_record", "file_sha256", "write_provenance"]
+def read_json(path):
+    """Read a required JSON object for saved experiment state."""
+    payload = json.loads(Path(path).read_text())
+    if not isinstance(payload, dict):
+        raise ValueError(f"Expected a JSON object in {path}.")
+    return payload
+
+
+def write_json_atomic(path, payload):
+    """Write JSON through a unique temporary file, safe for parallel task writers."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    text = json.dumps(_jsonable(payload), indent=2, sort_keys=True, allow_nan=False)+"\n"
+    fd, temporary = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as handle:
+            handle.write(text)
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+def save_arrays_atomic(path, **arrays):
+    """Write numeric arrays without pickle using an independent temporary file."""
+    if any(np.asarray(value).dtype.hasobject for value in arrays.values()):
+        raise ValueError("Saved numeric state must not contain object arrays.")
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, temporary = tempfile.mkstemp(dir=path.parent, suffix=".npz")
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            np.savez_compressed(handle, **arrays)
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+__all__ = ["array_sha256", "file_record", "file_sha256", "write_provenance",
+           "read_json", "write_json_atomic", "save_arrays_atomic"]

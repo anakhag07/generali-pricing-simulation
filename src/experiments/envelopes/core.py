@@ -8,7 +8,30 @@ from typing import Any
 
 import numpy as np
 
-from experiments.policy_lcb.common import wilson_interval
+from scipy.stats import norm
+
+def wilson_interval(
+    successes: int,
+    trials: int,
+    *,
+    confidence: float = 0.95,
+) -> tuple[float, float]:
+    """Return a Wilson score interval with exact endpoints at all-fail/all-pass."""
+    if trials <= 0:
+        raise ValueError("trials must be positive.")
+    z_value = float(norm.ppf(0.5 + confidence / 2.0))
+    proportion = successes / trials
+    denominator = 1.0 + z_value**2 / trials
+    center = (proportion + z_value**2 / (2.0 * trials)) / denominator
+    radius = (
+        z_value
+        * np.sqrt(proportion * (1.0 - proportion) / trials + z_value**2 / (4.0 * trials**2))
+        / denominator
+    )
+    low = 0.0 if successes == 0 else max(0.0, center - radius)
+    high = 1.0 if successes == trials else min(1.0, center + radius)
+    return float(low), float(high)
+
 
 Model = Callable[[np.ndarray, np.ndarray], np.ndarray]
 
@@ -89,11 +112,23 @@ def cartesian_locations(contexts, actions):
 
 @dataclass(frozen=True)
 class EnvelopeValues:
-    """Pointwise center, radius, and optional construction diagnostics."""
+    """Pointwise endpoints; ``radius`` is available only for symmetric bands."""
 
     center: np.ndarray
-    radius: np.ndarray
+    radius: np.ndarray | None
     components: dict[str, np.ndarray] = field(default_factory=dict)
+    radius_lower: np.ndarray | None = None
+    radius_upper: np.ndarray | None = None
+
+    @property
+    def lower(self):
+        """Return the lower endpoint without symmetrizing residual transfer."""
+        return self.center - (self.radius if self.radius_lower is None else self.radius_lower)
+
+    @property
+    def upper(self):
+        """Return the upper endpoint without symmetrizing residual transfer."""
+        return self.center + (self.radius if self.radius_upper is None else self.radius_upper)
 
 
 @dataclass
@@ -101,23 +136,43 @@ class FittedEnvelope:
     """Deterministic fitted callables with replayable numeric state and metadata."""
 
     center: Model
-    radius: Model
+    radius: Model | None = None
     state: dict[str, Any] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
     components: Callable | None = None
+    radii: Callable | None = None
+    action_derivatives: Callable | None = None
 
     def evaluate(self, X, actions):
         """Evaluate paired queries and reject invalid or negative radii."""
         X, actions = locations(X, actions)
         center = values(self.center(X, actions), len(X), "center")
-        radius = values(self.radius(X, actions), len(X), "radius")
-        if np.any(radius < 0):
-            raise ValueError("Envelope radius must be nonnegative.")
+        if (self.radius is None) == (self.radii is None):
+            raise ValueError("Specify either a symmetric radius or separate lower/upper radii.")
+        if self.radii is None:
+            radius = values(self.radius(X, actions), len(X), "radius")
+            lower = upper = radius
+        else:
+            radius = None
+            lower, upper = self.radii(X, actions)
+            lower = values(lower, len(X), "lower radius")
+            upper = values(upper, len(X), "upper radius")
+        if np.any(lower < 0) or np.any(upper < 0):
+            raise ValueError("Envelope radii must be nonnegative.")
         parts = {} if self.components is None else self.components(X, actions)
         if not isinstance(parts, Mapping):
             raise ValueError("Envelope components must be a mapping.")
         parts = {key: values(value, len(X), f"component {key}") for key, value in parts.items()}
-        return EnvelopeValues(center, radius, parts)
+        return EnvelopeValues(center, radius, parts, lower, upper)
+
+    def derivative(self, X, actions, endpoint):
+        """Return a declared endpoint action derivative, rejecting query-only methods."""
+        if endpoint not in {"center", "lower", "upper"}:
+            raise ValueError("Endpoint must be center, lower or upper.")
+        if self.action_derivatives is None:
+            raise ValueError("This fitted band does not provide first-order derivatives.")
+        X, actions = locations(X, actions)
+        return values(self.action_derivatives(X, actions)[endpoint], len(X), "action derivative")
 
 
 @dataclass(frozen=True)
@@ -174,9 +229,15 @@ def evaluate_tightness(envelope, truth, X, actions, weights=None):
         raise ValueError("Diagnostic weights must be nonnegative with positive sum.")
     weight = weight / weight.sum()
     error = np.abs(evaluated.center - actual)
+    half_width = evaluated.radius if evaluated.radius is not None else (evaluated.upper-evaluated.lower)/2
+    excess = (evaluated.radius-error if evaluated.radius is not None else
+              np.minimum(actual-evaluated.lower, evaluated.upper-actual))
     points = {"actions": actions, "center": evaluated.center, "truth": actual,
-              "radius": evaluated.radius, "absolute_error": error,
-              "excess": evaluated.radius-error, "weights": weight}
+              "radius": half_width, "absolute_error": error,
+              "excess": excess, "weights": weight}
+    if evaluated.radius is None:
+        points.update(lower=evaluated.lower, upper=evaluated.upper,
+                      radius_lower=evaluated.radius_lower, radius_upper=evaluated.radius_upper)
     points.update({f"component_{key}": value for key, value in evaluated.components.items()})
     summary = {}
     for key in ("radius", "excess", "absolute_error"):
@@ -197,9 +258,11 @@ def check_finite_containment(envelope, truth, target):
     """Check precisely the declared finite set, without claiming continuum coverage."""
     X, a = target.points()
     evaluated = envelope.evaluate(X, a)
-    error = np.abs(evaluated.center-values(truth(X, a), len(a), "truth"))
-    failed = np.flatnonzero(error > evaluated.radius)
-    covered = (error <= evaluated.radius).reshape(len(target.contexts), -1).all(axis=1)
+    actual = values(truth(X, a), len(a), "truth")
+    margin = (evaluated.radius-np.abs(evaluated.center-actual) if evaluated.radius is not None else
+              np.minimum(actual-evaluated.lower, evaluated.upper-actual))
+    failed = np.flatnonzero(margin < 0)
+    covered = (margin >= 0).reshape(len(target.contexts), -1).all(axis=1)
     details = {
         "point_count": len(a), "context_count": len(target.contexts),
         "contexts": [{"context_index": index, "covered": bool(value)}
@@ -209,7 +272,7 @@ def check_finite_containment(envelope, truth, target):
     if len(failed):
         index = int(failed[0])
         details["witness"] = {"context": X[index].tolist(), "action": float(a[index]),
-                              "excess": float(evaluated.radius[index]-error[index])}
+                              "excess": float(margin[index])}
     return ContainmentResult("violated" if len(failed) else "covered",
                              "finite_evaluation", target.kind, details)
 

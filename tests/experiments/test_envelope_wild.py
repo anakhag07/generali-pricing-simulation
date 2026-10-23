@@ -183,7 +183,7 @@ def test_quadratic_certificates_include_action_tails_and_bracket_suprema():
 def test_affine_signed_fast_check_matches_exact_polynomial_certificate():
     import sympy as sp
     from experiments.envelopes.wild import _residual_polynomials_contain
-    from experiments.bootstrap_band_continuous import VARIABLE
+    from experiments.envelopes.quadratic import VARIABLE
     rng = np.random.default_rng(1301)
     design = WildLinearDesign(rng.normal(size=(12, 1)), rng.normal(size=12))
     for _ in range(5):

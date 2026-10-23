@@ -4,9 +4,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from experiments.bootstrap_joint_coverage import load_manifest, run_dataset, collect
-from experiments.bootstrap_band import features, refit_pairs
-from experiments.bootstrap_band_sweep import dataset_streams
+from scratch.retired_experiments.studies.bootstrap_joint_coverage import load_manifest, run_dataset, collect
+from experiments.envelopes.quadratic import features, refit_pairs
+from scratch.retired_experiments.studies.bootstrap_band_sweep import dataset_streams
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -33,7 +33,7 @@ def test_only_missing_suffix_is_refit_and_old_coverage_is_unchanged(tmp_path,mon
     def spy(design,y,indices):
         calls.append(indices.shape)
         return refit_pairs(design,y,indices)
-    monkeypatch.setattr("experiments.bootstrap_cartesian_coverage.refit_pairs",spy)
+    monkeypatch.setattr("scratch.retired_experiments.studies.bootstrap_cartesian_coverage.refit_pairs",spy)
     for index in range(2):
         saved=run_dataset(manifest,index,tmp_path)
         assert saved["reused_bootstrap_draws"]==28
@@ -72,7 +72,7 @@ def test_full_saved_prefix_never_refits(tmp_path,monkeypatch):
     manifest.payload['settings']=[s for s in manifest.payload['settings'] if s['N']==20]
     def forbidden(*args,**kwargs):
         raise AssertionError('Existing bootstrap draws must never be refitted')
-    monkeypatch.setattr('experiments.bootstrap_cartesian_coverage.refit_pairs',forbidden)
+    monkeypatch.setattr('scratch.retired_experiments.studies.bootstrap_cartesian_coverage.refit_pairs',forbidden)
     saved=run_dataset(manifest,0,tmp_path)
     assert saved['new_bootstrap_draws']==0
 

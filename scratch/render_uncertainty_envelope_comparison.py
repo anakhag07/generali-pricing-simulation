@@ -10,10 +10,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sympy as sp
 
-from experiments.envelopes.reporting import (
+from scratch.retired_experiments.studies.envelopes.reporting import (
     _STYLE, _comparison_case, write_calibration_plot, write_comparison,
 )
-from experiments.envelopes.diagnostics import _load_project, _load_grid
+from scratch.retired_experiments.studies.envelopes.diagnostics import _load_project, _load_grid
 from experiments.paths import results_root
 from experiments.provenance import file_record, write_provenance
 from experiments.sweep_reporting import write_rows_csv

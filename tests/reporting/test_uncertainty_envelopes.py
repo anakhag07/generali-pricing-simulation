@@ -14,8 +14,8 @@ import numpy as np
 import pytest
 
 from experiments.envelopes.core import aggregate_coverage
-from experiments.envelopes import reporting
-from experiments.envelopes.reporting import write_comparison, write_reports
+from scratch.retired_experiments.studies.envelopes import reporting
+from scratch.retired_experiments.studies.envelopes.reporting import write_comparison, write_reports
 from experiments.provenance import file_record
 
 

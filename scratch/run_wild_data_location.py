@@ -19,8 +19,8 @@ import sympy as sp
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
-from experiments.bootstrap_band import features
-from experiments.bootstrap_band_continuous import QuadraticErrorCertificate
+from experiments.envelopes.quadratic import features
+from experiments.envelopes.quadratic import QuadraticErrorCertificate
 from experiments.offline_bootstrap_math import (
     TransferredLCBObjective, _branches, _candidate_lower_value,
     transferred_below_level,
@@ -258,7 +258,7 @@ def main():
     source_files = [Path(__file__), ROOT / "MATH.md"]
     source_files += list((ROOT / "src/optimization").rglob("*.py"))
     source_files += [ROOT / "src/experiments" / name for name in
-                     ("bootstrap_band.py", "bootstrap_band_continuous.py", "offline_bootstrap_math.py",
+                     ("envelopes/quadratic.py", "offline_bootstrap_math.py",
                       "seeds/streams.py")]
     summary["provenance"] = {
         "repository_head": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),

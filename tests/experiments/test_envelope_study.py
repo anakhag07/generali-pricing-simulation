@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from experiments.envelopes import study
+from scratch.retired_experiments.studies.envelopes import study
 
 
 @pytest.fixture

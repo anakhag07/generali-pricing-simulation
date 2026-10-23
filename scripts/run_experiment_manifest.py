@@ -8,10 +8,11 @@ from pathlib import Path
 import sys
 from typing import Any
 
-from experiments.finite_policy_lcb import (
-    FinitePolicyLCBManifest,
-    load_finite_policy_lcb_manifest,
-)
+_ROOT = Path(__file__).resolve().parents[1]
+for _path in (_ROOT, _ROOT / "src"):
+    if str(_path) not in sys.path:
+        sys.path.insert(0, str(_path))
+
 from experiments.launch import LaunchContext, LaunchPlan, add_launch_args, run_launch_plan
 from experiments.manifest import (
     ExperimentManifest,
@@ -20,23 +21,11 @@ from experiments.manifest import (
     run_manifest_serial,
     run_manifest_variant,
 )
-from experiments.policy_lcb.launch import (
-    POLICY_LCB_MANIFEST_KINDS,
-    PolicyLCBManifest,
-    build_policy_lcb_launch_plan,
-    load_policy_lcb_manifest,
-)
 from experiments.policy_capacity import (
     POLICY_CAPACITY_MANIFEST_KIND,
     PolicyCapacityManifest,
     build_policy_capacity_launch_plan,
     load_policy_capacity_manifest,
-)
-from experiments.bootstrap_band import (
-    MANIFEST_KIND as BOOTSTRAP_BAND_MANIFEST_KIND,
-    BootstrapBandManifest,
-    build_bootstrap_band_launch_plan,
-    load_bootstrap_band_manifest,
 )
 
 
@@ -59,7 +48,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def _apply_manifest_launch_defaults(
     args: argparse.Namespace,
-    manifest: ExperimentManifest | PolicyLCBManifest | PolicyCapacityManifest | BootstrapBandManifest,
+    manifest: ExperimentManifest | PolicyCapacityManifest,
 ) -> None:
     if args.array_max_parallel is None:
         args.array_max_parallel = manifest.launch.array_max_parallel
@@ -138,25 +127,8 @@ def _build_launch_plan(
     )
 
 
-def _build_policy_lcb_launch_plan(
-    args: argparse.Namespace,
-    manifest: PolicyLCBManifest | None = None,
-) -> LaunchPlan:
-    resolved_manifest = manifest or load_policy_lcb_manifest(args.manifest)
-    return build_policy_lcb_launch_plan(
-        resolved_manifest,
-        runs_root=args.runs_root,
-        force=bool(args.force),
-    )
 
 
-def _build_finite_policy_lcb_launch_plan(
-    args: argparse.Namespace,
-    manifest: FinitePolicyLCBManifest | None = None,
-) -> LaunchPlan:
-    """Compatibility wrapper for tests and callers of the finite-only helper."""
-    resolved = manifest or load_finite_policy_lcb_manifest(args.manifest)
-    return _build_policy_lcb_launch_plan(args, resolved)
 
 
 def _manifest_kind(path: str | Path) -> str:
@@ -170,58 +142,18 @@ def _manifest_kind(path: str | Path) -> str:
 def main(argv: list[str] | None = None) -> None:
     args = _parse_args(argv)
     kind = _manifest_kind(args.manifest)
-    if kind in POLICY_LCB_MANIFEST_KINDS:
-        manifest = load_policy_lcb_manifest(Path(args.manifest))
-        plan = _build_policy_lcb_launch_plan(args, manifest)
-    elif kind == "optimization":
+    if kind == "optimization":
         manifest = load_experiment_manifest(Path(args.manifest))
         plan = _build_launch_plan(args, manifest)
     elif kind == POLICY_CAPACITY_MANIFEST_KIND:
         manifest = load_policy_capacity_manifest(Path(args.manifest))
-        plan = build_policy_capacity_launch_plan(
-            manifest,
-            runs_root=args.runs_root,
-            force=bool(args.force),
-        )
-    elif kind == BOOTSTRAP_BAND_MANIFEST_KIND:
-        manifest = load_bootstrap_band_manifest(Path(args.manifest))
-        plan = build_bootstrap_band_launch_plan(
-            manifest, runs_root=args.runs_root, force=bool(args.force),
-        )
-    elif kind == "bootstrap_ols_continuous_replay":
-        from experiments.bootstrap_band_continuous import load_manifest, build_launch_plan
-        manifest = load_manifest(args.manifest)
-        plan = build_launch_plan(manifest, runs_root=args.runs_root, force=bool(args.force))
-    elif kind == "bootstrap_ols_joint_coverage":
-        from experiments.bootstrap_joint_coverage import load_manifest, build_launch_plan
-        manifest = load_manifest(args.manifest)
-        plan = build_launch_plan(manifest, runs_root=args.runs_root, force=bool(args.force))
-    elif kind == "bootstrap_ols_controlled_sweep":
-        from experiments.bootstrap_band_sweep import load_manifest, build_launch_plan
-        manifest = load_manifest(args.manifest)
-        plan = build_launch_plan(manifest, runs_root=args.runs_root, force=bool(args.force))
+        plan = build_policy_capacity_launch_plan(manifest, runs_root=args.runs_root, force=bool(args.force))
     elif kind == "wild_bootstrap_envelopes":
         from experiments.envelopes.wild_study import load_manifest, build_launch_plan
         manifest = load_manifest(args.manifest)
         plan = build_launch_plan(manifest, runs_root=args.runs_root, force=bool(args.force))
-    elif kind == "uncertainty_envelopes":
-        from experiments.envelopes import load_manifest, build_launch_plan
-        manifest = load_manifest(args.manifest)
-        plan = build_launch_plan(manifest, runs_root=args.runs_root, force=bool(args.force))
-    elif kind == "offline_bootstrap":
-        from experiments.offline_bootstrap import load_manifest, build_launch_plan
-        manifest = load_manifest(args.manifest)
-        plan = build_launch_plan(manifest, runs_root=args.runs_root, force=bool(args.force))
-    elif kind == "coverage_kernel_n_sweep":
-        from experiments.coverage_kernel_sweep import load_manifest, build_launch_plan
-        manifest = load_manifest(args.manifest)
-        plan = build_launch_plan(manifest, runs_root=args.runs_root, force=bool(args.force))
-    elif kind in {"coverage_kernel_q_sweep", "coverage_kernel_b_sweep"}:
-        from experiments.coverage_kernel_parameter_sweep import load_manifest, build_launch_plan
-        manifest = load_manifest(args.manifest)
-        plan = build_launch_plan(manifest, runs_root=args.runs_root, force=bool(args.force))
     else:
-        raise ValueError(f"Unsupported experiment manifest kind {kind!r}.")
+        raise ValueError(f"Manifest kind {kind!r} is retired or unsupported; see scratch/retired_experiments/README.md.")
     _apply_manifest_launch_defaults(args, manifest)
     original_argv = [sys.argv[0], *(sys.argv[1:] if argv is None else argv)]
     run_launch_plan(plan, args=args, argv=original_argv)

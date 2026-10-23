@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import pytest
 
-import experiments.finite_policy_lcb as legacy_finite
-from experiments.policy_lcb import common
-from experiments.policy_lcb import finite
-from experiments.policy_lcb.continuous import continuous_lcb_quantile
+import scratch.retired_experiments.studies.finite_policy_lcb as legacy_finite
+from scratch.retired_experiments.studies.policy_lcb import common
+from scratch.retired_experiments.studies.policy_lcb import finite
+from scratch.retired_experiments.studies.policy_lcb.continuous import continuous_lcb_quantile
 
 
 def test_legacy_finite_module_is_the_finite_adapter() -> None:

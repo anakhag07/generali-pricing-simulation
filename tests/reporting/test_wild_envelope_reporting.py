@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 
 from experiments.envelopes import wild_reporting
-from experiments.policy_lcb.common import wilson_interval
+from experiments.envelopes.core import wilson_interval
 
 
 def test_finite_sample_terms_use_gaussian_fourth_moment_and_keep_vacuous_raw_bound():
@@ -203,7 +203,7 @@ def test_all_reports_are_pdfs_and_leave_no_open_figures(tmp_path, saved_report):
 
 @pytest.fixture
 def saved_leverage_summaries(tmp_path):
-    manifests = Path(__file__).parents[2] / "manifests"
+    manifests = Path(__file__).parents[2] / "scratch/retired_experiments/wild_bootstrap_diagnostics/manifests"
     paths = []
     for index, label in enumerate(("0p5", "1", "3", "10")):
         manifest = json.loads((manifests / f"wild-bootstrap-leverage-bound-{label}.json").read_text())
@@ -342,7 +342,7 @@ def test_wide_bound_report_retains_all_conditions_when_points_coincide(tmp_path,
 
 @pytest.fixture
 def saved_outlier_summaries(tmp_path, saved_leverage_summaries):
-    manifests = Path(__file__).parents[2] / "manifests"
+    manifests = Path(__file__).parents[2] / "scratch/retired_experiments/wild_bootstrap_diagnostics/manifests"
     paths = []
     for index, value in enumerate((3, 10, 20, 40, 100, 1000)):
         template = saved_leverage_summaries[index % len(saved_leverage_summaries)]

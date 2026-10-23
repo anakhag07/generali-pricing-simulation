@@ -14,9 +14,10 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-from experiments.bootstrap_band_continuous import QuadraticErrorCertificate
+from experiments.envelopes.quadratic import QuadraticErrorCertificate
 from experiments.paths import results_root
-from experiments.policy_lcb.common import read_json, wilson_interval, write_json_atomic
+from experiments.provenance import read_json, write_json_atomic
+from experiments.envelopes.core import wilson_interval
 from experiments.provenance import file_record
 from experiments.sweep_reporting import write_rows_csv
 

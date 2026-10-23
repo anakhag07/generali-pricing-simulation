@@ -5,12 +5,12 @@ import numpy as np
 import pytest
 import sympy as sp
 
-from experiments.bootstrap_band_sweep import (
+from scratch.retired_experiments.studies.bootstrap_band_sweep import (
     VARIABLE, QuadraticLCBObjective, lcb_below_level, optimize_lcb,
     load_manifest, dataset_streams, calibrate_design, run_dataset, collect,
 )
-from experiments.bootstrap_band import features
-from experiments.bootstrap_band_continuous import nonnegative_on_real_line
+from experiments.envelopes.quadratic import features
+from experiments.envelopes.quadratic import nonnegative_on_real_line
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -72,7 +72,7 @@ def test_repository_optimizer_is_unconstrained_and_tail_failures_are_explicit():
 def test_solver_success_alone_cannot_certify_a_nonoptimal_action(monkeypatch):
     from types import SimpleNamespace
     trace = SimpleNamespace(optimizer_success=True, optimizer_status=0, optimizer_message="mock success")
-    monkeypatch.setattr("experiments.bootstrap_band_sweep.run_first_order_minimize",
+    monkeypatch.setattr("scratch.retired_experiments.studies.bootstrap_band_sweep.run_first_order_minimize",
                         lambda *args, **kwargs: (np.array([0.]), trace))
     result = optimize_lcb([0, 5, -5], np.eye(3), 1., 0., payload()["optimizer"])
     assert result["solver_success"]
@@ -228,7 +228,7 @@ def test_manifest_rejects_empty_axes_and_invalid_fixed_baseline(tmp_path):
 
 
 def test_shared_launcher_has_one_cpu_task_per_dataset(tmp_path):
-    from experiments.bootstrap_band_sweep import build_launch_plan
+    from scratch.retired_experiments.studies.bootstrap_band_sweep import build_launch_plan
     manifest = load_manifest(ROOT/"scratch/retired_experiments/bootstrap_ols/manifests/bootstrap_ols_controlled_sweep.json")
     plan = build_launch_plan(manifest, runs_root=tmp_path)
     assert plan.task_count == 100
@@ -247,7 +247,7 @@ def test_original_parametric_manifest_cannot_be_silently_reinterpreted(tmp_path)
 
 
 def test_approved_sweep_is_not_a_cartesian_product():
-    from experiments.bootstrap_band_sweep import settings
+    from scratch.retired_experiments.studies.bootstrap_band_sweep import settings
     p = payload()
     rows = list(settings(p))
     assert p["baseline"] == {"N": 100, "sigma": 1., "B": 2000}

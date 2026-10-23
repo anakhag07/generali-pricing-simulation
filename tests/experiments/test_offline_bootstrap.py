@@ -7,8 +7,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from experiments.bootstrap_band import features
-from experiments.offline_bootstrap import (
+from experiments.envelopes.quadratic import features
+from scratch.retired_experiments.studies.offline_bootstrap import (
     _calibration,
     load_manifest,
     prepare_snapshot,
@@ -211,7 +211,7 @@ def test_offline_source_and_snapshot_checksums_are_enforced(tmp_path, target):
 
 def test_regret_endpoints_round_outward_for_represented_coefficients():
     import sympy as sp
-    from experiments.offline_bootstrap import _regret_interval
+    from scratch.retired_experiments.studies.offline_bootstrap import _regret_interval
 
     coefficients, action = [0.1, 0.7, -0.3], 0.2
     reference = {"candidate_value_lower": 0.8, "global_value_upper": 0.8000001}

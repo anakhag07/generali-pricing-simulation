@@ -11,7 +11,7 @@ import numpy as np
 
 from experiments.envelopes.core import CalibrationData, TargetDomain
 from experiments.envelopes.linear import LinearModel, fit_linear_transfer
-from experiments.envelopes.reporting import _STYLE, _comparison_case
+from scratch.retired_experiments.studies.envelopes.reporting import _STYLE, _comparison_case
 from experiments.paths import results_root
 from experiments.provenance import file_record, write_provenance
 from experiments.seeds import derive_seed

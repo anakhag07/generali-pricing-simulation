@@ -8,7 +8,7 @@ import numpy as np
 import sympy as sp
 from scipy.linalg import solve_triangular
 
-from experiments.bootstrap_band_continuous import VARIABLE, nonnegative_on_real_line
+from experiments.envelopes.quadratic import VARIABLE, nonnegative_on_real_line
 from experiments.offline_bootstrap_math import strict_conjunction_empty
 
 from .core import CalibrationData, ContainmentResult, FittedEnvelope, ProbabilityStatement, TargetDomain
@@ -48,6 +48,45 @@ class LinearModel:
         if design.shape[1] != len(self.coefficients):
             raise ValueError("Linear coefficient and context dimensions disagree.")
         return design @ self.coefficients
+
+    def action_gradient(self, X, actions):
+        """Return the affine predictor's exact action derivative."""
+        self(X, actions)
+        return np.full(len(actions), self.coefficients[-1])
+
+    def to_dict(self):
+        """Record the frozen predictor for replay."""
+        return {"type": "linear", "coefficients": self.coefficients.tolist()}
+
+
+@dataclass(frozen=True)
+class QuadraticModel:
+    """Frozen action-only quadratic with exact off-grid evaluation."""
+
+    coefficients: np.ndarray
+
+    def __post_init__(self):
+        coefficients = np.asarray(self.coefficients, dtype=float).copy()
+        if coefficients.shape != (3,) or not np.isfinite(coefficients).all():
+            raise ValueError("Require three finite quadratic coefficients.")
+        coefficients.flags.writeable = False
+        object.__setattr__(self, "coefficients", coefficients)
+
+    def __call__(self, X, actions):
+        from .core import locations
+        X, actions = locations(X, actions)
+        if X.shape[1] != 0:
+            raise ValueError("QuadraticModel requires action-only inputs.")
+        return np.column_stack((np.ones(len(actions)), actions, actions**2)) @ self.coefficients
+
+    def action_gradient(self, X, actions):
+        """Return the exact action derivative of the frozen polynomial."""
+        self(X, actions)
+        return self.coefficients[1]+2*self.coefficients[2]*np.asarray(actions)
+
+    def to_dict(self):
+        """Record the frozen predictor for replay."""
+        return {"type": "quadratic", "coefficients": self.coefficients.tolist()}
 
 
 def _settings(settings):

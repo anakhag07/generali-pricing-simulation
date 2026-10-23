@@ -6,10 +6,10 @@ import numpy as np
 import pytest
 import sympy as sp
 
-from experiments.bootstrap_band import features
-from experiments.bootstrap_band_continuous import VARIABLE, nonnegative_on_real_line
-from experiments.bootstrap_band_sweep import dataset_streams
-from experiments.bootstrap_joint_coverage import load_manifest, run_dataset, collect, build_launch_plan
+from experiments.envelopes.quadratic import features
+from experiments.envelopes.quadratic import VARIABLE, nonnegative_on_real_line
+from scratch.retired_experiments.studies.bootstrap_band_sweep import dataset_streams
+from scratch.retired_experiments.studies.bootstrap_joint_coverage import load_manifest, run_dataset, collect, build_launch_plan
 from experiments.provenance import array_sha256
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -72,7 +72,7 @@ def test_grouped_array_tasks_cover_each_dataset_once(monkeypatch, tmp_path):
     manifest = small_manifest(tmp_path)
     manifest.payload.update(datasets=5, datasets_per_task=2)
     called = []
-    monkeypatch.setattr("experiments.bootstrap_joint_coverage.run_dataset",
+    monkeypatch.setattr("scratch.retired_experiments.studies.bootstrap_joint_coverage.run_dataset",
                         lambda m, i, root, force: called.append(i))
     plan = build_launch_plan(manifest, runs_root=tmp_path)
     assert plan.task_count == 3
@@ -85,7 +85,7 @@ def test_grouped_array_tasks_cover_each_dataset_once(monkeypatch, tmp_path):
 
 
 def test_shared_cli_and_production_joint_path(monkeypatch, tmp_path):
-    from scripts import run_experiment_manifest as cli
+    from scratch.retired_experiments.studies import run_experiment_manifest as cli
     captured = []
     monkeypatch.setattr(cli, "run_launch_plan", lambda plan, **kwargs: captured.append(plan))
     cli.main([str(ROOT/"scratch/retired_experiments/bootstrap_ols/manifests/bootstrap_ols_joint_coverage.json"), "--runs-root", str(tmp_path)])

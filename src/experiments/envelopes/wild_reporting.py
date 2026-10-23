@@ -12,8 +12,8 @@ import numpy as np
 from experiments.provenance import file_record, write_provenance
 from experiments.sweep_reporting import write_rows_csv
 
-from .diagnostics import _slice_indices
-from .reporting import _STYLE
+from .plotting import _slice_indices
+from .plotting import _STYLE
 from .wild import WildLinearDesign, residual_radii
 
 _METHODS = (("analytical", "analytical-radius", "C0"),

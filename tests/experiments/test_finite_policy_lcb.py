@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-import experiments.finite_policy_lcb as lcb
+import scratch.retired_experiments.studies.finite_policy_lcb as lcb
 
 
 def _spec() -> lcb.FinitePolicyLCBSpec:

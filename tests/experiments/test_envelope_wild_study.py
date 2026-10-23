@@ -534,7 +534,7 @@ def test_paired_schedule_rejects_inconsistent_settings(manifest_path, mutation):
 
 
 def test_paired_sweep_replays_only_paired_prefixes_and_fixed_context_slices(manifest_path, tmp_path):
-    from experiments.envelopes.diagnostics import _slice_indices
+    from scratch.retired_experiments.studies.envelopes.diagnostics import _slice_indices
     p = json.loads(manifest_path.read_text())
     p['sweep_mode'] = 'paired'
     manifest_path.write_text(json.dumps(p))
@@ -574,3 +574,18 @@ def test_paired_sweep_replays_only_paired_prefixes_and_fixed_context_slices(mani
             np.testing.assert_allclose(examples['bootstrap_upper'][ni], expected['bootstrap_upper'])
     assert len(summary['plots']) == 6
     assert all(Path(record['path']).read_bytes().startswith(b'%PDF-') for record in summary['plots'])
+
+
+def test_shared_setting_reproduces_existing_study_draws(manifest_path, tmp_path):
+    from experiments.settings import prepare_setting
+    manifest = study.load_manifest(manifest_path)
+    p = manifest.payload
+    prepared = prepare_setting(dict(source='wild_study', manifest=str(manifest_path), n=12, repetition=0))
+    record = study.run_repetition(manifest, 0, tmp_path/'study')
+    snapshot, designs, _ = study._environment(json.dumps(p, sort_keys=True))
+    with np.load(record['arrays']['path']) as saved:
+        expected = designs[0].design @ np.asarray(p['truth']['coefficients']) + snapshot['sigma'][:12]*saved['innovations'][:12]
+        np.testing.assert_array_equal(prepared.observations.y, expected)
+    full = 2*np.random.default_rng(record['seeds']['method']).integers(0, 2, size=(max(p['B_values']), max(p['n_values'])), dtype=np.int8)-1
+    np.testing.assert_array_equal(prepared.multipliers, full[:,:12])
+    assert prepared.provenance['multiplier_sha256'] == record['multiplier_sha256']

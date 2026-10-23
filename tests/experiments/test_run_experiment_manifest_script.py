@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from scripts import run_experiment_manifest as script
+from scratch.retired_experiments.studies import run_experiment_manifest as script
 
 
 def _manifest_file(tmp_path, *, launch=None, matrix=None):

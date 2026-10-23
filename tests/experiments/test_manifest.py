@@ -194,6 +194,7 @@ def test_matrix_run_name_template_exposes_axis_value_label_and_index() -> None:
 def test_variant_complete_and_run_skip_existing_seed_summaries(monkeypatch, tmp_path) -> None:
     manifest = parse_experiment_manifest(_manifest_payload(matrix={}))
     variant = manifest.variants[0]
+    manifest_mod._validate_variant_contract(manifest, variant, runs_root=tmp_path, create=True)
     for seed in manifest.seeds.run_seeds:
         _summary(manifest.variant_dir(variant, tmp_path) / f"summary-seed-{seed}.json", theta=[1.0, 2.0])
 

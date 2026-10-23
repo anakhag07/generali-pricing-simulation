@@ -128,7 +128,7 @@ restoration procedure before that replay.
 
 For a new exploratory run based on an archived recipe, copy its configuration,
 resolve input paths against the archive, and choose a separate output location
-inside that experiment family. Use the shared manifest runner with an explicit
+inside that experiment family. Use the archived dispatcher described below with an explicit
 `--runs-root`; legacy drivers honor `GENERALI_RESULTS_ROOT`, and analyzers also
 accept `--runs-root`. Do not launch a fresh run into preserved results. To inspect
 driver options without starting a run, from the checkout root:
@@ -167,3 +167,33 @@ After the first pass the shared roots contained 90 active and 67 archived result
 directories; the follow-up counts above supersede those totals.
 Detailed validation logs and before/after file-identity inventories for this
 session are in `/tmp/generali-retire-validation-20261022/`.
+
+## Source refactor (2026-10-23)
+
+Concluded study orchestration and its reporting now live under `studies/`:
+policy-LCB (finite, continuous and GP), pairs-bootstrap/OLS replay and sweeps,
+offline-bootstrap, coverage-kernel, and generic uncertainty-envelope studies.
+[source_relocations_20261023.json](source_relocations_20261023.json) records each
+original path/hash and destination, with base commit `d9e552e` for exact recovery.
+Shared polynomial band/certificate code is in `src/experiments/envelopes/quadratic.py`;
+Fourier representations are in `src/experiments/synthetic.py`; Wilson aggregation
+and standard plotting helpers stay with the active envelope package. Source
+records include these dependencies. Production code does not import this archive.
+
+The active launcher handles ordinary optimization/band tasks, policy capacity,
+and the retained wild-envelope studies. For a new exploratory run using an
+archived recipe, use the archived dispatcher and a **fresh** result location:
+
+```bash
+conda activate simulation_env
+python scratch/retired_experiments/studies/run_experiment_manifest.py path/to/recipe.json \
+  --runs-root /path/to/fresh-scratch-results --launch local
+```
+
+The archived dispatcher preserves the former kinds; it does not retrofit old
+source contracts to the new locations. Follow the original-source recovery
+procedure above for historical replay. No historical manifest or result bytes
+were changed by this source refactor. Active terminal/residual/fixed-noise studies,
+current illustration drivers and Generali source/data/models/configurations remain.
+The only remaining worktrees are canonical main, the explicitly retained
+Design-Bench branch, and this active refactor; no completed worktrees remain.

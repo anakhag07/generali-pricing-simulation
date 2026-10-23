@@ -7,12 +7,12 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from experiments.policy_lcb.continuous_gp import (
+from scratch.retired_experiments.studies.policy_lcb.continuous_gp import (
     ContinuousGPLandscape,
     continuous_gp_seed_for_run,
     load_continuous_gp_variable_lcb_manifest,
 )
-from experiments.policy_lcb.continuous_gp_decomposition import (
+from scratch.retired_experiments.studies.policy_lcb.continuous_gp_decomposition import (
     build_decomposition_conditions,
     collect_continuous_gp_decomposition_outputs,
     continuous_gp_decomposition_seed,
@@ -21,7 +21,7 @@ from experiments.policy_lcb.continuous_gp_decomposition import (
     parse_continuous_gp_decomposition_manifest,
     run_continuous_gp_decomposition_manifest_seed,
 )
-from experiments.policy_lcb.continuous_gp_core import (
+from scratch.retired_experiments.studies.policy_lcb.continuous_gp_core import (
     DecomposedGPLandscape,
     FiniteFourierGPSpec,
     FourierGPDraw,
@@ -33,7 +33,7 @@ from experiments.policy_lcb.continuous_gp_core import (
     certified_shape_ratio,
     certified_weighted_gp_supremum,
 )
-from experiments.policy_lcb.continuous_gp_decomposition_reporting import (
+from scratch.retired_experiments.studies.policy_lcb.continuous_gp_decomposition_reporting import (
     _cluster_bootstrap_metrics,
 )
 

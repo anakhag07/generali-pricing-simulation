@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 import sympy as sp
 
-from experiments.bootstrap_band_continuous import (
+from experiments.envelopes.quadratic import (
     VARIABLE, QuadraticErrorCertificate, nonnegative_on_real_line,
 )
 from experiments.offline_bootstrap_math import (

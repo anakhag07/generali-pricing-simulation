@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 import json
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from itertools import product
 from pathlib import Path
 from typing import Any, Literal
@@ -32,7 +32,7 @@ from experiments.sweep_reporting import (
 from experiments.sweep_utils import run_sweep as run_seed_sweep
 from objective.modifications import coerce_objective_modification, modification_to_dict
 
-TruthSource = Literal["clean_base_objective", "summary_json"]
+TruthSource = Literal["clean_base_objective", "summary_json", "none"]
 LaunchArray = Literal["none", "variant"]
 LaunchMode = Literal["auto", "local", "slurm"]
 
@@ -92,6 +92,7 @@ class ExperimentManifest:
     per_seed_plots: bool
     reporting: tuple[ManifestReportSpec, ...]
     source_path: Path | None = None
+    task: str = "optimize"
 
     def project_dir(self, runs_root: str | Path | None = None) -> Path:
         root = results_root() if runs_root is None else Path(runs_root)
@@ -128,21 +129,39 @@ def parse_experiment_manifest(
     if not name:
         raise ValueError("Manifest must specify name or project_name.")
 
-    objective = _objective_payload(payload)
+    task = payload.get("task", "optimize")
+    if task not in {"optimize", "band", "optimize_with_band"}:
+        raise ValueError("task must be optimize, band or optimize_with_band.")
+    band_task = task != "optimize"
+    if task == "optimize" and ("band" in payload or "setting" in payload):
+        raise ValueError("Select task=band or optimize_with_band explicitly when specifying a band.")
+    objective = ({"preset": "band_policy"} if task == "band" and "objective" not in payload
+                 else _objective_payload(payload))
     base_preset = str(_mapping_value(objective, "preset")).strip()
     if not base_preset:
         raise ValueError("Manifest objective.preset must be non-empty.")
 
-    if "objective_modifications" not in payload:
+    if "objective_modifications" not in payload and task != "band":
         raise ValueError("Manifest must explicitly specify objective_modifications, even if [].")
-    objective_modifications = _objective_modifications(payload["objective_modifications"])
+    objective_modifications = _objective_modifications(payload.get("objective_modifications", []))
 
-    optimizer = _required_mapping(payload, "optimizer")
-    if not optimizer.get("step_rule"):
+    optimizer = {} if task == "band" else _required_mapping(payload, "optimizer")
+    if task == "band" and ("optimizer" in payload or "seeds" in payload):
+        raise ValueError("Band-only work uses its setting's saved/explicit draws; omit optimizer and optimizer seeds.")
+    if task != "band" and not optimizer.get("step_rule"):
         raise ValueError("Manifest optimizer.step_rule is required.")
 
-    seeds = _seed_spec(_required_mapping(payload, "seeds"))
-    truth = _truth_spec(_required_mapping(payload, "truth"), source)
+    seeds = SeedSpec((), 0, ()) if task == "band" else _seed_spec(_required_mapping(payload, "seeds"))
+    truth = _truth_spec(payload.get("truth", {"source": "none"}) if band_task
+                        else _required_mapping(payload, "truth"), source)
+    if task == "band" and (objective_modifications or "objective" in payload):
+        raise ValueError("Band-only work has no optimization objective; omit objective and modifications.")
+    if band_task and payload.get("per_seed_plots", False):
+        raise ValueError("Band workflows save numeric per-policy endpoints and aggregate PDFs; per_seed_plots is not supported.")
+    if band_task and truth.source != "none":
+        raise ValueError("Band workflows require truth.source=none; known-truth coverage belongs to the retained study runner.")
+    if task == "optimize_with_band" and base_preset != "band_policy":
+        raise ValueError("optimize_with_band uses the registered band_policy preset.")
     launch = _launch_spec(_required_mapping(payload, "launch"))
     defaults = dict(_optional_mapping(payload.get("defaults"), field="defaults"))
     reporting = parse_manifest_reports(payload.get("reporting"))
@@ -154,6 +173,17 @@ def parse_experiment_manifest(
         **dict(optimizer),
         "objective_modifications": list(objective_modifications),
     }
+    if band_task:
+        band_spec = dict(_required_mapping(payload, "band"))
+        if "artifact" not in band_spec:
+            if "method" not in band_spec:
+                raise ValueError("band requires a method or a saved artifact.")
+            base_overrides["setting"] = dict(_required_mapping(payload, "setting"))
+        elif set(band_spec) != {"artifact"}:
+            raise ValueError("A saved band already fixes method/settings; supply only band.artifact.")
+        elif "setting" in payload:
+            raise ValueError("A saved band carries its setting; omit setting when loading an artifact.")
+        base_overrides["band"] = band_spec
     variants = _manifest_variants(payload, base_overrides)
 
     return ExperimentManifest(
@@ -170,6 +200,7 @@ def parse_experiment_manifest(
         per_seed_plots=bool(payload.get("per_seed_plots", False)),
         reporting=reporting,
         source_path=source,
+        task=task,
     )
 
 
@@ -209,6 +240,7 @@ def write_experiment_readme(
             f"# {manifest.name}",
             "",
             f"- Manifest source: `{source_text}`",
+            f"- Task: `{manifest.task}`",
             f"- Objective preset: `{manifest.base_preset}`",
             f"- Truth source: `{_truth_description(manifest.truth)}`",
             f"- Launch mode: `{manifest.launch.mode}`",
@@ -283,46 +315,106 @@ def variant_complete(
     *,
     runs_root: str | Path | None = None,
 ) -> bool:
-    """Return true when all requested seed summaries exist for ``variant``."""
-    variant_dir = manifest.variant_dir(variant, runs_root)
-    return all((variant_dir / f"summary-seed-{seed}.json").exists() for seed in manifest.seeds.run_seeds)
+    """Validate run identity before reusing completed artifacts."""
+    _validate_variant_contract(manifest, variant, runs_root=runs_root)
+    folder = manifest.variant_dir(variant, runs_root)
+    if manifest.task == "band":
+        complete = (folder / "band-summary.json").exists()
+    else:
+        complete = all((folder / f"summary-seed-{seed}.json").exists() for seed in manifest.seeds.run_seeds)
+    if complete and manifest.task != "optimize":
+        from experiments.envelopes.fitting import load_band
+        from experiments.provenance import file_record
+        record = _read_json(folder / "band-summary.json")
+        if record["band"] != file_record(folder / "band.json") or record["evaluation"] != file_record(folder / "band-evaluation.npz"):
+            raise ValueError("Saved band outputs differ from recorded provenance.")
+        load_band(folder / "band.json")
+        for seed in manifest.seeds.run_seeds:
+            marker = folder/f"band-policy-seed-{seed}.json"
+            if not marker.exists():
+                return False
+            outputs = _read_json(marker)
+            for item in [outputs["summary"], *outputs["evaluations"]]:
+                if file_record(item["path"]) != item:
+                    raise ValueError("Saved optimizer summary or band-policy output differs from recorded provenance.")
+    return complete
 
 
-def run_manifest_variant(
-    manifest: ExperimentManifest,
-    index: int,
-    *,
-    runs_root: str | Path | None = None,
-    force: bool = False,
-) -> dict[str, Any]:
-    """Run one manifest variant across all manifest seeds."""
+def _variant_contract(manifest, variant):
+    from experiments.provenance import file_sha256, file_record, _jsonable
+    from importlib.metadata import version
+    root = Path(__file__).parents[1]
+    sources = {str(p.relative_to(root)): file_sha256(p) for p in sorted(root.rglob("*.py"))}
+    inputs = {}
+    base = manifest.source_path.parent if manifest.source_path else Path.cwd()
+    def visit(value):
+        if isinstance(value, Mapping):
+            for key, item in value.items():
+                if key in {"path", "manifest", "artifact"} and isinstance(item, str):
+                    path = Path(item)
+                    path = path if path.is_absolute() else base / path
+                    if path.is_file():
+                        inputs[str(path.resolve())] = file_record(path)
+                        if key == "artifact" and path.suffix == ".json":
+                            artifact = _read_json(path)
+                            if "arrays" in artifact:
+                                array_path = path.parent / artifact["arrays"]
+                                inputs[str(array_path.resolve())] = file_record(array_path)
+                else:
+                    visit(item)
+        elif isinstance(value, (list, tuple)):
+            for item in value: visit(item)
+    visit(variant.overrides)
+    if manifest.truth.path is not None:
+        inputs[str(manifest.truth.path.resolve())] = file_record(manifest.truth.path)
+    if manifest.base_preset.startswith("real_data_") or variant.overrides.get("setting", {}).get("source") == "generali_support":
+        from data.dataset_metadata import DATASET_PATH, ACCEPTANCE_MODEL_ARTIFACTS, LOSS_MODEL_ARTIFACTS
+        for path in [Path(DATASET_PATH), *[Path(v["path"]) for table in (ACCEPTANCE_MODEL_ARTIFACTS, LOSS_MODEL_ARTIFACTS) for v in table.values()]]:
+            if path.is_file(): inputs[str(path.resolve())] = file_record(path)
+    return _jsonable({"schema": 1, "task": manifest.task, "preset": manifest.base_preset,
+        "variant": asdict(variant), "seeds": asdict(manifest.seeds), "truth": asdict(manifest.truth),
+        "sources": sources, "inputs": inputs,
+        "packages": {key: version(key) for key in ("numpy", "scipy", "sympy")}})
+
+
+def _validate_variant_contract(manifest, variant, *, runs_root=None, create=False):
+    from experiments.provenance import write_json_atomic
+    folder = manifest.variant_dir(variant, runs_root)
+    path = folder / "run-contract.json"
+    contract = _variant_contract(manifest, variant)
+    if path.exists():
+        if _read_json(path) != contract:
+            raise ValueError("Saved run contract changed; preserve this run and choose a fresh output location in the same family.")
+    elif folder.exists() and (list(folder.glob("summary-seed-*.json")) or (folder / "band.json").exists()):
+        raise ValueError("Existing outputs lack a verified run contract; replay their recorded source or choose a fresh output location.")
+    elif create:
+        write_json_atomic(path, contract)
+
+
+def run_manifest_variant(manifest, index, *, runs_root=None, force=False):
+    """Run missing work through the existing seed sweep or fitted-band stages."""
     variant = manifest.variants[index]
+    complete = variant_complete(manifest, variant, runs_root=runs_root)
+    if complete and force:
+        raise ValueError("Completed runs are immutable; use a fresh output location instead of --force.")
+    _validate_variant_contract(manifest, variant, runs_root=runs_root, create=True)
     write_experiment_readme(manifest, runs_root=runs_root)
-    if not force and variant_complete(manifest, variant, runs_root=runs_root):
-        return {
-            "project_dir": str(manifest.project_dir(runs_root)),
-            "variant": variant.name,
-            "skipped": True,
-            "n_runs": 0,
-        }
-
-    sweep = run_seed_sweep(
-        base_preset=manifest.base_preset,
-        run_seeds=manifest.seeds.run_seeds,
-        override_list=[{"_run_name": variant.name, **variant.overrides}],
-        vary=manifest.seeds.vary,
-        anchor_seed=manifest.seeds.anchor_seed,
-        fixed=manifest.seeds.fixed,
-        per_seed_plots=manifest.per_seed_plots,
-        runs_root=runs_root,
-        project_name=manifest.name,
-    )
-    return {
-        "project_dir": str(sweep.project_dir),
-        "variant": variant.name,
-        "skipped": False,
-        "n_runs": len(sweep.run_results),
-    }
+    if complete:
+        return {"project_dir": str(manifest.project_dir(runs_root)), "variant": variant.name,
+                "skipped": True, "n_runs": 0}
+    if manifest.task != "optimize":
+        from experiments.execution import execute_band_variant
+        count = execute_band_variant(manifest, variant, runs_root=runs_root)
+    else:
+        missing = [seed for seed in manifest.seeds.run_seeds
+                   if not (manifest.variant_dir(variant, runs_root) / f"summary-seed-{seed}.json").exists()]
+        sweep = run_seed_sweep(base_preset=manifest.base_preset, run_seeds=missing,
+            override_list=[{"_run_name": variant.name, **variant.overrides}], vary=manifest.seeds.vary,
+            anchor_seed=manifest.seeds.anchor_seed, fixed=manifest.seeds.fixed,
+            per_seed_plots=manifest.per_seed_plots, runs_root=runs_root, project_name=manifest.name)
+        count = len(sweep.run_results)
+    return {"project_dir": str(manifest.project_dir(runs_root)), "variant": variant.name,
+            "skipped": False, "n_runs": count}
 
 
 def run_manifest_serial(
@@ -351,10 +443,24 @@ def collect_manifest_outputs(
     runs_root: str | Path | None = None,
 ) -> dict[str, Any]:
     """Rebuild project-level CSVs/plots from saved manifest seed summaries."""
+    for variant in manifest.variants:
+        path = manifest.variant_dir(variant, runs_root) / "run-contract.json"
+        if path.exists():
+            recorded = _read_json(path)
+            expected = _jsonable({"task": manifest.task, "preset": manifest.base_preset,
+                "variant": asdict(variant), "seeds": asdict(manifest.seeds), "truth": asdict(manifest.truth)})
+            if any(recorded[key] != value for key, value in expected.items()):
+                raise ValueError("Report manifest differs from the saved run contract.")
     write_experiment_readme(manifest, runs_root=runs_root)
     project_dir = manifest.project_dir(runs_root)
     final_rows = collect_manifest_final_rows(manifest, runs_root=runs_root)
     summary_rows = aggregate_seed_grid_rows(final_rows)
+    # A partial seed sweep writes only the newly executed subset. Rebuild variant
+    # CSVs from every saved summary so resumed runs retain earlier seed rows.
+    for variant in manifest.variants:
+        rows = [row for row in final_rows if row["variant"] == variant.name]
+        if rows:
+            write_seed_grid_csvs(manifest.variant_dir(variant, runs_root), rows, aggregate_seed_grid_rows(rows))
     if final_rows:
         write_seed_grid_csvs(project_dir, final_rows, summary_rows)
         _write_seed_grid_plots(project_dir, summary_rows)
@@ -422,6 +528,8 @@ def collect_derived_metric_rows(
     runs_root: str | Path | None = None,
 ) -> list[dict[str, object]]:
     """Read saved summaries and add metrics against the manifest truth source."""
+    if manifest.truth.source == "none":
+        return []
     rows: list[dict[str, object]] = []
     truth_cache: dict[str, dict[str, object]] = {}
     for variant in manifest.variants:
@@ -500,6 +608,8 @@ def _seed_spec(payload: Mapping[str, Any]) -> SeedSpec:
 
 def _truth_spec(payload: Mapping[str, Any], source_path: Path | None) -> TruthSpec:
     source = str(_mapping_value(payload, "source"))
+    if source == "none":
+        return TruthSpec(source="none")
     if source == "clean_base_objective":
         return TruthSpec(source="clean_base_objective")
     if source == "summary_json":
@@ -692,8 +802,8 @@ def _write_seed_grid_plots(project_dir: Path, summary_rows: Sequence[Mapping[str
 
     plot_dir = str(project_dir / "plots")
     for metric, y_label, filename in DEFAULT_SEED_METRIC_BARS:
-        plot_seed_grid_metric_bars(summary_rows, plot_dir, metric=metric, y_label=y_label, filename=filename)
-    plot_seed_grid_frontier(summary_rows, plot_dir)
+        plot_seed_grid_metric_bars(summary_rows, plot_dir, metric=metric, y_label=y_label, filename=str(Path(filename).with_suffix(".pdf")))
+    plot_seed_grid_frontier(summary_rows, plot_dir, filename="seed_frontier_objective_acceptance.pdf")
 
 
 def _evaluation_fields(prefix: str, payload: object) -> dict[str, object]:
@@ -775,7 +885,7 @@ def _jsonable(value: object) -> object:
 def _truth_description(truth: TruthSpec) -> str:
     if truth.source == "summary_json":
         return f"summary_json path={truth.path} estimator={truth.estimator}"
-    return "clean_base_objective"
+    return truth.source
 
 
 def _md_code(value: str) -> str:

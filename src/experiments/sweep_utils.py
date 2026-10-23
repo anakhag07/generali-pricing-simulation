@@ -281,6 +281,7 @@ def run_sweep(
         plot_seed_loss_bands(
             objective_traces_by_estimator(variant_results),
             str(variant_dir / "plots"),
+            filename="seed_loss_bands.pdf",
         )
 
     if len(variants) > 1:

@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from experiments.policy_lcb.continuous_gp import (
+from scratch.retired_experiments.studies.policy_lcb.continuous_gp import (
     ContinuousGPLandscape,
     FiniteFourierGPSpec,
     FourierGPDraw,

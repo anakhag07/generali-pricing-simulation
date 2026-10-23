@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from experiments.envelopes import diagnostics, study
+from scratch.retired_experiments.studies.envelopes import diagnostics, study
 from experiments.provenance import file_record
 
 

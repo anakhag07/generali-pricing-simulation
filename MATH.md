@@ -1665,6 +1665,31 @@ actions; the plotted mean endpoint height is the mean *personalized* LCB value,
 which need not lie on the curve evaluated at the mean action. Density shares
 the horizontal action axis and uses a separate vertical axis.
 
+### 7.19 Reusable band evaluation and optimizer composition
+
+The shared fitted-band interface preserves the constructions in sections
+7.8–7.11 and the existing support objectives. Residual transfer returns the
+frozen predictor minus its lower radius and plus its upper radius; the two
+radii remain distinct. It does not replace them with a symmetric half-width.
+OLS transfer retains its absolute predictor/auxiliary discrepancy and known
+variance width. Wild calibration retains raw residuals, explicit Rademacher
+multipliers, and order index `ceil(B * (1 - delta)) - 1`.
+
+For first-order composition, differentiate the same saved polynomial feature
+formula and triangular-factor norm used for values, then apply the existing
+policy weighted-gradient operation and divide by the batch size. The derivative
+of an absolute value or positive part uses zero for that operation at its kink;
+away from kinks this is the exact chain rule. These piecewise derivatives do not
+assert global smoothness or optimizer convergence. The objective's explicit
+minimize/maximize direction sets the sign of both values and derivatives.
+
+Customer-local support retains `normalized_coverage_widths` and linear
+interpolation of customer curves. Absolute action-only widths retain a natural
+cubic spline, as in `SplineSupportLowerBoundObjective`. These are descriptive
+penalties, with no added confidence claim. Queries must remain inside the saved
+action interval and match the saved customer rows. Stored acceptance curves
+retain their separate role in optimizer constraints.
+
 ## 8. Gradients and Estimators
 
 For a differentiable action objective and policy, the population chain rule is

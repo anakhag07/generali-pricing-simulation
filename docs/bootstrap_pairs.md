@@ -1,5 +1,10 @@
 # Pairs-bootstrap sweep implementation
 
+This study is retired. Manifests and saved results are indexed in the
+[experiment archive](../scratch/retired_experiments/README.md); consult its
+recovery instructions before replay. Paths inside saved provenance remain
+unchanged.
+
 The agreed experiment resamples the original (x, y) rows with replacement.
 It uses the same original-data seed roots and Gaussian observation model as
 the controlled sweep. There is no held-out dataset and no new bootstrap noise.

@@ -1,0 +1,531 @@
+{
+  "date": "2026-10-22",
+  "base_commit": "b7faa260fca9fdbb09acc2ac841246e7c510ef91",
+  "repository_paths_relative_to": "checkout root",
+  "result_paths_relative_to": "/home/anakhag/projects/generali-pricing",
+  "files": [
+    {
+      "family": "zeroth_order",
+      "old": "manifests/zeroth_order_baseline.json",
+      "new": "scratch/retired_experiments/zeroth_order/manifests/zeroth_order_baseline.json",
+      "original_sha256": "9f16aa887560f17dc173e433ed79976654c8e9f1cd08186658f42f6d6ebd28ef"
+    },
+    {
+      "family": "zeroth_order",
+      "old": "manifests/zeroth_order_functional_bias.json",
+      "new": "scratch/retired_experiments/zeroth_order/manifests/zeroth_order_functional_bias.json",
+      "original_sha256": "05815c2273ff2fe7cd1d650bb5d63c363af76f68efb2b09c1d1e6896ced272b0"
+    },
+    {
+      "family": "zeroth_order",
+      "old": "manifests/zeroth_order_envelopes.json",
+      "new": "scratch/retired_experiments/zeroth_order/manifests/zeroth_order_envelopes.json",
+      "original_sha256": "92fb5c7f33659804f315ff431e8fc0579423d2523dc8f06b4750906b4177330a"
+    },
+    {
+      "family": "policy_lcb",
+      "old": "manifests/finite_policy_lcb_validation.json",
+      "new": "scratch/retired_experiments/policy_lcb/manifests/finite_policy_lcb_validation.json",
+      "original_sha256": "3b835f5bffe5d125f488735b1852605ef0e03bc128b1a712734ba9ef3bfa197a"
+    },
+    {
+      "family": "policy_lcb",
+      "old": "manifests/continuous_policy_lcb_validation.json",
+      "new": "scratch/retired_experiments/policy_lcb/manifests/continuous_policy_lcb_validation.json",
+      "original_sha256": "cdd68cce1801de61147309e3e4abe27c43348c3b4faceebf947345fd8423546e"
+    },
+    {
+      "family": "policy_lcb",
+      "old": "manifests/variable_lcb_envelope_characterization.json",
+      "new": "scratch/retired_experiments/policy_lcb/manifests/variable_lcb_envelope_characterization.json",
+      "original_sha256": "a686eccf62dbfd3ad1977b919398b433a27f01d80a4861b4c35df6b72a3ef056"
+    },
+    {
+      "family": "policy_lcb",
+      "old": "manifests/continuous_gp_variable_lcb.json",
+      "new": "scratch/retired_experiments/policy_lcb/manifests/continuous_gp_variable_lcb.json",
+      "original_sha256": "ec153359e4155116085eed19356821715c3d05f9efb6dbfefbf7ab28e9d69c05"
+    },
+    {
+      "family": "policy_lcb",
+      "old": "manifests/continuous_gp_regret_decomposition.json",
+      "new": "scratch/retired_experiments/policy_lcb/manifests/continuous_gp_regret_decomposition.json",
+      "original_sha256": "6c6f0432d19e6c05b2adc90e5858bd9d1bebb9a79c9aa45a90a1bfc06ae4f3d5"
+    },
+    {
+      "family": "bootstrap_ols",
+      "old": "manifests/bootstrap_ols_grid_band.json",
+      "new": "scratch/retired_experiments/bootstrap_ols/manifests/bootstrap_ols_grid_band.json",
+      "original_sha256": "4f00b49133e65e5b2c3bceb66037e70d1a0e4b3bec14a09cc71233cad13a9c4b"
+    },
+    {
+      "family": "bootstrap_ols",
+      "old": "manifests/bootstrap_ols_continuous_replay.json",
+      "new": "scratch/retired_experiments/bootstrap_ols/manifests/bootstrap_ols_continuous_replay.json",
+      "original_sha256": "0f8dd8cae311a88a7c49aa0898249f40412246079e32c4a875c2125ecdeba4f6"
+    },
+    {
+      "family": "bootstrap_ols",
+      "old": "manifests/bootstrap_ols_controlled_sweep.json",
+      "new": "scratch/retired_experiments/bootstrap_ols/manifests/bootstrap_ols_controlled_sweep.json",
+      "original_sha256": "eed30eeddaa41faa52b837a2fddd4ee10629ab8dccec90d9292dbecd26bdc9f8"
+    },
+    {
+      "family": "bootstrap_ols",
+      "old": "manifests/bootstrap_ols_dense_n_sweep.json",
+      "new": "scratch/retired_experiments/bootstrap_ols/manifests/bootstrap_ols_dense_n_sweep.json",
+      "original_sha256": "1e7de3b60424a974548d3ab1b89d530e7cdd150e9a4fa4afd0fca33da34c2b1f"
+    },
+    {
+      "family": "bootstrap_ols",
+      "old": "manifests/bootstrap_ols_joint_coverage.json",
+      "new": "scratch/retired_experiments/bootstrap_ols/manifests/bootstrap_ols_joint_coverage.json",
+      "original_sha256": "06f47a3d971a34527022877f02f80b410a90fd2643d1327e86c8b747495c601d"
+    },
+    {
+      "family": "bootstrap_ols",
+      "old": "manifests/bootstrap_ols_cartesian_coverage.json",
+      "new": "scratch/retired_experiments/bootstrap_ols/manifests/bootstrap_ols_cartesian_coverage.json",
+      "original_sha256": "510ed78fb5f7c9a38e1a4d4e143f7477d57f97f203b54208394b7c0f2d65185f"
+    },
+    {
+      "family": "bootstrap_ols",
+      "old": "manifests/offline_bootstrap.json",
+      "new": "scratch/retired_experiments/bootstrap_ols/manifests/offline_bootstrap.json",
+      "original_sha256": "c81614c1d0e34d5a9f932ca3783cddc1b00eca65a8add89914c1ac0d74e6f112"
+    },
+    {
+      "family": "coverage_kernel",
+      "old": "manifests/coverage_kernel_dense_n_sweep.json",
+      "new": "scratch/retired_experiments/coverage_kernel/manifests/coverage_kernel_dense_n_sweep.json",
+      "original_sha256": "6bb76e1c7e0920dcc8be65ee8a85d1ce33c1dc8f6bc1ec4a76048eefcfe92bef"
+    },
+    {
+      "family": "coverage_kernel",
+      "old": "manifests/coverage_kernel_q_sweep.json",
+      "new": "scratch/retired_experiments/coverage_kernel/manifests/coverage_kernel_q_sweep.json",
+      "original_sha256": "442318ee727788b8107003c5de130e95423c63876a8f0d5327c0831542d4af67"
+    },
+    {
+      "family": "coverage_kernel",
+      "old": "manifests/coverage_kernel_b_sweep.json",
+      "new": "scratch/retired_experiments/coverage_kernel/manifests/coverage_kernel_b_sweep.json",
+      "original_sha256": "aad17b8b537f39b6f4886f4485432cd3b0db4a5b16bf95760c133b8b641f9d34"
+    },
+    {
+      "family": "zeroth_order",
+      "old": "scripts/analyze_zeroth_order_proof_validation.py",
+      "new": "scratch/retired_experiments/zeroth_order/analyze_zeroth_order_proof_validation.py",
+      "original_sha256": "25ed0f4583773fdde6fe5a85f3d53b4d46ea0e94982aa123275d0d083522f8a8"
+    },
+    {
+      "family": "zeroth_order",
+      "old": "scripts/analyze_zeroth_order_envelopes.py",
+      "new": "scratch/retired_experiments/zeroth_order/analyze_zeroth_order_envelopes.py",
+      "original_sha256": "c48aa995288b951caaaa01c6f25b0b9b46ea8a9fab745ed6694f4dd5cbc271d1"
+    },
+    {
+      "family": "zeroth_order",
+      "old": "scripts/zeroth_order_landscape.py",
+      "new": "scratch/retired_experiments/zeroth_order/zeroth_order_landscape.py",
+      "original_sha256": "509477ecdd8bdfc325c524d723947474301dd736491e546791691107f024ba9e"
+    },
+    {
+      "family": "noise_and_bias",
+      "old": "scripts/run_fixed_regression_noise_offset_grid.py",
+      "new": "scratch/retired_experiments/noise_and_bias/run_fixed_regression_noise_offset_grid.py",
+      "original_sha256": "9d7622634efe4cb0db27e37b7aa192380faf069e25d59cea25731791ab37ad99"
+    },
+    {
+      "family": "noise_and_bias",
+      "old": "scripts/run_noise_offset_grid.py",
+      "new": "scratch/retired_experiments/noise_and_bias/run_noise_offset_grid.py",
+      "original_sha256": "2adeb3ca2efa5e98b42208f657b2d2b15e4000e266b1ca6f4228c2c9b4a335a4"
+    },
+    {
+      "family": "noise_and_bias",
+      "old": "scripts/run_planted_logistic_action_bias_sweep.py",
+      "new": "scratch/retired_experiments/noise_and_bias/run_planted_logistic_action_bias_sweep.py",
+      "original_sha256": "fc34420af8bb6c9f9c9463e7cc8cf7fa69c1190eb7e97973526aa62effb3a41e"
+    },
+    {
+      "family": "noise_and_bias",
+      "old": "scripts/run_planted_logistic_support_bias_sweep.py",
+      "new": "scratch/retired_experiments/noise_and_bias/run_planted_logistic_support_bias_sweep.py",
+      "original_sha256": "eb2a2128e1a30b52dcfcd4b0016ca569ef10351b6ec5bcc7e44a940091766fa0"
+    },
+    {
+      "family": "noise_and_bias",
+      "old": "scripts/run_support_bias_noise_grid.py",
+      "new": "scratch/retired_experiments/noise_and_bias/run_support_bias_noise_grid.py",
+      "original_sha256": "60108f3b79cf4560a5b2af5169bc6db191a48da706e59632146bba30ad66fc3e"
+    },
+    {
+      "family": "noise_and_bias",
+      "old": "scripts/plot_noise_offset_grid_extra.py",
+      "new": "scratch/retired_experiments/noise_and_bias/plot_noise_offset_grid_extra.py",
+      "original_sha256": "7c79ea0084d08bdfbe74ead76fcf84f774d02b7cc18ca23a15b5212c4cce0023"
+    }
+  ],
+  "results": [
+    {
+      "family": "bootstrap_ols",
+      "old": "results/bootstrap-ols-continuous-replay",
+      "new": "scratch-results/bootstrap-ols-continuous-replay",
+      "entry_count": 40,
+      "file_count": 29,
+      "file_bytes": 20180060,
+      "symlinks": [],
+      "tree_identity_sha256": "6ca7cb08d5912033ab6effd77141c3b093bc34390b60099a2670112807246a2f",
+      "directory_inode": 9292341506534903298,
+      "verified": true
+    },
+    {
+      "family": "bootstrap_ols",
+      "old": "results/bootstrap-ols-controlled-sweep",
+      "new": "scratch-results/bootstrap-ols-controlled-sweep",
+      "entry_count": 309,
+      "file_count": 207,
+      "file_bytes": 26617718,
+      "symlinks": [],
+      "tree_identity_sha256": "6f3439837152ce16cc5b4cb5ab40fa059abf5c7f9ed42f41433d319213b4bcd4",
+      "directory_inode": 9292341515109206180,
+      "verified": true
+    },
+    {
+      "family": "bootstrap_ols",
+      "old": "results/bootstrap-ols-dense-n-sweep",
+      "new": "scratch-results/bootstrap-ols-dense-n-sweep",
+      "entry_count": 309,
+      "file_count": 207,
+      "file_bytes": 66857977,
+      "symlinks": [],
+      "tree_identity_sha256": "918d2f3a0f46a8ce2909d579ebe47bae0596a1bf06728d59a4b1fbb01eacb217",
+      "directory_inode": 9292341540918521121,
+      "verified": true
+    },
+    {
+      "family": "bootstrap_ols",
+      "old": "results/bootstrap-ols-grid-band",
+      "new": "scratch-results/bootstrap-ols-grid-band",
+      "entry_count": 40,
+      "file_count": 29,
+      "file_bytes": 58609829,
+      "symlinks": [],
+      "tree_identity_sha256": "4cee96007dbf93753cf2f41fa9db4a8908d1c900dbaf3f65febb2eec833d3b54",
+      "directory_inode": 9292341497969736130,
+      "verified": true
+    },
+    {
+      "family": "bootstrap_ols",
+      "old": "results/bootstrap-ols-pairs-cartesian-coverage",
+      "new": "scratch-results/bootstrap-ols-pairs-cartesian-coverage",
+      "entry_count": 40212,
+      "file_count": 38207,
+      "file_bytes": 3705599154,
+      "symlinks": [],
+      "tree_identity_sha256": "a2d27768e9a60a0406929997afdd6970283a74bf2bc4ff34a739b01d1a6f77e2",
+      "directory_inode": 9292341493662635411,
+      "verified": true
+    },
+    {
+      "family": "bootstrap_ols",
+      "old": "results/bootstrap-ols-pairs-cartesian-preflight",
+      "new": "scratch-results/bootstrap-ols-pairs-cartesian-preflight",
+      "entry_count": 21,
+      "file_count": 17,
+      "file_bytes": 877355,
+      "symlinks": [],
+      "tree_identity_sha256": "e14920c9c0c98a7647f5ba711387e98c6859a0a4230ae7ee54909b7d2262b5be",
+      "directory_inode": 9292341515125996482,
+      "verified": true
+    },
+    {
+      "family": "bootstrap_ols",
+      "old": "results/bootstrap-ols-pairs-controlled-sweep",
+      "new": "scratch-results/bootstrap-ols-pairs-controlled-sweep",
+      "entry_count": 419,
+      "file_count": 312,
+      "file_bytes": 5915441785,
+      "symlinks": [],
+      "tree_identity_sha256": "54b40d7218e67fe7c60f88db5e86622f6d3a5e8887024599fb4439588f3cf699",
+      "directory_inode": 9292341528034757262,
+      "verified": true
+    },
+    {
+      "family": "bootstrap_ols",
+      "old": "results/bootstrap-ols-pairs-joint-coverage",
+      "new": "scratch-results/bootstrap-ols-pairs-joint-coverage",
+      "entry_count": 6211,
+      "file_count": 4206,
+      "file_bytes": 1219788226,
+      "symlinks": [],
+      "tree_identity_sha256": "dcf488ff4efae1811b677c54e7123fd87ed2a4d8e40a0929b264455a07be954b",
+      "directory_inode": 9292341485003335402,
+      "verified": true
+    },
+    {
+      "family": "bootstrap_ols",
+      "old": "results/bootstrap-ols-pairs-joint-coverage-preflight",
+      "new": "scratch-results/bootstrap-ols-pairs-joint-coverage-preflight",
+      "entry_count": 14,
+      "file_count": 10,
+      "file_bytes": 285943,
+      "symlinks": [],
+      "tree_identity_sha256": "0b8df98992127a31fc5010bf38721bd843d23117117d3f8e7aab848bc5d9b753",
+      "directory_inode": 9292341545179726920,
+      "verified": true
+    },
+    {
+      "family": "bootstrap_ols",
+      "old": "results/bootstrap-ols-pairs-preflight",
+      "new": "scratch-results/bootstrap-ols-pairs-preflight",
+      "entry_count": 16,
+      "file_count": 12,
+      "file_bytes": 1520877,
+      "symlinks": [],
+      "tree_identity_sha256": "d19bda39b1fdb1475088c54dac2f0e919ed1c682d85449a556237c1fe4fe04d5",
+      "directory_inode": 9292341519449718589,
+      "verified": true
+    },
+    {
+      "family": "bootstrap_ols",
+      "old": "results/bootstrap-ols-pairs-smoke",
+      "new": "scratch-results/bootstrap-ols-pairs-smoke",
+      "entry_count": 21,
+      "file_count": 14,
+      "file_bytes": 1521774,
+      "symlinks": [],
+      "tree_identity_sha256": "d70a71b26350ce48c24ca97b73bc41648f17382e168e93215245a443ba0e54e5",
+      "directory_inode": 9292341515130043337,
+      "verified": true
+    },
+    {
+      "family": "bootstrap_ols",
+      "old": "results/offline-bootstrap-fixed-predictor",
+      "new": "scratch-results/offline-bootstrap-fixed-predictor",
+      "entry_count": 45,
+      "file_count": 34,
+      "file_bytes": 11522379,
+      "symlinks": [],
+      "tree_identity_sha256": "b3d599dfcb79ad2817be4ea2ccf511b0aeb0b5d9ffa17c9c148e7f25d1dd3d27",
+      "directory_inode": 9292341510802808216,
+      "verified": true
+    },
+    {
+      "family": "policy_lcb",
+      "old": "results/finite-policy-lcb-validation",
+      "new": "scratch-results/finite-policy-lcb-validation",
+      "entry_count": 144,
+      "file_count": 111,
+      "file_bytes": 5540181,
+      "symlinks": [],
+      "tree_identity_sha256": "3fa5d81aaf9e3e581cbcf910402f15b97d638c00c0c5078c069da2d3bd05f2f3",
+      "directory_inode": 9292341489370608716,
+      "verified": true
+    },
+    {
+      "family": "policy_lcb",
+      "old": "results/continuous-policy-lcb-validation",
+      "new": "scratch-results/continuous-policy-lcb-validation",
+      "entry_count": 118,
+      "file_count": 90,
+      "file_bytes": 12670397,
+      "symlinks": [],
+      "tree_identity_sha256": "645ccc4a809945592013bbb3e0351ab52e5053e3bed878895fae81cf65015c54",
+      "directory_inode": 9292341532312620212,
+      "verified": true
+    },
+    {
+      "family": "policy_lcb",
+      "old": "results/variable-lcb-envelope-characterization",
+      "new": "scratch-results/variable-lcb-envelope-characterization",
+      "entry_count": 6032,
+      "file_count": 4027,
+      "file_bytes": 609739697,
+      "symlinks": [],
+      "tree_identity_sha256": "db0d06b10842940d1c7c8f8df0ef76820d39c22b7e66f81c6c0e27b4578f032f",
+      "directory_inode": 9292341489369649848,
+      "verified": true
+    },
+    {
+      "family": "policy_lcb",
+      "old": "results/continuous-gp-variable-lcb",
+      "new": "scratch-results/continuous-gp-variable-lcb",
+      "entry_count": 4226,
+      "file_count": 2224,
+      "file_bytes": 243667397,
+      "symlinks": [],
+      "tree_identity_sha256": "5f0adfad7ea60cad23661accf8cbff02467d90f797be2cd5088b1bc2754b7e40",
+      "directory_inode": 9292341510858610628,
+      "verified": true
+    },
+    {
+      "family": "policy_lcb",
+      "old": "results/continuous-gp-variable-lcb-interim-n41",
+      "new": "scratch-results/continuous-gp-variable-lcb-interim-n41",
+      "entry_count": 142,
+      "file_count": 99,
+      "file_bytes": 30864354,
+      "symlinks": [],
+      "tree_identity_sha256": "8316ec19e8be05febc7fb29912cd570b14be06b98a7e80df63e2cc29e0aec45e",
+      "directory_inode": 9292341502262384302,
+      "verified": true
+    },
+    {
+      "family": "policy_lcb",
+      "old": "results/continuous-gp-variable-lcb-interim-quick-n41",
+      "new": "scratch-results/continuous-gp-variable-lcb-interim-quick-n41",
+      "entry_count": 7,
+      "file_count": 6,
+      "file_bytes": 659550,
+      "symlinks": [],
+      "tree_identity_sha256": "64122584885a1c8a5200af6dabef8265573c784e921dac7fa79a70bfbab1ac60",
+      "directory_inode": 9292341485038540235,
+      "verified": true
+    },
+    {
+      "family": "policy_lcb",
+      "old": "results/continuous-gp-regret-decomposition",
+      "new": "scratch-results/continuous-gp-regret-decomposition",
+      "entry_count": 818,
+      "file_count": 613,
+      "file_bytes": 447121448,
+      "symlinks": [],
+      "tree_identity_sha256": "ae46f604c6d682fc1e655db9013d381493d16c03002a26e130d75107316806a3",
+      "directory_inode": 9292341497966057880,
+      "verified": true
+    },
+    {
+      "family": "coverage_kernel",
+      "old": "results/coverage-kernel-dense-n-sweep",
+      "new": "scratch-results/coverage-kernel-dense-n-sweep",
+      "entry_count": 309,
+      "file_count": 207,
+      "file_bytes": 24131890,
+      "symlinks": [],
+      "tree_identity_sha256": "0a4717af48df13faae5d4fa6f877e3a307490376bed0c8803084b131538aac26",
+      "directory_inode": 9292341497972418678,
+      "verified": true
+    },
+    {
+      "family": "coverage_kernel",
+      "old": "results/coverage-kernel-q-sweep",
+      "new": "scratch-results/coverage-kernel-q-sweep",
+      "entry_count": 209,
+      "file_count": 107,
+      "file_bytes": 38586360,
+      "symlinks": [],
+      "tree_identity_sha256": "89e92a39eebc44b81941b1a3e47a9fb892773702ef5b66cb6632c42240b54a49",
+      "directory_inode": 9292341540915566792,
+      "verified": true
+    },
+    {
+      "family": "coverage_kernel",
+      "old": "results/coverage-kernel-b-sweep",
+      "new": "scratch-results/coverage-kernel-b-sweep",
+      "entry_count": 209,
+      "file_count": 107,
+      "file_bytes": 31065828,
+      "symlinks": [],
+      "tree_identity_sha256": "2b5e4597f1af121ed3b4b1929a321e2db1339dfd02c83fbab7b4f1056b2802c0",
+      "directory_inode": 9292341515054496470,
+      "verified": true
+    }
+  ],
+  "already_archived_results": [
+    {
+      "family": "zeroth_order",
+      "path": "scratch-results/zeroth-order-proof-baseline"
+    },
+    {
+      "family": "zeroth_order",
+      "path": "scratch-results/zeroth-order-proof-functional-bias"
+    },
+    {
+      "family": "zeroth_order",
+      "path": "scratch-results/zeroth-order-support-envelopes"
+    },
+    {
+      "family": "zeroth_order",
+      "path": "scratch-results/zeroth-order-proof-validation-analysis"
+    },
+    {
+      "family": "zeroth_order",
+      "path": "scratch-results/zeroth-order-envelope-analysis"
+    },
+    {
+      "family": "noise_and_bias",
+      "path": "scratch-results/fixed-regression-heteroskedastic-noise-offset-grid"
+    },
+    {
+      "family": "noise_and_bias",
+      "path": "scratch-results/fixed-regression-homoskedastic-noise-offset-grid"
+    },
+    {
+      "family": "noise_and_bias",
+      "path": "scratch-results/heteroskedastic-noise-offset-grid"
+    },
+    {
+      "family": "noise_and_bias",
+      "path": "scratch-results/heteroskedastic-noise-offset-grid-optax"
+    },
+    {
+      "family": "noise_and_bias",
+      "path": "scratch-results/heteroskedastic-noise-sweep"
+    },
+    {
+      "family": "noise_and_bias",
+      "path": "scratch-results/heteroskedastic-support-bias-noise-grid"
+    },
+    {
+      "family": "noise_and_bias",
+      "path": "scratch-results/heteroskedastic-theta-offset-sweep"
+    },
+    {
+      "family": "noise_and_bias",
+      "path": "scratch-results/homoskedastic-noise-offset-grid"
+    },
+    {
+      "family": "noise_and_bias",
+      "path": "scratch-results/homoskedastic-noise-offset-grid-optax"
+    },
+    {
+      "family": "noise_and_bias",
+      "path": "scratch-results/homoskedastic-noise-sweep"
+    },
+    {
+      "family": "noise_and_bias",
+      "path": "scratch-results/homoskedastic-support-bias-noise-grid"
+    },
+    {
+      "family": "noise_and_bias",
+      "path": "scratch-results/homoskedastic-theta-offset-sweep"
+    },
+    {
+      "family": "noise_and_bias",
+      "path": "scratch-results/planted-logistic-action-bias-sweep"
+    },
+    {
+      "family": "noise_and_bias",
+      "path": "scratch-results/planted-logistic-support-bias-sweep"
+    },
+    {
+      "family": "noise_and_bias",
+      "path": "scratch-results/planted-noise-fill-in-sweeps"
+    },
+    {
+      "family": "noise_and_bias",
+      "path": "scratch-results/planted-noise-offset-grid"
+    },
+    {
+      "family": "noise_and_bias",
+      "path": "scratch-results/planted-noise-offset-grid-optax"
+    },
+    {
+      "family": "noise_and_bias",
+      "path": "scratch-results/planted_logistic_base"
+    }
+  ],
+  "result_verification": "Atomic same-filesystem renames; every entry retains relative path, inode, mode, size, mtime, and symlink target. Saved file contents were not rewritten."
+}

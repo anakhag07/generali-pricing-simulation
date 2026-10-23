@@ -1,8 +1,11 @@
 # Local work consolidation — 2026-10-22
 
-This is the merge-first stage of the cleanup. Experiment drivers and result
-directories have not been relocated. Preserve the Generali experiments, models,
-data, caches, and saved policies for the next downstream analysis.
+This records the merge-first snapshot, before experiment drivers and result
+directories were relocated. For the subsequent archival pass see
+[`scratch/retired_experiments/README.md`](../scratch/retired_experiments/README.md). Preserve the Generali experiments, models,
+data, caches, and saved policies for the next downstream analysis. The later
+user-approved follow-up archives completed Generali results while retaining
+source/data/models/configurations; consult the archive index for their locations.
 
 ## Branch inventory
 
@@ -83,7 +86,7 @@ logs. These locations are separate; changing branches does not move results.
 | Current data-location illustration | Saved summaries and traces for both `wild-data-location-20261021/` and the `-mean10/` follow-up | Keep current mean-10 outputs; review the earlier setting later |
 | Current contextual illustration | Summary, per-context tables and traces in `wild-contextual-flat-20261021/`; driver already in `scratch/` | Keep available for the current write-up |
 | Gaussian and centered-exponential paired residual studies | Each has 2,000 repetition records, a collected summary and plots | Completed artifacts available for later archive selection |
-| Heavy-tailed t3 paired study | 1,950 of 2,000 repetitions; 39 successful tasks, task 0 failed; no collected summary | Explicitly incomplete; preserve checkpoints |
+| Heavy-tailed t3 paired study | Top-level attempt has 1,950 repetitions; a complete 2,000-repetition run with summary and reports exists under `results/terminal-distribution-sweeps/residual-heteroskedastic-t3-design-paired-nb/` | Preserve both attempts; no rerun is needed to obtain a completed study |
 | Residual leverage and fixed-noise studies | All six outlier settings in each family have summaries; fixed-noise aggregate includes validation and provenance | Completed artifacts available for later archive selection |
 | Earlier envelope, bounded-design, outlier, bootstrap, kernel and GP studies | Multiple saved summaries and report trees remain under `results/` | Review against the new proof before moving |
 | Generali real-data analyses | GLM/XGB/spline, policy-capacity, support, sensitivity and saved-policy results remain available | Preserve for downstream analysis |
@@ -92,16 +95,29 @@ The t3 failure is recorded in
 `results/residual-heteroskedastic-t3-design-paired-nb/sweeps/20261021_120906/tasks/task_000.json`:
 two initializers shared `environment.json.tmp`, and one rename failed with
 `FileNotFoundError`. The shared `write_json_atomic` helper currently uses a fixed
-temporary filename. No experiments were rerun during consolidation. Resuming
-only missing task 0 from its original worktree would recover the 50 absent
-repetitions before collection;
-concurrent initialization needs a separate fix before another fresh parallel
-launch. Existing source-contract checks must be respected when resuming.
+temporary filename. No experiments were rerun during consolidation. A later
+inventory found the complete 2,000-repetition run under
+`results/terminal-distribution-sweeps/`, with matching contract and environment
+array hashes. Keep the partial attempt as provenance; no rerun is needed for
+the completed study. Concurrent initialization still needs a separate fix
+before another fresh parallel launch. Existing source-contract checks must
+be respected when resuming.
 
 Slurm reported no active jobs at inspection time. After merging, redundant
 branch pointers can be removed while keeping their worktrees detached at the
 saved commits: provenance contains absolute paths into those directories.
 Removing the directories belongs with the later path/provenance cleanup.
+
+On 2026-10-23, the user requested removal of completed worktrees. All 14 clean,
+merged worktrees were removed after checking ignored files, local processes,
+Slurm jobs, retained symlinks and the simulation environment. Their commits
+remain reachable from `main`; only caches and canonical-data links were local
+extras. The canonical, Design-Bench and active cleanup worktrees remain.
+[`worktrees_20261023.json`](../scratch/retired_experiments/worktrees_20261023.json)
+records exact paths, commits and data links so an old checkout can be recreated
+for absolute-path replay. See the
+[recovery instructions](../scratch/retired_experiments/README.md#completed-worktrees).
+Shared experiment results, canonical data and models were untouched.
 
 ## Generali preservation and the next cleanup stage
 

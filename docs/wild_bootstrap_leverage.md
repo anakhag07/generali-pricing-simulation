@@ -1,5 +1,9 @@
 # Maximum leverage and wild-bootstrap coverage
 
+This study is retired. Its manifests and results are indexed in the
+[archive selection and recovery notes](../scratch/retired_experiments/README.md#follow-up-selection). The reusable mathematics remains available in `src/`; historical
+result contracts are unchanged.
+
 Historical saved results described here use the function target. New runs use
 the residual target and asymmetric transfer documented in
 [wild_bootstrap_envelopes.md](wild_bootstrap_envelopes.md). Use new result names.
@@ -41,7 +45,7 @@ Run the four manifests through the existing entry point, for example:
 conda activate simulation_env
 PYTHONPATH=src OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 \
 python scripts/run_experiment_manifest.py \
-  manifests/wild-bootstrap-leverage-bound-0p5.json --launch local
+  scratch/retired_experiments/wild_bootstrap_diagnostics/manifests/wild-bootstrap-leverage-bound-0p5.json --launch local
 ```
 
 Repeat for suffixes `1`, `3`, and `10`. Saved studies live under the configured
@@ -130,7 +134,7 @@ the existing entry point, for example:
 ```bash
 PYTHONPATH=src OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 \
 python scripts/run_experiment_manifest.py \
-  manifests/wild-bootstrap-outlier-3.json --launch local
+  scratch/retired_experiments/wild_bootstrap_diagnostics/manifests/wild-bootstrap-outlier-3.json --launch local
 ```
 
 After all six finish, generate the comparison with:

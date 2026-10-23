@@ -9,7 +9,7 @@ import pytest
 from experiments.configs import get_config
 from experiments.manifest import ExperimentManifest, load_experiment_manifest
 from objective import ArctanRemainderThetaBias, ArctanThetaBias, LinearThetaBias
-from scripts import analyze_zeroth_order_proof_validation as script
+from scratch.retired_experiments.zeroth_order import analyze_zeroth_order_proof_validation as script
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -45,8 +45,8 @@ def test_aggregate_mse_decomposition_is_exact() -> None:
 
 
 def test_completed_manifest_outputs_produce_all_tables_and_plots(tmp_path: Path) -> None:
-    baseline = load_experiment_manifest(REPO_ROOT / "manifests" / "zeroth_order_baseline.json")
-    bias = load_experiment_manifest(REPO_ROOT / "manifests" / "zeroth_order_functional_bias.json")
+    baseline = load_experiment_manifest(REPO_ROOT / "scratch/retired_experiments/zeroth_order/manifests/zeroth_order_baseline.json")
+    bias = load_experiment_manifest(REPO_ROOT / "scratch/retired_experiments/zeroth_order/manifests/zeroth_order_functional_bias.json")
     _write_fake_summaries(baseline, tmp_path)
     _write_fake_summaries(bias, tmp_path)
 

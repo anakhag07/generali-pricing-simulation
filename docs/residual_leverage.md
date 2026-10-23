@@ -1,5 +1,9 @@
 # Heteroskedastic residual bands with one moved observation
 
+This study is retired. Its manifests and results are indexed in the
+[archive selection and recovery notes](../scratch/retired_experiments/README.md#follow-up-selection). The reusable mathematics remains available in `src/`; historical
+result contracts are unchanged.
+
 ## Confirmed experiment and implementation plan
 
 The user selected the moved-point sweep, the full three-context residual model,

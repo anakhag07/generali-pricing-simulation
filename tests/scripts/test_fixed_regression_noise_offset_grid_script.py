@@ -7,7 +7,7 @@ import numpy as np
 
 from experiments.configs import get_config
 from experiments.seeds import replicate_seed_setup
-from scripts import run_fixed_regression_noise_offset_grid as script
+from scratch.retired_experiments.noise_and_bias import run_fixed_regression_noise_offset_grid as script
 
 
 def _reference() -> script.TruthReference:

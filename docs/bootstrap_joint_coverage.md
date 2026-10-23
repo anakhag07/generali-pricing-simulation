@@ -1,5 +1,10 @@
 # Dedicated joint N/B coverage sweep
 
+This study is retired. Manifests and saved results are indexed in the
+[experiment archive](../scratch/retired_experiments/README.md); consult its
+recovery instructions before replay. Paths inside saved provenance remain
+unchanged.
+
 The user requests empirical coverage while increasing N and B together, using
 more independent datasets. Report every setting, with no new optimization
 objective, configuration selection, Pareto ranking or monotonicity constraint.

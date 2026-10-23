@@ -1,5 +1,10 @@
 # Cartesian N/B coverage extension
 
+This study is retired. Manifests and saved results are indexed in the
+[experiment archive](../scratch/retired_experiments/README.md); consult its
+recovery instructions before replay. Paths inside saved provenance remain
+unchanged.
+
 User request: fill the 9 by 9 Cartesian product, retain 2000 outer datasets,
 reuse completed work, and regenerate the coverage plot. Keep sigma=1, delta=.05,
 original pairs resampling, fixed-denominator standard error, higher quantiles,

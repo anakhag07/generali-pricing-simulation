@@ -22,6 +22,12 @@ Project context: simulation and optimization repo. Users should be able to speci
   experiment documentation. Never bury this disclosure in logs, code comments,
   or an end-of-task summary.
 - Prefer small, focused changes with clear doc updates. Prior to making code changes, think about whether the code addition is necessary and if it keeps a clean, intuitive repo structure for the public api. 
+- A requested change normally extends the existing experiment family. Keep its
+  canonical family name and configuration entry point; express changed settings
+  as parameters, sweep axes, or identifiable run revisions. Do not create another
+  family, driver, or top-level result project for each adjustment. Preserve saved
+  runs and their original contracts; never overwrite incompatible completed runs
+  to keep a name stable. See `docs/experiment_workflow.md`.
 - Keep simulation logic deterministic when a seed is set.
 - When adding any new stochastic or nondeterministic process (sampling, splits,
   initialization, mini-batching, perturbations, randomized package calls, or
@@ -47,6 +53,50 @@ Project context: simulation and optimization repo. Users should be able to speci
 ## Logical Rules
 
 - Prefer optimized math operations from online packages instead of implementing from scratch (for gradient descent methods, objective definitions, etc ...)
+
+## Natural-language experiment requests
+
+- Treat natural-language requests as configuration of the existing experiment
+  scaffolding. Inspect the relevant family manifest, registered preset, setup
+  documentation, and saved artifacts before choosing an implementation. Prefer
+  existing manifest/configuration overrides and report recipes; a request to run
+  or change an experiment is not, by itself, a request to write a new driver,
+  module, manifest kind, or natural-language parser.
+- Resolve whether the request is optimization only, band construction only,
+  optimization of a band-derived objective, or band evaluation of an existing
+  optimized policy. Replotting or evaluating saved outputs must not silently
+  trigger fitting, resampling, or optimization.
+- Ask concise, grouped questions when consequential choices cannot be inferred
+  from the prompt or the identified setup: synthetic versus Generali setting;
+  function/predictor, data/cohort and response; objective target and sign;
+  policy, action domain and constraints; first-order/zeroth-order estimator and
+  solver, initialization and budget; band method/variant, confidence domain and
+  level; seed pairing/repetitions; and launch resources or requested outputs.
+  Ask only about unresolved choices relevant to this request. Inherit established
+  choices when the user clearly refers to an existing setup, identify their
+  source, and do not ask again about choices already specified or approved.
+- Preserve uncertainty: distinguish explicit choices, inherited settings,
+  reasonable assumptions, and unresolved scientific questions. Do not replace
+  an unknown setting, optimizer, calibration assumption, or truth reference with
+  an arbitrary default. Continue independent inspection/configuration work, but
+  wait for answers before launching work that depends on a consequential unknown.
+- Before launch, briefly state the resolved setting, target, optimizer/band,
+  seeds, output location, and inherited assumptions. Record executable choices
+  in the manifest and resolved run metadata, with explanations in the family's
+  setup documentation. This summary is not an extra approval gate when the
+  request and existing setup already determine the run.
+- Reuse existing seed ownership and exact paired draws. Apply the Core Working
+  Rules above before adding a stochastic process or changing its representation.
+  Keep model-based quantities, empirical coverage, analytical guarantees, and
+  descriptive support metrics distinct; preserve unknown/failed outcomes.
+- If the scaffolding cannot express the request, identify the specific missing
+  capability and propose the smallest reusable extension before writing runtime
+  code. Label proposed interfaces as unsupported until implemented. Keep changes
+  in the same experiment family and preserve incompatible completed runs.
+- Retirement means movement to tracked `scratch/` (study code, manifests and
+  study-only material) and shared `scratch-results/` (outputs), with relocation
+  records. Keep reusable mathematics and active studies in `src/`; do not delete
+  studies or equate archiving Generali results with retiring its data/workflow.
 
 ## Pull Request Reviews
 
@@ -101,6 +151,14 @@ git worktree add ../worktrees/feature-policy-grid -b feature/policy-grid
 - If the branch already exists, omit `-b` and pass the existing branch name.
 - After entering a worktree, re-read `AGENTS.md`, confirm the branch/status, and
   assume other worktrees may have changed the repo recently.
+- When cleaning completed worktrees, verify their commits are reachable from a
+  retained ref, inspect tracked/untracked/ignored files, check local processes
+  and queued/running jobs, and record the exact path, commit and data symlinks
+  before removal. Preserve unique artifacts first. Saved absolute source paths
+  may require recreating the checkout at its original path for replay; use the
+  recovery index rather than rewriting saved contracts. Keep active/unmerged
+  worktrees. The 2026-10-23 cleanup is recorded in
+  `scratch/retired_experiments/worktrees_20261023.json`.
 - Gitignored data artifacts (`src/data/dataset.csv` and `src/data/models/`)
   exist only in the canonical checkout, so real-data tests fail in a fresh
   worktree until they are symlinked in:
@@ -118,6 +176,10 @@ Before finishing a build session:
 3. Update `README.md` if behavior, structure, configuration, or usage changed.
 4. Update `AGENTS.md` if organization or workflow knowledge changed.
 5. Leave a concise summary so another agent can continue from the branch without chat context.
+
+Opening or pushing a PR is a review handoff. Leave it open unless the user
+explicitly asks to merge that PR; permission to implement, commit, or push does
+not authorize merging.
 
 ## Modes
 
@@ -189,7 +251,11 @@ When modifying or adding code that implements a mathematical formula:
 
 The 2026-10-22 merge-first cleanup inventory is in
 `docs/local_work_cleanup_20261022.md`. It records the consolidated branches,
-unfinished t3 sweep, and Generali artifacts to retain during later archival.
+historical t3 attempts, and the Generali artifact inventory. Both archival
+passes are indexed in `scratch/retired_experiments/relocations.json` and
+`relocations_followup_20261022.json` in that same directory; recovery notes are in
+`scratch/retired_experiments/README.md`. The downstream module
+responsibilities and stable-family convention are in `docs/experiment_workflow.md`.
 
 When behavior and documentation disagree, use this priority:
 
@@ -203,38 +269,34 @@ If lower-priority docs are stale, update them in the same task.
 
 ## Code Organization
 
-- `manifests/wild-bootstrap-leverage-bound-*.json` run the fixed-n action-only
-  truncated-normal leverage diagnostic through the existing wild-bootstrap
-  runner. `docs/wild_bootstrap_leverage.md` and MATH section 7.10 describe it.
-  `wild_study.py` supports zero contexts, optional truncated-normal designs,
-  and constant noise; `wild_reporting.write_leverage_report` compares saved
-  summaries. For zero contexts, `wild.py` caches one identical context fiber
-  for the all-real statistic but retains every observed row leverage.
-  An explicit `truncation_bound: null` uses the unbounded normal inverse CDF
-  with the same uniforms. Missing bounds remain invalid. The wide-bound
-  report retains every condition and groups coincident coordinates without
-  jitter; old saved studies keep their original source provenance.
-  `manifests/wild-bootstrap-outlier-*.json` use a deterministic
-  `design.action_override` (fixed index, prescribed value) to vary one action
-  while preserving all other rows. MATH section 7.11 records the formula;
-  observed hat-matrix leverage is always at most 1. Outlier reports require
-  the same bulk distribution and moved-row index across all conditions.
-  `manifests/residual-leverage-outlier-*.json` retain the three-context normal
-  residual design and heteroskedastic profile at fixed n=300/B=1999.
-  `docs/residual_leverage.md` records this experiment and replay. The optional
-  `wild_reporting.write_leverage_report(..., diagnostics=True)` validates and
-  replays saved moved-point environments/examples into distribution, averaged
-  band, and asymmetric-radius PDFs/CSVs. Plot labels distinguish the moved row's
-  contextual leverage from maximum observed leverage. Transfer before averaging.
-  `noise.moved_observation_sigma` optionally overrides only the moved row's
-  observation SD, requires `design.action_override`, and cannot exceed sigma_max.
-  The background GP/off-grid scale evaluation remains unchanged. The manifests
-  `residual-leverage-fixed-noise-outlier-*.json` and
-  `docs/residual_leverage_fixed_noise.md` define the fixed-scale follow-up.
+- The active synthetic catalog retains the three paired residual-heteroskedastic
+  distribution manifests and six `residual-leverage-fixed-noise-outlier-*.json`
+  manifests. Terminal-distribution results, all residual-heteroskedastic report
+  folders, those six fixed-noise result folders, and current data-location
+  illustrations stay active. Earlier generic-envelope, wild-bootstrap leverage/
+  outlier, and varying-noise residual-leverage manifests are archived under
+  `scratch/retired_experiments/{uncertainty_envelopes,wild_bootstrap_diagnostics}/`.
+- Completed Generali optimization/analysis results, including two frontier
+  outputs formerly under the canonical `outputs/`, are now in `scratch-results/`
+  by explicit user request. Preserve Generali source, datasets, models, caches,
+  seven manifests, and reusable launchers. Archived results remain recoverable;
+  consult the follow-up relocation map before reading an old absolute path.
+- This is recipe/result retirement only. Shared envelope mathematics and current
+  runners remain in `src/` pending the staged plan in
+  `docs/experiment_workflow.md`. In particular, preserve the asymmetric residual
+  transfer, fixed moved-row noise, seed pairing, and source-contract checks.
 
 Before adding code, inspect the surrounding module structure and choose the narrowest sensible location for the change.
 
 Guidelines:
+- The downstream target is reusable optimization configuration/execution,
+  uncertainty-band construction (OLS, wild bootstrap, or support metric), and
+  synthetic/Generali setting specification under `src/`. Concluded study-specific
+  orchestration belongs in `scratch/`; preserve reusable mathematical helpers
+  before retiring source modules. The first pass moved 18 historical manifests
+  and nine drivers into `scratch/retired_experiments/`; the follow-up archived
+  another 29 synthetic manifests. Both relocation indexes are there. Shared
+  `src/` modules remain until their dependencies are separated.
 - Classify new work before choosing files. Reproducible analyses use the
   existing manifest runner with a validated reporting recipe; reusable model,
   data, objective, and plotting behavior belongs under `src/`. Reserve scripts
@@ -522,7 +584,7 @@ Changing the `models` array is the supported model swap. Available keys are
   `wild_study.py` implements `kind: "wild_bootstrap_envelopes"` through the
   shared manifest launcher and the bounded finite-Fourier GP variance profile;
   `wild_reporting.py` owns saved-result PDFs.
-  `manifests/uncertainty-envelopes-wild-bootstrap.json` declares fixed p=5,
+  The archived `scratch/retired_experiments/wild_bootstrap_diagnostics/manifests/uncertainty-envelopes-wild-bootstrap.json` preserves the historical fixed p=5,
   paired n/B/delta sweeps, 2,000 outer repetitions, and separate profile,
   context, action, observation, and multiplier seed streams. The GP profile is
   frozen; errors are independent conditional on it and the frozen design.
@@ -1147,58 +1209,8 @@ belongs under `generali/`.
   `kind: "policy_capacity"` routes through the condition-array capacity plan,
   where each task runs one split/model/degree fit and the collector writes
   sweep-level CSVs and PDFs.
-- `manifests/finite_policy_lcb_validation.json` is the source of truth for the
-  exact eleven-policy lower-confidence-bound validation, its five delta values,
-  and its 25 paired noise seeds.
-- `manifests/continuous_policy_lcb_validation.json` is the source of truth for
-  the shared-Gaussian continuum with $$a=b=5$$ concave value, projected
-  optimizer settings, three paired starts, five delta values, 25 problem-noise
-  seeds, fixed Stein stream, and reporting-bootstrap seed. Outputs live under
-  `results/continuous-policy-lcb-validation/`.
-- `manifests/variable_lcb_envelope_characterization.json` is the source of
-  truth for the 101-point concave-quadratic variable-envelope cube over seven
-  uncertainty centers, six noise scales, two calibrations, and 2,000 paired
-  Gaussian vectors. Outputs live under
-  `results/variable-lcb-envelope-characterization/`.
-- `manifests/continuous_gp_variable_lcb.json` is the source of truth for the
-  continuous analytic Fourier-GP suite: rank 32, lengthscale 0.2, five
-  uncertainty centers, five noise scales, the analytic 95% covering-net band,
-  2,000 global-reference paths, and a 200-path optimizer subset. Outputs live
-  under `results/continuous-gp-variable-lcb/`.
-- `manifests/continuous_gp_regret_decomposition.json` is the source of truth
-  for the independently controlled surrogate/envelope scales and centers, 71
-  de-duplicated landscapes, eight optimizer checkpoints, two fixed ZO methods,
-  200 paired Fourier paths, and three predeclared diagnostic paths. Outputs live
-  under `results/continuous-gp-regret-decomposition/`.
-- `manifests/zeroth_order_baseline.json` and
-  `manifests/zeroth_order_functional_bias.json` are the source of truth for the
-  small perturbation/sample-count and functional-bias proof grids.
-- `scripts/analyze_zeroth_order_proof_validation.py` reads those completed
-  summaries without rerunning optimization; it calculates clean/biased/
-  estimator-root/final landmarks, signed displacement decompositions,
-  Stein bias-variance-MSE, theorem checks, scaling fits, and the eight canonical
-  sweep plots under `results/zeroth-order-proof-validation-analysis/`.
-- `manifests/zeroth_order_envelopes.json` is the source of truth for the
-  54-variant support-envelope sweep over constant, matched-slope interval
-  distance, and smooth saturating nonconvex forms. It holds the conditional
-  grid explicitly: controls use `sigma=0.15`, while the nonconvex form also
-  sweeps `sigma in {0.05,0.15,0.30}` and both truth-/coverage-side starts.
-- `scripts/analyze_zeroth_order_envelopes.py` reads completed envelope summaries
-  without rerunning optimization. It reconstructs exact and estimator-
-  population landscapes, assigns final iterates to basins, writes final-
-  distance/regret/aggregate tables, and produces envelope-geometry,
-  nonconvex-bifurcation, basin-rate, population-target-error, seed-level
-  convergence (one plot per envelope form), and true-regret plots under
-  `results/zeroth-order-envelope-analysis/`. Its pure one-dimensional
-  stationary-point and convolution helpers live in
-  `scripts/zeroth_order_landscape.py`.
 - `scripts/run_sweep.py` is a minimal generic seed-aware preset sweep launcher around `experiments.sweep_utils.run_sweep(...)`. It accepts a base preset plus JSON override mapping/list/grid inputs, optional seed-vary/fixed-stream arguments, and `--requires-jax` to force the GPU Slurm profile. It should stay experiment-agnostic; dedicated scientific grids belong in their own scripts.
 - `scripts/run_noisy_glm_theta_variance_sweep.py` runs the all-data trust-constrained GLM noisy-objective sweeps on GPU/JAX. It defaults to the saved first-order no-noise truth summary at `results/real_data_glm_base__20260706_124627/summary.json`, centers heteroskedastic noise at that run's final mean `u`, sweeps theta starts along the real initialization-to-truth line by L2 distance, sweeps homoskedastic/heteroskedastic noise variance for zeroth-order estimators, writes `noisy_glm_theta_variance_finals.csv` / `noisy_glm_theta_variance_summary.csv`, and regenerates theta-distance/objective-gap plots per grid project.
-- `scripts/run_noise_offset_grid.py` runs the combined noise-level x theta-offset planted-logistic grid: for each noise family (homoskedastic std `sigma in {0, 0.1, 2}` new + `0.5` reused from the saved theta-offset sweep; heteroskedastic growth `gamma in {0, 0.25, 4}` new + `1.0` reused) it varies the init offset `delta` in `theta0 = theta_FO_clean + delta * 1` over 9 offsets with `RUN_SEEDS=(7, 8, 9)`, carrying its own copy of the retired planted-noise fill-in sweep driver's COMMON_OVERRIDES/seed policy (formerly in `scripts/run_sweep.py`) so runs stay comparable with the saved sweeps. Writes `noise_offset_grid_finals.csv` plus per-estimator two-panel figures (final theta distance to first-order truth | clean-objective gap on the reconstructed train batch, curves = noise level) under `results/homoskedastic-noise-offset-grid/` and `results/heteroskedastic-noise-offset-grid/`. `--plots-only` regenerates outputs from saved summaries; `--families` selects the grid group; launch-aware with auto Slurm submit
-- `scripts/run_fixed_regression_noise_offset_grid.py` runs the fixed-regression noise-level x theta-offset grid: it computes an anchored clean first-order truth for `fixed_regression_base`, centers heteroskedastic noise at that truth policy's mean `u`, varies the init offset `delta` in `theta0 = theta_FO_clean + delta * 1` over 9 offsets, and uses `run_sweep(...)` one variant at a time inside warm `(family, noise-level)` launch tasks so every variant gets the canonical seed-sweep folder layout. Defaults use homoskedastic std `{0, 0.1, 0.5, 2}`, heteroskedastic growth `{0, 0.25, 1, 4}`, `RUN_SEEDS=(7, 8, 9)`, and estimators `finite_difference` / `stein_difference`. Writes `fixed_regression_noise_offset_grid_finals.csv` plus per-estimator two-panel figures under `results/fixed-regression-homoskedastic-noise-offset-grid/` and `results/fixed-regression-heteroskedastic-noise-offset-grid/`. `--plots-only` regenerates outputs from saved summaries; `--families` selects the grid group; launch-aware with auto Slurm submit
-- `scripts/run_planted_logistic_action_bias_sweep.py` runs the first planted-logistic deterministic action-bias experiment: optimize `BiasedObjective(M_star, lambda_bias)` for `lambda_bias in {0, 0.01, 0.05, 0.1, 0.2}`, optimize the true `M_star` oracle baseline once on the same sampled train batch, and write `planted_logistic_action_bias_sweep.csv` with true gaps, mean actions, surrogate value, and signed optimism gap `surrogate - true`
-- `scripts/run_planted_logistic_support_bias_sweep.py` runs the planted-logistic upper-support deterministic bias experiment: optimize a surrogate that is exact for `u <= u_star + support_radius` and optimistic only above support, sweep `lambda_bias in {0, 0.01, 0.025, 0.05, 0.1, 0.2}` and `support_radius in {0.02, 0.05, 0.1, 0.2}`, and write `planted_logistic_support_bias_sweep.csv` plus true-gap/support-excess plots
-- `scripts/run_support_bias_noise_grid.py` layers homoskedastic/heteroskedastic Gaussian value noise on top of the planted-logistic upper-support bias surrogate: each variant objective is `NoisyObjective(BiasedObjective(M_star, UpperSupportHingeBias), noise)`, so the grid runs zeroth-order estimators only (`finite_difference`/`stein_difference`) since `NoisyObjective.grad` raises. For each noise family (homoskedastic std `sigma in {0, 0.1, 0.5, 2}`, heteroskedastic growth `gamma in {0, 0.25, 1, 4}`) it varies bias strength `lambda_bias in {0, 0.01, 0.05, 0.1, 0.2}` at fixed `support_radius=0.05`, `RUN_SEEDS=(7, 8, 9)`, `vary=("optimizer","noise")` with data/split/theta anchored to seed 7 and a fixed cold-start `theta0`. It solves and persists a clean unbiased first-order truth (`theta^FO_clean`) once under `results/planted_logistic_base/support_bias_noise_clean_truth/`, then reconstructs the clean `PlantedLogisticObjective` and bias support boundary from each summary config to report the true clean-objective gap and off-support action excess against that truth. Writes `support_bias_noise_grid_finals.csv` plus per-estimator two-panel figures (true clean-objective gap | mean support excess, curves = noise level, x = bias strength) under `results/homoskedastic-support-bias-noise-grid/` and `results/heteroskedastic-support-bias-noise-grid/`. `--plots-only` regenerates outputs from saved summaries; `--families` selects the grid group; launch-aware with auto Slurm submit (one warm task per family+noise-level)
 - `scripts/run_glm_u_coef_sweep.py` runs the softmax/no-PCA/trust-constr GLM setup over 200000 sampled rows and `u_coef in {-4, -5, -8, -10, -20}`, keeps per-run distribution plots enabled, and writes aggregate `glm_u_coef_sweep.csv` plus frontier plots under `results/glm-u-coef-sweep/u_coef_frontier_<timestamp>/`. It is launch-aware but defaults to local execution; `--launch slurm --array` runs one `u_coef` value per array task and a dependent collector combines row payloads into the existing frontier outputs
 - `scripts/run_glm_softmax_alpha_sweep.py` runs the trust-constrained softmax/no-PCA/linear-feature GLM setup over symmetric action bounds `[-alpha, alpha]` for `alpha in {0.5, 0.4, 0.3, 0.2, 0.15, 0.125, 0.1, 0.075}`, saves normal per-alpha policy artifacts, and writes aggregate final objective/profit plots plus artifact-replayed acceptance-threshold and per-alpha `u`-bin expected-profit summaries under `results/glm-softmax-alpha-sweep/alpha_sweep_<timestamp>/`. It is launch-aware; `--launch slurm --array` runs one alpha per array task and a dependent collector combines final-row payloads plus artifact-replayed bin summaries into the existing aggregate outputs
 - `scripts/run_glm_sensitivity_bucket_experiment.py` buckets all complete eligible GLM rows into low/medium/high local price-sensitivity tertiles at median observed `U`, runs the softmax/no-PCA/trust-constr GLM setup on every row in each bucket, keeps per-run distribution plots enabled, and writes aggregate `glm_sensitivity_bucket_experiment.csv` plus comparison plots under `results/glm-sensitivity-buckets/sensitivity_bucket_summary_<timestamp>/`. It is launch-aware; `--launch slurm --array` runs one bucket per array task and the collector recomputes bucket definitions for plots
@@ -1250,9 +1262,8 @@ Three removals were scoped and then deliberately deferred. In each case the
 *preset* looked dead while the underlying object was load-bearing; measure both
 before deleting.
 
-- **`planted_logistic`** — `planted_logistic_base` is the `BASE_PRESET` for 4
-  active scripts (`run_noise_offset_grid`, `run_planted_logistic_action_bias_sweep`,
-  `run_planted_logistic_support_bias_sweep`, `run_support_bias_noise_grid`), the
+- **`planted_logistic`** — `planted_logistic_base` is the `BASE_PRESET` for four
+  archived noise/bias drivers in `scratch/retired_experiments/noise_and_bias/`, the
   canonical example in `experiments/manifest.py` docs/tests, and a fixture in ~17
   test files. `run_support_bias_noise_grid.py` also rebuilds
   `PlantedLogisticObjective` from saved `summary.json` configs, so removing it

@@ -6,7 +6,7 @@ import importlib.util
 import sys
 from pathlib import Path
 
-_SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "plot_noise_offset_grid_extra.py"
+_SCRIPT = Path(__file__).resolve().parents[2] / "scratch/retired_experiments/noise_and_bias/plot_noise_offset_grid_extra.py"
 _SPEC = importlib.util.spec_from_file_location("plot_noise_offset_grid_extra", _SCRIPT)
 extra = importlib.util.module_from_spec(_SPEC)
 sys.modules[_SPEC.name] = extra

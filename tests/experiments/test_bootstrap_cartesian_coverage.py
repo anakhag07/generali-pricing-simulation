@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def manifests(tmp_path):
-    p = json.loads((ROOT/"manifests/bootstrap_ols_joint_coverage.json").read_text())
+    p = json.loads((ROOT/"scratch/retired_experiments/bootstrap_ols/manifests/bootstrap_ols_joint_coverage.json").read_text())
     p.update(name="source", datasets=2, datasets_per_task=1,
              settings=[{"N":12,"B":9},{"N":20,"B":19}])
     path = tmp_path/"source.json"
@@ -78,7 +78,7 @@ def test_full_saved_prefix_never_refits(tmp_path,monkeypatch):
 
 
 def test_cartesian_production_grid():
-    m=load_manifest(ROOT/'manifests/bootstrap_ols_cartesian_coverage.json')
+    m=load_manifest(ROOT/'scratch/retired_experiments/bootstrap_ols/manifests/bootstrap_ols_cartesian_coverage.json')
     assert len(m.payload['settings'])==81
     assert m.payload['datasets']==2000
     assert {(s['N'],s['B']) for s in m.payload['settings']}=={

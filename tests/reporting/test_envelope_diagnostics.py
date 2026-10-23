@@ -293,7 +293,7 @@ def test_context_slices_use_stable_norm_order_and_lower_median(contexts, expecte
 @pytest.mark.parametrize("average_repetitions", [False, True])
 def test_reports_replay_a_saved_fit_and_reject_tampered_inputs(
         tmp_path, monkeypatch, average_repetitions):
-    manifest_path = Path(__file__).parents[2]/"manifests"/"uncertainty-envelopes.json"
+    manifest_path = Path(__file__).parents[2]/"scratch/retired_experiments/uncertainty_envelopes/manifests/uncertainty-envelopes.json"
     payload = json.loads(manifest_path.read_text())
     payload["calibration"].update(n=8, context_dim=1)
     payload["problem"]["truth"]["coefficients"] = [0., .5, 1.]

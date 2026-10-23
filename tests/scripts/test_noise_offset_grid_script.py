@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from scripts import run_noise_offset_grid as script
+from scratch.retired_experiments.noise_and_bias import run_noise_offset_grid as script
 
 
 def test_grid_offsets_and_seeds_reuse_saved_sweeps() -> None:

@@ -13,7 +13,7 @@ from experiments import coverage_kernel_sweep as kernel
 from experiments.bootstrap_band_sweep import dataset_streams as bootstrap_streams
 
 
-MANIFEST = Path(__file__).parents[2]/"manifests"/"coverage_kernel_dense_n_sweep.json"
+MANIFEST = Path(__file__).parents[2]/"scratch/retired_experiments/coverage_kernel/manifests/coverage_kernel_dense_n_sweep.json"
 
 
 def test_kernel_formula_and_gradient():
@@ -43,7 +43,7 @@ def test_two_sided_real_line_coverage_and_witness():
 
 def test_dataset_streams_match_dense_bootstrap_prefix():
     payload = kernel.load_manifest(MANIFEST).payload
-    bootstrap_payload = json.loads((MANIFEST.parent/"bootstrap_ols_dense_n_sweep.json").read_text())
+    bootstrap_payload = json.loads((Path(__file__).parents[2]/"scratch/retired_experiments/bootstrap_ols/manifests/bootstrap_ols_dense_n_sweep.json").read_text())
     for index in (0, 3):
         seeds, x, error = kernel.dataset_streams(payload, index)
         old_seeds, old_x, old_error, _ = bootstrap_streams(bootstrap_payload, index)

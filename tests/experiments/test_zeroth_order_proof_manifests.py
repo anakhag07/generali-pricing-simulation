@@ -19,9 +19,9 @@ from objective import (
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-BASELINE_PATH = REPO_ROOT / "manifests" / "zeroth_order_baseline.json"
-BIAS_PATH = REPO_ROOT / "manifests" / "zeroth_order_functional_bias.json"
-ENVELOPE_PATH = REPO_ROOT / "manifests" / "zeroth_order_envelopes.json"
+BASELINE_PATH = REPO_ROOT / "scratch/retired_experiments/zeroth_order/manifests/zeroth_order_baseline.json"
+BIAS_PATH = REPO_ROOT / "scratch/retired_experiments/zeroth_order/manifests/zeroth_order_functional_bias.json"
+ENVELOPE_PATH = REPO_ROOT / "scratch/retired_experiments/zeroth_order/manifests/zeroth_order_envelopes.json"
 
 
 def test_proof_preset_is_registered_with_fixed_initial_point() -> None:

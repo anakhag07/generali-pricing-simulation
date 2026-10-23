@@ -120,7 +120,7 @@ def _file_records(value):
 
 
 def test_calibration_plot_replays_verified_inputs_without_mutating_them(tmp_path):
-    source = Path(__file__).parents[2]/"manifests"/"uncertainty-envelopes.json"
+    source = Path(__file__).parents[2]/"scratch/retired_experiments/uncertainty_envelopes/manifests/uncertainty-envelopes.json"
     payload = json.loads(source.read_text())
     payload["calibration"]["n"] = 8
     payload["tightness"]["actions"]["count"] = 5

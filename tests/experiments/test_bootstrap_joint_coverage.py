@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def payload():
-    return json.loads((ROOT/"manifests/bootstrap_ols_joint_coverage.json").read_text())
+    return json.loads((ROOT/"scratch/retired_experiments/bootstrap_ols/manifests/bootstrap_ols_joint_coverage.json").read_text())
 
 
 def small_manifest(tmp_path):
@@ -88,7 +88,7 @@ def test_shared_cli_and_production_joint_path(monkeypatch, tmp_path):
     from scripts import run_experiment_manifest as cli
     captured = []
     monkeypatch.setattr(cli, "run_launch_plan", lambda plan, **kwargs: captured.append(plan))
-    cli.main([str(ROOT/"manifests/bootstrap_ols_joint_coverage.json"), "--runs-root", str(tmp_path)])
+    cli.main([str(ROOT/"scratch/retired_experiments/bootstrap_ols/manifests/bootstrap_ols_joint_coverage.json"), "--runs-root", str(tmp_path)])
     assert captured[0].task_count == 200
     assert captured[0].default_array
     p = payload()

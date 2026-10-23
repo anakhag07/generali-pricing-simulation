@@ -290,7 +290,7 @@ def test_main_routes_variable_grid_lcb_to_shared_launcher(monkeypatch, tmp_path)
 
 
 def test_continuous_gp_manifest_uses_shared_seed_launch_plan() -> None:
-    manifest_path = Path(__file__).parents[2] / "manifests" / "continuous_gp_variable_lcb.json"
+    manifest_path = Path(__file__).parents[2] / "scratch/retired_experiments/policy_lcb/manifests/continuous_gp_variable_lcb.json"
     args = script._parse_args([str(manifest_path)])
     manifest = script.load_policy_lcb_manifest(manifest_path)
 

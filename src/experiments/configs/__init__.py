@@ -9,11 +9,13 @@ from typing import Any, Callable, Mapping
 from experiments.config import ExperimentConfig
 from experiments.configs.real_data_factory import build_real_data_config
 from experiments.configs.synthetic_ladder import build_synthetic_ladder_config
+from experiments.configs.band_policy import build_band_config
 
 # Factory-backed presets: name -> (factory, base payload). The factory validates
 # objective-specific axes (rung, model_type, ...) before standard ExperimentConfig
 # override fields.
 _FACTORY_BASES: dict[str, tuple[Callable[..., ExperimentConfig], dict[str, Any]]] = {
+    "band_policy": (build_band_config, {}),
     "synthetic_quadratic_base": (build_synthetic_ladder_config, {"rung": "quadratic"}),
     "synthetic_smoothed_nonconvex_base": (
         build_synthetic_ladder_config,

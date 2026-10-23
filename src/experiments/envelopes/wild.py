@@ -6,7 +6,7 @@ import numpy as np
 import sympy as sp
 from scipy.linalg import solve_triangular
 
-from experiments.bootstrap_band_continuous import VARIABLE, QuadraticErrorCertificate
+from experiments.envelopes.quadratic import VARIABLE, QuadraticErrorCertificate
 from experiments.offline_bootstrap_math import strict_conjunction_empty
 
 from .core import FittedEnvelope, TargetDomain, locations, values

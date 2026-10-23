@@ -119,6 +119,7 @@ def __getattr__(name: str):
     raise AttributeError(name)
 
 __all__ = [
+    "BandObjective",
     # Base interfaces
     "Objective",
     "Policy",
@@ -204,3 +205,4 @@ __all__ = [
     "value_at_constant_u",
     "value_for_reporting",
 ]
+from .banded import BandObjective

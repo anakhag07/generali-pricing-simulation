@@ -1,0 +1,169 @@
+{
+  "base_commit": "d9e552e",
+  "files": [
+    {
+      "source": "src/experiments/bootstrap_band.py",
+      "destination": "scratch/retired_experiments/studies/bootstrap_band.py",
+      "sha256_before": "7166ec2ec004be176da6593499dcbb3ab452815e4c75eb3427d7b7a2ced07c9c"
+    },
+    {
+      "source": "src/experiments/bootstrap_band_continuous.py",
+      "destination": "scratch/retired_experiments/studies/bootstrap_band_continuous.py",
+      "sha256_before": "fc01839a975064d475db09e060302660b5708e6bd532bcd29d35905f005276e7"
+    },
+    {
+      "source": "src/experiments/bootstrap_band_reporting.py",
+      "destination": "scratch/retired_experiments/studies/bootstrap_band_reporting.py",
+      "sha256_before": "0a7cb29407b3d5eeace8e1bd5b3b8e42911496f933e452a23285dc8bbfcd3c62"
+    },
+    {
+      "source": "src/experiments/bootstrap_band_continuous_reporting.py",
+      "destination": "scratch/retired_experiments/studies/bootstrap_band_continuous_reporting.py",
+      "sha256_before": "247dfb09f311ce4d32ae3da571e9d6b0c625d43febfd4dbb70d7a47eac7326a5"
+    },
+    {
+      "source": "src/experiments/bootstrap_band_sweep.py",
+      "destination": "scratch/retired_experiments/studies/bootstrap_band_sweep.py",
+      "sha256_before": "f94d961ca4ccaba295b982b3c633dfbe6009fe882024ef46d8a86d06f184951b",
+      "historical_api_snapshot": "scratch/retired_experiments/api/experiments/bootstrap_band_sweep.html"
+    },
+    {
+      "source": "src/experiments/bootstrap_band_sweep_reporting.py",
+      "destination": "scratch/retired_experiments/studies/bootstrap_band_sweep_reporting.py",
+      "sha256_before": "0236fa2d00efad81a98995037272a25815733c5ab0504ac5b11ccff0a3d53047",
+      "historical_api_snapshot": "scratch/retired_experiments/api/experiments/bootstrap_band_sweep_reporting.html"
+    },
+    {
+      "source": "src/experiments/bootstrap_cartesian_coverage.py",
+      "destination": "scratch/retired_experiments/studies/bootstrap_cartesian_coverage.py",
+      "sha256_before": "7b71c4106b0e5786fe5d6350be142975de25f9c4bac342cae3a0193bfdbb9b0b"
+    },
+    {
+      "source": "src/experiments/bootstrap_joint_coverage.py",
+      "destination": "scratch/retired_experiments/studies/bootstrap_joint_coverage.py",
+      "sha256_before": "4013396cb950cc1db35a9264aa0af4eedd67d3a46409e5717a06e4d5c88a98f2"
+    },
+    {
+      "source": "src/experiments/offline_bootstrap.py",
+      "destination": "scratch/retired_experiments/studies/offline_bootstrap.py",
+      "sha256_before": "b548b3489844699a55b67cdec5b8468ab1edd22e85ee3941dbe7876d4307d2d3",
+      "historical_api_snapshot": "scratch/retired_experiments/api/experiments/offline_bootstrap.html"
+    },
+    {
+      "source": "src/experiments/offline_bootstrap_reporting.py",
+      "destination": "scratch/retired_experiments/studies/offline_bootstrap_reporting.py",
+      "sha256_before": "419867f712146a156726a52b09709ad3126749d8f2c254a4e680ef79b5e63377",
+      "historical_api_snapshot": "scratch/retired_experiments/api/experiments/offline_bootstrap_reporting.html"
+    },
+    {
+      "source": "src/experiments/coverage_kernel_sweep.py",
+      "destination": "scratch/retired_experiments/studies/coverage_kernel_sweep.py",
+      "sha256_before": "fa5e542be2af9560d22c995f3557d5af6d15e2814432bea713c1a4d6173752a0"
+    },
+    {
+      "source": "src/experiments/coverage_kernel_parameter_sweep.py",
+      "destination": "scratch/retired_experiments/studies/coverage_kernel_parameter_sweep.py",
+      "sha256_before": "40ed3b9bfa67b713ba79e4eb5da3b88e2ab08418be69c2f9c5a1fd0c8c56e83f"
+    },
+    {
+      "source": "src/experiments/coverage_kernel_parameter_sweep_reporting.py",
+      "destination": "scratch/retired_experiments/studies/coverage_kernel_parameter_sweep_reporting.py",
+      "sha256_before": "28f21af69ee36bc62173e2a1cf611df4f67fc494cd267d467193092d8293f948"
+    },
+    {
+      "source": "src/experiments/finite_policy_lcb.py",
+      "destination": "scratch/retired_experiments/studies/finite_policy_lcb.py",
+      "sha256_before": "0c569170719c685b5110957fca0b9d95a0e89356dde7a8561937c7badff2227a"
+    },
+    {
+      "source": "src/experiments/policy_lcb/__init__.py",
+      "destination": "scratch/retired_experiments/studies/policy_lcb/__init__.py",
+      "sha256_before": "f6f5d9f6957a029cc1747c632497ed27a66744b275af343c66a70dc616620f54"
+    },
+    {
+      "source": "src/experiments/policy_lcb/common.py",
+      "destination": "scratch/retired_experiments/studies/policy_lcb/common.py",
+      "sha256_before": "287fa76c988c3350ebe36884755bf38e2d15c84d3738aa81c3aa41c50a67eafc"
+    },
+    {
+      "source": "src/experiments/policy_lcb/continuous.py",
+      "destination": "scratch/retired_experiments/studies/policy_lcb/continuous.py",
+      "sha256_before": "41f21e750b9a19a511d1de01a84630f278d55882a2eb1614b3dbb843e05b4e4a"
+    },
+    {
+      "source": "src/experiments/policy_lcb/continuous_gp.py",
+      "destination": "scratch/retired_experiments/studies/policy_lcb/continuous_gp.py",
+      "sha256_before": "ba01d486a8c0bac1e34d2fdb1ace6c0515aece471d5bf3fa409f4ff85199dc76"
+    },
+    {
+      "source": "src/experiments/policy_lcb/continuous_gp_core.py",
+      "destination": "scratch/retired_experiments/studies/policy_lcb/continuous_gp_core.py",
+      "sha256_before": "6d1ae18361a925c2c8d652640d75ba521473f27250e2bc965082f212808891a0"
+    },
+    {
+      "source": "src/experiments/policy_lcb/continuous_gp_decomposition.py",
+      "destination": "scratch/retired_experiments/studies/policy_lcb/continuous_gp_decomposition.py",
+      "sha256_before": "0c4812b55bbba7d3cfea7f8d28d4391696b9589f18fcdb2949910d9ed369dbe7"
+    },
+    {
+      "source": "src/experiments/policy_lcb/continuous_gp_decomposition_reporting.py",
+      "destination": "scratch/retired_experiments/studies/policy_lcb/continuous_gp_decomposition_reporting.py",
+      "sha256_before": "af5ea2681a3702aeef54352bfb2cc63d4c6c77d62853ae0968cf7081de5e8e38"
+    },
+    {
+      "source": "src/experiments/policy_lcb/continuous_reporting.py",
+      "destination": "scratch/retired_experiments/studies/policy_lcb/continuous_reporting.py",
+      "sha256_before": "a2354f636515a3774c953cfb61a131f724cdd3f87681e7bcf770147d5557aa19"
+    },
+    {
+      "source": "src/experiments/policy_lcb/finite.py",
+      "destination": "scratch/retired_experiments/studies/policy_lcb/finite.py",
+      "sha256_before": "bdd1b5843c5088ec04ab50321f6cb76bf6be409fa5a35c6ea9d07928ca458ec0"
+    },
+    {
+      "source": "src/experiments/policy_lcb/finite_grid.py",
+      "destination": "scratch/retired_experiments/studies/policy_lcb/finite_grid.py",
+      "sha256_before": "f9a3a9097c4463fda4b5293843e67b70478eff4c5295b47445dfdc604007b8ba"
+    },
+    {
+      "source": "src/experiments/policy_lcb/launch.py",
+      "destination": "scratch/retired_experiments/studies/policy_lcb/launch.py",
+      "sha256_before": "303fa811587c491a10ec5cbf60b761a9b290e4ceaffff99253d5936dfee5d053"
+    },
+    {
+      "source": "src/experiments/envelopes/study.py",
+      "destination": "scratch/retired_experiments/studies/envelopes/study.py",
+      "sha256_before": "61b0be88e28a36a9437a4a992a197b07e1e71d0cce46257ca95f89c110366afb",
+      "historical_api_snapshot": "scratch/retired_experiments/api/experiments/envelopes/study.html"
+    },
+    {
+      "source": "src/experiments/envelopes/reporting.py",
+      "destination": "scratch/retired_experiments/studies/envelopes/reporting.py",
+      "sha256_before": "3fdccca4bccfc164e737ba5178d87ab984cc6d9bae56809dea6364eb6f649368",
+      "historical_api_snapshot": "scratch/retired_experiments/api/experiments/envelopes/reporting.html"
+    },
+    {
+      "source": "src/experiments/envelopes/diagnostics.py",
+      "destination": "scratch/retired_experiments/studies/envelopes/diagnostics.py",
+      "sha256_before": "ed620eacbd349d7a9bc10b843884c26e92dedd4a3f73fc99260a0903ddb0c9f0",
+      "historical_api_snapshot": "scratch/retired_experiments/api/experiments/envelopes/diagnostics.html"
+    },
+    {
+      "source": "scripts/run_experiment_manifest.py",
+      "destination": "scratch/retired_experiments/studies/run_experiment_manifest.py",
+      "sha256_before": "938bfee0efec525bd7502abfc53d6dd4e7e99448e79361c6562fed51b0086691",
+      "operation": "copy_legacy_dispatch"
+    },
+    {
+      "source": "src/experiments/coverage_kernel_sweep_reporting.py",
+      "destination": "scratch/retired_experiments/studies/coverage_kernel_sweep_reporting.py",
+      "sha256_before": "527282ce26fc027a100430e17c913d9a65838e991700400f64749d7e5d5ca687"
+    }
+  ],
+  "shared_math": [
+    "src/experiments/envelopes/quadratic.py",
+    "src/experiments/envelopes/core.py",
+    "src/experiments/synthetic.py",
+    "src/experiments/envelopes/plotting.py"
+  ]
+}

@@ -8,8 +8,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from experiments.policy_lcb import finite_grid
-from experiments.policy_lcb.finite_grid import (
+from scratch.retired_experiments.studies.policy_lcb import finite_grid
+from scratch.retired_experiments.studies.policy_lcb.finite_grid import (
     ClippedDistanceRampSpec,
     calibration_quantile,
     clipped_distance_uncertainty,

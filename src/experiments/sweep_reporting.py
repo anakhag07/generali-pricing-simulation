@@ -241,9 +241,9 @@ def write_seed_grid_csvs(
 
 
 DEFAULT_SEED_METRIC_BARS: tuple[tuple[str, str, str], ...] = (
-    ("final_value", "Final objective value", "seed_bars_final_value.png"),
-    ("mean_acceptance", "Mean acceptance", "seed_bars_mean_acceptance.png"),
-    ("final_u", "Final u", "seed_bars_final_u.png"),
+    ("final_value", "Final objective value", "seed_bars_final_value.pdf"),
+    ("mean_acceptance", "Mean acceptance", "seed_bars_mean_acceptance.pdf"),
+    ("final_u", "Final u", "seed_bars_final_u.pdf"),
 )
 
 
@@ -264,7 +264,7 @@ def write_seed_grid_outputs(
             plot_seed_grid_metric_bars(
                 summary_rows, plot_dir, metric=metric, y_label=y_label, filename=filename
             )
-        plot_seed_grid_frontier(summary_rows, plot_dir)
+        plot_seed_grid_frontier(summary_rows, plot_dir, filename="seed_frontier_objective_acceptance.pdf")
     return summary_rows
 
 

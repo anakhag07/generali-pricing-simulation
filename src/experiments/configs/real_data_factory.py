@@ -202,7 +202,7 @@ def build_real_data_config(
     else:
         raise ValueError("policy_preprocessing must be 'artifact' or 'no_pca'.")
 
-    policy = _make_policy(policy_kind, feature_order, softmax_action_bounds)
+    policy = make_policy(policy_kind, feature_order, softmax_action_bounds)
     theta0_arr = _resolve_theta0(
         theta0=theta0,
         policy=policy,
@@ -381,11 +381,12 @@ def _feature_map(feature_order: FeatureOrder) -> FeatureMap:
     raise ValueError(f"Unknown feature_order '{feature_order}'.")
 
 
-def _make_policy(
+def make_policy(
     policy_kind: PolicyKind,
     feature_order: FeatureOrder,
     softmax_action_bounds: tuple[float, float] | None = None,
 ) -> object:
+    """Build the shared policy family for predictor and fitted-band objectives."""
     feature_map = _feature_map(feature_order)
     if policy_kind == "constant":
         return ConstantPolicy()

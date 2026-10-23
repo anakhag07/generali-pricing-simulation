@@ -4,8 +4,8 @@ import numpy as np
 import pytest
 import sympy as sp
 
-from experiments.bootstrap_band import bootstrap_band, evaluate_band, features
-from experiments.bootstrap_band_continuous import (
+from experiments.envelopes.quadratic import bootstrap_band, evaluate_band, features
+from scratch.retired_experiments.studies.bootstrap_band_continuous import (
     VARIABLE, QuadraticErrorCertificate, nonnegative_on_real_line, replay_dataset,
 )
 
@@ -74,8 +74,8 @@ def test_replay_preserves_draws_verifies_identity_and_does_not_calibrate_with_tr
 def test_replay_manifest_outputs_exact_certificates_and_mathematical_pdfs(tmp_path):
     import json
     from pathlib import Path
-    from experiments.bootstrap_band import load_bootstrap_band_manifest, run_case, collect_outputs
-    from experiments.bootstrap_band_continuous import load_manifest, run_replay_case, source_cases, collect
+    from scratch.retired_experiments.studies.bootstrap_band import load_bootstrap_band_manifest, run_case, collect_outputs
+    from scratch.retired_experiments.studies.bootstrap_band_continuous import load_manifest, run_replay_case, source_cases, collect
 
     root = Path(__file__).resolve().parents[2]
     payload = json.loads((root / "scratch/retired_experiments/bootstrap_ols/manifests/bootstrap_ols_grid_band.json").read_text())

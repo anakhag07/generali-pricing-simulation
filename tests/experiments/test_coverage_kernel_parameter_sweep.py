@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from experiments import coverage_kernel_sweep as source
-from experiments import coverage_kernel_parameter_sweep as sweep
+from scratch.retired_experiments.studies import coverage_kernel_sweep as source
+from scratch.retired_experiments.studies import coverage_kernel_parameter_sweep as sweep
 
 
 MANIFESTS = Path(__file__).parents[2]/"scratch/retired_experiments/coverage_kernel/manifests"

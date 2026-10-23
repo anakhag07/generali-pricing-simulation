@@ -519,6 +519,9 @@ class ExperimentConfig:
 
 def _objective_to_dict(objective: Objective) -> dict[str, Any]:
     """Serialize objective to dictionary."""
+    from objective.banded import BandObjective
+    if isinstance(objective, BandObjective):
+        return {**objective.to_dict(), "policy": _policy_to_dict(objective.policy)}
     if isinstance(objective, ZerothOrderProofObjective):
         return objective.to_dict()
     if isinstance(objective, SyntheticFunction):

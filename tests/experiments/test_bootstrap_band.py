@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from experiments.bootstrap_band import (
+from scratch.retired_experiments.studies.bootstrap_band import (
     bootstrap_band, collect_outputs, evaluate_band, features,
     load_bootstrap_band_manifest, run_case, refit_pairs,
 )
@@ -124,7 +124,7 @@ def test_manifest_runner_replay_and_pdf_collection(tmp_path):
 
 
 def test_shared_cli_dispatch(monkeypatch, tmp_path):
-    from scripts import run_experiment_manifest as cli
+    from scratch.retired_experiments.studies import run_experiment_manifest as cli
     captured = []
     monkeypatch.setattr(cli, "run_launch_plan", lambda plan, **kwargs: captured.append(plan))
     cli.main([str(ROOT / "scratch/retired_experiments/bootstrap_ols/manifests/bootstrap_ols_grid_band.json"), "--launch", "local", "--runs-root", str(tmp_path)])

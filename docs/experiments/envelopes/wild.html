@@ -143,7 +143,7 @@
 </span><span id="L-6"><a href="#L-6"><span class="linenos">  6</span></a><span class="kn">import</span><span class="w"> </span><span class="nn">sympy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sp</span>
 </span><span id="L-7"><a href="#L-7"><span class="linenos">  7</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">scipy.linalg</span><span class="w"> </span><span class="kn">import</span> <span class="n">solve_triangular</span>
 </span><span id="L-8"><a href="#L-8"><span class="linenos">  8</span></a>
-</span><span id="L-9"><a href="#L-9"><span class="linenos">  9</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.bootstrap_band_continuous</span><span class="w"> </span><span class="kn">import</span> <span class="n">VARIABLE</span><span class="p">,</span> <span class="n">QuadraticErrorCertificate</span>
+</span><span id="L-9"><a href="#L-9"><span class="linenos">  9</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.envelopes.quadratic</span><span class="w"> </span><span class="kn">import</span> <span class="n">VARIABLE</span><span class="p">,</span> <span class="n">QuadraticErrorCertificate</span>
 </span><span id="L-10"><a href="#L-10"><span class="linenos"> 10</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">experiments.offline_bootstrap_math</span><span class="w"> </span><span class="kn">import</span> <span class="n">strict_conjunction_empty</span>
 </span><span id="L-11"><a href="#L-11"><span class="linenos"> 11</span></a>
 </span><span id="L-12"><a href="#L-12"><span class="linenos"> 12</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">FittedEnvelope</span><span class="p">,</span> <span class="n">TargetDomain</span><span class="p">,</span> <span class="n">locations</span><span class="p">,</span> <span class="n">values</span>
@@ -483,7 +483,7 @@
                 <section id="WildLinearDesign">
                             <input id="WildLinearDesign-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr class">
-            
+
     <span class="def">class</span>
     <span class="name">WildLinearDesign</span>:
 
@@ -727,7 +727,7 @@
                             <div id="WildLinearDesign.__init__" class="classattr">
                                         <input id="WildLinearDesign.__init__-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="name">WildLinearDesign</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">X</span>, </span><span class="param"><span class="n">actions</span>, </span><span class="param"><span class="o">*</span>, </span><span class="param"><span class="n">action_degree</span><span class="o">=</span><span class="mi">1</span>, </span><span class="param"><span class="n">supremum_tolerance</span><span class="o">=</span><span class="mf">1e-08</span></span>)</span>
 
                 <label class="view-source-button" for="WildLinearDesign.__init__-view-source"><span>View Source</span></label>
@@ -772,79 +772,79 @@
 </span></pre></div>
 
 
-    
+
 
                             </div>
                             <div id="WildLinearDesign.action_degree" class="classattr">
                                 <div class="attr variable">
             <span class="name">action_degree</span>
 
-        
+
     </div>
     <a class="headerlink" href="#WildLinearDesign.action_degree"></a>
-    
-    
+
+
 
                             </div>
                             <div id="WildLinearDesign.supremum_tolerance" class="classattr">
                                 <div class="attr variable">
             <span class="name">supremum_tolerance</span>
 
-        
+
     </div>
     <a class="headerlink" href="#WildLinearDesign.supremum_tolerance"></a>
-    
-    
+
+
 
                             </div>
                             <div id="WildLinearDesign.X" class="classattr">
                                 <div class="attr variable">
             <span class="name">X</span>
 
-        
+
     </div>
     <a class="headerlink" href="#WildLinearDesign.X"></a>
-    
-    
+
+
 
                             </div>
                             <div id="WildLinearDesign.design" class="classattr">
                                 <div class="attr variable">
             <span class="name">design</span>
 
-        
+
     </div>
     <a class="headerlink" href="#WildLinearDesign.design"></a>
-    
-    
+
+
 
                             </div>
                             <div id="WildLinearDesign.covariance" class="classattr">
                                 <div class="attr variable">
             <span class="name">covariance</span>
 
-        
+
     </div>
     <a class="headerlink" href="#WildLinearDesign.covariance"></a>
-    
-    
+
+
 
                             </div>
                             <div id="WildLinearDesign.leverage" class="classattr">
                                 <div class="attr variable">
             <span class="name">leverage</span>
 
-        
+
     </div>
     <a class="headerlink" href="#WildLinearDesign.leverage"></a>
-    
-    
+
+
 
                             </div>
                             <div id="WildLinearDesign.features" class="classattr">
                                         <input id="WildLinearDesign.features-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">features</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">X</span>, </span><span class="param"><span class="n">actions</span></span><span class="return-annotation">):</span></span>
 
@@ -870,7 +870,7 @@
                             <div id="WildLinearDesign.fit" class="classattr">
                                         <input id="WildLinearDesign.fit-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">fit</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">y</span></span><span class="return-annotation">):</span></span>
 
@@ -893,7 +893,7 @@
                             <div id="WildLinearDesign.bootstrap_errors" class="classattr">
                                         <input id="WildLinearDesign.bootstrap_errors-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">bootstrap_errors</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">y</span>, </span><span class="param"><span class="n">multipliers</span>, </span><span class="param"><span class="o">*</span>, </span><span class="param"><span class="n">predictor</span><span class="o">=</span><span class="kc">None</span></span><span class="return-annotation">):</span></span>
 
@@ -929,7 +929,7 @@
                             <div id="WildLinearDesign.statistics" class="classattr">
                                         <input id="WildLinearDesign.statistics-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">statistics</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">errors</span></span><span class="return-annotation">):</span></span>
 
@@ -963,7 +963,7 @@
                             <div id="WildLinearDesign.statistic_bounds" class="classattr">
                                         <input id="WildLinearDesign.statistic_bounds-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">statistic_bounds</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">errors</span></span><span class="return-annotation">):</span></span>
 
@@ -996,7 +996,7 @@
                             <div id="WildLinearDesign.residual_components" class="classattr">
                                         <input id="WildLinearDesign.residual_components-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">residual_components</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">X</span>, </span><span class="param"><span class="n">actions</span>, </span><span class="param"><span class="n">beta</span>, </span><span class="param"><span class="n">critical</span></span><span class="return-annotation">):</span></span>
 
@@ -1028,7 +1028,7 @@
                             <div id="WildLinearDesign.auxiliary_contains" class="classattr">
                                         <input id="WildLinearDesign.auxiliary_contains-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">auxiliary_contains</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">beta</span>, </span><span class="param"><span class="n">residual_truth</span>, </span><span class="param"><span class="n">critical</span></span><span class="return-annotation">):</span></span>
 
@@ -1057,7 +1057,7 @@
                             <div id="WildLinearDesign.residual_contains" class="classattr">
                                         <input id="WildLinearDesign.residual_contains-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">residual_contains</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">beta</span>, </span><span class="param"><span class="n">residual_truth</span>, </span><span class="param"><span class="n">critical</span></span><span class="return-annotation">):</span></span>
 
@@ -1108,7 +1108,7 @@
                             <div id="WildLinearDesign.envelope" class="classattr">
                                         <input id="WildLinearDesign.envelope-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">envelope</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">predictor</span>, </span><span class="param"><span class="n">beta</span>, </span><span class="param"><span class="n">critical</span>, </span><span class="param"><span class="n">metadata</span><span class="o">=</span><span class="kc">None</span></span><span class="return-annotation">):</span></span>
 
@@ -1158,7 +1158,7 @@
                             <div id="WildLinearDesign.transferred_contains" class="classattr">
                                         <input id="WildLinearDesign.transferred_contains-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">transferred_contains</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">beta</span>, </span><span class="param"><span class="n">predictor_coeff</span>, </span><span class="param"><span class="n">truth_coeff</span>, </span><span class="param"><span class="n">critical</span></span><span class="return-annotation">):</span></span>
 
@@ -1213,7 +1213,7 @@
                 <section id="residual_radii">
                             <input id="residual_radii-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
-            
+
         <span class="def">def</span>
         <span class="name">residual_radii</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">residual</span>, </span><span class="param"><span class="n">width</span></span><span class="return-annotation">):</span></span>
 

@@ -19,8 +19,8 @@ from scipy.stats import norm
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT), str(ROOT / "src")]
-from experiments.bootstrap_band import features as action_features
-from experiments.bootstrap_band_continuous import QuadraticErrorCertificate
+from experiments.envelopes.quadratic import features as action_features
+from experiments.envelopes.quadratic import QuadraticErrorCertificate
 from experiments.seeds import SeedSetup, derive_seed, resolve_seed_setup
 from objective.base import Objective, Policy
 from optimization.solvers import run_first_order_minimize, run_stein_difference_minimize
@@ -324,7 +324,7 @@ def main():
     source_files = [Path(__file__), ROOT / "scratch/run_wild_data_location.py", ROOT / "MATH.md"]
     source_files += list((ROOT / "src/optimization").rglob("*.py"))
     source_files += [ROOT / "src" / name for name in (
-        "objective/utils.py", "experiments/bootstrap_band.py", "experiments/bootstrap_band_continuous.py",
+        "objective/utils.py", "experiments/envelopes/quadratic.py",
         "experiments/offline_bootstrap_math.py", "experiments/seeds/streams.py")]
     summary["provenance"] = {
         "repository_head": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),

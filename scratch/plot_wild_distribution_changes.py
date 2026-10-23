@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import expon, norm, t
 
-from experiments.envelopes.reporting import _STYLE
+from scratch.retired_experiments.studies.envelopes.reporting import _STYLE
 from experiments.envelopes.wild_reporting import _distribution_comparison_label, _paired_axis
 from experiments.provenance import file_record, write_provenance
 from experiments.sweep_reporting import write_rows_csv

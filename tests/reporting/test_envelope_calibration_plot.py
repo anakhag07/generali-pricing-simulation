@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import PathCollection
 import numpy as np
 
-from experiments.envelopes import reporting, study
+from scratch.retired_experiments.studies.envelopes import reporting, study
 from experiments.envelopes.core import CalibrationData
 from experiments.provenance import file_record
 

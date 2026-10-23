@@ -1,5 +1,9 @@
 # Cartesian N/B coverage extension
 
+This study is retired to `scratch/retired_experiments/studies/`. Use its archived
+dispatcher for new exploratory runs; recover the recorded source for historical
+replay. See [archive recovery](../scratch/retired_experiments/README.md).
+
 This study is retired. Manifests and saved results are indexed in the
 [experiment archive](../scratch/retired_experiments/README.md); consult its
 recovery instructions before replay. Paths inside saved provenance remain

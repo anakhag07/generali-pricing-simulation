@@ -9,8 +9,8 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from experiments import coverage_kernel_sweep as kernel
-from experiments.bootstrap_band_sweep import dataset_streams as bootstrap_streams
+from scratch.retired_experiments.studies import coverage_kernel_sweep as kernel
+from scratch.retired_experiments.studies.bootstrap_band_sweep import dataset_streams as bootstrap_streams
 
 
 MANIFEST = Path(__file__).parents[2]/"scratch/retired_experiments/coverage_kernel/manifests/coverage_kernel_dense_n_sweep.json"
@@ -75,7 +75,7 @@ def test_small_end_to_end_sweep_and_pdf_outputs(tmp_path):
     path = tmp_path/"manifest.json"
     path.write_text(json.dumps(payload), encoding="utf-8")
     manifest = kernel.load_manifest(path)
-    subprocess.run([sys.executable, "scripts/run_experiment_manifest.py", str(path),
+    subprocess.run([sys.executable, "scratch/retired_experiments/studies/run_experiment_manifest.py", str(path),
                     "--runs-root", str(tmp_path), "--launch", "local"],
                    cwd=Path(__file__).parents[2], check=True)
     project = tmp_path/manifest.name

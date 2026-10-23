@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from functools import lru_cache
 import hashlib
 from importlib.metadata import version
 import json
@@ -14,17 +13,17 @@ import tempfile
 from types import SimpleNamespace
 
 import numpy as np
-from scipy.special import expit, log_ndtr, ndtr
-from scipy.stats import t, truncnorm
 
 from experiments.launch import LaunchPlan
-from experiments.policy_lcb.common import read_json, write_json_atomic, wilson_interval
-from experiments.policy_lcb.continuous_gp_core import FiniteFourierGPSpec, FourierGPDraw
+from experiments.provenance import read_json, write_json_atomic
+from experiments.envelopes.core import wilson_interval
+from experiments.synthetic import FiniteFourierGPSpec, FourierGPDraw
 from experiments.provenance import array_sha256, file_record
 from experiments.seeds import derive_seed
 from experiments.slurm import CPU_PROFILE
 from experiments.sweep_reporting import write_rows_csv
 from .wild import WildLinearDesign, residual_radii
+from experiments.settings import noise_scale, _standardized_t3, _environment, repetition_draws
 
 MANIFEST_KIND = "wild_bootstrap_envelopes"
 
@@ -182,8 +181,8 @@ def _sources():
     root = Path(__file__).parents[1]
     return [file_record(root / name) for name in (
         "envelopes/wild.py", "envelopes/wild_study.py", "envelopes/linear.py",
-        "envelopes/core.py", "policy_lcb/continuous_gp_core.py", "seeds/streams.py",
-        "bootstrap_band_continuous.py", "offline_bootstrap_math.py", "policy_lcb/common.py",
+        "envelopes/core.py", "settings.py", "synthetic.py", "seeds/streams.py",
+        "envelopes/quadratic.py", "offline_bootstrap_math.py", "provenance.py", "envelopes/plotting.py",
     )]
 
 
@@ -193,63 +192,6 @@ def _contract(manifest):
     digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
     return digest, payload
 
-
-def noise_scale(X, actions, settings, gp_cos, gp_sin):
-    """Evaluate the background scale; observation-row overrides are applied separately."""
-    if settings["type"] == "constant":
-        return np.full(np.shape(actions), settings["sigma_max"], dtype=float)
-    draw = FourierGPDraw(FiniteFourierGPSpec(settings["rank"], settings["lengthscale"]),
-                         tuple(gp_cos), tuple(gp_sin))
-    t = np.asarray(actions) + np.asarray(X) @ np.asarray(settings["context_projection"])
-    return settings["sigma_min"] + (settings["sigma_max"]-settings["sigma_min"]) * expit(
-        settings["amplitude"] * draw.evaluate(t))
-
-
-def _standardized_t3(normal_draws):
-    # Symmetry uses the small tail: no upper-CDF rounding, clipping or new draws.
-    return np.sign(normal_draws) * t.isf(ndtr(-np.abs(normal_draws)), df=3) / np.sqrt(3.)
-
-
-@lru_cache(maxsize=4)
-def _environment(payload_json):
-    p = json.loads(payload_json)
-    nmax, d, seeds = max(p["n_values"]), p["design"]["context_dim"], p["seeds"]
-    context_rng, action_rng = (np.random.default_rng(seeds[key]) for key in ("contexts", "actions"))
-    if p["design"]["distribution"] == "independent_truncated_standard_normal":
-        bound = p["design"]["truncation_bound"]
-        bound = np.inf if bound is None else bound
-        # Shared uniforms pair bounds; samples follow a truncated law, not clipping.
-        X = truncnorm.ppf(context_rng.random((nmax, d)), -bound, bound)
-        actions = truncnorm.ppf(action_rng.random(nmax), -bound, bound)
-    else:
-        X = context_rng.normal(size=(nmax, d))
-        actions = action_rng.normal(size=nmax)
-        if p["design"]["distribution"] == "independent_standardized_t3":
-            X, actions = _standardized_t3(X), _standardized_t3(actions)
-    if "action_override" in p["design"]:
-        override = p["design"]["action_override"]
-        # This prescribed design change consumes no draws; noise uses its new location.
-        actions[override["index"]] = override["value"]
-    coefficients = (np.empty((2, 0)) if p["noise"]["type"] == "constant" else
-                    np.random.default_rng(seeds["profile"]).normal(size=(2, p["noise"]["rank"])))
-    sigma = noise_scale(X, actions, p["noise"], *coefficients)
-    if "moved_observation_sigma" in p["noise"]:
-        # Override only the moved observation, retaining the background GP and cap.
-        sigma[p["design"]["action_override"]["index"]] = p["noise"]["moved_observation_sigma"]
-    spec = p["diagnostics"]["actions"]
-    grid = np.linspace(spec["min"], spec["max"], spec["count"])
-    snapshot = {"X": X, "actions": actions, "sigma": sigma,
-                "gp_cos": coefficients[0], "gp_sin": coefficients[1], "actions_grid": grid}
-    designs, mean_ell = [], []
-    for n in p["n_values"]:
-        design = WildLinearDesign(X[:n], actions[:n],
-                                  action_degree=p["design"].get("action_degree", 1),
-                                  supremum_tolerance=p.get("supremum_tolerance", 1e-8))
-        contexts = X[:1] if d == 0 else X[:n]
-        phi = design.features(np.repeat(contexts, len(grid), axis=0), np.tile(grid, len(contexts)))
-        mean_ell.append(float(np.sqrt(np.einsum("ij,jk,ik->i", phi, design.covariance, phi)).mean()))
-        designs.append(design)
-    return snapshot, designs, np.array(mean_ell)
 
 
 def _prepare(manifest, runs_root, force=False):
@@ -287,12 +229,8 @@ def _run_repetition(manifest, index, project, digest, snapshot, designs, mean_el
         if record["contract_sha256"] != digest or record["arrays"] != file_record(output):
             raise ValueError(f"Stale repetition {index}; use a new result name or --force.")
         return record
-    seeds = {key: derive_seed(p["seeds"][key], f"repetition:{index}") for key in ("observations", "method")}
     nmax, bmax = len(snapshot["X"]), max(p["B_values"])
-    innovations = np.random.default_rng(seeds["observations"]).normal(size=nmax)
-    if p["noise"].get("innovation_distribution", "standard_normal") == "centered_exponential":
-        innovations = -log_ndtr(-innovations)-1.
-    multipliers = 2*np.random.default_rng(seeds["method"]).integers(0, 2, size=(bmax, nmax), dtype=np.int8)-1
+    innovations, multipliers, seeds = repetition_draws(p, index)
     truth = np.asarray(p["truth"]["coefficients"])
     predictor = np.asarray(p["predictor"]["coefficients"])
     residual_truth = truth-predictor
@@ -460,7 +398,7 @@ def collect(manifest, runs_root):
                "numerics": "Affine coefficient statistics; quadratic certified supremum brackets with upper endpoints. All-real containment uses stored floating-point coefficients, not an enclosure of fitting roundoff."}
     from .wild_reporting import write_reports
     if p.get("sweep_mode") == "paired":
-        from .diagnostics import _slice_indices
+        from .plotting import _slice_indices
         indices = _slice_indices(snapshot["X"][:min(p["n_values"])])
         slices = [_example(p, snapshot, designs, first,
                            baseline={"n": n, "B": b, "delta": p["baseline"]["delta"]},

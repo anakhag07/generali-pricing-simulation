@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import sympy as sp
 
-from experiments.bootstrap_band_continuous import (
+from experiments.envelopes.quadratic import (
     VARIABLE, QuadraticErrorCertificate, nonnegative_on_real_line,
 )
 from objective.base import Objective

@@ -6,7 +6,7 @@ import numpy as np
 from pathlib import Path
 import pytest
 
-from experiments.policy_lcb.continuous import (
+from scratch.retired_experiments.studies.policy_lcb.continuous import (
     ContinuousPolicyLCBOptimizerSpec,
     ContinuousPolicyLCBSpec,
     ContinuousPolicyValueSpec,

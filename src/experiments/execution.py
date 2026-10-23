@@ -95,9 +95,31 @@ def execute_experiment_run(
     )
 
 
+def seed_reporter_stack_factory(
+    variant_dir: Path,
+    seed: int,
+    *,
+    per_seed_plots: bool,
+) -> ReporterStackFactory:
+    """Build reporters with a seed-specific summary in the shared variant folder."""
+    def factory(config: ExperimentConfig) -> "ReporterStack":
+        from experiments.reporting.json_summary import JsonReporter
+
+        return default_reporter_stack(
+            config,
+            json_reporter=JsonReporter(
+                summary_name=f"summary-seed-{seed}.json", summary_dir=variant_dir
+            ),
+            include_plots=per_seed_plots,
+        )
+
+    return factory
+
+
 __all__ = [
     "ExecutedRun",
     "ReporterStackFactory",
     "default_reporter_stack",
     "execute_experiment_run",
+    "seed_reporter_stack_factory",
 ]

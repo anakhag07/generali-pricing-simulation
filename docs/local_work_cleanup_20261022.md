@@ -108,6 +108,17 @@ branch pointers can be removed while keeping their worktrees detached at the
 saved commits: provenance contains absolute paths into those directories.
 Removing the directories belongs with the later path/provenance cleanup.
 
+On 2026-10-23, the user requested removal of completed worktrees. All 14 clean,
+merged worktrees were removed after checking ignored files, local processes,
+Slurm jobs, retained symlinks and the simulation environment. Their commits
+remain reachable from `main`; only caches and canonical-data links were local
+extras. The canonical, Design-Bench and active cleanup worktrees remain.
+[`worktrees_20261023.json`](../scratch/retired_experiments/worktrees_20261023.json)
+records exact paths, commits and data links so an old checkout can be recreated
+for absolute-path replay. See the
+[recovery instructions](../scratch/retired_experiments/README.md#completed-worktrees).
+Shared experiment results, canonical data and models were untouched.
+
 ## Generali preservation and the next cleanup stage
 
 Keep the canonical `src/data/dataset.csv`, `src/data/models/`, real-data presets,

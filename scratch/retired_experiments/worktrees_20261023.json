@@ -1,0 +1,206 @@
+{
+  "date": "2026-10-23",
+  "canonical_repository": "/home/anakhag/projects/generali-pricing/generali-pricing-simulation",
+  "retained_ref": "refs/heads/main",
+  "retained_commit": "b7faa260fca9fdbb09acc2ac841246e7c510ef91",
+  "retained_worktrees": [
+    "/home/anakhag/projects/generali-pricing/generali-pricing-simulation",
+    "/home/anakhag/projects/generali-pricing/worktrees/chore-retire-historical-experiments",
+    "/home/anakhag/projects/generali-pricing/worktrees/feature-design-bench-bridge"
+  ],
+  "checks": {
+    "slurm_jobs": "none at inspection",
+    "local_processes_in_removed_worktrees": "none at inspection",
+    "retained_symlinks_into_removed_worktrees": "none",
+    "simulation_env_editable_references_into_removed_worktrees": "none"
+  },
+  "recovery": "Recreate each original path with git worktree add --detach <path> <commit>, then restore the recorded symlinks. Restore archived result dependencies separately using relocations*.json. Do not rewrite saved source contracts.",
+  "worktrees": [
+    {
+      "path": "/home/anakhag/projects/generali-pricing/worktrees/chore-merge-local-experiments-20261022",
+      "commit": "0a1b704d889a720303d60535222b6b43ee35dbdb",
+      "tree": "425f883fab512de17e7d547be9d2686f11c2b341",
+      "merged_into_main": true,
+      "tracked_and_untracked_status": "clean",
+      "data_symlinks": [
+        {
+          "path": "src/data/dataset.csv",
+          "target": "/home/anakhag/projects/generali-pricing/generali-pricing-simulation/src/data/dataset.csv"
+        },
+        {
+          "path": "src/data/models",
+          "target": "/home/anakhag/projects/generali-pricing/generali-pricing-simulation/src/data/models"
+        }
+      ],
+      "discardable_cache_files": 312,
+      "discardable_cache_bytes": 7632722,
+      "removed": true,
+      "removed_at_utc": "2026-10-23T14:35:41.317753+00:00"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/worktrees/feature-context-averaged-envelope-bands",
+      "commit": "11de7da18f2bb2ae0695ff5a024e201553f548c2",
+      "tree": "3cc614ab5ccc9b7cbee1c149021d57b58a64fb13",
+      "merged_into_main": true,
+      "tracked_and_untracked_status": "clean",
+      "data_symlinks": [],
+      "discardable_cache_files": 92,
+      "discardable_cache_bytes": 1886028,
+      "removed": true,
+      "removed_at_utc": "2026-10-23T14:35:41.756006+00:00"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/worktrees/feature-envelope-diagnostic-reports",
+      "commit": "7acf69897e5ff2e671d01262015273402c398b3c",
+      "tree": "fbe6f8947ce0dfce534ccf666b4d82361a1a9bc5",
+      "merged_into_main": true,
+      "tracked_and_untracked_status": "clean",
+      "data_symlinks": [],
+      "discardable_cache_files": 105,
+      "discardable_cache_bytes": 2111783,
+      "removed": true,
+      "removed_at_utc": "2026-10-23T14:35:42.267105+00:00"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/worktrees/feature-residual-envelope",
+      "commit": "e5e10a5c247a01f51d23ae406bab808cef54f52a",
+      "tree": "03013ec154fd4d7b4b207ce73c3396a8a8ef65ad",
+      "merged_into_main": true,
+      "tracked_and_untracked_status": "clean",
+      "data_symlinks": [],
+      "discardable_cache_files": 109,
+      "discardable_cache_bytes": 2274405,
+      "removed": true,
+      "removed_at_utc": "2026-10-23T14:35:42.665336+00:00"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/worktrees/feature-residual-envelope-paired-nb",
+      "commit": "cd4f511c1c2f43ff899ce6ceb1b185baef23f859",
+      "tree": "93c416ed89e4ec8aa3c747d8ac3f2492dbf47290",
+      "merged_into_main": true,
+      "tracked_and_untracked_status": "clean",
+      "data_symlinks": [],
+      "discardable_cache_files": 108,
+      "discardable_cache_bytes": 2308391,
+      "removed": true,
+      "removed_at_utc": "2026-10-23T14:35:43.088967+00:00"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/worktrees/feature-residual-leverage",
+      "commit": "55bdcc8e4dec405cf276865e5b4ed068a02d8431",
+      "tree": "449c90fac9314855299771656ae19069d882c93d",
+      "merged_into_main": true,
+      "tracked_and_untracked_status": "clean",
+      "data_symlinks": [],
+      "discardable_cache_files": 101,
+      "discardable_cache_bytes": 2250455,
+      "removed": true,
+      "removed_at_utc": "2026-10-23T14:35:43.503784+00:00"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/worktrees/feature-residual-leverage-fixed-noise",
+      "commit": "0e9f3c0533ca583dabf604c57e1d5f2b0450cb01",
+      "tree": "d5d3075fd10231d155e9dc9e70fc9ebd483dcac5",
+      "merged_into_main": true,
+      "tracked_and_untracked_status": "clean",
+      "data_symlinks": [],
+      "discardable_cache_files": 101,
+      "discardable_cache_bytes": 2262941,
+      "removed": true,
+      "removed_at_utc": "2026-10-23T14:35:43.905507+00:00"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/worktrees/feature-uncertainty-envelopes",
+      "commit": "63a7b99cb652f3fe1ba18d5d67254a97046bb8f5",
+      "tree": "755a2e104e2adf20e94f82ae1ad015c5fccc0ebe",
+      "merged_into_main": true,
+      "tracked_and_untracked_status": "clean",
+      "data_symlinks": [
+        {
+          "path": "src/data/dataset.csv",
+          "target": "/home/anakhag/projects/generali-pricing/generali-pricing-simulation/src/data/dataset.csv"
+        },
+        {
+          "path": "src/data/models",
+          "target": "/home/anakhag/projects/generali-pricing/generali-pricing-simulation/src/data/models"
+        }
+      ],
+      "discardable_cache_files": 114,
+      "discardable_cache_bytes": 2354101,
+      "removed": true,
+      "removed_at_utc": "2026-10-23T14:35:44.322289+00:00"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/worktrees/feature-wild-bootstrap-envelopes",
+      "commit": "22bc8f503425368df3f1dd861fd97a78b7564ad9",
+      "tree": "23095ebf4dde4a9afd06ff68b109e9b6efb57199",
+      "merged_into_main": true,
+      "tracked_and_untracked_status": "clean",
+      "data_symlinks": [],
+      "discardable_cache_files": 113,
+      "discardable_cache_bytes": 2323090,
+      "removed": true,
+      "removed_at_utc": "2026-10-23T14:35:44.742415+00:00"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/worktrees/feature-wild-bootstrap-leverage",
+      "commit": "0e5f516406c5a96fdceb32b35d765d338aa94ddc",
+      "tree": "33b6435b1b151a0f34ec4d464612ebeae3bb6899",
+      "merged_into_main": true,
+      "tracked_and_untracked_status": "clean",
+      "data_symlinks": [],
+      "discardable_cache_files": 104,
+      "discardable_cache_bytes": 2193195,
+      "removed": true,
+      "removed_at_utc": "2026-10-23T14:35:45.166189+00:00"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/worktrees/feature-wild-distribution-diagnostics",
+      "commit": "5973fd77c13436b8dcbb375fc17ce9b1ecaf451c",
+      "tree": "5f9ee4d6e1008d623fcbca30374f301f62640869",
+      "merged_into_main": true,
+      "tracked_and_untracked_status": "clean",
+      "data_symlinks": [],
+      "discardable_cache_files": 85,
+      "discardable_cache_bytes": 1856238,
+      "removed": true,
+      "removed_at_utc": "2026-10-23T14:35:45.608521+00:00"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/worktrees/feature-wild-distribution-perturbations",
+      "commit": "79ebfdd4f4cd2b61625959d81a8f068f0feeca45",
+      "tree": "f0c57278c7b4b07e895bf8cd98a361d6f051dc3a",
+      "merged_into_main": true,
+      "tracked_and_untracked_status": "clean",
+      "data_symlinks": [],
+      "discardable_cache_files": 101,
+      "discardable_cache_bytes": 2252040,
+      "removed": true,
+      "removed_at_utc": "2026-10-23T14:35:46.006840+00:00"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/worktrees/feature-wild-finite-sample-coverage",
+      "commit": "84c8b5f18545d4ac9944bbd831b2aab0a259c177",
+      "tree": "575e28783bedcb95dbbafeab70c134c2673544bf",
+      "merged_into_main": true,
+      "tracked_and_untracked_status": "clean",
+      "data_symlinks": [],
+      "discardable_cache_files": 93,
+      "discardable_cache_bytes": 1968047,
+      "removed": true,
+      "removed_at_utc": "2026-10-23T14:35:46.419029+00:00"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/worktrees/fix-radius-comparison-replots",
+      "commit": "bd5c88343d8b545ffef073ed658b875fd61f9b21",
+      "tree": "1d8b707035baa62b2e67d630ab27d4793c4291a5",
+      "merged_into_main": true,
+      "tracked_and_untracked_status": "clean",
+      "data_symlinks": [],
+      "discardable_cache_files": 100,
+      "discardable_cache_bytes": 2158875,
+      "removed": true,
+      "removed_at_utc": "2026-10-23T14:35:46.878311+00:00"
+    }
+  ]
+}

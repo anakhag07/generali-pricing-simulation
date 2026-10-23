@@ -72,9 +72,31 @@ and `git diff --check` were verified. The first-pass full-suite result below
 remains recorded separately; no runtime code changed in this follow-up. Logs and
 identity inventories are in `/tmp/generali-retire-followup-validation-20261022/`.
 
-The [next source-refactor plan](../../docs/experiment_workflow.md) specifies
-settings, established band methods, optimizer composition, family revisions,
-reporting, parity checks, and the later retirement of study-only orchestration.
+The [next source-refactor plan](../../docs/experiment_workflow.md) extends the
+existing settings, band construction, optimizer and reporting interfaces. It
+keeps the current experiment scaffolding and describes parity checks and later
+movement of study-only orchestration into scratch.
+
+## Completed worktrees
+
+On 2026-10-23, 14 clean, completed worktrees were removed at the user's request.
+Every source commit remains reachable from `main`; their only extra files were
+discardable Python/pytest caches and links to canonical data. No local processes
+or Slurm jobs used these worktrees, and no retained symlinks or simulation
+environment installation references pointed into them. The canonical checkout,
+Design-Bench worktree and active cleanup worktree remain.
+
+[worktrees_20261023.json](worktrees_20261023.json) records every original path,
+exact commit/tree, and data symlink. When an artifact requires an old absolute
+source path, recreate that checkout from the canonical repository:
+
+```bash
+git worktree add --detach ../worktrees/<recorded-name> <recorded-commit>
+```
+
+Restore that record's data symlinks if present. Source commits are preserved in
+Git; the worktree cleanup does not move or delete experiment results, canonical
+datasets or trained models. Checkouts can be removed again after replay.
 
 ## Reading and recovery
 
@@ -91,9 +113,9 @@ argument alone does not repair these contracts. For exact replay, recover the
 recorded source revision/worktree and temporarily restore the required result
 directory to its recorded location using the relocation index. Check that the
 destination is absent before moving anything back; restore all referenced
-dependencies together, then return them to the archive after replay. Retained
-detached worktrees may already provide the recorded source. Do not force stale
-contracts, rewrite saved provenance, or invent missing source artifacts.
+dependencies together, then return them to the archive after replay. Recreate a
+removed source checkout from the worktree index above when required. Do not force
+stale contracts, rewrite saved provenance, or invent missing source artifacts.
 
 The offline-bootstrap manifest specifically references datasets 000 and 001 in
 `results/bootstrap-ols-pairs-controlled-sweep/`; their bytes and checksums now

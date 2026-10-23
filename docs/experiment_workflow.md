@@ -1,266 +1,108 @@
-# Plan: settings, optimization, bands, and outputs
+# Plan: compose settings, bands and optimization
 
-Status: planning only for the source refactor. The separately authorized archive
-moves are recorded in `scratch/retired_experiments/relocations*.json`. Continue
-review through PR #182; do not merge it without an explicit request.
+Status: source refactor is planned, not implemented. This replaces the broader
+2026-10-22 proposal. Keep review on PR #182; do not merge without an explicit
+request. Runtime implementation is worktree-required and should be delivered in
+small, reviewable changes after the remaining scientific choices are resolved.
 
-## The workflow to expose
+## Scope and user interaction
 
-One experiment family has one configuration entry point. The user chooses:
+Keep the existing manifests, presets, seed machinery, local/Slurm launcher,
+optimizer, reporters and saved-result organization. Natural language is how the
+user specifies an experiment to the agent; it does not require a new parser or
+execution framework. Inspect the existing setup first and satisfy run requests
+through configuration whenever possible. Follow
+[AGENTS.md](../AGENTS.md#natural-language-experiment-requests) for clarification.
 
-1. A documented setting: synthetic observations or a fixed Generali cohort/model.
-2. Optimization: objective target, policy, first-order/zeroth-order estimator,
-   existing solver, initialization, constraints, and stopping rules.
-3. Band construction: established OLS, wild-bootstrap, or support-based method.
-4. Outputs: saved numeric state, optimization traces, metrics, and report recipes.
+Ask only about consequential choices that the prompt and identified family do
+not resolve: setting/data, target, optimizer, band variant/domain, seeds and
+compute budget. Preserve uncertainty, explain inherited assumptions, and wait
+before launching dependent work. A missing implementation capability should be
+described before proposing new runtime code.
 
-The execution order for a conservative objective is:
+## Implementation checklist
 
-```mermaid
-flowchart LR
-    S[Prepare setting] --> B[Fit or load band]
-    B --> O[Optimize selected objective]
-    O --> E[Evaluate and save outputs]
-    B --> E
-```
+- [ ] **Expose reusable preparation and band construction.** Extract preparation
+  from existing factories/current study drivers only where callers need it.
+  Extend `experiments/envelopes/core.py` to preserve explicit lower/upper
+  endpoints; reuse `linear.py`, `wild.py`, and existing support calculations.
+  Keep observations separate from synthetic truth, retain Generali row/model
+  identities, and save fitted numeric state for deterministic replay.
+- [ ] **Compose with the existing optimizer.** Build a selected band target as
+  an existing `Objective`, preserving signs, units, policy gradients, constraints,
+  and theta/action perturbation semantics. Use `ExperimentConfig`,
+  `execute_experiment_run` and `src/optimization/`. Validate method/domain and
+  gradient capabilities before launch. Band-only execution needs no dummy
+  optimization configuration.
+- [ ] **Extend existing configuration, reporting and replay.** Add only the
+  missing operation/band/target choices to the current manifest path; keep old
+  manifests readable. Save the resolved setup, named seeds, input/source hashes,
+  fitted-band reference and optimizer outputs through existing reporters.
+  Strengthen generic completion checks to verify identity rather than only the
+  existence of `summary-seed-*.json`. Reports replay saved state without refitting
+  or optimizing; changed contracts require a fresh output location in the same
+  family. No bulk manifest-schema or historical result-layout migration.
+- [ ] **Move concluded study orchestration to scratch.** Audit imports first,
+  extract shared mathematics only where necessary, then move selected study-only
+  drivers/recipes and their private material to `scratch/retired_experiments/`.
+  Outputs belong in shared `scratch-results/`. Record relocations and recovery
+  instructions; production `src` must not depend on scratch. Reuse the existing
+  [archive selection](../scratch/retired_experiments/README.md), not a new list
+  inferred from filenames or age.
 
-A band used by the optimizer must exist before the optimizer queries it. An
-explicit `band: none` baseline can optimize the predictor alone; an evaluation-only
-band can instead be attached to a saved optimized policy. Never silently rerun
-optimization when the request is only to replot or evaluate saved results.
+## Interfaces and file targets
 
-All reported solutions continue to use `src/optimization/` or exact saved outputs
-with provenance. Display grids never choose an optimizer action. Preserve the
-existing first-order, finite-difference, Stein-difference, Gaussian-Stein, and
-SPSA methods and supported solver combinations; this refactor adds no estimator.
+These names describe proposed interfaces, not currently supported commands.
 
-## What the current code already provides
-
-| Responsibility | Reuse | Current friction to remove |
-|---|---|---|
-| Optimization | `ExperimentConfig`, `run_experiment`, `execute_experiment_run`, `src/optimization/`, existing `Objective`/`Policy` interfaces | Illustration drivers build their own query-only objectives and launch paths |
-| Calibration and bands | `envelopes/core.py`, `linear.py`, `wild.py`, polynomial certificates | The generic fitted-envelope interface is symmetric; active residual bands have different lower/upper radii and their calibration is embedded in `wild_study.py` |
-| Synthetic settings | Existing synthetic objectives, `wild_study._environment`, current data-location drivers | Truth, logging distributions, noise, frozen predictors, and seeds are spread across manifests and Python constants |
-| Generali settings | `configs/real_data_factory.py`, loaders, `reporting/real_data.py`, model/cache interfaces | Cohort identity, model inputs, policy features, and calibration observations must be passed together without losing row alignment |
-| Support construction | `data/coverage.py`, `objective/gridded.py`, existing kernel mathematics | Customer-local support and action-only kernel support are different constructions; normalization/interpolation must stay explicit |
-| Results and replay | `results.py`, `reporting/`, `manifest.py`, `provenance.py`, launch/Slurm support | Specialized runners have their own contracts and absolute paths; changing a configuration currently often requires another project name |
-
-The seams already have real variation: synthetic versus Generali settings,
-several band constructions, and several established estimators. Put the depth
-in those modules, with small interfaces; avoid a parallel runner framework or a
-new class for every variant.
-
-The proposed file targets are deliberately limited:
-
-| Target | Change |
+| Responsibility | Location and minimal interface |
 |---|---|
-| `experiments/settings/{synthetic,generali}.py` with a small package interface | Prepare the two setting types using existing factories and loaders |
-| `experiments/envelopes/core.py` | Extend fitted-state/evaluation contracts to explicit endpoints and method capabilities |
-| `experiments/envelopes/{linear,wild}.py` and a support adapter if needed | Keep fitting/calibration mathematics behind the common band interface |
-| `objective/banded.py` if existing objective adapters cannot express the composition | Translate a selected band endpoint and policy into the existing `Objective` interface |
-| `experiments/{manifest,execution,results}.py` and existing seed modules | Compile configuration, preserve execution/seed semantics, and carry the fitted state through results |
-| `experiments/reporting/` and `reporting/` | Extend the existing reporters and saved-artifact recipes |
+| Setting | Existing `experiments/configs/` factories; `experiments/settings.py` only if shared preparation warrants extraction. `prepare_setting(preset, overrides, seeds)` returns the requested observations, predictor/function, cohorts/domain and provenance. |
+| Band | Existing `experiments/envelopes/`: fit/load a `FittedEnvelope`; `evaluate(X, actions)` returns center, lower/upper endpoints and diagnostics. Add `support.py` only to adapt existing `data/coverage.py` / `objective/gridded.py` behavior. |
+| Optimization target | Existing `Objective.value/grad`; add `objective/banded.py` if existing composition cannot express the selected endpoint. All reported solutions use the repository optimizer or its exact saved outputs. |
+| Execution/output | Existing `manifest.py`, `execution.py`, `run.py`, `results.py`, `provenance.py` and reporting modules. Keep band mathematics out of orchestration. |
 
-These paths are under `src/`. New files must remove duplication across current
-callers; do not add empty adapters or duplicate `ExperimentConfig` in a second
-configuration hierarchy. Shared mathematical extraction can add a cohesive
-certificate module only after its consumers are enumerated.
+Preserve the established OLS and wild-bootstrap formulas, asymmetric residual
+transfer, calibration rules and support normalization. A common interface does
+not imply every method applies to every setting or has a probability guarantee.
+Shared polynomial certificates and Fourier-GP representations stay reusable even
+when their original study drivers move to scratch. Do not retire `wild_study.py`
+or the retained terminal/residual/fixed-noise studies as part of this move.
 
-## 1. Keep family identity stable
+## Where experiments are specified
 
-Use one canonical manifest per scientific family, with named conditions or axes
-inside it. A change in noise distribution, sample size, bootstrap count, logging
-location, solver settings, or presentation normally stays in that family.
-A distinct question or explicit user request can justify another family.
-
-For new runs, separate family identity from run identity:
-
-```text
-manifests/<family>/experiment.json
-manifests/<family>/SETUP.md
-results/<family>/<run-revision>/<condition>/seed-<id>/
-```
-
-A revision contains the fully resolved configuration, source revision, input
-hashes, seed mapping, and method version. Identical contracts may resume;
-incompatible contracts start another revision under the same family. Report
-changes read an existing revision. Do not overwrite saved results, rename
-historical provenance, or force old checkpoints through a changed contract.
-The legacy flat layout stays readable; only new runs use the proposed layout.
-
-The manifest remains JSON. Its proposed blocks are `family`, `setting`,
-`optimization`, `band`, `seeds`, `launch`, and `reporting`. This is a design sketch,
-not an already supported schema. Extend the existing manifest parser and compile
-these choices into the existing execution path. Keep a small legacy-schema
-adapter where needed during migration; retire obsolete specialized dispatch once
-its remaining callers are archived.
-
-## 2. Document and prepare settings independently of the method
-
-Add a narrow settings module under `src/experiments/settings/`, with synthetic
-and Generali adapters using the existing factories/loaders. Its one preparation
-interface returns the observations, predictor, decision cohort, policy inputs,
-domain, and provenance needed downstream. Keep optional synthetic truth in an
-evaluation-only view; band fitting receives observed data and never truth.
-Reuse `CalibrationData` for numeric calibration arrays. Preserve raw DataFrames
-and original row IDs where Generali models need them; do not force every model
-through an anonymous numeric array.
-
-Each family's `SETUP.md` describes the scientific question and explains its
-parameters. Generate each run's `EXPERIMENT.md` from the resolved manifest so
-reported settings cannot drift from executed settings. The setup specification
-must record:
-
-- Context/action domain, policy class, objective units and minimize/maximize sign.
-- Truth when known, frozen predictor origin, feature map and coefficients.
-- Logging design, observations, noise scale/innovation law, and covariance or
-  dependence across inputs; whether the design is frozen or redrawn.
-- Exact off-grid evaluation, any interpolation, optimizer query/boundary behavior,
-  display-only grids, and global-reference/certification method and tolerance.
-- Calibration cohort, decision/evaluation cohort, split policy, and original row
-  IDs; which sweep axes reuse observations, fitted predictors, or bootstrap draws.
-- Confidence event/domain, assumptions and calibration derivation; distinguish
-  a guarantee, empirical coverage, and a descriptive support penalty.
-- Complete seed ownership and artifact provenance, with links to `MATH.md`.
-
-Switching from synthetic to Generali should change the setting block and declared
-method parameters, not the runner or output format. It does not make every
-method scientifically valid for both: validate the required observations,
-feature rank, variance assumptions, domain, and model capabilities before launch.
-A Generali predictor is not ground truth. Regret/coverage requiring unknown truth
-must be explicitly unavailable rather than computed against another fitted model
-and labeled as true regret/coverage.
-
-## 3. Give established bands one useful interface
-
-Deepen `src/experiments/envelopes/` rather than creating a second band package.
-The proposed small interface is:
-
-- `fit_band(observations, predictor, domain, method_spec, rngs)` returns fitted,
-  serializable numeric state and its calibration metadata.
-- `band.evaluate(contexts, actions)` returns center, lower endpoint, upper
-  endpoint, and optional construction diagnostics.
-
-Names are proposals; reuse existing types where they fit. Endpoints are the
-common representation because residual constructions are asymmetric. Preserve
-the exact lower/upper radii and transfer rule; do not reinterpret them as one
-symmetric half-width. Preserve direct fitted-function bands separately from
-frozen-predictor residual-transfer bands.
-
-Supported adapters should wrap the existing mathematics:
-
-| Method | Preserve explicitly |
+| Choice | Source of truth |
 |---|---|
-| OLS analytical transfer | Current variance bound, covariance, radius formula, feature rank checks and confidence event |
-| OLS pairs bootstrap, when requested | Resampling unit, fixed denominator, quantile/Monte Carlo rule, rank-deficiency policy and pairing |
-| Residual wild bootstrap | Raw residual convention, Rademacher multipliers, frozen predictor, asymmetric transfer, bootstrap order statistic and saved draws |
-| Current quadratic/contextual wild illustrations | Their existing all-real polynomial or coefficient-ball calibration; these are distinct calibration rules |
-| Support-based construction | Exact support definition, normalization, scale/bandwidth, interpolation and domain; no automatic probability guarantee |
+| Stable family and conditions | Manifest `name`, `variants` / `matrix`; adjustments normally stay in the same family. |
+| Synthetic/Generali setup, model, data, policy and domain | Existing `objective.preset` / `objective.overrides`, registered factories and family setup documentation. |
+| Optimizer/constraints and stochastic pairing | Existing `optimizer` and explicit `seeds`; preserve current study-specific streams. |
+| Band and requested stages | Proposed optional operation/band/target fields, validated by the existing manifest path; exact field names remain an implementation decision. |
+| Launch and reports | Existing `launch` and `reporting`; use `scripts/run_experiment_manifest.py`. |
+| Executed settings | Resolved manifest/run metadata and generated `EXPERIMENT.md`; setup guides explain meaning and assumptions without duplicating executable defaults. |
 
-Band metadata carries assumptions, conditioning, finite/simultaneous scope,
-calibration status and numerical certification. Unsupported guarantees remain
-absent. Keep realized containment tests and repeated-simulation coverage reports
-outside fitting. Reuse existing certificates without silently substituting a
-new optimum or a grid-based reference.
+- Function optimization: prepare objective/inputs -> optimize -> save/evaluate.
+- Band construction: prepare observations/predictor -> fit/load band -> save/evaluate.
+- Band-based optimization: prepare -> fit/load band -> compose target -> optimize
+  -> save/evaluate. Evaluation of an already optimized policy is a separate
+  explicit choice and does not rerun optimization.
 
-Extract shared polynomial features/certificates from `bootstrap_band.py`,
-`bootstrap_band_continuous.py`, and `offline_bootstrap_math.py` before retiring
-their study orchestration. Move only the used Fourier-GP representation from
-`policy_lcb/continuous_gp_core.py` into the synthetic-setting implementation;
-keep its construction and saved seed mapping exact. Place Wilson intervals and
-shared JSON/provenance helpers with their reusable consumers. Audit imports
-before naming new helper files; avoid creating one-line forwarding modules.
+## Validation and remaining decisions
 
-## 4. Connect bands to the existing optimizer
+Use existing small fixtures and saved artifacts to check: coefficients and
+asymmetric endpoints before/after extraction; observation/truth separation and
+row alignment; exact seed pairing; objective/constraint and optimizer parity;
+band-only execution; changed-contract rejection; and output-only replay. Confirm
+the proposed test structure before adding tests, as required by AGENTS.md.
+Run relevant checks and a small demo when runtime changes, with broader checks
+as required. Update README/AGENTS and public exports/docstrings/pdoc as interfaces
+change; update MATH references without changing established mathematics.
 
-Use an `Objective` adapter for the selected target: predictor alone, lower return
-bound, or upper cost bound. Make the sign convention explicit. Delegate execution
-to the existing runner and solver setup, including constraints, batching and
-policy-chain gradients. Existing Generali acceptance constraints must survive
-this composition.
+Before a new Generali calibration run, resolve its response/quantity (such as
+profit versus acceptance), calibration cohort and justified assumptions. Before
+introducing stochastic behavior, confirm seed ownership and the representation,
+dependence, off-grid behavior and confidence domain required by AGENTS.md.
+Never fill these scientific gaps with arbitrary defaults or treat a fitted
+Generali model as known truth.
 
-Expose gradient capability explicitly. First-order execution requires a valid
-gradient for the complete target; query-only bands and raw models without one
-must reject that choice before submitting work. Never silently change estimators.
-Preserve both theta-space and action-space perturbations and the personalized
-Stein scaling currently tested by the contextual illustration.
-
-A support-grid adapter retains its actual interpolation rule, cohort alignment,
-action interval and outside-domain behavior. Add bounded-continuous domain
-semantics deliberately: current `TargetDomain` distinguishes only a finite set
-and all-real action fibers. A plotted grid does not establish continuous coverage.
-
-## 5. Standardize saved output and replay
-
-Extend existing result/reporting modules to save one result bundle per run:
-resolved setup, input/band state, optimizer settings and traces, final policies
-and actions, evaluated endpoints, metrics, and artifact provenance. Use the
-existing reporter/recipe path for PDF/CSV output. Large Generali arrays remain
-separate numeric artifacts rather than expanded JSON.
-
-Synthetic outputs may include truth, regret and coverage. Generali outputs use
-model-based value, action/acceptance summaries, support diagnostics and band
-endpoints with their assumptions. Keep the schemas compatible while marking
-unavailable metrics explicitly. Preserve per-context band evaluation before
-averaging; do not average inputs and then construct a different band.
-
-For new bundles, identify inputs by hashes and stable paths relative to the
-bundle or an explicit artifact root. Record original absolute locations as
-provenance, not the only way to find a file. Existing archives remain immutable;
-recover old source/path contracts through their relocation maps. Fix the known
-shared `write_json_atomic` temporary-filename race before enabling concurrent
-new-contract runs, without changing any simulation RNG stream.
-
-## Delivery sequence and acceptance checks
-
-This is `worktree-required` work: new reusable modules plus configuration,
-seeding, execution, exports, and generated documentation are affected. Use a
-dedicated worktree, incremental commits, and reviewable PRs; keep PRs open.
-
-| PR | Scope | Acceptance check |
-|---|---|---|
-| A: extract mathematics and define band outputs | Narrow helper extraction, endpoint interface, adapters for current residual/illustration bands | Saved arrays and deterministic small fixtures reproduce current coefficients, radii, endpoints, bootstrap quantiles and certificates |
-| B: setting specifications and one execution path | Synthetic and Generali setting adapters, capability checks, manifest compilation, existing optimizer integration | Run a small retained synthetic setting and an existing Generali support setting through the same interface; preserve objective signs, actions, constraints and seed pairing |
-| C: family revisions, setup documents and reporting | Resume identity, portable new artifact paths, generated setup documentation, shared reporting/replay | Changed settings make another revision in the same family; replay neither refits nor optimizes; missing truth/capabilities stay explicit |
-| D: retire obsolete source orchestration | Move concluded study runners, private plots and their study-only tests into scratch; prune exports/dispatch/generated docs | Current workflows import only reusable `src/`; core behavioral tests remain active; archived studies remain recoverable |
-
-For PR D, candidates include finite/continuous/GP policy-LCB study drivers,
-old bootstrap/kernel sweep orchestration, and generic-envelope study/report
-recipes. Do not move their reusable mathematics. Audit eager imports in
-`experiments/__init__.py`, `envelopes/__init__.py`, and the shared CLI first.
-Keep raw Generali loaders/models, presets, policy-capacity tooling and shared
-reporting available even though their completed results are archived.
-
-Proposed tests cross the same interfaces as callers: band parity and asymmetric
-endpoints; observation/truth separation; deterministic paired seed streams;
-setting/cohort and method-capability validation; optimizer target/constraint
-parity; configuration-sensitive resume and output-only replay. Use existing
-small deterministic fixtures and saved artifacts first. Confirm this test
-structure before adding new tests, as required by `AGENTS.md`; the current
-archival pass changes only existing test paths. Run relevant tests and a small
-demo per PR, then required broader checks; regenerate pdoc for public docstring
-changes and update README/AGENTS/MATH references as needed.
-
-Before implementation, confirm the scientific choices that the interfaces cannot
-supply: the Generali quantity to calibrate (for example cost/profit versus
-acceptance), the matching observed response/cohort and assumptions, and ownership
-of any newly introduced seed streams. Existing named wild-study streams
-(contexts, actions, profile, observations, method) and exact derived seeds must
-survive migration. Do not add stochastic behavior or silently fold those streams
-into the optimizer seed. Capture the representation decisions above in the
-first implementation plan and obtain the repository-required confirmation.
-
-## Archive selection now in effect
-
-The first pass archived 18 manifests, nine drivers and 22 result directories.
-The follow-up archives 29 more synthetic manifests, 40 Generali result folders,
-34 earlier synthetic result folders, and two Generali frontier output folders
-from the canonical checkout. Generali source/data/models and seven manifests
-stay available. The retained synthetic manifests are the three paired-residual
-distribution studies and six fixed-noise residual-leverage settings.
-
-Keep `terminal-distribution-sweeps/`, all four `residual-heteroskedastic*` folders,
-the six fixed-noise residual-leverage result folders, and the three current/earlier
-data-location illustration folders. Shared cache/log folders remain. These
-archive moves are separate from the proposed source refactor and do not change
-any method or rerun any study.
+The already authorized archive moves and completed-worktree cleanup are separate
+from this source refactor. Their recovery records are in
+[`scratch/retired_experiments/`](../scratch/retired_experiments/README.md).

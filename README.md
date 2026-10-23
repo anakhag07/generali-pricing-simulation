@@ -107,6 +107,9 @@ Requested changes normally belong to the same experiment family: extend its
 configuration and retain identifiable run revisions instead of creating another
 project for each adjustment. The [downstream cleanup plan](docs/experiment_workflow.md)
 records the intended optimization, uncertainty-band, and setting interfaces.
+Natural-language experiment requests should use these existing manifests and
+presets; clarify unresolved scientific choices before launching. The detailed
+agent workflow is in [AGENTS.md](AGENTS.md#natural-language-experiment-requests).
 
 ## What This Does
 

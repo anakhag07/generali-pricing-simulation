@@ -54,6 +54,50 @@ Project context: simulation and optimization repo. Users should be able to speci
 
 - Prefer optimized math operations from online packages instead of implementing from scratch (for gradient descent methods, objective definitions, etc ...)
 
+## Natural-language experiment requests
+
+- Treat natural-language requests as configuration of the existing experiment
+  scaffolding. Inspect the relevant family manifest, registered preset, setup
+  documentation, and saved artifacts before choosing an implementation. Prefer
+  existing manifest/configuration overrides and report recipes; a request to run
+  or change an experiment is not, by itself, a request to write a new driver,
+  module, manifest kind, or natural-language parser.
+- Resolve whether the request is optimization only, band construction only,
+  optimization of a band-derived objective, or band evaluation of an existing
+  optimized policy. Replotting or evaluating saved outputs must not silently
+  trigger fitting, resampling, or optimization.
+- Ask concise, grouped questions when consequential choices cannot be inferred
+  from the prompt or the identified setup: synthetic versus Generali setting;
+  function/predictor, data/cohort and response; objective target and sign;
+  policy, action domain and constraints; first-order/zeroth-order estimator and
+  solver, initialization and budget; band method/variant, confidence domain and
+  level; seed pairing/repetitions; and launch resources or requested outputs.
+  Ask only about unresolved choices relevant to this request. Inherit established
+  choices when the user clearly refers to an existing setup, identify their
+  source, and do not ask again about choices already specified or approved.
+- Preserve uncertainty: distinguish explicit choices, inherited settings,
+  reasonable assumptions, and unresolved scientific questions. Do not replace
+  an unknown setting, optimizer, calibration assumption, or truth reference with
+  an arbitrary default. Continue independent inspection/configuration work, but
+  wait for answers before launching work that depends on a consequential unknown.
+- Before launch, briefly state the resolved setting, target, optimizer/band,
+  seeds, output location, and inherited assumptions. Record executable choices
+  in the manifest and resolved run metadata, with explanations in the family's
+  setup documentation. This summary is not an extra approval gate when the
+  request and existing setup already determine the run.
+- Reuse existing seed ownership and exact paired draws. Apply the Core Working
+  Rules above before adding a stochastic process or changing its representation.
+  Keep model-based quantities, empirical coverage, analytical guarantees, and
+  descriptive support metrics distinct; preserve unknown/failed outcomes.
+- If the scaffolding cannot express the request, identify the specific missing
+  capability and propose the smallest reusable extension before writing runtime
+  code. Label proposed interfaces as unsupported until implemented. Keep changes
+  in the same experiment family and preserve incompatible completed runs.
+- Retirement means movement to tracked `scratch/` (study code, manifests and
+  study-only material) and shared `scratch-results/` (outputs), with relocation
+  records. Keep reusable mathematics and active studies in `src/`; do not delete
+  studies or equate archiving Generali results with retiring its data/workflow.
+
 ## Pull Request Reviews
 
 - When asked to review a pull request, read `REVIEW.md` first and follow its
@@ -107,6 +151,14 @@ git worktree add ../worktrees/feature-policy-grid -b feature/policy-grid
 - If the branch already exists, omit `-b` and pass the existing branch name.
 - After entering a worktree, re-read `AGENTS.md`, confirm the branch/status, and
   assume other worktrees may have changed the repo recently.
+- When cleaning completed worktrees, verify their commits are reachable from a
+  retained ref, inspect tracked/untracked/ignored files, check local processes
+  and queued/running jobs, and record the exact path, commit and data symlinks
+  before removal. Preserve unique artifacts first. Saved absolute source paths
+  may require recreating the checkout at its original path for replay; use the
+  recovery index rather than rewriting saved contracts. Keep active/unmerged
+  worktrees. The 2026-10-23 cleanup is recorded in
+  `scratch/retired_experiments/worktrees_20261023.json`.
 - Gitignored data artifacts (`src/data/dataset.csv` and `src/data/models/`)
   exist only in the canonical checkout, so real-data tests fail in a fresh
   worktree until they are symlinked in:

@@ -40,7 +40,11 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--force",
         action="store_true",
-        help="Rerun variants/seeds even when all requested outputs already exist.",
+        help=(
+            "Request a rerun where supported by the selected study kind. Generic "
+            "optimize/band/optimize_with_band tasks reject completed runs even with "
+            "--force; use a fresh --runs-root for a new revision."
+        ),
     )
     add_launch_args(parser, default_launch=None, default_array=None)
     return parser.parse_args(argv)

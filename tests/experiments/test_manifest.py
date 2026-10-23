@@ -209,6 +209,50 @@ def test_variant_complete_and_run_skip_existing_seed_summaries(monkeypatch, tmp_
     assert (manifest.project_dir(tmp_path) / "EXPERIMENT.md").exists()
 
 
+def test_completed_optimize_force_rejects_without_modifying_outputs(monkeypatch, tmp_path) -> None:
+    manifest = parse_experiment_manifest(_manifest_payload(matrix={}))
+    variant = manifest.variants[0]
+    manifest_mod._validate_variant_contract(manifest, variant, runs_root=tmp_path, create=True)
+    for seed in manifest.seeds.run_seeds:
+        _summary(manifest.variant_dir(variant, tmp_path) / f"summary-seed-{seed}.json", theta=[1.0, 2.0])
+    before = {path: path.read_bytes() for path in tmp_path.rglob("*.json")}
+    monkeypatch.setattr(manifest_mod, "run_seed_sweep", lambda **kwargs: pytest.fail("must not run"))
+    with pytest.raises(ValueError, match="Completed runs are immutable"):
+        run_manifest_variant(manifest, 0, runs_root=tmp_path, force=True)
+    assert {path: path.read_bytes() for path in tmp_path.rglob("*.json")} == before
+
+
+def test_empty_missing_seed_list_does_not_launch_sweep(monkeypatch, tmp_path) -> None:
+    manifest = parse_experiment_manifest(_manifest_payload(matrix={}))
+    variant = manifest.variants[0]
+    manifest_mod._validate_variant_contract(manifest, variant, runs_root=tmp_path, create=True)
+    for seed in manifest.seeds.run_seeds:
+        _summary(manifest.variant_dir(variant, tmp_path) / f"summary-seed-{seed}.json", theta=[1.0, 2.0])
+    # Model a race where summaries appear after the completeness check.
+    monkeypatch.setattr(manifest_mod, "_variant_outputs_complete", lambda *args, **kwargs: False)
+    monkeypatch.setattr(manifest_mod, "run_seed_sweep", lambda **kwargs: pytest.fail("empty sweep"))
+    assert run_manifest_variant(manifest, 0, runs_root=tmp_path)["n_runs"] == 0
+
+
+def test_edited_source_invalidates_resume_with_cached_hashes(monkeypatch, tmp_path) -> None:
+    from experiments.provenance import source_hashes
+
+    sources = tmp_path / "src"
+    sources.mkdir()
+    source = sources / "module.py"
+    source.write_text("# original source\n")
+    monkeypatch.setattr(manifest_mod, "source_hashes", lambda root: source_hashes(sources))
+    manifest = parse_experiment_manifest(_manifest_payload(matrix={}))
+    variant = manifest.variants[0]
+    manifest_mod._validate_variant_contract(manifest, variant, runs_root=tmp_path, create=True)
+    assert not variant_complete(manifest, variant, runs_root=tmp_path)
+    source.write_text("# changed documentation also changes exact source identity\n")
+    with pytest.raises(ValueError, match="contract changed"):
+        variant_complete(manifest, variant, runs_root=tmp_path)
+    with pytest.raises(ValueError, match="contract changed"):
+        run_manifest_variant(manifest, 0, runs_root=tmp_path)
+
+
 def test_collect_manifest_rows_and_summary_truth_metrics(monkeypatch, tmp_path) -> None:
     truth_path = tmp_path / "truth-summary.json"
     _summary(truth_path, theta=[0.0, 0.0], final_value=0.0)

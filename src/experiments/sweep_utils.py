@@ -9,7 +9,7 @@ from typing import Any, Mapping, Sequence
 
 from experiments.config import ExperimentConfig
 from experiments.configs import get_config
-from experiments.execution import default_reporter_stack, execute_experiment_run
+from experiments.execution import execute_experiment_run, seed_reporter_stack_factory
 from experiments.paths import results_root
 from experiments.reporting.context import RunContext, create_run_context
 from experiments.results import ExperimentResult
@@ -262,7 +262,7 @@ def run_sweep(
                 variant_name,
                 config,
                 run_context=run_context,
-                reporter_stack_factory=_seed_reporter_stack_factory(
+                reporter_stack_factory=seed_reporter_stack_factory(
                     variant_dir, seed, per_seed_plots=per_seed_plots
                 ),
             )
@@ -299,21 +299,6 @@ def run_sweep(
         run_results=all_run_results,
         summary_rows=summary_rows,
     )
-
-
-def _seed_reporter_stack_factory(variant_dir: Path, seed: int, *, per_seed_plots: bool):
-    def factory(config: ExperimentConfig):
-        from experiments.reporting.json_summary import JsonReporter
-
-        return default_reporter_stack(
-            config,
-            json_reporter=JsonReporter(
-                summary_name=f"summary-seed-{seed}.json", summary_dir=variant_dir
-            ),
-            include_plots=per_seed_plots,
-        )
-
-    return factory
 
 
 def _stringify_override_value(value: Any) -> str:

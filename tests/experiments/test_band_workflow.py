@@ -117,7 +117,7 @@ def test_manifest_end_to_end_and_incompatible_resume(tmp_path, monkeypatch, task
     variant = manifest.variants[0]
     assert run_manifest_variant(manifest, 0, runs_root=tmp_path)['n_runs'] == 1
     assert variant_complete(manifest, variant, runs_root=tmp_path)
-    monkeypatch.setattr('experiments.execution.execute_band_variant', lambda *a, **k: pytest.fail('must not rerun'))
+    monkeypatch.setattr('experiments.band_workflow.execute_band_variant', lambda *a, **k: pytest.fail('must not rerun'))
     assert run_manifest_variant(manifest, 0, runs_root=tmp_path)['skipped']
     collect_manifest_outputs(manifest, runs_root=tmp_path)
     folder = manifest.variant_dir(variant, tmp_path)
@@ -158,11 +158,13 @@ def test_prepared_generali_rows_are_explicit_and_preserved():
     assert prepared.provenance['quantity'] == 'profit'
 
 
-def test_resume_missing_endpoint_export_uses_saved_optimizer_theta(tmp_path, monkeypatch):
+@pytest.mark.parametrize("keep_marker", [False, True])
+def test_resume_missing_endpoint_export_uses_saved_optimizer_theta(tmp_path, monkeypatch, keep_marker):
     manifest = parse_experiment_manifest(payload(tmp_path, 'optimize_with_band'))
     run_manifest_variant(manifest, 0, runs_root=tmp_path)
     folder = manifest.variant_dir(manifest.variants[0], tmp_path)
-    (folder/'band-policy-seed-7.json').unlink()
+    if not keep_marker:
+        (folder/'band-policy-seed-7.json').unlink()
     endpoint = folder/'seeds/seed-7/band-policy-first_order.npz'
     with np.load(endpoint) as arrays:
         previous = dict(arrays)
@@ -173,3 +175,123 @@ def test_resume_missing_endpoint_export_uses_saved_optimizer_theta(tmp_path, mon
         for key in previous:
             np.testing.assert_array_equal(arrays[key], previous[key])
     assert variant_complete(manifest, manifest.variants[0], runs_root=tmp_path)
+
+
+@pytest.mark.parametrize("keep_marker", [False, True])
+def test_changed_policy_endpoints_reject_resume(tmp_path, monkeypatch, keep_marker):
+    manifest = parse_experiment_manifest(payload(tmp_path, "optimize_with_band"))
+    run_manifest_variant(manifest, 0, runs_root=tmp_path)
+    folder = manifest.variant_dir(manifest.variants[0], tmp_path)
+    if not keep_marker:
+        (folder / "band-policy-seed-7.json").unlink()
+    endpoint = folder / "seeds/seed-7/band-policy-first_order.npz"
+    with np.load(endpoint) as saved:
+        arrays = dict(saved)
+    arrays["upper"] += 1
+    np.savez_compressed(endpoint, **arrays)
+    changed = endpoint.read_bytes()
+    monkeypatch.setattr(
+        "experiments.execution.execute_experiment_run",
+        lambda *args, **kwargs: pytest.fail("must use saved theta"),
+    )
+    with pytest.raises(ValueError, match="differs|endpoints changed"):
+        run_manifest_variant(manifest, 0, runs_root=tmp_path)
+    assert endpoint.read_bytes() == changed
+
+
+def test_partial_seed_resume_rejects_changed_band_evaluation(tmp_path, monkeypatch):
+    from experiments import execution
+
+    p = payload(tmp_path, "optimize_with_band")
+    p["seeds"]["run_seeds"] = [7, 8]
+    manifest = parse_experiment_manifest(p)
+    execute = execution.execute_experiment_run
+    calls = []
+
+    def interrupt_second_seed(*args, **kwargs):
+        calls.append(kwargs["run_context"].run_dir)
+        if len(calls) > 1:
+            raise RuntimeError("interrupted seed")
+        return execute(*args, **kwargs)
+
+    monkeypatch.setattr(execution, "execute_experiment_run", interrupt_second_seed)
+    with pytest.raises(RuntimeError, match="interrupted seed"):
+        run_manifest_variant(manifest, 0, runs_root=tmp_path)
+    folder = manifest.variant_dir(manifest.variants[0], tmp_path)
+    assert (folder / "summary-seed-7.json").exists()
+    assert not (folder / "summary-seed-8.json").exists()
+    recorded = (folder / "band-summary.json").read_bytes()
+    evaluation = folder / "band-evaluation.npz"
+    with np.load(evaluation) as saved:
+        arrays = dict(saved)
+    arrays["lower"] -= 1
+    np.savez_compressed(evaluation, **arrays)
+    with pytest.raises(ValueError, match="differs from recorded provenance"):
+        run_manifest_variant(manifest, 0, runs_root=tmp_path)
+    assert (folder / "band-summary.json").read_bytes() == recorded
+    assert len(calls) == 2
+
+
+@pytest.mark.parametrize("missing", ["band-summary.json", "band-evaluation.npz"])
+def test_missing_band_export_recovers_without_refitting(tmp_path, monkeypatch, missing):
+    manifest = parse_experiment_manifest(payload(tmp_path))
+    variant = manifest.variants[0]
+    run_manifest_variant(manifest, 0, runs_root=tmp_path)
+    folder = manifest.variant_dir(variant, tmp_path)
+    fitted = (folder / "band.json").read_bytes()
+    (folder / missing).unlink()
+    monkeypatch.setattr(
+        "experiments.band_workflow.fit_band",
+        lambda *args, **kwargs: pytest.fail("must load saved fit"),
+    )
+    assert not variant_complete(manifest, variant, runs_root=tmp_path)
+    run_manifest_variant(manifest, 0, runs_root=tmp_path)
+    assert variant_complete(manifest, variant, runs_root=tmp_path)
+    assert (folder / "band.json").read_bytes() == fitted
+
+
+def test_changed_observations_invalidate_resume(tmp_path):
+    p = payload(tmp_path)
+    manifest = parse_experiment_manifest(p)
+    run_manifest_variant(manifest, 0, runs_root=tmp_path)
+    observations = Path(p["setting"]["path"])
+    with np.load(observations) as saved:
+        arrays = dict(saved)
+    arrays["y"] += 1
+    np.savez(observations, **arrays)
+    with pytest.raises(ValueError, match="contract changed"):
+        run_manifest_variant(manifest, 0, runs_root=tmp_path)
+
+
+def test_changed_referenced_band_arrays_invalidate_resume(tmp_path):
+    p = payload(tmp_path)
+    manifest = parse_experiment_manifest(p)
+    run_manifest_variant(manifest, 0, runs_root=tmp_path)
+    source = manifest.variant_dir(manifest.variants[0], tmp_path) / "band.json"
+    p.pop("setting")
+    p.update(name="replay", band={"artifact": str(source)})
+    replay = parse_experiment_manifest(p)
+    run_manifest_variant(replay, 0, runs_root=tmp_path)
+    arrays_path = source.parent / json.loads(source.read_text())["arrays"]
+    with arrays_path.open("ab") as handle:
+        handle.write(b"changed input")
+    with pytest.raises(ValueError, match="contract changed"):
+        run_manifest_variant(replay, 0, runs_root=tmp_path)
+
+
+@pytest.mark.parametrize("overrides, message", [
+    ({"optimizer": {}}, "omit optimizer"),
+    ({"seeds": {}}, "omit optimizer"),
+    ({"objective": {"preset": "band_policy"}}, "no optimization objective"),
+    ({"objective_modifications": [{"type": "noise"}]}, "no optimization objective"),
+    ({"per_seed_plots": True}, "per_seed_plots"),
+    ({"truth": {"source": "clean_base_objective"}}, "truth.source=none"),
+    ({"band": {}}, "method or a saved artifact"),
+    ({"band": {"artifact": "saved.json", "method": "residual_ols"}}, "only band.artifact"),
+    ({"band": {"artifact": "saved.json"}}, "omit setting"),
+])
+def test_band_task_rejects_incompatible_fields(tmp_path, overrides, message):
+    p = payload(tmp_path)
+    p.update(overrides)
+    with pytest.raises(ValueError, match=message):
+        parse_experiment_manifest(p)

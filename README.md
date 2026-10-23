@@ -53,6 +53,8 @@ pip install -e ".[dev]"
 pytest -q
 ```
 
+The dev extra includes `Markdown` for the math-document tests; it is not a runtime dependency.
+
 ### Residual-heteroskedastic studies
 
 For joint increases in sample size and bootstrap count, use
@@ -590,8 +592,11 @@ to the GPU Slurm profile.
 `scripts/run_experiment_manifest.py` is the preferred reusable entry point for
 new sweeps. The JSON manifest must explicitly specify the objective preset,
 objective modifications, optimizer, seed policy, truth source, launch mode, and
-array structure. Reruns skip variants whose requested `summary-seed-<seed>.json`
-files already exist unless `--force` is passed. An optional `reporting` array
+array structure. Reruns verify the saved contract and skip completed variants.
+For generic `optimize`, `band`, and `optimize_with_band` tasks, `--force` now
+rejects completed runs; choose a fresh `--runs-root` within the same experiment
+family for a new revision. Any Python source edit (including documentation in
+source), changed input or numerical package version invalidates resume. An optional `reporting` array
 attaches named, completion-aware post-run recipes to this same manifest format.
 Example:
 

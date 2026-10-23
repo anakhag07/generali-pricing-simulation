@@ -166,7 +166,10 @@ Each band variant saves:
 - For optimization: ordinary `summary-seed-*.json`, per-seed theta/traces/config,
   and `seeds/seed-*/band-policy-<estimator>.npz`, evaluating the exact returned
   policy on the saved cohort. No secondary optimizer runs during this evaluation. Interrupted endpoint exports
-  resume from saved theta without rerunning optimization.
+  resume from saved theta without rerunning optimization, including when their
+  provenance marker is still present. Missing evaluation/summary exports can
+  likewise be recovered from the saved fitted state. Existing recorded files
+  are checked even while other seeds are unfinished; changed bytes are rejected.
 
 Set `band: {"artifact": "path/to/band.json"}` and omit `setting` to reuse a
 saved fit. `load_band(path).evaluate(X, actions)` handles standalone queries or
@@ -176,6 +179,21 @@ reads saved summaries; it does not refit bands. Execution refuses a changed
 contract, and generic `--force` cannot overwrite completed runs. Legacy runs
 without contracts remain readable for reporting but cannot be resumed as newly
 verified runs; recover their original source for exact replay.
+
+The source contract intentionally binds every `src/**/*.py` file, including
+comments and docstrings. An unrelated fix still requires a fresh output location
+or the original source checkout to resume; it must not silently mix revisions
+within a seed sweep. Per-process source digest caching avoids rereading unchanged
+files and checks filesystem identity on every request, including additions and
+removals. Input artifacts remain uncached. Execution validates the contract once
+per variant call; reporting checks saved configuration identity without hashing
+the current source tree.
+
+`experiments.band_workflow` owns band fit/load, output integrity and saved-policy
+endpoint replay. `experiments.execution` owns the generic run lifecycle and the
+public `seed_reporter_stack_factory` shared with ordinary sweeps. Band and
+predictor configurations share `configs.real_data_factory.make_policy`; JSON
+conversion and cached source digests live in `experiments.provenance`.
 
 ## Retirement and recovery
 
@@ -191,6 +209,12 @@ See [archive instructions](../scratch/retired_experiments/README.md) and
 Historical artifact hashes and absolute paths are unchanged. The archived runner
 is for new exploratory runs at a fresh location; exact historical replay requires
 the recorded source checkout and inputs.
+
+Compatibility note: policy-LCB, offline-bootstrap and finite-policy study exports
+were removed from `experiments.__init__`. External notebooks using those imports
+must use the archived study modules under `scratch.retired_experiments.studies`,
+or the original source checkout for exact replay. The relocation records above
+map each former module to its archive path; this is not a drop-in import alias.
 
 ## Refactor validation
 

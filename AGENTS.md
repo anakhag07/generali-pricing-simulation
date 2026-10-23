@@ -396,6 +396,23 @@ The contract binds variant/seed choices, source/package identity and referenced
 inputs. Resume runs only missing seeds. A changed contract or completed-run
 `--force` requires a fresh location in the same family; never overwrite results.
 Legacy summaries remain readable for reporting, but are not verified resumes.
+The source contract conservatively includes every `src/**/*.py` file, even for
+unrelated/documentation edits. `provenance.source_hashes` caches digests by path,
+device/inode, size, mtime and ctime while enumerating and checking files each time;
+input artifacts remain uncached. Do not replace source mismatches with warnings
+or combine outputs from different implementations. Collectors compare saved
+configuration identity without rehashing current sources.
+
+`experiments.band_workflow` owns band fit/load, output integrity, completeness
+and saved-theta endpoint replay. Validate existing recorded artifacts before
+resume even when other seeds are unfinished; never rebind changed bytes to a
+new hash. Missing derived exports are recoverable from saved state/theta even
+with their markers present; missing recorded fitted state or optimizer summaries
+must not silently trigger fitting or optimization. Generic lifecycle and shared
+`seed_reporter_stack_factory` belong in `execution.py`. Configuration callers use
+public `configs.real_data_factory.make_policy`; JSON conversion uses public
+`provenance.jsonable`. Task-specific field combinations belong in the manifest's
+`_validate_task_fields` helper.
 
 The existing optimization manifest accepts `task: optimize` (default), `band`,
 or `optimize_with_band`. Band-only omits objective/optimizer/optimizer seeds;
@@ -1026,7 +1043,7 @@ belongs under `generali/`.
 - **`src/experiments/manifest.py`**
   - Manifest parser/planner for reusable sweep orchestration. It validates the
     explicit JSON contract, expands `matrix`/`variants` into named override
-    payloads, writes `EXPERIMENT.md`, skips completed variants unless forced,
+    payloads, writes `EXPERIMENT.md`, verifies contracts and skips completed variants,
     delegates actual optimization to `sweep_utils.run_sweep(...)`, and rebuilds
     project-level `seed_grid_*.csv` plus `derived_metrics.csv` from saved
     `summary-seed-*.json` files; optional `reporting` recipes run during
@@ -1211,16 +1228,10 @@ belongs under `generali/`.
 - `scripts/run_experiment_manifest.py` is the default reusable sweep entry point.
   It loads a JSON manifest, uses the manifest's explicit launch policy as the
   default `LaunchPlan`, maps `launch.array: "variant"` to one task per variant,
-  and maps `launch.array: "none"` to one serial task. It supports `--force` to
-  rerun completed variants and `--runs-root` for alternate result roots.
-  Manifests with `kind: "finite_policy_lcb"`,
-  `kind: "continuous_policy_lcb"`, `kind: "finite_grid_variable_lcb"`, or
-  `kind: "continuous_gp_variable_lcb"`, or
-  `kind: "continuous_gp_regret_decomposition"`
-  route through the shared policy-LCB launch
-  interface, where `launch.array: "seed"` maps one paired-condition task to
-  each problem-noise seed; manifests without `kind` retain the optimization-
-  manifest behavior.
+  and maps `launch.array: "none"` to one serial task. Generic tasks reject
+  `--force` on completed variants; `--runs-root` selects a fresh result revision.
+  Archived policy-LCB kinds use the scratch dispatcher; see
+  `scratch/retired_experiments/README.md` and its relocation records.
   `kind: "policy_capacity"` routes through the condition-array capacity plan,
   where each task runs one split/model/degree fit and the collector writes
   sweep-level CSVs and PDFs.

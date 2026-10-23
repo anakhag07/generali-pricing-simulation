@@ -6,7 +6,7 @@ import numpy as np
 
 from objective.banded import BandObjective
 from experiments.config import ExperimentConfig, CorrectnessSpec
-from .real_data_factory import _make_policy
+from .real_data_factory import make_policy
 
 
 def build_band_config(*, fitted_band, band_artifact, policy_kind, endpoint, sense,
@@ -27,7 +27,7 @@ def build_band_config(*, fitted_band, band_artifact, policy_kind, endpoint, sens
             raise ValueError("Policy bounds must lie inside the support-grid domain.")
         if perturbation_space != "theta":
             raise ValueError("Support grids require theta-space perturbations to keep every query inside the action domain.")
-    policy = _make_policy(policy_kind, feature_order, softmax_action_bounds)
+    policy = make_policy(policy_kind, feature_order, softmax_action_bounds)
     objective = BandObjective(fitted_band, policy, endpoint=endpoint, sense=sense,
                               artifact=band_artifact, acceptance_floor=overrides.get("acceptance_floor"))
     if overrides.get("acceptance_penalty_weight") is not None:

@@ -579,7 +579,14 @@ def main(argv=None):
     parser.add_argument("--explore", action="store_true", help="Use saved residuals for representative customer curves, Q-Q plots and action-bin diagnostics.")
     parser.add_argument("--split-churn", action="store_true", help="Split saved residuals by true is_churn, showing full and within-group central-95% histograms.")
     parser.add_argument("--fit-wild-linear", type=Path, help="Explicit JSON setup for affine residual fitting and paired wild-bootstrap bands.")
+    parser.add_argument("--render-wild", type=Path, help="Replay a completed wild run's saved band coordinates without fitting.")
     args = parser.parse_args(argv)
+    if args.render_wild:
+        if args.replay or args.fit_wild_linear or args.explore or args.split_churn or args.trim_actions or args.central_fraction != 1:
+            raise ValueError("Saved wild-coordinate replay cannot be combined with other report modes.")
+        from scratch.generali_residual_wild import render_saved_wild
+        render_saved_wild(args.render_wild, args.output_dir.resolve())
+        return
     if args.fit_wild_linear and (args.replay is None or args.explore or args.split_churn
                                 or args.central_fraction != 1 or args.trim_actions):
         raise ValueError("Wild fitting requires --replay and no other diagnostic or trimming mode.")

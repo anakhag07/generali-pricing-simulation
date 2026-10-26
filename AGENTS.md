@@ -337,6 +337,10 @@ If lower-priority docs are stale, update them in the same task.
   label. Report residual half-width separately from the lower penalty; large
   positive residual correction can produce a large upper envelope but zero
   lower penalty. See `wild-linear-slices-20261026/` in the same results family.
+  `--render-wild-slices <saved-report>` replays its verified group-mean CSV and
+  cohort row IDs into two group PDFs; the final wrapped-title render is in
+  `wild-linear-slices-20261026/plots/`. Individual slice PDFs stay at their
+  original subdirectory paths. No customer evaluation is needed to replot.
 - The active synthetic catalog retains the three paired residual-heteroskedastic
   distribution manifests and six `residual-leverage-fixed-noise-outlier-*.json`
   manifests. Terminal-distribution results, all residual-heteroskedastic report

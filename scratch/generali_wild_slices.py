@@ -76,11 +76,39 @@ def _group_plots(output, curves, groups):
                 for group in groups:
                     data = curves[(curves.model == name) & (curves.group == group["key"])]
                     ax.plot(data.action, data[key], label=group["label"])
-                ax.set(title=f"{label} · {noun}", xlabel="Queried price change, a", ylabel="Mean profit units")
+                ax.set(title=f"{label}\n{noun}", xlabel="Queried price change, a", ylabel="Mean profit units")
         handles, labels = axes[0, 0].get_legend_handles_labels()
         fig.legend(handles, labels, loc="outside lower center", ncol=3)
         fig.savefig(output / "historical_action_widths_and_penalties.pdf", format="pdf")
         plt.close(fig)
+
+
+def render_saved_group_figures(source, output):
+    """Render verified saved cohort means without reevaluating any customer."""
+    provenance = json.loads((source / "provenance.json").read_text())
+    inputs = [file_record(source / "provenance.json")]
+
+    def checked(name):
+        record = next(item for item in provenance["outputs"] if Path(item["path"]).name == name)
+        path = Path(record["path"])
+        if file_sha256(path) != record["sha256"]:
+            raise ValueError(f"Changed group report input: {path}")
+        inputs.append(file_record(path))
+        return path
+
+    curves = pd.read_csv(checked("historical_action_mean_curves.csv"))
+    summary = json.loads(checked("summary.json").read_text())
+    high = 100*(1-summary["config"]["action_groups"]["high_quantile"])
+    labels = {"near_zero": "Historical a near 0", "near_0p1": "Historical a near 0.1",
+              "high_action": f"Highest {high:g}% historical a"}
+    with np.load(checked("cohort_rows.npz"), allow_pickle=False) as rows:
+        groups = [{"key": key, "label": label, "positions": rows[key]} for key, label in labels.items()]
+    output.mkdir(parents=True, exist_ok=False)
+    _group_plots(output, curves, groups)
+    write_provenance(output / "provenance.json", {
+        "operation": "render saved group means with wrapped titles; no evaluation, fits, draws or optimization",
+        "inputs": inputs, "sources": [file_record(Path(__file__)), file_record(ROOT / "src/experiments/envelopes/plotting.py")],
+        "outputs": [file_record(path) for path in sorted(output.iterdir())]})
 
 
 def _support_diagnostics(arrays, state, frame, selections, optimization_rows):

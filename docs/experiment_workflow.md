@@ -426,6 +426,36 @@ All three PDFs were opened and visually inspected; saved solver endpoints,
 histogram counts, action bounds, sample constraints, and source/output hashes
 were verified. Eight focused tests and the small repository-optimizer demo pass.
 
+### Saved Generali wild-band slices and historical-action cohorts
+
+Use the existing residual driver to evaluate the saved linear band without any
+new fit, bootstrap draw or optimization:
+
+```bash
+MPLCONFIGDIR=/tmp/generali-residuals-mpl OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 \
+  python scratch/plot_generali_profit_residuals.py \
+  --explore-wild scratch/generali_wild_slices.json \
+  --replay ../results/glm-spline-profit-dispersion/residuals-20261026 \
+  --output-dir ../results/glm-spline-profit-dispersion/wild-linear-slices-20261026
+```
+
+This revision uses the approved inclusive historical-action groups [-.005,.005],
+[.095,.105], and the highest 5% (a >= 0.14428286142004157). All qualifying rows
+contribute to group-average endpoints. A customer's historical action determines
+group membership; the plotted horizontal axis queries different actions at the
+same contexts. It is not a local-action recalibration or causal group comparison.
+The individual panels use the original stable median-norm helper within each
+group; original smallest/median/largest-norm panels replay saved coordinates.
+
+The common-action table compares half-width and transferred radii at a=.1;
+logged-action values are also retained. The saved whitened numeric representation
+defines norms and nearest-other-customer distances, excluding all same-ID rows.
+Raw-feature ranks and optimizer-cohort membership provide descriptive context.
+No trained-model OOD claim follows: these rows are in the calibration dataset,
+predictor training membership is unknown, and categorical support is not tested.
+CSV coordinates, cohort row IDs, selected features, width/penalty diagnostics,
+four vector PDFs, and checked input/output provenance are saved together.
+
 ## Retirement and recovery
 
 Generic uncertainty-envelope, historical pairs-bootstrap/OLS, offline-bootstrap,

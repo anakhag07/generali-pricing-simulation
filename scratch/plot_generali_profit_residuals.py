@@ -581,7 +581,12 @@ def main(argv=None):
     parser.add_argument("--fit-wild-linear", type=Path, help="Explicit JSON setup for affine residual fitting and paired wild-bootstrap bands.")
     parser.add_argument("--render-wild", type=Path, help="Replay a completed wild run's saved band coordinates without fitting.")
     parser.add_argument("--optimize-wild", type=Path, help="JSON setup for full-context band averages and repository optimization of personalized lower endpoints.")
+    parser.add_argument("--explore-wild", type=Path, help="JSON setup for saved wild-band slices, historical-action groups and empirical feature support.")
     args = parser.parse_args(argv)
+    if args.explore_wild and (args.replay is None or args.optimize_wild or args.fit_wild_linear
+                             or args.render_wild or args.explore or args.split_churn
+                             or args.trim_actions or args.central_fraction != 1):
+        raise ValueError("Saved wild-band exploration requires --replay and no other report mode.")
     if args.optimize_wild and (args.replay is None or args.fit_wild_linear or args.render_wild
                               or args.explore or args.split_churn or args.trim_actions or args.central_fraction != 1):
         raise ValueError("Wild policy analysis requires --replay and no other report mode.")
@@ -616,6 +621,10 @@ def main(argv=None):
     else:
         arrays, provenance = _evaluate(args.spline_cache)
     output.mkdir(parents=True, exist_ok=False)
+    if args.explore_wild:
+        from scratch.generali_wild_slices import run_wild_slices
+        run_wild_slices(arrays, output, args.replay, args.explore_wild)
+        return
     if args.optimize_wild:
         from scratch.generali_wild_policy import run_wild_policy
         run_wild_policy(arrays, output, args.replay, args.optimize_wild)

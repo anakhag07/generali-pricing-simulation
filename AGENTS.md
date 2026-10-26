@@ -327,6 +327,16 @@ If lower-priority docs are stale, update them in the same task.
   cache is checked against saved-band replay; neither band nor predictor is
   grid-interpolated for optimization. Record model-based profit separately from
   the lower bound, sample/full-cohort constraints, and local optimizer status.
+  `--explore-wild scratch/generali_wild_slices.json` uses the companion
+  `scratch/generali_wild_slices.py` to replay norm slices and evaluate complete
+  historical-action cohorts plus their median-norm customers. No fit, bootstrap,
+  sampling or optimization occurs. Keep logged-action group selection distinct
+  from the queried plot action. Support diagnostics use the saved numeric
+  representation and exclude same-ID records as neighbours; all selected rows
+  are calibration observations, so empirical extremeness is not a validated OOD
+  label. Report residual half-width separately from the lower penalty; large
+  positive residual correction can produce a large upper envelope but zero
+  lower penalty. See `wild-linear-slices-20261026/` in the same results family.
 - The active synthetic catalog retains the three paired residual-heteroskedastic
   distribution manifests and six `residual-leverage-fixed-noise-outlier-*.json`
   manifests. Terminal-distribution results, all residual-heteroskedastic report

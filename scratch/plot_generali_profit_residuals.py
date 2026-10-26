@@ -582,8 +582,12 @@ def main(argv=None):
     parser.add_argument("--render-wild", type=Path, help="Replay a completed wild run's saved band coordinates without fitting.")
     parser.add_argument("--optimize-wild", type=Path, help="JSON setup for full-context band averages and repository optimization of personalized lower endpoints.")
     parser.add_argument("--explore-wild", type=Path, help="JSON setup for saved wild-band slices, historical-action groups and empirical feature support.")
+    parser.add_argument("--wild-action-bounds", nargs=2, type=float, metavar=("LOW", "HIGH"),
+                        help="With --explore-wild, evaluate both norm and historical-action bands over these display bounds.")
     parser.add_argument("--render-wild-slices", type=Path, help="Replot a completed wild-slice report's saved group means without evaluation.")
     args = parser.parse_args(argv)
+    if args.wild_action_bounds is not None and not args.explore_wild:
+        raise ValueError("--wild-action-bounds requires --explore-wild.")
     if args.render_wild_slices:
         if (args.replay or args.explore_wild or args.optimize_wild or args.fit_wild_linear or args.render_wild
                 or args.explore or args.split_churn or args.trim_actions or args.central_fraction != 1):
@@ -631,7 +635,7 @@ def main(argv=None):
     output.mkdir(parents=True, exist_ok=False)
     if args.explore_wild:
         from scratch.generali_wild_slices import run_wild_slices
-        run_wild_slices(arrays, output, args.replay, args.explore_wild)
+        run_wild_slices(arrays, output, args.replay, args.explore_wild, action_bounds=args.wild_action_bounds)
         return
     if args.optimize_wild:
         from scratch.generali_wild_policy import run_wild_policy

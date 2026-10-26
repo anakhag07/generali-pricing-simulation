@@ -52,7 +52,7 @@ def _endpoints(response, fibers, positions, actions):
             "upper": prediction+parts["radius_upper"]}
 
 
-def _group_plots(output, curves, groups):
+def _group_plots(output, curves, groups, *, action_bounds=None):
     with plt.rc_context(_STYLE):
         fig, axes = plt.subplots(2, 3, figsize=(15, 9), constrained_layout=True)
         fig.suptitle("Mean customer-specific envelopes by historical action · nominal 95%")
@@ -65,6 +65,8 @@ def _group_plots(output, curves, groups):
                 ax.plot(data.action, data.corrected_prediction, "--", color="C3", label="Mean prediction + fitted residual")
                 ax.set(title=f"{label} · {group['label']}\nn = {len(group['positions']):,}",
                        xlabel="Queried price change, a", ylabel="Mean profit per row")
+                if action_bounds is not None:
+                    ax.set_xlim(*action_bounds)
         handles, labels = axes[0, 0].get_legend_handles_labels()
         fig.legend(handles, labels, loc="outside lower center", ncol=3)
         fig.savefig(output / "historical_action_mean_bands.pdf", format="pdf")
@@ -77,6 +79,8 @@ def _group_plots(output, curves, groups):
                     data = curves[(curves.model == name) & (curves.group == group["key"])]
                     ax.plot(data.action, data[key], label=group["label"])
                 ax.set(title=f"{label}\n{noun}", xlabel="Queried price change, a", ylabel="Mean profit units")
+                if action_bounds is not None:
+                    ax.set_xlim(*action_bounds)
         handles, labels = axes[0, 0].get_legend_handles_labels()
         fig.legend(handles, labels, loc="outside lower center", ncol=3)
         fig.savefig(output / "historical_action_widths_and_penalties.pdf", format="pdf")
@@ -104,7 +108,7 @@ def render_saved_group_figures(source, output):
     with np.load(checked("cohort_rows.npz"), allow_pickle=False) as rows:
         groups = [{"key": key, "label": label, "positions": rows[key]} for key, label in labels.items()]
     output.mkdir(parents=True, exist_ok=False)
-    _group_plots(output, curves, groups)
+    _group_plots(output, curves, groups, action_bounds=summary["config"].get("display_action_bounds_override"))
     write_provenance(output / "provenance.json", {
         "operation": "render saved group means with wrapped titles; no evaluation, fits, draws or optimization",
         "inputs": inputs, "sources": [file_record(Path(__file__)), file_record(ROOT / "src/experiments/envelopes/plotting.py")],
@@ -138,17 +142,22 @@ def _support_diagnostics(arrays, state, frame, selections, optimization_rows):
     return records, features
 
 
-def run_wild_slices(arrays, output, source, config_path):
+def run_wild_slices(arrays, output, source, config_path, *, action_bounds=None):
     config = json.loads(config_path.read_text())
     if config["family"] != "glm-spline-profit-dispersion":
         raise ValueError("Keep the existing comparison family.")
+    if action_bounds is not None:
+        if not np.isfinite(action_bounds).all() or action_bounds[0] >= action_bounds[1]:
+            raise ValueError("Display bounds must be finite and increasing.")
+        config["action_bounds"] = list(action_bounds)
+        config["display_action_bounds_override"] = list(action_bounds)
     resolve = lambda value: (config_path.parent / value).resolve()
     fit_run = resolve(config["fit_run"])
     provenance = json.loads((fit_run / "provenance.json").read_text())
     inputs = [file_record(fit_run / "provenance.json"), file_record(config_path)]
 
-    def checked(record):
-        path = Path(record["path"])
+    def checked(record, *, current_path=None):
+        path = Path(record["path"]) if current_path is None else current_path
         actual = file_record(path)
         if actual["sha256"] != record["sha256"]:
             raise ValueError(f"Changed saved input: {path}")
@@ -172,11 +181,10 @@ def run_wild_slices(arrays, output, source, config_path):
     np.testing.assert_array_equal(state["actions"], arrays["a"])
     np.testing.assert_array_equal(norm_examples["selection_positions"], _slice_indices(state["X"]))
     fit_config = json.loads(fitted("resolved_config.json").read_text())
-    norm_output, action_output = output / "norm_slices", output / "historical_action_slices"
-    norm_output.mkdir()
-    action_output.mkdir()
-    _render_band_curves(norm_output, arrays, norm_examples, original_curves,
-                        fit_config["bootstrap"]["delta"], quantities=("profit",))
+    if action_bounds is None:
+        _render_band_curves(output, arrays, norm_examples, original_curves,
+                           fit_config["bootstrap"]["delta"], quantities=("profit",),
+                           filename_prefix="customer_norm")
 
     frame = load_x_frame("xgb", row_indices=arrays["row_indices"])
     models = {"glm": resolve_real_data_model("glm"), "spline_xgb": resolve_real_data_model("xgb")}
@@ -201,6 +209,8 @@ def run_wild_slices(arrays, output, source, config_path):
     logged = arrays["a"][selected]
     bounds = [min(config["action_bounds"][0], float(logged.min())),
               max(config["action_bounds"][1], float(logged.max()))]
+    if action_bounds is not None:
+        bounds = list(action_bounds)
     grid = np.unique(np.r_[np.linspace(*bounds, config["action_grid_count"]), logged, config["comparison_action"], 0., .2])
     examples = {"selection_positions": selected, "row_indices": arrays["row_indices"][selected], "action_grid": grid}
     selections = list(zip(["Smallest norm", "Median norm", "Largest norm"], norm_examples["selection_positions"]))
@@ -209,7 +219,7 @@ def run_wild_slices(arrays, output, source, config_path):
     policy_provenance = json.loads((policy_run / "provenance.json").read_text())
     inputs.append(file_record(policy_run / "provenance.json"))
     record = next(p for p in policy_provenance["outputs"] if Path(p["path"]).name == "glm_wild_lower_policy.npz")
-    with np.load(checked(record), allow_pickle=False) as data:
+    with np.load(checked(record, current_path=policy_run / "glm_wild_lower_policy.npz"), allow_pickle=False) as data:
         optimization_rows = data["optimization_row_indices"]
     support, features = _support_diagnostics(arrays, state, frame, selections, optimization_rows)
     pd.DataFrame(support).to_csv(output / "selected_customer_support.csv", index=False)
@@ -221,11 +231,28 @@ def run_wild_slices(arrays, output, source, config_path):
     selected_frame.to_csv(output / "selected_customers.csv", index=False)
     norms = np.linalg.norm(state["X"], axis=1)
     coordinate_rows, group_metrics, selected_metrics, slice_values, validations = [], [], [], {}, {}
+    norm_values = {}
+    norm_grid = np.unique(np.r_[grid, norm_examples["action_grid"]])
+    norm_grid = norm_grid[(norm_grid >= bounds[0]) & (norm_grid <= bounds[1])]
     for name in MODELS:
         print(f"Evaluating saved {name} band slices and historical-action cohorts.", flush=True)
         response = _Responses(name, arrays, cache=cache, glm_logit=logit, glm_slope=slope)
         fibers = _FrozenFibers(state["X"], state["triangular"], state[f"{name}_beta"], state[f"{name}_critical"])
         validations[name] = _verify_fibers(state, name, fibers, norm_examples)
+        if action_bounds is not None:
+            norm_positions = norm_examples["selection_positions"]
+            response.prepare_policy_queries(norm_positions)
+            norm_parts = [_endpoints(response, fibers, norm_positions, np.full(len(norm_positions), a)) for a in norm_grid]
+            norm_values.update({f"{name}_{key}": np.stack([p[key] for p in norm_parts], axis=1) for key in norm_parts[0]})
+            # Check the overlap against the original saved curves; the spline
+            # cache has the original report's documented storage tolerance.
+            retained = (norm_examples["action_grid"] >= bounds[0]) & (norm_examples["action_grid"] <= bounds[1])
+            indices = np.searchsorted(norm_grid, norm_examples["action_grid"][retained])
+            for key in ("residual_fit", "width", "radius_lower", "radius_upper"):
+                np.testing.assert_allclose(norm_values[f"{name}_{key}"][:, indices],
+                                           original_curves[f"{name}_{key}"][:, retained], rtol=2e-11, atol=1e-8)
+            np.testing.assert_allclose(norm_values[f"{name}_prediction"][:, indices],
+                                       original_curves[f"{name}_prediction"][:, retained], rtol=2e-6, atol=1e-5)
         response.prepare_policy_queries(selected)
         plotted = [_endpoints(response, fibers, selected, np.full(len(selected), a)) for a in grid]
         for key in plotted[0]:
@@ -258,15 +285,22 @@ def run_wild_slices(arrays, output, source, config_path):
                 coordinate_rows.append({"model": name, "group": group["key"], "action": action,
                                         **{key: np.mean(value) for key, value in parts.items()}})
             print(f"{name}/{group['key']}: all {len(positions):,} rows evaluated.", flush=True)
-    _render_band_curves(action_output, arrays, examples, slice_values, fit_config["bootstrap"]["delta"],
-                        labels=[group["label"] for group in groups], quantities=("profit",))
+    _render_band_curves(output, arrays, examples, slice_values, fit_config["bootstrap"]["delta"],
+                        labels=[group["label"] for group in groups], quantities=("profit",),
+                        action_bounds=action_bounds, filename_prefix="historical_action_customer")
+    if action_bounds is not None:
+        expanded_examples = {**norm_examples, "action_grid": norm_grid}
+        _render_band_curves(output, arrays, expanded_examples, norm_values, fit_config["bootstrap"]["delta"],
+                            quantities=("profit",), action_bounds=action_bounds, filename_prefix="customer_norm")
+        np.savez_compressed(output / "norm_slice_curves.npz", action_grid=norm_grid,
+                            row_indices=norm_examples["row_indices"], selection_positions=norm_examples["selection_positions"], **norm_values)
     np.savez_compressed(output / "historical_action_slice_curves.npz", **examples, **slice_values)
     np.savez_compressed(output / "cohort_rows.npz", **{group["key"]: arrays["row_indices"][group["positions"]] for group in groups})
     curves = pd.DataFrame(coordinate_rows)
     curves.to_csv(output / "historical_action_mean_curves.csv", index=False)
     pd.DataFrame(group_metrics).to_csv(output / "historical_action_summary.csv", index=False)
     pd.DataFrame(selected_metrics).to_csv(output / "selected_customer_band_values.csv", index=False)
-    _group_plots(output, curves, groups)
+    _group_plots(output, curves, groups, action_bounds=action_bounds)
     summary = {"family": config["family"], "config": config, "calibration_rows": len(frame),
                "norm_quantiles": dict(zip(["median", "q95", "q99", "q999", "maximum"], np.quantile(norms, [.5,.95,.99,.999,1]))),
                "groups": group_metrics, "selected_customers": support, "selected_band_values": selected_metrics,
@@ -274,7 +308,7 @@ def run_wild_slices(arrays, output, source, config_path):
                "ood_status": "no validated OOD labels; all selected rows are calibration observations; frozen predictor training membership unknown",
                "optimizer": None, "randomness": None, "new_fits_or_bootstrap_draws": False}
     write_provenance(output / "summary.json", summary)
-    (output / "EXPERIMENT.md").write_text(_documentation(config_path, source), encoding="utf-8")
+    (output / "EXPERIMENT.md").write_text(_documentation(config_path, source, action_bounds), encoding="utf-8")
     write_provenance(output / "provenance.json", {
         "family": config["family"], "revision": "saved-wild-norm-and-historical-action-slices",
         "inputs": inputs, "dataset": provenance["dataset"], "models": provenance["models"],
@@ -287,12 +321,19 @@ def run_wild_slices(arrays, output, source, config_path):
     print(f"Saved wild-band cohort exploration to {output}", flush=True)
 
 
-def _documentation(config_path, source):
+def _documentation(config_path, source, action_bounds=None):
+    override = "" if action_bounds is None else f" --wild-action-bounds {action_bounds[0]:g} {action_bounds[1]:g}"
+    norm_mode = ("Norm slices replay their original saved coordinates and plotting source exactly."
+                 if action_bounds is None else
+                 f"Both norm and historical-action plots evaluate the existing functions on [{action_bounds[0]:g},{action_bounds[1]:g}]. "
+                 "Original customers, coefficients, critical values, observed points and styles are preserved. "
+                 "The original norm-grid coordinates are retained inside this range and checked against the saved curves. "
+                 "Only displayed queries change; policy bounds and optimizer outputs remain unchanged.")
     return (
         "# Saved Generali wild bands: norm and historical-action slices\n\n"
         "This replays the existing full-data affine beta/QR/critical values and frozen predictors. "
         "No new fit, bootstrap draw, random sampling, optimizer action or optimum is produced. "
-        "Norm slices replay their original saved coordinates and plotting source exactly.\n\n"
+        f"{norm_mode}\n\n"
         "Historical action groups use inclusive [-0.005,0.005], [0.095,0.105], and the empirical "
         "95th percentile through the maximum logged action. All qualifying rows contribute to each "
         "mean curve; transfer each customer's endpoints before averaging. A group is defined by "
@@ -320,4 +361,4 @@ def _documentation(config_path, source):
         "curves, never select actions. Nominal 95% mean-function coverage remains unverified; these "
         "are not individual-outcome prediction intervals. Existing runs remain unchanged.\n\n"
         f"Regenerate: `python scratch/plot_generali_profit_residuals.py --explore-wild {config_path.resolve()} "
-        f"--replay {source.resolve()} --output-dir <fresh-directory>`.\n")
+        f"--replay {source.resolve()}{override} --output-dir <fresh-directory>`.\n")

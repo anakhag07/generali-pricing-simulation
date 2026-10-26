@@ -235,6 +235,18 @@ the exact counts/bounds and `plot_rows.npz` stores the displayed row IDs. Both
 models share axes, bin grids and density color scaling. Raw residuals and
 `summary.csv` always retain the full original population.
 
+The retained 2026-10-26 reports under shared
+`results/glm-spline-profit-dispersion/` are `residuals-20261026/` (the original
+715,023-row scatter and histogram) and `central95/` (679,271 rows per model,
+residual tails only, rectangular density and histogram). Their saved residual
+arrays and full-population summaries are byte-identical. The central plot uses
+each model's own 2.5th and 97.5th percentiles; the selected customers can differ.
+Superseded rendering trials and the early action-trimmed trial are archived in
+`scratch-results/glm-spline-profit-dispersion/rendering-trials-20261026/`.
+Saved absolute paths remain original; the relocation record is
+`scratch/retired_experiments/generali_residual_outputs_20261026.json`.
+Use the current report directory for `--replay`.
+
 ## Retirement and recovery
 
 Generic uncertainty-envelope, historical pairs-bootstrap/OLS, offline-bootstrap,

@@ -1,0 +1,364 @@
+{
+  "authorization": "User requested retaining just original and central 95% versions.",
+  "data_comparison": "All residuals.npz and summary.csv files are byte-identical; selection only changes displayed rows. The early central95 trial also trimmed actions and is archived.",
+  "date": "2026-10-26T18:18:55.169380+00:00",
+  "family": "glm-spline-profit-dispersion",
+  "original_files_unchanged": {
+    "EXPERIMENT.md": {
+      "bytes": 1861,
+      "sha256": "c81bf16d40004e284550859fa165fff795b1c5089afa4a4ed86d814485a87277"
+    },
+    "histogram_counts.csv": {
+      "bytes": 4289,
+      "sha256": "598cd1dfb5060f3add07262654dda2d4eadf9f06a793b78e93f638053a291960"
+    },
+    "provenance.json": {
+      "bytes": 10027,
+      "sha256": "78325e101d0d9702eb0546279eb74467a02fb7bacf70932eccd33851ac6a0780"
+    },
+    "residual_histograms.pdf": {
+      "bytes": 16944,
+      "sha256": "4d4e508fef3924b9fcbc0c99f0b6e411cd5b9c5f2996b0f5ec4d9e18947f3595"
+    },
+    "residual_vs_action.pdf": {
+      "bytes": 19860974,
+      "sha256": "183ac8da2bed61a7ac0382d71745231c32f6ca315d095c1a4de6fc0dcb4fd71e"
+    },
+    "residuals.npz": {
+      "bytes": 66541855,
+      "sha256": "19e1ad403f1b41b29cadeba496bdf74f991d77ec2996db50a2d33f5abfc949e0"
+    },
+    "summary.csv": {
+      "bytes": 712,
+      "sha256": "3592c4668201a75e70307abd1f7720c68d6fdfbc7da02c72274528ecefa9ec5a"
+    }
+  },
+  "provenance_policy": "Saved files are byte-preserved, including original absolute paths in provenance and EXPERIMENT.md. Resolve moved paths through this record; --replay accepts the current directory.",
+  "relocations": [
+    {
+      "files": {
+        "EXPERIMENT.md": {
+          "bytes": 2249,
+          "sha256": "60ee88e1e8815100a6152827a201cab00d41fadda2221d38fc6390e074c0f42f"
+        },
+        "histogram_counts.csv": {
+          "bytes": 4797,
+          "sha256": "4b71fe678c58cd9ab1e378360ce237fc2c3b13fddbf1ec49c83244895ddcbe9b"
+        },
+        "plot_rows.npz": {
+          "bytes": 1968037,
+          "sha256": "088d31acb499e1b512548f6a7324f1ac9d97731dbcf4832ad9c9f36f1b8d3817"
+        },
+        "plot_selection.json": {
+          "bytes": 704,
+          "sha256": "60131698b70789ffb7b459ee7cfed1512c98903e8943dafe26338052f68b95ba"
+        },
+        "provenance.json": {
+          "bytes": 17595,
+          "sha256": "cfab600a828a52359e099a3168e8f07fc2a08a49a8ccb27c3bb1f9134874f6a9"
+        },
+        "residual_histograms.pdf": {
+          "bytes": 17404,
+          "sha256": "6558b90cfe73664dafd873cfab8902b6cdd2898062b68e8377fc1132752d8f4f"
+        },
+        "residual_vs_action.pdf": {
+          "bytes": 59228,
+          "sha256": "2e74cf4b6a3d2482228e0925149dae10f96dd67d2e9bb412923003a8a6416db0"
+        },
+        "residuals.npz": {
+          "bytes": 66541855,
+          "sha256": "19e1ad403f1b41b29cadeba496bdf74f991d77ec2996db50a2d33f5abfc949e0"
+        },
+        "summary.csv": {
+          "bytes": 712,
+          "sha256": "3592c4668201a75e70307abd1f7720c68d6fdfbc7da02c72274528ecefa9ec5a"
+        }
+      },
+      "from": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residuals-20261026-central95",
+      "reason": "superseded rendering or action-trimming trial",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/rendering-trials-20261026/residuals-20261026-central95"
+    },
+    {
+      "files": {
+        "EXPERIMENT.md": {
+          "bytes": 2202,
+          "sha256": "93ea69ede1e37a2241fa4374b18258172a6ad2999353ae2b5142bc93aa11512b"
+        },
+        "histogram_counts.csv": {
+          "bytes": 4289,
+          "sha256": "598cd1dfb5060f3add07262654dda2d4eadf9f06a793b78e93f638053a291960"
+        },
+        "plot_rows.npz": {
+          "bytes": 2165552,
+          "sha256": "e6690017799d9d318d66e18bb132d1300446c601a185a4122d4063fcad4c8f01"
+        },
+        "plot_selection.json": {
+          "bytes": 646,
+          "sha256": "56d2f457d53d4da096280ef8d606abbfe9b26f90a605ca30f841ab174e08a29b"
+        },
+        "provenance.json": {
+          "bytes": 17562,
+          "sha256": "3d79c56b6b3d0d0c52ca9ec37e2b3a42cc822526c1a052f1e5d4248f3061b3d4"
+        },
+        "residual_histograms.pdf": {
+          "bytes": 16944,
+          "sha256": "f2ebde67be798f55021d22856d46ffa6626b0131db33b59a7035153204c7234f"
+        },
+        "residual_vs_action.pdf": {
+          "bytes": 24506,
+          "sha256": "58ea59be9ae7dffaa1cab51e327cf982a61f59fdb7d74119c9e63d0b711949ab"
+        },
+        "residuals.npz": {
+          "bytes": 66541855,
+          "sha256": "19e1ad403f1b41b29cadeba496bdf74f991d77ec2996db50a2d33f5abfc949e0"
+        },
+        "summary.csv": {
+          "bytes": 712,
+          "sha256": "3592c4668201a75e70307abd1f7720c68d6fdfbc7da02c72274528ecefa9ec5a"
+        }
+      },
+      "from": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residuals-20261026-full-density",
+      "reason": "superseded rendering or action-trimming trial",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/rendering-trials-20261026/residuals-20261026-full-density"
+    },
+    {
+      "files": {
+        "EXPERIMENT.md": {
+          "bytes": 2205,
+          "sha256": "07543172b8134ed805c6f832553f7113098e9a72003a065493eddfd6bc5d4d6a"
+        },
+        "histogram_counts.csv": {
+          "bytes": 4289,
+          "sha256": "598cd1dfb5060f3add07262654dda2d4eadf9f06a793b78e93f638053a291960"
+        },
+        "plot_rows.npz": {
+          "bytes": 2165552,
+          "sha256": "e6690017799d9d318d66e18bb132d1300446c601a185a4122d4063fcad4c8f01"
+        },
+        "plot_selection.json": {
+          "bytes": 646,
+          "sha256": "56d2f457d53d4da096280ef8d606abbfe9b26f90a605ca30f841ab174e08a29b"
+        },
+        "provenance.json": {
+          "bytes": 17589,
+          "sha256": "d64af0c4e0230a47bc04a866d1b5aae7515a941836d10b3cfd3d89f5eba8f5be"
+        },
+        "residual_histograms.pdf": {
+          "bytes": 16944,
+          "sha256": "ff566ef46c28c1f72aecb3769e5361b73d93cab116090eb752ad3b423059edbf"
+        },
+        "residual_vs_action.pdf": {
+          "bytes": 31084,
+          "sha256": "7ee36ab238f2d844947b2323ddf7b709c77cf8f54181c512ca11dd1a79a7e6ce"
+        },
+        "residuals.npz": {
+          "bytes": 66541855,
+          "sha256": "19e1ad403f1b41b29cadeba496bdf74f991d77ec2996db50a2d33f5abfc949e0"
+        },
+        "summary.csv": {
+          "bytes": 712,
+          "sha256": "3592c4668201a75e70307abd1f7720c68d6fdfbc7da02c72274528ecefa9ec5a"
+        }
+      },
+      "from": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residuals-20261026-full-density-v2",
+      "reason": "superseded rendering or action-trimming trial",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/rendering-trials-20261026/residuals-20261026-full-density-v2"
+    },
+    {
+      "files": {
+        "EXPERIMENT.md": {
+          "bytes": 2207,
+          "sha256": "068b7100b8ca6efac8e90d742c388149b2e0346005e635c992718bd06322a543"
+        },
+        "histogram_counts.csv": {
+          "bytes": 4289,
+          "sha256": "598cd1dfb5060f3add07262654dda2d4eadf9f06a793b78e93f638053a291960"
+        },
+        "plot_rows.npz": {
+          "bytes": 2165552,
+          "sha256": "e6690017799d9d318d66e18bb132d1300446c601a185a4122d4063fcad4c8f01"
+        },
+        "plot_selection.json": {
+          "bytes": 647,
+          "sha256": "b44c7ebf975125b776822a1555b844e77e5e0b7cd138f3442c134d8c7a2a2f1c"
+        },
+        "provenance.json": {
+          "bytes": 17592,
+          "sha256": "cec42509c5ec6d2e97619f900da0bb1e19a3205ae38e8ff931df1ef66870c23f"
+        },
+        "residual_histograms.pdf": {
+          "bytes": 16944,
+          "sha256": "0301451c2b4335ccf149cc55a832218052766174e6e6ed1310f8222b281e879c"
+        },
+        "residual_vs_action.pdf": {
+          "bytes": 355955,
+          "sha256": "4d94a28201138169f4191b17aca42b05a29b6953b1fb206313d48c190ab4902a"
+        },
+        "residuals.npz": {
+          "bytes": 66541855,
+          "sha256": "19e1ad403f1b41b29cadeba496bdf74f991d77ec2996db50a2d33f5abfc949e0"
+        },
+        "summary.csv": {
+          "bytes": 712,
+          "sha256": "3592c4668201a75e70307abd1f7720c68d6fdfbc7da02c72274528ecefa9ec5a"
+        }
+      },
+      "from": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residuals-20261026-full-density-v3",
+      "reason": "superseded rendering or action-trimming trial",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/rendering-trials-20261026/residuals-20261026-full-density-v3"
+    },
+    {
+      "files": {
+        "EXPERIMENT.md": {
+          "bytes": 2207,
+          "sha256": "b743dd8cdc6bf71b4d7de22ccaa79633c134ea9643e18f7ce6cd4a2942d82493"
+        },
+        "histogram_counts.csv": {
+          "bytes": 4816,
+          "sha256": "1ea11cfc45c26b06b2144e9c7a1f54c8fa83eccaa2c829a1c1c7d9eefd95c4e6"
+        },
+        "plot_rows.npz": {
+          "bytes": 2057843,
+          "sha256": "9ecaa855f351b4974a76c75ff0ea7a296c1520abe0ec290543b1bab651bbb6c2"
+        },
+        "plot_selection.json": {
+          "bytes": 674,
+          "sha256": "ddc3973e2617f78beea2f02d5d6470a2054e4cdae987abb9b75b393d5ed7f73a"
+        },
+        "provenance.json": {
+          "bytes": 17655,
+          "sha256": "801b0a8f3e69455689b027b6b008a5bedae336c73b36653c14b7e7d4102fe9b8"
+        },
+        "residual_histograms.pdf": {
+          "bytes": 17408,
+          "sha256": "b86794243ab8c88a781312e6e1c3093dfc9ee92a1959ac59f50569b5edaee6aa"
+        },
+        "residual_vs_action.pdf": {
+          "bytes": 37586,
+          "sha256": "b23ca2599361a7c29c50c10506dee901d20882076e93fed22e90de0c3ef2441a"
+        },
+        "residuals.npz": {
+          "bytes": 66541855,
+          "sha256": "19e1ad403f1b41b29cadeba496bdf74f991d77ec2996db50a2d33f5abfc949e0"
+        },
+        "summary.csv": {
+          "bytes": 712,
+          "sha256": "3592c4668201a75e70307abd1f7720c68d6fdfbc7da02c72274528ecefa9ec5a"
+        }
+      },
+      "from": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residuals-20261026-residual-central95",
+      "reason": "superseded rendering or action-trimming trial",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/rendering-trials-20261026/residuals-20261026-residual-central95"
+    },
+    {
+      "files": {
+        "EXPERIMENT.md": {
+          "bytes": 2210,
+          "sha256": "330e3d83911a24644fe58a46e84983d8b688705e5fe6506453acbeace7d32e1d"
+        },
+        "histogram_counts.csv": {
+          "bytes": 4816,
+          "sha256": "1ea11cfc45c26b06b2144e9c7a1f54c8fa83eccaa2c829a1c1c7d9eefd95c4e6"
+        },
+        "plot_rows.npz": {
+          "bytes": 2057843,
+          "sha256": "9ecaa855f351b4974a76c75ff0ea7a296c1520abe0ec290543b1bab651bbb6c2"
+        },
+        "plot_selection.json": {
+          "bytes": 674,
+          "sha256": "ddc3973e2617f78beea2f02d5d6470a2054e4cdae987abb9b75b393d5ed7f73a"
+        },
+        "provenance.json": {
+          "bytes": 17682,
+          "sha256": "a4c41ff77dc27b295c5ff87c6cc3a4d1cc7dda1e65508dffb18d93fdd11bc269"
+        },
+        "residual_histograms.pdf": {
+          "bytes": 17408,
+          "sha256": "36836cd1f7755db041340e097cb7d3b0be69428335c74d25bad16feeacddbff8"
+        },
+        "residual_vs_action.pdf": {
+          "bytes": 44512,
+          "sha256": "092764e93c0dff7993e7bbb604d6b16cd4aa3aa17555a50fd2e5398b6784ee11"
+        },
+        "residuals.npz": {
+          "bytes": 66541855,
+          "sha256": "19e1ad403f1b41b29cadeba496bdf74f991d77ec2996db50a2d33f5abfc949e0"
+        },
+        "summary.csv": {
+          "bytes": 712,
+          "sha256": "3592c4668201a75e70307abd1f7720c68d6fdfbc7da02c72274528ecefa9ec5a"
+        }
+      },
+      "from": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residuals-20261026-residual-central95-v2",
+      "reason": "superseded rendering or action-trimming trial",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/rendering-trials-20261026/residuals-20261026-residual-central95-v2"
+    },
+    {
+      "files": {
+        "residual_vs_action_central95_verified.pdf": {
+          "bytes": 426585,
+          "sha256": "1d347b28e530fdf6cc40e63200d29dd5cc1ab54873d90bb9dd246c55e0e5e469"
+        }
+      },
+      "from": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residuals-20261026-residual-central95-v3/residual_vs_action_central95_verified.pdf",
+      "reason": "byte-identical diagnostic copy of retained central action PDF",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/rendering-trials-20261026/residual_vs_action_central95_verified.pdf"
+    },
+    {
+      "files": {
+        "EXPERIMENT.md": {
+          "bytes": 2212,
+          "sha256": "e90b3c17ae193249962ce3286bfa6379260ef8c807eabd8d8c2fa13f631acf84"
+        },
+        "histogram_counts.csv": {
+          "bytes": 4816,
+          "sha256": "1ea11cfc45c26b06b2144e9c7a1f54c8fa83eccaa2c829a1c1c7d9eefd95c4e6"
+        },
+        "plot_rows.npz": {
+          "bytes": 2057843,
+          "sha256": "9ecaa855f351b4974a76c75ff0ea7a296c1520abe0ec290543b1bab651bbb6c2"
+        },
+        "plot_selection.json": {
+          "bytes": 675,
+          "sha256": "aef90130fb059f08383f01841de34df3ab1e39bfcca0d6addb65c643c3cc5b51"
+        },
+        "provenance.json": {
+          "bytes": 17685,
+          "sha256": "77d93234542bc08512ee4b8dcaa1c8bb5438088a724c3b9048fb1a887d962508"
+        },
+        "residual_histograms.pdf": {
+          "bytes": 17408,
+          "sha256": "af128e425eb90c5d578d3170cad60467b397f2482302be5cbdd9086bd4df2a83"
+        },
+        "residual_vs_action.pdf": {
+          "bytes": 426585,
+          "sha256": "1d347b28e530fdf6cc40e63200d29dd5cc1ab54873d90bb9dd246c55e0e5e469"
+        },
+        "residuals.npz": {
+          "bytes": 66541855,
+          "sha256": "19e1ad403f1b41b29cadeba496bdf74f991d77ec2996db50a2d33f5abfc949e0"
+        },
+        "summary.csv": {
+          "bytes": 712,
+          "sha256": "3592c4668201a75e70307abd1f7720c68d6fdfbc7da02c72274528ecefa9ec5a"
+        }
+      },
+      "from": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residuals-20261026-residual-central95-v3",
+      "reason": "retained residual-only central-95 report, simplified directory name",
+      "to": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/central95"
+    }
+  ],
+  "retained": [
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residuals-20261026",
+      "rows_per_model": 715023,
+      "view": "original scatter and histogram, full population"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/central95",
+      "rows_per_model": 679271,
+      "trim_actions": false,
+      "view": "rectangular density and histogram, residual-only central 95%"
+    }
+  ]
+}

@@ -451,6 +451,122 @@ def _explore(arrays, output, source):
     print(f"Customer exploration saved to {output}", flush=True)
 
 
+def _churn_split(arrays, output, source):
+    """Describe frozen-model residuals by observed renewal outcome, without refits."""
+    from scipy.stats import kurtosis, skew
+    from experiments.envelopes.plotting import _STYLE
+
+    origin = json.loads((source / "provenance.json").read_text())
+    while "dataset" not in origin:
+        origin = origin["original_analysis"]
+    if file_sha256(DATASET_PATH) != origin["dataset"]["sha256"]:
+        raise ValueError("Dataset changed since residual calculation.")
+    labels = pd.read_csv(DATASET_PATH, sep=";", usecols=["is_churn"])["is_churn"].to_numpy()
+    churn = arrays["is_churn"]
+    if not np.isin(churn, [0, 1]).all() or not np.array_equal(labels[arrays["row_indices"]], churn):
+        raise ValueError("Saved churn labels disagree with the actual dataset outcomes.")
+    if np.any(arrays["observed_profit"][churn == 1] != 0):
+        raise ValueError("Churned observed profit must be zero under this report's convention.")
+    groups = {0: "Renewed", 1: "Churned"}
+    summaries, histogram_rows, selections = [], [], []
+    for name in MODELS:
+        np.testing.assert_allclose(arrays[f"{name}_residual"],
+                                   arrays["observed_profit"] - arrays[f"{name}_profit"], rtol=0, atol=1e-10)
+        for value, label in groups.items():
+            residual = arrays[f"{name}_residual"][churn == value]
+            if not len(residual):
+                raise ValueError(f"No {label.lower()} customers in saved residuals.")
+            summaries.append({"model": name, "group": label, "is_churn": value, "n": len(residual),
+                              "mean": np.mean(residual), "median": np.median(residual),
+                              "std_ddof0": np.std(residual), "skewness": skew(residual),
+                              "excess_kurtosis": kurtosis(residual),
+                              "fraction_negative": np.mean(residual < 0),
+                              **{f"q{q:g}": np.quantile(residual, q) for q in (0, .025, .975, 1)}})
+    pd.DataFrame(summaries).to_csv(output / "churn_split_summary.csv", index=False)
+    with plt.rc_context(_STYLE):
+        for view, fraction in (("full", 1.), ("central95", .95)):
+            displayed = {}
+            for name in MODELS:
+                for value, label in groups.items():
+                    residual = arrays[f"{name}_residual"][churn == value]
+                    tail = (1-fraction)/2
+                    low, high = np.quantile(residual, [tail, 1-tail])
+                    values = residual[(residual >= low) & (residual <= high)]
+                    displayed[name, value] = values
+                    selections.append({"view": view, "model": name, "is_churn": value,
+                                       "group": label, "residual_low": float(low), "residual_high": float(high),
+                                       "group_n": len(residual), "displayed_n": len(values)})
+            bins = np.histogram_bin_edges(np.concatenate(list(displayed.values())), bins=100)
+            fig, axes = plt.subplots(2, 2, figsize=(12, 8), sharex=True, sharey=True, constrained_layout=True)
+            title = "All residuals" if view == "full" else "Central 95% within each group and model"
+            fig.suptitle(f"Observed renewal outcome: {title}", fontsize=16)
+            for row, (name, model_label) in enumerate(MODELS.items()):
+                for col, (value, group_label) in enumerate(groups.items()):
+                    values = displayed[name, value]
+                    count = np.histogram(values, bins=bins)[0]
+                    if count.sum() != len(values):
+                        raise ValueError("Churn-split histogram lost observations.")
+                    density = count / (len(values)*np.diff(bins))
+                    np.testing.assert_allclose(np.sum(density*np.diff(bins)), 1.)
+                    histogram_rows.extend({"view": view, "model": name, "is_churn": value,
+                                           "left": low, "right": high, "n": n, "density": d}
+                                          for low, high, n, d in zip(bins[:-1], bins[1:], count, density))
+                    summary = next(s for s in summaries if s["model"] == name and s["is_churn"] == value)
+                    ax = axes[row, col]
+                    ax.stairs(density, bins, fill=True, color=f"C{row}", alpha=.6)
+                    ax.axvline(0, color="0.5", linewidth=.8)
+                    ax.axvline(summary["mean"], color="black", linestyle="--",
+                               label=f"Full-group mean: {summary['mean']:.2f}")
+                    ax.set(title=f"{model_label} · {group_label} (is_churn={value})\n"
+                                 f"{len(values):,} of {summary['n']:,} customers",
+                           xlabel="Observed profit − predicted profit", ylabel="Residual probability density")
+                    ax.tick_params(labelbottom=True, labelleft=True)
+                    ax.legend()
+            fig.savefig(output / f"residual_histograms_by_churn_{view}.pdf", format="pdf")
+            plt.close(fig)
+    pd.DataFrame(histogram_rows).to_csv(output / "histogram_counts.csv", index=False)
+    write_provenance(output / "plot_selection.json", {"selections": selections,
+        "rule": "inclusive residual quantile bounds within each observed group and model; no action trimming",
+        "normalization": "each displayed group-model histogram integrates to one; common bins and axes per PDF"})
+    (output / "EXPERIMENT.md").write_text(
+        "# Generali residuals split by observed churn\n\n"
+        "Uses the saved residuals and original source-row alignment. `is_churn=0` means renewed; "
+        "`is_churn=1` means churned. Labels are verified against the checksummed canonical dataset, "
+        "not inferred from model acceptance probabilities. No models are re-evaluated or fitted.\n\n"
+        "Residual = observed profit minus model expected profit. Observed profit is "
+        "(1-is_churn)*(X_upcoming_premium-Y_G_Loss); consequently churned residuals equal "
+        "minus predicted profit. Renewal and churn subsets need not separately have zero mean "
+        "even for a calibrated expected-profit model. This is an outcome-conditioned diagnostic; "
+        "the realized churn flag is not a pre-decision feature for phi.\n\n"
+        "Both PDFs use 100 shared equal-width bins, shared axes, and group-normalized densities. "
+        "The full PDF retains all residuals; extreme tails compress the center. The central95 PDF "
+        "retains inclusive 2.5th–97.5th residual percentiles separately within each group/model, "
+        "with no action trimming or winsorization. Dashed means and churn_split_summary.csv statistics always "
+        "use full groups. Exact bounds/counts and histogram coordinates are saved.\n\n"
+        "The existing wild bootstrap fits mean residuals and sign-flips the post-fit errors. "
+        "Both observed groups contribute when fitting on the pooled sample, but this targets "
+        "uncertainty in expected profit, not a prediction interval spanning both realized outcomes. "
+        "Rademacher pseudo-errors are symmetric and do not recreate the observed renewal/churn "
+        "mixture. These diagnostic plots alone establish no bootstrap coverage. No bootstrap, "
+        "basis fitting, optimization, sampling or changes to previous reports occur here.\n\n"
+        "Regenerate with `python scratch/plot_generali_profit_residuals.py --split-churn "
+        f"--replay {source.resolve()} --output-dir <fresh-directory>`.\n", encoding="utf-8")
+    record = {"family": FAMILY, "revision": "observed-churn-split",
+              "created_at": datetime.now(timezone.utc).isoformat(),
+              "input_residuals": file_record(source / "residuals.npz"),
+              "input_provenance": file_record(source / "provenance.json"),
+              "dataset": origin["dataset"], "formula": origin["formula"],
+              "group_counts": {label: int(np.sum(churn == value)) for value, label in groups.items()},
+              "validation": "dataset checksum, true churn labels, residual identity, zero churned profit and histogram mass verified",
+              "optimizer": None, "band": None, "randomness": None,
+              "sources": [file_record(Path(__file__)), file_record(ROOT / "MATH.md"),
+                          file_record(ROOT / "src/experiments/envelopes/wild.py")],
+              "packages": {p: importlib.metadata.version(p) for p in ("numpy", "pandas", "scipy", "matplotlib")}}
+    record["outputs"] = [file_record(p) for p in sorted(output.iterdir())]
+    write_provenance(output / "provenance.json", record)
+    print(f"Observed-churn split saved to {output}", flush=True)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, required=True, help="Fresh report directory within the comparison family.")
@@ -460,7 +576,10 @@ def main(argv=None):
     parser.add_argument("--trim-actions", action="store_true", help="Also intersect with the same central historical-action quantiles.")
     parser.add_argument("--action-renderer", choices=("scatter", "density"), default="scatter", help="Density counts every selected row in compact vector cells with a common log color scale.")
     parser.add_argument("--explore", action="store_true", help="Use saved residuals for representative customer curves, Q-Q plots and action-bin diagnostics.")
+    parser.add_argument("--split-churn", action="store_true", help="Split saved residuals by true is_churn, showing full and within-group central-95% histograms.")
     args = parser.parse_args(argv)
+    if args.split_churn and (args.replay is None or args.explore or args.central_fraction != 1 or args.trim_actions):
+        raise ValueError("Churn splitting requires --replay without exploration or display trimming options.")
     if args.explore and (args.replay is None or args.central_fraction != 1 or args.trim_actions):
         raise ValueError("Exploration requires --replay of the full saved residuals, without display trimming options.")
     if not 0 < args.central_fraction <= 1:
@@ -481,6 +600,9 @@ def main(argv=None):
     else:
         arrays, provenance = _evaluate(args.spline_cache)
     output.mkdir(parents=True, exist_ok=False)
+    if args.split_churn:
+        _churn_split(arrays, output, args.replay)
+        return
     if args.explore:
         _explore(arrays, output, args.replay)
         return

@@ -379,6 +379,16 @@ central-95% view is deliberately truncated, not a normality test. Action-bin
 means/medians and 10th--90th percentiles describe pooled logged outcomes;
 percentile ribbons are not confidence bands or fixed-customer uncertainty.
 
+Observed-outcome splits use the original binary `is_churn` labels: 0 for renewed,
+1 for churned. Under the stated profit convention, churned residuals equal
+$-\widehat Y_i$. Each full group is retained in summary statistics; the optional
+central-95% histograms trim residual quantiles separately within each group and
+model and normalize each displayed histogram to unit area. Conditioning on the
+realized outcome need not preserve zero-mean residuals even for a correct
+expected-profit model. These diagnostic groups do not supply a pre-decision
+feature for $\phi$, and mean-response wild bands do not establish coverage of
+individual realized outcomes in both groups.
+
 For profit matrix $P_{ij}=P_i(u_j)$,
 
 $$

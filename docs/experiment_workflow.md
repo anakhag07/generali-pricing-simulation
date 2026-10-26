@@ -414,6 +414,18 @@ full-context curve coordinates, nominal/corrected/lower-bound profit summaries,
 histogram counts and three vector PDFs. New-price actual profit and statistical
 band coverage remain unknown; original runs are preserved.
 
+The completed `wild-linear-policy-20261026-r3` baseline keeps full-data
+calibration. Both GLM fits satisfy the solver's gradient termination criterion;
+both spline fits exhaust the inherited 1,000-step budget with zero sample
+constraint violation, so their saved policies remain unconverged candidates.
+Their objective changes over the last 100 steps are below 0.00004 per row;
+this is not a convergence or global-optimality certificate. The full-population
+GLM nominal policy's predicted acceptance (0.878663674) is slightly below the
+sample floor, while its lower-band policy satisfies it (0.878786783).
+All three PDFs were opened and visually inspected; saved solver endpoints,
+histogram counts, action bounds, sample constraints, and source/output hashes
+were verified. Eight focused tests and the small repository-optimizer demo pass.
+
 ## Retirement and recovery
 
 Generic uncertainty-envelope, historical pairs-bootstrap/OLS, offline-bootstrap,

@@ -455,6 +455,21 @@ No trained-model OOD claim follows: these rows are in the calibration dataset,
 predictor training membership is unknown, and categorical support is not tested.
 CSV coordinates, cohort row IDs, selected features, width/penalty diagnostics,
 four vector PDFs, and checked input/output provenance are saved together.
+The final group PDFs are in `wild-linear-slices-20261026/plots/`; that render
+wraps the long width/penalty titles and preserves the original report. Regenerate
+only these two figures with `--render-wild-slices <saved-slice-report>
+--output-dir <fresh-directory>`; no model or band is reevaluated.
+
+Baseline findings: source row 715959 has the largest norm (3088.50) and recorded
+`X_claim_tot_value` 1,001,562.35 (population 99th percentile 2,100). At a=.1 its
+GLM/spline residual half-widths are 811.03/489.95, but the GLM lower penalty is
+zero because its fitted residual is positive and larger than the half-width.
+It is in calibration and absent from the saved 20k optimizer cohort. High-action
+customers are enriched for top-1%-norm contexts (8.00%, versus 0.34% near a=.1),
+while their median-norm representative is only at the 76.5th norm percentile.
+Ten focused tests and the small repository-optimizer demo pass. Cohort row IDs,
+mean endpoint identities, unchanged original artifacts and report checksums were
+verified; all four final PDFs were opened and visually inspected.
 
 ## Retirement and recovery
 

@@ -282,11 +282,16 @@ If lower-priority docs are stale, update them in the same task.
   `plot_selection.json`; `plot_rows.npz` records displayed source IDs. Full
   residual arrays and numerical summaries remain unchanged in these replays.
   After the 2026-10-26 user-requested cleanup, the active family contains only
-  `residuals-20261026/` (original full scatter) and `central95/` (residual-only
+  `residuals-20261026/` (full-data density) and `central95/` (residual-only
   central density). Superseded renders are under shared
   `scratch-results/glm-spline-profit-dispersion/rendering-trials-20261026/`.
   The tracked `scratch/retired_experiments/generali_residual_outputs_20261026.json`
   maps old absolute paths without rewriting saved provenance.
+  The user subsequently requested a smaller action PDF at the original path.
+  Its complete scatter report is preserved at
+  `rendering-trials-20261026/residuals-20261026-original-scatter/` in that archive;
+  `scratch/retired_experiments/generali_residual_compact_20261026.json` records
+  the authorized PDF replacement and provenance revision. All data rows remain.
 - The active synthetic catalog retains the three paired residual-heteroskedastic
   distribution manifests and six `residual-leverage-fixed-noise-outlier-*.json`
   manifests. Terminal-distribution results, all residual-heteroskedastic report

@@ -1,0 +1,163 @@
+{
+  "central95_unchanged": {
+    "EXPERIMENT.md": "e90b3c17ae193249962ce3286bfa6379260ef8c807eabd8d8c2fa13f631acf84",
+    "histogram_counts.csv": "1ea11cfc45c26b06b2144e9c7a1f54c8fa83eccaa2c829a1c1c7d9eefd95c4e6",
+    "plot_rows.npz": "9ecaa855f351b4974a76c75ff0ea7a296c1520abe0ec290543b1bab651bbb6c2",
+    "plot_selection.json": "aef90130fb059f08383f01841de34df3ab1e39bfcca0d6addb65c643c3cc5b51",
+    "provenance.json": "77d93234542bc08512ee4b8dcaa1c8bb5438088a724c3b9048fb1a887d962508",
+    "residual_histograms.pdf": "af128e425eb90c5d578d3170cad60467b397f2482302be5cbdd9086bd4df2a83",
+    "residual_vs_action.pdf": "1d347b28e530fdf6cc40e63200d29dd5cc1ab54873d90bb9dd246c55e0e5e469",
+    "residuals.npz": "19e1ad403f1b41b29cadeba496bdf74f991d77ec2996db50a2d33f5abfc949e0",
+    "summary.csv": "3592c4668201a75e70307abd1f7720c68d6fdfbc7da02c72274528ecefa9ec5a"
+  },
+  "previous_report_files": {
+    "EXPERIMENT.md": {
+      "bytes": 1861,
+      "path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residuals-20261026/EXPERIMENT.md",
+      "sha256": "c81bf16d40004e284550859fa165fff795b1c5089afa4a4ed86d814485a87277"
+    },
+    "histogram_counts.csv": {
+      "bytes": 4289,
+      "path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residuals-20261026/histogram_counts.csv",
+      "sha256": "598cd1dfb5060f3add07262654dda2d4eadf9f06a793b78e93f638053a291960"
+    },
+    "provenance.json": {
+      "bytes": 10027,
+      "path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residuals-20261026/provenance.json",
+      "sha256": "78325e101d0d9702eb0546279eb74467a02fb7bacf70932eccd33851ac6a0780"
+    },
+    "residual_histograms.pdf": {
+      "bytes": 16944,
+      "path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residuals-20261026/residual_histograms.pdf",
+      "sha256": "4d4e508fef3924b9fcbc0c99f0b6e411cd5b9c5f2996b0f5ec4d9e18947f3595"
+    },
+    "residual_vs_action.pdf": {
+      "bytes": 19860974,
+      "path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residuals-20261026/residual_vs_action.pdf",
+      "sha256": "183ac8da2bed61a7ac0382d71745231c32f6ca315d095c1a4de6fc0dcb4fd71e"
+    },
+    "residuals.npz": {
+      "bytes": 66541855,
+      "path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residuals-20261026/residuals.npz",
+      "sha256": "19e1ad403f1b41b29cadeba496bdf74f991d77ec2996db50a2d33f5abfc949e0"
+    },
+    "summary.csv": {
+      "bytes": 712,
+      "path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residuals-20261026/summary.csv",
+      "sha256": "3592c4668201a75e70307abd1f7720c68d6fdfbc7da02c72274528ecefa9ec5a"
+    }
+  },
+  "revision": {
+    "authorization": "User requested reducing the size of residual_vs_action.pdf under residuals-20261026 and saving it.",
+    "current_pdf": {
+      "bytes": 355955,
+      "path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residuals-20261026/residual_vs_action.pdf",
+      "sha256": "fa6d89742ab9599bfdb4793f0d38680bdb2f8f16e1d4e69b15a350f1353c430e"
+    },
+    "date": "2026-10-26T18:26:21.477430+00:00",
+    "previous_pdf": {
+      "bytes": 19860974,
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/rendering-trials-20261026/residuals-20261026-original-scatter/residual_vs_action.pdf",
+      "sha256": "183ac8da2bed61a7ac0382d71745231c32f6ca315d095c1a4de6fc0dcb4fd71e"
+    },
+    "previous_provenance": {
+      "bytes": 10027,
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/rendering-trials-20261026/residuals-20261026-original-scatter/provenance.json",
+      "sha256": "78325e101d0d9702eb0546279eb74467a02fb7bacf70932eccd33851ac6a0780"
+    },
+    "previous_report_archive": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/rendering-trials-20261026/residuals-20261026-original-scatter",
+    "rendering_command": [
+      "/home/anakhag/.conda/envs/simulation_env/bin/python",
+      "/home/anakhag/projects/generali-pricing/generali-pricing-simulation/scratch/plot_generali_profit_residuals.py",
+      "--replay",
+      "../results/glm-spline-profit-dispersion/residuals-20261026",
+      "--action-renderer",
+      "density",
+      "--output-dir",
+      "/tmp/generali-residuals-full-compact-20261026"
+    ],
+    "rendering_sources": [
+      {
+        "bytes": 21313,
+        "path": "/home/anakhag/projects/generali-pricing/generali-pricing-simulation/scratch/plot_generali_profit_residuals.py",
+        "sha256": "57ad39e5408ef944228ae3d5874cc142cbf8b08ad55f51fcfed1d2b86b38a699"
+      },
+      {
+        "bytes": 86153,
+        "path": "/home/anakhag/projects/generali-pricing/generali-pricing-simulation/MATH.md",
+        "sha256": "6b99b5f96be19ba84e9a464e2eed315cd231fe8cf923c087741e3c2ed7ad19f9"
+      },
+      {
+        "bytes": 8827,
+        "path": "/home/anakhag/projects/generali-pricing/generali-pricing-simulation/src/data/dataset_metadata.py",
+        "sha256": "7a24232b794fe38b7f658e14053f9233aa9477b3fa6bdf52c4e99528c790ff7c"
+      },
+      {
+        "bytes": 28001,
+        "path": "/home/anakhag/projects/generali-pricing/generali-pricing-simulation/src/data/loader.py",
+        "sha256": "6dc5dbd522bc643131e10fe44868ce224021b6a9bf8e5b2eae742056e032adcc"
+      },
+      {
+        "bytes": 25671,
+        "path": "/home/anakhag/projects/generali-pricing/generali-pricing-simulation/src/data/full_monotone_spline_cache.py",
+        "sha256": "bb362774f3b2eeb21311172c60431c1f24022609eca5768ca1b942fe85b0fd5e"
+      },
+      {
+        "bytes": 20010,
+        "path": "/home/anakhag/projects/generali-pricing/generali-pricing-simulation/src/data/monotone_spline_xgb.py",
+        "sha256": "17bc6d4703e7c3caeac089f7bca0af086fac32583916a585ddd2ad6dff3b0124"
+      },
+      {
+        "bytes": 14383,
+        "path": "/home/anakhag/projects/generali-pricing/generali-pricing-simulation/src/reporting/real_data.py",
+        "sha256": "8064bc2b904d4213431e9f827d50f43718f4ae60ea9cd333085b0e4af28023de"
+      },
+      {
+        "bytes": 10141,
+        "path": "/home/anakhag/projects/generali-pricing/generali-pricing-simulation/src/reporting/profit_dispersion.py",
+        "sha256": "87d594766642cdc3aa75619b204557ee2f07f1f5e40eebf7559647a8b6487d52"
+      }
+    ],
+    "representation": "120 by 120 vector density cells; shared logarithmic count color scale; no dropped or sampled rows",
+    "selection": {
+      "action_bounds": [
+        null,
+        null
+      ],
+      "action_renderer": "density",
+      "central_fraction_per_variable": 1.0,
+      "models": {
+        "glm": {
+          "residual_bounds": [
+            -13104.028007199007,
+            8446.562786473178
+          ],
+          "retained_fraction": 1.0,
+          "retained_rows": 715023
+        },
+        "spline_xgb": {
+          "residual_bounds": [
+            -5073.748337239101,
+            1647.1020409538687
+          ],
+          "retained_fraction": 1.0,
+          "retained_rows": 715023
+        }
+      },
+      "rule": "inclusive marginal quantile bounds computed on the full original cohort; intersection when action trimming is enabled",
+      "trim_actions": false
+    },
+    "validation": {
+      "all_numeric_results_identical": true,
+      "embedded_images": 0,
+      "pages": 1,
+      "rendered_and_visually_checked": true
+    }
+  },
+  "unchanged_active_files": [
+    "residuals.npz",
+    "histogram_counts.csv",
+    "summary.csv",
+    "residual_histograms.pdf"
+  ]
+}

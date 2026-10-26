@@ -355,6 +355,12 @@ with XGBoost loss. $Y_i$ uses the dataset loss target and the established
 historical-profit convention; it is not the unknown conditional mean function.
 These descriptive saved-model residuals contain outcome variation and model
 error, and are not claimed to be out-of-sample. No residual basis is fitted.
+Optional central plot views select the inclusive empirical 2.5th--97.5th
+residual percentiles separately for each model. With action trimming, intersect
+these rows with the same marginal action percentiles from the original cohort;
+the intersection generally retains less than 95%. Report the exact bounds and
+counts. Vector density views count all selected observations without smoothing
+or subsampling. These display selections do not change the saved residuals.
 Source: `scratch/plot_generali_profit_residuals.py`.
 
 For profit matrix $P_{ij}=P_i(u_j)$,

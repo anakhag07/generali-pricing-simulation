@@ -225,7 +225,15 @@ or known conditional-mean error. Missing cache rows fail without raw-XGB fallbac
 
 To regenerate only the PDFs and summaries from checksummed residuals, supply
 `--replay <completed-report>` and a fresh `--output-dir`. Previous report folders
-are never overwritten. All figures retain the full action and residual ranges.
+are never overwritten. By default figures retain the full action and residual
+ranges. If the all-row scatter is too heavy for a PDF viewer, add
+`--action-renderer density` for a compact vector density plot counting every row.
+Use `--central-fraction .95` to retain the central residual percentiles, and
+optionally `--trim-actions` to intersect these with central action percentiles.
+The latter retains slightly less than 95% jointly: `plot_selection.json` records
+the exact counts/bounds and `plot_rows.npz` stores the displayed row IDs. Both
+models share axes, bin grids and density color scaling. Raw residuals and
+`summary.csv` always retain the full original population.
 
 ## Retirement and recovery
 

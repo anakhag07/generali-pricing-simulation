@@ -16,6 +16,7 @@ import sys
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm
 import numpy as np
 import pandas as pd
 
@@ -167,12 +168,32 @@ def _evaluate(cache_path):
     }
 
 
-def _plots_and_summaries(arrays, output):
-    all_residuals = np.concatenate([arrays[f"{m}_residual"] for m in MODELS])
+def _plots_and_summaries(arrays, output, *, central_fraction=1., trim_actions=False, action_renderer="scatter"):
+    tail = (1-central_fraction)/2
+    action_bounds = np.quantile(arrays["a"], [tail, 1-tail]) if trim_actions else [None, None]
+    action_mask = ((arrays["a"] >= action_bounds[0]) & (arrays["a"] <= action_bounds[1])
+                   if trim_actions else np.ones(len(arrays["a"]), dtype=bool))
+    masks, selections = {}, {}
+    for name in MODELS:
+        residual = arrays[f"{name}_residual"]
+        lower, upper = np.quantile(residual, [tail, 1-tail])
+        masks[name] = action_mask & (residual >= lower) & (residual <= upper)
+        if not np.any(masks[name]):
+            raise ValueError("Central selection contains no observations.")
+        selections[name] = {"residual_bounds": [float(lower), float(upper)],
+                            "retained_rows": int(masks[name].sum()),
+                            "retained_fraction": float(masks[name].mean())}
+    selection = {"central_fraction_per_variable": central_fraction,
+                 "trim_actions": trim_actions, "action_bounds": list(action_bounds),
+                 "rule": "inclusive marginal quantile bounds computed on the full original cohort; intersection when action trimming is enabled",
+                 "action_renderer": action_renderer, "models": selections}
+    write_provenance(output / "plot_selection.json", selection)
+    np.savez_compressed(output / "plot_rows.npz", **{m: arrays["row_indices"][mask] for m, mask in masks.items()})
+    all_residuals = np.concatenate([arrays[f"{m}_residual"][masks[m]] for m in MODELS])
     bins = np.histogram_bin_edges(all_residuals, bins=100)
-    counts = {m: np.histogram(arrays[f"{m}_residual"], bins=bins)[0] for m in MODELS}
-    for count in counts.values():
-        if count.sum() != len(arrays["a"]):
+    counts = {m: np.histogram(arrays[f"{m}_residual"][masks[m]], bins=bins)[0] for m in MODELS}
+    for m, count in counts.items():
+        if count.sum() != masks[m].sum():
             raise ValueError("Histogram lost observations.")
     pd.DataFrame({"left": bins[:-1], "right": bins[1:], **counts}).to_csv(output / "histogram_counts.csv", index=False)
     summaries = []
@@ -188,12 +209,36 @@ def _plots_and_summaries(arrays, output):
     with plt.rc_context({"axes.titlesize": 14, "axes.labelsize": 12,
                          "xtick.labelsize": 10, "ytick.labelsize": 10, "legend.fontsize": 10}):
         fig, axes = plt.subplots(1, 2, figsize=(12, 5), sharex=True, sharey=True, constrained_layout=True)
+        densities = []
+        displayed_actions = arrays["a"][np.logical_or.reduce(list(masks.values()))]
+        extent = (float(displayed_actions.min()), float(displayed_actions.max()),
+                  float(all_residuals.min()), float(all_residuals.max()))
         for index, (name, label) in enumerate(MODELS.items()):
             ax = axes[index]
-            ax.scatter(arrays["a"], arrays[f"{name}_residual"], s=1, alpha=.2, linewidths=0, color=f"C{index}")
+            selected = masks[name]
+            if action_renderer == "density":
+                count, xedges, yedges = np.histogram2d(
+                    arrays["a"][selected], arrays[f"{name}_residual"][selected], bins=120,
+                    range=[extent[:2], extent[2:]])
+                density = ax.pcolormesh(xedges, yedges, np.ma.masked_equal(count.T, 0),
+                                       cmap="viridis", norm=LogNorm(), rasterized=False)
+                if int(density.get_array().sum()) != int(selected.sum()):
+                    raise ValueError("Density plot lost observations.")
+                densities.append(density)
+            else:
+                ax.scatter(arrays["a"][selected], arrays[f"{name}_residual"][selected], s=1, alpha=.2, linewidths=0, color=f"C{index}")
             ax.axhline(0, color="black", linewidth=.8)
             ax.set(title=label, xlabel="Historical price change, a (fraction)", ylabel="Observed profit − predicted profit")
             ax.tick_params(labelleft=True)
+        if densities:
+            norm = LogNorm(vmin=1, vmax=max(float(d.get_array().max()) for d in densities))
+            for density in densities:
+                density.set_norm(norm)
+            colorbar = fig.colorbar(densities[0], ax=axes)
+            # Matplotlib otherwise rasterizes a continuous colorbar in PDF.
+            colorbar.solids.set_rasterized(False)
+            colorbar.set_label("Customers per cell", fontsize=12)
+            colorbar.ax.tick_params(labelsize=10)
         fig.savefig(output / "residual_vs_action.pdf", format="pdf")
         plt.close(fig)
         fig, axes = plt.subplots(1, 2, figsize=(12, 5), sharex=True, sharey=True, constrained_layout=True)
@@ -213,7 +258,12 @@ def main(argv=None):
     parser.add_argument("--output-dir", type=Path, required=True, help="Fresh report directory within the comparison family.")
     parser.add_argument("--spline-cache", type=Path, default=DEFAULT_CACHE)
     parser.add_argument("--replay", type=Path, help="Existing report to replot without evaluating any model.")
+    parser.add_argument("--central-fraction", type=float, default=1., help="Displayed central residual fraction per model; full saved data and summaries are retained.")
+    parser.add_argument("--trim-actions", action="store_true", help="Also intersect with the same central historical-action quantiles.")
+    parser.add_argument("--action-renderer", choices=("scatter", "density"), default="scatter", help="Density counts every selected row in compact vector cells with a common log color scale.")
     args = parser.parse_args(argv)
+    if not 0 < args.central_fraction <= 1:
+        raise ValueError("central-fraction must be in (0, 1].")
     output = args.output_dir.resolve()
     if output.exists():
         raise FileExistsError(f"Preserve existing outputs; choose a fresh directory: {output}")
@@ -231,7 +281,8 @@ def main(argv=None):
         arrays, provenance = _evaluate(args.spline_cache)
     output.mkdir(parents=True, exist_ok=False)
     np.savez_compressed(output / "residuals.npz", **arrays)
-    summaries = _plots_and_summaries(arrays, output)
+    summaries = _plots_and_summaries(arrays, output, central_fraction=args.central_fraction,
+                                    trim_actions=args.trim_actions, action_renderer=args.action_renderer)
     source_paths = [Path(__file__), ROOT / "MATH.md", *(ROOT / "src" / p for p in (
         "data/dataset_metadata.py", "data/loader.py", "data/full_monotone_spline_cache.py",
         "data/monotone_spline_xgb.py", "reporting/real_data.py", "reporting/profit_dispersion.py"))]
@@ -243,7 +294,9 @@ def main(argv=None):
         "formula": {"actual": "(1-is_churn)*(X_upcoming_premium-Y_G_Loss)",
                     "predicted": "p_model(X,a)*((1+a)*X_policy_premium-L_model(X))", "residual": "actual-predicted", "a": "U"},
         "interpretation": "descriptive saved-model residuals; not held-out performance or conditional-mean truth",
-        "plotting": {"all_rows": True, "clipping": False, "smoothing": False, "histogram_bins": 100, "format": "vector PDF"},
+        "plotting": {"all_rows": args.central_fraction == 1., "clipping": False,
+                     "central_fraction_per_variable": args.central_fraction, "trim_actions": args.trim_actions,
+                     "action_renderer": args.action_renderer, "smoothing": False, "histogram_bins": 100, "format": "vector PDF"},
         "sources": [file_record(p) for p in source_paths],
         "packages": {name: importlib.metadata.version(name) for name in ("numpy", "pandas", "scipy", "scikit-learn", "xgboost", "matplotlib")},
         "summary": summaries})
@@ -260,8 +313,14 @@ def main(argv=None):
         "Direct spline/profit comparisons use deterministic rows. Cache storage rounding "
         "is checked at acceptance tolerance 2e-6, propagated to profit units by the margin. "
         "Spline behavior is constant below a=0 and clipped tangent above a=0.16.\n\n"
-        "No action or residual is clipped. Plots contain every analyzed row and common axes; "
-        "histograms use 100 shared equal-width bins over the full range. No smoothing, "
+        "The saved residuals and summary.csv retain the entire original cohort. "
+        f"Plots display the central {args.central_fraction:.0%} of residuals per model"
+        + (" intersected with the same central action quantiles. " if args.trim_actions else ". ") +
+        "No values are winsorized. Exact inclusive bounds and retained counts are in "
+        "plot_selection.json; plot_rows.npz saves each model's displayed source row IDs. "
+        f"The action plot uses {args.action_renderer}; density counts all selected observations "
+        "on a common grid with a common logarithmic color scale. Histograms use 100 "
+        "shared equal-width bins over the displayed range. No smoothing, "
         "basis fitting, bootstrap, optimizer, random sampling, or model training is performed. "
         "These are descriptive residuals; predictor holdout membership is not established. "
         "Observed profit follows the dataset loss-target convention, not a known conditional mean.\n\n"

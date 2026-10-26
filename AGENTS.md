@@ -276,6 +276,11 @@ If lower-priority docs are stale, update them in the same task.
   every historical action and residual, and supports checksummed `--replay`
   without model evaluation. Never use the 200-customer spline artifact's raw
   XGBoost fallback for this full-population comparison. See MATH section 6.
+  For compact vector rendering use `--action-renderer density`; central views use
+  `--central-fraction .95` and optionally `--trim-actions`. The latter intersects
+  marginal quantile selections, so report actual retained counts from
+  `plot_selection.json`; `plot_rows.npz` records displayed source IDs. Full
+  residual arrays and numerical summaries remain unchanged in these replays.
 - The active synthetic catalog retains the three paired residual-heteroskedastic
   distribution manifests and six `residual-leverage-fixed-noise-outlier-*.json`
   manifests. Terminal-distribution results, all residual-heteroskedastic report

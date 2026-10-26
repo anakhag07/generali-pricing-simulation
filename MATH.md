@@ -338,6 +338,25 @@ Sources: `src/objective/modifications/`.
 
 ## 6. Real-Data Analysis Quantities
 
+For descriptive residual diagnostics at each historical action $a_i=U_i$, let
+$c_i=\texttt{is\_churn}_i$, $p_i=\texttt{X\_policy\_premium}_i$,
+$v_i=\texttt{X\_upcoming\_premium}_i$, and $\ell_i=\texttt{Y\_G\_Loss}_i$.
+Check $v_i=(1+a_i)p_i$ before computing
+
+$$
+Y_i=(1-c_i)(v_i-\ell_i),\qquad
+\widehat Y_{i,m}=\widehat q_m(X_i,a_i)[(1+a_i)p_i-\widehat L_m(X_i)],
+\qquad r_{i,m}=Y_i-\widehat Y_{i,m}.
+$$
+
+Here $\widehat q_m$ is predicted acceptance. The two comparisons use logistic
+acceptance with Ridge loss (GLM), and exact monotone-spline XGBoost acceptance
+with XGBoost loss. $Y_i$ uses the dataset loss target and the established
+historical-profit convention; it is not the unknown conditional mean function.
+These descriptive saved-model residuals contain outcome variation and model
+error, and are not claimed to be out-of-sample. No residual basis is fitted.
+Source: `scratch/plot_generali_profit_residuals.py`.
+
 For profit matrix $P_{ij}=P_i(u_j)$,
 
 $$

@@ -100,6 +100,8 @@ For the current Generali residual exploration, run
 `python scratch/plot_generali_profit_residuals.py --output-dir <fresh-directory>`.
 It compares observed historical profit with GLM and spline/XGBoost predictions
 on all common eligible rows, saving vector PDFs and replayable residual arrays.
+Add `--explore --replay <saved-report>` for representative-customer prediction
+curves, residual Q-Q plots and action-bin diagnostics.
 See [the diagnostic setup](docs/experiment_workflow.md#generali-residual-diagnostics).
 
 ### Retired experiments

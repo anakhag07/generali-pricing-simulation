@@ -292,6 +292,13 @@ If lower-priority docs are stale, update them in the same task.
   `rendering-trials-20261026/residuals-20261026-original-scatter/` in that archive;
   `scratch/retired_experiments/generali_residual_compact_20261026.json` records
   the authorized PDF replacement and provenance revision. All data rows remain.
+  `--explore --replay <saved-report>` adds `customer-exploration-20261026/` in
+  the same family. It reuses the wild-report `_slice_indices` helper on saved
+  GLM-whitened numeric features for smallest/median/largest norms, then plots
+  both frozen predictors with one observed point per customer. Never draw an
+  observed profit/residual curve across unlogged actions. The Q-Q and action-bin
+  diagnostics describe pooled residuals, with an explicitly labeled action
+  zoom; percentile ribbons are not confidence bands. No basis is fitted.
 - The active synthetic catalog retains the three paired residual-heteroskedastic
   distribution manifests and six `residual-leverage-fixed-noise-outlier-*.json`
   manifests. Terminal-distribution results, all residual-heteroskedastic report

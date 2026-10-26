@@ -255,6 +255,30 @@ other trials. Data, full-population summaries and the histogram are unchanged;
 only the action rendering and its documentation/provenance were revised. See
 `scratch/retired_experiments/generali_residual_compact_20261026.json`.
 
+For the follow-up exploration before selecting a residual basis:
+
+```bash
+python scratch/plot_generali_profit_residuals.py --explore \
+  --replay ../results/glm-spline-profit-dispersion/residuals-20261026 \
+  --output-dir ../results/glm-spline-profit-dispersion/customer-exploration-20261026
+```
+
+The wild-report `_slice_indices` helper selects smallest, median and largest
+Euclidean norms of the saved GLM preprocessor's un-clipped whitened numeric
+features. Categorical label codes, historical actions and outcomes are excluded
+from this distance, but predictors still use their full feature sets. Both
+models are plotted on the same three customers. Only the historical action has
+an observed profit; the curves are predictions, not true counterfactual curves.
+The slide action interval is extended to contain the three historical actions.
+The unchanged spline boundary behavior is explicitly recorded.
+
+The report saves selected source rows/features, numerical curves, Q-Q coordinates,
+residual moments (full, trimmed, renewed and churned), and action-bin counts and
+statistics. Its action plot is an explicit [-0.1, 0.3] zoom with outside counts;
+the 10th--90th percentile ribbon is descriptive spread, not a confidence band.
+No preprocessing, residual basis, band, or optimizer is fitted. Existing report
+versions are unchanged; all outputs remain in the same comparison family.
+
 ## Retirement and recovery
 
 Generic uncertainty-envelope, historical pairs-bootstrap/OLS, offline-bootstrap,

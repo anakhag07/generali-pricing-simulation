@@ -78,8 +78,9 @@ class _Responses:
             acceptance = expit(self.logit[positions] + self.slope*a)
             derivative = self.slope*acceptance*(1-acceptance)
         elif common_action:
-            acceptance = self.cache.acceptance(rows, float(a))
-            derivative = np.zeros_like(acceptance)  # Not used for common-action reporting.
+            # Read only the two required knots per row, not every cached knot.
+            acceptance, derivative = self.cache.pairwise_acceptance_and_derivative(
+                rows, np.full(len(rows), float(a)))
         else:
             acceptance, derivative = self.cache.pairwise_acceptance_and_derivative(rows, a)
         premium = self.arrays["premium"][positions]
@@ -166,7 +167,7 @@ def _mean_curves(response, fibers, grid):
                      "mean_upper": np.mean(center+b["radius_upper"]),
                      "mean_residual_fit": np.mean(b["residual_fit"]), "mean_residual_half_width": np.mean(b["width"]),
                      "mean_acceptance": np.mean(p["acceptance"])})
-        if j % 100 == 0:
+        if j % 25 == 0:
             print(f"{response.name}: averaged exact endpoints at {j+1}/{len(grid)} actions", flush=True)
     return rows
 

@@ -297,6 +297,63 @@ condition on the realized outcome and do not imply expected-profit model bias
 by themselves. Wild mean bands and prediction intervals for individual outcomes
 have different targets; no bootstrap is fitted or coverage asserted here.
 
+To fit the first affine residual basis and construct its wild bands:
+
+```bash
+MPLCONFIGDIR=/tmp/generali-residuals-mpl OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 \
+  python scratch/plot_generali_profit_residuals.py \
+  --fit-wild-linear scratch/generali_residual_wild_linear.json \
+  --replay ../results/glm-spline-profit-dispersion/residuals-20261026 \
+  --output-dir ../results/glm-spline-profit-dispersion/wild-linear-20261026
+```
+
+This explicit fitting mode extends the same comparison family. The generic
+manifest band adapter currently requires polynomial predictors; the companion
+`scratch/generali_residual_wild.py` uses `WildLinearDesign` directly with the
+verified frozen GLM/spline residuals and existing saved customer curves. It does
+not substitute a polynomial for either Generali predictor or change shared
+mathematics. No optimizer is run or action selected.
+
+The JSON setup declares the affine numeric basis (intercept, 11 saved whitened
+numeric features, action), an 80/20 validation split, nominal 95% calibration,
+1,999 bootstrap draws and root seed 20261026. Split and method streams use
+`derive_seed(root, "generali-residual:validation-split")` and
+`derive_seed(root, "generali-residual:wild-multipliers")`; method child
+`draw:<index>` seeds generate one Rademacher row each. Both predictors and future
+bases reuse these draws and the ordered cohort. Changing batching preserves
+draws; the complete sign matrix's SHA-256 is saved without storing a huge matrix.
+
+Validation keeps repeated customer IDs together. The final band refits all
+rows using the existing raw post-fit residual bootstrap with row-wise signs.
+Its statistic covers observed contexts crossed with all real actions; the
+unchanged saved slice grid is for rendering. Exact affine and QR formulas give
+off-grid residual evaluations, and common coefficient draws induce dependence
+across queries. Frozen predictor curves retain their original boundary behavior.
+
+Outputs include train/holdout/full-refit metrics (also by observed churn), beta
+coefficients, leverage diagnostics, full numeric fit state and split indices,
+draw seeds/statistics/critical values, plotted endpoints, and three vector PDFs:
+holdout calibration, residual-mean bands, and transferred profit envelopes.
+The latter also shows the corrected mean prediction, which is distinct from
+the transferred envelope's frozen center. Source/data/model hashes and resolved
+configuration make the run reproducible. Original residual reports remain intact.
+
+Coverage is unknown: this dataset supplies no conditional-mean truth, and the
+linear residual specification, independent-row errors and low-leverage conditions
+are unverified. The row-wise bootstrap does not address within-ID dependence.
+The synthetic Gaussian finite-sample bound is not asserted for this data.
+Held-out correction fit is not held-out evaluation of the original predictors.
+Future basis comparisons should reuse this split and draws and consider both
+approximation error and variance/leverage; better fit need not yield narrower bands.
+
+For figure-only revisions, use `--render-wild <completed-wild-run> --output-dir
+<fresh-directory>`. This checks input hashes and renders the saved endpoint
+arrays without reconstructing a fit, generating bootstrap draws, or evaluating
+models. The baseline's final band PDFs are in `wild-linear-20261026/plots/`:
+outside legends keep observed markers visible. Its original root PDFs and all
+numeric artifacts retain their original provenance; the rendering revision has
+its own source/input/output hashes.
+
 ## Retirement and recovery
 
 Generic uncertainty-envelope, historical pairs-bootstrap/OLS, offline-bootstrap,

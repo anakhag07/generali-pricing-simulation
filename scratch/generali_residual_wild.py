@@ -124,12 +124,14 @@ def _plot_bands(output, arrays, examples, design, fits, delta):
     _render_band_curves(output, arrays, examples, stored, delta)
 
 
-def _render_band_curves(output, arrays, examples, stored, delta):
+def _render_band_curves(output, arrays, examples, stored, delta, *, labels=None,
+                        quantities=("residual", "profit")):
     grid = examples["action_grid"]
     positions = examples["selection_positions"]
-    labels = ["Smallest norm", "Median norm", "Largest norm"]
+    if labels is None:
+        labels = ["Smallest norm", "Median norm", "Largest norm"]
     with plt.rc_context(_STYLE):
-        for quantity in ("residual", "profit"):
+        for quantity in quantities:
             fig, axes = plt.subplots(2, 3, figsize=(15, 9), sharex=True, constrained_layout=True)
             noun = "Residual-mean bands" if quantity == "residual" else "Transferred expected-profit envelopes"
             fig.suptitle(f"{noun} · nominal {1-delta:.0%} wild bootstrap", fontsize=16)

@@ -107,6 +107,8 @@ The same driver accepts `--fit-wild-linear scratch/generali_residual_wild_linear
 with `--replay <saved-report>` for affine residual-fit validation and paired wild bands.
 Use `--optimize-wild scratch/generali_wild_policy.json` to replay that fit into
 context-averaged plots and personalized lower-band policy optimization.
+Use `--explore-wild scratch/generali_wild_slices.json` for saved-band norm slices,
+historical-action cohorts and empirical feature-support diagnostics without refitting.
 See [the diagnostic setup](docs/experiment_workflow.md#generali-residual-diagnostics).
 
 ### Retired experiments

@@ -121,11 +121,19 @@ def _plot_bands(output, arrays, examples, design, fits, delta):
                         row_indices=examples["row_indices"], **stored)
     pd.DataFrame(coordinates).to_csv(output / "band_curves.csv", index=False)
     pd.DataFrame(summaries).to_csv(output / "band_slice_summary.csv", index=False)
+    _render_band_curves(output, arrays, examples, stored, delta)
+
+
+def _render_band_curves(output, arrays, examples, stored, delta):
+    grid = examples["action_grid"]
+    positions = examples["selection_positions"]
+    labels = ["Smallest norm", "Median norm", "Largest norm"]
     with plt.rc_context(_STYLE):
         for quantity in ("residual", "profit"):
             fig, axes = plt.subplots(2, 3, figsize=(15, 9), sharex=True, constrained_layout=True)
             noun = "Residual-mean bands" if quantity == "residual" else "Transferred expected-profit envelopes"
             fig.suptitle(f"{noun} · nominal {1-delta:.0%} wild bootstrap", fontsize=16)
+            legend_handles, legend_labels = [], []
             for row, (name, model_label) in enumerate(MODELS.items()):
                 for col, (position, label) in enumerate(zip(positions, labels)):
                     ax = axes[row, col]
@@ -149,9 +157,55 @@ def _plot_bands(output, arrays, examples, design, fits, delta):
                     ax.set(title=f"{model_label} · {label}\nSource row {arrays['row_indices'][position]}",
                            xlabel="Price change, a", ylabel=ylabel)
                     ax.tick_params(labelbottom=True)
-                    ax.legend()
+                    if col == 0:
+                        handles, entries = ax.get_legend_handles_labels()
+                        legend_handles.extend(handles[:2])
+                        legend_labels.extend(f"{model_label}: {entry}" for entry in entries[:2])
+                        if row == 1:
+                            legend_handles.extend(handles[2:])
+                            legend_labels.extend(entries[2:])
+            # Automatic outside layout keeps the single observed points visible.
+            fig.legend(legend_handles, legend_labels, loc="outside lower center", ncol=3)
             fig.savefig(output / f"wild_{quantity}_bands.pdf", format="pdf")
             plt.close(fig)
+
+
+def render_saved_wild(source, output):
+    """Replay exact saved band coordinates without fitting or generating draws."""
+    provenance = json.loads((source / "provenance.json").read_text())
+    inputs = []
+
+    def checked(path, expected):
+        record = file_record(path)
+        if record["sha256"] != expected["sha256"]:
+            raise ValueError(f"Saved wild-report input changed: {path}")
+        inputs.append(record)
+        return path
+
+    def local(name):
+        record = next(r for r in provenance["outputs"] if Path(r["path"]).name == name)
+        return checked(source / name, record)
+
+    with np.load(local("band_curves.npz"), allow_pickle=False) as data:
+        stored = dict(data)
+    config = json.loads(local("resolved_config.json").read_text())
+    record = provenance["input_residuals"]
+    with np.load(checked(Path(record["path"]), record), allow_pickle=False) as data:
+        arrays = dict(data)
+    record = provenance["customer_curves"]
+    with np.load(checked(Path(record["path"]), record), allow_pickle=False) as data:
+        examples = dict(data)
+    np.testing.assert_array_equal(stored["action_grid"], examples["action_grid"])
+    np.testing.assert_array_equal(stored["row_indices"], examples["row_indices"])
+    output.mkdir(parents=True, exist_ok=False)
+    _render_band_curves(output, arrays, examples, stored, config["bootstrap"]["delta"])
+    write_provenance(output / "provenance.json", {
+        "revision": "automatic-outside-legends", "source_run": file_record(source / "provenance.json"),
+        "inputs": inputs, "sources": [file_record(Path(__file__)),
+                                         file_record(ROOT / "src/experiments/envelopes/plotting.py")],
+        "operation": "render exact saved coordinates; no fits, bootstrap draws or changed endpoints",
+        "outputs": [file_record(path) for path in sorted(output.iterdir())]})
+    print(f"Saved-coordinate wild figures replayed to {output}", flush=True)
 
 
 def _plot_holdout(output, residuals, predictions):

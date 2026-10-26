@@ -318,6 +318,15 @@ If lower-priority docs are stale, update them in the same task.
   saved endpoints. The baseline's final band PDFs are in `wild-linear-20261026/plots/`,
   with automatic outside legends so observed points remain visible; its original
   render and all fitted/bootstrap state are preserved unchanged.
+  `--optimize-wild scratch/generali_wild_policy.json` replays that fit into
+  `wild-linear-policy-20261026/`. The companion `scratch/generali_wild_policy.py`
+  averages actual endpoints across all contexts for plots, but optimizes their
+  personalized evaluations through `BandObjective` and the repository first-order
+  trust-constr solver. Reuse the presentation's saved 20k cohort, policy-side
+  preprocessing, [-.1,.2] bounds and acceptance floor. The exact QR action-fiber
+  cache is checked against saved-band replay; neither band nor predictor is
+  grid-interpolated for optimization. Record model-based profit separately from
+  the lower bound, sample/full-cohort constraints, and local optimizer status.
 - The active synthetic catalog retains the three paired residual-heteroskedastic
   distribution manifests and six `residual-leverage-fixed-noise-outlier-*.json`
   manifests. Terminal-distribution results, all residual-heteroskedastic report

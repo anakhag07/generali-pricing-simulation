@@ -12,7 +12,7 @@ def _fixture():
     a = np.array([-.08, .01, .04, .09, .12, .17])
     design = WildLinearDesign(z, a)
     beta = np.array([-.2, 1.2, -.4, -.8])
-    fibers = _FrozenFibers(z, design._triangular, beta, .3)
+    fibers = _FrozenFibers(z, design._triangular, beta, .003)
     arrays = {"row_indices": np.arange(len(z)), "premium": np.linspace(100., 160., len(z)),
               "glm_loss": np.linspace(40., 80., len(z))}
     response = _Responses("glm", arrays, glm_logit=np.linspace(1., 2., len(z)), glm_slope=-3.)
@@ -23,7 +23,7 @@ def test_cached_fibers_match_native_band_values_and_action_derivatives():
     z, design, beta, fibers, _ = _fixture()
     a = np.linspace(-.071, .183, len(z))
     actual = fibers.evaluate(slice(None), a)
-    expected = design.residual_components(z, a, beta, .3)
+    expected = design.residual_components(z, a, beta, .003)
     for key in expected:
         np.testing.assert_allclose(actual[key], expected[key], atol=1e-13)
     h = 1e-6

@@ -60,7 +60,7 @@ class _FrozenFibers:
         lower, upper = residual_radii(fitted, width)
         dwidth = self.critical*(self.q1[positions]+a*self.q2)/root
         return {"residual_fit": fitted, "width": width, "radius_lower": lower, "radius_upper": upper,
-                "lower_adjustment_derivative": -(lower > 0)*(dwidth-self.slope),
+                "lower_adjustment_derivative": -((lower > 0)*(dwidth-self.slope)),
                 "upper_adjustment_derivative": (upper > 0)*(dwidth+self.slope)}
 
 

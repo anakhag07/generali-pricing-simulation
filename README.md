@@ -103,6 +103,8 @@ on all common eligible rows, saving vector PDFs and replayable residual arrays.
 Add `--explore --replay <saved-report>` for representative-customer prediction
 curves, residual Q-Q plots and action-bin diagnostics.
 Use `--split-churn --replay <saved-report>` for renewed/churned residual histograms.
+The same driver accepts `--fit-wild-linear scratch/generali_residual_wild_linear.json`
+with `--replay <saved-report>` for affine residual-fit validation and paired wild bands.
 See [the diagnostic setup](docs/experiment_workflow.md#generali-residual-diagnostics).
 
 ### Retired experiments

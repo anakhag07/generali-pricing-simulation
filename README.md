@@ -110,7 +110,7 @@ context-averaged plots and personalized lower-band policy optimization.
 Use `--explore-wild scratch/generali_wild_slices.json` for saved-band norm slices,
 historical-action cohorts and empirical feature-support diagnostics without refitting.
 Add `--wild-action-bounds -1 2` to extend all those band plots. Current figures
-live in `results/glm-spline-profit-dispersion/wild-band-exploration/` under the
+live in `glm-spline-profit-dispersion/wild-band-exploration/` under the
 shared results root; superseded renders and retries are archived.
 See [the diagnostic setup](docs/experiment_workflow.md#generali-residual-diagnostics).
 

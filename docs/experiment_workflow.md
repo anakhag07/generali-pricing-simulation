@@ -475,6 +475,11 @@ The completed policy result was renamed from its retry-labelled directory to
 historical paths using
 `scratch/retired_experiments/generali_wild_outputs_20261026.json`. Required
 residual/customer inputs and the full fitted/bootstrap state remain available.
+The expanded run passes the ten focused checks and the small optimizer demo.
+Both models' saved endpoints at -1 and +2 agree with the native band evaluator;
+cohort IDs and common-action/historical-action diagnostics are byte-identical
+to the narrow study. Current PDFs were opened and visually inspected, and all
+archived/renamed files were verified against the relocation checksums.
 
 Baseline findings: source row 715959 has the largest norm (3088.50) and recorded
 `X_claim_tot_value` 1,001,562.35 (population 99th percentile 2,100). At a=.1 its

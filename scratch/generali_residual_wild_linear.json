@@ -1,0 +1,15 @@
+{
+  "family": "glm-spline-profit-dispersion",
+  "basis": "affine_whitened_numeric",
+  "customer_report": "../../results/glm-spline-profit-dispersion/customer-exploration-20261026",
+  "holdout_fraction": 0.2,
+  "seed_root": 20261026,
+  "bootstrap": {
+    "count": 1999,
+    "delta": 0.05,
+    "batch_size": 16,
+    "multipliers": "rademacher",
+    "residuals": "raw",
+    "quantile": "order_statistic"
+  }
+}

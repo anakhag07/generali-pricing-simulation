@@ -389,6 +389,36 @@ expected-profit model. These diagnostic groups do not supply a pre-decision
 feature for $\phi$, and mean-response wild bands do not establish coverage of
 individual realized outcomes in both groups.
 
+The first Generali wild baseline fits a separate affine residual correction for
+each frozen predictor, using $\phi(z,a)=(1,z^{\mathsf T},a)^{\mathsf T}$ with the
+same 11 saved whitened numeric coordinates (13 coefficients). An 80/20 split of
+unique customer IDs assesses this correction; repeated IDs stay together.
+Full-data refits use every eligible row. This is not a holdout claim for the
+original frozen predictor or its saved preprocessing. Residual $R^2$ compares
+post-fit squared error with squared deviations from the evaluated subset's
+residual mean; RMSE/MAE also compare against the original zero correction.
+
+For the full design $\Phi=QR$, the existing `WildLinearDesign` fits
+$\widetilde g=\phi^{\mathsf T}\widehat\beta$ to $Y-\widehat f$ and bootstraps
+the raw post-fit errors with paired Rademacher signs. Its established statistic
+takes the standardized error supremum over observed contexts and all real
+actions, analytically including action-tail limits. With its empirical
+$(1-\delta)$ order statistic $c$, the residual half-width is
+$w(z,a)=c\|R^{-\mathsf T}\phi(z,a)\|_2$ and the residual band is
+$[\widetilde g-w,\widetilde g+w]$. The transferred profit envelope is
+$[\widehat f-[w-\widetilde g]_+,\widehat f+[w+\widetilde g]_+]$.
+This uses the unchanged constructions in §7.9, with no model-based truth curve.
+
+Nominal 95% calibration on these data is exploratory: adequacy of the affine
+conditional-mean model, error independence and wild-bootstrap regularity are
+unverified. Report leverage and holdout error, and retain unknown coverage.
+The inherited row-wise multipliers do not address possible dependence within
+repeated customer IDs. Residual-mean uncertainty is distinct from predictive
+coverage of individual renewal/churn outcomes. Larger bases may improve fit
+while increasing variance and leverage; better fit does not imply a narrower
+or better-calibrated band. Source: `scratch/generali_residual_wild.py`, invoked
+through the existing residual comparison driver.
+
 For profit matrix $P_{ij}=P_i(u_j)$,
 
 $$

@@ -269,6 +269,13 @@ If lower-priority docs are stale, update them in the same task.
 
 ## Code Organization
 
+- `scratch/plot_generali_profit_residuals.py` evaluates descriptive historical
+  profit residuals for GLM and exact spline/XGBoost on all common eligible rows.
+  Its fresh run revisions live under shared `results/glm-spline-profit-dispersion/`.
+  It verifies the full spline cache hashes/IDs and direct-model parity, retains
+  every historical action and residual, and supports checksummed `--replay`
+  without model evaluation. Never use the 200-customer spline artifact's raw
+  XGBoost fallback for this full-population comparison. See MATH section 6.
 - The active synthetic catalog retains the three paired residual-heteroskedastic
   distribution manifests and six `residual-leverage-fixed-noise-outlier-*.json`
   manifests. Terminal-distribution results, all residual-heteroskedastic report

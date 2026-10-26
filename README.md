@@ -94,6 +94,14 @@ repository Stein action per observed context. Outputs are in the sibling
 horizontal axis with separate vertical scales. The current thesis note is
 `chapters/10-21-update.tex`. Both output destinations accept the same CLI overrides.
 
+### Generali residual diagnostics
+
+For the current Generali residual exploration, run
+`python scratch/plot_generali_profit_residuals.py --output-dir <fresh-directory>`.
+It compares observed historical profit with GLM and spline/XGBoost predictions
+on all common eligible rows, saving vector PDFs and replayable residual arrays.
+See [the diagnostic setup](docs/experiment_workflow.md#generali-residual-diagnostics).
+
 ### Retired experiments
 
 Concluded zeroth-order proof, policy/GP LCB, OLS/pairs-bootstrap, support-kernel,

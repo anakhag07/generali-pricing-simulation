@@ -195,6 +195,38 @@ public `seed_reporter_stack_factory` shared with ordinary sweeps. Band and
 predictor configurations share `configs.real_data_factory.make_policy`; JSON
 conversion and cached source digests live in `experiments.provenance`.
 
+## Generali residual diagnostics
+
+This descriptive report precedes choosing a residual basis or calibrating a
+band. It extends the GLM/spline comparison family without running an optimizer
+or a band task. The existing manifest report recipe evaluates action-grid profit
+dispersion, not observed residuals; this narrow diagnostic uses the shared data,
+model, cache and provenance helpers through a scratch entry point:
+
+```bash
+conda activate simulation_env
+python scratch/plot_generali_profit_residuals.py \
+  --output-dir ../results/glm-spline-profit-dispersion/residuals-20261026
+```
+
+All common eligible source rows are evaluated at historical `a = U`; no new seed
+is needed. Actual profit is `(1-is_churn)*(X_upcoming_premium-Y_G_Loss)` and
+predicted profit is `acceptance(X,a)*((1+a)*X_policy_premium-predicted_loss(X))`.
+The report checks the premium identity and writes exclusion counts, row-level
+inputs/predictions/residuals, model/source hashes, summary statistics, and two
+vector PDFs with common axes and no clipping or smoothing. See MATH section 6.
+
+GLM uses the canonical logistic/Ridge pair. Spline/XGBoost replays the full
+715,023-customer cache with its original constant-left/clipped-tangent-right
+boundary behavior. `--spline-cache` overrides its location; source hashes,
+all payload checksums, customer IDs, anchor weights, and direct spline parity
+must match. This is descriptive saved-model analysis, not held-out performance
+or known conditional-mean error. Missing cache rows fail without raw-XGB fallback.
+
+To regenerate only the PDFs and summaries from checksummed residuals, supply
+`--replay <completed-report>` and a fresh `--output-dir`. Previous report folders
+are never overwritten. All figures retain the full action and residual ranges.
+
 ## Retirement and recovery
 
 Generic uncertainty-envelope, historical pairs-bootstrap/OLS, offline-bootstrap,

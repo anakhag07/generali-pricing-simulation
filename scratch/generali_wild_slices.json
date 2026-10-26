@@ -1,7 +1,7 @@
 {
   "family": "glm-spline-profit-dispersion",
   "fit_run": "../../results/glm-spline-profit-dispersion/wild-linear-20261026",
-  "policy_run": "../../results/glm-spline-profit-dispersion/wild-linear-policy-20261026-r3",
+  "policy_run": "../../results/glm-spline-profit-dispersion/wild-policy",
   "spline_cache": "../../results/cache/monotone-spline-xgb-full-v1/sweeps/full-715023-v1-20260812",
   "action_groups": {"centers": [0.0, 0.1], "half_width": 0.005, "high_quantile": 0.95},
   "action_bounds": [-0.1, 0.45],

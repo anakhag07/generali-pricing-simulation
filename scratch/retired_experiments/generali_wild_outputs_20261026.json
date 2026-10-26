@@ -1,0 +1,268 @@
+{
+  "authorization": "User requested cleaning redundant/interrupted folders and clean titles as a general rule.",
+  "created_at": "2026-10-26T21:11:47.479372+00:00",
+  "family": "glm-spline-profit-dispersion",
+  "provenance_policy": "Original contents and absolute paths in historical provenance are preserved; resolve moved paths using this mapping.",
+  "relocations": [
+    {
+      "from": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/wild-linear-policy-20261026",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/superseded-wild-runs-20261026/interrupted-policy-attempt-1",
+      "reason": "interrupted before final reports",
+      "files": [
+        {
+          "relative_path": "glm_nominal_policy.npz",
+          "sha256": "baa6db2d47a4dac6d5e02f88334bb7dd9665cdc2cc08832cfe6c020330fb66b0",
+          "bytes": 6565150
+        },
+        {
+          "relative_path": "glm_wild_lower_policy.npz",
+          "sha256": "252926196399552c1db52ced928d70392336c7ebee186b1f3b7f22ea116508c7",
+          "bytes": 6561202
+        },
+        {
+          "relative_path": "interrupted.json",
+          "sha256": "e94e9d5dbb2c9c048dc32431c994d182199b15badafc2f0855c14b60c72779c8",
+          "bytes": 1339
+        }
+      ]
+    },
+    {
+      "from": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/wild-linear-policy-20261026-r2",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/superseded-wild-runs-20261026/interrupted-policy-attempt-2",
+      "reason": "interrupted before final reports",
+      "files": [
+        {
+          "relative_path": "glm_nominal_policy.npz",
+          "sha256": "baa6db2d47a4dac6d5e02f88334bb7dd9665cdc2cc08832cfe6c020330fb66b0",
+          "bytes": 6565150
+        },
+        {
+          "relative_path": "glm_wild_lower_policy.npz",
+          "sha256": "252926196399552c1db52ced928d70392336c7ebee186b1f3b7f22ea116508c7",
+          "bytes": 6561202
+        },
+        {
+          "relative_path": "interrupted.json",
+          "sha256": "3c90a66cddd735607d04efd8132517cce77b136d878e0b3f220bd21924e977e6",
+          "bytes": 1385
+        }
+      ]
+    },
+    {
+      "from": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/wild-linear-slices-20261026",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/superseded-wild-runs-20261026/narrow-band-exploration",
+      "reason": "superseded by requested expanded price axis",
+      "files": [
+        {
+          "relative_path": "EXPERIMENT.md",
+          "sha256": "d632a28f6bb76c5baa1e5ad059b4f089a19a0563fff1e1b19c978e00d92e8bef",
+          "bytes": 2908
+        },
+        {
+          "relative_path": "cohort_rows.npz",
+          "sha256": "5f1b398efb48be7bb0e4523ded0e3d1562646174f2e2509e06df535a21a72de5",
+          "bytes": 291975
+        },
+        {
+          "relative_path": "historical_action_mean_bands.pdf",
+          "sha256": "e2a739b37231f0b289f7f3d01683212eaf8ad4129faac12dec29e51eb5d36733",
+          "bytes": 62745
+        },
+        {
+          "relative_path": "historical_action_mean_curves.csv",
+          "sha256": "3fc9dc108a49a6f700468f8930d687db7dfe908f1f6ef63fbb75d42effb85283",
+          "bytes": 413035
+        },
+        {
+          "relative_path": "historical_action_slice_curves.npz",
+          "sha256": "697f1caa1f5b8a684b74cc88db99a35e5b423a30359c8b76a98f54ad0436da1c",
+          "bytes": 124341
+        },
+        {
+          "relative_path": "historical_action_slices/wild_profit_bands.pdf",
+          "sha256": "acbe38c4a224222fefba970501d14af48ca86fcabb8324cb18aaa78f00a6b85a",
+          "bytes": 63761
+        },
+        {
+          "relative_path": "historical_action_summary.csv",
+          "sha256": "cf6c69f4faaf656fc27e37c4077f7fbfeaa269e640be32d84f4e6672caee23bb",
+          "bytes": 1731
+        },
+        {
+          "relative_path": "historical_action_widths_and_penalties.pdf",
+          "sha256": "600ac22cd28b534ef0f9bf420a51cefaf7c57030069daab0cdf9e2742f5792a6",
+          "bytes": 25739
+        },
+        {
+          "relative_path": "norm_slices/wild_profit_bands.pdf",
+          "sha256": "b379763e25e302b729ed192f4814534edc78e6c1af848e23b3709da29c971f4f",
+          "bytes": 71802
+        },
+        {
+          "relative_path": "plots/historical_action_mean_bands.pdf",
+          "sha256": "29a83687a5ed2e0de7a0cd906fb60d7642ec804b8ecfb71fc1d7835de71ff807",
+          "bytes": 62745
+        },
+        {
+          "relative_path": "plots/historical_action_widths_and_penalties.pdf",
+          "sha256": "9604d19bcd1c27e1d8daf4db1eb9e4ddb817d18b48975bac848d958c2c8f2faa",
+          "bytes": 25274
+        },
+        {
+          "relative_path": "plots/provenance.json",
+          "sha256": "3c91d483666eac2ea7e7d0dcf2d7acbe32c5a6f769c00e555a6bcbbedcf40a2c",
+          "bytes": 2249
+        },
+        {
+          "relative_path": "provenance.json",
+          "sha256": "e9fb086ea15c675cbf0de143c47294814d7049ef602fe9473e9a2d770cbd88d1",
+          "bytes": 10411
+        },
+        {
+          "relative_path": "selected_customer_band_values.csv",
+          "sha256": "eeb4c7ef5137f694072d71aeba682b690c1e7b69b4f065c0e648451fad318d5c",
+          "bytes": 5518
+        },
+        {
+          "relative_path": "selected_customer_features.csv",
+          "sha256": "937e7744bb8047d1f3e3ab9b5092bdb551c245e20b8fab4f745f7f2090d0392b",
+          "bytes": 5954
+        },
+        {
+          "relative_path": "selected_customer_support.csv",
+          "sha256": "5bea29164c62efedc4acd48a3292e2034864b7aec5e4e3290dbd9495c19afbee",
+          "bytes": 1006
+        },
+        {
+          "relative_path": "selected_customers.csv",
+          "sha256": "e03fd862cdcd424625cfcb5a6b17603e4e3a8a4ba5958fd37a5c378016ff2051",
+          "bytes": 976
+        },
+        {
+          "relative_path": "summary.json",
+          "sha256": "d7b27e6bf6b84cea91a8ef90eacce0e2998e6008518280de4d12bb0ba315c60c",
+          "bytes": 22029
+        }
+      ]
+    },
+    {
+      "from": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/wild-linear-20261026/wild_profit_bands.pdf",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/superseded-wild-runs-20261026/calibration-rendering/wild_profit_bands.pdf",
+      "reason": "superseded individual-band rendering",
+      "files": [
+        {
+          "relative_path": ".",
+          "sha256": "f2ab4981cf2e6faa01c32361aa5b9afd39874c45b30985b978fb9f61f5f92aeb",
+          "bytes": 72981
+        }
+      ]
+    },
+    {
+      "from": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/wild-linear-20261026/wild_residual_bands.pdf",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/superseded-wild-runs-20261026/calibration-rendering/wild_residual_bands.pdf",
+      "reason": "superseded individual-band rendering",
+      "files": [
+        {
+          "relative_path": ".",
+          "sha256": "9f1ba3baf839b8b73eb58888e3f59bf1066c11163b1b8f61a6760d859c825e5d",
+          "bytes": 72271
+        }
+      ]
+    },
+    {
+      "from": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/wild-linear-20261026/plots",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/superseded-wild-runs-20261026/calibration-rendering/plots",
+      "reason": "superseded narrow-range individual-band render",
+      "files": [
+        {
+          "relative_path": "provenance.json",
+          "sha256": "4499d5ac1fc016c93adf5eb218ebd22695d4bd29199edad44ec5666b789ad16e",
+          "bytes": 2465
+        },
+        {
+          "relative_path": "wild_profit_bands.pdf",
+          "sha256": "773351d77b7b638c3f718333dbde34696d020fb34f073e15c8a39c5debd4897b",
+          "bytes": 71802
+        },
+        {
+          "relative_path": "wild_residual_bands.pdf",
+          "sha256": "9ac228e1eb53546ff7cfd89a4f6dcaa2ff237f30c3ead7e3777b43923d9e7aa1",
+          "bytes": 71573
+        }
+      ]
+    },
+    {
+      "from": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/wild-linear-policy-20261026-r3",
+      "to": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/wild-policy",
+      "reason": "retain completed policy analysis with a clean canonical name",
+      "files": [
+        {
+          "relative_path": "EXPERIMENT.md",
+          "sha256": "0c8e974dda60dfb36e1aa42bd20e3c8c81df5214c8f79bf016a6e5716bde684e",
+          "bytes": 3291
+        },
+        {
+          "relative_path": "context_averaged_band.csv",
+          "sha256": "7fc78cafdca08d58fd46eb7924678542a336770c82c20eece23c7f3ad3ffb870",
+          "bytes": 94627
+        },
+        {
+          "relative_path": "context_averaged_wild_bands.pdf",
+          "sha256": "8ecc44acb2adc5cf126e26e78c0b1b9f5bc3626af1bac266211552d20a105e14",
+          "bytes": 32336
+        },
+        {
+          "relative_path": "glm_nominal_policy.npz",
+          "sha256": "baa6db2d47a4dac6d5e02f88334bb7dd9665cdc2cc08832cfe6c020330fb66b0",
+          "bytes": 6565150
+        },
+        {
+          "relative_path": "glm_wild_lower_policy.npz",
+          "sha256": "252926196399552c1db52ced928d70392336c7ebee186b1f3b7f22ea116508c7",
+          "bytes": 6561202
+        },
+        {
+          "relative_path": "mean_bands_and_policy_actions.pdf",
+          "sha256": "43b7d835a389478003b7d939e8ad1ecbf2ae7f74a4721b1f5bab13b1c3cddf4b",
+          "bytes": 35070
+        },
+        {
+          "relative_path": "policy_action_histograms.csv",
+          "sha256": "9ceaf08ba827a8b372f55dcd12fc383dea8b7122fa543ec103b13948546e5d03",
+          "bytes": 16552
+        },
+        {
+          "relative_path": "policy_actions.pdf",
+          "sha256": "709114315dc0a2e268717caa90e2a3953c123c7dfd6cb712fc86fa44f69d740a",
+          "bytes": 18893
+        },
+        {
+          "relative_path": "policy_metrics.csv",
+          "sha256": "1286e0f0396366a4300ad7c5b67b0134c42ea8c6aa1e5169053299e4d3d38281",
+          "bytes": 3242
+        },
+        {
+          "relative_path": "provenance.json",
+          "sha256": "1e3959c3d95a06047ccfe815c85061fc7060d27f9ff504b4dc3a9ccf7410214c",
+          "bytes": 9238
+        },
+        {
+          "relative_path": "spline_xgb_nominal_policy.npz",
+          "sha256": "a0d79239f6d95fcdc35a4f4e9ef9eb80436382d50a7ef0c860a9ee91852fd706",
+          "bytes": 6440640
+        },
+        {
+          "relative_path": "spline_xgb_wild_lower_policy.npz",
+          "sha256": "42c1568afb2152058848c1964632a5e2e7a5fc31422b11fc285596091abf6d20",
+          "bytes": 6399818
+        },
+        {
+          "relative_path": "summary.json",
+          "sha256": "9e4f1b1814eea5df8c9274faa88f2de3e99ba8558e5778d1031e2fe1585ea16b",
+          "bytes": 14054
+        }
+      ]
+    }
+  ],
+  "status": "complete"
+}

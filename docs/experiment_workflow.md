@@ -361,7 +361,7 @@ MPLCONFIGDIR=/tmp/generali-residuals-mpl OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=
   python scratch/plot_generali_profit_residuals.py \
   --optimize-wild scratch/generali_wild_policy.json \
   --replay ../results/glm-spline-profit-dispersion/residuals-20261026 \
-  --output-dir ../results/glm-spline-profit-dispersion/wild-linear-policy-20261026-r2
+  --output-dir ../results/glm-spline-profit-dispersion/wild-linear-policy-20261026-r3
 ```
 
 The saved beta, QR factor and critical value are replayed without fitting or
@@ -397,7 +397,12 @@ Common-action spline plots use the same pairwise evaluator with a repeated
 action, so each query reads only the required two knots per customer. The
 original `wild-linear-policy-20261026` attempt was interrupted during the
 full-knot display evaluation; its two completed GLM policy artifacts and
-`interrupted.json` are retained. The `-r2` run records complete optimizer outcomes.
+`interrupted.json` are retained. The `-r2` attempt was interrupted during spline
+optimization because repeated file opens dominated evaluation time; its GLM
+artifacts and interruption record are also retained. The `-r3` run retains the
+fixed 20k cohort's exact spline knots in memory and evaluates them through the
+same shared Hermite primitive, checking values and derivatives against the
+file-backed evaluator on all 20k rows. It records complete optimizer outcomes.
 The action grid only renders curves. Native positive-part derivative conventions
 are preserved; optimizer convergence is local and global optimality is unknown.
 

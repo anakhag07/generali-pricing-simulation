@@ -17,7 +17,7 @@ from scipy.linalg import solve_triangular
 from scipy.special import expit
 
 from data.dataset_metadata import DATASET_PATH
-from data.full_monotone_spline_cache import ShardedMonotoneSplineCache
+from data.full_monotone_spline_cache import ShardedMonotoneSplineCache, _evaluate_mmap_pairwise
 from data.loader import load_x_frame
 from experiments.envelopes.core import FittedEnvelope
 from experiments.envelopes.fitting import band_from_state
@@ -70,6 +70,39 @@ class _Responses:
     def __init__(self, name, arrays, *, cache=None, glm_logit=None, glm_slope=None):
         self.name, self.arrays, self.cache = name, arrays, cache
         self.logit, self.slope = glm_logit, glm_slope
+        self.prepared_positions, self.prepared_shards = None, []
+
+    def prepare_policy_queries(self, positions):
+        """Retain the fixed optimization cohort's exact knots for repeated queries."""
+        if self.name == "glm":
+            return
+        self.prepared_positions = np.asarray(positions).copy()
+        self.prepared_shards = []
+        rows = self.arrays["row_indices"][positions]
+        located = self.cache._locate(rows)
+        for shard_index in np.unique(located.shard_indices):
+            selected = np.flatnonzero(located.shard_indices == shard_index)
+            shard = self.cache.shards[int(shard_index)]
+            root = self.cache.cache_dir / str(shard["path"])
+            local = located.positions[selected] - int(shard["start_position"])
+            grid = np.load(root / "action_grid.npy", allow_pickle=False)
+            values, slopes, derivatives = [np.array(np.load(root / filename,
+                allow_pickle=False, mmap_mode="r")[local], dtype=float)
+                for filename in ["churn_values.npy", "upper_slopes.npy", "churn_derivatives.npy"]]
+            self.prepared_shards.append((selected, grid, values, derivatives, slopes, np.arange(len(local))))
+        # Values and derivatives must agree across knots and off-grid actions.
+        probe = np.linspace(-.1, .2, len(rows))
+        reference = self.cache.pairwise_acceptance_and_derivative(rows, probe)
+        actual = self._prepared_acceptance(probe)
+        for expected, evaluated in zip(reference, actual):
+            np.testing.assert_allclose(evaluated, expected, rtol=0, atol=2e-14)
+
+    def _prepared_acceptance(self, actions):
+        acceptance, derivative = np.empty_like(actions), np.empty_like(actions)
+        for selected, grid, values, derivatives, slopes, local in self.prepared_shards:
+            churn, dchurn = _evaluate_mmap_pairwise(grid, values, derivatives, slopes, local, actions[selected])
+            acceptance[selected], derivative[selected] = 1-churn, -dchurn
+        return acceptance, derivative
 
     def evaluate(self, positions, actions, *, common_action=False):
         a = np.asarray(actions, dtype=float)
@@ -81,6 +114,8 @@ class _Responses:
             # Read only the two required knots per row, not every cached knot.
             acceptance, derivative = self.cache.pairwise_acceptance_and_derivative(
                 rows, np.full(len(rows), float(a)))
+        elif self.prepared_positions is not None and np.array_equal(positions, self.prepared_positions):
+            acceptance, derivative = self._prepared_acceptance(a)
         else:
             acceptance, derivative = self.cache.pairwise_acceptance_and_derivative(rows, a)
         premium = self.arrays["premium"][positions]
@@ -91,6 +126,13 @@ class _Responses:
 
 class _AcceptanceBandObjective(BandObjective):
     """Use the existing policy/band objective with exact acceptance callbacks."""
+
+    def _inputs(self, x_batch):
+        # The original fixed batch belongs to its own declared context domain.
+        # The envelope additionally checks exact ordered batch equality.
+        if x_batch is self.band.state["X"]:
+            return x_batch
+        return super()._inputs(x_batch)
 
     def mean_acceptance(self, theta, x_batch):
         return self._acceptance(theta, x_batch)
@@ -306,6 +348,9 @@ def run_wild_policy(arrays, output, source, config_path):
         shared_rows = sample_rows
         positions = np.searchsorted(arrays["row_indices"], sample_rows)
         np.testing.assert_array_equal(arrays["row_indices"][positions], sample_rows)
+        responses[name].prepare_policy_queries(positions)
+        if name == "spline_xgb":
+            validation[name]["prepared_response_and_derivative_parity"] = "all 20000 optimizer rows; atol 2e-14"
         np.testing.assert_allclose(reference["action_bounds"], config["action_bounds"], rtol=0, atol=0)
         processor = PolicyFeaturePreprocessor.from_state(reference_summary["policy"]["preprocessor"],
             {key: value for key, value in ((key.removeprefix("preprocessor_"), value)
@@ -400,7 +445,9 @@ def _documentation(config, source, config_path):
         "against the existing saved-band evaluator. Positive-part kinks use its zero-derivative "
         "convention. GLM uses the exact artifact's affine logits, verified at all logged actions; "
         "spline acceptance uses the validated full-population cache with analytical derivatives, "
-        "constant-left and clipped-tangent-right behavior. Rendering grids are visualization "
+        "with exact knots retained in memory for the fixed optimization cohort and checked "
+        "against the file-backed evaluator for all 20,000 rows. "
+        "Boundary rules are constant-left and clipped-tangent-right. Rendering grids are visualization "
         "only; neither response nor band is linearly interpolated for optimization.\n\n"
         "The GLM historical reference folder has a synthetic-tail name, but only its recorded "
         "cohort, policy preprocessing and constraint are reused. No support or synthetic-tail "

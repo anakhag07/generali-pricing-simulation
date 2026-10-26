@@ -319,7 +319,7 @@ If lower-priority docs are stale, update them in the same task.
   with automatic outside legends so observed points remain visible; its original
   render and all fitted/bootstrap state are preserved unchanged.
   `--optimize-wild scratch/generali_wild_policy.json` replays that fit into
-  `wild-linear-policy-20261026/`. The companion `scratch/generali_wild_policy.py`
+  `wild-linear-policy-20261026-r3/`. The companion `scratch/generali_wild_policy.py`
   averages actual endpoints across all contexts for plots, but optimizes their
   personalized evaluations through `BandObjective` and the repository first-order
   trust-constr solver. Reuse the presentation's saved 20k cohort, policy-side

@@ -253,6 +253,204 @@ def _plots_and_summaries(arrays, output, *, central_fraction=1., trim_actions=Fa
     return summaries
 
 
+def _shape_and_action_diagnostics(arrays, output):
+    from scipy.stats import kurtosis, norm, skew
+
+    shape_rows, qq_rows = [], []
+    probabilities = np.unique(np.r_[.0001, .0005, np.linspace(.001, .999, 301), .9995, .9999])
+    gaussian = norm.ppf(probabilities)
+    fig, axes = plt.subplots(2, 2, figsize=(10, 8), constrained_layout=True)
+    for column, (name, label) in enumerate(MODELS.items()):
+        residual = arrays[f"{name}_residual"]
+        lo, hi = np.quantile(residual, [.025, .975])
+        views = {"Full": np.ones(len(residual), dtype=bool),
+                 "Central 95%": (residual >= lo) & (residual <= hi),
+                 "Renewed": arrays["is_churn"] == 0, "Churned": arrays["is_churn"] == 1}
+        for row, (view, mask) in enumerate(views.items()):
+            values = residual[mask]
+            shape_rows.append({"model": name, "view": view, "n": len(values),
+                               "mean": np.mean(values), "median": np.median(values),
+                               "std_ddof0": np.std(values), "skewness": skew(values),
+                               "excess_kurtosis": kurtosis(values)})
+            if row >= 2:
+                continue
+            observed = (np.quantile(values, probabilities)-np.mean(values))/np.std(values)
+            qq_rows.extend({"model": name, "view": view, "probability": p,
+                            "normal_quantile": q, "standardized_residual_quantile": y}
+                           for p, q, y in zip(probabilities, gaussian, observed))
+            ax = axes[row, column]
+            ax.plot(gaussian, observed, ".", color=f"C{column}")
+            ax.plot(gaussian, gaussian, "--", color="0.5", label="Normal reference")
+            ax.set(title=f"{label}: {view.lower()}", xlabel="Standard normal quantile",
+                   ylabel="Standardized residual quantile")
+            ax.legend()
+    fig.savefig(output / "residual_normal_qq.pdf", format="pdf")
+    plt.close(fig)
+    pd.DataFrame(shape_rows).to_csv(output / "residual_shape.csv", index=False)
+    pd.DataFrame(qq_rows).to_csv(output / "qq_coordinates.csv", index=False)
+
+    # A declared zoom resolves the crowded action region without changing any
+    # existing residual plot or excluding tail observations from shape metrics.
+    edges = np.linspace(-.1, .3, 41)
+    actions = arrays["a"]
+    masks = [(actions >= low) & ((actions < high) if j < 39 else (actions <= high))
+             for j, (low, high) in enumerate(zip(edges[:-1], edges[1:]))]
+    counts = np.array([mask.sum() for mask in masks])
+    centers = (edges[:-1]+edges[1:])/2
+    in_view = (actions >= edges[0]) & (actions <= edges[-1])
+    if counts.sum() != in_view.sum():
+        raise ValueError("Action histogram omitted or duplicated observations.")
+    rows = []
+    fig, axes = plt.subplots(3, 1, figsize=(9, 10), sharex=True, constrained_layout=True)
+    fig.suptitle("Logged-action diagnostics: −10% to +30% zoom", fontsize=16)
+    axes[0].bar(centers, counts, width=np.diff(edges))
+    axes[0].set(title=f"{counts.sum():,} of {len(actions):,} customers in view",
+                ylabel="Customers per 1% action bin", xlabel="Historical price change, a")
+    for ax, (name, label) in zip(axes[1:], MODELS.items()):
+        residual = arrays[f"{name}_residual"]
+        means, medians, low_quantiles, high_quantiles = [], [], [], []
+        for low, high, mask in zip(edges[:-1], edges[1:], masks):
+            values = residual[mask]
+            q10, median, q90 = np.quantile(values, [.1, .5, .9]) if len(values) else (np.nan,)*3
+            mean = np.mean(values) if len(values) else np.nan
+            rows.append({"model": name, "action_low": low, "action_high": high,
+                         "n": len(values), "mean": mean, "median": median,
+                         "q10": q10, "q90": q90,
+                         "churn_fraction": np.mean(arrays["is_churn"][mask]) if len(values) else np.nan})
+            means.append(mean if len(values) >= 50 else np.nan)
+            medians.append(median if len(values) >= 50 else np.nan)
+            low_quantiles.append(q10 if len(values) >= 50 else np.nan)
+            high_quantiles.append(q90 if len(values) >= 50 else np.nan)
+        ax.fill_between(centers, low_quantiles, high_quantiles, alpha=.2, color="C0", label="10th–90th percentiles")
+        ax.plot(centers, means, color="C0", label="Mean residual")
+        ax.plot(centers, medians, "--", color="C1", label="Median residual")
+        ax.axhline(0, color="black", linewidth=.8)
+        ax.set(title=label, xlabel="Historical price change, a", ylabel="Observed − predicted profit")
+        ax.legend()
+    fig.savefig(output / "residual_action_bin_summary.pdf", format="pdf")
+    plt.close(fig)
+    pd.DataFrame(rows).to_csv(output / "action_bin_summary.csv", index=False)
+    return {"action_zoom": [float(edges[0]), float(edges[-1])],
+            "rows_in_zoom": int(in_view.sum()), "rows_outside_zoom": int((~in_view).sum()),
+            "fraction_actions_0_to_016": float(np.mean((actions >= 0) & (actions <= .16))),
+            "binned_curve_min_count": 50, "shape": shape_rows}
+
+
+def _explore(arrays, output, source):
+    from experiments.envelopes.plotting import _slice_indices, _STYLE
+
+    origin = json.loads((source / "provenance.json").read_text())
+    while "models" not in origin:
+        origin = origin["original_analysis"]
+    if file_sha256(DATASET_PATH) != origin["dataset"]["sha256"]:
+        raise ValueError("Dataset changed since residual calculation.")
+    rows = arrays["row_indices"]
+    frame = load_x_frame("xgb", row_indices=rows)
+    glm = resolve_real_data_model("glm")
+    spline = resolve_real_data_model("exact_spline_xgb", eligible_rows=rows)
+    models = {"glm": glm, "spline_xgb": spline}
+    model_provenance = {name: model.provenance() for name, model in models.items()}
+    for name, record in model_provenance.items():
+        for key in ("acceptance_artifact", "loss_artifact"):
+            if record[key]["sha256"] != origin["models"][name][key]["sha256"]:
+                raise ValueError(f"Changed {name} {key}.")
+    processor = glm.acceptance_artifact.preprocessor
+    z = processor.transform(frame[list(glm.acceptance_artifact.x_feature_cols)])[
+        list(processor.numeric_feature_names_)].to_numpy(float)
+    norms = np.linalg.norm(z, axis=1)
+    positions = _slice_indices(z)
+    labels = ["Smallest norm", "Median norm", "Largest norm"]
+    selected = frame.iloc[positions].copy()
+    selected.insert(0, "source_row", rows[positions])
+    selected.insert(1, "selection", labels)
+    selected["feature_norm"] = norms[positions]
+    for name in ["a", "observed_profit", "observed_loss", "is_churn",
+                 "glm_profit", "glm_residual", "spline_xgb_profit", "spline_xgb_residual"]:
+        selected[name] = arrays[name][positions]
+    selected.to_csv(output / "representative_customers.csv", index=False)
+
+    # Extend the established slide interval only to include the three logged
+    # actions. Predictions are queried directly, never selected as optima.
+    actions = arrays["a"][positions]
+    grid = np.unique(np.r_[np.linspace(min(-.1, float(actions.min())),
+                                      max(.2, float(actions.max())), 401), actions])
+    curves = {name: model.profit_matrix(frame.iloc[positions], grid, n_jobs=1)
+              for name, model in models.items()}
+    check_columns = np.searchsorted(grid, actions)
+    for name, curve in curves.items():
+        at_logged = curve[np.arange(len(positions)), check_columns]
+        margin = np.abs((1+actions)*arrays["premium"][positions]-arrays[f"{name}_loss"][positions])
+        if np.any(np.abs(at_logged-arrays[f"{name}_profit"][positions]) > 2e-6*margin+1e-8):
+            raise ValueError(f"{name} slice predictions disagree with saved residual inputs.")
+    np.savez_compressed(output / "customer_curves.npz", row_indices=rows[positions],
+                        selection_positions=positions, action_grid=grid, observed_actions=actions,
+                        observed_profit=arrays["observed_profit"][positions],
+                        numeric_feature_norms=norms, numeric_features=z[positions],
+                        numeric_feature_names=np.array(processor.numeric_feature_names_),
+                        **{f"{name}_profit": curve for name, curve in curves.items()})
+    with plt.rc_context(_STYLE):
+        fig, axes = plt.subplots(1, 3, figsize=(14, 5), sharex=True, constrained_layout=True)
+        for col, (ax, position, label) in enumerate(zip(axes, positions, labels)):
+            for j, (name, model_label) in enumerate(MODELS.items()):
+                ax.plot(grid, curves[name][col], color=f"C{j}", label=model_label)
+                predicted = arrays[f"{name}_profit"][position]
+                ax.plot(actions[col], predicted, "o", color=f"C{j}")
+                ax.vlines(actions[col], predicted, arrays["observed_profit"][position],
+                          color=f"C{j}", linestyles=":")
+            ax.plot(actions[col], arrays["observed_profit"][position], "D", color="C2",
+                    label="Observed profit at logged a")
+            ax.set(title=f"{label}: ‖z‖ = {norms[position]:.2f}\nSource row {rows[position]}",
+                   xlabel="Price change, a", ylabel="Profit per customer")
+            ax.legend()
+        fig.savefig(output / "representative_customer_profit_curves.pdf", format="pdf")
+        plt.close(fig)
+        diagnostics = _shape_and_action_diagnostics(arrays, output)
+    record = {"family": FAMILY, "revision": "customer-slices-and-residual-shape",
+              "input_residuals": file_record(source / "residuals.npz"),
+              "input_provenance": file_record(source / "provenance.json"),
+              "models": model_provenance, "diagnostics": diagnostics,
+              "selection": {"helper": "experiments.envelopes.plotting._slice_indices",
+                            "representation": "unclipped whitened numeric block of saved GLM acceptance preprocessor",
+                            "excluded_from_distance": ["categorical label codes", "action", "outcomes"],
+                            "rows": rows[positions].tolist(), "norms": norms[positions].tolist()},
+              "action_domain": [float(grid[0]), float(grid[-1])],
+              "truth": "one observed profit per customer at the historical action; no true counterfactual curve",
+              "optimizer": None, "fitted_residual_basis": None, "randomness": None,
+              "sources": [file_record(Path(__file__)), file_record(ROOT / "MATH.md"),
+                          file_record(ROOT / "src/experiments/envelopes/plotting.py"),
+                          file_record(ROOT / "src/reporting/real_data.py"),
+                          file_record(ROOT / "src/reporting/profit_dispersion.py"),
+                          file_record(ROOT / "src/data/feature_processor.py")],
+              "packages": {p: importlib.metadata.version(p) for p in ("numpy", "pandas", "scipy", "matplotlib", "scikit-learn", "xgboost")}}
+    (output / "EXPERIMENT.md").write_text(
+        "# Representative Generali customers and residual diagnostics\n\n"
+        "The same smallest, median and largest norm selection helper as the wild-bootstrap "
+        "plots is applied to the saved GLM preprocessor's whitened numeric features. "
+        "No clipping or new preprocessing fit is applied. Categorical label codes, action "
+        "and outcomes do not define distance; both predictors still use all model features. "
+        "The same three customers are used for both models.\n\n"
+        "The diamond is the single observed historical profit. Curves are predictions; "
+        "dotted vertical segments show residuals only at the historical action. No observed "
+        "or true profit curve is available at unlogged actions. Each panel has its own "
+        "profit scale. The initial [-0.1, 0.2] action interval is extended to include "
+        "selected historical actions. The existing spline is constant below 0 and uses "
+        "its clipped tangent above 0.16; this extrapolation is not validated by the slice.\n\n"
+        "Q-Q plots compare standardized empirical residual quantiles (0.01%–99.99%) "
+        "with normal quantiles. Full, central-95%, renewed and churned shape metrics are "
+        "saved separately. Trimming changes distributional shape. These are pooled "
+        "saved-model residuals, not identified conditional innovations.\n\n"
+        "The action diagnostic explicitly zooms to [-0.1, 0.3], using width-0.01 bins "
+        "and plotting conditional summaries only where n >= 50. Counts and exclusions "
+        "are recorded. The 10th–90th percentile ribbon is observed spread, not a confidence "
+        "band. Connected bin statistics are visualization only. Existing original and "
+        "central95 reports are unchanged. No residual basis or optimizer is fitted.\n\n"
+        "Regenerate with `python scratch/plot_generali_profit_residuals.py --explore "
+        f"--replay {source.resolve()} --output-dir <fresh-directory>`.\n", encoding="utf-8")
+    record["outputs"] = [file_record(p) for p in sorted(output.iterdir())]
+    write_provenance(output / "provenance.json", record)
+    print(f"Customer exploration saved to {output}", flush=True)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, required=True, help="Fresh report directory within the comparison family.")
@@ -261,7 +459,10 @@ def main(argv=None):
     parser.add_argument("--central-fraction", type=float, default=1., help="Displayed central residual fraction per model; full saved data and summaries are retained.")
     parser.add_argument("--trim-actions", action="store_true", help="Also intersect with the same central historical-action quantiles.")
     parser.add_argument("--action-renderer", choices=("scatter", "density"), default="scatter", help="Density counts every selected row in compact vector cells with a common log color scale.")
+    parser.add_argument("--explore", action="store_true", help="Use saved residuals for representative customer curves, Q-Q plots and action-bin diagnostics.")
     args = parser.parse_args(argv)
+    if args.explore and (args.replay is None or args.central_fraction != 1 or args.trim_actions):
+        raise ValueError("Exploration requires --replay of the full saved residuals, without display trimming options.")
     if not 0 < args.central_fraction <= 1:
         raise ValueError("central-fraction must be in (0, 1].")
     output = args.output_dir.resolve()
@@ -280,6 +481,9 @@ def main(argv=None):
     else:
         arrays, provenance = _evaluate(args.spline_cache)
     output.mkdir(parents=True, exist_ok=False)
+    if args.explore:
+        _explore(arrays, output, args.replay)
+        return
     np.savez_compressed(output / "residuals.npz", **arrays)
     summaries = _plots_and_summaries(arrays, output, central_fraction=args.central_fraction,
                                     trim_actions=args.trim_actions, action_renderer=args.action_renderer)

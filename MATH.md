@@ -363,6 +363,22 @@ counts. Vector density views count all selected observations without smoothing
 or subsampling. These display selections do not change the saved residuals.
 Source: `scratch/plot_generali_profit_residuals.py`.
 
+Representative Generali slices reuse the wild-report `_slice_indices` rule:
+stable sort by Euclidean context norm and take ranks $0$, $\lfloor(n-1)/2\rfloor$,
+and $n-1$. The common context for both predictors is the un-clipped numeric block
+of the frozen GLM acceptance preprocessor (centered and whitened using its saved
+parameters). Action, outcomes, and arbitrary categorical label codes are excluded
+from this distance; the predictors still receive all their original features.
+Only $Y_i$ at the logged $a_i$ is observed. Lines across actions are model
+predictions, not true curves or observed residual functions.
+
+Residual shape diagnostics use empirical quantiles and SciPy's skewness and
+excess kurtosis (normal reference: both zero). Q-Q coordinates standardize each
+displayed distribution by its own population mean and standard deviation. The
+central-95% view is deliberately truncated, not a normality test. Action-bin
+means/medians and 10th--90th percentiles describe pooled logged outcomes;
+percentile ribbons are not confidence bands or fixed-customer uncertainty.
+
 For profit matrix $P_{ij}=P_i(u_j)$,
 
 $$

@@ -102,6 +102,7 @@ It compares observed historical profit with GLM and spline/XGBoost predictions
 on all common eligible rows, saving vector PDFs and replayable residual arrays.
 Add `--explore --replay <saved-report>` for representative-customer prediction
 curves, residual Q-Q plots and action-bin diagnostics.
+Use `--split-churn --replay <saved-report>` for renewed/churned residual histograms.
 See [the diagnostic setup](docs/experiment_workflow.md#generali-residual-diagnostics).
 
 ### Retired experiments

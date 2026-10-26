@@ -299,6 +299,11 @@ If lower-priority docs are stale, update them in the same task.
   observed profit/residual curve across unlogged actions. The Q-Q and action-bin
   diagnostics describe pooled residuals, with an explicitly labeled action
   zoom; percentile ribbons are not confidence bands. No basis is fitted.
+  `--split-churn --replay <saved-report>` writes `churn-split-20261026/` with
+  full/central-95% histograms by true `is_churn`, validated against dataset rows.
+  Cuts are within each group/model; densities integrate to one per displayed
+  subset. Full-group summaries remain untrimmed. This outcome split is diagnostic,
+  not a phi covariate or a claim of individual-outcome bootstrap coverage.
 - The active synthetic catalog retains the three paired residual-heteroskedastic
   distribution manifests and six `residual-leverage-fixed-noise-outlier-*.json`
   manifests. Terminal-distribution results, all residual-heteroskedastic report

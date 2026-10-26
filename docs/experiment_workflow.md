@@ -279,6 +279,24 @@ the 10th--90th percentile ribbon is descriptive spread, not a confidence band.
 No preprocessing, residual basis, band, or optimizer is fitted. Existing report
 versions are unchanged; all outputs remain in the same comparison family.
 
+To inspect residuals by the actual renewal outcome:
+
+```bash
+python scratch/plot_generali_profit_residuals.py --split-churn \
+  --replay ../results/glm-spline-profit-dispersion/residuals-20261026 \
+  --output-dir ../results/glm-spline-profit-dispersion/churn-split-20261026
+```
+
+The script verifies saved `is_churn` against the canonical CSV's original rows,
+then produces full and central-95% 2×2 histograms for both models and both groups.
+Each PDF uses common bins and axes, with unit-area density per displayed subset.
+The central view trims residual tails within each group/model, without trimming
+actions. `churn_split_summary.csv` and dashed means always use full groups;
+`plot_selection.json` records exact bounds and retained counts. Group differences
+condition on the realized outcome and do not imply expected-profit model bias
+by themselves. Wild mean bands and prediction intervals for individual outcomes
+have different targets; no bootstrap is fitted or coverage asserted here.
+
 ## Retirement and recovery
 
 Generic uncertainty-envelope, historical pairs-bootstrap/OLS, offline-bootstrap,

@@ -52,3 +52,14 @@ def test_policy_objective_averages_individual_lower_endpoints_and_chain_rule():
     acceptance_finite = np.array([(objective.mean_acceptance(theta+e*h, z)-objective.mean_acceptance(theta-e*h, z))/(2*h)
                                   for e in np.eye(len(theta))])
     np.testing.assert_allclose(objective.mean_acceptance_grad(theta, z), acceptance_finite, atol=2e-10)
+
+
+def test_saturated_softmax_endpoint_roundoff_is_normalized():
+    z, _, _, fibers, response = _fixture()
+    policy = SoftmaxPolicy(feature_map=IdentityFeatureMap(), action_low=-.1, action_high=.2)
+    band = _policy_band(response, fibers, np.arange(len(z)), z, [-.1, .2])
+    theta = np.array([1000., 0., 0.])
+    actions = policy.value(theta, z)
+    evaluated = band.evaluate(z, actions)
+    expected = response.evaluate(slice(None), np.full(len(z), .2))["center"]
+    np.testing.assert_array_equal(evaluated.center, expected)

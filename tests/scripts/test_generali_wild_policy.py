@@ -1,6 +1,7 @@
 """Ensure policy optimization uses individual saved bands and exact derivatives."""
 
 import numpy as np
+import pytest
 
 from experiments.envelopes.wild import WildLinearDesign
 from objective.policy import IdentityFeatureMap, SoftmaxPolicy
@@ -52,6 +53,8 @@ def test_policy_objective_averages_individual_lower_endpoints_and_chain_rule():
     acceptance_finite = np.array([(objective.mean_acceptance(theta+e*h, z)-objective.mean_acceptance(theta-e*h, z))/(2*h)
                                   for e in np.eye(len(theta))])
     np.testing.assert_allclose(objective.mean_acceptance_grad(theta, z), acceptance_finite, atol=2e-10)
+    with pytest.raises(ValueError, match="original ordered"):
+        objective.value(theta, z[::-1])
 
 
 def test_saturated_softmax_endpoint_roundoff_is_normalized():

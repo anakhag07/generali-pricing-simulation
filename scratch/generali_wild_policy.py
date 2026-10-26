@@ -108,8 +108,10 @@ def _policy_band(response, fibers, positions, policy_features, bounds):
         nonlocal last_actions, last_parts
         if not np.array_equal(X, policy_features):
             raise ValueError("Policy objective requires its original ordered full optimization cohort.")
-        if np.any((actions < bounds[0]) | (actions > bounds[1])):
+        if np.any((actions < bounds[0]-1e-12) | (actions > bounds[1]+1e-12)):
             raise ValueError("Policy query outside the inherited action interval.")
+        # Saturated softmax arithmetic can exceed an endpoint by one ulp.
+        actions = np.clip(actions, *bounds)
         if last_actions is None or not np.array_equal(actions, last_actions):
             last_parts = {**response.evaluate(positions, actions), **fibers.evaluate(positions, actions)}
             last_actions = actions.copy()
@@ -334,7 +336,7 @@ def run_wild_policy(arrays, output, source, config_path):
                       "entry_point": "optimization.solvers.run_first_order_minimize",
                       "endpoint": endpoint, "initial_objective": objective.value(theta0, sample_features),
                       "final_objective": objective.value(theta, sample_features)}
-            actions = policy.value(theta, policy_features)
+            actions = np.clip(policy.value(theta, policy_features), *config["action_bounds"])
             np.savez_compressed(output / f"{name}_{label}_policy.npz", theta=theta,
                 row_indices=arrays["row_indices"], actions=actions, optimization_row_indices=sample_rows,
                 theta_trace=np.asarray(trace.theta_values), objective_trace=trace.objective_values,

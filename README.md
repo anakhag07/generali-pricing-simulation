@@ -85,6 +85,16 @@ remains in the corresponding directories without `-mean10`. Both destinations ca
 overridden with `--output-dir` and `--figure-dir`; see MATH.md §7.17 and the
 saved summaries for the full setup.
 
+The paired steepness/sample-size extension uses the same driver:
+`python scratch/run_wild_data_location.py --sweep-config scratch/wild_data_location_sweeps.json --launch slurm --array --array-max-parallel 8`.
+It keeps the peak and noise fixed, pairs observations across settings, and reports
+optimizer displacement, band-only displacement, full width and distance from the
+logging center over 20 repetitions. Results and eight vector PDFs live in
+`results/wild-data-location-20261021-mean10/steepness-sample-size-20261027/`.
+Use `--launch local --collect` with the same config to regenerate reports from
+checksummed saved fits and endpoints, without fitting or optimization; see
+MATH.md §7.17 for the width interval, seed pairing and numerical certificates.
+
 The flat contextual follow-up is `python scratch/run_contextual_wild_data_location.py`
 (MATH.md §7.18). It adds three standard-normal covariates, uses action term
 `0.5a - 0.5a²`, calibrates a joint wild coefficient ellipsoid, and returns one

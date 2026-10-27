@@ -1634,6 +1634,16 @@ Update `AGENTS.md` when:
 Do not leave durable organizational knowledge only in code diffs.
 
 ### Other Maintenance
+- `scratch/wild_data_location_sweeps.json` configures the retained data-location
+  driver's `--sweep-config` extension. Shared launch tasks own one independent
+  repetition, with paired locations/steepness/nested sample sizes. The current
+  revision is `results/wild-data-location-20261021-mean10/steepness-sample-size-20261027/`.
+  Its `--collect` path verifies saved NPZ hashes and replays figures only.
+  Report mean full width on the fixed original action window, and distinguish
+  total optimizer error from movement due to the band. Use the original
+  multiplier draw shape before appending columns, so n=300 is exactly paired
+  with the historical seed. Tests check independent refits and paired draws;
+  see MATH §7.17.
 - Update `requirements.txt` when dependencies change.
 - Re-export public APIs in package `__init__.py` files when modules are added or moved.
 

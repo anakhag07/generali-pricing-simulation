@@ -1714,6 +1714,46 @@ gaps against $10^{-6}$ without supplying replacement actions. Plot grids only
 render these continuous functions. The complete experiment and results are
 documented in the sibling thesis's `chapters/10-21-update.tex`.
 
+#### Paired steepness and sample-size sweeps (2026-10-27)
+
+The same driver accepts `--sweep-config scratch/wild_data_location_sweeps.json`.
+The steepness axis is $f_s(a)=s(5a-5a^2)$, with fixed observation-noise SD 1,
+logging means 0.5 and 10, and variance 0.45. It changes curvature and slope
+magnitudes while leaving the peak location fixed. The separate sample-size
+axis changes only $n$. Each repetition shares design/noise innovations and
+wild multipliers across locations and steepness values, and uses nested
+prefixes across sample sizes. Repetition zero retains run seed 20261021;
+later run seeds use `derive_seed(20261021, "repetition:<index>")`. Existing
+data, noise, optimizer and bootstrap stream ownership is unchanged. The first
+300 columns of the multiplier matrix are drawn in the original `(1999, 300)`
+shape, then additional columns are appended from that same bootstrap stream.
+Thus the original baseline's innovations and multipliers are retained exactly.
+
+The continuous domain, joint bootstrap covariance, off-grid polynomial/QR
+evaluation, approximate all-real confidence interpretation and exact global
+gap certificates remain those above. No plotted grid selects an action.
+The query-only repository Stein solver retains its three starts and settings,
+with step size $0.05/\max(1,s)$ to preserve stability as curvature increases.
+Repository first-order solves supply both truth and unpenalized fitted
+references; an upward-opening fitted quadratic has no finite reference and
+is recorded as such. Every reported finite endpoint is gap-certified at
+$10^{-6}$; failed certificates remain visible and prevent a completed report.
+
+Reported displacement decomposes as
+$\hat\theta-\theta^\star=(\hat\theta-\theta_{\rm fit})+
+(\theta_{\rm fit}-\theta^\star)$, separating band-induced movement from
+estimation error. Mean full width is the trapezoidal integral of $2r(a)$
+divided by interval length on the fixed original display window
+$[-0.25,1.25]$, with a separate observed-design mean width and width at truth.
+Extrapolation distance is $|\hat\theta-\mu|/\sqrt{0.45}$; it measures distance
+from the logging center, not distance outside Gaussian support (which is all
+real). Aggregate error bars are 95% Student-t Monte Carlo intervals over
+independent repetitions, not band-coverage guarantees. All reported curves
+connect tested sweep settings only. At fixed data/noise, adding a quadratic
+signal changes OLS coefficients but leaves residuals, bootstrap errors and
+absolute radius unchanged up to floating-point error; the sweep checks this
+identity without assuming an optimizer displacement.
+
 ### 7.18 Flat contextual wild-bootstrap illustration
 
 `scratch/run_contextual_wild_data_location.py` uses $n=300$ fixed contexts

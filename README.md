@@ -94,6 +94,8 @@ logging center over 20 repetitions. Results and eight vector PDFs live in
 Use `--launch local --collect` with the same config to regenerate reports from
 checksummed saved fits and endpoints, without fitting or optimization; see
 MATH.md §7.17 for the width interval, seed pairing and numerical certificates.
+Report-only replay retains the original runtime contract, verifies its source
+snapshot and band evaluator, and saves separate reporting-source provenance.
 
 The flat contextual follow-up is `python scratch/run_contextual_wild_data_location.py`
 (MATH.md §7.18). It adds three standard-normal covariates, uses action term

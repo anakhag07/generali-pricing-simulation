@@ -1638,7 +1638,11 @@ Do not leave durable organizational knowledge only in code diffs.
   driver's `--sweep-config` extension. Shared launch tasks own one independent
   repetition, with paired locations/steepness/nested sample sizes. The current
   revision is `results/wild-data-location-20261021-mean10/steepness-sample-size-20261027/`.
-  Its `--collect` path verifies saved NPZ hashes and replays figures only.
+  Its `--collect` path verifies saved NPZ hashes and replays figures only;
+  reporting revisions preserve the runtime contract and save separate source
+  provenance after checking the archived mathematical sources and evaluator.
+  The initial crowded log-label PDFs are archived with checksums in
+  `scratch/retired_experiments/wild_data_location_plot_replay_20261027.json`.
   Report mean full width on the fixed original action window, and distinguish
   total optimizer error from movement due to the band. Use the original
   multiplier draw shape before appending columns, so n=300 is exactly paired

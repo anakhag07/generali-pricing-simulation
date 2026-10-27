@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import csv
 from dataclasses import replace
 import hashlib
@@ -338,6 +339,9 @@ def _plot_sweep_summary(spec, summary, figure_dir, axis):
                         label=rf"Data center $\mu={mean:g}$")
         ax.set(xscale="log", xlabel="Quadratic steepness factor $s$" if is_scale else "Number of observations $n$",
                ylabel=ylabel, title=title)
+        if is_scale:
+            ax.set_xticks(spec["steepness_values"], labels=[f"{s:g}" for s in spec["steepness_values"]])
+            ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
         ax.legend()
     fig.suptitle(("Steepness sweep" if is_scale else "Sample-size sweep") +
                  f"; {spec['repetitions']} paired repetitions, 95% Monte Carlo intervals")
@@ -359,6 +363,9 @@ def _plot_shift_decomposition(spec, summary, figure_dir, axis):
         ax.axhline(0, color="0.5", linestyle=":")
         ax.set(xscale="log", xlabel="Quadratic steepness factor $s$" if axis == "steepness" else "Number of observations $n$",
                ylabel="Mean signed action displacement", title=rf"Data center $\mu={mean:g}$")
+        if axis == "steepness":
+            ax.set_xticks(spec["steepness_values"], labels=[f"{s:g}" for s in spec["steepness_values"]])
+            ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
         ax.legend()
     fig.suptitle("Displacement decomposition; 95% Monte Carlo intervals")
     fig.savefig(figure_dir / f"{axis}_shift_decomposition.pdf", format="pdf")
@@ -457,7 +464,34 @@ def _launch_sweep(args):
     contract = _sweep_contract(spec)
     contract_path = output / "run-contract.json"
     if contract_path.exists():
-        if json.loads(contract_path.read_text()) != contract:
+        saved_contract = json.loads(contract_path.read_text())
+        if args.collect:
+            # Reporting may evolve; preserve the runtime contract and verify its
+            # mathematical evaluator, source snapshot and all saved endpoints.
+            if saved_contract["config"] != CONFIG or saved_contract["sweep"] != spec:
+                raise ValueError("Report configuration differs from the saved run.")
+            driver = str(Path(__file__).relative_to(ROOT))
+            with zipfile.ZipFile(output / "source_snapshot.zip") as archive:
+                for name, digest in saved_contract["source_sha256"].items():
+                    if hashlib.sha256(archive.read(name)).hexdigest() != digest:
+                        raise ValueError(f"Changed runtime source snapshot: {name}")
+                    if name != driver and _sha256(ROOT/name) != digest:
+                        raise ValueError(f"Use the original mathematical sources for replay: {name}")
+                original_tree = ast.parse(archive.read(driver).decode())
+            current_tree = ast.parse(Path(__file__).read_text())
+            original_evaluator = next(n for n in original_tree.body if isinstance(n, ast.FunctionDef) and n.name == "band_values")
+            current_evaluator = next(n for n in current_tree.body if isinstance(n, ast.FunctionDef) and n.name == "band_values")
+            if ast.dump(original_evaluator) != ast.dump(current_evaluator):
+                raise ValueError("Saved-band evaluation changed; cannot silently replot.")
+            (output / "report-source.py").write_bytes(Path(__file__).read_bytes())
+            _write_json(output / "report-provenance.json", {
+                "runtime_contract_sha256": _sha256(contract_path),
+                "report_source_sha256": _sha256(Path(__file__)),
+                "report_repository_head": contract["repository_head"],
+                "mode": "Saved fits and repository optimizer endpoints only; no fitting or optimization"})
+            _collect_sweep(spec, output, saved_contract)
+            return
+        if saved_contract != contract:
             raise ValueError("Completed runs are immutable; choose a fresh revision/output directory.")
     else:
         _write_json(contract_path, contract)

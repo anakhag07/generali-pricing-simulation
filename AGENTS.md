@@ -1643,6 +1643,10 @@ Do not leave durable organizational knowledge only in code diffs.
   provenance after checking the archived mathematical sources and evaluator.
   The initial crowded log-label PDFs are archived with checksums in
   `scratch/retired_experiments/wild_data_location_plot_replay_20261027.json`.
+  Per-figure action windows live in the result folder's `plot-overrides.json`;
+  `_plot_sweep_examples(..., means=[...])` can replay only a requested location.
+  The n-sweep/mean-10 view now spans [-2,12]; its earlier zoom and metadata are
+  indexed in `scratch/retired_experiments/wild_data_location_action_window_20261027.json`.
   Report mean full width on the fixed original action window, and distinguish
   total optimizer error from movement due to the band. Use the original
   multiplier draw shape before appending columns, so n=300 is exactly paired

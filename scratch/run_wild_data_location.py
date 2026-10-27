@@ -372,11 +372,18 @@ def _plot_shift_decomposition(spec, summary, figure_dir, axis):
     plt.close(fig)
 
 
-def _plot_sweep_examples(spec, output, figure_dir, rows, axis):
+def _plot_sweep_examples(spec, output, figure_dir, rows, axis, *, means=None):
     repetition = spec["illustration_repetition"]
     folder = output / "repetitions" / f"rep_{repetition:03d}"
     values = spec["illustration_steepness"] if axis == "steepness" else spec["illustration_n"]
-    for mean in CONFIG["means"]:
+    overrides_path = output / "plot-overrides.json"
+    overrides = json.loads(overrides_path.read_text()) if overrides_path.exists() else {}
+    for mean in CONFIG["means"] if means is None else means:
+        filename = f"{axis}_bands_data_center_{mean:g}.pdf"
+        window = overrides.get(filename, {}).get("action_window")
+        if window is not None and (len(window) != 2 or not np.all(np.isfinite(window))
+                                   or window[0] >= window[1]):
+            raise ValueError("A plot action window must have two finite, increasing bounds.")
         fig, axes = plt.subplots(2, len(values), figsize=(15, 8), constrained_layout=True)
         for column, value in enumerate(values):
             scale = float(value) if axis == "steepness" else 1.
@@ -388,6 +395,8 @@ def _plot_sweep_examples(spec, output, figure_dir, rows, axis):
             # Keep the original zoom, expanding only if an endpoint falls outside it.
             lo = min(CONFIG["display_window"][0], row["theta_hat"]-.1)
             hi = max(CONFIG["display_window"][1], row["theta_hat"]+.1)
+            if window is not None:
+                lo, hi = window
             grid = np.linspace(lo, hi, 1201)
             truth = features(grid) @ (scale*np.asarray(CONFIG["truth_coefficients"]))
             fitted, radius = band_values(band, grid)
@@ -405,7 +414,8 @@ def _plot_sweep_examples(spec, output, figure_dir, rows, axis):
                        color="C4", zorder=6, label=r"Stein endpoint $\hat\theta$")
             ax.set(xlabel="Action $a$", ylabel="Objective value",
                    title=rf"$s={scale:g}$, $n={n}$; $\hat\theta-\theta^\star={row['theta_difference']:.3f}$")
-            density_grid = np.linspace(*CONFIG["logging_windows"][CONFIG["means"].index(mean)], 1201)
+            density_window = CONFIG["logging_windows"][CONFIG["means"].index(mean)] if window is None else window
+            density_grid = np.linspace(*density_window, 1201)
             data_ax.fill_between(density_grid, norm.pdf(density_grid, mean, np.sqrt(CONFIG["variance"])),
                                  color="C0", alpha=.25, label="Logging density")
             data_ax.hist(band["actions"], bins=24, density=True, histtype="step", color="C0",
@@ -413,9 +423,12 @@ def _plot_sweep_examples(spec, output, figure_dir, rows, axis):
             data_ax.axvline(star, color="C3", linestyle=":", label=r"$\theta^\star$")
             data_ax.axvline(row["theta_hat"], color="C4", linestyle="--", label=r"$\hat\theta$")
             data_ax.set(xlabel="Action $a$", ylabel="Action density")
+            if window is not None:
+                ax.set_xlim(*window)
+                data_ax.set_xlim(*window)
             data_ax.legend()
         fig.legend(*axes[0, 0].get_legend_handles_labels(), loc="outside upper center", ncol=3)
-        fig.savefig(figure_dir / f"{axis}_bands_data_center_{mean:g}.pdf", format="pdf")
+        fig.savefig(figure_dir / filename, format="pdf")
         plt.close(fig)
 
 

@@ -96,6 +96,9 @@ checksummed saved fits and endpoints, without fitting or optimization; see
 MATH.md §7.17 for the width interval, seed pairing and numerical certificates.
 Report-only replay retains the original runtime contract, verifies its source
 snapshot and band evaluator, and saves separate reporting-source provenance.
+Optional `plot-overrides.json` in the saved result folder maps an illustration's
+PDF filename to `{"action_window": [lower, upper]}` for both rows of that figure.
+These display settings leave the original experiment configuration unchanged.
 
 The flat contextual follow-up is `python scratch/run_contextual_wild_data_location.py`
 (MATH.md §7.18). It adds three standard-normal covariates, uses action term

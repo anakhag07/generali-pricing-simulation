@@ -269,6 +269,41 @@ If lower-priority docs are stale, update them in the same task.
 
 ## Code Organization
 
+- `scratch/plot_generali_profit_residuals.py` evaluates descriptive historical
+  profit residuals for GLM and exact spline/XGBoost on all common eligible rows.
+  Its fresh run revisions live under shared `results/glm-spline-profit-dispersion/`.
+  It verifies the full spline cache hashes/IDs and direct-model parity, retains
+  every historical action and residual, and supports checksummed `--replay`
+  without model evaluation. Never use the 200-customer spline artifact's raw
+  XGBoost fallback for this full-population comparison. See MATH section 6.
+  For compact vector rendering use `--action-renderer density`; central views use
+  `--central-fraction .95` and optionally `--trim-actions`. The latter intersects
+  marginal quantile selections, so report actual retained counts from
+  `plot_selection.json`; `plot_rows.npz` records displayed source IDs. Full
+  residual arrays and numerical summaries remain unchanged in these replays.
+  After the 2026-10-26 user-requested cleanup, the active family contains only
+  `residuals-20261026/` (full-data density) and `central95/` (residual-only
+  central density). Superseded renders are under shared
+  `scratch-results/glm-spline-profit-dispersion/rendering-trials-20261026/`.
+  The tracked `scratch/retired_experiments/generali_residual_outputs_20261026.json`
+  maps old absolute paths without rewriting saved provenance.
+  The user subsequently requested a smaller action PDF at the original path.
+  Its complete scatter report is preserved at
+  `rendering-trials-20261026/residuals-20261026-original-scatter/` in that archive;
+  `scratch/retired_experiments/generali_residual_compact_20261026.json` records
+  the authorized PDF replacement and provenance revision. All data rows remain.
+  `--explore --replay <saved-report>` adds `customer-exploration-20261026/` in
+  the same family. It reuses the wild-report `_slice_indices` helper on saved
+  GLM-whitened numeric features for smallest/median/largest norms, then plots
+  both frozen predictors with one observed point per customer. Never draw an
+  observed profit/residual curve across unlogged actions. The Q-Q and action-bin
+  diagnostics describe pooled residuals, with an explicitly labeled action
+  zoom; percentile ribbons are not confidence bands. No basis is fitted.
+  `--split-churn --replay <saved-report>` writes `churn-split-20261026/` with
+  full/central-95% histograms by true `is_churn`, validated against dataset rows.
+  Cuts are within each group/model; densities integrate to one per displayed
+  subset. Full-group summaries remain untrimmed. This outcome split is diagnostic,
+  not a phi covariate or a claim of individual-outcome bootstrap coverage.
 - The active synthetic catalog retains the three paired residual-heteroskedastic
   distribution manifests and six `residual-leverage-fixed-noise-outlier-*.json`
   manifests. Terminal-distribution results, all residual-heteroskedastic report

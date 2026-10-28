@@ -195,6 +195,108 @@ public `seed_reporter_stack_factory` shared with ordinary sweeps. Band and
 predictor configurations share `configs.real_data_factory.make_policy`; JSON
 conversion and cached source digests live in `experiments.provenance`.
 
+## Generali residual diagnostics
+
+This descriptive report precedes choosing a residual basis or calibrating a
+band. It extends the GLM/spline comparison family without running an optimizer
+or a band task. The existing manifest report recipe evaluates action-grid profit
+dispersion, not observed residuals; this narrow diagnostic uses the shared data,
+model, cache and provenance helpers through a scratch entry point:
+
+```bash
+conda activate simulation_env
+python scratch/plot_generali_profit_residuals.py \
+  --output-dir ../results/glm-spline-profit-dispersion/residuals-20261026
+```
+
+All common eligible source rows are evaluated at historical `a = U`; no new seed
+is needed. Actual profit is `(1-is_churn)*(X_upcoming_premium-Y_G_Loss)` and
+predicted profit is `acceptance(X,a)*((1+a)*X_policy_premium-predicted_loss(X))`.
+The report checks the premium identity and writes exclusion counts, row-level
+inputs/predictions/residuals, model/source hashes, summary statistics, and two
+vector PDFs with common axes and no clipping or smoothing. See MATH section 6.
+
+GLM uses the canonical logistic/Ridge pair. Spline/XGBoost replays the full
+715,023-customer cache with its original constant-left/clipped-tangent-right
+boundary behavior. `--spline-cache` overrides its location; source hashes,
+all payload checksums, customer IDs, anchor weights, and direct spline parity
+must match. This is descriptive saved-model analysis, not held-out performance
+or known conditional-mean error. Missing cache rows fail without raw-XGB fallback.
+
+To regenerate only the PDFs and summaries from checksummed residuals, supply
+`--replay <completed-report>` and a fresh `--output-dir`. Previous report folders
+are never overwritten. By default figures retain the full action and residual
+ranges. If the all-row scatter is too heavy for a PDF viewer, add
+`--action-renderer density` for a compact vector density plot counting every row.
+Use `--central-fraction .95` to retain the central residual percentiles, and
+optionally `--trim-actions` to intersect these with central action percentiles.
+The latter retains slightly less than 95% jointly: `plot_selection.json` records
+the exact counts/bounds and `plot_rows.npz` stores the displayed row IDs. Both
+models share axes, bin grids and density color scaling. Raw residuals and
+`summary.csv` always retain the full original population.
+
+The retained 2026-10-26 reports under shared
+`results/glm-spline-profit-dispersion/` are `residuals-20261026/` (the full
+715,023-row density plot and histogram) and `central95/` (679,271 rows per model,
+residual tails only, rectangular density and histogram). Their saved residual
+arrays and full-population summaries are byte-identical. The central plot uses
+each model's own 2.5th and 97.5th percentiles; the selected customers can differ.
+Superseded rendering trials and the early action-trimmed trial are archived in
+`scratch-results/glm-spline-profit-dispersion/rendering-trials-20261026/`.
+Saved absolute paths remain original; the relocation record is
+`scratch/retired_experiments/generali_residual_outputs_20261026.json`.
+Use the current report directory for `--replay`.
+
+At the user's subsequent request, the full-data action PDF was replaced at its
+original path with a smaller vector density rendering. The complete original
+scatter report is archived at
+`rendering-trials-20261026/residuals-20261026-original-scatter/` alongside the
+other trials. Data, full-population summaries and the histogram are unchanged;
+only the action rendering and its documentation/provenance were revised. See
+`scratch/retired_experiments/generali_residual_compact_20261026.json`.
+
+For the follow-up exploration before selecting a residual basis:
+
+```bash
+python scratch/plot_generali_profit_residuals.py --explore \
+  --replay ../results/glm-spline-profit-dispersion/residuals-20261026 \
+  --output-dir ../results/glm-spline-profit-dispersion/customer-exploration-20261026
+```
+
+The wild-report `_slice_indices` helper selects smallest, median and largest
+Euclidean norms of the saved GLM preprocessor's un-clipped whitened numeric
+features. Categorical label codes, historical actions and outcomes are excluded
+from this distance, but predictors still use their full feature sets. Both
+models are plotted on the same three customers. Only the historical action has
+an observed profit; the curves are predictions, not true counterfactual curves.
+The slide action interval is extended to contain the three historical actions.
+The unchanged spline boundary behavior is explicitly recorded.
+
+The report saves selected source rows/features, numerical curves, Q-Q coordinates,
+residual moments (full, trimmed, renewed and churned), and action-bin counts and
+statistics. Its action plot is an explicit [-0.1, 0.3] zoom with outside counts;
+the 10th--90th percentile ribbon is descriptive spread, not a confidence band.
+No preprocessing, residual basis, band, or optimizer is fitted. Existing report
+versions are unchanged; all outputs remain in the same comparison family.
+
+To inspect residuals by the actual renewal outcome:
+
+```bash
+python scratch/plot_generali_profit_residuals.py --split-churn \
+  --replay ../results/glm-spline-profit-dispersion/residuals-20261026 \
+  --output-dir ../results/glm-spline-profit-dispersion/churn-split-20261026
+```
+
+The script verifies saved `is_churn` against the canonical CSV's original rows,
+then produces full and central-95% 2×2 histograms for both models and both groups.
+Each PDF uses common bins and axes, with unit-area density per displayed subset.
+The central view trims residual tails within each group/model, without trimming
+actions. `churn_split_summary.csv` and dashed means always use full groups;
+`plot_selection.json` records exact bounds and retained counts. Group differences
+condition on the realized outcome and do not imply expected-profit model bias
+by themselves. Wild mean bands and prediction intervals for individual outcomes
+have different targets; no bootstrap is fitted or coverage asserted here.
+
 ## Retirement and recovery
 
 Generic uncertainty-envelope, historical pairs-bootstrap/OLS, offline-bootstrap,

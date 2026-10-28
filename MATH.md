@@ -338,6 +338,57 @@ Sources: `src/objective/modifications/`.
 
 ## 6. Real-Data Analysis Quantities
 
+For descriptive residual diagnostics at each historical action $a_i=U_i$, let
+$c_i$, $p_i$, $v_i$, and $\ell_i$ denote row $i$ of `is_churn`,
+`X_policy_premium`, `X_upcoming_premium`, and `Y_G_Loss`, respectively.
+Check $v_i=(1+a_i)p_i$ before computing
+
+$$
+Y_i=(1-c_i)(v_i-\ell_i),\qquad
+\widehat Y_{i,m}=\widehat q_m(X_i,a_i)[(1+a_i)p_i-\widehat L_m(X_i)],
+\qquad r_{i,m}=Y_i-\widehat Y_{i,m}.
+$$
+
+Here $\widehat q_m$ is predicted acceptance. The two comparisons use logistic
+acceptance with Ridge loss (GLM), and exact monotone-spline XGBoost acceptance
+with XGBoost loss. $Y_i$ uses the dataset loss target and the established
+historical-profit convention; it is not the unknown conditional mean function.
+These descriptive saved-model residuals contain outcome variation and model
+error, and are not claimed to be out-of-sample. No residual basis is fitted.
+Optional central plot views select the inclusive empirical 2.5th--97.5th
+residual percentiles separately for each model. With action trimming, intersect
+these rows with the same marginal action percentiles from the original cohort;
+the intersection generally retains less than 95%. Report the exact bounds and
+counts. Vector density views count all selected observations without smoothing
+or subsampling. These display selections do not change the saved residuals.
+Source: `scratch/plot_generali_profit_residuals.py`.
+
+Representative Generali slices reuse the wild-report `_slice_indices` rule:
+stable sort by Euclidean context norm and take ranks $0$, $\lfloor(n-1)/2\rfloor$,
+and $n-1$. The common context for both predictors is the un-clipped numeric block
+of the frozen GLM acceptance preprocessor (centered and whitened using its saved
+parameters). Action, outcomes, and arbitrary categorical label codes are excluded
+from this distance; the predictors still receive all their original features.
+Only $Y_i$ at the logged $a_i$ is observed. Lines across actions are model
+predictions, not true curves or observed residual functions.
+
+Residual shape diagnostics use empirical quantiles and SciPy's skewness and
+excess kurtosis (normal reference: both zero). Q-Q coordinates standardize each
+displayed distribution by its own population mean and standard deviation. The
+central-95% view is deliberately truncated, not a normality test. Action-bin
+means/medians and 10th--90th percentiles describe pooled logged outcomes;
+percentile ribbons are not confidence bands or fixed-customer uncertainty.
+
+Observed-outcome splits use the original binary `is_churn` labels: 0 for renewed,
+1 for churned. Under the stated profit convention, churned residuals equal
+$-\widehat Y_i$. Each full group is retained in summary statistics; the optional
+central-95% histograms trim residual quantiles separately within each group and
+model and normalize each displayed histogram to unit area. Conditioning on the
+realized outcome need not preserve zero-mean residuals even for a correct
+expected-profit model. These diagnostic groups do not supply a pre-decision
+feature for $\phi$, and mean-response wild bands do not establish coverage of
+individual realized outcomes in both groups.
+
 For profit matrix $P_{ij}=P_i(u_j)$,
 
 $$

@@ -124,12 +124,15 @@ def _plot_bands(output, arrays, examples, design, fits, delta):
     _render_band_curves(output, arrays, examples, stored, delta)
 
 
-def _render_band_curves(output, arrays, examples, stored, delta):
+def _render_band_curves(output, arrays, examples, stored, delta, *, labels=None,
+                        quantities=("residual", "profit"), action_bounds=None,
+                        filename_prefix="wild"):
     grid = examples["action_grid"]
     positions = examples["selection_positions"]
-    labels = ["Smallest norm", "Median norm", "Largest norm"]
+    if labels is None:
+        labels = ["Smallest norm", "Median norm", "Largest norm"]
     with plt.rc_context(_STYLE):
-        for quantity in ("residual", "profit"):
+        for quantity in quantities:
             fig, axes = plt.subplots(2, 3, figsize=(15, 9), sharex=True, constrained_layout=True)
             noun = "Residual-mean bands" if quantity == "residual" else "Transferred expected-profit envelopes"
             fig.suptitle(f"{noun} · nominal {1-delta:.0%} wild bootstrap", fontsize=16)
@@ -156,6 +159,8 @@ def _render_band_curves(output, arrays, examples, stored, delta):
                     ax.plot(arrays["a"][position], observed, "D", color="C2", label="Observed outcome at logged a")
                     ax.set(title=f"{model_label} · {label}\nSource row {arrays['row_indices'][position]}",
                            xlabel="Price change, a", ylabel=ylabel)
+                    if action_bounds is not None:
+                        ax.set_xlim(*action_bounds)
                     ax.tick_params(labelbottom=True)
                     if col == 0:
                         handles, entries = ax.get_legend_handles_labels()
@@ -166,7 +171,7 @@ def _render_band_curves(output, arrays, examples, stored, delta):
                             legend_labels.extend(entries[2:])
             # Automatic outside layout keeps the single observed points visible.
             fig.legend(legend_handles, legend_labels, loc="outside lower center", ncol=3)
-            fig.savefig(output / f"wild_{quantity}_bands.pdf", format="pdf")
+            fig.savefig(output / f"{filename_prefix}_{quantity}_bands.pdf", format="pdf")
             plt.close(fig)
 
 

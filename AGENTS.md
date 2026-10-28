@@ -177,6 +177,19 @@ Before finishing a build session:
 4. Update `AGENTS.md` if organization or workflow knowledge changed.
 5. Leave a concise summary so another agent can continue from the branch without chat context.
 
+### Experiment output cleanup
+
+- Keep one clearly named current deliverables folder per analysis, with
+  descriptive PDF names. Do not leave numbered retry directories, interrupted
+  attempts or redundant figure revisions beside the current result.
+- Before handoff, verify no live work or unique artifacts would be lost; remove
+  empty attempts and archive useful superseded/interrupted outputs under shared
+  `scratch-results/`. Preserve requested scientific comparisons as named variants.
+- Record old/new paths and checksums in `scratch/retired_experiments/`, preserve
+  completed file contents/provenance, and update active configs and documentation.
+  Keep required calibration/model inputs available and verify replay references.
+  Routine cleanup of the agent's own redundant attempts is already authorized.
+
 Opening or pushing a PR is a review handoff. Leave it open unless the user
 explicitly asks to merge that PR; permission to implement, commit, or push does
 not authorize merging.
@@ -315,11 +328,11 @@ If lower-priority docs are stale, update them in the same task.
   Report unknown real-data mean-function coverage, high leverage and repeated-ID
   dependence limitations; no optimization or individual prediction intervals.
   `--render-wild <saved-run> --output-dir <fresh-directory>` only replays exact
-  saved endpoints. The baseline's final band PDFs are in `wild-linear-20261026/plots/`,
-  with automatic outside legends so observed points remain visible; its original
-  render and all fitted/bootstrap state are preserved unchanged.
+  saved endpoints. Fitted/bootstrap state remains in `wild-linear-20261026/`;
+  its superseded band PDFs are archived through
+  `scratch/retired_experiments/generali_wild_outputs_20261026.json`.
   `--optimize-wild scratch/generali_wild_policy.json` replays that fit into
-  `wild-linear-policy-20261026-r3/`. The companion `scratch/generali_wild_policy.py`
+  `wild-policy/`. The companion `scratch/generali_wild_policy.py`
   averages actual endpoints across all contexts for plots, but optimizes their
   personalized evaluations through `BandObjective` and the repository first-order
   trust-constr solver. Reuse the presentation's saved 20k cohort, policy-side
@@ -327,6 +340,25 @@ If lower-priority docs are stale, update them in the same task.
   cache is checked against saved-band replay; neither band nor predictor is
   grid-interpolated for optimization. Record model-based profit separately from
   the lower bound, sample/full-cohort constraints, and local optimizer status.
+  `--explore-wild scratch/generali_wild_slices.json` uses the companion
+  `scratch/generali_wild_slices.py` to replay norm slices and evaluate complete
+  historical-action cohorts plus their median-norm customers. No fit, bootstrap,
+  sampling or optimization occurs. Keep logged-action group selection distinct
+  from the queried plot action. Support diagnostics use the saved numeric
+  representation and exclude same-ID records as neighbours; all selected rows
+  are calibration observations, so empirical extremeness is not a validated OOD
+  label. Report residual half-width separately from the lower penalty; large
+  positive residual correction can produce a large upper envelope but zero
+  lower penalty. Current plots are in `wild-band-exploration/` in the same family.
+  `--render-wild-slices <saved-report>` replays its verified group-mean CSV and
+  cohort row IDs into two group PDFs. `--wild-action-bounds -1 2` with
+  `--explore-wild` evaluates both norm and historical-action figures on that
+  explicit interval, without changing calibration or policy bounds. All four
+  current PDFs have descriptive names directly in `wild-band-exploration/`.
+  Interrupted policy attempts, old narrow slices and duplicate fit renders
+  are outside the current-results tree; the relocation index above preserves
+  their hashes and original contracts. The completed policy run was renamed
+  `wild-policy`; slice replay checks its files at that current location.
 - The active synthetic catalog retains the three paired residual-heteroskedastic
   distribution manifests and six `residual-leverage-fixed-noise-outlier-*.json`
   manifests. Terminal-distribution results, all residual-heteroskedastic report

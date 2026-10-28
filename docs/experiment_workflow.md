@@ -361,7 +361,7 @@ MPLCONFIGDIR=/tmp/generali-residuals-mpl OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=
   python scratch/plot_generali_profit_residuals.py \
   --optimize-wild scratch/generali_wild_policy.json \
   --replay ../results/glm-spline-profit-dispersion/residuals-20261026 \
-  --output-dir ../results/glm-spline-profit-dispersion/wild-linear-policy-20261026-r3
+  --output-dir ../results/glm-spline-profit-dispersion/wild-policy
 ```
 
 The saved beta, QR factor and critical value are replayed without fitting or
@@ -414,7 +414,7 @@ full-context curve coordinates, nominal/corrected/lower-bound profit summaries,
 histogram counts and three vector PDFs. New-price actual profit and statistical
 band coverage remain unknown; original runs are preserved.
 
-The completed `wild-linear-policy-20261026-r3` baseline keeps full-data
+The completed `wild-policy` baseline keeps full-data
 calibration. Both GLM fits satisfy the solver's gradient termination criterion;
 both spline fits exhaust the inherited 1,000-step budget with zero sample
 constraint violation, so their saved policies remain unconverged candidates.
@@ -425,6 +425,72 @@ sample floor, while its lower-band policy satisfies it (0.878786783).
 All three PDFs were opened and visually inspected; saved solver endpoints,
 histogram counts, action bounds, sample constraints, and source/output hashes
 were verified. Eight focused tests and the small repository-optimizer demo pass.
+
+### Saved Generali wild-band slices and historical-action cohorts
+
+Use the existing residual driver to evaluate the saved linear band without any
+new fit, bootstrap draw or optimization:
+
+```bash
+MPLCONFIGDIR=/tmp/generali-residuals-mpl OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 \
+  python scratch/plot_generali_profit_residuals.py \
+  --explore-wild scratch/generali_wild_slices.json \
+  --replay ../results/glm-spline-profit-dispersion/residuals-20261026 \
+  --wild-action-bounds -1 2 \
+  --output-dir ../results/glm-spline-profit-dispersion/wild-band-exploration
+```
+
+This revision uses the approved inclusive historical-action groups [-.005,.005],
+[.095,.105], and the highest 5% (a >= 0.14428286142004157). All qualifying rows
+contribute to group-average endpoints. A customer's historical action determines
+group membership; the plotted horizontal axis queries different actions at the
+same contexts. It is not a local-action recalibration or causal group comparison.
+The individual panels use the original stable median-norm helper within each
+group. Without a display override, norm panels replay the original coordinates.
+With `--wild-action-bounds LOW HIGH`, both norm and historical-action plots query
+the frozen functions across that interval and set matching axis limits. The
+original norm-grid points inside the interval are retained and checked against
+the saved band. No beta fit, bootstrap recalibration or policy-bound change occurs.
+
+The common-action table compares half-width and transferred radii at a=.1;
+logged-action values are also retained. The saved whitened numeric representation
+defines norms and nearest-other-customer distances, excluding all same-ID rows.
+Raw-feature ranks and optimizer-cohort membership provide descriptive context.
+No trained-model OOD claim follows: these rows are in the calibration dataset,
+predictor training membership is unknown, and categorical support is not tested.
+CSV coordinates, cohort row IDs, selected features, width/penalty diagnostics,
+four vector PDFs, and checked input/output provenance are saved together.
+All current figures are directly in `wild-band-exploration/`, with descriptive
+names: `customer_norm_profit_bands.pdf`,
+`historical_action_customer_profit_bands.pdf`, `historical_action_mean_bands.pdf`,
+and `historical_action_widths_and_penalties.pdf`. Regenerate only the two group
+figures with `--render-wild-slices <saved-slice-report> --output-dir
+<fresh-directory>`; this preserves recorded axis limits without reevaluation.
+
+The requested cleanup moved interrupted attempts, narrow-range slice reports
+and duplicate calibration renders to
+`scratch-results/glm-spline-profit-dispersion/superseded-wild-runs-20261026/`.
+The completed policy result was renamed from its retry-labelled directory to
+`wild-policy`. Original files/provenance were preserved byte-for-byte; resolve
+historical paths using
+`scratch/retired_experiments/generali_wild_outputs_20261026.json`. Required
+residual/customer inputs and the full fitted/bootstrap state remain available.
+The expanded run passes the ten focused checks and the small optimizer demo.
+Both models' saved endpoints at -1 and +2 agree with the native band evaluator;
+cohort IDs and common-action/historical-action diagnostics are byte-identical
+to the narrow study. Current PDFs were opened and visually inspected, and all
+archived/renamed files were verified against the relocation checksums.
+
+Baseline findings: source row 715959 has the largest norm (3088.50) and recorded
+`X_claim_tot_value` 1,001,562.35 (population 99th percentile 2,100). At a=.1 its
+GLM/spline residual half-widths are 811.03/489.95, but the GLM lower penalty is
+zero because its fitted residual is positive and larger than the half-width.
+It is in calibration and absent from the saved 20k optimizer cohort. High-action
+customers are enriched for top-1%-norm contexts (8.00%, versus 0.34% near a=.1),
+while their median-norm representative is only at the 76.5th norm percentile.
+Ten focused tests and the small repository-optimizer demo pass. Cohort row IDs,
+mean endpoint identities, unchanged original artifacts and report checksums were
+verified; all four final PDFs were opened and visually inspected.
 
 ## Retirement and recovery
 

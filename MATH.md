@@ -390,7 +390,7 @@ feature for $\phi$, and mean-response wild bands do not establish coverage of
 individual realized outcomes in both groups.
 
 The first Generali wild baseline fits a separate affine residual correction for
-each frozen predictor, using $\phi(z,a)=(1,z^{\mathsf T},a)^{\mathsf T}$ with the
+each frozen predictor, using $\phi(z,a)=(1,z^{\mathsf{T}},a)^{\mathsf{T}}$ with the
 same 11 saved whitened numeric coordinates (13 coefficients). An 80/20 split of
 unique customer IDs assesses this correction; repeated IDs stay together.
 Full-data refits use every eligible row. This is not a holdout claim for the
@@ -399,12 +399,12 @@ post-fit squared error with squared deviations from the evaluated subset's
 residual mean; RMSE/MAE also compare against the original zero correction.
 
 For the full design $\Phi=QR$, the existing `WildLinearDesign` fits
-$\widetilde g=\phi^{\mathsf T}\widehat\beta$ to $Y-\widehat f$ and bootstraps
+$\widetilde g=\phi^{\mathsf{T}}\widehat\beta$ to $Y-\widehat f$ and bootstraps
 the raw post-fit errors with paired Rademacher signs. Its established statistic
 takes the standardized error supremum over observed contexts and all real
 actions, analytically including action-tail limits. With its empirical
 $(1-\delta)$ order statistic $c$, the residual half-width is
-$w(z,a)=c\|R^{-\mathsf T}\phi(z,a)\|_2$ and the residual band is
+$w(z,a)=c\|R^{-\mathsf{T}}\phi(z,a)\|_2$ and the residual band is
 $[\widetilde g-w,\widetilde g+w]$. The transferred profit envelope is
 $[\widehat f-[w-\widetilde g]_+,\widehat f+[w+\widetilde g]_+]$.
 This uses the unchanged constructions in §7.9, with no model-based truth curve.
@@ -420,23 +420,23 @@ or better-calibrated band. Source: `scratch/generali_residual_wild.py`, invoked
 through the existing residual comparison driver.
 
 The downstream Generali replay averages the existing customer endpoints at a
-common action only for visualization: $\overline L(a)=n^{-1}\sum_i L_i(a)$,
-$\overline U(a)=n^{-1}\sum_i U_i(a)$. Transfer and clipping precede averaging.
+common action only for visualization: $\overline{L}(a)=n^{-1}\sum_i L_i(a)$,
+$\overline{U}(a)=n^{-1}\sum_i U_i(a)$. Transfer and clipping precede averaging.
 The optimizer instead maximizes $n_{opt}^{-1}\sum_{i\in I_{opt}}L_i(\pi_\theta(x_i))$
 with each customer's own fitted residual and QR width. It never optimizes the
 averaged curve or evaluates that curve at a mean personalized action.
 
 For exact cached affine evaluations, let
-$v_i=R^{-\mathsf T}(1,z_i^{\mathsf T},0)^{\mathsf T}$ and
-$t=R^{-\mathsf T}e_a$. Then $w_i(a)=c\sqrt{\|v_i\|^2+2a v_i^{\mathsf T}t+a^2\|t\|^2}$
-and $w_i'(a)=c(v_i^{\mathsf T}t+a\|t\|^2)/\sqrt{\|v_i\|^2+2a v_i^{\mathsf T}t+a^2\|t\|^2}$.
+$v_i=R^{-\mathsf{T}}(1,z_i^{\mathsf{T}},0)^{\mathsf{T}}$ and
+$t=R^{-\mathsf{T}}e_a$. Then $w_i(a)=c\sqrt{\|v_i\|^2+2a v_i^{\mathsf{T}}t+a^2\|t\|^2}$
+and $w_i'(a)=c(v_i^{\mathsf{T}}t+a\|t\|^2)/\sqrt{\|v_i\|^2+2a v_i^{\mathsf{T}}t+a^2\|t\|^2}$.
 Together with $g_i'(a)=\widehat\beta_a$, this gives
-$L_i'(a)=\widehat f_i'(a)-\mathbf1\{w_i(a)>g_i(a)\}(w_i'(a)-\widehat\beta_a)$,
+$L_i'(a)=\widehat f_i'(a)-\mathbf{1}\{w_i(a)>g_i(a)\}(w_i'(a)-\widehat\beta_a)$,
 using the established zero derivative at the positive-part kink. Values and
 derivatives are checked against the existing saved-band replay implementation.
 
 The presentation's downstream policy is
-$\pi_\theta(x)=-0.1+0.3\operatorname{sigmoid}(\theta_0+\theta_x^{\mathsf T}\psi(x))$,
+$\pi_\theta(x)=-0.1+0.3\mathrm{sigmoid}(\theta_0+\theta_x^{\mathsf{T}}\psi(x))$,
 where $\psi$ replays the saved 19-feature policy preprocessing; it is distinct
 from residual basis $\phi$. The saved 20,000-row cohort and acceptance floor
 0.8787745289312372 are retained. Repository first-order trust-constr maximizes

@@ -579,13 +579,25 @@ def main(argv=None):
     parser.add_argument("--explore", action="store_true", help="Use saved residuals for representative customer curves, Q-Q plots and action-bin diagnostics.")
     parser.add_argument("--split-churn", action="store_true", help="Split saved residuals by true is_churn, showing full and within-group central-95% histograms.")
     parser.add_argument("--fit-wild-linear", type=Path, help="Explicit JSON setup for affine residual fitting and paired wild-bootstrap bands.")
+    parser.add_argument("--fit-wild-bases", type=Path, help="JSON setup for the resumable 40/40/20 residual-basis comparison.")
     parser.add_argument("--render-wild", type=Path, help="Replay a completed wild run's saved band coordinates without fitting.")
     parser.add_argument("--optimize-wild", type=Path, help="JSON setup for full-context band averages and repository optimization of personalized lower endpoints.")
     parser.add_argument("--explore-wild", type=Path, help="JSON setup for saved wild-band slices, historical-action groups and empirical feature support.")
     parser.add_argument("--wild-action-bounds", nargs=2, type=float, metavar=("LOW", "HIGH"),
                         help="With --explore-wild, evaluate both norm and historical-action bands over these display bounds.")
     parser.add_argument("--render-wild-slices", type=Path, help="Replot a completed wild-slice report's saved group means without evaluation.")
+    from experiments.launch import add_launch_args
+    add_launch_args(parser)
+    parser.set_defaults(array_max_parallel=2)
     args = parser.parse_args(argv)
+    if args.fit_wild_bases:
+        if (args.replay is None or args.fit_wild_linear or args.render_wild or args.optimize_wild
+                or args.explore_wild or args.render_wild_slices or args.explore or args.split_churn
+                or args.trim_actions or args.central_fraction != 1 or args.wild_action_bounds):
+            raise ValueError("Residual-basis study requires --replay and no other analysis mode.")
+        from scratch.generali_residual_basis_study import run_basis_study
+        run_basis_study(args, list(sys.argv[1:] if argv is None else argv))
+        return
     if args.wild_action_bounds is not None and not args.explore_wild:
         raise ValueError("--wild-action-bounds requires --explore-wild.")
     if args.render_wild_slices:

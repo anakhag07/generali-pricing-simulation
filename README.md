@@ -96,6 +96,11 @@ horizontal axis with separate vertical scales. The current thesis note is
 
 ### Generali residual diagnostics
 
+The residual-basis study compares affine, quadratic, cubic and frozen learned
+MLP features with a shared 40/40/20 split and unchanged 20k policy optimization.
+See [the study protocol](docs/generali_residual_basis_study.md) for execution and
+checkpointing through the existing diagnostic entry point.
+
 For the current Generali residual exploration, run
 `python scratch/plot_generali_profit_residuals.py --output-dir <fresh-directory>`.
 It compares observed historical profit with GLM and spline/XGBoost predictions

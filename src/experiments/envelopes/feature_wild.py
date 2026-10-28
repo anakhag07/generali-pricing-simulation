@@ -7,7 +7,7 @@ from scipy.linalg import qr, solve_triangular
 
 
 class WildFeatureDesign:
-    """Cache full-rank QR geometry for the coefficient ball in MATH section 7.18."""
+    """Cache full-rank QR geometry for the frozen-feature ball in MATH section 7.20."""
 
     def __init__(self, features):
         matrix = np.asarray(features, dtype=float)

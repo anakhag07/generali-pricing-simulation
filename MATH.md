@@ -1837,6 +1837,103 @@ penalties, with no added confidence claim. Queries must remain inside the saved
 action interval and match the saved customer rows. Stored acceptance curves
 retain their separate role in optimizer constraints.
 
+### 7.20 Wild coefficient ellipsoids for frozen residual features
+
+Condition on a fixed feature map $\phi(x,a)\in\mathbb{R}^{p}$ and the
+coefficient-fitting design $P\in\mathbb{R}^{n\times p}$, with $n>p$ and full
+column rank. In the Generali basis study, representation learning and beta
+fitting use disjoint customer pools; the learned representation is frozen
+before beta fitting and every bootstrap draw. The thin QR factorization gives
+
+$$
+P=QR,\qquad Q^{\top}Q=I_p,\qquad
+\widehat\beta=R^{-1}Q^{\top}y,\qquad e=y-P\widehat\beta.
+$$
+
+For independent row-wise Rademacher multipliers within each draw, define
+
+$$
+y_b^{\star}=P\widehat\beta+e\odot\xi_b,\qquad
+d_b=\widehat\beta_b^{\star}-\widehat\beta
+   =R^{-1}Q^{\top}(e\odot\xi_b),\qquad
+T_b=\Vert Rd_b\Vert_2=\Vert Q^{\top}(e\odot\xi_b)\Vert_2.
+$$
+
+Use the order statistic $c=T_{(k)}$, where $k=\lceil B(1-\delta)\rceil$,
+without interpolation. All query inputs share each coefficient draw; queries
+are not independent bootstrap samples. Conditional bootstrap covariance is
+
+$$
+\mathrm{Cov}^{\star}(d_b)
+ =R^{-1}Q^{\top}\mathrm{diag}(e_i^2)QR^{-\top}.
+$$
+
+At any query, set
+
+$$
+g(x,a)=\phi(x,a)^{\top}\widehat\beta,\qquad
+v(x,a)=R^{-\top}\phi(x,a),\qquad
+w(x,a)=c\Vert v(x,a)\Vert_2.
+$$
+
+If the conditional residual mean is $g_0(x,a)=\phi(x,a)^{\top}\beta_0$,
+then on the single coefficient event
+$\Vert R(\widehat\beta-\beta_0)\Vert_2\leq c$,
+Cauchy--Schwarz gives
+
+$$
+|g(x,a)-g_0(x,a)|
+ =|v(x,a)^{\top}R(\widehat\beta-\beta_0)|
+ \leq c\Vert v(x,a)\Vert_2=w(x,a)
+$$
+
+simultaneously for every feature vector. The study's query domain is the saved
+customer contexts crossed with all real actions; policy decisions remain in
+the configured bounded action interval. Polynomial and frozen tanh features
+use their exact formulas off grid. Plot samples are visualization only.
+The coefficient-event implication is deterministic; wild-bootstrap calibration
+does not establish exact finite-sample coverage, cover representation/model
+approximation bias, or remove repeated-customer dependence and leverage concerns.
+This general frozen-feature construction extends the specific contextual
+illustration in section 7.18; it differs from action-supremum calibration.
+
+For a frozen predictor $\widehat f$ and residual target
+$g_0=f-\widehat f$, the existing `residual_radii` transfer is
+
+$$
+r_{\mathrm{lower}}=\max(w-g,0),\qquad
+r_{\mathrm{upper}}=\max(w+g,0),\qquad
+L=\widehat f-r_{\mathrm{lower}},\qquad
+U=\widehat f+r_{\mathrm{upper}}.
+$$
+
+It contains the shifted residual interval
+$[\widehat f+g-w,\widehat f+g+w]$ and retains the original predictor.
+Transfer precedes averaging over contexts.
+
+With the fitted coefficients, $R$, and $c$ fixed, write
+$\dot\phi=\partial\phi/\partial a$ and $\dot v=R^{-\top}\dot\phi$.
+For $\Vert v\Vert_2>0$, the exact action derivatives are
+
+$$
+\dot g=\dot\phi^{\top}\widehat\beta,\qquad
+\dot w=c\frac{v^{\top}\dot v}{\Vert v\Vert_2},\qquad
+\dot L=\dot{\widehat f}+\mathbf{1}_{\{w>g\}}(\dot g-\dot w),\qquad
+\dot U=\dot{\widehat f}+\mathbf{1}_{\{w+g>0\}}(\dot w+\dot g).
+$$
+
+At a positive-part kink, the implementation assigns zero to that adjustment's
+derivative. The study includes an intercept, so invertible $R$ gives nonzero
+query norm; derivative evaluation rejects nonpositive norms. Polynomial caches
+evaluate the same action-polynomial coefficients and squared norms exactly;
+they do not interpolate a query grid or select an optimizer action.
+
+Implementation: `src/experiments/envelopes/feature_wild.py`,
+`src/experiments/envelopes/wild.py`, and `_FeatureFibers` in
+`scratch/generali_residual_basis_study.py`. Independent OLS refits,
+coefficient-ball inequalities, direct/cache parity, and finite-difference
+derivatives are checked by `tests/experiments/test_feature_wild.py`.
+
 ## 8. Gradients and Estimators
 
 For a differentiable action objective and policy, the population chain rule is

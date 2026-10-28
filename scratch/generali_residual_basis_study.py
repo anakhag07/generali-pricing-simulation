@@ -146,6 +146,9 @@ class _Checkpoint:
         self.rows, self.theta = [], None
 
     def log_step(self, method, step, action, value, gradient, **kwargs):
+        # Optimization.record reevaluates value at its callback theta before
+        # logging. FirstOrderGradient calls grad, so a rejected trial cannot
+        # leave last_theta stale here; the callback regression test pins this.
         self.theta = self.objective.last_theta.copy()
         self.rows.append([step, value, gradient, time.monotonic()-self.started])
         save_arrays_atomic(self.path, theta=self.theta, progress=np.array(self.rows))
@@ -162,7 +165,11 @@ def _solve(objective, inputs, theta0, settings, output, *, algorithm, resume=Tru
     if result_path.exists():
         result = json.loads(result_path.read_text())
         saved = _load(_verify(result["checkpoint"], checkpoint_path))
-        return saved["theta"], result
+        if result.get("status") != "wall_time_limit":
+            return saved["theta"], result
+        # Older versions incorrectly finalized wall-time stops. Keep their
+        # diagnostics, but remove the completion marker before restarting.
+        result_path.replace(output.with_suffix(".interrupted.json"))
     resumed = resume and checkpoint_path.exists()
     if resumed:
         theta0 = _load(checkpoint_path)["theta"]
@@ -186,6 +193,11 @@ def _solve(objective, inputs, theta0, settings, output, *, algorithm, resume=Tru
                 final_objective=objective.value(theta, inputs), checkpoint=file_record(checkpoint_path))
     if hasattr(objective, "mean_acceptance"):
         info["mean_acceptance"] = objective.mean_acceptance(theta, inputs)
+    if info["status"] == "wall_time_limit":
+        write_json_atomic(output.with_suffix(".interrupted.json"), info)
+        # Stop the enclosing stage too: an unfinished MLP must not be frozen
+        # into fit.json, nor an unfinished policy published in summary.json.
+        raise _Deadline(info["message"])
     write_json_atomic(result_path, info)
     return theta, info
 

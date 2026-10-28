@@ -54,9 +54,9 @@ approximation, retaining the saved 20,000 policy rows, a customer-disjoint
 Condition on each frozen feature map. With beta-training matrix P=QR,
 beta=R^{-1}Q' r and residual e=r-P beta, use bootstrap errors
 d_b=R^{-1}Q'(e*xi_b). Calibrate T_b=||R d_b|| and its ceil(.95 B)-th order
-statistic c. At a query, g=phi' beta and w=c ||R^{-T}phi||. This is the existing
-coefficient-ellipsoid construction in MATH section 7.18, generalized to a fixed
-feature matrix. Cauchy-Schwarz gives a simultaneous bound over every feature
+statistic c. At a query, g=phi' beta and w=c ||R^{-T}phi||. MATH section 7.20
+derives the frozen-feature coefficient ellipsoid, its signed residual transfer,
+and exact action derivatives. Cauchy-Schwarz gives a simultaneous bound over every feature
 vector conditional on the coefficient-ball event. It is not the original
 affine action-supremum calibration and can be more conservative.
 
@@ -103,6 +103,15 @@ Use `--launch local --task-index 0` for one task, or `--launch local --collect`
 to collect existing summaries. Task order is basis-major and then GLM/spline.
 Repeat an interrupted task with exactly the same config and sources to resume.
 An accepted-iterate restart resets the solver's internal memory and is recorded.
+Wall-time stops save the solver checkpoint and `*.interrupted.json` diagnostics,
+then stop the task before producing a completed fit, policy, or task summary.
+Rerunning the same task resumes from that checkpoint for both MLP learning and
+policy optimization. A legacy solver JSON with `status: wall_time_limit` is
+reclassified as interruption diagnostics before resuming; completed historical
+study artifacts and their original source contracts are not rewritten.
+The repository callback recorder reevaluates the accepted point before step
+logging, so first-order checkpoint theta agrees with the callback even after a
+rejected trial evaluation. A regression test covers both supported solvers.
 Completed bounded solves, including unconverged ones, are replayed; additional
 budgets require an explicit revision, not overwriting their original outcomes.
 

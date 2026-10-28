@@ -10,6 +10,10 @@ evaluation. See `docs/generali_residual_basis_study.md` for the representation,
 runtime and validation contract. Do not mix its affine control with the original
 full-data/action-supremum baseline. Completed task contracts are immutable;
 interrupted bootstrap batches and repository-solver iterates are resumable.
+Wall-time stops keep solver NPZ checkpoints and `*.interrupted.json` diagnostics,
+then raise before finalizing the MLP fit or policy/task summary. Only solver
+termination (including an iteration cap) produces replayable final solver JSON.
+The frozen-feature derivation and exact derivatives are in MATH section 7.20.
 The completed eight-task study lives under shared results at
 `glm-spline-profit-dispersion/residual-basis-study/`. All policy solves converged;
 both MLP representation fits exhausted 1,000 iterations. Completed intermediate
@@ -1637,12 +1641,14 @@ Regenerate docs when public API changes.
 
 ```bash
 conda activate simulation_env
-pdoc --math src/objective src/optimization src/experiments src/data src/reporting -o docs
+pdoc --math src/objective src/optimization src/experiments src/data src/reporting src/experiments/envelopes/feature_wild.py -o docs
 ```
 
 Run this command whenever docstrings are added, updated, or removed in any
 public class or function under `src/`. The command regenerates HTML for all
 modules at once so cross-module links stay consistent.
+Include `feature_wild.py` explicitly: its re-exported symbols alone do not
+regenerate the standalone module page through the package's `__all__`.
 
 Major classes and methods MUST have docstrings that render via pdoc:
 - Objective classes (`FixedRegressionObjective`, `PlantedLogisticObjective`, `ModelBasedObjective`)

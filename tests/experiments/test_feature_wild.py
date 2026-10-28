@@ -1,7 +1,11 @@
 """Independent refits and exact feature/action identities for the basis study."""
+import json
+from types import SimpleNamespace
+
 import numpy as np
 import pytest
 from experiments.envelopes.feature_wild import WildFeatureDesign, feature_band_components
+from scratch import generali_residual_basis_study as study
 from scratch.generali_residual_basis_study import _Basis, _FeatureFibers, _split, _solve, _MLPLoss
 from scratch.generali_residual_basis_study import _filter_rows, _fit, _subset_positions
 
@@ -90,6 +94,12 @@ def test_basis_action_derivative_and_exact_polynomial_cache(kind):
     parts = feature_band_components(basis.evaluate(xquery), beta, design.triangular, 3.)
     for key in parts:
         np.testing.assert_allclose(parts[key], actual[key], rtol=1e-9, atol=1e-10)
+    plus = fibers.values(positions, actions+1e-6)
+    minus = fibers.values(positions, actions-1e-6)
+    for side, sign in (("lower", -1), ("upper", 1)):
+        finite = sign*(plus[f"radius_{side}"]-minus[f"radius_{side}"])/2e-6
+        np.testing.assert_allclose(actual[f"{side}_adjustment_derivative"], finite,
+                                   rtol=2e-7, atol=2e-8)
     restored = _Basis.restore(basis.state())
     np.testing.assert_array_equal(restored.evaluate(x), basis.evaluate(x))
 
@@ -143,16 +153,112 @@ def test_repository_solver_checkpoint_can_be_replayed_without_optimization(tmp_p
     assert same == metadata
 
 
-def test_wall_budget_retains_an_iterate_without_claiming_convergence(tmp_path):
+@pytest.mark.parametrize("algorithm, filename", [("l-bfgs-b", "network"),
+                                                  ("trust-constr", "policy_optimizer")])
+def test_wall_budget_stops_without_finalizing_and_resumes(tmp_path, algorithm, filename):
     class Quadratic:
         def value(self, theta, inputs):
             return float(np.sum((theta-2)**2))
         def grad(self, theta, inputs):
             return 2*(theta-2)
     settings = {"wall_seconds": 0, "max_steps": 20, "grad_norm_tol": 1e-8}
-    theta, info = _solve(Quadratic(), np.ones((2, 1)), np.zeros(2), settings,
-                         tmp_path/"deadline", algorithm="l-bfgs-b")
-    np.testing.assert_array_equal(theta, np.zeros(2))
+    output = tmp_path/filename
+    with pytest.raises(study._Deadline, match="wall-time"):
+        _solve(Quadratic(), np.ones((2, 1)), np.zeros(2), settings,
+               output, algorithm=algorithm)
+    assert not output.with_suffix(".json").exists()
+    saved = study._load(output.with_suffix(".npz"))["theta"]
+    np.testing.assert_array_equal(saved, np.zeros(2))
+    info = json.loads(output.with_suffix(".interrupted.json").read_text())
     assert info["success"] is False
     assert info["status"] == "wall_time_limit"
-    assert (tmp_path/"deadline.npz").is_file()
+    theta, result = _solve(Quadratic(), np.ones((2, 1)), np.full(2, -10.),
+                           {**settings, "wall_seconds": 30}, output, algorithm=algorithm)
+    assert result["success"]
+    assert result["restarted_from_saved_iterate"]
+    np.testing.assert_allclose(theta, 2., atol=1e-8)
+    np.testing.assert_array_equal(study._load(output.with_suffix(".npz"))["theta_trace"][0], saved)
+
+
+def test_legacy_wall_time_result_resumes_instead_of_replaying(tmp_path):
+    class Quadratic:
+        def value(self, theta, inputs):
+            return float(np.sum((theta-2)**2))
+        def grad(self, theta, inputs):
+            return 2*(theta-2)
+    output = tmp_path/"network"
+    study.save_arrays_atomic(output.with_suffix(".npz"), theta=np.ones(2))
+    legacy = {"success": False, "status": "wall_time_limit",
+              "checkpoint": study.file_record(output.with_suffix(".npz"))}
+    study.write_json_atomic(output.with_suffix(".json"), legacy)
+    theta, info = _solve(Quadratic(), np.ones((2, 1)), np.zeros(2),
+        {"wall_seconds": 30, "max_steps": 20, "grad_norm_tol": 1e-8}, output, algorithm="l-bfgs-b")
+    assert info["success"] and info["restarted_from_saved_iterate"]
+    assert json.loads(output.with_suffix(".interrupted.json").read_text()) == legacy
+    np.testing.assert_allclose(theta, 2., atol=1e-8)
+    np.testing.assert_array_equal(study._load(output.with_suffix(".npz"))["theta_trace"][0], np.ones(2))
+
+
+@pytest.mark.parametrize("algorithm", ["l-bfgs-b", "trust-constr"])
+def test_deadline_checkpoint_uses_callback_iterate_after_rejected_trial(tmp_path, monkeypatch, algorithm):
+    from optimization import solvers
+
+    clock = [0.]
+    monkeypatch.setattr(study, "time", SimpleNamespace(monotonic=lambda: clock[0]))
+    accepted, rejected = np.array([1., 1.]), np.array([-4., -3.])
+
+    class Quadratic:
+        def value(self, theta, inputs):
+            return float(np.sum((theta-2)**2))
+        def grad(self, theta, inputs):
+            return 2*(theta-2)
+
+    def trial_then_callback(fun, *, x0, jac, callback, **kwargs):
+        # Inject evaluations into the repository's optimizer callback adapter;
+        # no fitted solution is supplied by this solver test double.
+        fun(accepted)
+        jac(accepted)
+        fun(rejected)
+        clock[0] = 2.
+        if algorithm == "trust-constr":
+            callback(accepted, SimpleNamespace(x=accepted))
+        else:
+            callback(accepted)
+        raise AssertionError("The deadline must stop this callback.")
+
+    monkeypatch.setattr(solvers, "minimize", trial_then_callback)
+    output = tmp_path/"callback"
+    with pytest.raises(study._Deadline):
+        _solve(Quadratic(), np.ones((2, 1)), np.zeros(2),
+            {"wall_seconds": 1, "max_steps": 20, "grad_norm_tol": 1e-8}, output, algorithm=algorithm)
+    np.testing.assert_array_equal(study._load(output.with_suffix(".npz"))["theta"], accepted)
+    info = json.loads(output.with_suffix(".interrupted.json").read_text())
+    assert info["final_objective"] == Quadratic().value(accepted, None)
+
+
+@pytest.mark.parametrize("stage", ["network", "policy_optimizer"])
+def test_task_deadline_does_not_publish_a_completed_fit_or_summary(tmp_path, monkeypatch, stage):
+    inputs = np.arange(120, dtype=float).reshape(40, 3)/120
+    arrays = {"glm_residual": np.sin(np.arange(40)), "row_indices": np.arange(40),
+              "is_churn": np.arange(40) % 2}
+    split = {"representation": np.arange(16), "beta": np.arange(16, 32), "holdout": np.arange(32, 40)}
+    settings = {"wall_seconds": 0, "max_steps": 20, "grad_norm_tol": 1e-8}
+    config = {"bases": ["mlp"], "models": ["glm"], "seed_root": 20261026,
+              "mlp": {**settings, "hidden": 2}, "policy": settings}
+    monkeypatch.setattr(study, "_contract", lambda *args: {"test": "deadline"})
+    monkeypatch.setattr(study, "_inputs", lambda *args: (arrays, inputs, split, {}, np.arange(3)))
+    if stage == "policy_optimizer":
+        monkeypatch.setattr(study, "_fit", lambda *args: (None, {}, {}))
+        def policy_stage(config, kind, name, arrays, inputs, basis, state, info, provenance, output):
+            objective = _MLPLoss(inputs, arrays["glm_residual"], 2)
+            _solve(objective, inputs, np.zeros(17), settings, output/"policy_optimizer",
+                   algorithm="trust-constr")
+            raise AssertionError("An interrupted policy must not finish its stage.")
+        monkeypatch.setattr(study, "_policies", policy_stage)
+    with pytest.raises(study._Deadline):
+        study._run_task(config, tmp_path, tmp_path/"config.json", tmp_path, 0)
+    folder = tmp_path/"mlp/glm"
+    assert (folder/f"{stage}.npz").is_file()
+    assert (folder/f"{stage}.interrupted.json").is_file()
+    for name in [f"{stage}.json", "fit.json", "band.npz", "policy.npz", "summary.json"]:
+        assert not (folder/name).exists()

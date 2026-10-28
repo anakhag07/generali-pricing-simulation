@@ -102,6 +102,8 @@ See [the study protocol](docs/generali_residual_basis_study.md) for execution an
 checkpointing through the existing diagnostic entry point. The `_trimmed.json`
 configuration repeats the study after the ten-record exclusion sensitivity
 analysis while preserving original split and multiplier coordinates.
+Wall-time interruptions retain checkpoints and stop the task; repeat the same
+command to resume MLP training or policy optimization from its saved iterate.
 
 For the current Generali residual exploration, run
 `python scratch/plot_generali_profit_residuals.py --output-dir <fresh-directory>`.

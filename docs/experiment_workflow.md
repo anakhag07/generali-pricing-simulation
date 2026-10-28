@@ -197,6 +197,14 @@ conversion and cached source digests live in `experiments.provenance`.
 
 ## Generali residual diagnostics
 
+The follow-up [residual-basis study](generali_residual_basis_study.md) varies the
+residual representation alone with a customer-disjoint 40/40/20 split and common
+coefficient-ellipsoid wild calibration. Its `--fit-wild-bases` mode retains this
+family and the saved policy cohort, and supports resumable Slurm tasks. The
+`generali_residual_wild_basis_study_trimmed.json` revision removes a fixed ten-row
+selection while preserving split memberships and original multiplier coordinates;
+its selection provenance and original study remain available.
+
 This descriptive report precedes choosing a residual basis or calibrating a
 band. It extends the GLM/spline comparison family without running an optimizer
 or a band task. The existing manifest report recipe evaluates action-grid profit

@@ -1,0 +1,102 @@
+{
+  "original_n": 715023,
+  "reference_band": {
+    "bytes": 9442315,
+    "path": "/orcd/home/002/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residual-basis-study/cubic/glm/band.npz",
+    "sha256": "328b8e2b439c9ab71219c0b9e510a2fe175e5ecd1c832cf0ac33002222ac2d3a"
+  },
+  "reference_contract": {
+    "bytes": 4453,
+    "path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residual-basis-study/cubic/glm/contract.json",
+    "sha256": "3adbb78196cbd4cbf29dd7bdf957ecc7db9a4cab42318769cc30730ef643bc74"
+  },
+  "reference_policy": {
+    "bytes": 6458899,
+    "path": "/orcd/home/002/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residual-basis-study/cubic/glm/policy.npz",
+    "sha256": "33f980f8c5c0b6b35f82ac6b9131b8bf00043fae6fc3cd47801add72d7dcdcb0"
+  },
+  "reference_split_band": {
+    "bytes": 9442315,
+    "path": "/orcd/home/002/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residual-basis-study/cubic/glm/band.npz",
+    "sha256": "328b8e2b439c9ab71219c0b9e510a2fe175e5ecd1c832cf0ac33002222ac2d3a"
+  },
+  "reference_summary": {
+    "bytes": 11152,
+    "path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residual-basis-study/cubic/glm/summary.json",
+    "sha256": "a864ab911bee3d0d13320191147cabeea094abca90e1da4ea8ee38cda99d08da"
+  },
+  "rows": [
+    {
+      "in_policy_20k": false,
+      "original_position": 343661,
+      "original_split": "representation",
+      "saved_cubic_glm_residual_correction": 1324210881.7363229,
+      "source_row": 356127
+    },
+    {
+      "in_policy_20k": false,
+      "original_position": 266411,
+      "original_split": "representation",
+      "saved_cubic_glm_residual_correction": 1324139302.7328303,
+      "source_row": 276076
+    },
+    {
+      "in_policy_20k": false,
+      "original_position": 502792,
+      "original_split": "holdout",
+      "saved_cubic_glm_residual_correction": 1323590303.0300078,
+      "source_row": 521036
+    },
+    {
+      "in_policy_20k": false,
+      "original_position": 615352,
+      "original_split": "representation",
+      "saved_cubic_glm_residual_correction": -9685644.517534567,
+      "source_row": 637472
+    },
+    {
+      "in_policy_20k": false,
+      "original_position": 691181,
+      "original_split": "representation",
+      "saved_cubic_glm_residual_correction": -409642.89121736377,
+      "source_row": 715959
+    },
+    {
+      "in_policy_20k": false,
+      "original_position": 285837,
+      "original_split": "holdout",
+      "saved_cubic_glm_residual_correction": -249031.85419810278,
+      "source_row": 296237
+    },
+    {
+      "in_policy_20k": false,
+      "original_position": 601146,
+      "original_split": "representation",
+      "saved_cubic_glm_residual_correction": -99942.4819621115,
+      "source_row": 622813
+    },
+    {
+      "in_policy_20k": false,
+      "original_position": 363639,
+      "original_split": "holdout",
+      "saved_cubic_glm_residual_correction": -30092.334077356732,
+      "source_row": 376794
+    },
+    {
+      "in_policy_20k": false,
+      "original_position": 403166,
+      "original_split": "representation",
+      "saved_cubic_glm_residual_correction": -20848.05369331008,
+      "source_row": 417714
+    },
+    {
+      "in_policy_20k": false,
+      "original_position": 206271,
+      "original_split": "holdout",
+      "saved_cubic_glm_residual_correction": -11123.001261448153,
+      "source_row": 213758
+    }
+  ],
+  "selection": "Ten largest absolute residual corrections at saved cubic GLM policy actions, the set flagged in the prior audit; applied identically to all bases and both models.",
+  "sensitivity_analysis": true
+}

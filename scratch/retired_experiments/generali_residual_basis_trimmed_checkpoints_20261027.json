@@ -1,0 +1,63 @@
+{
+  "study": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residual-basis-study-trimmed",
+  "live_work_check": "squeue for array 27050829 and collector 27050830 returned no jobs; all eight task summaries verified.",
+  "relocations": [
+    {
+      "from": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residual-basis-study-trimmed/affine/glm/bootstrap_checkpoint.npz",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/residual-basis-study-trimmed-checkpoints/affine/glm/bootstrap_checkpoint.npz",
+      "sha256": "000816346c1d4609e312d14aa785465028937fdf096947c6c10c9327b380ae84",
+      "bytes": 215150,
+      "reason": "Completed bootstrap checkpoint superseded by verified band.npz; original final artifacts and contracts remain unchanged."
+    },
+    {
+      "from": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residual-basis-study-trimmed/affine/spline_xgb/bootstrap_checkpoint.npz",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/residual-basis-study-trimmed-checkpoints/affine/spline_xgb/bootstrap_checkpoint.npz",
+      "sha256": "5a0aa1664a6216c095694146e29b2dddbd072ea5d696754ef869db06a44582a7",
+      "bytes": 215029,
+      "reason": "Completed bootstrap checkpoint superseded by verified band.npz; original final artifacts and contracts remain unchanged."
+    },
+    {
+      "from": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residual-basis-study-trimmed/cubic/glm/bootstrap_checkpoint.npz",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/residual-basis-study-trimmed-checkpoints/cubic/glm/bootstrap_checkpoint.npz",
+      "sha256": "55bce711b435fa9af4f3e2ac11f482fba35b7a505d5efeb837993b1ab54cb530",
+      "bytes": 7083925,
+      "reason": "Completed bootstrap checkpoint superseded by verified band.npz; original final artifacts and contracts remain unchanged."
+    },
+    {
+      "from": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residual-basis-study-trimmed/cubic/spline_xgb/bootstrap_checkpoint.npz",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/residual-basis-study-trimmed-checkpoints/cubic/spline_xgb/bootstrap_checkpoint.npz",
+      "sha256": "5cb97977172b656b8619527678afc2a467d329a853790028ce3b1abed053d4d0",
+      "bytes": 7083743,
+      "reason": "Completed bootstrap checkpoint superseded by verified band.npz; original final artifacts and contracts remain unchanged."
+    },
+    {
+      "from": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residual-basis-study-trimmed/mlp/glm/bootstrap_checkpoint.npz",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/residual-basis-study-trimmed-checkpoints/mlp/glm/bootstrap_checkpoint.npz",
+      "sha256": "02f4e124b1c1e23f69c65ddfdc70b7580b220998d97cfe9c1921e081a23b827d",
+      "bytes": 278634,
+      "reason": "Completed bootstrap checkpoint superseded by verified band.npz; original final artifacts and contracts remain unchanged."
+    },
+    {
+      "from": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residual-basis-study-trimmed/mlp/spline_xgb/bootstrap_checkpoint.npz",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/residual-basis-study-trimmed-checkpoints/mlp/spline_xgb/bootstrap_checkpoint.npz",
+      "sha256": "59a7c30176e997c0931486170b91b53fb5ae2230cda5d780a93b9b9466e9d303",
+      "bytes": 279360,
+      "reason": "Completed bootstrap checkpoint superseded by verified band.npz; original final artifacts and contracts remain unchanged."
+    },
+    {
+      "from": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residual-basis-study-trimmed/quadratic/glm/bootstrap_checkpoint.npz",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/residual-basis-study-trimmed-checkpoints/quadratic/glm/bootstrap_checkpoint.npz",
+      "sha256": "9dcf01ad0491b0ae810df95446c6ec4099cd4e366b101b3ff1e20d40b844fd88",
+      "bytes": 1419592,
+      "reason": "Completed bootstrap checkpoint superseded by verified band.npz; original final artifacts and contracts remain unchanged."
+    },
+    {
+      "from": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residual-basis-study-trimmed/quadratic/spline_xgb/bootstrap_checkpoint.npz",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/residual-basis-study-trimmed-checkpoints/quadratic/spline_xgb/bootstrap_checkpoint.npz",
+      "sha256": "70c70bbcb2345e4a44be84f9528da0af766d8c08b87ddc2049c58a6690f9b9f7",
+      "bytes": 1418683,
+      "reason": "Completed bootstrap checkpoint superseded by verified band.npz; original final artifacts and contracts remain unchanged."
+    }
+  ],
+  "preserved": "All band, policy, network, config, source and original-study artifacts remain available."
+}

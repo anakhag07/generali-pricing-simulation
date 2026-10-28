@@ -328,6 +328,36 @@
                 </ul>
 
             </li>
+            <li>
+                    <a class="class" href="#WildFeatureDesign">WildFeatureDesign</a>
+                            <ul class="memberlist">
+                        <li>
+                                <a class="function" href="#WildFeatureDesign.__init__">WildFeatureDesign</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#WildFeatureDesign.design">design</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#WildFeatureDesign.rank_tolerance">rank_tolerance</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#WildFeatureDesign.condition_number">condition_number</a>
+                        </li>
+                        <li>
+                                <a class="variable" href="#WildFeatureDesign.leverage">leverage</a>
+                        </li>
+                        <li>
+                                <a class="function" href="#WildFeatureDesign.fit">fit</a>
+                        </li>
+                        <li>
+                                <a class="function" href="#WildFeatureDesign.bootstrap_errors">bootstrap_errors</a>
+                        </li>
+                </ul>
+
+            </li>
+            <li>
+                    <a class="function" href="#feature_band_components">feature_band_components</a>
+            </li>
     </ul>
 
 
@@ -358,10 +388,12 @@
 </span><span id="L-5"><a href="#L-5"><span class="linenos"> 5</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.support</span><span class="w"> </span><span class="kn">import</span> <span class="n">fit_support_band</span>
 </span><span id="L-6"><a href="#L-6"><span class="linenos"> 6</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.linear</span><span class="w"> </span><span class="kn">import</span> <span class="n">LinearModel</span><span class="p">,</span> <span class="n">QuadraticModel</span>
 </span><span id="L-7"><a href="#L-7"><span class="linenos"> 7</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.wild</span><span class="w"> </span><span class="kn">import</span> <span class="n">WildLinearDesign</span>
-</span><span id="L-8"><a href="#L-8"><span class="linenos"> 8</span></a>
-</span><span id="L-9"><a href="#L-9"><span class="linenos"> 9</span></a><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;CalibrationData&quot;</span><span class="p">,</span> <span class="s2">&quot;ContainmentResult&quot;</span><span class="p">,</span> <span class="s2">&quot;EnvelopeValues&quot;</span><span class="p">,</span> <span class="s2">&quot;FittedEnvelope&quot;</span><span class="p">,</span> <span class="s2">&quot;ProbabilityStatement&quot;</span><span class="p">,</span>
-</span><span id="L-10"><a href="#L-10"><span class="linenos">10</span></a>    <span class="s2">&quot;TargetDomain&quot;</span><span class="p">,</span> <span class="s2">&quot;aggregate_coverage&quot;</span><span class="p">,</span> <span class="s2">&quot;check_finite_containment&quot;</span><span class="p">,</span> <span class="s2">&quot;evaluate_tightness&quot;</span><span class="p">,</span> <span class="s2">&quot;fit_band&quot;</span><span class="p">,</span>
-</span><span id="L-11"><a href="#L-11"><span class="linenos">11</span></a>    <span class="s2">&quot;save_band&quot;</span><span class="p">,</span> <span class="s2">&quot;load_band&quot;</span><span class="p">,</span> <span class="s2">&quot;fit_support_band&quot;</span><span class="p">,</span> <span class="s2">&quot;LinearModel&quot;</span><span class="p">,</span> <span class="s2">&quot;QuadraticModel&quot;</span><span class="p">,</span> <span class="s2">&quot;WildLinearDesign&quot;</span><span class="p">]</span>
+</span><span id="L-8"><a href="#L-8"><span class="linenos"> 8</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.feature_wild</span><span class="w"> </span><span class="kn">import</span> <span class="n">WildFeatureDesign</span><span class="p">,</span> <span class="n">feature_band_components</span>
+</span><span id="L-9"><a href="#L-9"><span class="linenos"> 9</span></a>
+</span><span id="L-10"><a href="#L-10"><span class="linenos">10</span></a><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;CalibrationData&quot;</span><span class="p">,</span> <span class="s2">&quot;ContainmentResult&quot;</span><span class="p">,</span> <span class="s2">&quot;EnvelopeValues&quot;</span><span class="p">,</span> <span class="s2">&quot;FittedEnvelope&quot;</span><span class="p">,</span> <span class="s2">&quot;ProbabilityStatement&quot;</span><span class="p">,</span>
+</span><span id="L-11"><a href="#L-11"><span class="linenos">11</span></a>    <span class="s2">&quot;TargetDomain&quot;</span><span class="p">,</span> <span class="s2">&quot;aggregate_coverage&quot;</span><span class="p">,</span> <span class="s2">&quot;check_finite_containment&quot;</span><span class="p">,</span> <span class="s2">&quot;evaluate_tightness&quot;</span><span class="p">,</span> <span class="s2">&quot;fit_band&quot;</span><span class="p">,</span>
+</span><span id="L-12"><a href="#L-12"><span class="linenos">12</span></a>    <span class="s2">&quot;save_band&quot;</span><span class="p">,</span> <span class="s2">&quot;load_band&quot;</span><span class="p">,</span> <span class="s2">&quot;fit_support_band&quot;</span><span class="p">,</span> <span class="s2">&quot;LinearModel&quot;</span><span class="p">,</span> <span class="s2">&quot;QuadraticModel&quot;</span><span class="p">,</span> <span class="s2">&quot;WildLinearDesign&quot;</span><span class="p">,</span>
+</span><span id="L-13"><a href="#L-13"><span class="linenos">13</span></a>    <span class="s2">&quot;WildFeatureDesign&quot;</span><span class="p">,</span> <span class="s2">&quot;feature_band_components&quot;</span><span class="p">]</span>
 </span></pre></div>
 
 
@@ -2507,6 +2539,228 @@
 
 
                             </div>
+                </section>
+                <section id="WildFeatureDesign">
+                            <input id="WildFeatureDesign-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr class">
+
+    <span class="def">class</span>
+    <span class="name">WildFeatureDesign</span>:
+
+                <label class="view-source-button" for="WildFeatureDesign-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#WildFeatureDesign"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="WildFeatureDesign-10"><a href="#WildFeatureDesign-10"><span class="linenos">10</span></a><span class="k">class</span><span class="w"> </span><span class="nc">WildFeatureDesign</span><span class="p">:</span>
+</span><span id="WildFeatureDesign-11"><a href="#WildFeatureDesign-11"><span class="linenos">11</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Cache full-rank QR geometry for the coefficient ball in MATH section 7.18.&quot;&quot;&quot;</span>
+</span><span id="WildFeatureDesign-12"><a href="#WildFeatureDesign-12"><span class="linenos">12</span></a>
+</span><span id="WildFeatureDesign-13"><a href="#WildFeatureDesign-13"><span class="linenos">13</span></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">features</span><span class="p">):</span>
+</span><span id="WildFeatureDesign-14"><a href="#WildFeatureDesign-14"><span class="linenos">14</span></a>        <span class="n">matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="WildFeatureDesign-15"><a href="#WildFeatureDesign-15"><span class="linenos">15</span></a>        <span class="k">if</span> <span class="n">matrix</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">2</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">matrix</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+</span><span id="WildFeatureDesign-16"><a href="#WildFeatureDesign-16"><span class="linenos">16</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Require a finite two-dimensional frozen design.&quot;</span><span class="p">)</span>
+</span><span id="WildFeatureDesign-17"><a href="#WildFeatureDesign-17"><span class="linenos">17</span></a>        <span class="n">n</span><span class="p">,</span> <span class="n">p</span> <span class="o">=</span> <span class="n">matrix</span><span class="o">.</span><span class="n">shape</span>
+</span><span id="WildFeatureDesign-18"><a href="#WildFeatureDesign-18"><span class="linenos">18</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;</span> <span class="n">p</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">:</span>
+</span><span id="WildFeatureDesign-19"><a href="#WildFeatureDesign-19"><span class="linenos">19</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Require n &gt; p &gt; 0.&quot;</span><span class="p">)</span>
+</span><span id="WildFeatureDesign-20"><a href="#WildFeatureDesign-20"><span class="linenos">20</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">design</span> <span class="o">=</span> <span class="n">matrix</span>
+</span><span id="WildFeatureDesign-21"><a href="#WildFeatureDesign-21"><span class="linenos">21</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">orthogonal</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">triangular</span> <span class="o">=</span> <span class="n">qr</span><span class="p">(</span><span class="n">matrix</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;economic&quot;</span><span class="p">,</span> <span class="n">check_finite</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</span><span id="WildFeatureDesign-22"><a href="#WildFeatureDesign-22"><span class="linenos">22</span></a>        <span class="n">singular</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">svd</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">triangular</span><span class="p">,</span> <span class="n">compute_uv</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</span><span id="WildFeatureDesign-23"><a href="#WildFeatureDesign-23"><span class="linenos">23</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">rank_tolerance</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">finfo</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">eps</span> <span class="o">*</span> <span class="nb">max</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span> <span class="o">*</span> <span class="n">singular</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</span><span id="WildFeatureDesign-24"><a href="#WildFeatureDesign-24"><span class="linenos">24</span></a>        <span class="k">if</span> <span class="n">singular</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank_tolerance</span><span class="p">:</span>
+</span><span id="WildFeatureDesign-25"><a href="#WildFeatureDesign-25"><span class="linenos">25</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Numerically rank-deficient frozen design: smallest singular value &quot;</span>
+</span><span id="WildFeatureDesign-26"><a href="#WildFeatureDesign-26"><span class="linenos">26</span></a>                             <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">singular</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="s2">.6g</span><span class="si">}</span><span class="s2"> &lt;= </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">rank_tolerance</span><span class="si">:</span><span class="s2">.6g</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+</span><span id="WildFeatureDesign-27"><a href="#WildFeatureDesign-27"><span class="linenos">27</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">condition_number</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">singular</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">singular</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+</span><span id="WildFeatureDesign-28"><a href="#WildFeatureDesign-28"><span class="linenos">28</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">leverage</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;ij,ij-&gt;i&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">orthogonal</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">orthogonal</span><span class="p">)</span>
+</span><span id="WildFeatureDesign-29"><a href="#WildFeatureDesign-29"><span class="linenos">29</span></a>
+</span><span id="WildFeatureDesign-30"><a href="#WildFeatureDesign-30"><span class="linenos">30</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">responses</span><span class="p">):</span>
+</span><span id="WildFeatureDesign-31"><a href="#WildFeatureDesign-31"><span class="linenos">31</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Fit the linear head conditional on its frozen features using cached QR.&quot;&quot;&quot;</span>
+</span><span id="WildFeatureDesign-32"><a href="#WildFeatureDesign-32"><span class="linenos">32</span></a>        <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">responses</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="WildFeatureDesign-33"><a href="#WildFeatureDesign-33"><span class="linenos">33</span></a>        <span class="k">if</span> <span class="n">y</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">design</span><span class="p">),)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+</span><span id="WildFeatureDesign-34"><a href="#WildFeatureDesign-34"><span class="linenos">34</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Require one finite response per design row.&quot;</span><span class="p">)</span>
+</span><span id="WildFeatureDesign-35"><a href="#WildFeatureDesign-35"><span class="linenos">35</span></a>        <span class="k">return</span> <span class="n">solve_triangular</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">triangular</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">orthogonal</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">y</span><span class="p">)</span>
+</span><span id="WildFeatureDesign-36"><a href="#WildFeatureDesign-36"><span class="linenos">36</span></a>
+</span><span id="WildFeatureDesign-37"><a href="#WildFeatureDesign-37"><span class="linenos">37</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">bootstrap_errors</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">residuals</span><span class="p">,</span> <span class="n">multipliers</span><span class="p">):</span>
+</span><span id="WildFeatureDesign-38"><a href="#WildFeatureDesign-38"><span class="linenos">38</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return raw-residual wild coefficient errors and their joint-ball norms.&quot;&quot;&quot;</span>
+</span><span id="WildFeatureDesign-39"><a href="#WildFeatureDesign-39"><span class="linenos">39</span></a>        <span class="n">residuals</span><span class="p">,</span> <span class="n">signs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">residuals</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">multipliers</span><span class="p">)</span>
+</span><span id="WildFeatureDesign-40"><a href="#WildFeatureDesign-40"><span class="linenos">40</span></a>        <span class="k">if</span> <span class="n">residuals</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">design</span><span class="p">),)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">residuals</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+</span><span id="WildFeatureDesign-41"><a href="#WildFeatureDesign-41"><span class="linenos">41</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Require one finite fitted residual per design row.&quot;</span><span class="p">)</span>
+</span><span id="WildFeatureDesign-42"><a href="#WildFeatureDesign-42"><span class="linenos">42</span></a>        <span class="k">if</span> <span class="p">(</span><span class="n">signs</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">2</span> <span class="ow">or</span> <span class="n">signs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">residuals</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">signs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
+</span><span id="WildFeatureDesign-43"><a href="#WildFeatureDesign-43"><span class="linenos">43</span></a>                <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">((</span><span class="n">signs</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">signs</span> <span class="o">==</span> <span class="mi">1</span><span class="p">))):</span>
+</span><span id="WildFeatureDesign-44"><a href="#WildFeatureDesign-44"><span class="linenos">44</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Require nonempty (B,n) Rademacher multipliers.&quot;</span><span class="p">)</span>
+</span><span id="WildFeatureDesign-45"><a href="#WildFeatureDesign-45"><span class="linenos">45</span></a>        <span class="n">whitened</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">orthogonal</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="p">(</span><span class="n">signs</span> <span class="o">*</span> <span class="n">residuals</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+</span><span id="WildFeatureDesign-46"><a href="#WildFeatureDesign-46"><span class="linenos">46</span></a>        <span class="n">errors</span> <span class="o">=</span> <span class="n">solve_triangular</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">triangular</span><span class="p">,</span> <span class="n">whitened</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+</span><span id="WildFeatureDesign-47"><a href="#WildFeatureDesign-47"><span class="linenos">47</span></a>        <span class="k">return</span> <span class="n">errors</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">whitened</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Cache full-rank QR geometry for the coefficient ball in MATH section 7.18.</p>
+</div>
+
+
+                            <div id="WildFeatureDesign.__init__" class="classattr">
+                                        <input id="WildFeatureDesign.__init__-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+
+        <span class="name">WildFeatureDesign</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">features</span></span>)</span>
+
+                <label class="view-source-button" for="WildFeatureDesign.__init__-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#WildFeatureDesign.__init__"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="WildFeatureDesign.__init__-13"><a href="#WildFeatureDesign.__init__-13"><span class="linenos">13</span></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">features</span><span class="p">):</span>
+</span><span id="WildFeatureDesign.__init__-14"><a href="#WildFeatureDesign.__init__-14"><span class="linenos">14</span></a>        <span class="n">matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="WildFeatureDesign.__init__-15"><a href="#WildFeatureDesign.__init__-15"><span class="linenos">15</span></a>        <span class="k">if</span> <span class="n">matrix</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">2</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">matrix</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+</span><span id="WildFeatureDesign.__init__-16"><a href="#WildFeatureDesign.__init__-16"><span class="linenos">16</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Require a finite two-dimensional frozen design.&quot;</span><span class="p">)</span>
+</span><span id="WildFeatureDesign.__init__-17"><a href="#WildFeatureDesign.__init__-17"><span class="linenos">17</span></a>        <span class="n">n</span><span class="p">,</span> <span class="n">p</span> <span class="o">=</span> <span class="n">matrix</span><span class="o">.</span><span class="n">shape</span>
+</span><span id="WildFeatureDesign.__init__-18"><a href="#WildFeatureDesign.__init__-18"><span class="linenos">18</span></a>        <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;</span> <span class="n">p</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">:</span>
+</span><span id="WildFeatureDesign.__init__-19"><a href="#WildFeatureDesign.__init__-19"><span class="linenos">19</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Require n &gt; p &gt; 0.&quot;</span><span class="p">)</span>
+</span><span id="WildFeatureDesign.__init__-20"><a href="#WildFeatureDesign.__init__-20"><span class="linenos">20</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">design</span> <span class="o">=</span> <span class="n">matrix</span>
+</span><span id="WildFeatureDesign.__init__-21"><a href="#WildFeatureDesign.__init__-21"><span class="linenos">21</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">orthogonal</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">triangular</span> <span class="o">=</span> <span class="n">qr</span><span class="p">(</span><span class="n">matrix</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;economic&quot;</span><span class="p">,</span> <span class="n">check_finite</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</span><span id="WildFeatureDesign.__init__-22"><a href="#WildFeatureDesign.__init__-22"><span class="linenos">22</span></a>        <span class="n">singular</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">svd</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">triangular</span><span class="p">,</span> <span class="n">compute_uv</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</span><span id="WildFeatureDesign.__init__-23"><a href="#WildFeatureDesign.__init__-23"><span class="linenos">23</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">rank_tolerance</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">finfo</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">eps</span> <span class="o">*</span> <span class="nb">max</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span> <span class="o">*</span> <span class="n">singular</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</span><span id="WildFeatureDesign.__init__-24"><a href="#WildFeatureDesign.__init__-24"><span class="linenos">24</span></a>        <span class="k">if</span> <span class="n">singular</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank_tolerance</span><span class="p">:</span>
+</span><span id="WildFeatureDesign.__init__-25"><a href="#WildFeatureDesign.__init__-25"><span class="linenos">25</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Numerically rank-deficient frozen design: smallest singular value &quot;</span>
+</span><span id="WildFeatureDesign.__init__-26"><a href="#WildFeatureDesign.__init__-26"><span class="linenos">26</span></a>                             <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">singular</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="s2">.6g</span><span class="si">}</span><span class="s2"> &lt;= </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">rank_tolerance</span><span class="si">:</span><span class="s2">.6g</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+</span><span id="WildFeatureDesign.__init__-27"><a href="#WildFeatureDesign.__init__-27"><span class="linenos">27</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">condition_number</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">singular</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">singular</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+</span><span id="WildFeatureDesign.__init__-28"><a href="#WildFeatureDesign.__init__-28"><span class="linenos">28</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">leverage</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;ij,ij-&gt;i&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">orthogonal</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">orthogonal</span><span class="p">)</span>
+</span></pre></div>
+
+
+
+
+                            </div>
+                            <div id="WildFeatureDesign.design" class="classattr">
+                                <div class="attr variable">
+            <span class="name">design</span>
+
+
+    </div>
+    <a class="headerlink" href="#WildFeatureDesign.design"></a>
+
+
+
+                            </div>
+                            <div id="WildFeatureDesign.rank_tolerance" class="classattr">
+                                <div class="attr variable">
+            <span class="name">rank_tolerance</span>
+
+
+    </div>
+    <a class="headerlink" href="#WildFeatureDesign.rank_tolerance"></a>
+
+
+
+                            </div>
+                            <div id="WildFeatureDesign.condition_number" class="classattr">
+                                <div class="attr variable">
+            <span class="name">condition_number</span>
+
+
+    </div>
+    <a class="headerlink" href="#WildFeatureDesign.condition_number"></a>
+
+
+
+                            </div>
+                            <div id="WildFeatureDesign.leverage" class="classattr">
+                                <div class="attr variable">
+            <span class="name">leverage</span>
+
+
+    </div>
+    <a class="headerlink" href="#WildFeatureDesign.leverage"></a>
+
+
+
+                            </div>
+                            <div id="WildFeatureDesign.fit" class="classattr">
+                                        <input id="WildFeatureDesign.fit-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+
+        <span class="def">def</span>
+        <span class="name">fit</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">responses</span></span><span class="return-annotation">):</span></span>
+
+                <label class="view-source-button" for="WildFeatureDesign.fit-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#WildFeatureDesign.fit"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="WildFeatureDesign.fit-30"><a href="#WildFeatureDesign.fit-30"><span class="linenos">30</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">responses</span><span class="p">):</span>
+</span><span id="WildFeatureDesign.fit-31"><a href="#WildFeatureDesign.fit-31"><span class="linenos">31</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Fit the linear head conditional on its frozen features using cached QR.&quot;&quot;&quot;</span>
+</span><span id="WildFeatureDesign.fit-32"><a href="#WildFeatureDesign.fit-32"><span class="linenos">32</span></a>        <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">responses</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="WildFeatureDesign.fit-33"><a href="#WildFeatureDesign.fit-33"><span class="linenos">33</span></a>        <span class="k">if</span> <span class="n">y</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">design</span><span class="p">),)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">y</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+</span><span id="WildFeatureDesign.fit-34"><a href="#WildFeatureDesign.fit-34"><span class="linenos">34</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Require one finite response per design row.&quot;</span><span class="p">)</span>
+</span><span id="WildFeatureDesign.fit-35"><a href="#WildFeatureDesign.fit-35"><span class="linenos">35</span></a>        <span class="k">return</span> <span class="n">solve_triangular</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">triangular</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">orthogonal</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">y</span><span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Fit the linear head conditional on its frozen features using cached QR.</p>
+</div>
+
+
+                            </div>
+                            <div id="WildFeatureDesign.bootstrap_errors" class="classattr">
+                                        <input id="WildFeatureDesign.bootstrap_errors-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+
+        <span class="def">def</span>
+        <span class="name">bootstrap_errors</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">residuals</span>, </span><span class="param"><span class="n">multipliers</span></span><span class="return-annotation">):</span></span>
+
+                <label class="view-source-button" for="WildFeatureDesign.bootstrap_errors-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#WildFeatureDesign.bootstrap_errors"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="WildFeatureDesign.bootstrap_errors-37"><a href="#WildFeatureDesign.bootstrap_errors-37"><span class="linenos">37</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">bootstrap_errors</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">residuals</span><span class="p">,</span> <span class="n">multipliers</span><span class="p">):</span>
+</span><span id="WildFeatureDesign.bootstrap_errors-38"><a href="#WildFeatureDesign.bootstrap_errors-38"><span class="linenos">38</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return raw-residual wild coefficient errors and their joint-ball norms.&quot;&quot;&quot;</span>
+</span><span id="WildFeatureDesign.bootstrap_errors-39"><a href="#WildFeatureDesign.bootstrap_errors-39"><span class="linenos">39</span></a>        <span class="n">residuals</span><span class="p">,</span> <span class="n">signs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">residuals</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">multipliers</span><span class="p">)</span>
+</span><span id="WildFeatureDesign.bootstrap_errors-40"><a href="#WildFeatureDesign.bootstrap_errors-40"><span class="linenos">40</span></a>        <span class="k">if</span> <span class="n">residuals</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">design</span><span class="p">),)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">residuals</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+</span><span id="WildFeatureDesign.bootstrap_errors-41"><a href="#WildFeatureDesign.bootstrap_errors-41"><span class="linenos">41</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Require one finite fitted residual per design row.&quot;</span><span class="p">)</span>
+</span><span id="WildFeatureDesign.bootstrap_errors-42"><a href="#WildFeatureDesign.bootstrap_errors-42"><span class="linenos">42</span></a>        <span class="k">if</span> <span class="p">(</span><span class="n">signs</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">2</span> <span class="ow">or</span> <span class="n">signs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">residuals</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">signs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
+</span><span id="WildFeatureDesign.bootstrap_errors-43"><a href="#WildFeatureDesign.bootstrap_errors-43"><span class="linenos">43</span></a>                <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">((</span><span class="n">signs</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">signs</span> <span class="o">==</span> <span class="mi">1</span><span class="p">))):</span>
+</span><span id="WildFeatureDesign.bootstrap_errors-44"><a href="#WildFeatureDesign.bootstrap_errors-44"><span class="linenos">44</span></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Require nonempty (B,n) Rademacher multipliers.&quot;</span><span class="p">)</span>
+</span><span id="WildFeatureDesign.bootstrap_errors-45"><a href="#WildFeatureDesign.bootstrap_errors-45"><span class="linenos">45</span></a>        <span class="n">whitened</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">orthogonal</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="p">(</span><span class="n">signs</span> <span class="o">*</span> <span class="n">residuals</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+</span><span id="WildFeatureDesign.bootstrap_errors-46"><a href="#WildFeatureDesign.bootstrap_errors-46"><span class="linenos">46</span></a>        <span class="n">errors</span> <span class="o">=</span> <span class="n">solve_triangular</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">triangular</span><span class="p">,</span> <span class="n">whitened</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+</span><span id="WildFeatureDesign.bootstrap_errors-47"><a href="#WildFeatureDesign.bootstrap_errors-47"><span class="linenos">47</span></a>        <span class="k">return</span> <span class="n">errors</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">whitened</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Return raw-residual wild coefficient errors and their joint-ball norms.</p>
+</div>
+
+
+                            </div>
+                </section>
+                <section id="feature_band_components">
+                            <input id="feature_band_components-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+
+        <span class="def">def</span>
+        <span class="name">feature_band_components</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">features</span>, </span><span class="param"><span class="n">beta</span>, </span><span class="param"><span class="n">triangular</span>, </span><span class="param"><span class="n">critical</span></span><span class="return-annotation">):</span></span>
+
+                <label class="view-source-button" for="feature_band_components-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#feature_band_components"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="feature_band_components-50"><a href="#feature_band_components-50"><span class="linenos">50</span></a><span class="k">def</span><span class="w"> </span><span class="nf">feature_band_components</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">triangular</span><span class="p">,</span> <span class="n">critical</span><span class="p">):</span>
+</span><span id="feature_band_components-51"><a href="#feature_band_components-51"><span class="linenos">51</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Evaluate the exact frozen-feature residual fit and coefficient-ball width.&quot;&quot;&quot;</span>
+</span><span id="feature_band_components-52"><a href="#feature_band_components-52"><span class="linenos">52</span></a>    <span class="kn">from</span><span class="w"> </span><span class="nn">.wild</span><span class="w"> </span><span class="kn">import</span> <span class="n">residual_radii</span>
+</span><span id="feature_band_components-53"><a href="#feature_band_components-53"><span class="linenos">53</span></a>    <span class="n">phi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="feature_band_components-54"><a href="#feature_band_components-54"><span class="linenos">54</span></a>    <span class="n">beta</span><span class="p">,</span> <span class="n">triangular</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">beta</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">triangular</span><span class="p">)</span>
+</span><span id="feature_band_components-55"><a href="#feature_band_components-55"><span class="linenos">55</span></a>    <span class="k">if</span> <span class="p">(</span><span class="n">phi</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">2</span> <span class="ow">or</span> <span class="n">phi</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">!=</span> <span class="n">beta</span><span class="o">.</span><span class="n">shape</span>
+</span><span id="feature_band_components-56"><a href="#feature_band_components-56"><span class="linenos">56</span></a>            <span class="ow">or</span> <span class="n">triangular</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">beta</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">beta</span><span class="p">))</span>
+</span><span id="feature_band_components-57"><a href="#feature_band_components-57"><span class="linenos">57</span></a>            <span class="ow">or</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="p">(</span><span class="n">phi</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">triangular</span><span class="p">))</span>
+</span><span id="feature_band_components-58"><a href="#feature_band_components-58"><span class="linenos">58</span></a>            <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">critical</span><span class="p">)</span> <span class="ow">or</span> <span class="n">critical</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">):</span>
+</span><span id="feature_band_components-59"><a href="#feature_band_components-59"><span class="linenos">59</span></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Incompatible or nonfinite frozen-feature band state.&quot;</span><span class="p">)</span>
+</span><span id="feature_band_components-60"><a href="#feature_band_components-60"><span class="linenos">60</span></a>    <span class="n">fitted</span> <span class="o">=</span> <span class="n">phi</span> <span class="o">@</span> <span class="n">beta</span>
+</span><span id="feature_band_components-61"><a href="#feature_band_components-61"><span class="linenos">61</span></a>    <span class="n">width</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">critical</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span>
+</span><span id="feature_band_components-62"><a href="#feature_band_components-62"><span class="linenos">62</span></a>        <span class="n">solve_triangular</span><span class="p">(</span><span class="n">triangular</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">phi</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">lower</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</span><span id="feature_band_components-63"><a href="#feature_band_components-63"><span class="linenos">63</span></a>    <span class="n">lower</span><span class="p">,</span> <span class="n">upper</span> <span class="o">=</span> <span class="n">residual_radii</span><span class="p">(</span><span class="n">fitted</span><span class="p">,</span> <span class="n">width</span><span class="p">)</span>
+</span><span id="feature_band_components-64"><a href="#feature_band_components-64"><span class="linenos">64</span></a>    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;residual_fit&quot;</span><span class="p">:</span> <span class="n">fitted</span><span class="p">,</span> <span class="s2">&quot;width&quot;</span><span class="p">:</span> <span class="n">width</span><span class="p">,</span> <span class="s2">&quot;radius_lower&quot;</span><span class="p">:</span> <span class="n">lower</span><span class="p">,</span> <span class="s2">&quot;radius_upper&quot;</span><span class="p">:</span> <span class="n">upper</span><span class="p">}</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Evaluate the exact frozen-feature residual fit and coefficient-ball width.</p>
+</div>
+
+
                 </section>
     </main>
 <script>

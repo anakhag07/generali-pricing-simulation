@@ -1,0 +1,43 @@
+{
+  "family": "glm-spline-profit-dispersion",
+  "revision": "residual-basis-study-trimmed",
+  "baseline_fit": "glm-spline-profit-dispersion/wild-linear-20261026",
+  "baseline_policy": "glm-spline-profit-dispersion/wild-policy",
+  "spline_cache": "cache/monotone-spline-xgb-full-v1/sweeps/full-715023-v1-20260812",
+  "seed_root": 20261026,
+  "representation_fraction_of_saved_train": 0.5,
+  "bases": [
+    "affine",
+    "quadratic",
+    "cubic",
+    "mlp"
+  ],
+  "models": [
+    "glm",
+    "spline_xgb"
+  ],
+  "bootstrap": {
+    "count": 1999,
+    "delta": 0.05,
+    "batch_size": 16,
+    "calibration": "coefficient_ellipsoid"
+  },
+  "mlp": {
+    "hidden": 16,
+    "max_steps": 1000,
+    "grad_norm_tol": 1e-06,
+    "wall_seconds": 3600
+  },
+  "policy": {
+    "max_steps": 5000,
+    "grad_norm_tol": 1e-06,
+    "wall_seconds": 1800,
+    "initial_action": 0.08,
+    "action_bounds": [
+      -0.1,
+      0.2
+    ]
+  },
+  "evaluation_batch_size": 8192,
+  "cohort_filter": "scratch/generali_residual_basis_flagged_rows.json"
+}

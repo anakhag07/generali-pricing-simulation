@@ -1,5 +1,42 @@
 # Agent Instructions
 
+The Generali residual-basis follow-up uses the existing diagnostic entry point's
+`--fit-wild-bases scratch/generali_residual_wild_basis_study.json` mode and
+`scratch/generali_residual_basis_study.py` adapter. Its reusable
+`experiments.envelopes.feature_wild` module calibrates coefficient-ellipsoid
+bands conditional on frozen features. Preserve the approved 40/40/20 customer
+split, paired original multiplier seeds, fixed 20k policy cohort and full-row
+evaluation. See `docs/generali_residual_basis_study.md` for the representation,
+runtime and validation contract. Do not mix its affine control with the original
+full-data/action-supremum baseline. Completed task contracts are immutable;
+interrupted bootstrap batches and repository-solver iterates are resumable.
+The completed eight-task study lives under shared results at
+`glm-spline-profit-dispersion/residual-basis-study/`. All policy solves converged;
+both MLP representation fits exhausted 1,000 iterations. Completed intermediate
+bootstrap checkpoints are archived via
+`scratch/retired_experiments/generali_residual_basis_checkpoints_20261027.json`;
+the full band/policy/network states and original contracts remain current.
+The follow-up audit found source rows 356127, 276076 and 521036 have
+`X_vehicle_age=-7975`; polynomial extrapolation on these records dominates the
+cubic population means. Preserve historical artifacts and resolve the encoding
+explicitly before any cleaned-data revision. Residual holdout RMSE is not true
+beta error or a certificate of uniform accuracy at new policy actions.
+
+The ten-record sensitivity revision is configured by
+`scratch/generali_residual_wild_basis_study_trimmed.json`; its immutable selection
+and original artifact hashes are in `scratch/generali_residual_basis_flagged_rows.json`.
+Use original split memberships and full-length bootstrap coordinates before
+filtering. None of these exclusions intersects beta fitting or the saved 20k
+policy cohort. Preserve the original source worktree as well as its artifacts;
+its contracts include absolute source paths. See the same study guide.
+The exclusion revision completed 8/8 tasks in
+`glm-spline-profit-dispersion/residual-basis-study-trimmed/`; all policies
+converged, while both MLP fits reached 1,000 steps. The saved comparison and
+validation separate exclusion-only replay from refitting. Completed bootstrap
+checkpoints are archived in the matching `-checkpoints` directory, indexed by
+`scratch/retired_experiments/generali_residual_basis_trimmed_checkpoints_20261027.json`.
+Do not replace the retained comparison variants or change their source contracts.
+
 Project context: simulation and optimization repo. Users should be able to specify an experiment config and compare how different gradient methods perform across different objectives and policy types. Primary entry point is `main.py`.
 
 ## Core Working Rules

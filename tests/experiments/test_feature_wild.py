@@ -66,7 +66,7 @@ def test_coefficient_bootstrap_matches_independent_refits_and_bounds_new_queries
     np.testing.assert_allclose(design.leverage.sum(), matrix.shape[1], atol=1e-12)
 
 
-@pytest.mark.parametrize("kind", ["affine", "quadratic", "cubic", "mlp"])
+@pytest.mark.parametrize("kind", ["affine", "quadratic", "cubic", "mlp", "action_a2", "action_a2_a4"])
 def test_basis_action_derivative_and_exact_polynomial_cache(kind):
     rng = np.random.default_rng(411)
     x = rng.normal(size=(240, 4))
@@ -102,6 +102,71 @@ def test_basis_action_derivative_and_exact_polynomial_cache(kind):
                                    rtol=2e-7, atol=2e-8)
     restored = _Basis.restore(basis.state())
     np.testing.assert_array_equal(restored.evaluate(x), basis.evaluate(x))
+
+
+@pytest.mark.parametrize("kind,powers", [("action_a2", [1, 2]), ("action_a2_a4", [1, 2, 4])])
+def test_action_powers_preserve_original_action_and_average_exact_query_widths(kind, powers):
+    from scratch.generali_action_power_reporting import _common_action_sums
+    rng = np.random.default_rng(415)
+    inputs = rng.normal(size=(120, 4))
+    inputs[:, -1] = inputs[:, -1]*.2+.1
+    basis = _Basis(kind, inputs.mean(0), inputs.std(0))
+    raw = basis.raw(inputs)
+    np.testing.assert_array_equal(raw[:, 4:], np.column_stack([inputs[:, -1]**p for p in powers]))
+    assert raw.shape == (120, 4+len(powers))
+    basis.feature_mean, basis.feature_scale = raw.mean(0), raw.std(0)
+    basis.feature_mean[0], basis.feature_scale[0] = 0., 1.
+    design = WildFeatureDesign(basis.evaluate(inputs))
+    beta = design.fit(rng.normal(size=120))
+    fibers = _FeatureFibers(inputs, basis, beta, design.triangular, 2.)
+    positions = np.arange(len(inputs))
+    fibers.prepare(positions)
+    actions = np.array([-1., -.1, 0., .1, .2, 2.])
+    sums = _common_action_sums(fibers, actions)
+    for j, action in enumerate(actions):
+        direct = fibers.direct(positions, action)
+        for total_key, key in [("mean_half_width", "width"), ("mean_residual_fit", "residual_fit"),
+                               ("mean_lower_penalty", "radius_lower"), ("mean_upper_penalty", "radius_upper")]:
+            np.testing.assert_allclose(sums[total_key][j], direct[key].sum(), rtol=1e-10, atol=1e-9)
+        np.testing.assert_allclose(sums["mean_profit_envelope_width"][j],
+            (direct["radius_lower"]+direct["radius_upper"]).sum(), rtol=1e-10)
+        difference = (fibers.direct(positions, action+1e-6)["width"].sum()
+                      -fibers.direct(positions, action-1e-6)["width"].sum())/(2e-6)*.01
+        np.testing.assert_allclose(sums["half_width_slope_per_percentage_point"][j], difference, rtol=2e-6, atol=1e-7)
+
+
+def test_added_action_directions_increase_geometry_and_rescaling_cancels():
+    rng = np.random.default_rng(416)
+    inputs = rng.normal(size=(180, 4))
+    queries = rng.normal(size=(80, 4))*2
+    previous = None
+    for kind in ["affine", "action_a2", "action_a2_a4"]:
+        basis = _Basis(kind, inputs.mean(0), inputs.std(0))
+        raw = basis.raw(inputs)
+        basis.feature_mean, basis.feature_scale = raw.mean(0), raw.std(0)
+        basis.feature_mean[0], basis.feature_scale[0] = 0., 1.
+        matrix = basis.evaluate(inputs)
+        design = WildFeatureDesign(matrix)
+        query = basis.evaluate(queries)
+        width = feature_band_components(query, np.zeros(matrix.shape[1]), design.triangular, 1.)["width"]
+        if previous is not None:
+            assert np.all(width >= previous-1e-12)
+        previous = width
+        scaling = np.linspace(.3, 3., matrix.shape[1])
+        scaled = WildFeatureDesign(matrix*scaling)
+        rescaled = feature_band_components(query*scaling, np.zeros(matrix.shape[1]), scaled.triangular, 1.)["width"]
+        np.testing.assert_allclose(width, rescaled, rtol=1e-12, atol=1e-12)
+
+
+def test_policy_centering_uses_paired_distances_not_only_average_action():
+    from scratch.generali_action_power_reporting import _action_metrics
+    reference = np.array([-.2, .2])
+    closer = np.array([-.1, .1])
+    metrics = _action_metrics(closer, reference, np.array([-.3, 0., .3]))
+    assert metrics["mean_shift_from_affine_percentage_points"] == 0.
+    assert metrics["fraction_closer_to_mean_than_affine"] == 1.
+    assert metrics["fraction_farther_from_mean_than_affine"] == 0.
+    assert metrics["mean_distance_change_to_mean_percentage_points"] == pytest.approx(-10.)
 
 
 def test_customer_split_preserves_holdout_and_repeated_id_groups():

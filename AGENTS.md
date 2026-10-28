@@ -1,5 +1,19 @@
 # Agent Instructions
 
+The action-power continuation uses `scratch/generali_residual_wild_action_powers.json`
+through the same `--fit-wild-bases` entry point. It keeps contexts additive and
+uses original-action powers `[1,2]` and `[1,2,4]`; do not center action before
+forming its fourth power or silently add cubic/context interactions. Its six
+fits/policies use the trimmed study's exact rows, paired draws and solver setup.
+Results are in shared `glm-spline-profit-dispersion/action-power-basis-study/`.
+`scratch/generali_action_power_reporting.py` replays saved bands and repository
+policies into full-context widths and paired policy-centering diagnostics.
+Keep mean residual half-width distinct from transferred envelope full width,
+and compare policy distances on the same rows to calibration mean and median.
+Reporting never fits or optimizes. Preserve source/hash contracts and retain
+the inherited-source index in `scratch/generali_action_powers_inheritance.json`.
+See MATH section 7.20 and the existing study documentation.
+
 The Generali residual-basis follow-up uses the existing diagnostic entry point's
 `--fit-wild-bases scratch/generali_residual_wild_basis_study.json` mode and
 `scratch/generali_residual_basis_study.py` adapter. Its reusable

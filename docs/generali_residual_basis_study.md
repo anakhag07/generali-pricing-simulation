@@ -1,5 +1,73 @@
 # Generali residual-basis comparison
 
+## Action-power continuation (2026-10-28)
+
+The user requested the nested maps `(1,z,a)`, `(1,z,a,a^2)` and
+`(1,z,a,a^2,a^4)`, with the eleven context inputs kept linear (13/14/15
+coefficients). The fourth-power map omits cubic and interaction terms.
+Powers use the original action before column normalization. This differs from
+the earlier full quadratic/cubic expansion; see MATH section 7.20.
+
+The approved plan now includes policy optimization after each fit. It retains
+the ten-record sensitivity cohort, 286,015/286,001/142,997 split, frozen response
+models, 1,999 paired Rademacher draws, delta=.05, original 20k policy rows,
+trust-constr solver, softmax-linear policy, [-.1,.2] bounds, .08 initialization,
+acceptance floor and original budgets. There is no new seed stream. Mean-function
+coverage, model approximation bias and global optimality remain unknown.
+The source inherited from the previous worktree is checksummed in
+`scratch/generali_action_powers_inheritance.json`; its original files and run
+contracts are preserved. Feature work lives in `feature/generali-action-powers`.
+
+Implementation checklist:
+
+- [x] Extend `_Basis` with only the selected action columns and exact derivatives.
+- [x] Extend the existing polynomial cache to represent these raw-action spaces.
+- [x] Reuse QR/bootstrap, signed transfer and the repository optimizer unchanged.
+- [x] Add a replay-only reporting companion; no new driver or public API.
+- [x] Check direct/cache widths, derivatives, nested geometry, feature scaling
+  invariance, original powers and paired policy-centering metrics.
+- [ ] Run all six fits and policy solves, collect full-context width curves,
+  validate saved states, inspect PDFs and archive superseded checkpoints.
+
+Use the same entry point and family:
+
+```bash
+conda activate simulation_env
+OPENBLAS_NUM_THREADS=8 OMP_NUM_THREADS=8 \
+python scratch/plot_generali_profit_residuals.py \
+  --fit-wild-bases scratch/generali_residual_wild_action_powers.json \
+  --replay /home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residuals-20261026 \
+  --output-dir /home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/action-power-basis-study \
+  --launch slurm --array --array-max-parallel 2
+```
+
+The collector verifies saved source/artifact hashes and computes exact
+polynomial queries over every retained context, then averages. The main action
+interval is [-.1,.2]; the separate wider diagnostic is [-1,2]. Queries are
+continuous polynomial formulas; grids only display them. No optimum is selected
+by reporting. Per-task `width_by_action.csv` and `width_report.json` cache exact
+reported curves for replay without refitting, optimization or new multipliers.
+
+`width_by_action.csv` records residual half-width, twice that value (residual
+full width), transferred profit-envelope full width, geometric factor, critical
+value, width ratio to affine and signed slope per percentage-point action
+change. These widths are distinct: transfer endpoints before averaging.
+`policy_action_comparison.csv` reports paired movements relative to the new
+affine policy across all 715,013 retained customers, distances to the beta
+calibration actions' mean/median, quantiles and fraction outside their central
+90% interval. `policy_metrics.csv` retains profit, acceptance and widths at each
+own policy and at identical nominal/historical actions. Empirical calibration
+action histograms are normalized by all beta rows, including rows outside the
+displayed policy range; they are not silently conditioned on that range.
+These are marginal descriptive support measures, not conditional coverage.
+
+The four vector PDFs are `average_band_half_width_by_action.pdf`,
+`band_width_growth_by_action.pdf`, `band_geometry_by_action.pdf` and
+`optimized_policy_action_distributions.pdf`. `validation.json` records pairing,
+affine reproduction, query checks, constraints and solver outcomes, with output
+hashes. Failed or limited optimizer status is retained. The reporting companion
+does not change coefficients or select actions.
+
 This extends `glm-spline-profit-dispersion`; the original affine/full-data run
 remains an historical reference. The user approved varying only the residual
 approximation, retaining the saved 20,000 policy rows, a customer-disjoint

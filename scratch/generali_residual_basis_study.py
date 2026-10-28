@@ -35,6 +35,7 @@ from scratch.generali_wild_policy import _Responses, _AcceptanceBandObjective, _
 
 ROOT = Path(__file__).resolve().parents[1]
 DEGREES = {"affine": 1, "quadratic": 2, "cubic": 3}
+ACTION_POWERS = {"action_a2": (1, 2), "action_a2_a4": (1, 2, 4)}
 
 
 def _load(path):
@@ -71,11 +72,25 @@ class _Basis:
         self.kind, self.input_mean, self.input_scale = kind, input_mean, input_scale
         self.hidden, self.weights = hidden, weights
         self.feature_mean, self.feature_scale = feature_mean, feature_scale
+        self.action_powers = ACTION_POWERS.get(kind)
+        if kind not in DEGREES and kind not in ACTION_POWERS and kind != "mlp":
+            raise ValueError(f"Unknown residual basis: {kind}")
         self.poly = PolynomialFeatures(DEGREES[kind], include_bias=True).fit(
             np.zeros((1, len(input_mean)))) if kind in DEGREES else None
 
     def raw(self, inputs, derivative=False):
         z = (inputs-self.input_mean)/self.input_scale
+        if self.action_powers is not None:
+            # Form powers before centering: (a-mean)^4 spans a different model.
+            a = np.asarray(inputs)[:, -1]
+            out = np.column_stack((np.ones(len(a)), z[:, :-1],
+                                   *[a**power for power in self.action_powers]))
+            if not derivative:
+                return out
+            d = np.zeros_like(out)
+            d[:, len(self.input_mean):] = np.column_stack(
+                [power*a**(power-1) for power in self.action_powers])
+            return out, d
         if self.poly is not None:
             out = self.poly.transform(z)
             if not derivative:
@@ -309,21 +324,35 @@ class _FeatureFibers:
                 "upper_adjustment_derivative": (upper > 0)*(dg+dw)}
 
     def prepare(self, positions):
-        if self.basis.poly is None:
+        if self.basis.action_powers is not None:
+            degree = max(self.basis.action_powers)
+            at_zero = self.inputs[positions].copy()
+            at_zero[:, -1] = 0.
+            vectors, g = [], []
+            for k in range(degree+1):
+                phi = self.basis.evaluate(at_zero) if k == 0 else np.zeros(
+                    (len(positions), len(self.beta)))
+                if k in self.basis.action_powers:
+                    column = self.inputs.shape[1]+self.basis.action_powers.index(k)
+                    phi[:, column] = 1/self.basis.feature_scale[column]
+                g.append(phi@self.beta)
+                vectors.append(solve_triangular(self.triangular.T, phi.T, lower=True).T)
+        elif self.basis.poly is None:
             return
-        # Exact coefficients in standardized action t; no sampled interpolation.
-        powers = self.basis.poly.powers_
-        degree = DEGREES[self.basis.kind]
-        z = (self.inputs[positions]-self.basis.input_mean)/self.basis.input_scale
-        z[:, -1] = 1.
-        base = self.basis.poly.transform(z)/self.basis.feature_scale
-        vectors, g = [], []
-        for k in range(degree+1):
-            phi = base*(powers[:, -1] == k)
-            if k == 0:
-                phi -= self.basis.feature_mean/self.basis.feature_scale
-            g.append(phi@self.beta)
-            vectors.append(solve_triangular(self.triangular.T, phi.T, lower=True).T)
+        else:
+            # Exact coefficients in standardized action t; no interpolation.
+            powers = self.basis.poly.powers_
+            degree = DEGREES[self.basis.kind]
+            z = (self.inputs[positions]-self.basis.input_mean)/self.basis.input_scale
+            z[:, -1] = 1.
+            base = self.basis.poly.transform(z)/self.basis.feature_scale
+            vectors, g = [], []
+            for k in range(degree+1):
+                phi = base*(powers[:, -1] == k)
+                if k == 0:
+                    phi -= self.basis.feature_mean/self.basis.feature_scale
+                g.append(phi@self.beta)
+                vectors.append(solve_triangular(self.triangular.T, phi.T, lower=True).T)
         q = np.zeros((len(positions), 2*degree+1))
         for i in range(degree+1):
             for j in range(degree+1):
@@ -334,19 +363,25 @@ class _FeatureFibers:
         for key in actual:
             np.testing.assert_allclose(actual[key], expected[key], rtol=2e-7, atol=1e-6)
 
+    def action_coordinate(self, actions):
+        if self.basis.action_powers is not None:
+            return np.asarray(actions), 1.
+        scale = self.basis.input_scale[-1]
+        return (np.asarray(actions)-self.basis.input_mean[-1])/scale, scale
+
     def evaluate(self, positions, actions):
         if self.prepared is None or not np.array_equal(positions, self.prepared[0]):
             return self.direct(positions, actions)
         _, g, q = self.prepared
-        t = (np.asarray(actions)-self.basis.input_mean[-1])/self.basis.input_scale[-1]
+        t, action_scale = self.action_coordinate(actions)
         def evaluate(c):
             return np.polynomial.polynomial.polyval(t, c.T, tensor=False)
         qvalue = evaluate(q)
         if np.any(qvalue <= 0):
             raise ValueError("Nonpositive cached polynomial norm.")
         root = np.sqrt(qvalue)
-        dg = evaluate(g[:, 1:]*np.arange(1, g.shape[1]))/self.basis.input_scale[-1]
-        dq = evaluate(q[:, 1:]*np.arange(1, q.shape[1]))/self.basis.input_scale[-1]
+        dg = evaluate(g[:, 1:]*np.arange(1, g.shape[1]))/action_scale
+        dq = evaluate(q[:, 1:]*np.arange(1, q.shape[1]))/action_scale
         return self._parts(evaluate(g), self.critical*root, dg, self.critical*dq/(2*root))
 
 
@@ -586,6 +621,8 @@ def _contract(config, source, config_path):
                 ROOT/"src/optimization/solvers.py", ROOT/"src/optimization/base.py",
                 ROOT/"src/objective/policy.py", ROOT/"src/objective/banded.py",
                 ROOT/"src/data/full_monotone_spline_cache.py"]]}
+    if config.get("action_power_report"):
+        contract["sources"].append(file_record(ROOT/"scratch/generali_action_power_reporting.py"))
     if config.get("cohort_filter"):
         selection_path = ROOT/config["cohort_filter"]
         selection = json.loads(selection_path.read_text())
@@ -652,6 +689,9 @@ def _collect(config, output):
     (output/"EXPERIMENT.md").write_text((ROOT/"docs/generali_residual_basis_study.md").read_text())
     if config.get("cohort_filter"):
         (output/"excluded_rows.json").write_text((ROOT/config["cohort_filter"]).read_text())
+    if config.get("action_power_report") and not missing:
+        from scratch.generali_action_power_reporting import write_action_power_report
+        write_action_power_report(config, output)
     print(f"Collected {len(outcomes)}/{len(config['bases'])*len(config['models'])} residual-basis tasks; missing={missing}", flush=True)
 
 

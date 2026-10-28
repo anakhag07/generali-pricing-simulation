@@ -167,3 +167,116 @@ actions, not error against a known true beta or conditional-mean function. It
 does not measure uniform accuracy at candidate policy actions. These bands do
 not automatically include residual-model approximation bias, so a narrower
 affine band and a higher affine lower score do not establish higher true profit.
+
+
+## Ten-record exclusion sensitivity analysis (2026-10-27)
+
+The user requested removal of all ten records flagged by the original cubic
+GLM audit, then refitting and reoptimizing the richer residual bases. The new
+`residual-basis-study-trimmed` revision includes a matched affine control.
+Its configuration is `scratch/generali_residual_wild_basis_study_trimmed.json`,
+through the same `--fit-wild-bases` entry point. Results use the same family at
+`glm-spline-profit-dispersion/residual-basis-study-trimmed/`.
+
+`scratch/generali_residual_basis_flagged_rows.json` fixes the ten source row
+IDs, their original positions, split memberships, saved corrections, and the
+SHA-256 records for the original cubic GLM band and repository-optimized policy.
+The selection is the ten largest absolute fitted corrections at that saved
+policy's personalized actions; the same ten exclusions apply to both response
+models and every residual basis. This is a post-selection sensitivity analysis,
+not an independently validated outlier rule or untouched holdout evaluation.
+Only three of these rows have the established invalid vehicle age -7975;
+we do not assume the other seven are erroneous observations.
+
+Remove these rows from every residual-learning, validation and scoring stage,
+without changing the raw dataset or frozen GLM/spline predictors. Six rows are
+in the representation pool and four in validation. None is in the beta pool
+or original policy optimization cohort: retained counts are 286,015 / 286,001 /
+142,997, with 715,013 full evaluation rows and exactly 20,000 policy rows.
+Replay original split memberships before filtering; never reshuffle the shorter
+cohort. Generate each multiplier on the original 715,023 coordinates and then
+select the retained beta coordinates. This preserves the original draw hashes.
+Initialization, budgets, solvers, acceptance constraint, action domain, exact
+query rules and coefficient-ellipsoid calibration remain as specified above.
+No new stochastic process or seed stream is introduced.
+
+Refit all residual models and bootstrap calibrations and rerun each policy
+through the repository solver. Retrain both MLP representations on their
+retained first pools, then freeze them for beta fitting and all bootstrap draws.
+The architecture is 12 standardized inputs (11 numeric customer covariates
+plus action), 16 tanh units, 16 tanh units, then a temporary linear scalar head:
+497 trainable parameters. Discard that temporary head; the final linear beta
+fit uses the 16 frozen last-layer outputs plus an intercept (17 coefficients).
+Each predictor gets its own network trained on that predictor's profit residuals.
+
+The original worktree and completed artifacts are preserved because historical
+contracts include absolute source paths and hashes. The filtering extension
+lives in `worktrees/feature-generali-residual-bases-trimmed`. Run the command above
+with the `_trimmed.json` configuration and `residual-basis-study-trimmed` output.
+
+
+### Completed exclusion revision
+
+All eight refits and policy solves completed. The Slurm controller temporarily
+failed status requests, but the remaining outputs and the 8/8 collector arrived;
+subsequent queue inspection found neither study job live. Array 27050829 and
+collector 27050830 used the configuration above. Task compute times were
+21.2–174.4 seconds, excluding queue delays. All policy solves reported success;
+both neural representation fits stopped at their 1,000-iteration limit.
+
+Every profit and band mean below is an equal-row average at that basis's own
+saved repository-optimized policy actions over all 715,013 retained rows.
+Validation RMSE uses the 142,997 retained original holdout rows at logged actions.
+
+| Predictor | Basis | Validation RMSE | Mean residual correction | Mean half-width | Mean fhat profit | Mean lower profit |
+|---|---|---:|---:|---:|---:|---:|
+| glm | affine | 112.5265 | 1.5685 | 8.7584 | 145.4384 | 135.8551 |
+| glm | quadratic | 103.6264 | 5.7735 | 57.8281 | 142.7920 | 90.0637 |
+| glm | cubic | 104.3756 | 2.3715 | 144.3668 | 141.3915 | -0.6114 |
+| glm | mlp | 102.7253 | 2.6253 | 14.3646 | 142.0005 | 123.3720 |
+| spline_xgb | affine | 95.7368 | -9.0831 | 6.8512 | 159.3163 | 143.3821 |
+| spline_xgb | quadratic | 95.7713 | -8.8464 | 48.8410 | 157.6013 | 99.9140 |
+| spline_xgb | cubic | 100.1591 | -8.9979 | 132.3326 | 152.9314 | 11.6008 |
+| spline_xgb | mlp | 95.0067 | -9.5772 | 14.6946 | 154.7039 | 130.4316 |
+
+The original cubic mean corrections fall from 5542.66 to 2.37 (GLM) and 248.18
+to -9.00 (spline). The corresponding lower means improve from -11019.03 to -0.61
+and from -14894.89 to 11.60. Polynomial bootstrap critical values are unchanged
+to relative numerical tolerance 1.2e-13: exclusions do not touch beta fitting,
+and full total-degree polynomial spaces are invariant to the changed input
+centering/scaling. Replaying original policies on the retained cohort agrees
+with their refitted results to reporting precision. The large mean changes
+therefore primarily remove extreme evaluation queries rather than change the
+polynomial fitted functions. No additional observations were trimmed.
+
+The refitted MLP has the lowest retained holdout RMSE for each predictor, while
+its wider bands still yield lower bound scores than affine. Relative to each
+original MLP policy evaluated on exactly the retained cohort, refitting changes
+the lower mean from 124.37 to 123.37 (GLM) and 133.95 to 130.43 (spline).
+Predictive RMSE and joint coefficient uncertainty are distinct; this result does
+not establish realized profit rankings or eliminate approximation bias.
+The ten-record rule was selected from the original cubic outputs and remains
+an explicitly labeled sensitivity analysis, not a new independent holdout study.
+
+The results directory contains `before_after_policy_metrics.csv` (original full
+cohort, original policies on retained rows, and refitted policies on retained
+rows), the directly evaluated excluded-row scores and replay provenance,
+`residual_fit_metrics.csv`, `solver_and_geometry.csv`, and `validation.json`.
+Forty-six focused tests and a small repository demo passed. The artifact audit
+verified all source/output hashes, retained customer-disjoint splits, identical
+20k policy rows and beta rows, original draw seeds and full-coordinate multiplier
+hashes, signed envelope accounting and policy constraints.
+
+To repeat the saved-artifact checks from this worktree without fitting:
+
+```bash
+conda activate simulation_env
+PYTHONPATH=src:. python /home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residual-basis-study-trimmed/validate_saved_results.py
+```
+
+Completed intermediate bootstrap checkpoints were moved unchanged to
+`scratch-results/glm-spline-profit-dispersion/residual-basis-study-trimmed-checkpoints/`.
+Their checksum/relocation index is
+`scratch/retired_experiments/generali_residual_basis_trimmed_checkpoints_20261027.json`,
+with a copy in the result directory. All final fit, network and policy artifacts
+remain current, and the original untrimmed study and source worktree are intact.

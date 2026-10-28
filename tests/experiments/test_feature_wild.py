@@ -3,6 +3,45 @@ import numpy as np
 import pytest
 from experiments.envelopes.feature_wild import WildFeatureDesign, feature_band_components
 from scratch.generali_residual_basis_study import _Basis, _FeatureFibers, _split, _solve, _MLPLoss
+from scratch.generali_residual_basis_study import _filter_rows, _fit, _subset_positions
+
+
+def test_exclusion_preserves_split_identities_and_actual_bootstrap_calibration(tmp_path):
+    rng = np.random.default_rng(414)
+    inputs = rng.normal(size=(160, 4))
+    arrays = {"row_indices": np.arange(160)*3, "glm_residual": rng.normal(size=160),
+              "is_churn": np.arange(160) % 2}
+    split = {"representation": np.arange(60), "beta": np.arange(60, 130),
+             "holdout": np.arange(130, 160)}
+    filtered, retained, pools = _filter_rows(arrays, inputs, split, [3, 12, 405])
+    np.testing.assert_array_equal(filtered["row_indices"][pools["beta"]], arrays["row_indices"][split["beta"]])
+    for key in split:
+        np.testing.assert_array_equal(filtered["row_indices"][pools[key]],
+            np.setdiff1d(arrays["row_indices"][split[key]], [3, 12, 405]))
+    config = {"mlp": {"hidden": 16}, "bootstrap": {"count": 31, "batch_size": 7, "delta": .05},
+              "evaluation_batch_size": 32}
+    seeds = rng.integers(0, 2**32, size=31)
+    full_dir, trimmed_dir = tmp_path/"full", tmp_path/"trimmed"
+    full_dir.mkdir(); trimmed_dir.mkdir()
+    basis, state, info = _fit(config, "affine", "glm", arrays, inputs, split, seeds, full_dir)
+    other, changed, details = _fit(config, "affine", "glm", filtered, retained, pools, seeds, trimmed_dir)
+    assert info["full_row_multiplier_sha256"] == details["full_row_multiplier_sha256"]
+    assert details["multiplier_domain_size"] == 160
+    np.testing.assert_allclose(state["statistics"], changed["statistics"], atol=1e-13)
+    np.testing.assert_allclose(basis.evaluate(retained)@state["beta"],
+                               other.evaluate(retained)@changed["beta"], atol=1e-13)
+    with pytest.raises(ValueError, match="unique and present"):
+        _filter_rows(arrays, inputs, split, [3, 3])
+    with pytest.raises(ValueError, match="unique and present"):
+        _filter_rows(arrays, inputs, split, [999])
+
+
+def test_policy_cohort_cannot_silently_lose_a_filtered_row():
+    rows = np.array([1, 2, 5, 7])
+    np.testing.assert_array_equal(_subset_positions(rows, np.array([2, 7])), [1, 3])
+    for missing in [np.array([2, 8]), np.array([3])]:
+        with pytest.raises(ValueError, match="not a subset"):
+            _subset_positions(rows, missing)
 
 
 def test_coefficient_bootstrap_matches_independent_refits_and_bounds_new_queries():

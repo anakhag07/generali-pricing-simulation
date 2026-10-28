@@ -338,6 +338,31 @@ class _FeatureFibers:
         return self._parts(evaluate(g), self.critical*root, dg, self.critical*dq/(2*root))
 
 
+def _filter_rows(arrays, inputs, split, excluded):
+    """Remove explicit source rows without redrawing splits or multiplier coordinates."""
+    rows = arrays["row_indices"]
+    excluded = np.asarray(excluded, dtype=rows.dtype)
+    if len(np.unique(excluded)) != len(excluded) or not np.isin(excluded, rows).all():
+        raise ValueError("Excluded source rows must be unique and present in the original cohort.")
+    keep = ~np.isin(rows, excluded)
+    positions = np.flatnonzero(keep)
+    remap = np.full(len(rows), -1, dtype=int)
+    remap[positions] = np.arange(len(positions))
+    filtered = {key: value[keep] for key, value in arrays.items()}
+    filtered["_original_positions"] = positions
+    filtered["_original_row_indices"] = rows
+    pools = {key: remap[value[keep[value]]] for key, value in split.items()}
+    np.testing.assert_array_equal(np.sort(np.concatenate(list(pools.values()))), np.arange(len(positions)))
+    return filtered, inputs[keep], pools
+
+
+def _subset_positions(original_rows, selected_rows):
+    positions = np.searchsorted(original_rows, selected_rows)
+    if np.any(positions >= len(original_rows)) or not np.array_equal(original_rows[positions], selected_rows):
+        raise ValueError("Requested rows are not a subset of the saved cohort.")
+    return positions
+
+
 def _inputs(config, source):
     baseline = results_root()/config["baseline_fit"]
     provenance = json.loads((baseline/"provenance.json").read_text())
@@ -350,6 +375,18 @@ def _inputs(config, source):
     split_seed = derive_seed(config["seed_root"], "generali-residual:representation-beta-split")
     split = _split(arrays["customer_id"], state["train_positions"], state["test_positions"], split_seed)
     inputs = np.column_stack((state["X"], arrays["a"]))
+    if config.get("cohort_filter"):
+        selection = json.loads((ROOT/config["cohort_filter"]).read_text())
+        reference = _load(_verify(selection["reference_split_band"]))
+        for key, value in split.items():
+            np.testing.assert_array_equal(value, reference[f"{key}_positions"])
+        if len(inputs) != selection["original_n"]:
+            raise ValueError("Filtering reference has a different original cohort.")
+        for row in selection["rows"]:
+            if int(arrays["row_indices"][row["original_position"]]) != row["source_row"]:
+                raise ValueError("Excluded source row no longer matches its original coordinate.")
+        arrays, inputs, split = _filter_rows(arrays, inputs, split,
+            [row["source_row"] for row in selection["rows"]])
     return arrays, inputs, split, provenance, state["bootstrap_draw_seeds"]
 
 
@@ -379,17 +416,20 @@ def _fit(config, kind, name, arrays, inputs, split, draw_seeds, output):
         np.testing.assert_allclose(old["beta"], beta, rtol=0, atol=0)
         statistics, coefficients, start = old["statistics"], old["errors"], int(old["completed"])
     batch_times = []
+    original_positions = arrays.get("_original_positions", np.arange(len(inputs)))
+    multiplier_domain_size = len(arrays.get("_original_row_indices", inputs))
     for first in range(0, count, batch_size):
         stop = min(first+batch_size, count)
         tick = time.monotonic()
         signs = np.stack([2*np.random.default_rng(int(seed)).integers(
-            0, 2, size=len(inputs), dtype=np.int8)-1 for seed in draw_seeds[first:stop]])
+            0, 2, size=multiplier_domain_size, dtype=np.int8)-1 for seed in draw_seeds[first:stop]])
         digest.update(signs.tobytes())
         if stop <= start:
             continue
         if first < start:
             raise ValueError("Bootstrap checkpoint is not at a configured batch boundary.")
-        coefficients[first:stop], statistics[first:stop] = design.bootstrap_errors(errors, signs[:, split["beta"]])
+        coefficients[first:stop], statistics[first:stop] = design.bootstrap_errors(
+            errors, signs[:, original_positions[split["beta"]]])
         save_arrays_atomic(partial, beta=beta, statistics=statistics, errors=coefficients, completed=np.array(stop))
         batch_times.append(time.monotonic()-tick)
         if first == 0 or stop == count or first % (batch_size*16) == 0:
@@ -409,6 +449,8 @@ def _fit(config, kind, name, arrays, inputs, split, draw_seeds, output):
     state = {**basis.state(), "beta": beta, "triangular": design.triangular,
              "critical": np.array(critical), "statistics": statistics,
              "bootstrap_errors": coefficients, "draw_seeds": draw_seeds[:count],
+             "row_indices": arrays["row_indices"], "original_positions": original_positions,
+             "multiplier_domain_size": np.array(multiplier_domain_size),
              "beta_row_indices": arrays["row_indices"][split["beta"]],
              **{f"{k}_positions": v for k, v in split.items()}}
     save_arrays_atomic(fit_path, **state)
@@ -417,6 +459,7 @@ def _fit(config, kind, name, arrays, inputs, split, draw_seeds, output):
             "condition_number": design.condition_number, "max_leverage": float(design.leverage.max()),
             "leverage_quantiles": np.quantile(design.leverage, [.5,.95,.99,.999]).tolist(),
             "critical": critical, "bootstrap_draws": count,
+            "multiplier_domain_size": multiplier_domain_size,
             "full_row_multiplier_sha256": digest.hexdigest(), "fit_metrics": fit_metrics,
             "setup_seconds": setup_seconds, "fit_bootstrap_seconds": time.monotonic()-started,
             "artifact": file_record(fit_path), "calibration": "coefficient_ellipsoid",
@@ -443,7 +486,8 @@ def _responses(config, name, arrays, provenance):
     else:
         from scratch.plot_generali_profit_residuals import _validate_cache
         cache = ShardedMonotoneSplineCache(results_root()/config["spline_cache"])
-        _validate_cache(cache, arrays["row_indices"], provenance["dataset"], provenance["models"][name],
+        _validate_cache(cache, arrays.get("_original_row_indices", arrays["row_indices"]),
+                        provenance["dataset"], provenance["models"][name],
                         provenance["models"][name]["spline_anchor_weights"])
     return model, frame, _Responses(name, arrays, cache=cache, glm_logit=logit, glm_slope=slope)
 
@@ -474,10 +518,10 @@ def _policies(config, kind, name, arrays, inputs, basis, state, fit_info, proven
     artifact_name = f"{name}_nominal_policy.npz"
     record = next(r for r in historical_provenance["outputs"] if Path(r["path"]).name == artifact_name)
     nominal = _load(_verify(record, baseline_dir/artifact_name))
-    np.testing.assert_array_equal(nominal["row_indices"], arrays["row_indices"])
+    nominal_positions = _subset_positions(nominal["row_indices"], arrays["row_indices"])
+    nominal["actions"] = nominal["actions"][nominal_positions]
     sample_rows = nominal["optimization_row_indices"]
-    positions = np.searchsorted(arrays["row_indices"], sample_rows)
-    np.testing.assert_array_equal(arrays["row_indices"][positions], sample_rows)
+    positions = _subset_positions(arrays["row_indices"], sample_rows)
     if len(positions) != 20000:
         raise ValueError("Preserve the exact saved 20k optimization cohort.")
     reference = historical["references"][name]
@@ -521,7 +565,7 @@ def _policies(config, kind, name, arrays, inputs, basis, state, fit_info, proven
 
 def _contract(config, source, config_path):
     baseline = results_root()/config["baseline_fit"]
-    return {"config": config, "config_file": file_record(config_path),
+    contract = {"config": config, "config_file": file_record(config_path),
             "residuals": file_record(source/"residuals.npz"),
             "baseline_fit": file_record(baseline/"fit_state.npz"),
             "baseline_provenance": file_record(baseline/"provenance.json"),
@@ -530,6 +574,15 @@ def _contract(config, source, config_path):
                 ROOT/"src/optimization/solvers.py", ROOT/"src/optimization/base.py",
                 ROOT/"src/objective/policy.py", ROOT/"src/objective/banded.py",
                 ROOT/"src/data/full_monotone_spline_cache.py"]]}
+    if config.get("cohort_filter"):
+        selection_path = ROOT/config["cohort_filter"]
+        selection = json.loads(selection_path.read_text())
+        records = [record for key, record in selection.items() if key.startswith("reference_")]
+        for record in records:
+            _verify(record)
+        contract["cohort_filter"] = file_record(selection_path)
+        contract["filter_references"] = records
+    return contract
 
 
 def _run_task(config, source, config_path, output, index):
@@ -585,7 +638,9 @@ def _collect(config, output):
         "split": "40% representation / 40% beta and bootstrap / original 20% residual validation",
         "historical_baseline": config["baseline_policy"]})
     (output/"EXPERIMENT.md").write_text((ROOT/"docs/generali_residual_basis_study.md").read_text())
-    print(f"Collected {len(outcomes)}/8 residual-basis tasks; missing={missing}", flush=True)
+    if config.get("cohort_filter"):
+        (output/"excluded_rows.json").write_text((ROOT/config["cohort_filter"]).read_text())
+    print(f"Collected {len(outcomes)}/{len(config['bases'])*len(config['models'])} residual-basis tasks; missing={missing}", flush=True)
 
 
 def run_basis_study(args, argv):

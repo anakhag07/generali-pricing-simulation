@@ -22,6 +22,21 @@ cubic population means. Preserve historical artifacts and resolve the encoding
 explicitly before any cleaned-data revision. Residual holdout RMSE is not true
 beta error or a certificate of uniform accuracy at new policy actions.
 
+The ten-record sensitivity revision is configured by
+`scratch/generali_residual_wild_basis_study_trimmed.json`; its immutable selection
+and original artifact hashes are in `scratch/generali_residual_basis_flagged_rows.json`.
+Use original split memberships and full-length bootstrap coordinates before
+filtering. None of these exclusions intersects beta fitting or the saved 20k
+policy cohort. Preserve the original source worktree as well as its artifacts;
+its contracts include absolute source paths. See the same study guide.
+The exclusion revision completed 8/8 tasks in
+`glm-spline-profit-dispersion/residual-basis-study-trimmed/`; all policies
+converged, while both MLP fits reached 1,000 steps. The saved comparison and
+validation separate exclusion-only replay from refitting. Completed bootstrap
+checkpoints are archived in the matching `-checkpoints` directory, indexed by
+`scratch/retired_experiments/generali_residual_basis_trimmed_checkpoints_20261027.json`.
+Do not replace the retained comparison variants or change their source contracts.
+
 Project context: simulation and optimization repo. Users should be able to specify an experiment config and compare how different gradient methods perform across different objectives and policy types. Primary entry point is `main.py`.
 
 ## Core Working Rules

@@ -1,0 +1,13 @@
+{
+  "family": "wild-data-location-20261021-mean10",
+  "revision": "steepness-sample-size-20261027",
+  "repetitions": 20,
+  "steepness_values": [0.25, 0.5, 1.0, 2.0, 4.0],
+  "n_values": [75, 150, 300, 600, 1200, 2400],
+  "baseline_n": 300,
+  "width_window": [-0.25, 1.25],
+  "width_grid_points": 2401,
+  "illustration_repetition": 0,
+  "illustration_steepness": [0.25, 1.0, 4.0],
+  "illustration_n": [75, 300, 2400]
+}

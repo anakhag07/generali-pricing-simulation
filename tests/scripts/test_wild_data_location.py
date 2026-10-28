@@ -48,3 +48,32 @@ def test_statistic_upper_bounds_cover_every_bootstrap_curve(example):
         difference = certificate.difference(error, np.zeros(3))
         assert certificate.contains(difference, high)
         assert high-low <= 2e-8 * max(1., high)
+
+
+def test_steepness_signal_shift_matches_independent_wild_refits(example):
+    band, design, signs = example
+    shifted = script._shift_signal(band, 4.)
+    independently_fitted = script.fit_band(band["actions"], shifted["responses"], signs)
+    for key in ("beta", "residuals", "bootstrap_errors", "critical"):
+        np.testing.assert_allclose(shifted[key], independently_fitted[key], atol=2e-12)
+    queries = np.array([-10., -.17, .5, 20.])
+    _, radius = script.band_values(band, queries)
+    _, shifted_radius = script.band_values(shifted, queries)
+    np.testing.assert_array_equal(radius, shifted_radius)
+
+
+def test_sweep_extension_preserves_original_draws_and_nested_prefixes():
+    spec = {"n_values": [75, 300, 600], "baseline_n": 300}
+    seeds, bootstrap_seed, draws = script._paired_sweep_draws(spec, 0)
+    np.testing.assert_array_equal(draws["design_innovations"][:300],
+                                 np.random.default_rng(seeds.data_seed).normal(size=300))
+    np.testing.assert_array_equal(draws["noise_innovations"][:300],
+                                 np.random.default_rng(seeds.noise_seed).normal(size=300))
+    original = np.random.default_rng(bootstrap_seed).choice(
+        [-1., 1.], size=(script.CONFIG["bootstrap_draws"], 300))
+    np.testing.assert_array_equal(draws["multipliers"][:, :300], original)
+    repeated = script._paired_sweep_draws(spec, 0)[2]
+    for key in draws:
+        np.testing.assert_array_equal(draws[key], repeated[key])
+    independent = script._paired_sweep_draws(spec, 1)[2]
+    assert not np.array_equal(draws["noise_innovations"], independent["noise_innovations"])

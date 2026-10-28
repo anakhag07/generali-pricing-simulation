@@ -1,0 +1,32 @@
+{
+  "reason": "Requested action-window expansion to [-2,12] for only n_bands_data_center_10.pdf.",
+  "simulation_rerun": false,
+  "runtime_contract": "/home/anakhag/projects/generali-pricing/results/wild-data-location-20261021-mean10/steepness-sample-size-20261027/run-contract.json",
+  "original_report_source": "/home/anakhag/projects/generali-pricing/results/wild-data-location-20261021-mean10/steepness-sample-size-20261027/report-source.py",
+  "artifacts": [
+    {
+      "from": "/home/anakhag/projects/generali-pricing/results/wild-data-location-20261021-mean10/steepness-sample-size-20261027/plots/n_bands_data_center_10.pdf",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/wild-data-location/n-data-center-10-original-window-20261027/plots/n_bands_data_center_10.pdf",
+      "sha256": "2c20cfb8b8436b51bc81f81fb5c26758dc75218d51ec2d6850c0174103e8bb89",
+      "operation": "move"
+    },
+    {
+      "from": "/home/anakhag/projects/generali-pricing/results/wild-data-location-20261021-mean10/steepness-sample-size-20261027/deliverables_sha256.json",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/wild-data-location/n-data-center-10-original-window-20261027/deliverables_sha256.json",
+      "sha256": "afe3cfdc467b24bc74f580bf15c699d817d6c05a7e461d2932c0ca887a62cf47",
+      "operation": "copy"
+    },
+    {
+      "from": "/home/anakhag/projects/generali-pricing/results/wild-data-location-20261021-mean10/steepness-sample-size-20261027/handoff-validation.json",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/wild-data-location/n-data-center-10-original-window-20261027/handoff-validation.json",
+      "sha256": "0dd87b4e6c489c7adeb1651f643eaa1d5f4227eb023cc97a7d2042851806004f",
+      "operation": "copy"
+    },
+    {
+      "from": "/home/anakhag/projects/generali-pricing/results/wild-data-location-20261021-mean10/steepness-sample-size-20261027/EXPERIMENT.md",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/wild-data-location/n-data-center-10-original-window-20261027/EXPERIMENT.md",
+      "sha256": "6c275b0c7cd699a7550cedf9e8ee4ef474b78f5927bca6bc9064b0048729dcda",
+      "operation": "copy"
+    }
+  ]
+}

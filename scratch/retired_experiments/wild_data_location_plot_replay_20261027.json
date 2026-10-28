@@ -1,0 +1,53 @@
+{
+  "reason": "Replace crowded automatic logarithmic labels with the tested steepness values; preserve initial vector PDFs and their historical checksum index.",
+  "simulation_rerun": false,
+  "runtime_contract": "/home/anakhag/projects/generali-pricing/results/wild-data-location-20261021-mean10/steepness-sample-size-20261027/run-contract.json",
+  "runtime_source_snapshot": "/home/anakhag/projects/generali-pricing/results/wild-data-location-20261021-mean10/steepness-sample-size-20261027/source_snapshot.zip",
+  "relocations": [
+    {
+      "from": "/home/anakhag/projects/generali-pricing/results/wild-data-location-20261021-mean10/steepness-sample-size-20261027/plots/n_bands_data_center_0.5.pdf",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/wild-data-location/initial-log-labels-20261027/plots/n_bands_data_center_0.5.pdf",
+      "sha256": "0128c5cc71cc60cb039aed81c809e51ba122e260ffe5dc09c726111401b792e0"
+    },
+    {
+      "from": "/home/anakhag/projects/generali-pricing/results/wild-data-location-20261021-mean10/steepness-sample-size-20261027/plots/n_bands_data_center_10.pdf",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/wild-data-location/initial-log-labels-20261027/plots/n_bands_data_center_10.pdf",
+      "sha256": "0b1ca03453365b7277209e65aeaeef1bc393c3a6cc8785c3685e50141369fafc"
+    },
+    {
+      "from": "/home/anakhag/projects/generali-pricing/results/wild-data-location-20261021-mean10/steepness-sample-size-20261027/plots/n_shift_decomposition.pdf",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/wild-data-location/initial-log-labels-20261027/plots/n_shift_decomposition.pdf",
+      "sha256": "a88abdc17d341fd1b7883fe07bf6111aa8bd5cfbee53e0cc4b63464ee6da14bd"
+    },
+    {
+      "from": "/home/anakhag/projects/generali-pricing/results/wild-data-location-20261021-mean10/steepness-sample-size-20261027/plots/n_sweep_metrics.pdf",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/wild-data-location/initial-log-labels-20261027/plots/n_sweep_metrics.pdf",
+      "sha256": "2b8e6e494a279a2ce9c72a49d3a9fd957eca7da6482e6f86de535b544d5a4476"
+    },
+    {
+      "from": "/home/anakhag/projects/generali-pricing/results/wild-data-location-20261021-mean10/steepness-sample-size-20261027/plots/steepness_bands_data_center_0.5.pdf",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/wild-data-location/initial-log-labels-20261027/plots/steepness_bands_data_center_0.5.pdf",
+      "sha256": "05657e0ffc5f76472a2ab52406ebef2d98bfd55dde540b562f2201fa867fb59d"
+    },
+    {
+      "from": "/home/anakhag/projects/generali-pricing/results/wild-data-location-20261021-mean10/steepness-sample-size-20261027/plots/steepness_bands_data_center_10.pdf",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/wild-data-location/initial-log-labels-20261027/plots/steepness_bands_data_center_10.pdf",
+      "sha256": "dfc1b9bab4cc6488961ee31c85c6b4cbf83446b3a46167f7d3620a33d69c4d07"
+    },
+    {
+      "from": "/home/anakhag/projects/generali-pricing/results/wild-data-location-20261021-mean10/steepness-sample-size-20261027/plots/steepness_shift_decomposition.pdf",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/wild-data-location/initial-log-labels-20261027/plots/steepness_shift_decomposition.pdf",
+      "sha256": "a17c6fffce944417b512bef62b8ac3388c7d83989daf04434e7e0c0f59059ef1"
+    },
+    {
+      "from": "/home/anakhag/projects/generali-pricing/results/wild-data-location-20261021-mean10/steepness-sample-size-20261027/plots/steepness_sweep_metrics.pdf",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/wild-data-location/initial-log-labels-20261027/plots/steepness_sweep_metrics.pdf",
+      "sha256": "3fb5f1c035a771cb220941b6629299b5ed131deea0b546821d63718ecfdc5b4f"
+    },
+    {
+      "from": "/home/anakhag/projects/generali-pricing/results/wild-data-location-20261021-mean10/steepness-sample-size-20261027/deliverables_sha256.json",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/wild-data-location/initial-log-labels-20261027/deliverables_sha256.json",
+      "sha256": "cb0f9002db98a5e01e59e62921b7d482b5d54a13e7d2a706b754cc304af52c5a"
+    }
+  ]
+}

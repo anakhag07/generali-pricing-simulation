@@ -297,6 +297,135 @@ condition on the realized outcome and do not imply expected-profit model bias
 by themselves. Wild mean bands and prediction intervals for individual outcomes
 have different targets; no bootstrap is fitted or coverage asserted here.
 
+To fit the first affine residual basis and construct its wild bands:
+
+```bash
+MPLCONFIGDIR=/tmp/generali-residuals-mpl OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 \
+  python scratch/plot_generali_profit_residuals.py \
+  --fit-wild-linear scratch/generali_residual_wild_linear.json \
+  --replay ../results/glm-spline-profit-dispersion/residuals-20261026 \
+  --output-dir ../results/glm-spline-profit-dispersion/wild-linear-20261026
+```
+
+This explicit fitting mode extends the same comparison family. The generic
+manifest band adapter currently requires polynomial predictors; the companion
+`scratch/generali_residual_wild.py` uses `WildLinearDesign` directly with the
+verified frozen GLM/spline residuals and existing saved customer curves. It does
+not substitute a polynomial for either Generali predictor or change shared
+mathematics. No optimizer is run or action selected.
+
+The JSON setup declares the affine numeric basis (intercept, 11 saved whitened
+numeric features, action), an 80/20 validation split, nominal 95% calibration,
+1,999 bootstrap draws and root seed 20261026. Split and method streams use
+`derive_seed(root, "generali-residual:validation-split")` and
+`derive_seed(root, "generali-residual:wild-multipliers")`; method child
+`draw:<index>` seeds generate one Rademacher row each. Both predictors and future
+bases reuse these draws and the ordered cohort. Changing batching preserves
+draws; the complete sign matrix's SHA-256 is saved without storing a huge matrix.
+
+Validation keeps repeated customer IDs together. The final band refits all
+rows using the existing raw post-fit residual bootstrap with row-wise signs.
+Its statistic covers observed contexts crossed with all real actions; the
+unchanged saved slice grid is for rendering. Exact affine and QR formulas give
+off-grid residual evaluations, and common coefficient draws induce dependence
+across queries. Frozen predictor curves retain their original boundary behavior.
+
+Outputs include train/holdout/full-refit metrics (also by observed churn), beta
+coefficients, leverage diagnostics, full numeric fit state and split indices,
+draw seeds/statistics/critical values, plotted endpoints, and three vector PDFs:
+holdout calibration, residual-mean bands, and transferred profit envelopes.
+The latter also shows the corrected mean prediction, which is distinct from
+the transferred envelope's frozen center. Source/data/model hashes and resolved
+configuration make the run reproducible. Original residual reports remain intact.
+
+Coverage is unknown: this dataset supplies no conditional-mean truth, and the
+linear residual specification, independent-row errors and low-leverage conditions
+are unverified. The row-wise bootstrap does not address within-ID dependence.
+The synthetic Gaussian finite-sample bound is not asserted for this data.
+Held-out correction fit is not held-out evaluation of the original predictors.
+Future basis comparisons should reuse this split and draws and consider both
+approximation error and variance/leverage; better fit need not yield narrower bands.
+
+For figure-only revisions, use `--render-wild <completed-wild-run> --output-dir
+<fresh-directory>`. This checks input hashes and renders the saved endpoint
+arrays without reconstructing a fit, generating bootstrap draws, or evaluating
+models. The baseline's final band PDFs are in `wild-linear-20261026/plots/`:
+outside legends keep observed markers visible. Its original root PDFs and all
+numeric artifacts retain their original provenance; the rendering revision has
+its own source/input/output hashes.
+
+The downstream policy analysis keeps the same comparison family:
+
+```bash
+MPLCONFIGDIR=/tmp/generali-residuals-mpl OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 \
+  python scratch/plot_generali_profit_residuals.py \
+  --optimize-wild scratch/generali_wild_policy.json \
+  --replay ../results/glm-spline-profit-dispersion/residuals-20261026 \
+  --output-dir ../results/glm-spline-profit-dispersion/wild-linear-policy-20261026-r3
+```
+
+The saved beta, QR factor and critical value are replayed without fitting or
+bootstrap draws. For plots, evaluate each lower/upper endpoint and then average
+over all 715,023 contexts at each common action. Optimization instead maximizes
+the mean of those **customer-specific lower endpoints at personalized policy
+actions**. Never optimize the averaged plotting curve or substitute a band
+at the average context. Report policy profit by evaluating each selected action,
+not by reading the common-action curve at the policy's mean action.
+
+Keep the three cohorts distinct: the saved beta-validation split has 572,022
+training and 143,001 holdout rows (grouped by customer ID); the final beta refit
+and bootstrap calibration use all 715,023 rows; only downstream policy
+optimization uses the saved 20,000-row presentation cohort. Full-population
+policy evaluation is descriptive, not an independent residual-fit holdout.
+
+The presentation setup supplies saved 20,000-row indices, 19-feature policy
+preprocessing, a bounded softmax-linear policy on [-0.1,0.2], initial action
+0.08, acceptance floor 0.8787745289312372, and first-order trust-constr settings.
+All policy endpoints come from `optimization.solvers.run_first_order_minimize`
+through the shared `BandObjective`; there is no grid-selected optimum or direct
+SciPy solver. A matched nominal-profit optimization measures the change caused
+by the lower-band objective. The GLM reference's synthetic-tail directory is
+used only for its saved cohort/preprocessing/constraint; no synthetic penalty
+is carried into this experiment.
+
+The study-specific adapter in `scratch/generali_wild_policy.py` joins the frozen
+band and Generali responses with the existing policy/optimizer interfaces. It
+uses exact saved affine QR norms off-grid, exact GLM logits, and the validated
+full-population monotone-spline cache with its analytic derivatives. A collapsed
+QR action-fiber cache is checked against the shared saved-band evaluator.
+Common-action spline plots use the same pairwise evaluator with a repeated
+action, so each query reads only the required two knots per customer. The
+original `wild-linear-policy-20261026` attempt was interrupted during the
+full-knot display evaluation; its two completed GLM policy artifacts and
+`interrupted.json` are retained. The `-r2` attempt was interrupted during spline
+optimization because repeated file opens dominated evaluation time; its GLM
+artifacts and interruption record are also retained. The `-r3` run retains the
+fixed 20k cohort's exact spline knots in memory and evaluates them through the
+same shared Hermite primitive, checking values and derivatives against the
+file-backed evaluator on all 20k rows. It records complete optimizer outcomes.
+The action grid only renders curves. Native positive-part derivative conventions
+are preserved; optimizer convergence is local and global optimality is unknown.
+
+No new random streams are introduced: saved rows and policy preprocessing are
+replayed, and first-order optimization uses the entire fixed 20k batch. The
+acceptance floor constrains that optimization cohort; full-population acceptance
+is reported separately. Outputs retain policy coefficients/actions/traces,
+full-context curve coordinates, nominal/corrected/lower-bound profit summaries,
+histogram counts and three vector PDFs. New-price actual profit and statistical
+band coverage remain unknown; original runs are preserved.
+
+The completed `wild-linear-policy-20261026-r3` baseline keeps full-data
+calibration. Both GLM fits satisfy the solver's gradient termination criterion;
+both spline fits exhaust the inherited 1,000-step budget with zero sample
+constraint violation, so their saved policies remain unconverged candidates.
+Their objective changes over the last 100 steps are below 0.00004 per row;
+this is not a convergence or global-optimality certificate. The full-population
+GLM nominal policy's predicted acceptance (0.878663674) is slightly below the
+sample floor, while its lower-band policy satisfies it (0.878786783).
+All three PDFs were opened and visually inspected; saved solver endpoints,
+histogram counts, action bounds, sample constraints, and source/output hashes
+were verified. Eight focused tests and the small repository-optimizer demo pass.
+
 ## Retirement and recovery
 
 Generic uncertainty-envelope, historical pairs-bootstrap/OLS, offline-bootstrap,

@@ -304,6 +304,29 @@ If lower-priority docs are stale, update them in the same task.
   Cuts are within each group/model; densities integrate to one per displayed
   subset. Full-group summaries remain untrimmed. This outcome split is diagnostic,
   not a phi covariate or a claim of individual-outcome bootstrap coverage.
+  `--fit-wild-linear scratch/generali_residual_wild_linear.json` explicitly enables
+  residual fitting/bootstrap from saved residuals. Its companion
+  `scratch/generali_residual_wild.py` orchestrates existing `WildLinearDesign`
+  mathematics, not another driver or family. The baseline uses 11 saved whitened
+  numeric features plus intercept/action, customer-ID-disjoint 80/20 validation,
+  then a full-data refit and 1,999 paired row-wise Rademacher draws at delta=.05.
+  Separate split/method streams and per-draw seeds preserve batching and future
+  basis pairing. Outputs live in `wild-linear-20261026/` in the same family.
+  Report unknown real-data mean-function coverage, high leverage and repeated-ID
+  dependence limitations; no optimization or individual prediction intervals.
+  `--render-wild <saved-run> --output-dir <fresh-directory>` only replays exact
+  saved endpoints. The baseline's final band PDFs are in `wild-linear-20261026/plots/`,
+  with automatic outside legends so observed points remain visible; its original
+  render and all fitted/bootstrap state are preserved unchanged.
+  `--optimize-wild scratch/generali_wild_policy.json` replays that fit into
+  `wild-linear-policy-20261026-r3/`. The companion `scratch/generali_wild_policy.py`
+  averages actual endpoints across all contexts for plots, but optimizes their
+  personalized evaluations through `BandObjective` and the repository first-order
+  trust-constr solver. Reuse the presentation's saved 20k cohort, policy-side
+  preprocessing, [-.1,.2] bounds and acceptance floor. The exact QR action-fiber
+  cache is checked against saved-band replay; neither band nor predictor is
+  grid-interpolated for optimization. Record model-based profit separately from
+  the lower bound, sample/full-cohort constraints, and local optimizer status.
 - The active synthetic catalog retains the three paired residual-heteroskedastic
   distribution manifests and six `residual-leverage-fixed-noise-outlier-*.json`
   manifests. Terminal-distribution results, all residual-heteroskedastic report

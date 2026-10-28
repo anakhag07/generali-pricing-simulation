@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "src"))
 
 from data.dataset_metadata import DATASET_PATH, REQUIRED_DATASET_COLUMNS
@@ -571,13 +572,28 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, required=True, help="Fresh report directory within the comparison family.")
     parser.add_argument("--spline-cache", type=Path, default=DEFAULT_CACHE)
-    parser.add_argument("--replay", type=Path, help="Existing report to replot without evaluating any model.")
+    parser.add_argument("--replay", type=Path, help="Saved residual input; only --fit-wild-linear enables residual fitting/bootstrap.")
     parser.add_argument("--central-fraction", type=float, default=1., help="Displayed central residual fraction per model; full saved data and summaries are retained.")
     parser.add_argument("--trim-actions", action="store_true", help="Also intersect with the same central historical-action quantiles.")
     parser.add_argument("--action-renderer", choices=("scatter", "density"), default="scatter", help="Density counts every selected row in compact vector cells with a common log color scale.")
     parser.add_argument("--explore", action="store_true", help="Use saved residuals for representative customer curves, Q-Q plots and action-bin diagnostics.")
     parser.add_argument("--split-churn", action="store_true", help="Split saved residuals by true is_churn, showing full and within-group central-95% histograms.")
+    parser.add_argument("--fit-wild-linear", type=Path, help="Explicit JSON setup for affine residual fitting and paired wild-bootstrap bands.")
+    parser.add_argument("--render-wild", type=Path, help="Replay a completed wild run's saved band coordinates without fitting.")
+    parser.add_argument("--optimize-wild", type=Path, help="JSON setup for full-context band averages and repository optimization of personalized lower endpoints.")
     args = parser.parse_args(argv)
+    if args.optimize_wild and (args.replay is None or args.fit_wild_linear or args.render_wild
+                              or args.explore or args.split_churn or args.trim_actions or args.central_fraction != 1):
+        raise ValueError("Wild policy analysis requires --replay and no other report mode.")
+    if args.render_wild:
+        if args.replay or args.fit_wild_linear or args.explore or args.split_churn or args.trim_actions or args.central_fraction != 1:
+            raise ValueError("Saved wild-coordinate replay cannot be combined with other report modes.")
+        from scratch.generali_residual_wild import render_saved_wild
+        render_saved_wild(args.render_wild, args.output_dir.resolve())
+        return
+    if args.fit_wild_linear and (args.replay is None or args.explore or args.split_churn
+                                or args.central_fraction != 1 or args.trim_actions):
+        raise ValueError("Wild fitting requires --replay and no other diagnostic or trimming mode.")
     if args.split_churn and (args.replay is None or args.explore or args.central_fraction != 1 or args.trim_actions):
         raise ValueError("Churn splitting requires --replay without exploration or display trimming options.")
     if args.explore and (args.replay is None or args.central_fraction != 1 or args.trim_actions):
@@ -600,6 +616,14 @@ def main(argv=None):
     else:
         arrays, provenance = _evaluate(args.spline_cache)
     output.mkdir(parents=True, exist_ok=False)
+    if args.optimize_wild:
+        from scratch.generali_wild_policy import run_wild_policy
+        run_wild_policy(arrays, output, args.replay, args.optimize_wild)
+        return
+    if args.fit_wild_linear:
+        from scratch.generali_residual_wild import run_linear_wild
+        run_linear_wild(arrays, output, args.replay, args.fit_wild_linear)
+        return
     if args.split_churn:
         _churn_split(arrays, output, args.replay)
         return

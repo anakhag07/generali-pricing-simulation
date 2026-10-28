@@ -1,0 +1,19 @@
+{
+  "family": "glm-spline-profit-dispersion",
+  "fit_run": "../../results/glm-spline-profit-dispersion/wild-linear-20261026",
+  "reference_policies": {
+    "glm": "../../scratch-results/glm-synthetic-tail-140-lower-bound-policy-20k",
+    "spline_xgb": "../../scratch-results/spline-xgb-support-lower-bound-policy-20k"
+  },
+  "spline_cache": "../../results/cache/monotone-spline-xgb-full-v1/sweeps/full-715023-v1-20260812",
+  "action_bounds": [-0.1, 0.2],
+  "action_grid_count": 301,
+  "histogram_bin_width": 0.01,
+  "initial_action": 0.08,
+  "optimizer": {
+    "algorithm": "trust-constr",
+    "max_steps": 1000,
+    "grad_norm_tol": 0.000001,
+    "initial_constr_penalty": 1.0
+  }
+}

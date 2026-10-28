@@ -1,0 +1,443 @@
+{
+  "date": "2026-10-28",
+  "inspected_at_utc": "2026-10-28T22:06:14.120615+00:00",
+  "canonical_repository": "/home/anakhag/projects/generali-pricing/generali-pricing-simulation",
+  "retained_main_commit": "5d17c8f86e1eab0069b390bb4ef68825c2688898",
+  "archive_refs": {
+    "refs/archive/worktree-cleanup-20261028/quadratic-source": "754f50fc15028ca9a7874e4c9eb595a232b12898",
+    "refs/archive/worktree-cleanup-20261028/pr-submissions": "c761b2ebf26dec458f58260c54ca5213a2c61f6c"
+  },
+  "github": {
+    "prs": [
+      {
+        "number": 162,
+        "state": "open",
+        "merged": false,
+        "merged_at": null,
+        "merge_commit_sha": null,
+        "html_url": "https://github.com/anakhag07/generali-pricing-simulation/pull/162",
+        "title": "Feature/design bench bridge",
+        "head": "feature/design-bench-bridge",
+        "sha": "2b7965ff6a13216760226b31063518ed875cf44c",
+        "base": "main"
+      },
+      {
+        "number": 184,
+        "state": "closed",
+        "merged": true,
+        "merged_at": "2026-10-28T21:03:09Z",
+        "merge_commit_sha": "6023951b138d32f0d71a7a973f1e676635f852e0",
+        "html_url": "https://github.com/anakhag07/generali-pricing-simulation/pull/184",
+        "title": "Add replayable Generali profit residual diagnostics",
+        "head": "pr/generali-residual-diagnostics",
+        "sha": "85b77e7fa0c0b9a1fb2109ea29c0a2ea3b465cac",
+        "base": "main"
+      },
+      {
+        "number": 185,
+        "state": "closed",
+        "merged": true,
+        "merged_at": "2026-10-28T21:07:43Z",
+        "merge_commit_sha": "1eea45ffcbcfc945370a1b3111eca71c73673772",
+        "html_url": "https://github.com/anakhag07/generali-pricing-simulation/pull/185",
+        "title": "Fit Generali wild residual bands and optimize personalized policies",
+        "head": "pr/generali-wild-policies",
+        "sha": "3b8c59e61ba57b05ab800e768230135457ec1fbb",
+        "base": "main"
+      },
+      {
+        "number": 186,
+        "state": "closed",
+        "merged": true,
+        "merged_at": "2026-10-28T21:10:09Z",
+        "merge_commit_sha": "97ea808d921fcc07926f0bba8a0d9336e8b86c14",
+        "html_url": "https://github.com/anakhag07/generali-pricing-simulation/pull/186",
+        "title": "Explore saved Generali bands by customer norm and logged action",
+        "head": "pr/generali-wild-exploration",
+        "sha": "ebdc93546e377d0bba08758701e5d37afd59beec",
+        "base": "main"
+      },
+      {
+        "number": 187,
+        "state": "closed",
+        "merged": true,
+        "merged_at": "2026-10-28T21:58:36Z",
+        "merge_commit_sha": "9bd0bb05c8707222c0201f90ce401c2ef0158ec6",
+        "html_url": "https://github.com/anakhag07/generali-pricing-simulation/pull/187",
+        "title": "Add paired steepness and sample-size sweeps to the quadratic study",
+        "head": "pr/wild-data-location-sweeps",
+        "sha": "d4173b2edf526aa780d56bea69d3b2ce8c592268",
+        "base": "main"
+      },
+      {
+        "number": 188,
+        "state": "closed",
+        "merged": true,
+        "merged_at": "2026-10-28T21:13:56Z",
+        "merge_commit_sha": "169fda688c8143b699a7ed5d427f8cad049cb517",
+        "html_url": "https://github.com/anakhag07/generali-pricing-simulation/pull/188",
+        "title": "Compare frozen residual bases with paired wild coefficient bands",
+        "head": "pr/generali-residual-bases",
+        "sha": "95eebc3b59fb15da8ac16dad883837a0b87a7cf0",
+        "base": "main"
+      },
+      {
+        "number": 189,
+        "state": "closed",
+        "merged": true,
+        "merged_at": "2026-10-28T21:15:21Z",
+        "merge_commit_sha": "73af99c1ce74ac90f6a9d1aea29a0425e83fdb43",
+        "html_url": "https://github.com/anakhag07/generali-pricing-simulation/pull/189",
+        "title": "Preserve pairing in the ten-row residual-basis sensitivity study",
+        "head": "pr/generali-residual-bases-trimmed",
+        "sha": "5e762fa0a81ee33b542aa4067330bc1b16dd94f9",
+        "base": "main"
+      },
+      {
+        "number": 191,
+        "state": "closed",
+        "merged": true,
+        "merged_at": "2026-10-28T21:58:50Z",
+        "merge_commit_sha": "5d17c8f86e1eab0069b390bb4ef68825c2688898",
+        "html_url": "https://github.com/anakhag07/generali-pricing-simulation/pull/191",
+        "title": "Resume interrupted residual-basis solvers and document feature-band math",
+        "head": "fix/residual-basis-review",
+        "sha": "2f788998b6076d456407f5e8db12a2bfa7652e3f",
+        "base": "main"
+      }
+    ],
+    "open_prs": [
+      {
+        "number": 162,
+        "state": "open",
+        "merged": null,
+        "merged_at": null,
+        "merge_commit_sha": null,
+        "html_url": "https://github.com/anakhag07/generali-pricing-simulation/pull/162",
+        "title": "Feature/design bench bridge",
+        "head": "feature/design-bench-bridge",
+        "sha": "2b7965ff6a13216760226b31063518ed875cf44c",
+        "base": "main"
+      }
+    ]
+  },
+  "checks": {
+    "slurm_jobs": "none at inspection",
+    "local_processes": {
+      "candidates": [
+        "/home/anakhag/projects/generali-pricing/worktrees/pr-submissions",
+        "/home/anakhag/projects/generali-pricing/worktrees/fix-quadratic-sweep-conflicts",
+        "/home/anakhag/projects/generali-pricing/worktrees/fix-residual-basis-review"
+      ],
+      "matches": [],
+      "inaccessible_owned_processes": [
+        {
+          "pid": 1954117,
+          "comm": "sshd"
+        }
+      ]
+    },
+    "retained_symlinks_into_removed_worktrees": [],
+    "simulation_env_editable_references_into_removed_worktrees": [],
+    "unique_ignored_artifacts_in_removed_worktrees": "none; only caches and data symlinks",
+    "preserved_dirty_source_sha256": "all unchanged",
+    "post_cleanup_reachability_and_worktree_registration": "verified",
+    "remote_branch_cleanup": "git fetch --prune removed stale refs; merged PR branches were already deleted on GitHub"
+  },
+  "worktrees": [
+    {
+      "path": "/home/anakhag/projects/generali-pricing/worktrees/pr-submissions",
+      "branch": "pr/generali-residual-bases-trimmed",
+      "commit": "c761b2ebf26dec458f58260c54ca5213a2c61f6c",
+      "tree": "129f7f769d66a77608507f2b34d624d176511609",
+      "retained_ref": "refs/archive/worktree-cleanup-20261028/pr-submissions",
+      "tracked_and_untracked_status": "clean",
+      "data_symlinks": [
+        {
+          "path": "src/data/dataset.csv",
+          "target": "/home/anakhag/projects/generali-pricing/generali-pricing-simulation/src/data/dataset.csv"
+        },
+        {
+          "path": "src/data/models",
+          "target": "/home/anakhag/projects/generali-pricing/generali-pricing-simulation/src/data/models"
+        }
+      ],
+      "discardable_cache_files": 133,
+      "discardable_cache_bytes": 2495234,
+      "removed": true,
+      "removed_at_utc": "2026-10-28T22:10:15.398847+00:00"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/worktrees/fix-quadratic-sweep-conflicts",
+      "branch": "fix/quadratic-sweep-conflicts",
+      "commit": "d4173b2edf526aa780d56bea69d3b2ce8c592268",
+      "tree": "64307dcd726f176fe19c53185f07c70539964cb8",
+      "retained_ref": "refs/heads/main",
+      "tracked_and_untracked_status": "clean",
+      "data_symlinks": [],
+      "discardable_cache_files": 99,
+      "discardable_cache_bytes": 1616657,
+      "removed": true,
+      "removed_at_utc": "2026-10-28T22:10:16.142783+00:00"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/worktrees/fix-residual-basis-review",
+      "branch": "fix/residual-basis-review",
+      "commit": "2f788998b6076d456407f5e8db12a2bfa7652e3f",
+      "tree": "a043a86f4dbe23ce23a2693416b53ddcb97f36f0",
+      "retained_ref": "refs/heads/main",
+      "tracked_and_untracked_status": "clean",
+      "data_symlinks": [
+        {
+          "path": "src/data/dataset.csv",
+          "target": "/home/anakhag/projects/generali-pricing/generali-pricing-simulation/src/data/dataset.csv"
+        },
+        {
+          "path": "src/data/models",
+          "target": "/home/anakhag/projects/generali-pricing/generali-pricing-simulation/src/data/models"
+        }
+      ],
+      "discardable_cache_files": 114,
+      "discardable_cache_bytes": 1855012,
+      "removed": true,
+      "removed_at_utc": "2026-10-28T22:10:16.937549+00:00"
+    }
+  ],
+  "branches": [
+    {
+      "name": "analysis/generali-linear-wild-band",
+      "commit": "72346718f582432f57c92f5320b21e57bb4b17ff",
+      "merged_into_main": false,
+      "patch_equivalent_to_main": true,
+      "retained_ref": "refs/archive/worktree-cleanup-20261028/quadratic-source",
+      "removed": true
+    },
+    {
+      "name": "analysis/generali-profit-residuals",
+      "commit": "28bb06b9fd7488ee45d925cdedcd4762607351f2",
+      "merged_into_main": true,
+      "patch_equivalent_to_main": true,
+      "retained_ref": "refs/heads/main",
+      "removed": true
+    },
+    {
+      "name": "analysis/generali-residual-central95",
+      "commit": "ff067dbc1f0939f860790fbb5044bc734cf367c0",
+      "merged_into_main": true,
+      "patch_equivalent_to_main": true,
+      "retained_ref": "refs/heads/main",
+      "removed": true
+    },
+    {
+      "name": "analysis/generali-residual-churn-split",
+      "commit": "f967345b7cf941db0d38366b7f8668f59611c600",
+      "merged_into_main": true,
+      "patch_equivalent_to_main": true,
+      "retained_ref": "refs/heads/main",
+      "removed": true
+    },
+    {
+      "name": "analysis/generali-residual-customer-slices",
+      "commit": "6cbeb67dd8dda64c1f3b2ba332928daaf10b5966",
+      "merged_into_main": true,
+      "patch_equivalent_to_main": true,
+      "retained_ref": "refs/heads/main",
+      "removed": true
+    },
+    {
+      "name": "analysis/generali-wild-policy",
+      "commit": "583e4af546116e5386e9d246ec549d6114f886b3",
+      "merged_into_main": false,
+      "patch_equivalent_to_main": true,
+      "retained_ref": "refs/archive/worktree-cleanup-20261028/quadratic-source",
+      "removed": true
+    },
+    {
+      "name": "analysis/generali-wild-slices",
+      "commit": "f02588e7fd108585a89eb87b51c38f60b4a4679c",
+      "merged_into_main": false,
+      "patch_equivalent_to_main": true,
+      "retained_ref": "refs/archive/worktree-cleanup-20261028/quadratic-source",
+      "removed": true
+    },
+    {
+      "name": "analysis/generali-wild-slices-wide",
+      "commit": "b1c39e7d8da2e8a3d47ac7ff73f6a5bd1f82f9b4",
+      "merged_into_main": false,
+      "patch_equivalent_to_main": true,
+      "retained_ref": "refs/archive/worktree-cleanup-20261028/quadratic-source",
+      "removed": true
+    },
+    {
+      "name": "analysis/wild-data-location-action-window",
+      "commit": "754f50fc15028ca9a7874e4c9eb595a232b12898",
+      "merged_into_main": false,
+      "patch_equivalent_to_main": true,
+      "retained_ref": "refs/archive/worktree-cleanup-20261028/quadratic-source",
+      "removed": true
+    },
+    {
+      "name": "analysis/wild-data-location-sweeps",
+      "commit": "eba736f63c460d800fc79c6f143a1aa5d6b365a8",
+      "merged_into_main": false,
+      "patch_equivalent_to_main": true,
+      "retained_ref": "refs/archive/worktree-cleanup-20261028/quadratic-source",
+      "removed": true
+    },
+    {
+      "name": "chore/compact-original-residual-plot",
+      "commit": "9c67d7a037ea89ff044d656800372172fdb91047",
+      "merged_into_main": true,
+      "patch_equivalent_to_main": true,
+      "retained_ref": "refs/heads/main",
+      "removed": true
+    },
+    {
+      "name": "chore/trim-generali-residual-outputs",
+      "commit": "1c17edcc37e4bab401070a7efbe2d1fdaa685cad",
+      "merged_into_main": true,
+      "patch_equivalent_to_main": true,
+      "retained_ref": "refs/heads/main",
+      "removed": true
+    },
+    {
+      "name": "fix/quadratic-sweep-conflicts",
+      "commit": "d4173b2edf526aa780d56bea69d3b2ce8c592268",
+      "merged_into_main": true,
+      "patch_equivalent_to_main": true,
+      "retained_ref": "refs/heads/main",
+      "removed": true
+    },
+    {
+      "name": "fix/residual-basis-review",
+      "commit": "2f788998b6076d456407f5e8db12a2bfa7652e3f",
+      "merged_into_main": true,
+      "patch_equivalent_to_main": true,
+      "retained_ref": "refs/heads/main",
+      "removed": true
+    },
+    {
+      "name": "pr/generali-residual-bases",
+      "commit": "8da056a22591bda4297a702ca34ce483de7869ec",
+      "merged_into_main": false,
+      "patch_equivalent_to_main": true,
+      "retained_ref": "refs/archive/worktree-cleanup-20261028/pr-submissions",
+      "removed": true
+    },
+    {
+      "name": "pr/generali-residual-bases-trimmed",
+      "commit": "c761b2ebf26dec458f58260c54ca5213a2c61f6c",
+      "merged_into_main": false,
+      "patch_equivalent_to_main": true,
+      "retained_ref": "refs/archive/worktree-cleanup-20261028/pr-submissions",
+      "removed": true
+    },
+    {
+      "name": "pr/generali-residual-diagnostics",
+      "commit": "85b77e7fa0c0b9a1fb2109ea29c0a2ea3b465cac",
+      "merged_into_main": true,
+      "patch_equivalent_to_main": true,
+      "retained_ref": "refs/heads/main",
+      "removed": true
+    },
+    {
+      "name": "pr/generali-wild-exploration",
+      "commit": "faf3a004a08cc27b1f52ada8190759a0f9cda500",
+      "merged_into_main": true,
+      "patch_equivalent_to_main": true,
+      "retained_ref": "refs/heads/main",
+      "removed": true
+    },
+    {
+      "name": "pr/generali-wild-policies",
+      "commit": "9bf9aefd7997d6b8082a939e0a6b98ae95d65dab",
+      "merged_into_main": true,
+      "patch_equivalent_to_main": true,
+      "retained_ref": "refs/heads/main",
+      "removed": true
+    },
+    {
+      "name": "pr/wild-data-location-sweeps",
+      "commit": "53e4219c3632bb56f482830f95b33a874c5a1f8b",
+      "merged_into_main": true,
+      "patch_equivalent_to_main": true,
+      "retained_ref": "refs/heads/main",
+      "removed": true
+    }
+  ],
+  "preserved_source_worktrees": [
+    {
+      "path": "/home/anakhag/projects/generali-pricing/worktrees/feature-generali-residual-bases",
+      "reason": "Original dirty source required by immutable study contracts",
+      "head": "b1c39e7d8da2e8a3d47ac7ff73f6a5bd1f82f9b4",
+      "modified_and_untracked_sha256": {
+        "AGENTS.md": "a1567f5cd193bb983019eb3a2bd2c231bad01f826656d9957793dcafbfeddb9c",
+        "README.md": "0a781b36175460df1d1ef54333c69fa1a14f6eda8fde2f0cc41566e6cd368c75",
+        "docs/data/dataset_metadata.html": "22f5e5025525907784247e56a6dbfafeb3d844d9a5d273267146bf76896aab3e",
+        "docs/experiment_workflow.md": "f0b143e47dbee7678db84c032e18031eecf73f96ec8abc71c741a3d1ba9d177e",
+        "docs/experiments/configs/band_policy.html": "95219b1da64e4e27da62d79cafa6f96c03dfb33d3e26df1fd3280f1fbe3b7c1c",
+        "docs/experiments/configs/real_data_factory.html": "8c07e449311cad3a57ac45fb089b77b9f5379d0d085630e46e6b4064569e854e",
+        "docs/experiments/envelopes.html": "9f2d60b2b23799249f4aff44f9905a523ebe5bc950bdf2d15b2963a7a1da9b85",
+        "docs/experiments/envelopes/feature_wild.html": "d11af0de00b20baef3d574a0ba07013bf859e52e12f56c67bc3d3e9c65b8d0af",
+        "docs/generali_residual_basis_study.md": "5532fd3c209dd48d037ec585b1da2c5f6a3e2676542c1f0180f79a52fa0f6612",
+        "docs/index.html": "978d20d8cedb3607d5ed501261953e26e800baaf87614f66e6593b2d5cc037f6",
+        "docs/search.js": "76f03303730fc8a3351ade6cb6564621a3823b4b6c3d54cbc9ba640bb4ca348d",
+        "scratch/generali_residual_basis_study.py": "bd73ade9a5d00bb0023ddce05ed5b2cdbaac9e13e6173c51eac00ff88572a098",
+        "scratch/generali_residual_wild_basis_study.json": "5a817927a96ecab0d240e4390694354941d2267f01251c6da5f49a7365c5cd29",
+        "scratch/plot_generali_profit_residuals.py": "c50dd175d2f70c94da0c897ccb78957def59edae39a2293203d1fef9defa8306",
+        "scratch/retired_experiments/generali_residual_basis_checkpoints_20261027.json": "a60e2d4e9f498b9cd922c0dc0937c5b7bd149b5aec8b4393736290f760d0c64f",
+        "src/experiments/envelopes/__init__.py": "ef1efe619012765b6ee578d2e538c5fbf8f38bacc1804f103f2281df0ecf2bf7",
+        "src/experiments/envelopes/feature_wild.py": "b9ddbc3c0a5e041d7570c1bde05caeba3e582866d5768e11462ccb8804eb8048",
+        "tests/experiments/test_feature_wild.py": "95e550476b65ab37b09ff6849168e7fd2f5e4b11d8e1c69aaeb1772a28c47507"
+      }
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/worktrees/feature-generali-residual-bases-trimmed",
+      "reason": "Original dirty source required by immutable study contracts",
+      "head": "b1c39e7d8da2e8a3d47ac7ff73f6a5bd1f82f9b4",
+      "modified_and_untracked_sha256": {
+        "AGENTS.md": "315fd878574edb609720958391e819e4ef9d1afc5d9fade68260b9059b724631",
+        "README.md": "e2cbbcee668980e5fcab80419f4fb36278649042c052442cceb1451dbc38a960",
+        "docs/data/dataset_metadata.html": "22f5e5025525907784247e56a6dbfafeb3d844d9a5d273267146bf76896aab3e",
+        "docs/experiment_workflow.md": "d5648a7af1b14f85e008e5b7e4a36f0c882b395b37ef19b66cee832922f976fc",
+        "docs/experiments/configs/band_policy.html": "95219b1da64e4e27da62d79cafa6f96c03dfb33d3e26df1fd3280f1fbe3b7c1c",
+        "docs/experiments/configs/real_data_factory.html": "8c07e449311cad3a57ac45fb089b77b9f5379d0d085630e46e6b4064569e854e",
+        "docs/experiments/envelopes.html": "9f2d60b2b23799249f4aff44f9905a523ebe5bc950bdf2d15b2963a7a1da9b85",
+        "docs/experiments/envelopes/feature_wild.html": "d11af0de00b20baef3d574a0ba07013bf859e52e12f56c67bc3d3e9c65b8d0af",
+        "docs/generali_residual_basis_study.md": "75a8116e746db1c0d809f2f8d63fe1814060a3083879d8ec08aca0b3e4559e35",
+        "docs/index.html": "978d20d8cedb3607d5ed501261953e26e800baaf87614f66e6593b2d5cc037f6",
+        "docs/search.js": "76f03303730fc8a3351ade6cb6564621a3823b4b6c3d54cbc9ba640bb4ca348d",
+        "scratch/generali_residual_basis_flagged_rows.json": "ad363b77de9c484e475df231d14548c040d50b00c8367b2c73bab1d4d9e76e8b",
+        "scratch/generali_residual_basis_study.py": "d81d1742730a344229ca9ac652d868af7bb1efe2a6f016c6f494b773603719d7",
+        "scratch/generali_residual_wild_basis_study.json": "5a817927a96ecab0d240e4390694354941d2267f01251c6da5f49a7365c5cd29",
+        "scratch/generali_residual_wild_basis_study_trimmed.json": "f1880d38a29be67bb0e1724d116cb29ed70a8c08f7cbeccfd0f68c9d59e28d4b",
+        "scratch/plot_generali_profit_residuals.py": "c50dd175d2f70c94da0c897ccb78957def59edae39a2293203d1fef9defa8306",
+        "scratch/retired_experiments/generali_residual_basis_checkpoints_20261027.json": "a60e2d4e9f498b9cd922c0dc0937c5b7bd149b5aec8b4393736290f760d0c64f",
+        "scratch/retired_experiments/generali_residual_basis_trimmed_checkpoints_20261027.json": "676381a2e92b127dbe61bb93861adebd6b41c72ac7743df00d984f309a8e6d36",
+        "src/experiments/envelopes/__init__.py": "ef1efe619012765b6ee578d2e538c5fbf8f38bacc1804f103f2281df0ecf2bf7",
+        "src/experiments/envelopes/feature_wild.py": "b9ddbc3c0a5e041d7570c1bde05caeba3e582866d5768e11462ccb8804eb8048",
+        "tests/experiments/test_feature_wild.py": "9de3d9b7504a74cb22d9bac3b8c2d05f1bb33f1d7ce2c2a1fc294e20518d62aa"
+      }
+    }
+  ],
+  "other_retained_worktrees": [
+    {
+      "path": "/home/anakhag/projects/generali-pricing/generali-pricing-simulation",
+      "reason": "Canonical checkout"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/worktrees/feature-design-bench-bridge",
+      "reason": "Open PR #162"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/worktrees/feature-generali-action-powers",
+      "reason": "Original source preserved by the concurrent action-power session; detached at df19ad5"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/worktrees/feature-generali-action-powers-replay",
+      "reason": "Active action-power replay; created by the concurrent session during cleanup"
+    }
+  ],
+  "recovery": "Recreate a removed checkout at its recorded path using git worktree add --detach <path> <commit>, then restore its recorded data symlinks. Recreate a branch using git branch <name> <commit>. Archive refs retain the original pre-rebase histories locally. Saved results and their contracts were not moved or modified.",
+  "completed_at_utc": "2026-10-28T22:10:18.913909+00:00"
+}

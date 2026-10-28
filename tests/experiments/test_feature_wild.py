@@ -169,6 +169,19 @@ def test_policy_centering_uses_paired_distances_not_only_average_action():
     assert metrics["mean_distance_change_to_mean_percentage_points"] == pytest.approx(-10.)
 
 
+def test_width_report_csv_replay_preserves_distinct_nearby_action_coordinates():
+    import io
+    import pandas as pd
+    from scratch.generali_action_power_reporting import _read_width_cache
+    actions = np.array([.1, np.nextafter(.1, 1.), np.nextafter(.1, 0.)])
+    csv = pd.DataFrame({"action": actions, "width": [1., 2., 3.]}).to_csv(index=False)
+    replay = _read_width_cache(io.StringIO(csv))
+    np.testing.assert_array_equal(replay.action, actions)
+    assert replay.action.is_unique
+    matched = replay.merge(replay, on="action", validate="one_to_one")
+    assert len(matched) == len(actions)
+
+
 def test_customer_split_preserves_holdout_and_repeated_id_groups():
     ids = np.repeat(np.arange(30), 2)
     pools = _split(ids, np.arange(48), np.arange(48, 60), 412)

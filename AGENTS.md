@@ -13,6 +13,14 @@ and compare policy distances on the same rows to calibration mean and median.
 Reporting never fits or optimizes. Preserve source/hash contracts and retain
 the inherited-source index in `scratch/generali_action_powers_inheritance.json`.
 See MATH section 7.20 and the existing study documentation.
+All six tasks completed and converged. Preserve the original source worktree
+`feature-generali-action-powers` pinned at df19ad5; active code continues in
+`feature-generali-action-powers-replay`. Report replay must read width CSVs with
+round-trip floating precision, since merged action grids contain distinct nearby
+coordinates. Numerical cache provenance stays attached to the original verified
+query source; the active rendering source is recorded separately. The first
+report and completed bootstrap checkpoints are archived via
+`scratch/retired_experiments/generali_action_power_outputs_20261028.json`.
 
 The Generali residual-basis follow-up uses the existing diagnostic entry point's
 `--fit-wild-bases scratch/generali_residual_wild_basis_study.json` mode and

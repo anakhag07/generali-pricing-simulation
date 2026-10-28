@@ -18,6 +18,11 @@ from experiments.provenance import file_record, write_json_atomic
 LABELS = {"affine": "Affine", "action_a2": "+ a²", "action_a2_a4": "+ a² + a⁴"}
 
 
+def _read_width_cache(path):
+    # Distinct main/extended grid coordinates can differ by one floating bit.
+    return pd.read_csv(path, float_precision="round_trip")
+
+
 def _common_action_sums(fibers, actions):
     """Sum exact per-context widths and derivatives for a common action array."""
     _, g, q = fibers.prepared
@@ -214,13 +219,18 @@ def write_action_power_report(config, output):
             checks.append(check)
             basis = _Basis.restore(state)
             cache_path, metadata_path = folder/"width_by_action.csv", folder/"width_report.json"
+            # Cached query values retain the original run's numerical recipe.
+            # Reporting may replay them from a later source checkout; the original
+            # source is verified above and the active reporter is recorded below.
+            query_source = next(record for record in saved_contract["sources"]
+                                if Path(record["path"]).name == Path(__file__).name)
             cache_contract = {"band": summary["fit"]["artifact"], "report": report,
-                              "source": file_record(Path(__file__))}
+                              "source": query_source}
             if metadata_path.exists():
                 saved = json.loads(metadata_path.read_text())
                 if saved["contract"] != cache_contract:
                     raise ValueError("Saved width report inputs or source changed.")
-                frame = pd.read_csv(_verify(saved["curves"]))
+                frame = _read_width_cache(_verify(saved["curves"]))
                 np.testing.assert_allclose(frame.action, grid, rtol=0, atol=1e-14)
             else:
                 frame = _width_curves(inputs, basis, state, grid, config["evaluation_batch_size"])

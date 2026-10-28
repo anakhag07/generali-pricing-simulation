@@ -339,8 +339,8 @@ Sources: `src/objective/modifications/`.
 ## 6. Real-Data Analysis Quantities
 
 For descriptive residual diagnostics at each historical action $a_i=U_i$, let
-$c_i=\texttt{is\_churn}_i$, $p_i=\texttt{X\_policy\_premium}_i$,
-$v_i=\texttt{X\_upcoming\_premium}_i$, and $\ell_i=\texttt{Y\_G\_Loss}_i$.
+$c_i$, $p_i$, $v_i$, and $\ell_i$ denote row $i$ of `is_churn`,
+`X_policy_premium`, `X_upcoming_premium`, and `Y_G_Loss`, respectively.
 Check $v_i=(1+a_i)p_i$ before computing
 
 $$

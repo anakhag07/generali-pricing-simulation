@@ -98,6 +98,19 @@ Restore that record's data symlinks if present. Source commits are preserved in
 Git; the worktree cleanup does not move or delete experiment results, canonical
 datasets or trained models. Checkouts can be removed again after replay.
 
+The 2026-10-28 follow-up removed three completed worktrees (`pr-submissions`,
+`fix-quadratic-sweep-conflicts`, and `fix-residual-basis-review`) and 20 completed
+local branches after PRs #184–189 and #191 merged. All removed branches are
+ancestors of `main` or have patch-equivalent changes on `main`. Two local refs
+under `refs/archive/worktree-cleanup-20261028/` retain the original pre-rebase
+histories. These refs are local recovery anchors, not remote branches.
+[worktrees_20261028.json](worktrees_20261028.json) records the exact commits,
+trees, symlinks, retained refs, checks, and hashes of the preserved dirty source.
+The open Design-Bench worktree, active action-power worktrees, and both original
+residual-basis source worktrees remain. The latter two contain uncommitted source
+required by immutable experiment contracts and must not be discarded merely
+because the corresponding PRs merged. No experiment artifacts were relocated.
+
 ## Reading and recovery
 
 Read summaries, tables, PDFs, and arrays directly at the new paths. Resolve an

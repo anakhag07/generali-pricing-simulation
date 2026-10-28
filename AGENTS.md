@@ -200,6 +200,11 @@ git worktree add ../worktrees/feature-policy-grid -b feature/policy-grid
   recovery index rather than rewriting saved contracts. Keep active/unmerged
   worktrees. The 2026-10-23 cleanup is recorded in
   `scratch/retired_experiments/worktrees_20261023.json`.
+  The 2026-10-28 follow-up is indexed in
+  `scratch/retired_experiments/worktrees_20261028.json`; it preserves original
+  pre-rebase histories under local `refs/archive/worktree-cleanup-20261028/`.
+  The two dirty residual-basis source worktrees remain required by saved
+  contracts even though their implementation PRs have merged.
 - Gitignored data artifacts (`src/data/dataset.csv` and `src/data/models/`)
   exist only in the canonical checkout, so real-data tests fail in a fresh
   worktree until they are symlinked in:

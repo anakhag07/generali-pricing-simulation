@@ -126,32 +126,36 @@ def _plot_bands(output, arrays, examples, design, fits, delta):
 
 def _render_band_curves(output, arrays, examples, stored, delta, *, labels=None,
                         quantities=("residual", "profit"), action_bounds=None,
-                        filename_prefix="wild"):
+                        filename_prefix="wild", models=None, include_figure_title=True):
     grid = examples["action_grid"]
     positions = examples["selection_positions"]
     if labels is None:
         labels = ["Smallest norm", "Median norm", "Largest norm"]
+    models = MODELS if models is None else models
     with plt.rc_context(_STYLE):
         for quantity in quantities:
-            fig, axes = plt.subplots(2, 3, figsize=(15, 9), sharex=True, constrained_layout=True)
+            fig, axes = plt.subplots(len(models), 3, figsize=(15, 4.5*len(models)),
+                                     sharex=True, constrained_layout=True, squeeze=False)
             noun = "Residual-mean bands" if quantity == "residual" else "Transferred expected-profit envelopes"
-            fig.suptitle(f"{noun} · nominal {1-delta:.0%} wild bootstrap", fontsize=16)
+            if include_figure_title:
+                fig.suptitle(f"{noun} · nominal {1-delta:.0%} wild bootstrap", fontsize=16)
             legend_handles, legend_labels = [], []
-            for row, (name, model_label) in enumerate(MODELS.items()):
+            for row, (name, model_label) in enumerate(models.items()):
+                color = f"C{list(MODELS).index(name)}"
                 for col, (position, label) in enumerate(zip(positions, labels)):
                     ax = axes[row, col]
                     g = stored[f"{name}_residual_fit"][col]
                     width = stored[f"{name}_width"][col]
                     if quantity == "residual":
-                        ax.fill_between(grid, g-width, g+width, alpha=.25, color=f"C{row}", label="Residual-mean band")
-                        ax.plot(grid, g, color=f"C{row}", label=r"Fitted residual $\phi^\top\widehat\beta$")
+                        ax.fill_between(grid, g-width, g+width, alpha=.25, color=color, label="Residual-mean band")
+                        ax.plot(grid, g, color=color, label=r"Fitted residual $\phi^\top\widehat\beta$")
                         ax.axhline(0, color="0.5", linewidth=.8)
                         observed = arrays[f"{name}_residual"][position]
                         ylabel = "Profit residual"
                     else:
                         ax.fill_between(grid, stored[f"{name}_lower"][col], stored[f"{name}_upper"][col],
-                                        alpha=.25, color=f"C{row}", label="Transferred envelope")
-                        ax.plot(grid, stored[f"{name}_prediction"][col], color=f"C{row}", label="Frozen profit prediction")
+                                        alpha=.25, color=color, label="Transferred envelope")
+                        ax.plot(grid, stored[f"{name}_prediction"][col], color=color, label="Frozen profit prediction")
                         ax.plot(grid, stored[f"{name}_corrected_prediction"][col], "--", color="C3",
                                 label="Prediction + fitted residual")
                         observed = arrays["observed_profit"][position]
@@ -166,7 +170,7 @@ def _render_band_curves(output, arrays, examples, stored, delta, *, labels=None,
                         handles, entries = ax.get_legend_handles_labels()
                         legend_handles.extend(handles[:2])
                         legend_labels.extend(f"{model_label}: {entry}" for entry in entries[:2])
-                        if row == 1:
+                        if row == len(models)-1:
                             legend_handles.extend(handles[2:])
                             legend_labels.extend(entries[2:])
             # Automatic outside layout keeps the single observed points visible.

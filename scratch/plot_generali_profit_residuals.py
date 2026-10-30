@@ -571,6 +571,7 @@ def _churn_split(arrays, output, source):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, required=True, help="Fresh report directory within the comparison family.")
+    parser.add_argument("--slide-report", type=Path, help="Saved-experiment report recipe for spline/XGBoost slide figures and Beamer text.")
     parser.add_argument("--spline-cache", type=Path, default=DEFAULT_CACHE)
     parser.add_argument("--replay", type=Path, help="Saved residual input; only --fit-wild-linear enables residual fitting/bootstrap.")
     parser.add_argument("--central-fraction", type=float, default=1., help="Displayed central residual fraction per model; full saved data and summaries are retained.")
@@ -594,6 +595,15 @@ def main(argv=None):
     add_launch_args(parser)
     parser.set_defaults(array_max_parallel=2)
     args = parser.parse_args(argv)
+    if args.slide_report:
+        if (args.replay or args.explore or args.split_churn or args.fit_wild_linear or args.fit_wild_bases
+                or args.render_wild or args.optimize_wild or args.explore_wild or args.render_wild_slices
+                or args.wild_elasticity or args.wild_elasticity_reference is not None
+                or args.wild_action_bounds or args.trim_actions or args.central_fraction != 1):
+            raise ValueError("--slide-report is a standalone saved-experiment reporting mode.")
+        from scratch.generali_slide_report import run_slide_report
+        run_slide_report(args.slide_report.resolve(), args.output_dir.resolve())
+        return
     if args.wild_elasticity and not args.explore_wild:
         raise ValueError("--wild-elasticity requires --explore-wild.")
     if args.wild_elasticity_reference is not None and not args.wild_elasticity:

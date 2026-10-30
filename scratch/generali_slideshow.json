@@ -1,0 +1,20 @@
+{
+  "family": "glm-spline-profit-dispersion",
+  "model": "spline_xgb",
+  "residuals": "glm-spline-profit-dispersion/residuals-20261026",
+  "central95": "glm-spline-profit-dispersion/central95",
+  "affine_fit": "glm-spline-profit-dispersion/wild-linear-20261026",
+  "affine_policy": "glm-spline-profit-dispersion/wild-policy",
+  "elasticity": "glm-spline-profit-dispersion/wild-band-elasticity",
+  "action_powers": "glm-spline-profit-dispersion/action-power-basis-study",
+  "trimmed_bases": "glm-spline-profit-dispersion/residual-basis-study-trimmed",
+  "spline_cache": "cache/monotone-spline-xgb-full-v1/sweeps/full-715023-v1-20260812",
+  "synthetic_sweep": "wild-data-location-20261021-mean10/steepness-sample-size-20261027",
+  "main_bounds": [-0.1, 0.2],
+  "wide_bounds": [-1.0, 2.0],
+  "wide_grid_count": 301,
+  "mlp_grid_count_per_window": 101,
+  "batch_size": 10000,
+  "policy_fill_alpha": 0.12,
+  "synthetic_data_center": 10.0
+}

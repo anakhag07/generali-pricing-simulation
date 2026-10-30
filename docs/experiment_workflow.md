@@ -509,8 +509,14 @@ dimensionless economic elasticities.
 The current representatives are source rows 218135, 549678 and 361231, with
 scores 0.2497297433, 0.3543950510 and 0.4936174138 respectively. The same customers
 appear in both the GLM and spline/XGBoost rows. Two vector PDFs show residual
-bands and transferred profit envelopes over the inherited [-0.1, 0.45] display
-interval. Only the customer's one logged outcome is observed; nominal
+bands and transferred profit envelopes. The profit figure now displays
+[-0.1, 0.2]; the residual figure retains [-0.1, 0.45]. `plot-overrides.json`
+records the profit display limits, and `profit_plot_replay.json` preserves the
+exact invocation of the original renderer using unchanged saved coordinates.
+The construction summary still records the original evaluated grid. The wide
+profit PDF and original metadata are archived with checksums in
+`scratch/retired_experiments/generali_elasticity_profit_window_20261030.json`.
+Only the customer's one logged outcome is observed; nominal
 mean-function coverage remains unverified, and these are not outcome prediction
 intervals. Full rankings, selected features, curve coordinates and source/input
 hashes accompany the figures. Original band-coordinate parity, logged-profit

@@ -414,6 +414,14 @@ If lower-priority docs are stale, update them in the same task.
   `wild-band-elasticity/`. This reuses the original full-data affine band, not
   the later coefficient-ellipsoid study. It checks original band-coordinate
   parity and logged profits without fitting, draws or optimization.
+  The profit-only display revision uses [-0.1, 0.2], retaining the original
+  residual figure and full curve coordinates. `plot-overrides.json` records
+  the figure's limits; `profit_plot_replay.json` contains the exact invocation
+  of `_render_band_curves` and input/source hashes. Original wide PDF/provenance
+  and documentation are archived under shared `scratch-results/`, indexed by
+  `scratch/retired_experiments/generali_elasticity_profit_window_20261030.json`.
+  The retained construction summary describes the original evaluated grid;
+  current per-figure display limits are in the override file.
 - The active synthetic catalog retains the three paired residual-heteroskedastic
   distribution manifests and six `residual-leverage-fixed-noise-outlier-*.json`
   manifests. Terminal-distribution results, all residual-heteroskedastic report

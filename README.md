@@ -142,6 +142,9 @@ at the median logged action, selecting the median row in each tertile. Override
 the reference with `--wild-elasticity-reference U`. Current profit and residual
 PDFs, rankings and replay provenance are in
 `glm-spline-profit-dispersion/wild-band-elasticity/` under the shared results root.
+Its profit figure now displays [-0.1, 0.2]; the per-figure setting and exact
+saved-coordinate replay are retained in `plot-overrides.json` and
+`profit_plot_replay.json` alongside the PDF.
 See [the diagnostic setup](docs/experiment_workflow.md#generali-residual-diagnostics).
 
 ### Retired experiments

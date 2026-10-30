@@ -16,6 +16,7 @@ from data.full_monotone_spline_cache import ShardedMonotoneSplineCache
 from data.loader import load_x_frame
 from experiments.envelopes.plotting import _STYLE, _slice_indices
 from experiments.provenance import file_record, file_sha256, write_provenance
+from experiments.sensitivity_buckets import glm_price_derivative_matrix, split_sensitivity_tertiles
 from reporting.real_data import resolve_real_data_model
 from scratch.generali_residual_wild import _render_band_curves
 from scratch.generali_wild_policy import _FrozenFibers, _Responses, _verify_fibers
@@ -142,7 +143,96 @@ def _support_diagnostics(arrays, state, frame, selections, optimization_rows):
     return records, features
 
 
-def run_wild_slices(arrays, output, source, config_path, *, action_bounds=None):
+def _elasticity_slices(arrays, output, state, frame, artifact, cache, logit, slope,
+                       config, fit_config, norm_examples, original_curves, u_ref):
+    u_ref = float(np.median(arrays["a"])) if u_ref is None else float(u_ref)
+    derivative = glm_price_derivative_matrix(artifact, frame, u_values=[u_ref])[:, 0]
+    scores = np.abs(derivative)
+    buckets = split_sensitivity_tertiles(arrays["row_indices"], scores)
+    selected = np.array([int(np.flatnonzero(arrays["row_indices"] ==
+        bucket.row_indices[(len(bucket.row_indices)-1)//2])[0]) for bucket in buckets])
+    if len(np.unique(arrays["customer_id"][selected])) != 3:
+        raise ValueError("Elasticity representatives must be three distinct customers.")
+    records = [{"selection": bucket.name, "source_row": int(arrays["row_indices"][position]),
+                "customer_id": str(arrays["customer_id"][position]), "position": int(position),
+                "reference_action": u_ref, "glm_acceptance_derivative": derivative[position],
+                "elasticity_magnitude": scores[position],
+                "score_midrank_percentile": 100*(np.mean(scores < scores[position])
+                                                 + .5*np.mean(scores == scores[position])),
+                "bucket_count": len(bucket.scores), "bucket_score_min": bucket.scores[0],
+                "bucket_score_max": bucket.scores[-1], "historical_action": arrays["a"][position],
+                "observed_profit": arrays["observed_profit"][position]}
+               for bucket, position in zip(buckets, selected)]
+    bounds = list(config["action_bounds"])
+    if "display_action_bounds_override" not in config:
+        bounds = [min(bounds[0], float(arrays["a"][selected].min())),
+                  max(bounds[1], float(arrays["a"][selected].max()))]
+    additions = np.r_[arrays["a"][selected], u_ref]
+    grid = np.unique(np.r_[np.linspace(*bounds, config["action_grid_count"]),
+                           additions[(additions >= bounds[0]) & (additions <= bounds[1])]])
+    examples = {"selection_positions": selected, "row_indices": arrays["row_indices"][selected],
+                "action_grid": grid}
+    stored, validations, coordinates = {}, {}, []
+    for name in MODELS:
+        response = _Responses(name, arrays, cache=cache, glm_logit=logit, glm_slope=slope)
+        fibers = _FrozenFibers(state["X"], state["triangular"], state[f"{name}_beta"], state[f"{name}_critical"])
+        validations[name] = {"band_parity_max_abs_error": _verify_fibers(state, name, fibers, examples)}
+        # Replay the original coordinates as an independent check of saved-fit identity.
+        reference_parts = [fibers.evaluate(norm_examples["selection_positions"],
+                           np.full(len(norm_examples["selection_positions"]), action))
+                           for action in norm_examples["action_grid"]]
+        for key in ("residual_fit", "width", "radius_lower", "radius_upper"):
+            np.testing.assert_allclose(np.stack([part[key] for part in reference_parts], axis=1),
+                                       original_curves[f"{name}_{key}"], rtol=2e-11, atol=1e-8)
+        response.prepare_policy_queries(selected)
+        logged = response.evaluate(selected, arrays["a"][selected])["center"]
+        np.testing.assert_allclose(logged, arrays[f"{name}_profit"][selected], rtol=2e-9, atol=1e-7)
+        validations[name]["logged_prediction_max_abs_error"] = float(np.max(np.abs(logged-arrays[f"{name}_profit"][selected])))
+        parts = [_endpoints(response, fibers, selected, np.full(len(selected), a)) for a in grid]
+        stored.update({f"{name}_{key}": np.stack([p[key] for p in parts], axis=1) for key in parts[0]})
+        for col, bucket in enumerate(buckets):
+            coordinates.extend({"model": name, "selection": bucket.name,
+                "source_row": int(arrays["row_indices"][selected[col]]), "action": action,
+                **{key: parts[k][key][col] for key in parts[k]}} for k, action in enumerate(grid))
+        if name == "glm":
+            reference = response.evaluate(selected, np.full(len(selected), u_ref))["acceptance_derivative"]
+            np.testing.assert_allclose(reference, derivative[selected], rtol=1e-12, atol=1e-12)
+            h = 1e-5
+            finite_difference = (response.evaluate(selected, np.full(len(selected), u_ref+h))["acceptance"]
+                - response.evaluate(selected, np.full(len(selected), u_ref-h))["acceptance"])/(2*h)
+            np.testing.assert_allclose(finite_difference, derivative[selected], rtol=1e-7, atol=1e-9)
+            validations[name]["derivative_finite_difference_max_abs_error"] = float(np.max(np.abs(finite_difference-derivative[selected])))
+    curves = pd.DataFrame(coordinates)
+    if not np.isfinite(curves.select_dtypes(include=[np.number]).to_numpy()).all():
+        raise ValueError("Nonfinite band coordinates.")
+    if not ((curves.lower <= curves.prediction) & (curves.prediction <= curves.upper)).all():
+        raise ValueError("Transferred envelopes must contain their frozen predictions.")
+    labels = [f"{bucket.name.capitalize()} elasticity" for bucket in buckets]
+    _render_band_curves(output, arrays, examples, stored, fit_config["bootstrap"]["delta"],
+                        labels=labels, action_bounds=bounds, filename_prefix="customer_elasticity")
+    np.savez_compressed(output / "customer_elasticity_curves.npz", **examples, **stored)
+    np.savez_compressed(output / "elasticity_ranking.npz", row_indices=arrays["row_indices"],
+                        derivative=derivative, reference_action=u_ref,
+                        **{bucket.name: bucket.row_indices for bucket in buckets})
+    curves.to_csv(output / "customer_elasticity_curves.csv", index=False)
+    pd.DataFrame(records).to_csv(output / "selected_customer_elasticities.csv", index=False)
+    customers = frame.iloc[selected].copy()
+    customers.insert(0, "source_row", arrays["row_indices"][selected])
+    customers.insert(1, "selection", [bucket.name for bucket in buckets])
+    customers.to_csv(output / "selected_customers.csv", index=False)
+    summary = {"family": config["family"], "config": config, "selection": "elasticity",
+        "calibration_rows": len(frame), "reference_action": u_ref, "display_action_bounds": bounds,
+        "selection_rule": "stable GLM absolute acceptance derivative tertiles; lower median rank per tertile",
+        "ranking_model": "glm", "same_customers_for_both_predictors": True,
+        "bootstrap": fit_config["bootstrap"], "inherited_seeds": fit_config["seeds"],
+        "selected_customers": records, "validation": validations,
+        "optimizer": None, "randomness": None, "new_fits_or_bootstrap_draws": False}
+    write_provenance(output / "summary.json", summary)
+    return summary
+
+
+def run_wild_slices(arrays, output, source, config_path, *, action_bounds=None,
+                    elasticity=False, elasticity_reference=None):
     config = json.loads(config_path.read_text())
     if config["family"] != "glm-spline-profit-dispersion":
         raise ValueError("Keep the existing comparison family.")
@@ -181,7 +271,7 @@ def run_wild_slices(arrays, output, source, config_path, *, action_bounds=None):
     np.testing.assert_array_equal(state["actions"], arrays["a"])
     np.testing.assert_array_equal(norm_examples["selection_positions"], _slice_indices(state["X"]))
     fit_config = json.loads(fitted("resolved_config.json").read_text())
-    if action_bounds is None:
+    if action_bounds is None and not elasticity:
         _render_band_curves(output, arrays, norm_examples, original_curves,
                            fit_config["bootstrap"]["delta"], quantities=("profit",),
                            filename_prefix="customer_norm")
@@ -204,6 +294,50 @@ def run_wild_slices(arrays, output, source, config_path, *, action_bounds=None):
     _validate_cache(cache, arrays["row_indices"], provenance["dataset"], provenance["models"]["spline_xgb"],
                     provenance["models"]["spline_xgb"]["spline_anchor_weights"])
     inputs.append(file_record(cache.cache_dir / "manifest.json"))
+    if elasticity:
+        for record in provenance["sources"]:
+            if Path(record["path"]).name in ("wild.py", "linear.py"):
+                checked(record)
+        summary = _elasticity_slices(arrays, output, state, frame, artifact, cache, logit, slope,
+                                    config, fit_config, norm_examples, original_curves, elasticity_reference)
+        reference = summary["reference_action"]
+        (output / "EXPERIMENT.md").write_text(
+            "# Saved affine wild bands by customer elasticity\n\n"
+            f"Use the original full-data affine fit on {len(frame):,} rows, its saved QR geometry, "
+            "coefficients and 1,999 paired Rademacher draws (nominal 95%). No refitting, new draws "
+            "or optimization. Preserve the original fit and provenance.\n\n"
+            f"Rank all saved rows by |d p_accept(x,u)/du| at u={reference:.12g}; "
+            "the default reference is the saved cohort's median logged action. Use the repository's "
+            "GLM derivative and stable tertile splitter; select the lower median rank in each tertile "
+            "(approximately the 16.7th, 50th and 83.3rd population percentiles). These are actual "
+            "distinct customers. Both model rows show the same customers, selected using GLM scores. "
+            "This is local price sensitivity, not dimensionless economic elasticity.\n\n"
+            "Residual bands and transferred expected-profit envelopes use the unchanged evaluators "
+            "and original plotting function. Their action grid renders exact function evaluations; "
+            "it selects no solution. Only each customer's logged outcome is observed. The nominal "
+            "95% bands target a residual mean, not individual outcomes; real-data mean-function "
+            "coverage is unverified. Affine approximation bias, high leverage and repeated-customer "
+            "dependence limitations remain. The spline is flat below u=0 and uses its original "
+            "clipped tangent above u=0.16. See MATH sections 6 and 7.14.\n\n"
+            "Validation checks saved input/model/cache hashes, original band-coordinate parity, "
+            "logged profit parity, finite differences of acceptance, finite coordinates and "
+            "ordered transferred endpoints. Ranking, source rows and coordinates are retained.\n\n"
+            f"Regenerate: `python scratch/plot_generali_profit_residuals.py --explore-wild {config_path.resolve()} "
+            f"--wild-elasticity --wild-elasticity-reference {reference:.17g} --replay {source.resolve()} "
+            f"--wild-action-bounds {summary['display_action_bounds'][0]} {summary['display_action_bounds'][1]} "
+            "--output-dir <fresh-directory>`.\n", encoding="utf-8")
+        write_provenance(output / "provenance.json", {
+            "family": config["family"], "revision": "saved-affine-wild-elasticity-slices",
+            "inputs": inputs, "dataset": provenance["dataset"], "models": provenance["models"],
+            "operation": "saved-band evaluation only; no fitting, draws, sampling or optimization",
+            "sources": [file_record(p) for p in [Path(__file__), ROOT / "scratch/generali_residual_wild.py",
+                ROOT / "scratch/generali_wild_policy.py", ROOT / "scratch/plot_generali_profit_residuals.py",
+                ROOT / "src/experiments/sensitivity_buckets.py", ROOT / "src/experiments/envelopes/wild.py",
+                ROOT / "src/experiments/envelopes/linear.py", ROOT / "src/experiments/envelopes/plotting.py",
+                ROOT / "src/data/full_monotone_spline_cache.py"]],
+            "outputs": [file_record(path) for path in sorted(output.iterdir()) if path.is_file()]})
+        print(f"Saved elasticity band slices to {output}; reference action={reference:.8g}", flush=True)
+        return
     groups = _action_groups(arrays["a"], state["X"], config["action_groups"])
     selected = np.array([group["representative"] for group in groups])
     logged = arrays["a"][selected]

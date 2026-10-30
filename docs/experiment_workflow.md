@@ -483,6 +483,38 @@ The completed policy result was renamed from its retry-labelled directory to
 historical paths using
 `scratch/retired_experiments/generali_wild_outputs_20261026.json`. Required
 residual/customer inputs and the full fitted/bootstrap state remain available.
+
+### Saved bands for low, medium and high elasticity customers
+
+The same saved-band entry point supports elasticity selection:
+
+```bash
+conda activate simulation_env
+MPLCONFIGDIR=/tmp/generali-residuals-mpl OPENBLAS_NUM_THREADS=2 OMP_NUM_THREADS=2 \
+  python scratch/plot_generali_profit_residuals.py \
+  --explore-wild scratch/generali_wild_slices.json --wild-elasticity \
+  --replay ../results/glm-spline-profit-dispersion/residuals-20261026 \
+  --output-dir ../results/glm-spline-profit-dispersion/wild-band-elasticity
+```
+
+Choose a fresh output directory when regenerating. The original affine band,
+1,999 paired draws and nominal 95% level stay fixed. The existing GLM helper
+ranks all 715,023 saved rows by absolute acceptance derivative with respect to
+fractional price change. Its default common reference is the cohort's median
+logged action, 0.0876145544120409; `--wild-elasticity-reference U` overrides it.
+Take the median-ranked row in each stable tertile, yielding the 16.7th, 50th
+and 83.3rd population percentiles. These are local sensitivity scores, not
+dimensionless economic elasticities.
+
+The current representatives are source rows 218135, 549678 and 361231, with
+scores 0.2497297433, 0.3543950510 and 0.4936174138 respectively. The same customers
+appear in both the GLM and spline/XGBoost rows. Two vector PDFs show residual
+bands and transferred profit envelopes over the inherited [-0.1, 0.45] display
+interval. Only the customer's one logged outcome is observed; nominal
+mean-function coverage remains unverified, and these are not outcome prediction
+intervals. Full rankings, selected features, curve coordinates and source/input
+hashes accompany the figures. Original band-coordinate parity, logged-profit
+parity and finite differences of acceptance are checked during generation.
 The expanded run passes the ten focused checks and the small optimizer demo.
 Both models' saved endpoints at -1 and +2 agree with the native band evaluator;
 cohort IDs and common-action/historical-action diagnostics are byte-identical

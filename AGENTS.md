@@ -405,6 +405,15 @@ If lower-priority docs are stale, update them in the same task.
   are outside the current-results tree; the relocation index above preserves
   their hashes and original contracts. The completed policy run was renamed
   `wild-policy`; slice replay checks its files at that current location.
+  `--wild-elasticity` with the same `--explore-wild` configuration selects the
+  median-ranked customer in each existing GLM absolute-acceptance-derivative
+  tertile. The default common reference is the saved cohort's median logged
+  action; `--wild-elasticity-reference U` overrides it. Both predictor rows use
+  the same three customers. Current profit/residual PDFs, full ranking, selected
+  raw features, coordinates and checksummed replay metadata live in
+  `wild-band-elasticity/`. This reuses the original full-data affine band, not
+  the later coefficient-ellipsoid study. It checks original band-coordinate
+  parity and logged profits without fitting, draws or optimization.
 - The active synthetic catalog retains the three paired residual-heteroskedastic
   distribution manifests and six `residual-leverage-fixed-noise-outlier-*.json`
   manifests. Terminal-distribution results, all residual-heteroskedastic report

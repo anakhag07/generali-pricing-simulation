@@ -136,6 +136,12 @@ historical-action cohorts and empirical feature-support diagnostics without refi
 Add `--wild-action-bounds -1 2` to extend all those band plots. Current figures
 live in `glm-spline-profit-dispersion/wild-band-exploration/` under the
 shared results root; superseded renders and retries are archived.
+Add `--wild-elasticity` instead for low/medium/high elasticity customers under
+both frozen predictors. This uses the existing GLM acceptance-derivative ranking
+at the median logged action, selecting the median row in each tertile. Override
+the reference with `--wild-elasticity-reference U`. Current profit and residual
+PDFs, rankings and replay provenance are in
+`glm-spline-profit-dispersion/wild-band-elasticity/` under the shared results root.
 See [the diagnostic setup](docs/experiment_workflow.md#generali-residual-diagnostics).
 
 ### Retired experiments

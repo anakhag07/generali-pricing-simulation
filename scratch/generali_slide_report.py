@@ -345,6 +345,154 @@ def _synthetic(evidence, folders, config, figures, data):
     return contract, selected_rows
 
 
+def run_mlp_action_report(config_path, output):
+    """Replay saved MLP-band policy actions with historical actions and elasticity groups."""
+    config = json.loads(config_path.read_text())
+    if config["family"] != "glm-spline-profit-dispersion" or config["model"] != MODEL:
+        raise ValueError("This report uses the saved Generali spline/XGBoost study.")
+    if (output/"provenance.json").exists():
+        raise FileExistsError("Preserve the completed action report before regenerating it.")
+    evidence = _Evidence()
+    evidence.read(config_path)
+    folder = results_root()/config["trimmed_bases"]/"mlp"/MODEL
+    summary = evidence.json(folder/"summary.json")
+    contract = evidence.json(folder/"contract.json")
+    assert summary["optimizer"]["entry_point"] == "optimization.solvers.run_first_order_minimize"
+    policy = evidence.npz(folder/"policy.npz", summary["policy"])
+    band = evidence.npz(folder/"band.npz", summary["fit"]["artifact"])
+    evidence.npz(folder/"policy_optimizer.npz", summary["optimizer"]["checkpoint"])
+    evidence.npz(folder/"network.npz", summary["fit"]["network"]["checkpoint"])
+    # Original absolute source paths and contracts remain immutable.
+    for source in contract["sources"]:
+        evidence.read(source["path"], source)
+    residuals = evidence.npz(results_root()/config["residuals"]/"residuals.npz", contract["residuals"])
+    state = evidence.npz(results_root()/config["affine_fit"]/"fit_state.npz", contract["baseline_fit"])
+    origin = evidence.json(results_root()/config["affine_fit"]/"provenance.json", contract["baseline_provenance"])
+    ranking = evidence.npz(evidence.reported(results_root()/config["elasticity"], "elasticity_ranking.npz"))
+    np.testing.assert_array_equal(residuals["row_indices"], ranking["row_indices"])
+    np.testing.assert_array_equal(residuals["row_indices"], state["row_indices"])
+    positions, rows = band["original_positions"], band["row_indices"]
+    np.testing.assert_array_equal(rows, residuals["row_indices"][positions])
+    np.testing.assert_array_equal(rows, policy["row_indices"])
+    arrays = {k: v[positions] for k, v in residuals.items()}
+    history, actions = arrays["a"], policy["actions"]
+    bounds = config["main_bounds"]
+    assert np.all((actions >= bounds[0]) & (actions <= bounds[1]))
+    groups = {"All": np.ones(len(rows), bool), **{
+        name.capitalize(): np.isin(rows, ranking[name]) for name in ("low", "medium", "high")}}
+    np.testing.assert_array_equal(sum(groups[name] for name in ("Low", "Medium", "High")), 1)
+    buckets = np.select([groups[name] for name in ("Low", "Medium", "High")], [0, 1, 2])
+    edges = np.linspace(*bounds, 61)
+    histograms, statistics = [], []
+    for group, mask in groups.items():
+        for label, values in (("Historical", history), ("MLP-band policy", actions)):
+            selected = values[mask]
+            counts = np.histogram(selected, edges)[0]
+            histograms.extend({"group": group, "policy": label, "left": low, "right": high,
+                "count": int(count), "density": count/(len(selected)*(high-low))}
+                for low, high, count in zip(edges[:-1], edges[1:], counts))
+            statistics.append({"group": group, "policy": label, "n": len(selected),
+                "mean": float(selected.mean()), "minimum": float(selected.min()),
+                "q01": float(np.quantile(selected, .01)), "median": float(np.median(selected)),
+                "q99": float(np.quantile(selected, .99)), "maximum": float(selected.max()),
+                "below_window": int(np.sum(selected < bounds[0])),
+                "above_window": int(np.sum(selected > bounds[1])),
+                **{f"fraction_ge_{a:g}": float(np.mean(selected >= a)) for a in (.18, .19, .195, .199, .2)},
+                "mean_absolute_glm_derivative": float(np.abs(ranking["derivative"][positions][mask]).mean())})
+    histogram = pd.DataFrame(histograms)
+    statistics = pd.DataFrame(statistics)
+    output.mkdir(parents=True, exist_ok=True)
+    histogram.to_csv(output/"action_histograms.csv", index=False)
+    statistics.to_csv(output/"action_statistics.csv", index=False)
+    np.savez_compressed(output/"paired_actions.npz", row_indices=rows, historical=history,
+                        mlp_policy=actions, elasticity_bucket=buckets,
+                        elasticity_magnitude=np.abs(ranking["derivative"][positions]))
+
+    def draw(ax, group):
+        for label in ("Historical", "MLP-band policy"):
+            selected = histogram[histogram.group.eq(group) & histogram.policy.eq(label)]
+            stats = statistics[statistics.group.eq(group) & statistics.policy.eq(label)].iloc[0]
+            shown = 100*(1-(stats.below_window+stats.above_window)/stats.n)
+            ax.stairs(selected.density, edges, label=f"{label} ({shown:.1f}% in window)")
+        ax.set(xlabel="Price change, a", ylabel="Action density", xlim=bounds)
+        ax.legend()
+
+    with plt.rc_context(_STYLE):
+        fig, ax = plt.subplots(figsize=(8, 4.5), constrained_layout=True)
+        draw(ax, "All")
+        ax.set_title("Historical and MLP-band policy actions")
+        _save(fig, output/"mlp_vs_historical_actions.pdf")
+        fig, axes = plt.subplots(1, 3, figsize=(15, 4.5), sharey=True, constrained_layout=True)
+        for ax, name in zip(axes, ("Low", "Medium", "High")):
+            draw(ax, name)
+            ax.set_title(f"{name} elasticity (n={groups[name].sum():,})")
+        _save(fig, output/"mlp_vs_historical_actions_by_elasticity.pdf")
+
+    # MATH sections 6 and 7.20: evaluate exact frozen predictions and transferred
+    # endpoints at specified actions; these queries never select a new optimum.
+    from scratch.plot_generali_profit_residuals import _validate_cache
+    cache = ShardedMonotoneSplineCache(results_root()/config["spline_cache"])
+    evidence.read(cache.cache_dir/"manifest.json")
+    _validate_cache(cache, residuals["row_indices"], origin["dataset"], origin["models"][MODEL],
+                    origin["models"][MODEL]["spline_anchor_weights"])
+    inputs = np.column_stack((state["X"][positions], history))
+    fibers = _FeatureFibers(inputs, _Basis.restore(band), band["beta"], band["triangular"], band["critical"])
+    response = _Responses(MODEL, arrays, cache=cache)
+    score_groups = {**groups, "Optimization": np.isin(rows, policy["optimization_row_indices"])}
+    assert score_groups["Optimization"].sum() == 20000
+    scores = []
+    choices = [("Historical", history), ("MLP-band policy", actions),
+               *[(f"Fixed {a:.2f}", np.full(len(rows), a)) for a in (.10, .15, .18, .20)]]
+    for label, values in choices:
+        totals = {name: {} for name in score_groups}
+        for first in range(0, len(rows), config["batch_size"]):
+            ids = np.arange(first, min(first+config["batch_size"], len(rows)))
+            p, b = response.evaluate(ids, values[ids]), fibers.values(ids, values[ids])
+            metrics = {"action": values[ids], "predicted_profit": p["center"],
+                "acceptance": p["acceptance"], "residual_fit": b["residual_fit"],
+                "half_width": b["width"], "lower_penalty": b["radius_lower"],
+                "lower_bound": p["center"]-b["radius_lower"]}
+            if label == "Historical":
+                np.testing.assert_allclose(p["center"], arrays[f"{MODEL}_profit"][ids], rtol=2e-9, atol=1e-7)
+            for name, mask in score_groups.items():
+                for key, value in metrics.items():
+                    assert np.isfinite(value).all()
+                    totals[name][key] = totals[name].get(key, 0.)+float(value[mask[ids]].sum())
+        scores.extend({"group": name, "policy": label, "n": int(score_groups[name].sum()),
+                       **{f"mean_{k}": v/score_groups[name].sum() for k, v in total.items()}}
+                      for name, total in totals.items())
+        print(f"Evaluated {label} over all {len(rows):,} retained records", flush=True)
+    scores = pd.DataFrame(scores)
+    for label, saved_label in (("Historical", "historical"), ("MLP-band policy", "wild_lower")):
+        for group, cohort in (("All", "full"), ("Optimization", "optimization")):
+            expected = next(m for m in summary["metrics"] if m["policy"] == saved_label and m["cohort"] == cohort)
+            actual = scores[scores.group.eq(group) & scores.policy.eq(label)].iloc[0]
+            for key in ("mean_action", "mean_acceptance", "mean_predicted_profit", "mean_lower_bound",
+                        "mean_half_width", "mean_residual_fit", "mean_lower_penalty"):
+                np.testing.assert_allclose(actual[key], expected[key], rtol=2e-9, atol=1e-7)
+    scores.to_csv(output/"fixed_action_diagnostics.csv", index=False)
+    write_provenance(output/"summary.json", {"model": MODEL, "n": len(rows),
+        "elasticity": "Existing GLM absolute acceptance derivative tertiles; not dimensionless elasticity",
+        "elasticity_reference_action": float(ranking["reference_action"]),
+        "display_bounds": bounds, "density_denominator": "All retained rows in each group; no tail renormalization",
+        "acceptance_floor": summary["acceptance_floor"], "network": summary["fit"]["network"],
+        "fit_counts": summary["fit"]["n"], "policy_optimizer": summary["optimizer"],
+        "training_metrics": summary["fit"]["fit_metrics"],
+        "action_statistics": statistics.to_dict("records"), "scores": scores.to_dict("records"),
+        "validation": "Saved full/20k action, profit, acceptance and band means replayed within 1e-7 absolute + 2e-9 relative",
+        "new_fits": False, "new_bootstrap_draws": False, "new_optimization": False, "new_randomness": False,
+        "fixed_actions": "Prespecified counterfactual diagnostics; no per-customer or policy optimum claimed"})
+    shutil.copyfile(config_path, output/"resolved_config.json")
+    sources = [Path(__file__), ROOT/"scratch/plot_generali_profit_residuals.py",
+               ROOT/"scratch/generali_residual_basis_study.py", ROOT/"scratch/generali_wild_policy.py",
+               ROOT/"src/experiments/envelopes/feature_wild.py", ROOT/"src/experiments/envelopes/wild.py",
+               ROOT/"src/experiments/envelopes/plotting.py", ROOT/"src/data/full_monotone_spline_cache.py"]
+    write_provenance(output/"provenance.json", {"family": config["family"],
+        "operation": "Exact saved MLP-band policy replay and fixed-action evaluation",
+        "inputs": list(evidence.records.values()), "sources": [file_record(p) for p in sources],
+        "outputs": [file_record(p) for p in sorted(output.iterdir()) if p.is_file()]})
+
+
 def run_slide_report(config_path, output):
     """Generate PDF slide assets and Beamer text from verified saved experiments."""
     config = json.loads(config_path.read_text())

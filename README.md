@@ -147,6 +147,12 @@ saved-coordinate replay are retained in `plot-overrides.json` and
 `profit_plot_replay.json` alongside the PDF.
 See [the diagnostic setup](docs/experiment_workflow.md#generali-residual-diagnostics).
 
+To compare the saved spline/XGBoost MLP-band policy with historical actions,
+add `--mlp-actions` to `--slide-report scratch/generali_slideshow.json` on the same
+diagnostic entry point. The two PDFs and exact fixed-action diagnostics live in
+the shared `glm-spline-profit-dispersion/mlp-action-diagnostics/` folder; see
+[replay and interpretation](docs/experiment_workflow.md#mlp-action-distribution-replay).
+
 ### Retired experiments
 
 Concluded zeroth-order proof, policy/GP LCB, OLS/pairs-bootstrap, support-kernel,

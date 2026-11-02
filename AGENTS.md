@@ -308,6 +308,18 @@ When modifying or adding code that implements a mathematical formula:
 
 ## Source of Truth
 
+The 2026-11-02 branch audit and suggested integration sequence are in
+`docs/branch_merge_20261102.md`. Preserve the dirty source worktrees; action-power
+integration should apply `df19ad5` and `56b40f4` onto current main, retaining the
+newer interrupted-solver behavior, rather than merging its duplicated history.
+The existing residual driver's `--slide-report ... --mlp-actions` mode replays
+the trimmed spline/XGBoost MLP-band policy and the original GLM sensitivity
+tertiles. Its current report is shared `glm-spline-profit-dispersion/mlp-action-diagnostics/`.
+Historical and recommended actions use identical retained rows; histograms keep
+all group rows in the density denominator and disclose out-of-window tails.
+Fixed action queries are diagnostics, never new optimizer outputs. The MLP is
+the frozen residual representation; the action rule is sigmoid-linear.
+
 The 2026-10-22 merge-first cleanup inventory is in
 `docs/local_work_cleanup_20261022.md`. It records the consolidated branches,
 historical t3 attempts, and the Generali artifact inventory. Both archival

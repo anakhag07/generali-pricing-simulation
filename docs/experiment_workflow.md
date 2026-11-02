@@ -484,6 +484,45 @@ historical paths using
 `scratch/retired_experiments/generali_wild_outputs_20261026.json`. Required
 residual/customer inputs and the full fitted/bootstrap state remain available.
 
+### MLP action-distribution replay
+
+The existing slide recipe supports a focused saved-policy report:
+
+```bash
+conda activate simulation_env
+MPLCONFIGDIR=/tmp/generali-mlp-actions-mpl XDG_CACHE_HOME=/tmp/generali-mlp-actions-cache \
+OPENBLAS_NUM_THREADS=2 OMP_NUM_THREADS=2 \
+python scratch/plot_generali_profit_residuals.py \
+  --slide-report scratch/generali_slideshow.json --mlp-actions \
+  --output-dir ../results/glm-spline-profit-dispersion/mlp-action-diagnostics \
+  --launch local
+```
+
+Use a fresh destination for reproduction; completed provenance is protected.
+The current folder contains `mlp_vs_historical_actions.pdf` and
+`mlp_vs_historical_actions_by_elasticity.pdf`, paired row-level actions,
+histogram coordinates, summary statistics, fixed-action queries and source/input
+checksums. It replays the exact repository optimizer artifact from the trimmed
+MLP/spline task, with all 715,013 retained records. The MLP is a residual model,
+not the action network: policy actions come from a separate sigmoid-linear rule.
+
+Both distributions use identical rows. The display is the existing [-0.1,0.2]
+policy window, but densities divide by the full group size; legends disclose
+the mass in the window. Historical tails remain in `paired_actions.npz` and
+summary counts. Low/medium/high groups preserve the existing GLM absolute
+acceptance-derivative tertiles at reference action 0.0876145544120409, filtered
+by retained row IDs without reranking. This is local price sensitivity, not
+dimensionless economic elasticity or a grouping by recommended price.
+
+The report evaluates the frozen predictor and signed transferred band at the
+saved actions and prespecified common actions 0.10, 0.15, 0.18 and 0.20. These
+queries explain changes in predicted profit, residual correction, width and
+acceptance; they neither optimize nor identify individual optima. Saved full-row
+and 20k-cohort scores must replay within 1e-7 absolute plus 2e-9 relative tolerance.
+The network reached its 1,000-iteration cap; the pricing solve terminated on
+`xtol` after 132 steps. It is a local solver result without a global certificate.
+No fitting, sampling, new seed stream, bootstrap or optimization occurs.
+
 ### Saved bands for low, medium and high elasticity customers
 
 The same saved-band entry point supports elasticity selection:

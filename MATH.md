@@ -1934,6 +1934,60 @@ Implementation: `src/experiments/envelopes/feature_wild.py`,
 coefficient-ball inequalities, direct/cache parity, and finite-difference
 derivatives are checked by `tests/experiments/test_feature_wild.py`.
 
+### 7.21 Generali action-power residual comparison
+
+The `action-powers` revision of `glm-spline-profit-dispersion` keeps the eleven
+context covariates additive and compares the nested spaces
+$$
+\phi_1=(1,z(x),a),\qquad \phi_2=(1,z(x),a,a^2),\qquad
+\phi_4=(1,z(x),a,a^2,a^4).
+$$
+Powers are of the original action, not a centered action: without a cubic term,
+centering before the fourth power changes the space. After forming these
+columns, non-intercept columns may be centered/scaled by beta-fitting moments;
+this invertible change of basis preserves the regression and coefficient-ball
+geometry. The action derivatives of the added columns are $2a$ and $4a^3$,
+with the same subsequent column scaling. No context products are introduced.
+
+Use the saved customer-disjoint representation/beta/validation split, original
+full-coordinate multiplier seeds, ten-row exclusion, and frozen GLM/spline
+responses. Refit each linear head and its 1,999 raw-residual wild draws; no new
+random process is introduced. For $P=QR$, use section 7.20's coefficient
+statistic and query formulas $g=\phi^T\widehat\beta$ and
+$w=c\Vert R^{-T}\phi\Vert_2$. All real actions have exact polynomial evaluations,
+coupled by the same bootstrap coefficient errors; grids only display queries.
+The coefficient-ball implication is simultaneous over the saved contexts and
+all actions, conditional on the represented linear model. Real-data coverage
+and residual approximation bias remain unknown.
+
+At each common action, average over all $N=715013$ retained contexts:
+$$
+\overline{w}(a)=N^{-1}\sum_i w(x_i,a),\quad
+\overline{G}(a)=\overline{w}(a)/c,\quad
+\overline{w}'(a)=N^{-1}\sum_i
+c\frac{v_i(a)^Tv_i'(a)}{\Vert v_i(a)\Vert_2},\qquad v_i=R^{-T}\phi(x_i,a).
+$$
+The reported signed change per percentage point is $0.01\overline{w}'(a)$.
+Compute query values before averaging, not at the average context. The residual
+full width is $2\overline{w}$; the transferred profit-envelope full width is
+$N^{-1}\sum_i[\max(w_i-g_i,0)+\max(w_i+g_i,0)]$ and is reported separately.
+Exact polynomial caches represent $g$ and $\Vert v\Vert_2^2$ (degree at most eight for
+the fourth-power variant), including derivatives. Verify against direct QR
+queries on both the policy and extended display intervals.
+
+Optimize the signed transferred lower endpoint with the unchanged repository
+first-order trust-constr setup on the exact saved 20k cohort, softmax-linear
+policy, [-0.1,0.2] action bounds, 0.08 initialization and original acceptance
+floor. All reported policy actions come from that solver; no grid selects or
+certifies an optimum. Global optimality is unknown. Compare full-cohort
+personalized policies and evaluate every band at the same saved nominal policy.
+
+Define the historical action distribution using the unchanged beta-fitting
+rows. Report its mean, median and central 90% interval, each policy's mean
+absolute distance from those two centers, and the paired fraction of customers
+moving closer/farther versus the new affine policy. These are descriptive
+marginal support diagnostics, not conditional-overlap or coverage certificates.
+
 ## 8. Gradients and Estimators
 
 For a differentiable action objective and policy, the population chain rule is

@@ -11,8 +11,10 @@ policies into full-context widths and paired policy-centering diagnostics.
 Keep mean residual half-width distinct from transferred envelope full width,
 and compare policy distances on the same rows to calibration mean and median.
 Reporting never fits or optimizes. Preserve source/hash contracts and retain
-the inherited-source index in `scratch/generali_action_powers_inheritance.json`.
-See MATH section 7.20 and the existing study documentation.
+the inherited-source index in the pinned original worktree's
+`scratch/generali_action_powers_inheritance.json`.
+See MATH section 7.21 for action powers and section 7.20 for the underlying
+frozen-feature ellipsoid, plus the existing study documentation.
 All six tasks completed and converged. Preserve the original source worktree
 `feature-generali-action-powers` pinned at df19ad5; active code continues in
 `feature-generali-action-powers-replay`. Report replay must read width CSVs with

@@ -6,7 +6,7 @@ The user requested the nested maps `(1,z,a)`, `(1,z,a,a^2)` and
 `(1,z,a,a^2,a^4)`, with the eleven context inputs kept linear (13/14/15
 coefficients). The fourth-power map omits cubic and interaction terms.
 Powers use the original action before column normalization. This differs from
-the earlier full quadratic/cubic expansion; see MATH section 7.20.
+the earlier full quadratic/cubic expansion; see MATH section 7.21.
 
 The approved plan now includes policy optimization after each fit. It retains
 the ten-record sensitivity cohort, 286,015/286,001/142,997 split, frozen response
@@ -14,9 +14,10 @@ models, 1,999 paired Rademacher draws, delta=.05, original 20k policy rows,
 trust-constr solver, softmax-linear policy, [-.1,.2] bounds, .08 initialization,
 acceptance floor and original budgets. There is no new seed stream. Mean-function
 coverage, model approximation bias and global optimality remain unknown.
-The source inherited from the previous worktree is checksummed in
-`scratch/generali_action_powers_inheritance.json`; its original files and run
-contracts are preserved. Feature work lives in `feature/generali-action-powers`.
+The source inherited from the previous worktree is checksummed in the pinned
+original worktree's `scratch/generali_action_powers_inheritance.json`; its
+original files and run contracts are preserved. Feature work lives in
+`feature/generali-action-powers`.
 
 Implementation checklist:
 

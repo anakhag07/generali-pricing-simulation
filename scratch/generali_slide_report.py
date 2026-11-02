@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 
 from data.full_monotone_spline_cache import ShardedMonotoneSplineCache
-from experiments.envelopes.plotting import _STYLE
+from experiments.envelopes.plotting import _STYLE, _slice_indices
 from experiments.paths import results_root
 from experiments.provenance import file_record, file_sha256, write_provenance
 from scratch.generali_residual_basis_study import _Basis, _FeatureFibers
@@ -494,12 +494,137 @@ def run_mlp_action_report(config_path, output):
         "outputs": [file_record(p) for p in sorted(output.iterdir()) if p.is_file()]})
 
 
-def run_lower_band_comparison(config_path, output):
+def _norm_band_report(config, output, evidence, original, state, inputs,
+                      bands, policies, studies, action_basis, origin):
+    """Compare frozen bands on retained norm representatives and logged holdout rows."""
+    saved = bands["mlp"]
+    rows, positions = saved["row_indices"], saved["original_positions"]
+    arrays = {key: value[positions] for key, value in original.items()}
+    z = state["X"][positions]
+    norms = np.linalg.norm(z, axis=1)
+    selected = _slice_indices(z)
+    names = ("Smallest norm", "Median norm", "Largest norm")
+    selection = pd.DataFrame([{"selection": name, "source_row": int(rows[i]),
+        "retained_position": int(i), "feature_norm": float(norms[i]),
+        "historical_action": float(arrays["a"][i]),
+        "mlp_policy_action": float(policies["mlp"]["actions"][i]),
+        "observed_profit": float(arrays["observed_profit"][i]),
+        "split": next(s for s in ("representation", "beta", "holdout") if i in saved[s+"_positions"])}
+        for name, i in zip(names, selected)])
+    cache = ShardedMonotoneSplineCache(results_root()/config["spline_cache"])
+    evidence.read(cache.cache_dir/"manifest.json")
+    from scratch.plot_generali_profit_residuals import _validate_cache
+    _validate_cache(cache, original["row_indices"], origin["dataset"], origin["models"][MODEL],
+                    origin["models"][MODEL]["spline_anchor_weights"])
+    response = _Responses(MODEL, arrays, cache=cache)
+    response.prepare_policy_queries(selected)
+    grid = np.unique(np.r_[np.linspace(*config["main_bounds"], 301), 0., .1, .15, .2])
+    prediction = np.stack([response.evaluate(selected, np.full(len(selected), a))["center"] for a in grid])
+    records, holdout_records, criticals = [], [], []
+    holdout = saved["holdout_positions"]
+    bin_edges = np.array([-np.inf, 0., .05, .1, .15, .2, np.inf])
+    for kind in BASIS_LABELS:
+        band = bands[kind]
+        module = action_basis if kind != "mlp" else None
+        basis = (module._Basis if module else _Basis).restore(band)
+        evaluator = (module._FeatureFibers if module else _FeatureFibers)(
+            inputs, basis, band["beta"], band["triangular"], band["critical"])
+        criticals.append({"basis": kind, "critical": float(band["critical"]), "coefficients": len(band["beta"])})
+        for j, action in enumerate(grid):
+            values = evaluator.values(selected, np.full(len(selected), action))
+            if action in (.1, .2):
+                direct = evaluator.direct(selected, np.full(len(selected), action))
+                for key in ("residual_fit", "width", "radius_lower", "radius_upper"):
+                    np.testing.assert_allclose(values[key], direct[key], rtol=1e-12, atol=1e-9)
+            for k, (name, i) in enumerate(zip(names, selected)):
+                records.append({"basis": kind, "selection": name, "source_row": int(rows[i]),
+                    "feature_norm": float(norms[i]), "action": float(action),
+                    "prediction": prediction[j, k], "residual_fit": values["residual_fit"][k],
+                    "half_width": values["width"][k], "geometry": values["width"][k]/band["critical"],
+                    "lower_penalty": values["radius_lower"][k],
+                    "lower": prediction[j, k]-values["radius_lower"][k],
+                    "upper": prediction[j, k]+values["radius_upper"][k]})
+        # These are descriptive logged-outcome errors, not counterfactual coverage.
+        fitted = np.concatenate([evaluator.values(ids, arrays["a"][ids])["residual_fit"]
+            for first in range(0, len(holdout), config["batch_size"])
+            for ids in [holdout[first:first+config["batch_size"]]]])
+        target, actions = arrays[f"{MODEL}_residual"][holdout], arrays["a"][holdout]
+        expected = next(m for m in studies[kind]["fit"]["fit_metrics"] if m["stage"] == "holdout" and m["group"] == "All")
+        np.testing.assert_allclose(np.sqrt(np.mean((target-fitted)**2)), expected["fit_rmse"], rtol=2e-9, atol=1e-7)
+        for low, high in zip(bin_edges[:-1], bin_edges[1:]):
+            mask = (actions >= low) & (actions < high)
+            holdout_records.append({"basis": kind, "action_low": low, "action_high": high,
+                "n": int(mask.sum()), "mean_observed_residual": float(target[mask].mean()),
+                "mean_fitted_residual": float(fitted[mask].mean()),
+                "residual_rmse": float(np.sqrt(np.mean((target[mask]-fitted[mask])**2)))})
+    curves = pd.DataFrame(records)
+    output.mkdir(parents=True, exist_ok=True)
+    selection.to_csv(output/"customer_norm_selection.csv", index=False)
+    curves.to_csv(output/"customer_norm_band_curves.csv", index=False)
+    pd.DataFrame(holdout_records).to_csv(output/"holdout_residual_fit_by_action.csv", index=False)
+    pd.DataFrame(criticals).to_csv(output/"band_calibration_constants.csv", index=False)
+    with plt.rc_context(_STYLE):
+        fig, axes = plt.subplots(4, 3, figsize=(15, 12), sharey="col", constrained_layout=True)
+        for i, (kind, label) in enumerate(BASIS_LABELS.items()):
+            for j, name in enumerate(names):
+                ax = axes[i, j]
+                data = curves[curves.basis.eq(kind) & curves.selection.eq(name)]
+                ax.fill_between(data.action, data.lower, data.upper, color=f"C{i}", alpha=.2,
+                                label="Transferred profit band")
+                ax.plot(data.action, data.prediction, color="C4", label="Frozen profit prediction")
+                ax.plot(data.action, data.prediction+data.residual_fit, "--", color=f"C{i}",
+                        label="Prediction + fitted residual")
+                ax.axvline(.1, color=".5", linestyle=":", linewidth=1)
+                ax.set(title=f"{label}: {name.lower()}\nrow {rows[selected[j]]}; norm={norms[selected[j]]:.3f}",
+                       xlabel="Price change, a", ylabel="Profit per record", xlim=config["main_bounds"])
+        fig.legend(*axes[0, 0].get_legend_handles_labels(), loc="outside lower center", ncol=3)
+        _save(fig, output/"customer_norm_profit_bands.pdf")
+        fig, axes = plt.subplots(3, 3, figsize=(15, 10), constrained_layout=True)
+        for j, name in enumerate(names):
+            for i, (key, label) in enumerate((("residual_fit", "Fitted mean residual, g"),
+                                             ("half_width", "Residual half-width, w"),
+                                             ("lower_penalty", "Lower penalty, max(w − g, 0)"))):
+                ax = axes[i, j]
+                for k, basis_label in BASIS_LABELS.items():
+                    data = curves[curves.basis.eq(k) & curves.selection.eq(name)]
+                    ax.plot(data.action, data[key], label=basis_label)
+                ax.axvline(.1, color=".5", linestyle=":", linewidth=1)
+                ax.set(title=f"{name}: row {rows[selected[j]]}", xlabel="Price change, a",
+                       ylabel=label, xlim=config["main_bounds"])
+        fig.legend(*axes[0, 0].get_legend_handles_labels(), loc="outside lower center", ncol=4)
+        _save(fig, output/"customer_norm_residual_width_and_penalty.pdf")
+    supports = [{"split": name, "n": len(saved[name+"_positions"]),
+        **{f"fraction_above_{a:g}": float(np.mean(arrays["a"][saved[name+"_positions"]] > a))
+           for a in (.1, .15, .2)}} for name in ("representation", "beta", "holdout")]
+    write_provenance(output/"customer_norm_summary.json", {"model": MODEL, "n": len(rows),
+        "selection": "Stable smallest/median/largest Euclidean norms of the saved 11 GLM-whitened numeric coordinates, excluding action, among retained rows",
+        "selected_customers": selection.to_dict("records"), "calibration": criticals,
+        "training_target": "Observed realized profit minus frozen spline/XGBoost predicted profit at the logged action; standardized half MSE during representation training",
+        "width": "w=c*norm(R^{-T}phi); coefficient uncertainty conditional on frozen features, not a learned conditional outcome variance",
+        "comparison": "All four matched trimmed-cohort coefficient-ellipsoid bands; original full-data affine band excluded",
+        "historical_action_support": supports,
+        "coverage": "Unknown for the true residual mean and for counterfactual actions; wider bands do not establish better coverage",
+        "new_fits": False, "new_randomness": False, "new_optimization": False,
+        "validation": "Direct/evaluated band parity at 0.1 and 0.2; all four original holdout RMSE values reproduced"})
+    outputs = ("customer_norm_selection.csv", "customer_norm_band_curves.csv",
+        "holdout_residual_fit_by_action.csv", "band_calibration_constants.csv",
+        "customer_norm_profit_bands.pdf", "customer_norm_residual_width_and_penalty.pdf", "customer_norm_summary.json")
+    write_provenance(output/"customer_norm_provenance.json", {"family": config["family"],
+        "inputs": list(evidence.records.values()), "sources": [file_record(p) for p in (
+            Path(__file__), ROOT/"scratch/plot_generali_profit_residuals.py",
+            ROOT/"scratch/generali_residual_basis_study.py", ROOT/"scratch/generali_wild_policy.py",
+            ROOT/"src/experiments/envelopes/plotting.py", ROOT/"src/experiments/envelopes/feature_wild.py")],
+        "outputs": [file_record(output/name) for name in outputs]})
+    print(f"Customer-norm bands saved to {output}", flush=True)
+
+
+def run_lower_band_comparison(config_path, output, *, norm_slices=False):
     """Compare matched mean lower endpoints and score each band at saved MLP actions."""
     config = json.loads(config_path.read_text())
     if config["family"] != "glm-spline-profit-dispersion" or config["model"] != MODEL:
         raise ValueError("This report uses the saved Generali spline/XGBoost study.")
-    if (output/"lower_band_provenance.json").exists():
+    provenance_name = "customer_norm_provenance.json" if norm_slices else "lower_band_provenance.json"
+    if (output/provenance_name).exists():
         raise FileExistsError("Preserve the completed lower-band report before regenerating it.")
     evidence, bands, policies, studies = _Evidence(), {}, {}, {}
     evidence.read(config_path)
@@ -535,6 +660,10 @@ def run_lower_band_comparison(config_path, output):
     np.testing.assert_array_equal(original["row_indices"][positions], rows)
     np.testing.assert_array_equal(original["row_indices"], state["row_indices"])
     inputs = np.column_stack((state["X"][positions], original["a"][positions]))
+    if norm_slices:
+        _norm_band_report(config, output, evidence, original, state, inputs,
+                          bands, policies, studies, action_basis, origin)
+        return
     fibers = _FeatureFibers(inputs, _Basis.restore(band), band["beta"], band["triangular"], band["critical"])
     nominal_path = evidence.reported(results_root()/config["affine_policy"], "context_averaged_band.csv")
     nominal = pd.read_csv(nominal_path, float_precision="round_trip")

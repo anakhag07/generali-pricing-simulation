@@ -576,6 +576,8 @@ def main(argv=None):
                         help="With --slide-report, replay only MLP/historical action and elasticity diagnostics.")
     parser.add_argument("--mlp-lower-bands", action="store_true",
                         help="With --slide-report, compare matched affine/action-power/MLP lower profit bands.")
+    parser.add_argument("--mlp-norm-bands", action="store_true",
+                        help="With --slide-report, compare the four bands at retained smallest/median/largest customer norms.")
     parser.add_argument("--spline-cache", type=Path, default=DEFAULT_CACHE)
     parser.add_argument("--replay", type=Path, help="Saved residual input; only --fit-wild-linear enables residual fitting/bootstrap.")
     parser.add_argument("--central-fraction", type=float, default=1., help="Displayed central residual fraction per model; full saved data and summaries are retained.")
@@ -599,9 +601,9 @@ def main(argv=None):
     add_launch_args(parser)
     parser.set_defaults(array_max_parallel=2)
     args = parser.parse_args(argv)
-    if (args.mlp_actions or args.mlp_lower_bands) and not args.slide_report:
+    if (args.mlp_actions or args.mlp_lower_bands or args.mlp_norm_bands) and not args.slide_report:
         raise ValueError("MLP report views require --slide-report.")
-    if args.mlp_actions and args.mlp_lower_bands:
+    if sum((args.mlp_actions, args.mlp_lower_bands, args.mlp_norm_bands)) > 1:
         raise ValueError("Choose one focused MLP report view at a time.")
     if args.slide_report:
         if (args.replay or args.explore or args.split_churn or args.fit_wild_linear or args.fit_wild_bases
@@ -610,9 +612,10 @@ def main(argv=None):
                 or args.wild_action_bounds or args.trim_actions or args.central_fraction != 1):
             raise ValueError("--slide-report is a standalone saved-experiment reporting mode.")
         from scratch.generali_slide_report import run_lower_band_comparison, run_mlp_action_report, run_slide_report
-        report = (run_lower_band_comparison if args.mlp_lower_bands else
+        report = (run_lower_band_comparison if args.mlp_lower_bands or args.mlp_norm_bands else
                   run_mlp_action_report if args.mlp_actions else run_slide_report)
-        report(args.slide_report.resolve(), args.output_dir.resolve())
+        options = {"norm_slices": True} if args.mlp_norm_bands else {}
+        report(args.slide_report.resolve(), args.output_dir.resolve(), **options)
         return
     if args.wild_elasticity and not args.explore_wild:
         raise ValueError("--wild-elasticity requires --explore-wild.")

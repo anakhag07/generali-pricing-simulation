@@ -542,6 +542,31 @@ mean action. Common-action curves describe the objective landscape, not a
 new optimizer result or a certificate of optimality. `lower_band_provenance.json`
 records this extension separately without rewriting the first report's provenance.
 
+The third focused view, `--mlp-norm-bands`, writes two more PDFs in the same
+folder: `customer_norm_profit_bands.pdf` (four bases by three customers) and
+`customer_norm_residual_width_and_penalty.pdf` (fitted residual, half-width and
+lower penalty separately). It uses the existing stable norm-selection helper
+on the retained 715,013 rows, with the saved eleven GLM-whitened numeric
+coordinates and no action coordinate. The selected source rows are 52581,
+588464 and 294556, with norms 0.535742, 2.762043 and 812.926187. These are three
+individual records; the maximum is an extreme record. Recompute selection after
+the fixed exclusions, without changing the original untrimmed norm figures.
+Keep common vertical limits across bases for each customer's full-band panels.
+The dotted reference line is action 0.1, not an optimizer result or a learned
+threshold. Exact query values and selection details are saved as CSVs.
+
+The same view replays each band's residual predictions at the original holdout
+records' logged actions, reproduces the saved overall holdout RMSE, and reports
+descriptive error/mean-residual summaries in fixed historical-action bins. These
+do not estimate counterfactual mean-function coverage. The MLP training target
+is the signed observed-profit residual; its bootstrap width is a separate
+coefficient-ellipsoid calculation conditional on frozen learned features. The
+MLP supports nonlinear context/action interactions, while the action-power
+variants keep contexts additive and share a global action polynomial. Neither
+representation guarantees correct uncertainty away from logged actions.
+`customer_norm_summary.json` and `customer_norm_provenance.json` retain these
+definitions, calibration constants, validations and original source hashes.
+
 ### Saved bands for low, medium and high elasticity customers
 
 The same saved-band entry point supports elasticity selection:

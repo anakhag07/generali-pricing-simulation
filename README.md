@@ -155,6 +155,10 @@ the shared `glm-spline-profit-dispersion/mlp-action-diagnostics/` folder; see
 Use `--mlp-lower-bands` instead to compare the matched affine, affine + a²,
 affine + a² + a⁴ and MLP mean lower-profit curves, saved action distributions,
 and each band's score at the same personalized MLP actions.
+Use `--mlp-norm-bands` for the four profit bands at retained smallest-, median-,
+and largest-norm customers, plus separate residual/width/penalty curves and
+logged-action holdout diagnostics. The norm uses the saved GLM-whitened numeric
+coordinates and excludes action; it is distinct from learned-feature leverage.
 
 ### Retired experiments
 

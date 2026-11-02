@@ -326,6 +326,15 @@ same personalized MLP actions. Replay original exact action-power queries and
 load their preserved representation source for personalized evaluations;
 do not replace them with the original full-data affine band. The common-action
 prediction mean subtracts the ten excluded rows from the saved full-row sum.
+`--mlp-norm-bands` reuses that report's exact matched band loader, selecting the
+stable minimum/median/maximum norm among the 715,013 retained rows. Norm means
+the saved 11 GLM-whitened numeric coordinates, excluding action; do not replace
+it with raw-unit or learned-feature norms. Current representatives are source
+rows 52581, 588464 and 294556. Separate `customer_norm_provenance.json` protects
+this extension. Width is customer-dependent: the MLP width rises from .1 to .2
+for the minimum-norm row, falls for the median, and is almost constant for the
+maximum. Distinguish fitted residual shift from coefficient-band width. Logged
+holdout residual error and wider bands are not counterfactual coverage evidence.
 
 The 2026-10-22 merge-first cleanup inventory is in
 `docs/local_work_cleanup_20261022.md`. It records the consolidated branches,

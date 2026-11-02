@@ -483,6 +483,160 @@ The completed policy result was renamed from its retry-labelled directory to
 historical paths using
 `scratch/retired_experiments/generali_wild_outputs_20261026.json`. Required
 residual/customer inputs and the full fitted/bootstrap state remain available.
+
+### MLP action-distribution replay
+
+The existing slide recipe supports a focused saved-policy report:
+
+```bash
+conda activate simulation_env
+MPLCONFIGDIR=/tmp/generali-mlp-actions-mpl XDG_CACHE_HOME=/tmp/generali-mlp-actions-cache \
+OPENBLAS_NUM_THREADS=2 OMP_NUM_THREADS=2 \
+python scratch/plot_generali_profit_residuals.py \
+  --slide-report scratch/generali_slideshow.json --mlp-actions \
+  --output-dir ../results/glm-spline-profit-dispersion/mlp-action-diagnostics \
+  --launch local
+```
+
+Use a fresh destination for reproduction; completed provenance is protected.
+The current folder contains `mlp_vs_historical_actions.pdf` and
+`mlp_vs_historical_actions_by_elasticity.pdf`, paired row-level actions,
+histogram coordinates, summary statistics, fixed-action queries and source/input
+checksums. It replays the exact repository optimizer artifact from the trimmed
+MLP/spline task, with all 715,013 retained records. The MLP is a residual model,
+not the action network: policy actions come from a separate sigmoid-linear rule.
+
+Both distributions use identical rows. The display is the existing [-0.1,0.2]
+policy window, but densities divide by the full group size; legends disclose
+the mass in the window. Historical tails remain in `paired_actions.npz` and
+summary counts. Low/medium/high groups preserve the existing GLM absolute
+acceptance-derivative tertiles at reference action 0.0876145544120409, filtered
+by retained row IDs without reranking. This is local price sensitivity, not
+dimensionless economic elasticity or a grouping by recommended price.
+
+The report evaluates the frozen predictor and signed transferred band at the
+saved actions and prespecified common actions 0.10, 0.15, 0.18 and 0.20. These
+queries explain changes in predicted profit, residual correction, width and
+acceptance; they neither optimize nor identify individual optima. Saved full-row
+and 20k-cohort scores must replay within 1e-7 absolute plus 2e-9 relative tolerance.
+The network reached its 1,000-iteration cap; the pricing solve terminated on
+`xtol` after 132 steps. It is a local solver result without a global certificate.
+No fitting, sampling, new seed stream, bootstrap or optimization occurs.
+
+Replace `--mlp-actions` with `--mlp-lower-bands` to add
+`mean_lower_bands_and_policy_actions.pdf` in the same folder. Its top panel
+shows mean predicted profit and all four matched lower endpoints at 101 common
+actions in [-0.1,0.2]; its bottom panel shows the saved personalized action
+distributions in the same colors. The MLP and three affine/action-power bands
+use the same retained cohort, splits, multiplier coordinates and coefficient
+ellipsoid calibration. The original full-data affine band is not part of this
+comparison. Exact previously saved action-power penalty means are replayed;
+the frozen MLP is evaluated at every retained context. Correct the original
+predictor mean for the exclusions by subtracting their exact contributions
+from its saved full-row sum. Transfer before averaging, as in MATH section 7.20.
+
+`lower_bands_at_mlp_actions.csv` evaluates every band at exactly the same saved
+personalized MLP actions and also lists each band's own saved-policy score.
+A personalized-policy value is not the common-action curve evaluated at the
+mean action. Common-action curves describe the objective landscape, not a
+new optimizer result or a certificate of optimality. `lower_band_provenance.json`
+records this extension separately without rewriting the first report's provenance.
+
+The third focused view, `--mlp-norm-bands`, writes two more PDFs in the same
+folder: `customer_norm_profit_bands.pdf` (four bases by three customers) and
+`customer_norm_residual_width_and_penalty.pdf` (fitted residual, half-width and
+lower penalty separately). It uses the existing stable norm-selection helper
+on the retained 715,013 rows, with the saved eleven GLM-whitened numeric
+coordinates and no action coordinate. The selected source rows are 52581,
+588464 and 294556, with norms 0.535742, 2.762043 and 812.926187. These are three
+individual records; the maximum is an extreme record. Recompute selection after
+the fixed exclusions, without changing the original untrimmed norm figures.
+Keep common vertical limits across bases for each customer's full-band panels.
+The dotted reference line is action 0.1, not an optimizer result or a learned
+threshold. Exact query values and selection details are saved as CSVs.
+
+The same view replays each band's residual predictions at the original holdout
+records' logged actions, reproduces the saved overall holdout RMSE, and reports
+descriptive error/mean-residual summaries in fixed historical-action bins. These
+do not estimate counterfactual mean-function coverage. The MLP training target
+is the signed observed-profit residual; its bootstrap width is a separate
+coefficient-ellipsoid calculation conditional on frozen learned features. The
+MLP supports nonlinear context/action interactions, while the action-power
+variants keep contexts additive and share a global action polynomial. Neither
+representation guarantees correct uncertainty away from logged actions.
+`customer_norm_summary.json` and `customer_norm_provenance.json` retain these
+definitions, calibration constants, validations and original source hashes.
+
+### Saved bands for low, medium and high elasticity customers
+
+The spline/XGBoost slideshow is a reporting recipe on the same entry point:
+`python scratch/plot_generali_profit_residuals.py --slide-report
+scratch/generali_slideshow.json --output-dir <fresh-directory>`.
+Current assets are in the shared family at `slideshow-spline-xgboost/`:
+eleven numbered vector PDFs in `figures/`, full numerical evidence in `data/`,
+and pasteable itemized frames in `slide_frames.tex`. `slideshow.tex` supplies
+a minimal Beamer wrapper. All Generali curves show spline acceptance with
+XGBoost loss; the three customers preserve the earlier GLM-based elasticity
+ranking. Source and saved-artifact hashes accompany the report.
+
+The baseline slides use the original full-data affine band. Its central-95%
+error histogram preserves the saved bin counts, and the beta-fit plot uses
+the existing twenty held-out fitted-residual bins. RMSE tables are untrimmed.
+Observed-profit capture is evaluated against each record's envelope at its
+logged action and reported by full cohort, action window, elasticity tertile,
+observed churn and displayed customers. It is not a mean-function coverage test.
+The wider mean-band plot evaluates every original context using the saved
+spline cache and affine state, transferring endpoints before averaging.
+
+The feature-comparison slides use the matched ten-record sensitivity study:
+affine, added action square, added action square/fourth power, and frozen MLP.
+All 715,013 retained contexts enter each width mean. The MLP grid renders exact
+saved-network evaluations. Saved repository policy endpoints and paired
+nominal-policy scores supply the distributions and value diagram; no optimum
+is selected during reporting. Original spline nominal/affine policy budgets,
+MLP representation limits and unknown predictor-training membership remain
+explicit in the slide bullets. The two synthetic figures replay the existing
+sample-size and steepness plots only at data center 10, repetition 0.
+
+Before regenerating a completed slide collection, archive its superseded
+artifacts and record checksums. Full-context query caches in `data/` can be
+retained when their saved band, grid and input identity checks still pass.
+
+The same saved-band entry point supports elasticity selection:
+
+```bash
+conda activate simulation_env
+MPLCONFIGDIR=/tmp/generali-residuals-mpl OPENBLAS_NUM_THREADS=2 OMP_NUM_THREADS=2 \
+  python scratch/plot_generali_profit_residuals.py \
+  --explore-wild scratch/generali_wild_slices.json --wild-elasticity \
+  --replay ../results/glm-spline-profit-dispersion/residuals-20261026 \
+  --output-dir ../results/glm-spline-profit-dispersion/wild-band-elasticity
+```
+
+Choose a fresh output directory when regenerating. The original affine band,
+1,999 paired draws and nominal 95% level stay fixed. The existing GLM helper
+ranks all 715,023 saved rows by absolute acceptance derivative with respect to
+fractional price change. Its default common reference is the cohort's median
+logged action, 0.0876145544120409; `--wild-elasticity-reference U` overrides it.
+Take the median-ranked row in each stable tertile, yielding the 16.7th, 50th
+and 83.3rd population percentiles. These are local sensitivity scores, not
+dimensionless economic elasticities.
+
+The current representatives are source rows 218135, 549678 and 361231, with
+scores 0.2497297433, 0.3543950510 and 0.4936174138 respectively. The same customers
+appear in both the GLM and spline/XGBoost rows. Two vector PDFs show residual
+bands and transferred profit envelopes. The profit figure now displays
+[-0.1, 0.2]; the residual figure retains [-0.1, 0.45]. `plot-overrides.json`
+records the profit display limits, and `profit_plot_replay.json` preserves the
+exact invocation of the original renderer using unchanged saved coordinates.
+The construction summary still records the original evaluated grid. The wide
+profit PDF and original metadata are archived with checksums in
+`scratch/retired_experiments/generali_elasticity_profit_window_20261030.json`.
+Only the customer's one logged outcome is observed; nominal
+mean-function coverage remains unverified, and these are not outcome prediction
+intervals. Full rankings, selected features, curve coordinates and source/input
+hashes accompany the figures. Original band-coordinate parity, logged-profit
+parity and finite differences of acceptance are checked during generation.
 The expanded run passes the ten focused checks and the small optimizer demo.
 Both models' saved endpoints at -1 and +2 agree with the native band evaluator;
 cohort IDs and common-action/historical-action diagnostics are byte-identical

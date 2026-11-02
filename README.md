@@ -136,7 +136,40 @@ historical-action cohorts and empirical feature-support diagnostics without refi
 Add `--wild-action-bounds -1 2` to extend all those band plots. Current figures
 live in `glm-spline-profit-dispersion/wild-band-exploration/` under the
 shared results root; superseded renders and retries are archived.
+Add `--wild-elasticity` instead for low/medium/high elasticity customers under
+both frozen predictors. This uses the existing GLM acceptance-derivative ranking
+at the median logged action, selecting the median row in each tertile. Override
+the reference with `--wild-elasticity-reference U`. Current profit and residual
+PDFs, rankings and replay provenance are in
+`glm-spline-profit-dispersion/wild-band-elasticity/` under the shared results root.
+Its profit figure now displays [-0.1, 0.2]; the per-figure setting and exact
+saved-coordinate replay are retained in `plot-overrides.json` and
+`profit_plot_replay.json` alongside the PDF.
 See [the diagnostic setup](docs/experiment_workflow.md#generali-residual-diagnostics).
+
+For the saved-run spline/XGBoost slideshow, use the same driver with
+`--slide-report scratch/generali_slideshow.json --output-dir <fresh-directory>`.
+The recipe's `basis_policy_fill` selects the lightly shaded policy distributions;
+`policy_fill_alpha` sets their opacity. The saved CSV supports figure-only replay
+through `scratch.generali_slide_report._render_basis_policy_actions`.
+The current report is in `glm-spline-profit-dispersion/slideshow-spline-xgboost/`:
+`figures/` contains eleven numbered vector PDFs, `data/` contains RMSE,
+observed-outcome capture, policy scores and query coordinates, and
+`slide_frames.tex` supplies itemized Beamer frames. This mode evaluates saved
+bands and replays repository solver endpoints; it never fits or optimizes.
+
+To compare the saved spline/XGBoost MLP-band policy with historical actions,
+add `--mlp-actions` to `--slide-report scratch/generali_slideshow.json` on the same
+diagnostic entry point. The two PDFs and exact fixed-action diagnostics live in
+the shared `glm-spline-profit-dispersion/mlp-action-diagnostics/` folder; see
+[replay and interpretation](docs/experiment_workflow.md#mlp-action-distribution-replay).
+Use `--mlp-lower-bands` instead to compare the matched affine, affine + a²,
+affine + a² + a⁴ and MLP mean lower-profit curves, saved action distributions,
+and each band's score at the same personalized MLP actions.
+Use `--mlp-norm-bands` for the four profit bands at retained smallest-, median-,
+and largest-norm customers, plus separate residual/width/penalty curves and
+logged-action holdout diagnostics. The norm uses the saved GLM-whitened numeric
+coordinates and excludes action; it is distinct from learned-feature leverage.
 
 ### Retired experiments
 

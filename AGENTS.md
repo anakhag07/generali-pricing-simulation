@@ -308,6 +308,36 @@ When modifying or adding code that implements a mathematical formula:
 
 ## Source of Truth
 
+The 2026-11-02 branch audit and suggested integration sequence are in
+`docs/branch_merge_20261102.md`. The current order is PR #193 (reporting), then
+PR #194 (action powers); Design-Bench remains deferred. Preserve the dirty source
+worktrees. Action-power integration applies only `df19ad5` and `56b40f4` onto
+current main, retaining the newer interrupted-solver behavior and excluding
+duplicated history.
+The existing residual driver's `--slide-report ... --mlp-actions` mode replays
+the trimmed spline/XGBoost MLP-band policy and the original GLM sensitivity
+tertiles. Its current report is shared `glm-spline-profit-dispersion/mlp-action-diagnostics/`.
+Historical and recommended actions use identical retained rows; histograms keep
+all group rows in the density denominator and disclose out-of-window tails.
+Fixed action queries are diagnostics, never new optimizer outputs. The MLP is
+the frozen residual representation; the action rule is sigmoid-linear.
+`--slide-report ... --mlp-lower-bands` adds matched mean lower-profit curves
+and the four saved action distributions to that same report folder, with
+separate `lower_band_provenance.json`. It also scores all four bands at the
+same personalized MLP actions. Replay original exact action-power queries and
+load their preserved representation source for personalized evaluations;
+do not replace them with the original full-data affine band. The common-action
+prediction mean subtracts the ten excluded rows from the saved full-row sum.
+`--mlp-norm-bands` reuses that report's exact matched band loader, selecting the
+stable minimum/median/maximum norm among the 715,013 retained rows. Norm means
+the saved 11 GLM-whitened numeric coordinates, excluding action; do not replace
+it with raw-unit or learned-feature norms. Current representatives are source
+rows 52581, 588464 and 294556. Separate `customer_norm_provenance.json` protects
+this extension. Width is customer-dependent: the MLP width rises from .1 to .2
+for the minimum-norm row, falls for the median, and is almost constant for the
+maximum. Distinguish fitted residual shift from coefficient-band width. Logged
+holdout residual error and wider bands are not counterfactual coverage evidence.
+
 The 2026-10-22 merge-first cleanup inventory is in
 `docs/local_work_cleanup_20261022.md`. It records the consolidated branches,
 historical t3 attempts, and the Generali artifact inventory. Both archival
@@ -405,6 +435,40 @@ If lower-priority docs are stale, update them in the same task.
   are outside the current-results tree; the relocation index above preserves
   their hashes and original contracts. The completed policy run was renamed
   `wild-policy`; slice replay checks its files at that current location.
+  `--wild-elasticity` with the same `--explore-wild` configuration selects the
+  median-ranked customer in each existing GLM absolute-acceptance-derivative
+  tertile. The default common reference is the saved cohort's median logged
+  action; `--wild-elasticity-reference U` overrides it. Both predictor rows use
+  the same three customers. Current profit/residual PDFs, full ranking, selected
+  raw features, coordinates and checksummed replay metadata live in
+  `wild-band-elasticity/`. This reuses the original full-data affine band, not
+  the later coefficient-ellipsoid study. It checks original band-coordinate
+  parity and logged profits without fitting, draws or optimization.
+  The profit-only display revision uses [-0.1, 0.2], retaining the original
+  residual figure and full curve coordinates. `plot-overrides.json` records
+  the figure's limits; `profit_plot_replay.json` contains the exact invocation
+  of `_render_band_curves` and input/source hashes. Original wide PDF/provenance
+  and documentation are archived under shared `scratch-results/`, indexed by
+  `scratch/retired_experiments/generali_elasticity_profit_window_20261030.json`.
+  The retained construction summary describes the original evaluated grid;
+  current per-figure display limits are in the override file.
+  `--slide-report scratch/generali_slideshow.json` adds the spline/XGBoost-only
+  slide recipe; `basis_policy_fill` and `policy_fill_alpha` control policy fills.
+  `_render_basis_policy_actions` replays the saved policy histogram CSV alone;
+  record figure overrides/provenance and archive the previous PDF before replay.
+  The report retains the
+  slide collection in `slideshow-spline-xgboost/figures/`, with companion CSV/NPZ
+  evidence in `data/` and itemized Beamer frames. `scratch/generali_slide_report.py`
+  assembles existing reporting functions, verified saved artifacts, deterministic
+  full-context band queries and exact saved solver endpoints; its text companion
+  `scratch/generali_slide_text.py` owns the frames and tables. The original
+  full-data affine band and matched trimmed action-power/MLP coefficient bands
+  must remain explicitly separate. Green-point capture is realized-outcome
+  inclusion at each logged action, not conditional-mean coverage. Synthetic
+  examples reuse repetition 0 and only data center 10. Query caches validate
+  saved band/grid identities; a completed report must be archived before
+  regeneration. `_render_band_curves` accepts a model subset and optional
+  figure-title suppression while retaining its original two-model defaults.
 - The active synthetic catalog retains the three paired residual-heteroskedastic
   distribution manifests and six `residual-leverage-fixed-noise-outlier-*.json`
   manifests. Terminal-distribution results, all residual-heteroskedastic report

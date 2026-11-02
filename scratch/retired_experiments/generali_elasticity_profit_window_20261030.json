@@ -1,0 +1,73 @@
+{
+  "current_display_settings": {
+    "bytes": 103,
+    "path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/wild-band-elasticity/plot-overrides.json",
+    "sha256": "d93da0e28ac5eaeee404101f24d02981c88b8330966201186c36fd2818706aba"
+  },
+  "current_profit_pdf": {
+    "bytes": 62608,
+    "path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/wild-band-elasticity/customer_elasticity_profit_bands.pdf",
+    "sha256": "9ba55a4a0497c66e964f464d0b9dd3204f37d4813dc130b9488dad6d56090ffc"
+  },
+  "date_utc": "2026-10-30T13:56:01.776282+00:00",
+  "live_matching_python_processes": [],
+  "operation": "Only profit figure x limits changed through the original plotting function; all saved curve coordinates, customers, residual figure and calibration inputs unchanged.",
+  "reason": "User requested elasticity profit bands with price changes from -0.1 to 0.2.",
+  "relocations": [
+    {
+      "bytes": 62608,
+      "from": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/wild-band-elasticity/customer_elasticity_profit_bands.pdf",
+      "sha256": "7350314d9bc20e336da8231de35c14af04849475afb765267a0755e135f1abef",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/elasticity-profit-wide-window-20261030/customer_elasticity_profit_bands.pdf"
+    },
+    {
+      "bytes": 9393,
+      "from": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/wild-band-elasticity/provenance.json",
+      "sha256": "0beee493d28319ce4edff742896e4ecc4f4a9a83d5df3e3cba52ce7659280374",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/elasticity-profit-wide-window-20261030/provenance.json"
+    },
+    {
+      "bytes": 1991,
+      "from": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/wild-band-elasticity/EXPERIMENT.md",
+      "sha256": "59283bd56f3d66293a9e72061f9448a122035cbc1487efbf047452b8a60fe6cf",
+      "to": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/elasticity-profit-wide-window-20261030/EXPERIMENT.md"
+    }
+  ],
+  "unchanged_outputs": {
+    "customer_elasticity_curves.csv": {
+      "bytes": 367473,
+      "path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/wild-band-elasticity/customer_elasticity_curves.csv",
+      "sha256": "c52083de2ded026bcb25bb3c702d753e0388bf7283459c1d21c4f6572053f219"
+    },
+    "customer_elasticity_curves.npz": {
+      "bytes": 121256,
+      "path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/wild-band-elasticity/customer_elasticity_curves.npz",
+      "sha256": "c386a6e27ead22e2bd4aa01466fa7294603f4709f3b73db6552f32cc266d0e83"
+    },
+    "customer_elasticity_residual_bands.pdf": {
+      "bytes": 63268,
+      "path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/wild-band-elasticity/customer_elasticity_residual_bands.pdf",
+      "sha256": "1cd7e2ba2c082059adbad09e7e261092b37f4300da67e71866ab769ed2c54143"
+    },
+    "elasticity_ranking.npz": {
+      "bytes": 8839047,
+      "path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/wild-band-elasticity/elasticity_ranking.npz",
+      "sha256": "ed361f9321a34f99bb5c55130e62b9e5b9681f83a17c74568c1c25a504a5500d"
+    },
+    "selected_customer_elasticities.csv": {
+      "bytes": 732,
+      "path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/wild-band-elasticity/selected_customer_elasticities.csv",
+      "sha256": "53129c391aa1d8571287fef48e8be9d53b505ae6141e5cffe26b5edf8bb89833"
+    },
+    "selected_customers.csv": {
+      "bytes": 610,
+      "path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/wild-band-elasticity/selected_customers.csv",
+      "sha256": "e3624ac4e79dc1f47d0b618676f3b1691916964ae0c9926aa69b37dae5d4a357"
+    },
+    "summary.json": {
+      "bytes": 3282,
+      "path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/wild-band-elasticity/summary.json",
+      "sha256": "42ef8985176ba50a11236bfb0236951bd1df53c1db16d1e00614a63e7ab7342c"
+    }
+  }
+}

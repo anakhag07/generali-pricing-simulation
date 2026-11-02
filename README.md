@@ -120,6 +120,13 @@ analysis while preserving original split and multiplier coordinates.
 Wall-time interruptions retain checkpoints and stop the task; repeat the same
 command to resume MLP training or policy optimization from its saved iterate.
 
+The action-power continuation uses
+`scratch/generali_residual_wild_action_powers.json` through the same entry point.
+It compares affine, added `a^2`, and added `a^2,a^4` with linear context terms,
+then fits each band and optimizes its policy. Its `action-power-basis-study/`
+revision includes average-width curves, width growth and paired policy shifts
+toward the historical action distribution. See the same study protocol.
+
 For the current Generali residual exploration, run
 `python scratch/plot_generali_profit_residuals.py --output-dir <fresh-directory>`.
 It compares observed historical profit with GLM and spline/XGBoost predictions

@@ -1,5 +1,29 @@
 # Agent Instructions
 
+The action-power continuation uses `scratch/generali_residual_wild_action_powers.json`
+through the same `--fit-wild-bases` entry point. It keeps contexts additive and
+uses original-action powers `[1,2]` and `[1,2,4]`; do not center action before
+forming its fourth power or silently add cubic/context interactions. Its six
+fits/policies use the trimmed study's exact rows, paired draws and solver setup.
+Results are in shared `glm-spline-profit-dispersion/action-power-basis-study/`.
+`scratch/generali_action_power_reporting.py` replays saved bands and repository
+policies into full-context widths and paired policy-centering diagnostics.
+Keep mean residual half-width distinct from transferred envelope full width,
+and compare policy distances on the same rows to calibration mean and median.
+Reporting never fits or optimizes. Preserve source/hash contracts and retain
+the inherited-source index in the pinned original worktree's
+`scratch/generali_action_powers_inheritance.json`.
+See MATH section 7.21 for action powers and section 7.20 for the underlying
+frozen-feature ellipsoid, plus the existing study documentation.
+All six tasks completed and converged. Preserve the original source worktree
+`feature-generali-action-powers` pinned at df19ad5; active code continues in
+`feature-generali-action-powers-replay`. Report replay must read width CSVs with
+round-trip floating precision, since merged action grids contain distinct nearby
+coordinates. Numerical cache provenance stays attached to the original verified
+query source; the active rendering source is recorded separately. The first
+report and completed bootstrap checkpoints are archived via
+`scratch/retired_experiments/generali_action_power_outputs_20261028.json`.
+
 The Generali residual-basis follow-up uses the existing diagnostic entry point's
 `--fit-wild-bases scratch/generali_residual_wild_basis_study.json` mode and
 `scratch/generali_residual_basis_study.py` adapter. Its reusable

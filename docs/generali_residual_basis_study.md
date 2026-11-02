@@ -1,5 +1,121 @@
 # Generali residual-basis comparison
 
+## Action-power continuation (2026-10-28)
+
+The user requested the nested maps `(1,z,a)`, `(1,z,a,a^2)` and
+`(1,z,a,a^2,a^4)`, with the eleven context inputs kept linear (13/14/15
+coefficients). The fourth-power map omits cubic and interaction terms.
+Powers use the original action before column normalization. This differs from
+the earlier full quadratic/cubic expansion; see MATH section 7.21.
+
+The approved plan now includes policy optimization after each fit. It retains
+the ten-record sensitivity cohort, 286,015/286,001/142,997 split, frozen response
+models, 1,999 paired Rademacher draws, delta=.05, original 20k policy rows,
+trust-constr solver, softmax-linear policy, [-.1,.2] bounds, .08 initialization,
+acceptance floor and original budgets. There is no new seed stream. Mean-function
+coverage, model approximation bias and global optimality remain unknown.
+The source inherited from the previous worktree is checksummed in the pinned
+original worktree's `scratch/generali_action_powers_inheritance.json`; its
+original files and run contracts are preserved. Feature work lives in
+`feature/generali-action-powers`.
+
+Implementation checklist:
+
+- [x] Extend `_Basis` with only the selected action columns and exact derivatives.
+- [x] Extend the existing polynomial cache to represent these raw-action spaces.
+- [x] Reuse QR/bootstrap, signed transfer and the repository optimizer unchanged.
+- [x] Add a replay-only reporting companion; no new driver or public API.
+- [x] Check direct/cache widths, derivatives, nested geometry, feature scaling
+  invariance, original powers and paired policy-centering metrics.
+- [x] Run all six fits and policy solves, collect full-context width curves,
+  validate saved states, inspect PDFs and archive superseded checkpoints.
+
+Use the same entry point and family:
+
+```bash
+conda activate simulation_env
+OPENBLAS_NUM_THREADS=8 OMP_NUM_THREADS=8 \
+python scratch/plot_generali_profit_residuals.py \
+  --fit-wild-bases scratch/generali_residual_wild_action_powers.json \
+  --replay /home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/residuals-20261026 \
+  --output-dir /home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/action-power-basis-study \
+  --launch slurm --array --array-max-parallel 2
+```
+
+The collector verifies saved source/artifact hashes and computes exact
+polynomial queries over every retained context, then averages. The main action
+interval is [-.1,.2]; the separate wider diagnostic is [-1,2]. Queries are
+continuous polynomial formulas; grids only display them. No optimum is selected
+by reporting. Per-task `width_by_action.csv` and `width_report.json` cache exact
+reported curves for replay without refitting, optimization or new multipliers.
+
+`width_by_action.csv` records residual half-width, twice that value (residual
+full width), transferred profit-envelope full width, geometric factor, critical
+value, width ratio to affine and signed slope per percentage-point action
+change. These widths are distinct: transfer endpoints before averaging.
+`policy_action_comparison.csv` reports paired movements relative to the new
+affine policy across all 715,013 retained customers, distances to the beta
+calibration actions' mean/median, quantiles and fraction outside their central
+90% interval. `policy_metrics.csv` retains profit, acceptance and widths at each
+own policy and at identical nominal/historical actions. Empirical calibration
+action histograms are normalized by all beta rows, including rows outside the
+displayed policy range; they are not silently conditioned on that range.
+These are marginal descriptive support measures, not conditional coverage.
+
+All six solves converged and satisfied the acceptance floor on both the 20k
+optimization sample and full retained cohort. The affine coefficients, bootstrap
+statistics and personalized policies reproduce the previous exclusion revision;
+maximum action differences are exactly zero. Task times were 19.1–84.9 seconds.
+The inherited six-hour/64GB scheduler reservation was reduced, while jobs were
+pending, to 45 minutes/16GB with eight CPUs; solver limits were unchanged.
+`execution.json` records this adjustment and the exact reproduction command.
+
+The beta calibration actions have mean 0.08497676 and median 0.08780336.
+The following distances are equal-row means over all 715,013 policy actions.
+Distance changes are percentage points of action relative to the affine policy;
+negative means closer to the calibration mean.
+
+| Predictor | Basis | Mean action (%) | Mean residual half-width at own policy | Change in mean distance (pp) | Customers closer (%) |
+|---|---|---:|---:|---:|---:|
+| GLM | affine | 10.22088 | 8.75842 | 0 | reference |
+| GLM | + a² | 10.22444 | 8.94714 | +0.13946 | 15.089 |
+| GLM | + a² + a⁴ | 10.20072 | 9.24662 | -0.07356 | 75.214 |
+| spline/XGBoost | affine | 11.02256 | 6.85119 | 0 | reference |
+| spline/XGBoost | + a² | 11.02481 | 6.93337 | +0.17708 | 32.799 |
+| spline/XGBoost | + a² + a⁴ | 11.02348 | 7.09575 | +0.16117 | 33.071 |
+
+Thus only the GLM fourth-power policy moves closer on average, and the movement
+is small. At the identical nominal-policy actions, fourth-power mean half-widths
+increase by 5.78% for GLM and 3.40% for spline. At the common action a=.1,
+the geometric factor changes only from approximately .005822 to .005838;
+most of the local width increase comes from the critical value. On the wider
+diagnostic at a=2, fourth-power/affine width ratios are 3.317 and 3.247.
+This is stronger extrapolation growth, but does not produce a general shift of
+the optimized policies toward the center. Residual corrections also change.
+Maximum calibration leverage increases from .1413 to .3559 and .9676; in
+particular the fourth-power calibration remains a high-leverage approximation,
+not an established real-data coverage certificate.
+
+The completed run's source worktree `feature-generali-action-powers` is pinned
+at commit `df19ad5` to preserve all absolute source/hash contracts. The active
+`feature/generali-action-powers` branch continues in
+`worktrees/feature-generali-action-powers-replay`. A reporting-only fix uses
+round-trip CSV parsing so distinct nearby action-grid coordinates stay distinct.
+It reuses the original checked numerical width caches, records the current
+reporting source separately, and never refits or reoptimizes. From the active
+worktree, append `--launch local --collect` in place of the Slurm flags above
+to regenerate reports. The archived first report and completed bootstrap
+checkpoints are indexed in
+`scratch/retired_experiments/generali_action_power_outputs_20261028.json`;
+the current result folder retains a copy as `artifact_relocations.json`.
+
+The four vector PDFs are `average_band_half_width_by_action.pdf`,
+`band_width_growth_by_action.pdf`, `band_geometry_by_action.pdf` and
+`optimized_policy_action_distributions.pdf`. `validation.json` records pairing,
+affine reproduction, query checks, constraints and solver outcomes, with output
+hashes. Failed or limited optimizer status is retained. The reporting companion
+does not change coefficients or select actions.
+
 This extends `glm-spline-profit-dispersion`; the original affine/full-data run
 remains an historical reference. The user approved varying only the residual
 approximation, retaining the saved 20,000 policy rows, a customer-disjoint

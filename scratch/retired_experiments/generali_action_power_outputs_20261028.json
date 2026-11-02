@@ -1,0 +1,165 @@
+{
+  "date": "2026-10-28",
+  "job_check": "squeue 27153722,27153723 returned no live jobs before relocation",
+  "original_source_worktree": "/home/anakhag/projects/generali-pricing/worktrees/feature-generali-action-powers",
+  "original_source_commit": "df19ad5",
+  "active_source_worktree": "/home/anakhag/projects/generali-pricing/worktrees/feature-generali-action-powers-replay",
+  "relocations": [
+    {
+      "old_path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/action-power-basis-study/policy_metrics.csv",
+      "new_path": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/action-power-basis-study/initial-report/policy_metrics.csv",
+      "sha256": "20d9d1023f3cd039151685b74b79341eae2bff0f563001048dc321a39c31cb50",
+      "bytes": 8502,
+      "reason": "Superseded first report; replay reader now preserves exact CSV action coordinates"
+    },
+    {
+      "old_path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/action-power-basis-study/residual_fit_metrics.csv",
+      "new_path": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/action-power-basis-study/initial-report/residual_fit_metrics.csv",
+      "sha256": "99337b35e1a1e1b6d3db3c5d701d1571b9d6163ae217cab8a73deb9e6978a3dd",
+      "bytes": 10457,
+      "reason": "Superseded first report; replay reader now preserves exact CSV action coordinates"
+    },
+    {
+      "old_path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/action-power-basis-study/solver_and_geometry.csv",
+      "new_path": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/action-power-basis-study/initial-report/solver_and_geometry.csv",
+      "sha256": "57b78c3747f783712a58b3f5625473a298e5993c17b1a4eef94353bc21d4d8e0",
+      "bytes": 976,
+      "reason": "Superseded first report; replay reader now preserves exact CSV action coordinates"
+    },
+    {
+      "old_path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/action-power-basis-study/EXPERIMENT.md",
+      "new_path": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/action-power-basis-study/initial-report/EXPERIMENT.md",
+      "sha256": "e9587b7ed3d1723fd265e08951f39fcf3a1d9402a3b724d1391e229b5e9b5ff8",
+      "bytes": 21921,
+      "reason": "Superseded first report; replay reader now preserves exact CSV action coordinates"
+    },
+    {
+      "old_path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/action-power-basis-study/summary.json",
+      "new_path": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/action-power-basis-study/initial-report/summary.json",
+      "sha256": "0f865cde45e45d52cb7ce60e9fc42de00e40fe18198985f9909972e4bba08563",
+      "bytes": 25808,
+      "reason": "Superseded first report; replay reader now preserves exact CSV action coordinates"
+    },
+    {
+      "old_path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/action-power-basis-study/excluded_rows.json",
+      "new_path": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/action-power-basis-study/initial-report/excluded_rows.json",
+      "sha256": "ad363b77de9c484e475df231d14548c040d50b00c8367b2c73bab1d4d9e76e8b",
+      "bytes": 3709,
+      "reason": "Superseded first report; replay reader now preserves exact CSV action coordinates"
+    },
+    {
+      "old_path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/action-power-basis-study/width_by_action.csv",
+      "new_path": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/action-power-basis-study/initial-report/width_by_action.csv",
+      "sha256": "de36add1469e08e4bfb55cac5d997eef987c48a98874225c0af5d03daecfc69a",
+      "bytes": 853994,
+      "reason": "Superseded first report; replay reader now preserves exact CSV action coordinates"
+    },
+    {
+      "old_path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/action-power-basis-study/policy_action_comparison.csv",
+      "new_path": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/action-power-basis-study/initial-report/policy_action_comparison.csv",
+      "sha256": "9917d4fcaeb6dd4b072df16f0439fbe959cb626e93bff9cf034582de3858d800",
+      "bytes": 3923,
+      "reason": "Superseded first report; replay reader now preserves exact CSV action coordinates"
+    },
+    {
+      "old_path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/action-power-basis-study/policy_action_distributions.csv",
+      "new_path": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/action-power-basis-study/initial-report/policy_action_distributions.csv",
+      "sha256": "4ee5fd88d7373760baccaaf41b5cc4c05a1c488d1b057e2240c53217b26d3397",
+      "bytes": 62363,
+      "reason": "Superseded first report; replay reader now preserves exact CSV action coordinates"
+    },
+    {
+      "old_path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/action-power-basis-study/band_width_growth_by_action.pdf",
+      "new_path": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/action-power-basis-study/initial-report/band_width_growth_by_action.pdf",
+      "sha256": "7573b722a33e9970d5bcfbc9f85861a77102437441c96831361a430ffa6228d8",
+      "bytes": 23711,
+      "reason": "Superseded first report; replay reader now preserves exact CSV action coordinates"
+    },
+    {
+      "old_path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/action-power-basis-study/calibration_action_distribution.json",
+      "new_path": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/action-power-basis-study/initial-report/calibration_action_distribution.json",
+      "sha256": "59e06c1de1e50272a311aa32efdd43e77c0e83db6b3d798921b95592c170e6e0",
+      "bytes": 265,
+      "reason": "Superseded first report; replay reader now preserves exact CSV action coordinates"
+    },
+    {
+      "old_path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/action-power-basis-study/average_band_half_width_by_action.pdf",
+      "new_path": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/action-power-basis-study/initial-report/average_band_half_width_by_action.pdf",
+      "sha256": "1854be97704ebde1168dcc290d1c245f56e158e297bb49099002552c6afdc4ca",
+      "bytes": 28474,
+      "reason": "Superseded first report; replay reader now preserves exact CSV action coordinates"
+    },
+    {
+      "old_path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/action-power-basis-study/band_geometry_by_action.pdf",
+      "new_path": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/action-power-basis-study/initial-report/band_geometry_by_action.pdf",
+      "sha256": "4bf1e05785b59cf937f577a3bca2daf003a4b68326b29345f91c88bbc4f33b55",
+      "bytes": 21358,
+      "reason": "Superseded first report; replay reader now preserves exact CSV action coordinates"
+    },
+    {
+      "old_path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/action-power-basis-study/optimized_policy_action_distributions.pdf",
+      "new_path": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/action-power-basis-study/initial-report/optimized_policy_action_distributions.pdf",
+      "sha256": "ae9a2a126e042793bda7d50e5f07c3b9249338a194c3d91b4b20fbd16c49a9f7",
+      "bytes": 33759,
+      "reason": "Superseded first report; replay reader now preserves exact CSV action coordinates"
+    },
+    {
+      "old_path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/action-power-basis-study/report_provenance.json",
+      "new_path": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/action-power-basis-study/initial-report/report_provenance.json",
+      "sha256": "93387b16180b16670461d58749c87144d4b03d29c692f0fe227e8d87a24921b8",
+      "bytes": 9517,
+      "reason": "Superseded first report; replay reader now preserves exact CSV action coordinates"
+    },
+    {
+      "old_path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/action-power-basis-study/validation.json",
+      "new_path": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/action-power-basis-study/initial-report/validation.json",
+      "sha256": "bef3acc314d6d4138881b0500bbc4ae8980b8567eeb1836dd4577bd63b5e9652",
+      "bytes": 5411,
+      "reason": "Superseded first report; replay reader now preserves exact CSV action coordinates"
+    },
+    {
+      "old_path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/action-power-basis-study/action_a2/glm/bootstrap_checkpoint.npz",
+      "new_path": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/action-power-basis-study/bootstrap-checkpoints/action_a2/glm/bootstrap_checkpoint.npz",
+      "sha256": "cfc155becb0c2a01eec625d312d267a2ef4a9d1939fabfd7e01da395f2043e68",
+      "bytes": 230430,
+      "reason": "Completed bootstrap checkpoint; final band and bootstrap coefficients remain current"
+    },
+    {
+      "old_path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/action-power-basis-study/action_a2/spline_xgb/bootstrap_checkpoint.npz",
+      "new_path": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/action-power-basis-study/bootstrap-checkpoints/action_a2/spline_xgb/bootstrap_checkpoint.npz",
+      "sha256": "0b58ba8c79242777433362d60ff144ce9e95335521eacde8d51eb169f828da7c",
+      "bytes": 230355,
+      "reason": "Completed bootstrap checkpoint; final band and bootstrap coefficients remain current"
+    },
+    {
+      "old_path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/action-power-basis-study/action_a2_a4/glm/bootstrap_checkpoint.npz",
+      "new_path": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/action-power-basis-study/bootstrap-checkpoints/action_a2_a4/glm/bootstrap_checkpoint.npz",
+      "sha256": "fe3affbf1df8911c48cf6f1dd3742d19cd0cc6c25a2dde371bae8dde6b4ef530",
+      "bytes": 245809,
+      "reason": "Completed bootstrap checkpoint; final band and bootstrap coefficients remain current"
+    },
+    {
+      "old_path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/action-power-basis-study/action_a2_a4/spline_xgb/bootstrap_checkpoint.npz",
+      "new_path": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/action-power-basis-study/bootstrap-checkpoints/action_a2_a4/spline_xgb/bootstrap_checkpoint.npz",
+      "sha256": "83ca82a41067b28cef42cbe9711b0f9221154b167e1867422a5296e4f6702af0",
+      "bytes": 245725,
+      "reason": "Completed bootstrap checkpoint; final band and bootstrap coefficients remain current"
+    },
+    {
+      "old_path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/action-power-basis-study/affine/glm/bootstrap_checkpoint.npz",
+      "new_path": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/action-power-basis-study/bootstrap-checkpoints/affine/glm/bootstrap_checkpoint.npz",
+      "sha256": "000816346c1d4609e312d14aa785465028937fdf096947c6c10c9327b380ae84",
+      "bytes": 215150,
+      "reason": "Completed bootstrap checkpoint; final band and bootstrap coefficients remain current"
+    },
+    {
+      "old_path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/action-power-basis-study/affine/spline_xgb/bootstrap_checkpoint.npz",
+      "new_path": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/action-power-basis-study/bootstrap-checkpoints/affine/spline_xgb/bootstrap_checkpoint.npz",
+      "sha256": "5a0aa1664a6216c095694146e29b2dddbd072ea5d696754ef869db06a44582a7",
+      "bytes": 215029,
+      "reason": "Completed bootstrap checkpoint; final band and bootstrap coefficients remain current"
+    }
+  ],
+  "removed_empty_directories": [],
+  "preserved": "All completed band, policy, network-free basis and per-task numerical width cache artifacts; all original contracts and absolute source paths"
+}

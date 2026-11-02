@@ -385,6 +385,17 @@ The same selected source rows appear under both predictors. This selection
 does not optimize an action or alter the saved band. Source:
 `scratch/generali_wild_slices.py`, through `--explore-wild --wild-elasticity`.
 
+The slide report's observed-profit capture statistic is
+$N^{-1}\sum_{i\in I}\mathbf 1\{L_i(a_i)\leq Y_i\leq U_i(a_i)\}$,
+where $N=|I|$ and $I$ is explicitly the full saved cohort, a logged-action
+subset, an elasticity tertile, an observed-churn group, or the three illustrated
+records. Every comparison uses that record's logged action and unchanged
+transferred endpoints. This is an in-sample description of realized outcomes;
+it is not coverage of the unknown conditional mean. Residual-interval capture
+uses $|R_i-\widetilde g_i|\leq w_i$ and is retained separately. Signed transfer
+contains this residual interval, so residual capture implies profit-envelope
+capture; the report checks this inclusion for every row.
+
 Residual shape diagnostics use empirical quantiles and SciPy's skewness and
 excess kurtosis (normal reference: both zero). Q-Q coordinates standardize each
 displayed distribution by its own population mean and standard deviation. The

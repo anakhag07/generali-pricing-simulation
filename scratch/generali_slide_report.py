@@ -70,6 +70,20 @@ def _save(fig, path):
     plt.close(fig)
 
 
+def _render_basis_policy_actions(distributions, config, path):
+    fig, ax = plt.subplots(figsize=(8, 4.5), constrained_layout=True)
+    for color, (kind, selected) in enumerate(distributions.groupby("policy", sort=False)):
+        edges = np.r_[selected.left, selected.right.iloc[-1]]
+        if kind in config.get("basis_policy_fill", []):
+            ax.stairs(selected.density, edges, fill=True,
+                      alpha=config["policy_fill_alpha"], color=f"C{color}", zorder=.9)
+        label = "Nominal" if kind == "nominal" else BASIS_LABELS[kind]
+        ax.stairs(selected.density, edges, color=f"C{color}", label=label)
+    ax.set(xlabel="Personalized price change, a", ylabel="Action density", xlim=config["main_bounds"])
+    ax.legend()
+    _save(fig, path)
+
+
 def _residual_figures(evidence, folders, figures, data):
     histogram = pd.read_csv(evidence.reported(folders["central95"], "histogram_counts.csv"))
     selection = evidence.json(evidence.reported(folders["central95"], "plot_selection.json"))
@@ -277,21 +291,17 @@ def _basis_comparison(evidence, folders, arrays, state, config, figures, data):
     indices = np.searchsorted(nominal["row_indices"], saved["row_indices"])
     np.testing.assert_array_equal(nominal["row_indices"][indices], saved["row_indices"])
     bins = np.linspace(*config["main_bounds"], 61)
-    fig, ax = plt.subplots(figsize=(8, 4.5), constrained_layout=True)
     distributions = []
-    for color, (kind, actions) in enumerate([("nominal", nominal["actions"][indices]),
-                                           *[(k, p["actions"]) for k, p in policy_arrays.items()]]):
+    for kind, actions in [("nominal", nominal["actions"][indices]),
+                          *[(k, p["actions"]) for k, p in policy_arrays.items()]]:
         counts = np.histogram(actions, bins=bins)[0]
         assert counts.sum() == len(saved["row_indices"])
         density = counts/(len(actions)*np.diff(bins))
-        label = "Nominal" if kind == "nominal" else BASIS_LABELS[kind]
-        ax.stairs(density, bins, color=f"C{color}", label=label)
         distributions.extend({"policy": kind, "left": low, "right": high, "count": int(count), "density": d}
             for low, high, count, d in zip(bins[:-1], bins[1:], counts, density))
-    ax.set(xlabel="Personalized price change, a", ylabel="Action density", xlim=config["main_bounds"])
-    ax.legend()
-    _save(fig, figures/"08_action_power_mlp_policy_actions.pdf")
-    pd.DataFrame(distributions).to_csv(data/"basis_policy_distributions.csv", index=False)
+    distributions = pd.DataFrame(distributions)
+    _render_basis_policy_actions(distributions, config, figures/"08_action_power_mlp_policy_actions.pdf")
+    distributions.to_csv(data/"basis_policy_distributions.csv", index=False)
     metrics = pd.DataFrame([metric for study in studies.values() for metric in study["metrics"]
                             if metric["cohort"] == "full"])
     metrics.to_csv(data/"basis_policy_metrics.csv", index=False)

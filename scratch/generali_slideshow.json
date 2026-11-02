@@ -16,5 +16,6 @@
   "mlp_grid_count_per_window": 101,
   "batch_size": 10000,
   "policy_fill_alpha": 0.12,
+  "basis_policy_fill": ["affine", "action_a2", "action_a2_a4"],
   "synthetic_data_center": 10.0
 }

@@ -450,6 +450,23 @@ If lower-priority docs are stale, update them in the same task.
   `scratch/retired_experiments/generali_elasticity_profit_window_20261030.json`.
   The retained construction summary describes the original evaluated grid;
   current per-figure display limits are in the override file.
+  `--slide-report scratch/generali_slideshow.json` adds the spline/XGBoost-only
+  slide recipe; `basis_policy_fill` and `policy_fill_alpha` control policy fills.
+  `_render_basis_policy_actions` replays the saved policy histogram CSV alone;
+  record figure overrides/provenance and archive the previous PDF before replay.
+  The report retains the
+  slide collection in `slideshow-spline-xgboost/figures/`, with companion CSV/NPZ
+  evidence in `data/` and itemized Beamer frames. `scratch/generali_slide_report.py`
+  assembles existing reporting functions, verified saved artifacts, deterministic
+  full-context band queries and exact saved solver endpoints; its text companion
+  `scratch/generali_slide_text.py` owns the frames and tables. The original
+  full-data affine band and matched trimmed action-power/MLP coefficient bands
+  must remain explicitly separate. Green-point capture is realized-outcome
+  inclusion at each logged action, not conditional-mean coverage. Synthetic
+  examples reuse repetition 0 and only data center 10. Query caches validate
+  saved band/grid identities; a completed report must be archived before
+  regeneration. `_render_band_curves` accepts a model subset and optional
+  figure-title suppression while retaining its original two-model defaults.
 - The active synthetic catalog retains the three paired residual-heteroskedastic
   distribution manifests and six `residual-leverage-fixed-noise-outlier-*.json`
   manifests. Terminal-distribution results, all residual-heteroskedastic report

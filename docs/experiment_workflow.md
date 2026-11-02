@@ -569,6 +569,39 @@ definitions, calibration constants, validations and original source hashes.
 
 ### Saved bands for low, medium and high elasticity customers
 
+The spline/XGBoost slideshow is a reporting recipe on the same entry point:
+`python scratch/plot_generali_profit_residuals.py --slide-report
+scratch/generali_slideshow.json --output-dir <fresh-directory>`.
+Current assets are in the shared family at `slideshow-spline-xgboost/`:
+eleven numbered vector PDFs in `figures/`, full numerical evidence in `data/`,
+and pasteable itemized frames in `slide_frames.tex`. `slideshow.tex` supplies
+a minimal Beamer wrapper. All Generali curves show spline acceptance with
+XGBoost loss; the three customers preserve the earlier GLM-based elasticity
+ranking. Source and saved-artifact hashes accompany the report.
+
+The baseline slides use the original full-data affine band. Its central-95%
+error histogram preserves the saved bin counts, and the beta-fit plot uses
+the existing twenty held-out fitted-residual bins. RMSE tables are untrimmed.
+Observed-profit capture is evaluated against each record's envelope at its
+logged action and reported by full cohort, action window, elasticity tertile,
+observed churn and displayed customers. It is not a mean-function coverage test.
+The wider mean-band plot evaluates every original context using the saved
+spline cache and affine state, transferring endpoints before averaging.
+
+The feature-comparison slides use the matched ten-record sensitivity study:
+affine, added action square, added action square/fourth power, and frozen MLP.
+All 715,013 retained contexts enter each width mean. The MLP grid renders exact
+saved-network evaluations. Saved repository policy endpoints and paired
+nominal-policy scores supply the distributions and value diagram; no optimum
+is selected during reporting. Original spline nominal/affine policy budgets,
+MLP representation limits and unknown predictor-training membership remain
+explicit in the slide bullets. The two synthetic figures replay the existing
+sample-size and steepness plots only at data center 10, repetition 0.
+
+Before regenerating a completed slide collection, archive its superseded
+artifacts and record checksums. Full-context query caches in `data/` can be
+retained when their saved band, grid and input identity checks still pass.
+
 The same saved-band entry point supports elasticity selection:
 
 ```bash

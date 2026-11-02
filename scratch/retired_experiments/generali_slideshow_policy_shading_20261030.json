@@ -1,0 +1,29 @@
+{
+  "reason": "Preserve unshaded policy figure and original provenance before requested light shading.",
+  "files": [
+    {
+      "original_path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/slideshow-spline-xgboost/figures/08_action_power_mlp_policy_actions.pdf",
+      "archived_path": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/slideshow-policy-actions-unshaded-20261030/08_action_power_mlp_policy_actions.pdf",
+      "sha256": "f012c589f4cfb2212d54b1af33ceb065db0cb38c3b72bef6708f20cd2aaa2a3a",
+      "bytes": 19288
+    },
+    {
+      "original_path": "/home/anakhag/projects/generali-pricing/results/glm-spline-profit-dispersion/slideshow-spline-xgboost/provenance.json",
+      "archived_path": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/slideshow-policy-actions-unshaded-20261030/provenance.json",
+      "sha256": "e4c4e2aee07fd422fde85042eb1eebe641b8c4503afd36da31c0b8e72954734a",
+      "bytes": 55670
+    },
+    {
+      "original_path": "/home/anakhag/projects/generali-pricing/worktrees/feature-generali-slide-figures/scratch/generali_slide_report.py",
+      "archived_path": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/slideshow-policy-actions-unshaded-20261030/generali_slide_report.py",
+      "sha256": "a5eb49b05d99615c76733feb1955b3fd27a4eb4accc905314237fe0f3381ae64",
+      "bytes": 25466
+    },
+    {
+      "original_path": "/home/anakhag/projects/generali-pricing/worktrees/feature-generali-slide-figures/scratch/generali_slideshow.json",
+      "archived_path": "/home/anakhag/projects/generali-pricing/scratch-results/glm-spline-profit-dispersion/slideshow-policy-actions-unshaded-20261030/generali_slideshow.json",
+      "sha256": "dd421a07660dc09829f8653d200aa2237d1bc07d0f236b88a56c5c4c3b39774c",
+      "bytes": 935
+    }
+  ]
+}

@@ -319,6 +319,13 @@ Historical and recommended actions use identical retained rows; histograms keep
 all group rows in the density denominator and disclose out-of-window tails.
 Fixed action queries are diagnostics, never new optimizer outputs. The MLP is
 the frozen residual representation; the action rule is sigmoid-linear.
+`--slide-report ... --mlp-lower-bands` adds matched mean lower-profit curves
+and the four saved action distributions to that same report folder, with
+separate `lower_band_provenance.json`. It also scores all four bands at the
+same personalized MLP actions. Replay original exact action-power queries and
+load their preserved representation source for personalized evaluations;
+do not replace them with the original full-data affine band. The common-action
+prediction mean subtracts the ten excluded rows from the saved full-row sum.
 
 The 2026-10-22 merge-first cleanup inventory is in
 `docs/local_work_cleanup_20261022.md`. It records the consolidated branches,

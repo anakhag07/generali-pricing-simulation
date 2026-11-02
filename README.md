@@ -152,6 +152,9 @@ add `--mlp-actions` to `--slide-report scratch/generali_slideshow.json` on the s
 diagnostic entry point. The two PDFs and exact fixed-action diagnostics live in
 the shared `glm-spline-profit-dispersion/mlp-action-diagnostics/` folder; see
 [replay and interpretation](docs/experiment_workflow.md#mlp-action-distribution-replay).
+Use `--mlp-lower-bands` instead to compare the matched affine, affine + a²,
+affine + a² + a⁴ and MLP mean lower-profit curves, saved action distributions,
+and each band's score at the same personalized MLP actions.
 
 ### Retired experiments
 

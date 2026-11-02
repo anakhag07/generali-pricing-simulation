@@ -523,6 +523,25 @@ The network reached its 1,000-iteration cap; the pricing solve terminated on
 `xtol` after 132 steps. It is a local solver result without a global certificate.
 No fitting, sampling, new seed stream, bootstrap or optimization occurs.
 
+Replace `--mlp-actions` with `--mlp-lower-bands` to add
+`mean_lower_bands_and_policy_actions.pdf` in the same folder. Its top panel
+shows mean predicted profit and all four matched lower endpoints at 101 common
+actions in [-0.1,0.2]; its bottom panel shows the saved personalized action
+distributions in the same colors. The MLP and three affine/action-power bands
+use the same retained cohort, splits, multiplier coordinates and coefficient
+ellipsoid calibration. The original full-data affine band is not part of this
+comparison. Exact previously saved action-power penalty means are replayed;
+the frozen MLP is evaluated at every retained context. Correct the original
+predictor mean for the exclusions by subtracting their exact contributions
+from its saved full-row sum. Transfer before averaging, as in MATH section 7.20.
+
+`lower_bands_at_mlp_actions.csv` evaluates every band at exactly the same saved
+personalized MLP actions and also lists each band's own saved-policy score.
+A personalized-policy value is not the common-action curve evaluated at the
+mean action. Common-action curves describe the objective landscape, not a
+new optimizer result or a certificate of optimality. `lower_band_provenance.json`
+records this extension separately without rewriting the first report's provenance.
+
 ### Saved bands for low, medium and high elasticity customers
 
 The same saved-band entry point supports elasticity selection:

@@ -147,6 +147,17 @@ saved-coordinate replay are retained in `plot-overrides.json` and
 `profit_plot_replay.json` alongside the PDF.
 See [the diagnostic setup](docs/experiment_workflow.md#generali-residual-diagnostics).
 
+For the saved-run spline/XGBoost slideshow, use the same driver with
+`--slide-report scratch/generali_slideshow.json --output-dir <fresh-directory>`.
+The recipe's `basis_policy_fill` selects the lightly shaded policy distributions;
+`policy_fill_alpha` sets their opacity. The saved CSV supports figure-only replay
+through `scratch.generali_slide_report._render_basis_policy_actions`.
+The current report is in `glm-spline-profit-dispersion/slideshow-spline-xgboost/`:
+`figures/` contains eleven numbered vector PDFs, `data/` contains RMSE,
+observed-outcome capture, policy scores and query coordinates, and
+`slide_frames.tex` supplies itemized Beamer frames. This mode evaluates saved
+bands and replays repository solver endpoints; it never fits or optimizes.
+
 To compare the saved spline/XGBoost MLP-band policy with historical actions,
 add `--mlp-actions` to `--slide-report scratch/generali_slideshow.json` on the same
 diagnostic entry point. The two PDFs and exact fixed-action diagnostics live in

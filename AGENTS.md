@@ -309,9 +309,11 @@ When modifying or adding code that implements a mathematical formula:
 ## Source of Truth
 
 The 2026-11-02 branch audit and suggested integration sequence are in
-`docs/branch_merge_20261102.md`. Preserve the dirty source worktrees; action-power
-integration should apply `df19ad5` and `56b40f4` onto current main, retaining the
-newer interrupted-solver behavior, rather than merging its duplicated history.
+`docs/branch_merge_20261102.md`. The current order is PR #193 (reporting), then
+PR #194 (action powers); Design-Bench remains deferred. Preserve the dirty source
+worktrees. Action-power integration applies only `df19ad5` and `56b40f4` onto
+current main, retaining the newer interrupted-solver behavior and excluding
+duplicated history.
 The existing residual driver's `--slide-report ... --mlp-actions` mode replays
 the trimmed spline/XGBoost MLP-band policy and the original GLM sensitivity
 tertiles. Its current report is shared `glm-spline-profit-dispersion/mlp-action-diagnostics/`.

@@ -1,5 +1,24 @@
 # Branch audit — 2026-11-02
 
+## Integration update
+
+Merge [PR #193](https://github.com/anakhag07/generali-pricing-simulation/pull/193)
+(`pr/generali-reporting-stack`) first, then
+[PR #194](https://github.com/anakhag07/generali-pricing-simulation/pull/194)
+(`pr/generali-action-powers`). Design-Bench remains deferred at the user's request.
+The reporting PR includes the saved slide refinements without changing the
+original dirty source worktree. The action-power PR ports only the two extension
+and replay commits while preserving main's solver interruption handling.
+
+The user selected "keep both" for all three documentation conflicts: slideshow
+instructions precede MLP diagnostic instructions; checkpoint/resume and
+action-power study instructions both remain; frozen-feature ellipsoids stay in
+MATH section 7.20 and action powers follow in section 7.21 with updated references.
+Original source worktrees and artifact contracts remain unchanged. The initial
+audit and proposed sequence below are retained as the historical snapshot.
+
+## Initial audit
+
 Remote heads were checked with `git ls-remote --heads origin`: `main` is
 `43c3c35`, and the only other remote branch is `feature/design-bench-bridge`
 at `2b7965f`. The Generali feature branches are local. This is a branch/ref

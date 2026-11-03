@@ -2109,6 +2109,37 @@ Implementation: `src/experiments/envelopes/polynomial.py`,
 `polynomial_study.py`, and `polynomial_reporting.py`; see
 `docs/synthetic_polynomial_residual.md` for execution and provenance.
 
+The supplementary observation figure uses the original repetition-zero data.
+Write $c=(1,-0.5,0.25)^T$ and $\bar x=n^{-1}\sum_i x_i$. Align the additive
+context contribution to the empirical mean context:
+
+$$
+Y_i^{\mathrm{aligned}}=Y_i-c^T(x_i-\bar x)
+=f(\bar x,a_i)+\varepsilon_i.
+$$
+
+Plot these aligned observations beside $f(\bar x,a)$ and
+$\widehat f(\bar x,a)$. The retained noise is still the original
+$\varepsilon_i=\sigma(x_i,a_i)Z_i$, with its original context-dependent scale;
+these are not new observations sampled at $\bar x$. The second panel plots
+$\varepsilon_i=Y_i-f(x_i,a_i)$ against the saved $\sigma_i$, with zero and
+$\pm\sigma_i$ guides. Conditional noise means are zero; the realized sample
+mean is not forced to zero. No GP evaluation off the saved design is needed.
+
+The reported R2 uses $I$ uniform over the saved contexts and an independent
+$A\sim N(0.5,0.45)$:
+
+$$
+R_k^2=1-\frac{E_{I,A}[(g_4(x_I,A)-\widetilde g_k(x_I,A))^2]}
+{E_{I,A}[(g_4(x_I,A)-E_{I,A}[g_4(x_I,A)])^2]}.
+$$
+
+Gaussian weighting includes all real actions but gives tails low probability.
+This measures a reduction in weighted squared error relative to a constant
+predictor; it is not the fraction of actions covered. A supplementary replay
+splits the same squared-error integral inside/outside the original three-SD
+display window and verifies its sum against the saved Gaussian-moment MSE.
+
 ## 8. Gradients and Estimators
 
 For a differentiable action objective and policy, the population chain rule is

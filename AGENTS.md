@@ -3,7 +3,7 @@
 The synthetic quartic residual comparison uses the existing wild-envelope
 manifest kind with `study_mode: polynomial_residual`, configured by
 `manifests/synthetic-polynomial-residual-degree4.json`. Its reusable mathematics,
-orchestration, and four-PDF reporting are `envelopes/polynomial.py`,
+orchestration, and reporting are `envelopes/polynomial.py`,
 `polynomial_study.py`, and `polynomial_reporting.py`. Keep the residual fixed
 while varying phi degree 1–6, use asymmetric radii, and keep all-real coverage
 distinct from finite display windows. The GP is the exact finite restriction
@@ -22,6 +22,13 @@ reference minus its value at the selected policy; the CSV saves both J values.
 `polynomial_reporting.update_regret_report` replays only that PDF/table, retaining
 the other three figures and all fitted/optimizer artifacts. Its initial report
 is indexed by `synthetic_polynomial_regret_report_20261103.json` in the same archive directory.
+`polynomial_reporting.write_observation_report` adds the requested fifth PDF,
+aligning original observations to the mean context using the true additive
+context terms, then showing original noise versus its saved SD. Preserve the
+original sigma(x_i,a_i); do not resample/interpolate the GP at the mean context.
+Its sidecar records the Gaussian-weighted phi_1 MSE split inside/outside the
+three-SD display window. The original four plots and numerical state stay
+unchanged; the full collector includes all five PDFs.
 
 The action-power continuation uses `scratch/generali_residual_wild_action_powers.json`
 through the same `--fit-wild-bases` entry point. It keeps contexts additive and

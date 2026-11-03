@@ -1,4 +1,4 @@
-"""Four PDF reports from saved polynomial fits, certificates and repository policies."""
+"""Comparison and observation PDFs from saved polynomial fits, data and policies."""
 
 from __future__ import annotations
 
@@ -96,11 +96,14 @@ def collect_polynomial(project):
         writer.writerows(rows)
     save_arrays_atomic(project/'plot_data.npz', **coordinates)
     paths = render_polynomial_reports(p, rows, coordinates, project)
+    observations = write_observation_report(project)
+    paths.append(Path(observations['pdf']['path']))
     summary = {'config': p, 'metrics': rows, 'contract_sha256': digest,
                'contract': file_record(project/'contract.json'),
                'table': file_record(project/'summary.csv'), 'plot_data': file_record(project/'plot_data.npz'),
                'plots': [file_record(path) for path in paths],
                'reporting_source': file_record(Path(__file__)), 'policies': policy_records,
+               'observation_report': file_record(project/'observation_report.json'),
                'truth_reference': reference,
                'coverage_event': 'f inside asymmetric predictor envelope at all 300 saved contexts and every real action',
                'coverage_claim': 'Empirical conditional coverage; nominal 95% is not a finite-sample guarantee.',
@@ -248,3 +251,119 @@ def update_regret_report(project):
 def _verify(record):
     if file_record(record['path']) != record:
         raise ValueError(f"Saved artifact checksum differs: {record['path']}")
+
+
+def write_observation_report(project):
+    """Replay true/surrogate curves and context-aligned observations with saved noise scales."""
+    from scipy.integrate import quad
+    from scipy.stats import norm
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+
+    project = Path(project).resolve()
+    contract = read_json(project/'contract.json')
+    repetition = read_json(project/'repetitions/rep-000.json')
+    if repetition['contract_sha256'] != contract['sha256']:
+        raise ValueError('Observation and environment contracts differ.')
+    _verify(contract['environment'])
+    _verify(repetition['arrays'])
+    original_math = next(s for s in contract['contract']['sources']
+                         if s['path'].endswith('/envelopes/polynomial.py'))
+    if original_math['sha256'] != file_record(Path(__file__).with_name('polynomial.py'))['sha256']:
+        raise ValueError('Mathematical query source differs from the saved contract.')
+    with np.load(contract['environment']['path'], allow_pickle=False) as saved:
+        snapshot = dict(saved)
+    with np.load(repetition['arrays']['path'], allow_pickle=False) as saved:
+        state = dict(saved)
+    p = contract['contract']['manifest']
+    truth, residual = _models(p)
+    X, actions, sigma = snapshot['X'], snapshot['actions'], snapshot['sigma']
+    reference = X.mean(axis=0)
+    offsets = (X-reference) @ np.asarray(truth.context)
+    aligned = state['observations']-offsets
+    noise = state['observations']-truth(X, actions)
+    if not np.allclose(noise, sigma*state['innovations'], atol=2e-14, rtol=1e-13):
+        raise ValueError('Saved noise no longer agrees with observation construction.')
+    if not np.allclose(aligned, truth(reference, actions)+noise, atol=2e-14, rtol=1e-13):
+        raise ValueError('Context alignment does not preserve the original noise.')
+    mean, variance = p['design']['action_mean'], p['design']['action_variance']
+    sd = np.sqrt(variance)
+    span = p['reporting']['action_window_standard_deviations']*sd
+    grid = np.linspace(min(mean-span, actions.min()), max(mean+span, actions.max()),
+                       p['reporting']['action_points'])
+    truth_curve = truth(reference, grid)
+    predictor_curve = truth_curve-residual(reference, grid)
+    csv_path = project/'observation_data.csv'
+    with csv_path.open('w', newline='') as stream:
+        writer = csv.writer(stream)
+        writer.writerow(['row', 'x1', 'x2', 'x3', 'action', 'observation',
+                         'context_offset', 'aligned_observation', 'noise', 'noise_sd'])
+        for i in range(len(X)):
+            writer.writerow([i, *X[i], actions[i], state['observations'][i],
+                             offsets[i], aligned[i], noise[i], sigma[i]])
+    curves_path = project/'observation_curves.csv'
+    with curves_path.open('w', newline='') as stream:
+        writer = csv.writer(stream)
+        writer.writerow(['action', 'true_function_at_mean_context', 'surrogate_at_mean_context'])
+        writer.writerows(zip(grid, truth_curve, predictor_curve))
+
+    plt.rcParams.update({'axes.titlesize': 14, 'axes.labelsize': 12, 'xtick.labelsize': 10,
+                         'ytick.labelsize': 10, 'legend.fontsize': 10, 'figure.titlesize': 16,
+                         'font.weight': 'normal', 'axes.titleweight': 'normal'})
+    fig, axes = plt.subplots(2, 1, figsize=(10, 9), constrained_layout=True)
+    fig.suptitle('True function, fixed surrogate and observation noise')
+    colors = {'c': sigma, 'cmap': 'viridis', 'vmin': p['noise']['sigma_min'],
+              'vmax': p['noise']['sigma_max']}
+    scatter = axes[0].scatter(actions, aligned, label='Saved observations (context aligned)', **colors)
+    axes[0].plot(grid, truth_curve, label=r'True $f(\bar{x},a)$', zorder=3)
+    axes[0].plot(grid, predictor_curve, label=r'Surrogate $\widehat{f}(\bar{x},a)$', zorder=3)
+    axes[0].set_xlabel('Action a')
+    axes[0].set_ylabel('Response aligned to mean context')
+    axes[0].set_title('Original observations with additive context effects aligned')
+    axes[0].legend()
+    axes[1].scatter(sigma, noise, **colors)
+    scale_grid = np.linspace(p['noise']['sigma_min'], p['noise']['sigma_max'], 200)
+    axes[1].fill_between(scale_grid, -scale_grid, scale_grid, alpha=.15, label=r'$\pm 1$ noise SD')
+    axes[1].axhline(0, color='black', linestyle='--', label='Conditional noise mean = 0')
+    axes[1].set_xlabel(r'Saved observation noise SD $\sigma_i$')
+    axes[1].set_ylabel(r'Observation noise $Y_i-f(x_i,a_i)$')
+    axes[1].set_title('Heteroskedastic noise from the same fixed observation draw')
+    axes[1].legend()
+    colorbar = fig.colorbar(scatter, ax=axes)
+    colorbar.solids.set_rasterized(False)
+    colorbar.set_label(r'Original noise SD $\sigma(x_i,a_i)$', fontsize=12)
+    colorbar.ax.tick_params(labelsize=10)
+    pdf = project/'05_truth_surrogate_and_observations.pdf'
+    fig.savefig(pdf, format='pdf')
+    plt.close(fig)
+
+    band = restore_band(snapshot, state, 1)
+    metrics = residual_metrics(band, residual, mean, variance)
+    def integrand(z):
+        density = norm.pdf(z)
+        if density == 0:
+            return 0.
+        action = mean+sd*z
+        return float(np.mean((residual(X, action)-band.evaluate(action)[0])**2)*density)
+    window_sd = p['reporting']['action_window_standard_deviations']
+    inside, inside_error = quad(integrand, -window_sd, window_sd, epsabs=1e-12)
+    left, left_error = quad(integrand, -np.inf, -window_sd, epsabs=1e-12)
+    right, right_error = quad(integrand, window_sd, np.inf, epsabs=1e-12)
+    if not np.isclose(inside+left+right, metrics['mse'], atol=1e-11, rtol=1e-10):
+        raise ValueError('Weighted error decomposition differs from exact Gaussian moments.')
+    report = {'contract_sha256': contract['sha256'], 'repetition': 0,
+              'input_environment': contract['environment'], 'input_observations': repetition['arrays'],
+              'reference_context': reference.tolist(), 'alignment': 'Y_i - c^T(x_i - mean(X)), with c the true additive context coefficients.',
+              'noise_interpretation': 'Original sigma(x_i,a_i) and innovations retained; no off-design GP draw or sample recentering.',
+              'noise_sample_mean': float(noise.mean()), 'noise_sd_min': float(sigma.min()), 'noise_sd_max': float(sigma.max()),
+              'pdf': file_record(pdf), 'observations_csv': file_record(csv_path), 'curves_csv': file_record(curves_path),
+              'reporting_source': file_record(Path(__file__)),
+              'phi1_r_squared_diagnostics': {**metrics, 'display_window': [mean-span, mean+span],
+                  'action_probability_outside': float(2*norm.sf(window_sd)),
+                  'mse_inside_contribution': inside, 'mse_outside_contribution': left+right,
+                  'mse_fraction_outside': (left+right)/metrics['mse'],
+                  'quadrature_error_sum': inside_error+left_error+right_error,
+                  'context_component_variance': float(np.var(X @ np.asarray(residual.context)))}}
+    write_json_atomic(project/'observation_report.json', report)
+    return report

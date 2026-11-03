@@ -62,8 +62,9 @@ use `manifests/synthetic-polynomial-residual-degree4.json` through
 `scripts/run_experiment_manifest.py`. It uses asymmetric coefficient-ellipsoid
 bands, an exact squared-exponential GP noise restriction, whole-line coverage,
 and personalized repository Stein policies. The new shared result folder is
-`synthetic-polynomial-residual-degree4/`, with exactly four vector PDFs and a
-six-row summary. See [the experiment contract](docs/synthetic_polynomial_residual.md).
+`synthetic-polynomial-residual-degree4/`, with four comparison PDFs, a supplementary
+truth/surrogate/observation view, and a six-row summary. See
+[the experiment contract](docs/synthetic_polynomial_residual.md).
 
 For joint increases in sample size and bootstrap count, use
 `manifests/uncertainty-envelopes-residual-paired-nb.json`. It reports only the

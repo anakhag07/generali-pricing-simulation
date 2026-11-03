@@ -1,0 +1,26 @@
+{
+  "reason": "Add requested truth/surrogate/observation illustration and clarify distribution-weighted R2; preserve all four existing PDFs and numerical artifacts.",
+  "original_source_commit": "749a5badef361eceaa5ac7f1eb3733bdb4d68aed",
+  "files": [
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree4/summary.json",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-observation-addition-20261103/summary.json",
+      "sha256": "4c160819167363495db61e799fca3fef333073d7d2cb79a156bfdb93502a52e0"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree4/EXPERIMENT.md",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-observation-addition-20261103/EXPERIMENT.md",
+      "sha256": "405377116843fbb5b5d7ebb20782298ad8f418dc057d6d0022e992e21e43400c"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree4/validation.json",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-observation-addition-20261103/validation.json",
+      "sha256": "ccdf0187e0d2b1928dfb2edfb47f1d0b6a5feadf210e8369d43aad3a8cbf40f5"
+    }
+  ],
+  "regret_reporting_source_archive": {
+    "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-observation-addition-20261103/polynomial_reporting.py",
+    "sha256": "eca7daca88b48b6b65094738b75b79e9819817b2e20e6163a10806d3427b18a8"
+  },
+  "live_work_check": "Completed experiment has no active numerical task; the addition replays saved repetition zero."
+}

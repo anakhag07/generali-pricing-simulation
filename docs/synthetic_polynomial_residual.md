@@ -61,8 +61,8 @@ an optimizer-setting revision; truth, observations, residual, features and bands
 are unchanged. The initial pilot and solver-setting diagnostics are archived
 with checksums in `scratch/retired_experiments/synthetic_polynomial_pilot_20261103.json`.
 
-The new shared result folder is `synthetic-polynomial-residual-degree4/`.
-It contains four PDFs: `01_residual_recovery.pdf` (six panels, R2/RMSE),
+The shared result folder is `synthetic-polynomial-residual-degree4/`.
+It contains four comparison PDFs: `01_residual_recovery.pdf` (six panels, R2/RMSE),
 `02_simultaneous_coverage.pdf` (six bars and Wilson intervals),
 `03_average_envelope_width.pdf` (mean full transferred width versus action),
 and `04_policy_regret.pdf` (regret and RMS action error).
@@ -74,6 +74,25 @@ check. RMS action error remains a secondary diagnostic in the figure.
 Frozen inputs, coefficients, bootstrap statistics, per-repetition decisions,
 solver traces, plotted coordinates, summary CSV/JSON and provenance remain
 alongside the figures. Report collection never fits or optimizes.
+
+The requested supplementary `05_truth_surrogate_and_observations.pdf` shows
+the true function and fixed surrogate at the mean calibration context, with
+the original observations aligned by subtracting their known additive context
+offsets. The lower panel shows original noise versus its original known SD,
+with a zero conditional-mean line and ±1 SD guide. These transformations retain
+all 300 observations and their original heteroskedastic noise; they do not
+simulate new responses at the mean context or force the sample noise mean to
+zero. `observation_data.csv`, `observation_curves.csv`, and
+`observation_report.json` retain plotted coordinates, source hashes and checks.
+
+R2 integrates true-residual error over every real action with Gaussian weights,
+using the same 300 contexts. It is not computed only at the logged actions or
+on the displayed mean curve. For phi_1, MSE is 0.0205538 and residual variance
+is 0.0852472, giving R2=0.758892. The 0.27% action probability outside the
+three-SD display window contributes 26.1% of its squared error. Whole-line
+coverage detects tail failure, but must be read alongside band width: wide
+bands can cover despite poor point estimates. The guarantee domain concerns
+the saved contexts, not extrapolation to new contexts.
 
 ## Commands
 
@@ -96,6 +115,17 @@ update_regret_report("/home/anakhag/projects/generali-pricing/results/synthetic-
 
 This updates only the regret PDF and summary tables. The original regret report
 is archived through `scratch/retired_experiments/synthetic_polynomial_regret_report_20261103.json`.
+
+To replay only the supplementary observation figure and its coordinate files:
+
+```python
+from experiments.envelopes.polynomial_reporting import write_observation_report
+write_observation_report("/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree4")
+```
+
+Full `--collect` now includes this fifth PDF. Prior report metadata and the
+previous reporting source are indexed by
+`scratch/retired_experiments/synthetic_polynomial_observation_addition_20261103.json`.
 
 Later stages can supply different explicit residuals and feature maps. Learned
 features will require a frozen representation trained separately from beta

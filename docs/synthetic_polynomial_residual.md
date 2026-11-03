@@ -61,10 +61,10 @@ make noisy fitted coefficients exact or make empirical coverage identically one.
 - [x] Preserve source/input hashes and saved solver traces; reporting reads saved
   state only. Archive superseded attempts with relocation checksums.
 
-## Scientific contract
+## Shared scientific contract
 
-See MATH section 7.22. The true contextual quadratic is unchanged. Its fixed
-surrogate subtracts the explicit quartic residual. No predictor training or
+See MATH section 7.22. The true contextual quadratic is unchanged. Each fixed
+surrogate subtracts its explicit residual g_d; the initial run used g4. No predictor training or
 feature learning occurs. Contexts stay linear and additive. The action domain
 is R; numerical plotting windows do not limit queries, integration or coverage.
 Noise uses the exact 300-dimensional restriction of the stated GP, with
@@ -197,3 +197,42 @@ point was also exercised with a small NumPy synthetic preset and both first-orde
 and Stein estimators; the default full-data GPU Generali configuration was not
 launched. Its saved validation outputs are indexed by
 `scratch/retired_experiments/synthetic_polynomial_demo_20261103.json`.
+
+## Completed full polynomial continuation
+
+The three additional runs completed 100 repetitions each. The table reports
+transferred whole-line coverage counts out of 100; the g4 row is the retained
+original result.
+
+| Residual | phi1 | phi2 | phi3 | phi4 | phi5 | phi6 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| g1 | 98 | 98 | 97 | 98 | 100 | 100 |
+| g2 | 0 | 98 | 97 | 98 | 100 | 100 |
+| g4 | 0 | 0 | 0 | 98 | 100 | 100 |
+| g6 | 0 | 0 | 0 | 0 | 0 | 100 |
+
+Every misspecified degree fails on the full real line. Representable cases
+cover 97–100 repetitions, rather than automatically achieving perfect coverage.
+For g6, phi4 has weighted R2=0.91374 and zero whole-line coverage; phi6 has
+R2=0.89935 and coverage 100/100. Coverage and Gaussian-weighted approximation
+therefore answer different questions. Read coverage with width: higher-degree
+bands expand strongly in the tails. Counts of 100/100 are empirical outcomes,
+not a finite-sample guarantee. The separate coefficient and auxiliary coverage
+events remain in the summary tables.
+
+All 54 new Stein solver starts converged, and all 5,400 selected actions passed
+the unsmoothed global LCB gap check at tolerance 1e-4. Direct true-objective
+regret was checked independently against the quadratic action-error identity.
+All 100 observation, innovation and multiplier arrays per residual exactly match
+the corresponding original quartic arrays, as do all frozen environment arrays.
+The represented coefficient errors match the paired quartic errors within
+1.3e-15. All 426 original quartic artifact hashes remain unchanged.
+
+Numerical source contracts for the continuation are pinned at `d82744e`;
+the 18 numerical runtime source files match the quartic run. Validation includes
+15 polynomial/bootstrap/solver-interface and math-document checks, independent
+feature-span identities, successful task statuses, all saved source/data hashes,
+and visual/vector checks of all 15 new PDFs. Each result folder's `validation.json`
+records these checks. Preparation-only contracts preceding a documentation
+rendering correction are archived via
+`scratch/retired_experiments/synthetic_polynomial_sweep_preflight_20261103.json`.

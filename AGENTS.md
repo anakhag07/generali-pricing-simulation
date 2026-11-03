@@ -10,6 +10,13 @@ the continuation lives in `feature-synthetic-polynomial-sweep`.
 The inheritance index is `scratch/synthetic_polynomial_sweep_inheritance.json`.
 All-real coverage is necessarily zero for k<d; k>=d is representable but still
 subject to sampling/bootstrap error. See MATH 7.22 and the study guide.
+The continuation completed 300/300 tasks, with all 54 starts converged and all
+5,400 selected actions globally certified at gap tolerance 1e-4. Coverage is
+zero below the residual degree and 97–100/100 when represented. Numerical
+contracts are pinned at d82744e; observations/multipliers exactly match g4 in
+every repetition. All 15 new PDFs retain the established design and the
+single-panel figure 05. Preparation-only contracts are archived through
+`scratch/retired_experiments/synthetic_polynomial_sweep_preflight_20261103.json`.
 
 The synthetic quartic residual comparison uses the existing wild-envelope
 manifest kind with `study_mode: polynomial_residual`, configured by

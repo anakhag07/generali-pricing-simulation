@@ -1,9 +1,49 @@
-# Fixed quartic residual versus additive polynomial features
+# Explicit polynomial residuals versus additive polynomial features
 
 This is the `polynomial_residual` mode of `wild_bootstrap_envelopes`, using
 `manifests/synthetic-polynomial-residual-degree4.json` through the existing
 `scripts/run_experiment_manifest.py` launcher. The approved first stage uses
-one fixed residual and six feature degrees, not a residual-degree sweep.
+one fixed quartic residual and six feature degrees. The approved continuation
+adds the original writeup's g1, g2 and g6 using the same settings and draws.
+
+## Full polynomial continuation
+
+Use `manifests/synthetic-polynomial-residual-degree{d}.json` for d=1,2,6;
+the existing d=4 run is retained without rerunning or altering its artifacts.
+The residual action coefficients, in increasing powers of the original action,
+are `[0.2,0.25]`, `[0.2,0.25,0.15]`, and
+`[0.2,0.25,0.15,-0.08,0.04,-0.012,0.006]`, respectively. All retain
+the additive context term 0.1*x1. No centering or interactions are added.
+
+Each new manifest runs all six feature bases, n=300, S=100, B=1999 and
+nominal 95% coefficient-ellipsoid calibration with asymmetric transfer.
+Design, GP, observation, multiplier and optimizer seed roots are unchanged.
+This pairs each new experiment's inputs and noise with the retained quartic
+run. Coverage remains simultaneous over the saved contexts and the whole real
+action line. Regret remains direct J(theta_star)-J(theta_hat), using repository
+solver endpoints and the original optimizer settings.
+
+Each `synthetic-polynomial-residual-degree{d}/` folder contains the same five
+PDFs and saved-state artifacts described below; figure 05 has only the requested
+truth/surrogate/observation panel. The old quartic source worktree stays pinned
+at 615c053; the new worktree is `feature-synthetic-polynomial-sweep`.
+`scratch/synthetic_polynomial_sweep_inheritance.json` records retained inputs,
+source identity and original artifact checksums. The runtime mathematics and
+optimizer are unchanged; residual-recovery titles now reflect each degree.
+
+For every degree, execute the corresponding manifest with the existing launcher:
+
+```bash
+python scripts/run_experiment_manifest.py manifests/synthetic-polynomial-residual-degree1.json --launch local
+python scripts/run_experiment_manifest.py manifests/synthetic-polynomial-residual-degree2.json --launch local
+python scripts/run_experiment_manifest.py manifests/synthetic-polynomial-residual-degree6.json --launch local
+```
+
+Tasks can be distributed with `--task-index` and a shared `--sweep-id`; prepare
+the environment once before parallel local tasks, then use `--collect` after
+all 100 tasks complete. Execution logs retain the exact commands and statuses.
+Representability starts at k=d. It removes approximation error, but does not
+make noisy fitted coefficients exact or make empirical coverage identically one.
 
 ## Implementation checklist
 

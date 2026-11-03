@@ -126,7 +126,9 @@ def render_polynomial_reports(p, rows, data, project):
     project = Path(project)
     paths = []
     fig, axes = plt.subplots(3, 2, figsize=(12, 11), sharex=True, sharey=True, constrained_layout=True)
-    fig.suptitle('Quartic residual recovery — fixed observation realization')
+    residual_degree = len(p['residual']['action'])-1
+    label = {1: 'Linear', 2: 'Quadratic', 4: 'Quartic', 6: 'Sextic'}.get(residual_degree, f'Degree-{residual_degree}')
+    fig.suptitle(f'{label} residual recovery — fixed observation realization')
     for ax, row in zip(axes.flat, rows):
         k = row['degree']
         fit, width = data[f'degree{k}_mean_fit'], data[f'degree{k}_mean_half_width']

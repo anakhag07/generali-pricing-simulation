@@ -65,6 +65,9 @@ and personalized repository Stein policies. The new shared result folder is
 `synthetic-polynomial-residual-degree4/`, with four comparison PDFs, a supplementary
 truth/surrogate/observation view, and a six-row summary. See
 [the experiment contract](docs/synthetic_polynomial_residual.md).
+The full polynomial continuation uses matching degree-1, degree-2 and degree-6
+manifests and result folders, with the same paired inputs and all six feature
+bases. The completed degree-4 run remains the retained comparison.
 
 For joint increases in sample size and bootstrap count, use
 `manifests/uncertainty-envelopes-residual-paired-nb.json`. It reports only the

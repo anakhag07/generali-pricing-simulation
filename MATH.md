@@ -2139,6 +2139,24 @@ predictor; it is not the fraction of actions covered. A supplementary replay
 splits the same squared-error integral inside/outside the original three-SD
 display window and verifies its sum against the saved Gaussian-moment MSE.
 
+The full polynomial continuation retains the quartic result and adds
+
+$$
+g_1(x,a)=0.2+0.1x_1+0.25a,\qquad
+g_2(x,a)=g_1(x,a)+0.15a^2,\qquad
+g_6(x,a)=g_4(x,a)-0.012a^5+0.006a^6.
+$$
+
+For each $d\in\{1,2,4,6\}$ use $\widehat f_d=f-g_d$ and replace $g_4$
+by $g_d$ throughout the fitting, coverage and evaluation formulas above.
+The same design, GP restriction, observation innovations, bootstrap multipliers
+and optimizer perturbation seeds are paired across residual degrees.
+No polynomial runtime or optimizer changes are needed. Each residual is in
+the feature span exactly when $k\ge d$. If $k<d$, its leading action power
+eventually outgrows both radii, giving zero all-real coverage. For $k\ge d$,
+statistical coefficient error and finite bootstrap calibration remain; correct
+specification does not imply 100% empirical coverage.
+
 ## 8. Gradients and Estimators
 
 For a differentiable action objective and policy, the population chain rule is

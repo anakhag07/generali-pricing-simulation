@@ -1,5 +1,16 @@
 # Agent Instructions
 
+The full synthetic polynomial comparison adds degree-1, degree-2 and degree-6
+manifests beside the original degree-4 manifest. Run them through the same
+polynomial-residual launcher with all six phi degrees and the unchanged paired
+design, noise, multiplier and optimizer seeds. Each has its own shared
+`synthetic-polynomial-residual-degree{d}` result folder with five PDFs.
+Preserve the original quartic worktree at 615c053 and its completed outputs;
+the continuation lives in `feature-synthetic-polynomial-sweep`.
+The inheritance index is `scratch/synthetic_polynomial_sweep_inheritance.json`.
+All-real coverage is necessarily zero for k<d; k>=d is representable but still
+subject to sampling/bootstrap error. See MATH 7.22 and the study guide.
+
 The synthetic quartic residual comparison uses the existing wild-envelope
 manifest kind with `study_mode: polynomial_residual`, configured by
 `manifests/synthetic-polynomial-residual-degree4.json`. Its reusable mathematics,

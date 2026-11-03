@@ -57,6 +57,14 @@ The dev extra includes `Markdown` for the math-document tests; it is not a runti
 
 ### Residual-heteroskedastic studies
 
+For the fixed synthetic quartic residual versus additive action degrees 1–6,
+use `manifests/synthetic-polynomial-residual-degree4.json` through
+`scripts/run_experiment_manifest.py`. It uses asymmetric coefficient-ellipsoid
+bands, an exact squared-exponential GP noise restriction, whole-line coverage,
+and personalized repository Stein policies. The new shared result folder is
+`synthetic-polynomial-residual-degree4/`, with exactly four vector PDFs and a
+six-row summary. See [the experiment contract](docs/synthetic_polynomial_residual.md).
+
 For joint increases in sample size and bootstrap count, use
 `manifests/uncertainty-envelopes-residual-paired-nb.json`. It reports only the
 paired conditions, with coverage and envelope slices at shared contexts; see

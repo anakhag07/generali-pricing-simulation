@@ -1,0 +1,432 @@
+{
+  "reason": "Superseded constant-step pilot; production uses repository L-BFGS-B Stein, sigma=0.001. No scientific input changes.",
+  "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree4",
+  "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-residual-degree4-pilot-20261103",
+  "original_source_worktree": "/home/anakhag/projects/generali-pricing/worktrees/feature-synthetic-polynomial-residual",
+  "original_source_commit": "afb94a6",
+  "source_recovery": "Original commit remains an ancestor; frozen runtime copies are retained in archive/source. Historical absolute paths and contracts are preserved unchanged. Resolve moved artifacts through this map.",
+  "files": [
+    {
+      "relative_path": "EXPERIMENT.md",
+      "sha256": "d66279dea587bb9f6851dc4f0ba71f27492b92cc58d24e477b0849d13c766b00",
+      "bytes": 4524
+    },
+    {
+      "relative_path": "config.json",
+      "sha256": "d472c9b74275ea93dc421544c1f2e68a0afd3a813b426db869604978f848a2c4",
+      "bytes": 1850
+    },
+    {
+      "relative_path": "contract.json",
+      "sha256": "43c6fa9ee35646494e82d79d3f130f1a5f73e9df0754cf514825b1fa7af7d497",
+      "bytes": 12875
+    },
+    {
+      "relative_path": "inputs.npz",
+      "sha256": "e708140b3a70889e18a621246e04f091b18d41809befd4901319025bd3b2f31c",
+      "bytes": 1033606
+    },
+    {
+      "relative_path": "policies/degree-1-start-0.json",
+      "sha256": "c55fc19c9bf5b520cc4f9bb42fde75a504e63b51308763255ab57c6db7e51c3c",
+      "bytes": 523
+    },
+    {
+      "relative_path": "policies/degree-1-start-0.npz",
+      "sha256": "2679ba34cb0745b16cbcf9b77e29f245451dbaba3c82f0dbb79f2b695a82ae74",
+      "bytes": 1283487
+    },
+    {
+      "relative_path": "policies/degree-1-start-1.json",
+      "sha256": "9e8f728d3824a18c0db678b85a2bed8ef6ef3b3d6cb7e91e6f0723beab11e960",
+      "bytes": 522
+    },
+    {
+      "relative_path": "policies/degree-1-start-1.npz",
+      "sha256": "2e237cc67bf97c83071b4c65483be0f45fd76b18f42f64e8d8513c1c8f3f1761",
+      "bytes": 839157
+    },
+    {
+      "relative_path": "policies/degree-1-start-2.json",
+      "sha256": "bfaa5d4a8f8e1fc78b03a9dcb2286d69460fc211d6d384ae04c3251dbc4dcc36",
+      "bytes": 523
+    },
+    {
+      "relative_path": "policies/degree-1-start-2.npz",
+      "sha256": "64fe90006a094f7c728f20fc430dd7d4495ed195f4c33a2bc98059f4fc461b6e",
+      "bytes": 835457
+    },
+    {
+      "relative_path": "policies/degree-1.json",
+      "sha256": "95738acb7f3c5e93eaf2ca7f628c0d4b6ed84be7c517856211b1764eba8f70c5",
+      "bytes": 2288
+    },
+    {
+      "relative_path": "policies/degree-1.npz",
+      "sha256": "30c400d02abeee4b93993d7af364ac636b4cc0b9c1bdd46ada73679888fa5cdd",
+      "bytes": 4697
+    },
+    {
+      "relative_path": "policies/degree-2-start-0.json",
+      "sha256": "b9dd5fcf1c619f4ba6ca723d55a97cae6ef96dfc596169183c1de99da47e0133",
+      "bytes": 523
+    },
+    {
+      "relative_path": "policies/degree-2-start-0.npz",
+      "sha256": "04080576045878155dd128e9c3bd9115094a97c4c686739692d888683e1b1926",
+      "bytes": 1407265
+    },
+    {
+      "relative_path": "policies/degree-2-start-1.json",
+      "sha256": "ef283d2a486ec440d1b1cde0d85fbedbd5f4eab58c964b2b42d5cb72ce8d5bbc",
+      "bytes": 523
+    },
+    {
+      "relative_path": "policies/degree-2-start-1.npz",
+      "sha256": "bb910c6b2243f9cfeb780650196e98cc9f815d6cbdcca0e127de36dc0efcdee7",
+      "bytes": 1057151
+    },
+    {
+      "relative_path": "policies/degree-2-start-2.json",
+      "sha256": "776cfca02f1b3673b104ce3f79f5162299a861b32ad549192d982899e54f7992",
+      "bytes": 524
+    },
+    {
+      "relative_path": "policies/degree-2-start-2.npz",
+      "sha256": "9a944b7e36a05ff7fd57f199aed943a39b063a065f98aac5680e906f983a5ff7",
+      "bytes": 1050114
+    },
+    {
+      "relative_path": "policies/degree-2.json",
+      "sha256": "46b2489d0dfe8d57ed50beeb8ffa88c0bc0f91ac2c8c6a96ac80608164d7be8e",
+      "bytes": 2290
+    },
+    {
+      "relative_path": "policies/degree-2.npz",
+      "sha256": "f4e02db920595cd1ad1819449a70077f90e79ac437323d5e1bdcd76d47dc8515",
+      "bytes": 5601
+    },
+    {
+      "relative_path": "policies/degree-3-start-0.json",
+      "sha256": "927a9ac190b7a5b708183c65b0d36e219112c5010dee79139b4ae0bff0abbf3e",
+      "bytes": 523
+    },
+    {
+      "relative_path": "policies/degree-3-start-0.npz",
+      "sha256": "6f1e72b8c808922ca287df5b3821850b96c7e6d4296717fc2cc37f4a741907e2",
+      "bytes": 1407843
+    },
+    {
+      "relative_path": "policies/degree-3-start-1.json",
+      "sha256": "d9b44e90f6fbad7699cfa7c910cb1992cc67cc8df374897be676e9fbc25ec799",
+      "bytes": 523
+    },
+    {
+      "relative_path": "policies/degree-3-start-1.npz",
+      "sha256": "e72193c5f3cefdcd78592f92cf2c0dd5fd59a56aaa911cfb0d4f67b688027adf",
+      "bytes": 1054016
+    },
+    {
+      "relative_path": "policies/degree-3-start-2.json",
+      "sha256": "cedd76fc5096c71d82dbaab8e2e2aa4efd1f7a1adf5afd31f87d9ffd81c94906",
+      "bytes": 524
+    },
+    {
+      "relative_path": "policies/degree-3-start-2.npz",
+      "sha256": "1a4795e7206bc88fe20dae7ad255154036a70d97eac7550f373343de797741e1",
+      "bytes": 1318321
+    },
+    {
+      "relative_path": "policies/degree-3.json",
+      "sha256": "0bdf66ec7914a851ab3c1c1a58c182fe986a70162f8fefe4adab221dacc52483",
+      "bytes": 2290
+    },
+    {
+      "relative_path": "policies/degree-3.npz",
+      "sha256": "20678ad8c6ec20e67d85a2217522e9e7d5402278017979dd68871ffb4c5b9662",
+      "bytes": 5640
+    },
+    {
+      "relative_path": "policies/degree-4-start-0.json",
+      "sha256": "cf0776af2a51da4c1cff83b61f1e141ed2bd4bca06dca1083bdd965737acaddd",
+      "bytes": 523
+    },
+    {
+      "relative_path": "policies/degree-4-start-0.npz",
+      "sha256": "4164ff61a6b53de88a05e11175975495ca3d20977d55a50ee6ddb4ebf26d0c64",
+      "bytes": 1448035
+    },
+    {
+      "relative_path": "policies/degree-4-start-1.json",
+      "sha256": "dcb8e5b9c7d658facee6a77bf40d64e568e92940d58113644f06ac8f532c7ed5",
+      "bytes": 523
+    },
+    {
+      "relative_path": "policies/degree-4-start-1.npz",
+      "sha256": "be842d2d67ee8db59bf6da783b16481ee2b46730955f11e89cfae9b5badc54c6",
+      "bytes": 1065276
+    },
+    {
+      "relative_path": "policies/degree-4-start-2.json",
+      "sha256": "7056df2698451dabaedc4f7ef97bd4af5ac258fb6e2a95a5de8ac60fc174bc5b",
+      "bytes": 524
+    },
+    {
+      "relative_path": "policies/degree-4-start-2.npz",
+      "sha256": "5258a7114290983287e56534d22a703a70176205e2e2021663bf644ca2ce0bea",
+      "bytes": 1378767
+    },
+    {
+      "relative_path": "policies/degree-4.json",
+      "sha256": "8f48836903b43aecd67ba5d5c1d7bfa18f5aedd89f4e94766a3706eaacd14cb2",
+      "bytes": 2290
+    },
+    {
+      "relative_path": "policies/degree-4.npz",
+      "sha256": "1026a1a1fd301e4160e9fc24e1c22ccb194135d7776078258f6d52676e305797",
+      "bytes": 5595
+    },
+    {
+      "relative_path": "policies/degree-5-start-0.json",
+      "sha256": "9784d14cc7bbf562652e923bbf2d457aa5bcd71cbe90c4121d1486582f321147",
+      "bytes": 523
+    },
+    {
+      "relative_path": "policies/degree-5-start-0.npz",
+      "sha256": "5a454950a55ae9b123e78c7e5d417eac70f27bb30d90400120e908e458f0a02f",
+      "bytes": 1588358
+    },
+    {
+      "relative_path": "policies/degree-5-start-1.json",
+      "sha256": "369569d1321484de73138c56dc86beb96a9193bc73377970ab744433b2602a29",
+      "bytes": 523
+    },
+    {
+      "relative_path": "policies/degree-5-start-1.npz",
+      "sha256": "9af2d85483a6d3f05ce594120f2f9080303d544b9b1a12fb48d5c79fd543d360",
+      "bytes": 1255967
+    },
+    {
+      "relative_path": "policies/degree-5-start-2.json",
+      "sha256": "f7b40b277a30307dad0e452fc1a3292844159bdcffb53892bb48dc057151a617",
+      "bytes": 524
+    },
+    {
+      "relative_path": "policies/degree-5-start-2.npz",
+      "sha256": "ea96165ea593042ffd5785a77d4f2be9d60ae889ace15a6bf2a06e1c82d7628f",
+      "bytes": 1485400
+    },
+    {
+      "relative_path": "policies/degree-5.json",
+      "sha256": "407cb9eb0441a7b8c381480c2853e620acbfc14a42c2467b207b61b86d02fa7e",
+      "bytes": 2290
+    },
+    {
+      "relative_path": "policies/degree-5.npz",
+      "sha256": "6439cd6185107ed02bc8ad48db86c3d7debaff80a934f5e7b602e0679f2fe4c2",
+      "bytes": 6443
+    },
+    {
+      "relative_path": "policies/degree-6-start-0.json",
+      "sha256": "dc96eb1a5a9e490017492b5fc20e4d5937e1435b00d34de8798e18c11f7ed1e0",
+      "bytes": 523
+    },
+    {
+      "relative_path": "policies/degree-6-start-0.npz",
+      "sha256": "c9bdabce88f2a421375a4a88de73c84b8dc2bdd0fed62bb7348a00076a5087bf",
+      "bytes": 1616575
+    },
+    {
+      "relative_path": "policies/degree-6-start-1.json",
+      "sha256": "b43e238433e875f0827368e2d1c0c1e1ce27a3841594269475b06b9756abf0b7",
+      "bytes": 523
+    },
+    {
+      "relative_path": "policies/degree-6-start-1.npz",
+      "sha256": "f70b1070ebf0aedf3aafd3797b73a8b03f3a1f4e35d3f38af95050eb81c39cfb",
+      "bytes": 1301996
+    },
+    {
+      "relative_path": "policies/degree-6-start-2.json",
+      "sha256": "c9295e4cb236d40ccb7eefc0a9d8fb2fd0850be457759a164f1445e3d163d5ca",
+      "bytes": 519
+    },
+    {
+      "relative_path": "policies/degree-6-start-2.npz",
+      "sha256": "bb0bd33a8a71620a7354c7d1ab69a3c2bcb7d2e768dd05ccd2315cfebf3880d3",
+      "bytes": 14965
+    },
+    {
+      "relative_path": "policies/degree-6.json",
+      "sha256": "05d9eb0f7585ad9dce0f95d61dc49650c9d4086dc579e0fc980880098c699d6a",
+      "bytes": 2285
+    },
+    {
+      "relative_path": "policies/degree-6.npz",
+      "sha256": "48893e4be545979f08998d59e63a8e798d37e9e6f0df763456c2de9725d558d4",
+      "bytes": 7212
+    },
+    {
+      "relative_path": "policies/truth.json",
+      "sha256": "a7609796f3f0f0c9ad0b3b7887c14021779b1d9ae2a1620b62d49f5cd817fea5",
+      "bytes": 469
+    },
+    {
+      "relative_path": "policies/truth.npz",
+      "sha256": "ff1ceff4d93a34039f26fe8a1eb90b824fe7dc58c156aba895344b6cf1fab5bf",
+      "bytes": 707
+    },
+    {
+      "relative_path": "repetitions/rep-000.json",
+      "sha256": "f9ec18b0d6ce8d6a8a843ff48eed603f84f885594048feb03858e39688c5d910",
+      "bytes": 1650
+    },
+    {
+      "relative_path": "repetitions/rep-000.npz",
+      "sha256": "51d897fba3d0343baae70cf160f3c9a8af77d2483e52ee027767bb61a3095480",
+      "bytes": 911756
+    },
+    {
+      "relative_path": "source/MATH.md",
+      "sha256": "1e18f2067c03baaa39bd9a649dbd75300e7131243a52f800e3360e1790f3e262",
+      "bytes": 106360
+    },
+    {
+      "relative_path": "source/src/experiments/envelopes/feature_wild.py",
+      "sha256": "c6cfaf88eb83a1d46bded13ae349799558397ce060ffe993d45fdda215cb2c19",
+      "bytes": 3377
+    },
+    {
+      "relative_path": "source/src/experiments/envelopes/polynomial.py",
+      "sha256": "d5d095c45e12d8e28c8d3c5b8d65d8fd39e978690c74442920b6ef151e57102a",
+      "bytes": 11845
+    },
+    {
+      "relative_path": "source/src/experiments/envelopes/polynomial_study.py",
+      "sha256": "f40029741d4af880894899e9305fad5acb3a07927d5381a3dfe19c62d4b3e0f7",
+      "bytes": 20233
+    },
+    {
+      "relative_path": "source/src/experiments/envelopes/quadratic.py",
+      "sha256": "9857d9f33e2e65546dd5631ed9f99da10560b8a1790fdf24ec9a3c8352abe974",
+      "bytes": 9559
+    },
+    {
+      "relative_path": "source/src/experiments/envelopes/wild.py",
+      "sha256": "b2f4da709de0372e9d38709258fbd794d107d3ae89c4d965a5e692d7b06dc2f6",
+      "bytes": 17009
+    },
+    {
+      "relative_path": "source/src/experiments/offline_bootstrap_math.py",
+      "sha256": "bed975dca6cf83b7d6031d8b0feec98408eb30beb62d20ce2627e6d9fc959115",
+      "bytes": 9261
+    },
+    {
+      "relative_path": "source/src/experiments/provenance.py",
+      "sha256": "19fd43be9abf783b91a65ad8b9a56935956602fbf2036f0d94f7578cda6663df",
+      "bytes": 5612
+    },
+    {
+      "relative_path": "source/src/experiments/seeds/streams.py",
+      "sha256": "04ca16b7fdc11a19a72f0221bb227fcbfbc70e247cbc9b0c9a6fcf386967c52b",
+      "bytes": 6167
+    },
+    {
+      "relative_path": "source/src/objective/base.py",
+      "sha256": "b1b64ab71ed33fd70618bf5f40218a5d2c48f6650f0821178177ca0028d3bb32",
+      "bytes": 2330
+    },
+    {
+      "relative_path": "source/src/objective/utils.py",
+      "sha256": "f56a762711031674ea97ce8cecba3235aeee3d243ed92029720cc3f47b3b8515",
+      "bytes": 6182
+    },
+    {
+      "relative_path": "source/src/optimization/__init__.py",
+      "sha256": "7c66568c620517d21f346eac3f767c09f6ec90835387dd12654ef5183a7f1bbe",
+      "bytes": 736
+    },
+    {
+      "relative_path": "source/src/optimization/base.py",
+      "sha256": "e86073c63f02f0b6c79a0938cbc6300b450474e35244aef7468a9bfe3479c6ec",
+      "bytes": 21533
+    },
+    {
+      "relative_path": "source/src/optimization/gradients/__init__.py",
+      "sha256": "f28a9b4013921c2d41f10ea08e3df419f78f59f477a376c64fe2867527f47c3e",
+      "bytes": 364
+    },
+    {
+      "relative_path": "source/src/optimization/gradients/methods.py",
+      "sha256": "fdb0eb572f054de06ed7ee2742902b73412af0b5b09621201433cdc55370b6b5",
+      "bytes": 16570
+    },
+    {
+      "relative_path": "source/src/optimization/helpers.py",
+      "sha256": "3a4bdcd027de35543124c0f3f2f5cde65b7f53cc62b26e473db78d879bfc58d7",
+      "bytes": 5851
+    },
+    {
+      "relative_path": "source/src/optimization/optax_loop.py",
+      "sha256": "5c6cc5ce1fab38dddc5e097ffe9893d8b7494204303ca389da012545477ca215",
+      "bytes": 2925
+    },
+    {
+      "relative_path": "source/src/optimization/solvers.py",
+      "sha256": "c75f377d747c8cd8e7053d393da9ecdc2d17961957a8639247b125c6ec574153",
+      "bytes": 9450
+    },
+    {
+      "relative_path": "source/src/optimization/steps.py",
+      "sha256": "7e687ee5a5733842c6f28417eea892fec2a1938487e3c0819c4c4504ad3998a3",
+      "bytes": 2538
+    },
+    {
+      "relative_path": "sweeps/polynomial-degree4/tasks/task_000.json",
+      "sha256": "c51bbb0a3350a6c449d3b44b14b313d8b0b6d3976967b5a514904149c9847aaa",
+      "bytes": 139
+    }
+  ],
+  "solver_diagnostics": {
+    "input_archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-residual-degree4-pilot-20261103",
+    "input_repetition": 0,
+    "degrees": [
+      1,
+      6
+    ],
+    "smoothing_sd": [
+      0.001,
+      0.0001
+    ],
+    "start": -0.5,
+    "algorithm": "l-bfgs-b",
+    "method": "optimization.solvers.run_stein_difference_minimize",
+    "t_steps": 1000,
+    "n_grad_samples": 64,
+    "gradient_tolerance": "1e-5/sqrt(300)",
+    "ftol": 1e-14,
+    "gradient_seed": "derive_seed(20261103, stein-difference:start:0)",
+    "batch_seed": 1,
+    "global_gap_tolerance": 0.0001,
+    "selection": "sigma=0.001; complete degree-1 and degree-6 300-context certificates",
+    "files": [
+      {
+        "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-residual-solver-diagnostics-20261103/degree1-sigma0.0001.npz",
+        "sha256": "79615ff7d2a33cbd701c2a47c50845a067799b10392a39b7c6015b22786496ba"
+      },
+      {
+        "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-residual-solver-diagnostics-20261103/degree1-sigma0.001.npz",
+        "sha256": "73608730c9126fd86b4c446265a86c0f01f4c4b2e2033ce7a8ca5ee2261a18a1"
+      },
+      {
+        "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-residual-solver-diagnostics-20261103/degree6-sigma0.0001.npz",
+        "sha256": "caf65aa509cf1d239bfe2edf3235c95eb33e623005d7b4c8dce7a8638f44c710"
+      },
+      {
+        "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-residual-solver-diagnostics-20261103/degree6-sigma0.001.npz",
+        "sha256": "86be067f8fe83987ea777b64fdebfc5fe7f460dc7ab54735b685d3ae673d7a4d"
+      }
+    ]
+  },
+  "live_work_check": "Initial pilot session completed; solver diagnostic session completed; no artifact writer remains."
+}

@@ -20,9 +20,9 @@
   "repetitions_per_task": 1,
   "seeds": {"contexts": 1101, "actions": 1102, "profile": 1105, "observations": 1103, "method": 1104, "optimizer": 20261103},
   "optimizer": {
-    "method": "stein_difference", "perturbation_space": "u", "step_rule": "constant",
+    "method": "stein_difference", "perturbation_space": "u", "step_rule": "l-bfgs-b",
     "starts": [-0.5, 1.5, 4.0], "step_size": 0.05, "t_steps": 1000,
-    "n_grad_samples": 64, "smoothing_sd": 0.01, "gradient_tolerance": 0.00001,
+    "n_grad_samples": 64, "smoothing_sd": 0.001, "gradient_tolerance": 0.00001, "ftol": 0.00000000000001,
     "global_gap_tolerance": 0.0001
   },
   "reporting": {"action_window_standard_deviations": 3.0, "action_points": 401, "integration_tolerance": 0.0000001},

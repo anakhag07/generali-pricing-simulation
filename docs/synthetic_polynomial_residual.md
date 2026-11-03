@@ -51,6 +51,16 @@ floating coefficients, not enclosures of statistical fitting roundoff.
 
 ## Deliverables
 
+The pilot retained the inherited constant-step settings and reached the 1,000
+step cap on 17/18 starts. Global gap certificates at 1e-4 covered 236–269 of
+300 contexts per basis. Production uses the same repository action-space Stein
+estimator with its L-BFGS-B step rule, smoothing SD 0.001, 64 perturbations,
+three unchanged starts, a 1,000-step cap, and ftol=1e-14. Pilot checks on degrees
+1 and 6 converged and certified all 300 endpoints at tolerance 1e-4. This is
+an optimizer-setting revision; truth, observations, residual, features and bands
+are unchanged. The initial pilot and solver-setting diagnostics are archived
+with checksums in `scratch/retired_experiments/synthetic_polynomial_pilot_20261103.json`.
+
 The new shared result folder is `synthetic-polynomial-residual-degree4/`.
 It contains four PDFs: `01_residual_recovery.pdf` (six panels, R2/RMSE),
 `02_simultaneous_coverage.pdf` (six bars and Wilson intervals),

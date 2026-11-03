@@ -281,6 +281,7 @@ def optimize_headline(p, project, digest, snapshot):
                     n_grad_samples=settings['n_grad_samples'], sigma=settings['smoothing_sd'],
                     perturbation_space='u', algorithm=settings['step_rule'],
                     step_size=n*settings['step_size'], grad_norm_tol=settings['gradient_tolerance']/np.sqrt(n),
+                    ftol=settings.get('ftol'),
                     gradient_rng=np.random.default_rng(seed), batch_rng=np.random.default_rng(batch_seed))
                 final_losses = objective._value_batch(X, theta)
                 if not np.isfinite(theta).all() or not np.isfinite(final_losses).all():

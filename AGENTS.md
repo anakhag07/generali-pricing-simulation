@@ -24,7 +24,8 @@ the other three figures and all fitted/optimizer artifacts. Its initial report
 is indexed by `synthetic_polynomial_regret_report_20261103.json` in the same archive directory.
 `polynomial_reporting.write_observation_report` adds the requested fifth PDF,
 aligning original observations to the mean context using the true additive
-context terms, then showing original noise versus its saved SD. Preserve the
+context terms and coloring points by their saved noise SD. The requested
+single-panel view retains only truth, surrogate and observations. Preserve the
 original sigma(x_i,a_i); do not resample/interpolate the GP at the mean context.
 Its sidecar records the Gaussian-weighted phi_1 MSE split inside/outside the
 three-SD display window. The original four plots and numerical state stay

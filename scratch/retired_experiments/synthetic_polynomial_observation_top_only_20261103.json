@@ -1,0 +1,37 @@
+{
+  "reason": "User requested retaining only the top truth/surrogate/observations panel in figure 05. Preserve the previous two-panel PDF, metadata and source.",
+  "original_source_commit": "ddb47cc74ec7435c983a495c18a7d66bc60a916f",
+  "files": [
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree4/05_truth_surrogate_and_observations.pdf",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-observation-top-only-20261103/05_truth_surrogate_and_observations.pdf",
+      "sha256": "4b8d9f0d954a07bcfb75fe3813da32e670c0755194ee1dbc837f9f7d70bf2291"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree4/observation_report.json",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-observation-top-only-20261103/observation_report.json",
+      "sha256": "bcd89378a0853dff4be0462f46cc3424f85d9a97f0249e6d20b6c746849a4833"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree4/summary.json",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-observation-top-only-20261103/summary.json",
+      "sha256": "96e9b8aaba9e85cbbdc60de0da53be7c6235570faa222a6125a9726bd5148ac1"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree4/validation.json",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-observation-top-only-20261103/validation.json",
+      "sha256": "72f1f83d0bfc62cde1851a68fba33c1e6ca65623f448f35f5509b2f082171dba"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree4/EXPERIMENT.md",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-observation-top-only-20261103/EXPERIMENT.md",
+      "sha256": "de9f4269f62c4e6059328b465087ee5316fafe57824429a273b9dc9167ee75f1"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/worktrees/feature-synthetic-polynomial-residual/src/experiments/envelopes/polynomial_reporting.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-observation-top-only-20261103/polynomial_reporting.py",
+      "sha256": "95d5cd53b4650ed6030d9e8b2824c9fe5e3d18bcc03903b2eef57b22b142d8d5"
+    }
+  ],
+  "live_work_check": "Completed saved experiment; this revision only replays figure 05 and changes report metadata."
+}

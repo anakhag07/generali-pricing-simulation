@@ -78,8 +78,8 @@ alongside the figures. Report collection never fits or optimizes.
 The requested supplementary `05_truth_surrogate_and_observations.pdf` shows
 the true function and fixed surrogate at the mean calibration context, with
 the original observations aligned by subtracting their known additive context
-offsets. The lower panel shows original noise versus its original known SD,
-with a zero conditional-mean line and ±1 SD guide. These transformations retain
+offsets. This single-panel view colors observations by their saved noise SD.
+These transformations retain
 all 300 observations and their original heteroskedastic noise; they do not
 simulate new responses at the mean context or force the sample noise mean to
 zero. `observation_data.csv`, `observation_curves.csv`, and
@@ -126,6 +126,8 @@ write_observation_report("/home/anakhag/projects/generali-pricing/results/synthe
 Full `--collect` now includes this fifth PDF. Prior report metadata and the
 previous reporting source are indexed by
 `scratch/retired_experiments/synthetic_polynomial_observation_addition_20261103.json`.
+The former two-panel observation PDF and its source/metadata are archived via
+`scratch/retired_experiments/synthetic_polynomial_observation_top_only_20261103.json`.
 
 Later stages can supply different explicit residuals and feature maps. Learned
 features will require a frozen representation trained separately from beta

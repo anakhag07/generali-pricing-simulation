@@ -2121,9 +2121,8 @@ $$
 Plot these aligned observations beside $f(\bar x,a)$ and
 $\widehat f(\bar x,a)$. The retained noise is still the original
 $\varepsilon_i=\sigma(x_i,a_i)Z_i$, with its original context-dependent scale;
-these are not new observations sampled at $\bar x$. The second panel plots
-$\varepsilon_i=Y_i-f(x_i,a_i)$ against the saved $\sigma_i$, with zero and
-$\pm\sigma_i$ guides. Conditional noise means are zero; the realized sample
+these are not new observations sampled at $\bar x$. Point colors encode
+the saved $\sigma_i$. Conditional noise means are zero; the realized sample
 mean is not forced to zero. No GP evaluation off the saved design is needed.
 
 The reported R2 uses $I$ uniform over the saved contexts and an independent

@@ -1,5 +1,17 @@
 # Agent Instructions
 
+The synthetic quartic residual comparison uses the existing wild-envelope
+manifest kind with `study_mode: polynomial_residual`, configured by
+`manifests/synthetic-polynomial-residual-degree4.json`. Its reusable mathematics,
+orchestration, and four-PDF reporting are `envelopes/polynomial.py`,
+`polynomial_study.py`, and `polynomial_reporting.py`. Keep the residual fixed
+while varying phi degree 1–6, use asymmetric radii, and keep all-real coverage
+distinct from finite display windows. The GP is the exact finite restriction
+of the specified squared-exponential kernel, not the historical Fourier profile.
+All policy endpoints come from the repository optimizer. See MATH section 7.22
+and `docs/synthetic_polynomial_residual.md`. Complete contracts are immutable;
+collector replay verifies saved input/source hashes and never refits/optimizes.
+
 The action-power continuation uses `scratch/generali_residual_wild_action_powers.json`
 through the same `--fit-wild-bases` entry point. It keeps contexts additive and
 uses original-action powers `[1,2]` and `[1,2,4]`; do not center action before

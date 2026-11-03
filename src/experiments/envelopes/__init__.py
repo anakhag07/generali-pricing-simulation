@@ -6,8 +6,10 @@ from .support import fit_support_band
 from .linear import LinearModel, QuadraticModel
 from .wild import WildLinearDesign
 from .feature_wild import WildFeatureDesign, feature_band_components
+from .polynomial import AdditivePolynomial, PolynomialFeatureBand, polynomial_features
 
 __all__ = ["CalibrationData", "ContainmentResult", "EnvelopeValues", "FittedEnvelope", "ProbabilityStatement",
     "TargetDomain", "aggregate_coverage", "check_finite_containment", "evaluate_tightness", "fit_band",
     "save_band", "load_band", "fit_support_band", "LinearModel", "QuadraticModel", "WildLinearDesign",
-    "WildFeatureDesign", "feature_band_components"]
+    "WildFeatureDesign", "feature_band_components", "AdditivePolynomial",
+    "PolynomialFeatureBand", "polynomial_features"]

@@ -61,6 +61,9 @@ def load_manifest(path):
     p = read_json(path)
     if p.get("kind") != MANIFEST_KIND:
         raise ValueError(f"Require kind={MANIFEST_KIND}.")
+    if p.get("study_mode") == "polynomial_residual":
+        from .polynomial_study import load_polynomial_manifest
+        return load_polynomial_manifest(path, p)
     if p.setdefault("band_target", "residual") != "residual":
         raise ValueError("New wild-envelope runs require band_target=residual.")
     name = p["name"]
@@ -428,6 +431,9 @@ def collect(manifest, runs_root):
 
 def build_launch_plan(manifest, *, runs_root=None, force=False):
     """Use the existing local/Slurm launcher with checkpointed response repeats."""
+    if manifest.payload.get("study_mode") == "polynomial_residual":
+        from .polynomial_study import build_polynomial_launch_plan
+        return build_polynomial_launch_plan(manifest, runs_root=runs_root, force=force)
     p = manifest.payload
     count = math.ceil(p["repetitions"]/p["repetitions_per_task"])
     def run_task(index, context):

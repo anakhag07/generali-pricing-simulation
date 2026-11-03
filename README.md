@@ -178,6 +178,11 @@ and largest-norm customers, plus separate residual/width/penalty curves and
 logged-action holdout diagnostics. The norm uses the saved GLM-whitened numeric
 coordinates and excludes action; it is distinct from learned-feature leverage.
 
+For one held-out residual scatter, add `--mlp-heldout-residuals` to the same
+`--slide-report` command and use a fresh output directory. It compares all
+retained test residuals with the saved scalar MLP prediction, without fitting;
+see [the replay details](docs/generali_residual_basis_study.md#held-out-mlp-residual-scatter).
+
 ### Retired experiments
 
 Concluded zeroth-order proof, policy/GP LCB, OLS/pairs-bootstrap, support-kernel,

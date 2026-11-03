@@ -405,3 +405,48 @@ Their checksum/relocation index is
 `scratch/retired_experiments/generali_residual_basis_trimmed_checkpoints_20261027.json`,
 with a copy in the result directory. All final fit, network and policy artifacts
 remain current, and the original untrimmed study and source worktree are intact.
+
+## Held-out MLP residual scatter
+
+Replay the latest trimmed spline/XGBoost residual MLP into a single vector PDF:
+
+```bash
+conda activate simulation_env
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python scratch/plot_generali_profit_residuals.py \
+  --slide-report scratch/generali_slideshow.json --mlp-heldout-residuals \
+  --output-dir ../results/glm-spline-profit-dispersion/mlp-heldout-residuals \
+  --launch local
+```
+
+The x-coordinate is the saved scalar prediction $\widehat\beta^\top\phi(x,a)$
+from MATH §7.20, including the intercept and saved feature normalization.
+The 16-dimensional learned representation itself cannot be a scalar axis.
+The y-coordinate is observed realized profit minus the frozen spline/XGBoost
+profit prediction at the same logged action. The identity line is a reference,
+not a regression fitted to the test observations.
+
+All 142,997 retained original holdout rows are displayed, with no additional
+trimming or subsampling. The report verifies their original row mapping and
+customer disjointness from both representation learning and beta fitting,
+checks original input/source hashes, replays the preserved feature evaluator,
+and reproduces the saved holdout RMSE, MAE, bias and R². It saves exact row IDs,
+features, coefficients and coordinates in `heldout_coordinates.npz`, metrics
+in `summary.json`, and input/source/output hashes in `provenance.json`.
+The source remains the existing `scratch/generali_slide_report.py` adapter;
+this view does not fit, resample, or optimize. A nonempty output directory is
+rejected so completed evidence cannot be overwritten.
+
+This is a descriptive check of the saved conditional-mean prediction, not a
+certificate that residuals are linear in the full feature vector. Even apparent
+calibration in a scalar projection cannot rule out remaining feature dependence.
+The ten-record exclusion remains a post-selection sensitivity analysis, and the
+base predictor's training membership is unknown. The test rows were unused
+by the residual MLP and beta fitting; they are not a new untouched test sample.
+The saved MLP reached its 1,000-iteration cap. Its full retained holdout R² is
+0.016912 and RMSE is 95.0067, compared with raw-residual RMSE 96.1707.
+
+Validation: the saved-data replay and all 30 focused residual/feature tests
+passed. A two-iteration, 128-record NumPy demo also passed using temporary
+in-memory overrides and outputs under /tmp. The one-page PDF was opened and
+visually inspected, with no embedded raster images or clipped labels. The
+report folder includes validation.json and hashes for the completed artifacts.

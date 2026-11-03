@@ -338,6 +338,16 @@ PR #194 (action powers); Design-Bench remains deferred. Preserve the dirty sourc
 worktrees. Action-power integration applies only `df19ad5` and `56b40f4` onto
 current main, retaining the newer interrupted-solver behavior and excluding
 duplicated history.
+The residual driver's `--slide-report ... --mlp-heldout-residuals` view replays
+the latest trimmed spline/XGBoost MLP into one test-residual scatter at shared
+`glm-spline-profit-dispersion/mlp-heldout-residuals/`. Its x-axis is saved
+beta-transpose-phi (17 coordinates including intercept), not one hidden feature.
+Keep all 142,997 retained original holdout rows and verify customer disjointness
+from both residual-learning pools. Preserve source/input hashes and exact
+coordinates; never refit on test responses or call this a linearity certificate.
+The ten-record post-selection and unknown base-predictor training memberships
+still qualify the holdout claim. See the residual-basis study guide.
+
 The existing residual driver's `--slide-report ... --mlp-actions` mode replays
 the trimmed spline/XGBoost MLP-band policy and the original GLM sensitivity
 tertiles. Its current report is shared `glm-spline-profit-dispersion/mlp-action-diagnostics/`.

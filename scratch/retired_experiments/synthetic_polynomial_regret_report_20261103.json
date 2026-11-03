@@ -1,0 +1,36 @@
+{
+  "reason": "Report revision computes regret directly as J(theta_star)-J(theta_hat), with J the empirical mean true objective; retain the original equivalent half-squared-error presentation.",
+  "original_source_commit": "5fad4d8d093ff56c67debf131e10b326a99b39d7",
+  "files": [
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree4/04_policy_regret.pdf",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-residual-regret-report-20261103/04_policy_regret.pdf",
+      "sha256": "5f29c6bc963f41d5cc49b8d6f6229b9431fb7d59c58b7e6014350b56ed39e75a"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree4/summary.csv",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-residual-regret-report-20261103/summary.csv",
+      "sha256": "7695c6524e6cea9eb662cbd3258b09cc03b9f437ad7191f6eef9e2cb1b2aba19"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree4/summary.json",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-residual-regret-report-20261103/summary.json",
+      "sha256": "436f906df4c3d800d5a67b867e349d1da7b674c1fce103b2768055b871dced1a"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree4/validation.json",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-residual-regret-report-20261103/validation.json",
+      "sha256": "e6aa6a845b4d5ee738fcd07906b0f7b73d93720edee580ffd0f2d1e89966b5ea"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree4/EXPERIMENT.md",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-residual-regret-report-20261103/EXPERIMENT.md",
+      "sha256": "0c344c7ac4bd5f02254e2c9054a027729328c2ec9a2635c4f05cd936a4f05d5f"
+    }
+  ],
+  "reporting_source": {
+    "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-residual-regret-report-20261103/polynomial_reporting.py",
+    "sha256": "98495e0b0c75eed755f3ce1b3b806b2a065ecb242ef155c3f5e15b317395101c"
+  },
+  "live_work_check": "All experiment and replay sessions from the completed run have terminated; this revision reads saved policies only."
+}

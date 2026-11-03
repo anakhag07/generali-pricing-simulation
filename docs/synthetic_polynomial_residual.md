@@ -66,6 +66,11 @@ It contains four PDFs: `01_residual_recovery.pdf` (six panels, R2/RMSE),
 `02_simultaneous_coverage.pdf` (six bars and Wilson intervals),
 `03_average_envelope_width.pdf` (mean full transferred width versus action),
 and `04_policy_regret.pdf` (regret and RMS action error).
+Regret is calculated directly as `objective_at_theta_star - objective_at_theta_hat`,
+where each objective value is the mean true function over all saved contexts.
+Both values are included in the summary CSV/JSON. For this quadratic the result
+equals half the mean squared action error; that identity is only a validation
+check. RMS action error remains a secondary diagnostic in the figure.
 Frozen inputs, coefficients, bootstrap statistics, per-repetition decisions,
 solver traces, plotted coordinates, summary CSV/JSON and provenance remain
 alongside the figures. Report collection never fits or optimizes.
@@ -81,6 +86,16 @@ python scripts/run_experiment_manifest.py manifests/synthetic-polynomial-residua
 Local/Slurm launch uses the existing infrastructure. Each task owns a group of
 coverage repetitions; task zero also owns the headline policies. Complete
 artifacts are immutable and resumable only with matching sources and inputs.
+
+For a regret-only report replay from the existing numerical artifacts:
+
+```python
+from experiments.envelopes.polynomial_reporting import update_regret_report
+update_regret_report("/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree4")
+```
+
+This updates only the regret PDF and summary tables. The original regret report
+is archived through `scratch/retired_experiments/synthetic_polynomial_regret_report_20261103.json`.
 
 Later stages can supply different explicit residuals and feature maps. Learned
 features will require a frozen representation trained separately from beta

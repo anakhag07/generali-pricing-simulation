@@ -2071,26 +2071,35 @@ R yields $Ew$, $E|h|$, $Er_l$, $Er_u$ and full width $E(r_l+r_u)$; numerical
 integration errors and a tighter replay are recorded. Display windows do not
 enter either moments or coverage.
 
-The objective for personalized Stein optimization is
+The minimized lower-band loss for personalized Stein optimization is
 
 $$
-J(\theta)=n^{-1}\sum_i[-\widehat f(x_i,\theta_i)+r_l(x_i,\theta_i)].
+J_{\mathrm{LCB}}(\theta)=n^{-1}\sum_i[-\widehat f(x_i,\theta_i)+r_l(x_i,\theta_i)].
 $$
 
 Its exact off-grid values are supplied to the existing u-space Stein solver;
 the policy Jacobian is the identity. The per-action step is obtained by
 multiplying the mean-gradient step size by n. Solver smoothing, starts,
 budget, termination and seeds are explicit in the manifest and saved traces.
-No grid selects an action. For any saved endpoint,
+No grid selects an action. Regret uses the true-objective value
 
 $$
-\mathcal{R}_k=(2n)^{-1}\sum_i(\widehat a_{i,k}-0.5)^2
+J(\theta)=n^{-1}\sum_i f(x_i,\theta_i).
+$$
+
+For any saved endpoint, compute the two objective values directly and subtract:
+
+$$
+\mathcal{R}_k=J(\theta^{\star})-J(\widehat\theta_k)
+=(2n)^{-1}\sum_i(\widehat a_{i,k}-0.5)^2
 =\frac{1}{2}D_k^2,\qquad
 D_k=\sqrt{n^{-1}\sum_i(\widehat a_{i,k}-0.5)^2}.
 $$
 
 A repository first-order solve supplies the truth reference and is checked
-against 0.5. Global-gap certification checks the actual unsmoothed LCB against
+against 0.5. Save both objective values alongside their difference. The
+quadratic action-error identity is an independent numerical check, not the
+reported calculation. Global-gap certification checks the actual unsmoothed LCB against
 the returned value plus a declared tolerance, without selecting another action.
 Since $L=\min(\widehat f,\widehat f+h-w)$, an upper-level violation requires
 $\widehat f-t>0$, $\widehat f+h-t>0$, and

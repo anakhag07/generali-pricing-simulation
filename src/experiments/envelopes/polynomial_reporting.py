@@ -62,13 +62,10 @@ def collect_polynomial(project):
             _verify(attempt['arrays'])
         with np.load(policy['arrays']['path'], allow_pickle=False) as saved:
             actions = saved['actions']
-        rms = float(np.sqrt(np.mean((actions-.5)**2)))
-        regret = .5*rms*rms
-        direct_regret = float(np.mean(truth(snapshot['X'], true_actions)-truth(snapshot['X'], actions)))
-        if not np.isclose(regret, direct_regret, atol=1e-12, rtol=1e-10):
-            raise ValueError('Regret formula disagrees with the saved repository truth reference.')
+        objective_metrics = _objective_regret(truth, snapshot['X'], true_actions, actions)
+        regret = objective_metrics['regret']
         row = {'degree': degree, 'feature_dimension': 4+degree, 'headline_repetition': 0,
-               **metrics, **widths, 'regret': regret, 'rms_action_error': rms,
+               **metrics, **widths, **objective_metrics,
                'mean_action': float(actions.mean()), 'min_action': float(actions.min()), 'max_action': float(actions.max()),
                'max_leverage': float(state[f'degree{degree}_leverage'].max()),
                'design_condition_number': float(state[f'degree{degree}_condition_number']),
@@ -109,6 +106,7 @@ def collect_polynomial(project):
                'coverage_claim': 'Empirical conditional coverage; nominal 95% is not a finite-sample guarantee.',
                'metrics_domain': 'All saved contexts uniformly; independent A~N(0.5,0.45), no truncation.',
                'width_definition': 'Full transferred width: mean(lower radius + upper radius), after per-context transfer.',
+               'regret_definition': 'J(theta_star)-J(theta_hat), where J is the empirical mean true objective over the saved contexts.',
                'numerics': 'Exact rational sign certificates for saved floating coefficients; not enclosures of fitting roundoff.'}
     write_json_atomic(project/'summary.json', summary)
     return summary
@@ -173,6 +171,18 @@ def render_polynomial_reports(p, rows, data, project):
     fig.savefig(paths[-1], format='pdf')
     plt.close(fig)
 
+    paths.append(_render_policy_regret(rows, project))
+    return paths
+
+
+def _render_policy_regret(rows, project):
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    plt.rcParams.update({'axes.titlesize': 14, 'axes.labelsize': 12, 'xtick.labelsize': 10,
+                         'ytick.labelsize': 10, 'legend.fontsize': 10, 'figure.titlesize': 16,
+                         'font.weight': 'normal', 'axes.titleweight': 'normal'})
+    degrees = np.array([row['degree'] for row in rows])
     fig, ax = plt.subplots(figsize=(10, 6), constrained_layout=True)
     bars = ax.bar(degrees, [row['regret'] for row in rows])
     ax.bar_label(bars, labels=[f'{row["regret"]:.5f}' for row in rows], padding=3, fontsize=10)
@@ -180,11 +190,59 @@ def render_polynomial_reports(p, rows, data, project):
     ax.set_xticks(degrees, [rf'$\phi_{r["degree"]}$'+f'\nRMS = {r["rms_action_error"]:.3f}' for r in rows])
     ax.set_xlabel('Residual feature basis (RMS action error from 0.5)')
     ax.set_ylabel('Mean true-function regret')
-    ax.set_title(r'Repository Stein policies: regret = $\frac{1}{2}$ (RMS action error)$^2$')
-    paths.append(project/'04_policy_regret.pdf')
-    fig.savefig(paths[-1], format='pdf')
+    ax.set_title(r'Regret: $J(\theta^\star)-J(\widehat{\theta})$, $\theta^\star=0.5$')
+    path = Path(project)/'04_policy_regret.pdf'
+    fig.savefig(path, format='pdf')
     plt.close(fig)
-    return paths
+    return path
+
+
+def _objective_regret(truth, contexts, true_actions, actions):
+    optimal = float(np.mean(truth(contexts, true_actions)))
+    converged = float(np.mean(truth(contexts, actions)))
+    regret = optimal-converged
+    rms = float(np.sqrt(np.mean((actions-.5)**2)))
+    if not np.isclose(regret, .5*rms*rms, atol=1e-12, rtol=1e-10):
+        raise ValueError('Direct objective regret disagrees with the quadratic identity.')
+    return {'objective_at_theta_star': optimal, 'objective_at_theta_hat': converged,
+            'regret': regret, 'rms_action_error': rms}
+
+
+def update_regret_report(project):
+    """Replay only direct true-objective regret, its PDF and table from saved policies."""
+    project = Path(project)
+    summary = read_json(project/'summary.json')
+    _verify(summary['table'])
+    _verify(summary['contract'])
+    for plot in summary['plots']:
+        _verify(plot)
+    contract = read_json(project/'contract.json')
+    if contract['sha256'] != summary['contract_sha256'] or contract['contract']['manifest'] != summary['config']:
+        raise ValueError('Report and numerical contract differ.')
+    _verify(contract['environment'])
+    _verify(summary['truth_reference']['arrays'])
+    with np.load(contract['environment']['path'], allow_pickle=False) as saved:
+        contexts = saved['X']
+    with np.load(summary['truth_reference']['arrays']['path'], allow_pickle=False) as saved:
+        true_actions = saved['actions']
+    truth, _ = _models(summary['config'])
+    for row, policy in zip(summary['metrics'], summary['policies']):
+        if row['degree'] != policy['degree'] or policy['contract_sha256'] != summary['contract_sha256']:
+            raise ValueError('Policy and summary provenance differ.')
+        _verify(policy['arrays'])
+        with np.load(policy['arrays']['path'], allow_pickle=False) as saved:
+            row.update(_objective_regret(truth, contexts, true_actions, saved['actions']))
+    with (project/'summary.csv').open('w', newline='') as stream:
+        writer = csv.DictWriter(stream, list(summary['metrics'][0]))
+        writer.writeheader()
+        writer.writerows(summary['metrics'])
+    path = _render_policy_regret(summary['metrics'], project)
+    summary['plots'] = [file_record(path) if Path(record['path']) == path else record for record in summary['plots']]
+    summary['table'] = file_record(project/'summary.csv')
+    summary['regret_definition'] = 'J(theta_star)-J(theta_hat), where J is the empirical mean true objective over the saved contexts.'
+    summary['regret_reporting_source'] = file_record(Path(__file__))
+    write_json_atomic(project/'summary.json', summary)
+    return summary
 
 
 def _verify(record):

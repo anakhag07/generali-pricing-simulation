@@ -17,6 +17,11 @@ and all 1,800 selected actions passed global-gap certificates at 1e-4. Numerical
 sources are pinned to f5b7781 and copied into the result folder; later MATH
 formatting is documentation-only. Pilot/demo archives are indexed by the two
 `scratch/retired_experiments/synthetic_polynomial_*_20261103.json` records.
+Regret is now evaluated directly as the mean true objective at the saved truth
+reference minus its value at the selected policy; the CSV saves both J values.
+`polynomial_reporting.update_regret_report` replays only that PDF/table, retaining
+the other three figures and all fitted/optimizer artifacts. Its initial report
+is indexed by `synthetic_polynomial_regret_report_20261103.json` in the same archive directory.
 
 The action-power continuation uses `scratch/generali_residual_wild_action_powers.json`
 through the same `--fit-wild-bases` entry point. It keeps contexts additive and

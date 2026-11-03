@@ -11,6 +11,12 @@ of the specified squared-exponential kernel, not the historical Fourier profile.
 All policy endpoints come from the repository optimizer. See MATH section 7.22
 and `docs/synthetic_polynomial_residual.md`. Complete contracts are immutable;
 collector replay verifies saved input/source hashes and never refits/optimizes.
+The initial quartic study completed 100/100 repetitions. Production uses the
+repository L-BFGS-B step rule with Stein smoothing 0.001; all 18 starts converged
+and all 1,800 selected actions passed global-gap certificates at 1e-4. Numerical
+sources are pinned to f5b7781 and copied into the result folder; later MATH
+formatting is documentation-only. Pilot/demo archives are indexed by the two
+`scratch/retired_experiments/synthetic_polynomial_*_20261103.json` records.
 
 The action-power continuation uses `scratch/generali_residual_wild_action_powers.json`
 through the same `--fit-wild-bases` entry point. It keeps contexts additive and

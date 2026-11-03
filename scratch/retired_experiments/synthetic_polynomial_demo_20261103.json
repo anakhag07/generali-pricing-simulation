@@ -1,0 +1,30 @@
+{
+  "source": "/tmp/generali-polynomial-demo",
+  "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-validation-demo-20261103",
+  "reason": "Successful main.py synthetic demo validation, separate from scientific deliverables. Default main.py is a full-data JAX/GPU Generali run; this exercised the same entry point with synthetic_quadratic_base.",
+  "command": "import main; main.RUN_CONFIGS=[(synthetic_quadratic_base, overrides)]; main.main([--launch, local])",
+  "overrides": {
+    "dimension": 4,
+    "n_samples": 10,
+    "t_steps": 100,
+    "enabled_estimators": [
+      "first_order",
+      "stein_difference"
+    ],
+    "sigma": 0.001,
+    "n_grad_samples": 32,
+    "plot": false,
+    "verbose": false,
+    "wandb_enabled": false
+  },
+  "files": [
+    {
+      "relative_path": "synthetic_quadratic_base__20261103_151506/plots/optimization/steps.csv",
+      "sha256": "c37e2e67da8dab70f2b68a48999533fb9d8b76b70dcbb7857a40c81346b2ad89"
+    },
+    {
+      "relative_path": "synthetic_quadratic_base__20261103_151506/summary.json",
+      "sha256": "5b3eef034783fff961cf2d79a6983f6bb4b43d3ab1a9b33448afd44850e25b08"
+    }
+  ]
+}

@@ -2015,12 +2015,20 @@ marginal support diagnostics, not conditional-overlap or coverage certificates.
 ### 7.22 Fixed polynomial residual and feature-degree comparison
 
 Use the contextual quadratic of section 7.18 and a fixed residual
-$$g_4(x,a)=0.2+0.1x_1+0.25a+0.15a^2-0.08a^3+0.04a^4,$$
+
+$$
+g_4(x,a)=0.2+0.1x_1+0.25a+0.15a^2-0.08a^3+0.04a^4,
+$$
+
 with $\widehat f=f-g_4$. Draw $n=300$ independent contexts from $N(0,I_3)$
 and actions from $N(0.5,0.45)$ (second parameter is variance). At these saved
 inputs draw $H\sim N(0,K)$, where
-$$K_{ij}=\exp(-\|x_i-x_j\|^2/2-(a_i-a_j)^2/(2\cdot0.45)).$$
-Freeze $\sigma_i=0.15+0.85\operatorname{expit}(2H_i)$ and the design;
+
+$$
+K_{ij}=\exp(-\|x_i-x_j\|^2/2-(a_i-a_j)^2/(2\cdot0.45)).
+$$
+
+Freeze $\sigma_i=0.15+0.85\mathrm{expit}(2H_i)$ and the design;
 each repetition has $Y_i=f(x_i,a_i)+\sigma_iZ_i$ with independent standard
 normal $Z_i$. This is an exact finite restriction of the specified GP, not a
 finite-Fourier replacement or an interpolated continuous realization.
@@ -2031,16 +2039,24 @@ Use $B=1999$, $\delta=0.05$, raw residuals, Rademacher multipliers, and
 the empirical order statistic $\lceil B(1-\delta)\rceil$.
 Write $h=\phi_k^T\widehat\beta$, $V=R^{-1}$ and
 $w=c\|V^T\phi_k\|_2$. Retain the asymmetric transfer
-$$r_l=[w-h]_+,\quad r_u=[w+h]_+,\quad
-L=\widehat f-r_l,\quad U=\widehat f+r_u.$$
+
+$$
+r_l=[w-h]_+,\quad r_u=[w+h]_+,\quad
+L=\widehat f-r_l,\quad U=\widehat f+r_u.
+$$
+
 Stored $V$ defines the replayed norm. Exact-rational coefficient containment
-uses $t=V^{-1}(\widehat\beta-\beta_0)$ and $t^Tt\le c^2$, avoiding an
+uses $t=V^{-1}(\widehat\beta-\beta_0)$ and $t^Tt\leq c^2$, avoiding an
 unjustified shortcut caused by numerical inverse/QR disagreement.
 
 For each context, let $q(a)=c^2\|V^T\phi_k(x_i,a)\|^2$ and $d=g_4-h$.
 Auxiliary coverage is polynomial nonnegativity of $q-d^2$ on R. Transferred
 coverage fails exactly if either strict polynomial system has a solution:
-$$g_4>0,\ d>0,\ d^2-q>0;\qquad -g_4>0,\ -d>0,\ d^2-q>0.$$
+
+$$
+g_4>0,\ d>0,\ d^2-q>0;\qquad -g_4>0,\ -d>0,\ d^2-q>0.
+$$
+
 Use exact real-root/sign certificates, including unbounded tails and equality
 cases. For $k<4$, quartic residual growth exceeds either radius and coverage
 fails deterministically. The coefficient event is sufficient, not necessary;
@@ -2056,15 +2072,23 @@ integration errors and a tighter replay are recorded. Display windows do not
 enter either moments or coverage.
 
 The objective for personalized Stein optimization is
-$$J(\theta)=n^{-1}\sum_i[-\widehat f(x_i,\theta_i)+r_l(x_i,\theta_i)].$$
+
+$$
+J(\theta)=n^{-1}\sum_i[-\widehat f(x_i,\theta_i)+r_l(x_i,\theta_i)].
+$$
+
 Its exact off-grid values are supplied to the existing u-space Stein solver;
 the policy Jacobian is the identity. The per-action step is obtained by
 multiplying the mean-gradient step size by n. Solver smoothing, starts,
 budget, termination and seeds are explicit in the manifest and saved traces.
 No grid selects an action. For any saved endpoint,
-$$\mathcal R_k=(2n)^{-1}\sum_i(\widehat a_{i,k}-0.5)^2
-=\tfrac12D_k^2,\qquad
-D_k=\sqrt{n^{-1}\sum_i(\widehat a_{i,k}-0.5)^2}.$$
+
+$$
+\mathcal{R}_k=(2n)^{-1}\sum_i(\widehat a_{i,k}-0.5)^2
+=\frac{1}{2}D_k^2,\qquad
+D_k=\sqrt{n^{-1}\sum_i(\widehat a_{i,k}-0.5)^2}.
+$$
+
 A repository first-order solve supplies the truth reference and is checked
 against 0.5. Global-gap certification checks the actual unsmoothed LCB against
 the returned value plus a declared tolerance, without selecting another action.

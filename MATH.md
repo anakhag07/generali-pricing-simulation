@@ -2152,8 +2152,8 @@ by $g_d$ throughout the fitting, coverage and evaluation formulas above.
 The same design, GP restriction, observation innovations, bootstrap multipliers
 and optimizer perturbation seeds are paired across residual degrees.
 No polynomial runtime or optimizer changes are needed. Each residual is in
-the feature span exactly when $k\ge d$. If $k<d$, its leading action power
-eventually outgrows both radii, giving zero all-real coverage. For $k\ge d$,
+the feature span exactly when $k\geq d$. If $k<d$, its leading action power
+eventually outgrows both radii, giving zero all-real coverage. For $k\geq d$,
 statistical coefficient error and finite bootstrap calibration remain; correct
 specification does not imply 100% empirical coverage.
 

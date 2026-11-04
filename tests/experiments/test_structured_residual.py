@@ -55,6 +55,28 @@ def test_longer_training_preserves_same_initialization_and_trajectory_prefix():
     assert first_info['parameters'] == second_info['parameters'] == 19
 
 
+def test_rank_deficient_band_preserves_prediction_scores_and_reports_unknown(tmp_path):
+    p = copy.deepcopy(load_manifest(ROOT/'manifests/synthetic-polynomial-residual-nonlinear-capacity.json').payload)
+    p['models'] = [p['models'][-1]]
+    snapshot = prepare_environment(p)
+    network = FrozenResidualMLP(np.zeros(1249), np.zeros(4), np.ones(4), 32)
+    response = np.arange(300, dtype=float)/300
+    state = {}
+    with patch('experiments.envelopes.structured_residual.fit_residual_mlp',
+               return_value=(network, network.state(), {'success':True, 'training_rmse':1.})):
+        events, diagnostics = fit_structured_models(p, 0, tmp_path, 'test', snapshot,
+            response, np.ones((3,300)), state)
+    name = p['models'][0]['name']
+    assert events[name]['transferred'] is None
+    assert events[name]['certificate'] == 'unavailable_rank_deficient'
+    assert diagnostics[name]['band_success'] is False
+    assert 'rank-deficient' in diagnostics[name]['band_failure']
+    assert diagnostics[name]['calibration_noisy_rmse'] == pytest.approx(np.sqrt(np.mean(response[150:]**2)))
+    np.testing.assert_array_equal(state[name+'_beta'], network.beta)
+    with pytest.raises(ValueError, match='No calibration band'):
+        restore_structured_band(p,snapshot,state,name)
+
+
 def test_interaction_embedding_recovery_and_moments():
     rng = np.random.default_rng(42)
     x, a = rng.normal(size=(100, 3)), rng.normal(.5, np.sqrt(.45), 100)

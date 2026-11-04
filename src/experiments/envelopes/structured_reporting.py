@@ -95,6 +95,7 @@ def collect_structured(project):
             row.update(parameters=fit.get('parameters', fit['head_dimension']),
                        hidden_width=spec.get('hidden_width'), max_steps=spec.get('max_steps'),
                        fit_steps=fit.get('steps'), fit_message=fit.get('message', 'OLS'),
+                       band_available_repetitions=sum(r['model_diagnostics'][name].get('band_success', True) for r in repetitions),
                        final_objective=fit.get('final_objective'),
                        final_gradient_norm=fit.get('final_gradient_norm'),
                        final_gradient_max_abs=fit.get('final_gradient_max_abs'))
@@ -110,19 +111,25 @@ def collect_structured(project):
                     coordinates[name+'_training_losses'] = z['losses']
         for event in ['coefficient', 'auxiliary', 'transferred']:
             values = [r['events'][name][event] for r in repetitions]
-            if any(v is None for v in values):
+            valid = [v for v in values if v is not None]
+            if not valid:
                 count, probability, lo, hi = None, None, None, None
             else:
-                count = sum(values)
-                probability = count/p['repetitions']
-                lo, hi = wilson_interval(count, p['repetitions'])
+                count = sum(valid)
+                probability = count/len(valid)
+                lo, hi = wilson_interval(count, len(valid))
             row.update({event+'_count': count, event+'_coverage': probability,
                         event+'_wilson_lower': lo, event+'_wilson_upper': hi})
+            if p['reporting'].get('fit_diagnostics'):
+                row.update({event+'_valid_repetitions': len(valid),
+                            event+'_unavailable_repetitions': len(values)-len(valid),
+                            event+'_full_run_lower': sum(valid)/len(values),
+                            event+'_full_run_upper': (sum(valid)+len(values)-len(valid))/len(values)})
         if p['target']['actions'] == 'finite_grid':
             row.update(coverage_action_points=p['target']['grid_points'],
                        coverage_action_min=float(coverage_grid(p)[0]), coverage_action_max=float(coverage_grid(p)[-1]),
                        refinement_action_points=p['target']['refinement_points'],
-                       refined_transferred_count=sum(r['events'][name]['refined_transferred'] for r in repetitions))
+                       refined_transferred_count=sum(r['events'][name]['refined_transferred'] is True for r in repetitions))
         rows.append(row)
         policies.append(policy)
         _, _, lower, upper = band.evaluate(grid[:, None])
@@ -130,7 +137,7 @@ def collect_structured(project):
         fitted, width, _, _ = slices.evaluate(grid[:, None])
         coordinates.update({name+'_slice_fit': fitted, name+'_slice_width': width,
                             name+'_mean_full_width': (lower+upper).mean(1), name+'_actions': actions})
-        print(f"{name}: R2={row['r_squared']:.5f}, coverage={row['transferred_count']}/{p['repetitions']}, "
+        print(f"{name}: R2={row['r_squared']:.5f}, coverage={row['transferred_count']}/{row.get('transferred_valid_repetitions', p['repetitions'])} available, "
               f"regret={row['regret']:.6f}, fit success={row['point_fit_success_repetitions']}/{p['repetitions']}", flush=True)
     with (project/'summary.csv').open('w', newline='') as stream:
         writer = csv.DictWriter(stream, list(rows[0]))
@@ -168,6 +175,9 @@ def collect_structured(project):
                'observations': file_record(project/'observation_data.csv')}
     if p['reporting'].get('fit_diagnostics'):
         summary['fitting_diagnostics'] = file_record(project/'fitting_diagnostics.csv')
+        summary['band_availability_semantics'] = ('Numerically rank-deficient calibration designs have no band. '
+            'Coverage divides by available bands and is conditional on availability; unavailable counts '
+            'and full-run lower/upper bounds are reported separately. Prediction scores include every fit.')
         summary['observed_pair_metrics'] = ('training/calibration_noisy_* use original noisy observed pairs; '
             'training/calibration_true_* use known noiseless residuals at those pairs. '
             'The unprefixed r_squared/rmse integrate over full Gaussian actions. '
@@ -227,18 +237,22 @@ def _render(p, rows, data, project, snapshot, state, X, truth, residual):
     ax.bar(positions, coverage)
     ax.errorbar(positions, coverage, yerr=np.stack((coverage-lo, hi-coverage)), fmt='none', color='black', capsize=4, label='95% Wilson interval')
     ax.axhline(1-p['bootstrap']['delta'], linestyle='--', label='Nominal 95%')
-    labels = [name+f'\n{row["transferred_count"]}/{p["repetitions"]}' for name, row in zip(names, rows)]
+    valid_counts = [r.get('transferred_valid_repetitions', p['repetitions']) for r in rows]
+    labels = [name+f'\n{row["transferred_count"]}/{valid}' for name, row, valid in zip(names, rows, valid_counts)]
     if p['target']['actions'] == 'finite_grid':
-        labels = [label+f'\nRefined: {r["refined_transferred_count"]}/{p["repetitions"]}' for label, r in zip(labels, rows)]
+        labels = [label+f'\nRefined: {r["refined_transferred_count"]}/{valid}' for label, r, valid in zip(labels, rows, valid_counts)]
         grid = coverage_grid(p)
         ax.set_title(f'Approximate grid coverage: {len(X)} contexts × {len(grid)} action points\n'
                      f'a in [{grid[0]:.2f}, {grid[-1]:.2f}]; refinement: {p["target"]["refinement_points"]} points')
     else:
         ax.set_title(f'Asymmetric envelope: {len(X)} contexts, all real actions')
+    if any(v != p['repetitions'] for v in valid_counts):
+        labels = [label+f'\nUnavailable: {p["repetitions"]-valid}' for label, valid in zip(labels, valid_counts)]
     ax.set_xticks(positions, labels)
     ax.set_ylim(0, 1.08)
-    ax.set_xlabel('Residual representation (covered repetitions / total)')
-    ax.set_ylabel('Simultaneous coverage probability')
+    ax.set_xlabel('Residual representation (covered / available repetitions)')
+    ax.set_ylabel('Simultaneous coverage conditional on band availability' if any(v != p['repetitions'] for v in valid_counts)
+                  else 'Simultaneous coverage probability')
     ax.legend()
     save(fig, '02_simultaneous_coverage.pdf')
     fig, ax = plt.subplots(figsize=comparison_size, constrained_layout=True)

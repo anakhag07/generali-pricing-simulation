@@ -2241,6 +2241,14 @@ A negative score means squared prediction error exceeds the constant-mean
 baseline under that score's evaluation measure. Calibration responses are
 diagnostics only for fitting: they never select an iterate or replace the head.
 
+In the capacity comparison, a numerically rank-deficient calibration design
+leaves the trained predictor unchanged but makes its bootstrap band unavailable.
+No pseudoinverse or ridge replaces the declared full-rank construction. Report
+prediction scores for every fit. If $V$ of $S$ repetitions have available bands
+and $C$ cover, report $C/V$ explicitly conditional on availability, together
+with the unavailable count $S-V$ and the full-run coverage range
+$[C/S,(C+S-V)/S]$ implied by treating unavailable outcomes as unknown.
+
 ## 8. Gradients and Estimators
 
 For a differentiable action objective and policy, the population chain rule is

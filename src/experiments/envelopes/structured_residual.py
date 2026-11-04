@@ -98,6 +98,8 @@ def restore_structured_band(p, snapshot, state, name, *, contexts=None):
     spec = next(m for m in p['models'] if m['name'] == name)
     X = snapshot['X'][evaluation_rows(p)] if contexts is None else np.asarray(contexts)
     saved = {k[len(name)+1:]: v for k, v in state.items() if k.startswith(name+'_')}
+    if 'inverse' not in saved:
+        raise ValueError('No calibration band: the saved feature design was numerically rank deficient.')
     if spec['kind'] == 'polynomial':
         return PolynomialFeatureBand(X, spec['degree'], saved['beta'], saved['inverse'],
                                      saved['critical'], spec['interaction_order'])
@@ -180,8 +182,16 @@ def fit_structured_models(p, index, project, digest, snapshot, responses, signs,
                 save_arrays_atomic(stem.with_suffix('.npz'), **network_state)
                 info = {**info, 'contract_sha256': digest, 'arrays': file_record(stem.with_suffix('.npz'))}
                 write_json_atomic(stem.with_suffix('.json'), info)
-            state = calibrate_frozen_head(network.features(X[calibration], a[calibration]), network.beta,
-                                          responses[calibration], signs[:, calibration], p['bootstrap']['delta'])
+            calibration_features = network.features(X[calibration], a[calibration])
+            try:
+                state = calibrate_frozen_head(calibration_features, network.beta,
+                                              responses[calibration], signs[:, calibration], p['bootstrap']['delta'])
+            except ValueError as error:
+                if not p['reporting'].get('fit_diagnostics') or not str(error).startswith('Numerically rank-deficient'):
+                    raise
+                state = {'beta': np.array(network.beta, copy=True),
+                         'calibration_errors': responses[calibration]-calibration_features@network.beta}
+                info['band_failure'] = str(error)
             state.update({key: value for key, value in network.state().items() if key != 'beta'})
             if not np.array_equal(state['beta'], network.beta):
                 raise AssertionError('The original training head must remain unchanged.')
@@ -193,9 +203,15 @@ def fit_structured_models(p, index, project, digest, snapshot, responses, signs,
                 info.update({f'{split}_{target}_{key}': value
                              for key, value in observed_pair_metrics(values[rows], predictions[rows]).items()})
         info.update(training_rows=len(training), calibration_rows=len(calibration),
-                    head_dimension=len(state['beta']), condition_number=float(state['condition_number']))
+                    head_dimension=len(state['beta']), band_success='inverse' in state,
+                    condition_number=float(state['condition_number']) if 'inverse' in state else None)
         diagnostics[name] = info
         arrays.update({name+'_'+key: value for key, value in state.items()})
+        if not info['band_success']:
+            events[name] = {'coefficient': None, 'auxiliary': None, 'transferred': None,
+                            'refined_transferred': None, 'refined_auxiliary': None,
+                            'certificate': 'unavailable_rank_deficient', 'contexts_checked': 0}
+            continue
         band = restore_structured_band(p, snapshot, arrays, name)
         if p['target']['actions'] == 'real_line':
             events[name] = coverage_events(band, residual)

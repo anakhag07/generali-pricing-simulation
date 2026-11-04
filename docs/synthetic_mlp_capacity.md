@@ -43,3 +43,11 @@ The new named comparison lives at shared
 `results/synthetic-polynomial-residual-nonlinear/capacity-comparison/`.
 The parent baseline and its pinned source worktree remain unchanged. Useful
 pilots are retained under shared `scratch-results/` with hash indexes.
+
+Long training can produce nearly redundant hidden features. A numerically
+rank-deficient head design is recorded as an unavailable bootstrap band; the
+trained prediction and all fit scores remain available. Do not add ridge or
+use a pseudoinverse. Coverage is reported conditional on an available band,
+with its valid denominator, unavailable count and full-run coverage bounds.
+Prediction-score averages include every repetition. An unavailable headline
+band still prevents a band-derived policy; it cannot be silently substituted.

@@ -255,6 +255,122 @@ def _verify(record):
         raise ValueError(f"Saved artifact checksum differs: {record['path']}")
 
 
+def write_metric_comparison(studies, output_dir):
+    """Replay saved R2, mean transferred radius and regret into one three-panel PDF per study.
+
+    Each study specifies project, name, title, and optionally models and selection_note.
+    """
+    import shutil
+    import matplotlib.pyplot as plt
+
+    output_dir = Path(output_dir).resolve()
+    source = Path(__file__).resolve()
+    snapshot = output_dir/'reporting-source'/source.name
+    if snapshot.exists() and snapshot.read_bytes() != source.read_bytes():
+        raise ValueError('Archive the previous metric comparison before changing its source.')
+    request = {'studies': studies, 'output_dir': str(output_dir)}
+    request_path = output_dir/'request.json'
+    if request_path.exists() and read_json(request_path) != request:
+        raise ValueError('Archive the previous metric comparison before changing its selection.')
+
+    points, inputs, groups = [], [], []
+    for study in studies:
+        project = Path(study['project']).resolve()
+        summary = read_json(project/'summary.json')
+        records = [file_record(project/'summary.json'), summary['contract'], summary['table']]
+        contract = read_json(summary['contract']['path'])
+        if contract['sha256'] != summary['contract_sha256']:
+            raise ValueError('Summary and fitted-state contracts differ.')
+        records.append(contract['environment'])
+        records.append(summary['truth_reference']['arrays'])
+        configs = {spec['name']: spec for spec in summary['config'].get('models', [])}
+        selected = study.get('models')
+        group = []
+        for row, policy in zip(summary['metrics'], summary['policies'], strict=True):
+            model = row.get('model', f"degree-{row.get('degree')}")
+            if selected is not None and model not in selected:
+                continue
+            policy_path = project/'policies'/f'{model}.json'
+            if read_json(policy_path) != policy or policy['contract_sha256'] != summary['contract_sha256']:
+                raise ValueError(f'Policy provenance differs for {model}.')
+            records.extend([file_record(policy_path), policy['arrays']])
+            records.extend(attempt['arrays'] for attempt in policy['attempts'])
+            spec = configs.get(model)
+            if spec is None:
+                label = rf'$\phi_{{{row["degree"]}}}$'
+            elif spec['kind'] == 'polynomial':
+                label = rf'$\phi_{{{spec["degree"]},{spec["interaction_order"]}}}$'
+            else:
+                label = f'MLP {spec["hidden_width"]}×{spec["hidden_width"]} ({spec["max_steps"]:,}-step limit)'
+            contexts = row.get('evaluation_contexts', row.get('contexts'))
+            if row['solver_success_contexts'] < contexts:
+                label += ' (policy not fully converged)'
+            radius = (row['mean_lower_radius']+row['mean_upper_radius'])/2
+            if not np.isclose(2*radius, row['mean_full_width'], rtol=1e-12, atol=1e-12):
+                raise ValueError('Asymmetric radii do not match the saved full width.')
+            point = {'study': study['name'], 'model': model, 'label': label,
+                     'headline_repetition': row.get('headline_repetition', 0),
+                     'r_squared': row['r_squared'], 'mean_radius': radius,
+                     'mean_lower_radius': row['mean_lower_radius'],
+                     'mean_upper_radius': row['mean_upper_radius'],
+                     'mean_full_width': row['mean_full_width'], 'regret': row['regret'],
+                     'evaluation_contexts': contexts,
+                     'solver_success_contexts': row['solver_success_contexts'],
+                     'source_project': str(project)}
+            group.append(point)
+        if not group or (selected is not None and set(selected) != {p['model'] for p in group}):
+            raise ValueError('Selected models are missing from the saved report.')
+        for record in records:
+            _verify(record)
+        inputs.extend(records)
+        points.extend(group)
+        groups.append((study, group))
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    paths = []
+    style = {'figure.titlesize': 16, 'axes.titlesize': 14, 'axes.labelsize': 12,
+             'xtick.labelsize': 10, 'ytick.labelsize': 10, 'legend.fontsize': 10}
+    radius_label = r'Mean transferred radius $E[(r_l+r_u)/2]$'
+    r2_label = r'True-residual $R^2$ (full Gaussian actions)'
+    regret_label = r'True regret $J(\theta^\star)-J(\widehat\theta)$'
+    panels = [('mean_radius', 'r_squared', radius_label, r2_label, r'$R^2$ vs. mean radius'),
+              ('mean_radius', 'regret', radius_label, regret_label, 'Regret vs. mean radius'),
+              ('r_squared', 'regret', r2_label, regret_label, r'Regret vs. $R^2$')]
+    with plt.rc_context(style):
+        for study, group in groups:
+            fig, axes = plt.subplots(1, 3, figsize=(16, 5.5), constrained_layout=True)
+            fig.suptitle(study['title']+' — fixed noise realization')
+            for ax, (x, y, xlabel, ylabel, title) in zip(axes, panels):
+                for point in group:
+                    ax.plot(point[x], point[y], marker='o', linestyle='none', label=point['label'])
+                ax.set(xlabel=xlabel, ylabel=ylabel, title=title)
+            handles, labels = axes[0].get_legend_handles_labels()
+            fig.legend(handles, labels, loc='outside lower center', ncols=len(group))
+            path = output_dir/f'{study["name"]}_r_squared_radius_regret.pdf'
+            fig.savefig(path, format='pdf')
+            plt.close(fig)
+            paths.append(path)
+
+    table = output_dir/'metric_comparison.csv'
+    with table.open('w', newline='') as stream:
+        writer = csv.DictWriter(stream, list(points[0]))
+        writer.writeheader()
+        writer.writerows(points)
+    snapshot.parent.mkdir(exist_ok=True)
+    shutil.copyfile(source, snapshot)
+    write_json_atomic(request_path, request)
+    report = {'request': file_record(request_path), 'inputs': inputs,
+              'reporting_source': file_record(source), 'reporting_source_snapshot': file_record(snapshot),
+              'plots': [file_record(path) for path in paths], 'table': file_record(table),
+              'metrics': points,
+              'radius_definition': 'Mean(lower asymmetric radius + upper asymmetric radius)/2; half transferred full width.',
+              'r_squared_definition': 'Known noiseless residual, uniform evaluation contexts and full Gaussian actions.',
+              'regret_definition': 'Saved direct true-objective difference at repository optimizer endpoints.',
+              'comparison_semantics': 'All coordinates use repetition 0; within-study comparisons, not matched sample sizes across studies.'}
+    write_json_atomic(output_dir/'provenance.json', report)
+    return report
+
+
 def write_observation_report(project):
     """Replay true/surrogate curves and context-aligned observations with saved noise scales."""
     from scipy.integrate import quad

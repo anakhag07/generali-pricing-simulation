@@ -2071,6 +2071,13 @@ R yields $Ew$, $E|h|$, $Er_l$, $Er_u$ and full width $E(r_l+r_u)$; numerical
 integration errors and a tighter replay are recorded. Display windows do not
 enter either moments or coverage.
 
+Pairwise summary plots use the mean transferred radius
+$\bar r=\tfrac12 E(r_l+r_u)$, the arithmetic mean of the two asymmetric
+radii. This is half the transferred full width, not the auxiliary residual
+half-width $Ew$. R2, radius and regret in each scatter point come from the
+same saved headline repetition; repeated-noise model-selection scores are
+not substituted for that point's R2.
+
 The minimized lower-band loss for personalized Stein optimization is
 
 $$

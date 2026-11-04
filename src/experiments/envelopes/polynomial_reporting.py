@@ -256,7 +256,7 @@ def _verify(record):
 
 
 def write_metric_comparison(studies, output_dir):
-    """Replay saved R2, mean transferred radius and regret into one three-panel PDF per study.
+    """Replay saved R2, mean transferred radius and regret as three aligned bar charts per study.
 
     Each study specifies project, name, title, and optionally models and selection_note.
     """
@@ -316,6 +316,10 @@ def write_metric_comparison(studies, output_dir):
                      'mean_full_width': row['mean_full_width'], 'regret': row['regret'],
                      'evaluation_contexts': contexts,
                      'solver_success_contexts': row['solver_success_contexts'],
+                     'coverage_count': row['transferred_count'],
+                     'coverage_repetitions': row['coverage_repetitions'],
+                     'coverage_probability': row['transferred_coverage'],
+                     'coverage_domain': summary['config']['target']['actions'],
                      'source_project': str(project)}
             group.append(point)
         if not group or (selected is not None and set(selected) != {p['model'] for p in group}):
@@ -333,20 +337,26 @@ def write_metric_comparison(studies, output_dir):
     radius_label = r'Mean transferred radius $E[(r_l+r_u)/2]$'
     r2_label = r'True-residual $R^2$ (full Gaussian actions)'
     regret_label = r'True regret $J(\theta^\star)-J(\widehat\theta)$'
-    panels = [('mean_radius', 'r_squared', radius_label, r2_label, r'$R^2$ vs. mean radius'),
-              ('mean_radius', 'regret', radius_label, regret_label, 'Regret vs. mean radius'),
-              ('r_squared', 'regret', r2_label, regret_label, r'Regret vs. $R^2$')]
+    panels = [('r_squared', r2_label, r'$R^2$ ↑', '.3f'),
+              ('mean_radius', radius_label, 'Mean radius ↓', '.3f'),
+              ('regret', regret_label, 'Regret ↓', '.4f')]
     with plt.rc_context(style):
         for study, group in groups:
-            fig, axes = plt.subplots(1, 3, figsize=(16, 5.5), constrained_layout=True)
+            fig, axes = plt.subplots(1, 3, figsize=(16, 5.5), sharey=True, constrained_layout=True)
             fig.suptitle(study['title']+' — fixed noise realization')
-            for ax, (x, y, xlabel, ylabel, title) in zip(axes, panels):
-                for point in group:
-                    ax.plot(point[x], point[y], marker='o', linestyle='none', label=point['label'])
-                ax.set(xlabel=xlabel, ylabel=ylabel, title=title)
-            handles, labels = axes[0].get_legend_handles_labels()
-            fig.legend(handles, labels, loc='outside lower center', ncols=len(group))
-            path = output_dir/f'{study["name"]}_r_squared_radius_regret.pdf'
+            positions = np.arange(len(group))
+            colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+            for ax, (metric, xlabel, title, fmt) in zip(axes, panels):
+                values = [point[metric] for point in group]
+                bars = ax.barh(positions, values, color=[colors[i % len(colors)] for i in positions])
+                ax.bar_label(bars, labels=[format(value, fmt) for value in values], padding=3, fontsize=10)
+                ax.set(xlabel=xlabel, title=title)
+                ax.margins(x=.2)
+            axes[0].set_yticks(positions, [f'{p["label"]} ({p["coverage_probability"]:.0%})' for p in group])
+            axes[0].invert_yaxis()
+            domain = 'finite-grid' if group[0]['coverage_domain'] == 'finite_grid' else 'all-real'
+            axes[0].set_ylabel(f'Representation ({domain} coverage; {group[0]["coverage_repetitions"]} repetitions)')
+            path = output_dir/f'{study["name"]}_r_squared_radius_regret_bars.pdf'
             fig.savefig(path, format='pdf')
             plt.close(fig)
             paths.append(path)
@@ -366,6 +376,7 @@ def write_metric_comparison(studies, output_dir):
               'radius_definition': 'Mean(lower asymmetric radius + upper asymmetric radius)/2; half transferred full width.',
               'r_squared_definition': 'Known noiseless residual, uniform evaluation contexts and full Gaussian actions.',
               'regret_definition': 'Saved direct true-objective difference at repository optimizer endpoints.',
+              'coverage_definition': 'Repeated-noise simultaneous transferred coverage, shown beside each model; finite-grid for nonlinear.',
               'comparison_semantics': 'All coordinates use repetition 0; within-study comparisons, not matched sample sizes across studies.'}
     write_json_atomic(output_dir/'provenance.json', report)
     return report

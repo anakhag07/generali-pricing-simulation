@@ -72,6 +72,9 @@ The interaction and nonlinear manifests extend the same pipeline. The nonlinear
 MLP trains on 150 rows, freezes its complete prediction, and uses the other 150
 only to bootstrap head perturbations; its coverage is labelled as a finite-grid
 approximation. See [the extension contract](docs/synthetic_residual_extensions.md).
+The [MLP capacity comparison](docs/synthetic_mlp_capacity.md) keeps this split
+and compares smaller networks with longer training, reporting observed-pair
+train/calibration scores separately from full-Gaussian true-residual scores.
 
 For joint increases in sample size and bootstrap count, use
 `manifests/uncertainty-envelopes-residual-paired-nb.json`. It reports only the

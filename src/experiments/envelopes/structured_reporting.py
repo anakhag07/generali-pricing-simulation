@@ -18,7 +18,7 @@ from .structured_residual import (evaluation_rows, restore_structured_band,
 
 
 def _label(spec):
-    return rf'$\phi_{{6,{spec["interaction_order"]}}}$' if spec['kind'] == 'polynomial' else 'MLP (frozen head)'
+    return spec.get('label') or (rf'$\phi_{{6,{spec["interaction_order"]}}}$' if spec['kind'] == 'polynomial' else 'MLP (frozen head)')
 
 
 def collect_structured(project):
@@ -91,6 +91,23 @@ def collect_structured(project):
                'global_gap_tolerance': policy['global_gap_tolerance'],
                'coverage_repetitions': p['repetitions'], 'coverage_domain': p['target']['actions'],
                'actions_outside_display_window': int(np.sum((actions < grid[0]) | (actions > grid[-1])))}
+        if p['reporting'].get('fit_diagnostics'):
+            row.update(parameters=fit.get('parameters', fit['head_dimension']),
+                       hidden_width=spec.get('hidden_width'), max_steps=spec.get('max_steps'),
+                       fit_steps=fit.get('steps'), fit_message=fit.get('message', 'OLS'),
+                       final_objective=fit.get('final_objective'),
+                       final_gradient_norm=fit.get('final_gradient_norm'),
+                       final_gradient_max_abs=fit.get('final_gradient_max_abs'))
+            for split in ['training', 'calibration']:
+                for target in ['noisy', 'true']:
+                    for metric in ['r_squared', 'rmse']:
+                        key = f'{split}_{target}_{metric}'
+                        values = np.array([r['model_diagnostics'][name][key] for r in repetitions], dtype=float)
+                        row.update({key: fit[key], key+'_mean': float(values.mean()),
+                                    key+'_std': float(values.std(ddof=1)) if len(values)>1 else 0.})
+            if spec['kind'] == 'mlp':
+                with np.load(fit['arrays']['path'], allow_pickle=False) as z:
+                    coordinates[name+'_training_losses'] = z['losses']
         for event in ['coefficient', 'auxiliary', 'transferred']:
             values = [r['events'][name][event] for r in repetitions]
             if any(v is None for v in values):
@@ -121,6 +138,17 @@ def collect_structured(project):
         writer.writerows(rows)
     save_arrays_atomic(project/'plot_data.npz', **coordinates)
     paths = _render(p, rows, coordinates, project, snapshot, state, X, truth, residual)
+    if p['reporting'].get('fit_diagnostics'):
+        diagnostic_rows = []
+        for repetition in repetitions:
+            for name, fit in repetition['model_diagnostics'].items():
+                diagnostic_rows.append({'repetition': repetition['index'], 'model': name,
+                    **{key:value for key,value in fit.items() if key != 'arrays'}})
+        fields = list(dict.fromkeys(key for row in diagnostic_rows for key in row))
+        with (project/'fitting_diagnostics.csv').open('w', newline='') as stream:
+            writer = csv.DictWriter(stream, fields)
+            writer.writeheader()
+            writer.writerows(diagnostic_rows)
     report_source.parent.mkdir(exist_ok=True)
     shutil.copyfile(__file__, report_source)
     summary = {'config': p, 'contract_sha256': digest, 'contract': file_record(project/'contract.json'),
@@ -138,6 +166,12 @@ def collect_structured(project):
                                          'OLS and raw-residual bootstrap use all 300 observations.'),
                'regret_definition': 'Direct empirical true J at saved repository truth actions minus J at repository Stein endpoints.',
                'observations': file_record(project/'observation_data.csv')}
+    if p['reporting'].get('fit_diagnostics'):
+        summary['fitting_diagnostics'] = file_record(project/'fitting_diagnostics.csv')
+        summary['observed_pair_metrics'] = ('training/calibration_noisy_* use original noisy observed pairs; '
+            'training/calibration_true_* use known noiseless residuals at those pairs. '
+            'The unprefixed r_squared/rmse integrate over full Gaussian actions. '
+            'Calibration rows are held out from fitting but reused for bands and model comparison.')
     write_json_atomic(project/'summary.json', summary)
     return summary
 
@@ -155,29 +189,39 @@ def _render(p, rows, data, project, snapshot, state, X, truth, residual):
         fig.savefig(path, format='pdf')
         plt.close(fig)
         paths.append(path)
-    fig, axes = plt.subplots(3, len(rows), figsize=(5*len(rows), 11), sharex=True, squeeze=False, constrained_layout=True)
-    fig.suptitle('True residual recovery at fixed calibration contexts\n'
-                 'Scores: all evaluation contexts and the full Gaussian action distribution')
-    for j, row in enumerate(rows):
-        name = row['model']
-        for i in range(3):
-            ax = axes[i, j]
-            fit = data[name+'_slice_fit'][:, i]
-            ax.plot(data['action'], data['slice_true'][:, i], label='True residual')
-            ax.plot(data['action'], fit, label='Fitted residual')
-            context = data['slice_contexts'][i]
-            title = names[j]+f'\nx1={context[0]:.2f}, x2={context[1]:.2f}'
-            if i == 0:
-                title += f'\nOverall R²={row["r_squared"]:.3f}, RMSE={row["rmse"]:.3f}'
-                if not row['point_fit_success']:
-                    title += '\nTraining solver did not converge'
-            ax.set_title(title)
-            ax.set_xlabel('Action a')
-            ax.set_ylabel('Residual at selected context')
-            ax.legend()
-    save(fig, '01_residual_recovery.pdf')
+    from matplotlib.backends.backend_pdf import PdfPages
+    recovery_path = project/'01_residual_recovery.pdf'
+    with PdfPages(recovery_path) as pdf:
+        for indices in np.array_split(np.arange(len(rows)), int(np.ceil(len(rows)/3))):
+            start = int(indices[0])
+            selected_rows = [rows[int(i)] for i in indices]
+            fig, axes = plt.subplots(3, len(selected_rows), figsize=(15 if len(rows)>3 else 5*len(rows), 11),
+                                     sharex=True, squeeze=False, constrained_layout=True)
+            fig.suptitle('True residual recovery at fixed calibration contexts\n'
+                         'Scores: all evaluation contexts and the full Gaussian action distribution')
+            for j, row in enumerate(selected_rows):
+                name = row['model']
+                for i in range(3):
+                    ax = axes[i, j]
+                    fit = data[name+'_slice_fit'][:, i]
+                    ax.plot(data['action'], data['slice_true'][:, i], label='True residual')
+                    ax.plot(data['action'], fit, label='Fitted residual')
+                    context = data['slice_contexts'][i]
+                    title = names[start+j]+f'\nx1={context[0]:.2f}, x2={context[1]:.2f}'
+                    if i == 0:
+                        title += f'\nOverall R²={row["r_squared"]:.3f}, RMSE={row["rmse"]:.3f}'
+                        if not row['point_fit_success']:
+                            title += '\nTraining solver did not converge'
+                    ax.set_title(title)
+                    ax.set_xlabel('Action a')
+                    ax.set_ylabel('Residual at selected context')
+                    ax.legend()
+            pdf.savefig(fig)
+            plt.close(fig)
+    paths.append(recovery_path)
     positions = np.arange(len(rows))
-    fig, ax = plt.subplots(figsize=(10, 6), constrained_layout=True)
+    comparison_size = (max(10, 2*len(rows)), 6)
+    fig, ax = plt.subplots(figsize=comparison_size, constrained_layout=True)
     coverage = np.array([r['transferred_coverage'] for r in rows])
     lo, hi = np.array([r['transferred_wilson_lower'] for r in rows]), np.array([r['transferred_wilson_upper'] for r in rows])
     ax.bar(positions, coverage)
@@ -197,7 +241,7 @@ def _render(p, rows, data, project, snapshot, state, X, truth, residual):
     ax.set_ylabel('Simultaneous coverage probability')
     ax.legend()
     save(fig, '02_simultaneous_coverage.pdf')
-    fig, ax = plt.subplots(figsize=(10, 6), constrained_layout=True)
+    fig, ax = plt.subplots(figsize=comparison_size, constrained_layout=True)
     for name, row in zip(names, rows):
         ax.plot(data['action'], data[row['model']+'_mean_full_width'], label=name+f': weighted mean={row["mean_full_width"]:.3f}')
     ax.set_xlabel('Action a')
@@ -205,7 +249,7 @@ def _render(p, rows, data, project, snapshot, state, X, truth, residual):
     ax.set_title('Asymmetric envelope width — fixed observation realization')
     ax.legend()
     save(fig, '03_average_envelope_width.pdf')
-    fig, ax = plt.subplots(figsize=(10, 6), constrained_layout=True)
+    fig, ax = plt.subplots(figsize=comparison_size, constrained_layout=True)
     bars = ax.bar(positions, [r['regret'] for r in rows])
     ax.bar_label(bars, labels=[f'{r["regret"]:.5f}' for r in rows], padding=3, fontsize=10)
     ax.set_ylim(0, 1.2*max(r['regret'] for r in rows) or .01)
@@ -235,4 +279,37 @@ def _render(p, rows, data, project, snapshot, state, X, truth, residual):
     colorbar.solids.set_rasterized(False)
     colorbar.set_label(r'Original noise SD $\sigma(x_i,a_i)$')
     save(fig, '05_truth_surrogate_and_observations.pdf')
+    if p['reporting'].get('fit_diagnostics'):
+        fig, axes = plt.subplots(2, 2, figsize=(18, 11), constrained_layout=True)
+        fig.suptitle('Fitting diagnostics — fixed observation realization')
+        for ax, metric, ylabel in [(axes[0, 0], 'r_squared', 'R² against noisy observed residuals'),
+                                   (axes[1, 0], 'rmse', 'RMSE against noisy observed residuals')]:
+            for offset, split, label in [(-.2, 'training', 'Training: 150 pairs'), (.2, 'calibration', 'Held-out calibration: 150 pairs')]:
+                ax.bar(positions+offset, [r[f'{split}_noisy_{metric}'] for r in rows], width=.4, label=label)
+            ax.set_xticks(positions, names)
+            ax.set_xlabel('Residual model and training budget')
+            ax.set_ylabel(ylabel)
+            ax.set_title('Observed-pair prediction quality')
+            ax.axhline(0, color='black', linewidth=.8)
+            ax.legend()
+        ax = axes[0, 1]
+        bars = ax.bar(positions, [r['r_squared'] for r in rows])
+        ax.bar_label(bars, labels=[f'{r["r_squared"]:.2f}' for r in rows], padding=3, fontsize=10)
+        ax.set_xticks(positions, names)
+        ax.set_xlabel('Residual model and training budget')
+        ax.set_ylabel('R² against the known noiseless residual')
+        ax.set_title('Full Gaussian action distribution, calibration contexts')
+        ax.axhline(0, color='black', linewidth=.8)
+        ax.margins(y=.15)
+        ax = axes[1, 1]
+        for name, spec in zip(names, p['models']):
+            if spec['kind'] == 'mlp':
+                losses = data[spec['name']+'_training_losses']
+                ax.plot(np.arange(1, len(losses)+1), losses, label=name)
+        ax.set_xscale('log')
+        ax.set_xlabel('Accepted training iterate + 1 (log scale)')
+        ax.set_ylabel('Half training MSE + L2 weight penalty')
+        ax.set_title('Repository training objective')
+        ax.legend()
+        save(fig, '06_fitting_diagnostics.pdf')
     return paths

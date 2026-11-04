@@ -75,14 +75,14 @@ def validate_structured(p):
                 raise ValueError('Require action degree six and interaction order 0, 1 or 2.')
             dimension = 10+3*model['interaction_order']
         elif model['kind'] == 'mlp':
-            if not nonlinear or model['hidden_width'] != 32:
-                raise ValueError('MLP requires the nonlinear split and two width-32 hidden layers.')
+            if not nonlinear or type(model['hidden_width']) is not int or model['hidden_width'] < 1:
+                raise ValueError('MLP requires the nonlinear split and two positive-width hidden layers.')
             if (type(model['max_steps']) is not int or model['max_steps'] < 1
                     or min(model['gradient_tolerance'], model['ftol'], model['weight_decay']) <= 0
                     or not np.isfinite([model['gradient_tolerance'], model['ftol'], model['weight_decay']]).all()
                     or type(p['seeds']['mlp']) is not int or p['seeds']['mlp'] < 0):
                 raise ValueError('Invalid declared MLP optimizer/regularization settings.')
-            dimension = 33
+            dimension = model['hidden_width']+1
         else:
             raise ValueError('Unknown residual model kind.')
         n_fit = p['n']//2 if nonlinear else p['n']
@@ -131,6 +131,18 @@ def coverage_grid(p, refined=False):
     return np.linspace(mean-span, mean+span, count)
 
 
+def observed_pair_metrics(targets, predictions):
+    """Return observed-pair RMSE and R² against that set's constant-mean baseline."""
+    targets, predictions = np.asarray(targets), np.asarray(predictions)
+    if targets.ndim != 1 or targets.shape != predictions.shape or not len(targets):
+        raise ValueError('Require matching nonempty target and prediction vectors.')
+    if not np.isfinite(targets).all() or not np.isfinite(predictions).all():
+        raise ValueError('Require finite target and prediction vectors.')
+    mse = float(np.mean((targets-predictions)**2))
+    variance = float(np.mean((targets-targets.mean())**2))
+    return {'rmse': float(np.sqrt(mse)), 'r_squared': 1-mse/variance if variance > 0 else None}
+
+
 def fit_structured_models(p, index, project, digest, snapshot, responses, signs, arrays):
     """Fit each requested model and save calibration errors, perturbations and coverage events."""
     X, a = snapshot['X'], snapshot['actions']
@@ -175,6 +187,11 @@ def fit_structured_models(p, index, project, digest, snapshot, responses, signs,
                 raise AssertionError('The original training head must remain unchanged.')
         if frozen:
             info['calibration_rmse'] = float(np.sqrt(np.mean(state['calibration_errors']**2)))
+        predictions = matrix@state['beta'] if spec['kind'] == 'polynomial' else network(X, a)
+        for split, rows in [('training', training), ('calibration', calibration)]:
+            for target, values in [('noisy', responses), ('true', residual(X, a))]:
+                info.update({f'{split}_{target}_{key}': value
+                             for key, value in observed_pair_metrics(values[rows], predictions[rows]).items()})
         info.update(training_rows=len(training), calibration_rows=len(calibration),
                     head_dimension=len(state['beta']), condition_number=float(state['condition_number']))
         diagnostics[name] = info

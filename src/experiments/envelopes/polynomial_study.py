@@ -139,6 +139,8 @@ def prepare(manifest, runs_root):
                  'repository_head': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()}
         write_json_atomic(path, saved)
         guide = 'synthetic_residual_extensions.md' if 'models' in p else 'synthetic_polynomial_residual.md'
+        if p.get('reporting', {}).get('fit_diagnostics'):
+            guide = 'synthetic_mlp_capacity.md'
         shutil.copyfile(root/'docs'/guide, project/'EXPERIMENT.md')
     designs = {} if 'models' in p else {k: WildFeatureDesign(polynomial_features(snapshot['X'], snapshot['actions'], k))
                                        for k in p['feature_degrees']}

@@ -2223,6 +2223,24 @@ over all real actions, with numerical refinement. Policy actions still come
 from the repository Stein solver; nonlinear global gaps are unassessed.
 Regret remains the direct true-objective difference from section 7.22.
 
+The capacity continuation permits a positive hidden width $h$, with
+$h^2+7h+1$ trained parameters and $h+1$ frozen head features. Calibration sample
+size must exceed the head dimension, and the feature design must have full rank.
+For any fixed observed-pair set $T$ with noisy residual targets $r_i$,
+
+$$
+\mathrm{MSE}_T=\frac{1}{|T|}\sum_{i\in T}(r_i-h_0(x_i,a_i))^2,\qquad
+R_T^2=1-\frac{\sum_{i\in T}(r_i-h_0(x_i,a_i))^2}
+{\sum_{i\in T}(r_i-\bar r_T)^2}.
+$$
+
+Report this separately for training and calibration rows. Replacing $r_i$ by
+the known $g(x_i,a_i)$ gives a distinct observed-pair noiseless score. These
+finite-pair scores do not replace the full-Gaussian $R^2$ of section 7.22.
+A negative score means squared prediction error exceeds the constant-mean
+baseline under that score's evaluation measure. Calibration responses are
+diagnostics only for fitting: they never select an iterate or replace the head.
+
 ## 8. Gradients and Estimators
 
 For a differentiable action objective and policy, the population chain rule is

@@ -1,5 +1,19 @@
 # Agent Instructions
 
+The nonlinear MLP capacity continuation lives in the dedicated worktree
+`feature-synthetic-mlp-capacity`; preserve the original extensions worktree.
+Use `manifests/synthetic-polynomial-residual-nonlinear-capacity.json` with
+the original nonlinear result folder as `--runs-root`, producing its named
+`capacity-comparison/` child. Widths 2/4/8/16/32 use 10000 steps; retain the
+width-32 1000-step control and both polynomial controls. Never choose an
+iterate or fit the original head on calibration responses. All configurations
+are reported; calibration rows are reused for comparison, not a fresh test set.
+`structured_residual.observed_pair_metrics` defines separate noisy/noiseless
+training/calibration R2/RMSE. The existing unprefixed R2 remains full-Gaussian.
+`structured_reporting` paginates recovery above three models and adds the
+optional fitting diagnostics PDF/CSV. `mlp_head` records final solver gradients
+and objective decrease. See MATH 7.23 and `docs/synthetic_mlp_capacity.md`.
+
 Interaction/nonlinear synthetic continuations remain in `polynomial_residual`
 mode, using the `models` list and `fit_protocol` in the matching manifests.
 `polynomial.py` now supports action-power interactions while preserving additive

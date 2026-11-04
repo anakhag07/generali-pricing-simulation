@@ -116,6 +116,12 @@ def fit_residual_mlp(contexts, actions, responses, settings, seed):
              'theta_trace': np.asarray(trace.theta_values)}
     info = {'success': bool(trace.optimizer_success), 'message': str(trace.optimizer_message),
             'steps': int(trace.steps[-1]), 'parameters': len(theta), 'initialization_seed': seed,
+            'initial_objective': float(trace.objective_values[0]),
+            'final_objective': float(trace.objective_values[-1]),
+            'final_gradient_norm': float(np.linalg.norm(objective.grad(theta, scaled))),
+            'final_gradient_max_abs': float(np.max(abs(objective.grad(theta, scaled)))),
+            'last_relative_objective_decrease': float((trace.objective_values[-2]-trace.objective_values[-1])
+                /max(1., abs(trace.objective_values[-2]), abs(trace.objective_values[-1]))) if len(trace.objective_values)>1 else None,
             'training_rmse': float(np.sqrt(np.mean((network(contexts, actions)-responses)**2))),
             'solver': 'optimization.solvers.run_first_order_minimize'}
     return network, state, info

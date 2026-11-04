@@ -15,11 +15,44 @@ from experiments.envelopes.polynomial import (AdditivePolynomial, polynomial_fea
 from experiments.envelopes.mlp_head import (FrozenResidualMLP, FrozenMLPBand, SiLUResidualLoss,
     fit_residual_mlp, calibrate_frozen_head)
 from experiments.envelopes.structured_residual import (explicit_model, grid_coverage, coverage_grid,
-    evaluation_rows, restore_structured_band, fit_structured_models, numerical_residual_metrics)
+    evaluation_rows, restore_structured_band, fit_structured_models, numerical_residual_metrics,
+    observed_pair_metrics, validate_structured)
 from experiments.envelopes.wild_study import load_manifest, build_launch_plan
 from experiments.envelopes.polynomial_study import prepare_environment
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def test_observed_pair_scores_keep_negative_values_and_constant_target_undefined():
+    score = observed_pair_metrics(np.array([0., 2.]), np.array([4., 4.]))
+    assert score['r_squared'] == -9.
+    assert score['rmse'] == pytest.approx(np.sqrt(10))
+    assert observed_pair_metrics(np.ones(3), np.zeros(3))['r_squared'] is None
+    with pytest.raises(ValueError):
+        observed_pair_metrics(np.ones(3), np.zeros(2))
+
+
+def test_capacity_manifest_validates_head_sample_size_and_preserves_split():
+    p = load_manifest(ROOT/'manifests/synthetic-polynomial-residual-nonlinear-capacity.json').payload
+    assert {m['hidden_width'] for m in p['models'] if m['kind']=='mlp'} == {2,4,8,16,32}
+    np.testing.assert_array_equal(evaluation_rows(p), np.arange(150,300))
+    p = copy.deepcopy(p)
+    p['models'][-1]['hidden_width'] = 149
+    with pytest.raises(ValueError, match='exceed head dimension'):
+        validate_structured(p)
+
+
+def test_longer_training_preserves_same_initialization_and_trajectory_prefix():
+    rng = np.random.default_rng(88)
+    x, a = rng.normal(size=(45,3)), rng.normal(size=45)
+    response = np.sin(a)+.5*rng.normal(size=45)
+    settings = {'hidden_width':2, 'weight_decay':.001, 'max_steps':20,
+                'gradient_tolerance':1e-12, 'ftol':1e-15}
+    _, first, first_info = fit_residual_mlp(x,a,response,settings,52)
+    _, second, second_info = fit_residual_mlp(x,a,response,{**settings,'max_steps':40},52)
+    np.testing.assert_array_equal(first['losses'], second['losses'][:len(first['losses'])])
+    assert second_info['final_objective'] <= first_info['final_objective']
+    assert first_info['parameters'] == second_info['parameters'] == 19
 
 
 def test_interaction_embedding_recovery_and_moments():

@@ -17,6 +17,19 @@ coverage is explicitly a 401-point grid with a 1601-point refinement. Keep
 nonlinear policy global gaps unknown; use repository solvers for all endpoints.
 Preserve previous polynomial worktrees and results. The extensions use a new
 dedicated worktree `feature-synthetic-residual-extensions`.
+Both extensions completed 100/100 repetitions with B=1999. Interaction coverage
+for q=0/1/2 is 0/50/100; nonlinear coverage for q=0/q=2/MLP is 2/98/98 on both
+the 401- and 1601-point grids. Every MLP training fit reached the 1000-step cap;
+the headline MLP R2 is -6.643 and mean full width is 10.539. Preserve these
+diagnostics rather than presenting high coverage as accurate residual learning.
+All 18 policy starts converged. Interaction global-gap certificates pass for
+297/267/272 of 300 selected actions; nonlinear global gaps remain unknown.
+The 136 distinct focused/neighboring tests, synthetic main.py demo, paired draws,
+unchanged original heads, ten vector PDFs and prior-artifact checks all passed.
+Runtime sources are pinned to e3db738; reports retain their own source snapshots.
+Pilot/demo provenance is indexed by
+`scratch/retired_experiments/synthetic_residual_extensions_validation_20261103.json`;
+the inherited-output index is `scratch/synthetic_residual_extensions_inheritance.json`.
 
 The full synthetic polynomial comparison adds degree-1, degree-2 and degree-6
 manifests beside the original degree-4 manifest. Run them through the same

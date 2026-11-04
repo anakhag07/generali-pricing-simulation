@@ -1,0 +1,589 @@
+{
+  "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation",
+  "reason": "Completed one-repetition end-to-end pilots and synthetic main.py validation, retained separately from the 100-repetition deliverables. Outputs were written directly to the archive; no historical contracts were rewritten.",
+  "source_worktree": "/home/anakhag/projects/generali-pricing/worktrees/feature-synthetic-residual-extensions",
+  "files": [
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/demo/synthetic_quadratic_base__20261103_192306/plots/optimization/steps.csv",
+      "sha256": "c37e2e67da8dab70f2b68a48999533fb9d8b76b70dcbb7857a40c81346b2ad89"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/demo/synthetic_quadratic_base__20261103_192306/summary.json",
+      "sha256": "70867cd973381b86d3194124a4bcff20aca7abfc5bdfd55dbfc59d419827f6e6"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/final-validation.py",
+      "sha256": "bc16404ed57a2726aa16f9511ba6471973c0e11046090e3c213ef65739a708e4"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/interactions-pilot.json",
+      "sha256": "10a85c078f016252c0134fb3679451aa1d127283f5d0695aee1aecdfa2449b3b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/nonlinear-pilot.json",
+      "sha256": "36810986456655e5ae7b78fc58a5a1cbb2b3f780e72e9ca6c5fbefd5ac27c3df"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/production-launch.py",
+      "sha256": "da4ed82d556fde8bf0279064585c0ff3c3863f6896250e5e66fa1ba49144fd83"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/01_residual_recovery.pdf",
+      "sha256": "6e6a5a93bb7a26d600947bb642b05cff73affe1b0b4d3b583aef78c77d520349"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/02_simultaneous_coverage.pdf",
+      "sha256": "d4032e9801cfe35c1b7327f6bcde92e470a6c539fe8a8275f608ffd7f36fa04b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/03_average_envelope_width.pdf",
+      "sha256": "4afd1d9ccbf5e5b618cd4b8258f3dcf6eb84491ce67a1f6088ca0cf2a9c9802c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/04_policy_regret.pdf",
+      "sha256": "b12bf328dd733f724a32f11165930af0026506f436eeaa6eb2b29689d6b6f932"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/05_truth_surrogate_and_observations.pdf",
+      "sha256": "61a638e1ad2d8560ab7237fd355cf295a2bf7692b0d9e292faa7fb760ab4e4c2"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/EXPERIMENT.md",
+      "sha256": "654a08057f0dec14af2da2fa0548a501e8d4f37b158fbf5beedb19d0d2aaa713"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/config.json",
+      "sha256": "b10b4fb5461484e101e4da42be90332050f73f44439e707a50e8ab91670b4457"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/contract.json",
+      "sha256": "5c5a853f4febbedd5fab0c5bbf089a64b049c77bdc93084d3ea4f2b73a91bd63"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/inputs.npz",
+      "sha256": "e708140b3a70889e18a621246e04f091b18d41809befd4901319025bd3b2f31c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/observation_data.csv",
+      "sha256": "203b8fa51c93fd871b85fdeaec8714001ea19c9f95de53ccf8a44ed077d02d38"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/plot_data.npz",
+      "sha256": "9385961a5b6447fa8b5fb30b712e0509421fdc090619316821dbaa74f42c8b4b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/policies/phi6-q0-start-0.json",
+      "sha256": "638ef6ad65f483f12edb334bc5390d11ba8263994db7cfc073a3fc2416f8cdfd"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/policies/phi6-q0-start-0.npz",
+      "sha256": "9ef007f65f1c59eeb736da26cff34728e7c6f7528b7bfd3eee33fdc880a0f283"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/policies/phi6-q0-start-1.json",
+      "sha256": "3c2c36c993bb1ee1fab319d79036c90573a7fc5d31cd473c87349cd4ad0969b3"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/policies/phi6-q0-start-1.npz",
+      "sha256": "26921a525715c0397cdaa1792080bbf3e3826f4813af77b4004defcb337554d1"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/policies/phi6-q0-start-2.json",
+      "sha256": "f124028b356c8d22954585ad6c31b33780255049f6469261c99ad7bf92b51b8d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/policies/phi6-q0-start-2.npz",
+      "sha256": "793c59a72c2b8b1922a81acea5cccafaf1f26ff262c166e388fc0b62b81860f3"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/policies/phi6-q0.json",
+      "sha256": "2732056fd97acd2e059487197d07705ae3596f076635cee7932128f5602f34ef"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/policies/phi6-q0.npz",
+      "sha256": "ca7d6964ebddabab59d07ec77025cdcd17181b99db62c480a132392a64dc6bac"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/policies/phi6-q1-start-0.json",
+      "sha256": "4f0dee9bbefa31d1aa9d4c631f8afa3e6fd750a4ed98355fcc95f537a279efcd"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/policies/phi6-q1-start-0.npz",
+      "sha256": "50f080a5163cc82da4129b216dbfebbdf95b02d3a133f275daf32f9ac3d0aa01"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/policies/phi6-q1-start-1.json",
+      "sha256": "d991165d31f4cf3cb3c7d7b7ab2db2fb6f07a7821edbf8b9b0f2ab74a30c291d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/policies/phi6-q1-start-1.npz",
+      "sha256": "bd64ad16bfd9a3e7f10e979daec9fdee82cb959df914877c995bb726d02b9df3"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/policies/phi6-q1-start-2.json",
+      "sha256": "43f5fa1766a12be62ccecbdd0a9fab89ba6df14e6aabb193363ced85e7141529"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/policies/phi6-q1-start-2.npz",
+      "sha256": "666eba771e09496fa0f54497ecf680b88369cc1292130db604cc293fcd3569c3"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/policies/phi6-q1.json",
+      "sha256": "6eeca63a449d45e7ee242bf085492728f81b94cc49dcd6158d30b1e73cd1ad8b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/policies/phi6-q1.npz",
+      "sha256": "39d0959e152660bc813c555f23381b34aba639384dffc7ea369c83606cb43ed5"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/policies/phi6-q2-start-0.json",
+      "sha256": "6e941a456dc79fd39e52baf7712a5f0dc7188f66a87ecd3ba416d893a4f38cdc"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/policies/phi6-q2-start-0.npz",
+      "sha256": "4f1e92487ba5548e456180a5d6c55ff8692242f81d5eb5618c8f3b4da5f555e1"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/policies/phi6-q2-start-1.json",
+      "sha256": "f8b05d98a2d79d50a3af261b71d7a1e0a9ed2fe45ab149c0676eb2eb4fd60897"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/policies/phi6-q2-start-1.npz",
+      "sha256": "846773aacdb3716507491b18bb28be93e382a6dc789f8b00a2e12be7330b5ecd"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/policies/phi6-q2-start-2.json",
+      "sha256": "1a71e0d13077f5104ea488c9149da293187e38807c97f048f64bd360aa0b4e5a"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/policies/phi6-q2-start-2.npz",
+      "sha256": "e8eaa56744a5e7722052a633bb52e01ef9ed41affdba11044fb5ca1f37988e13"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/policies/phi6-q2.json",
+      "sha256": "361deb31bdca1c72df91951ab4b8abda5cb09dece02161df300773f0c0e92895"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/policies/phi6-q2.npz",
+      "sha256": "217c547967baaf285617159b3b023ee17b2c1652fe1c060eff116fa5fdef9e13"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/policies/truth.json",
+      "sha256": "096851f73d002ee6e9fdc36c6a6a047d75e0582ed4b4feb46e6abc2d0700afd3"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/policies/truth.npz",
+      "sha256": "ff1ceff4d93a34039f26fe8a1eb90b824fe7dc58c156aba895344b6cf1fab5bf"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/repetitions/rep-000.json",
+      "sha256": "7a559dcb67d35d53da10da61428914c318ea218416d2d55fb6203705227dd78b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/repetitions/rep-000.npz",
+      "sha256": "585f500c3bdbb6de9ce91466f01eec846d6b2ea6f09703fb229a056c07a333d5"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/reporting_source_relocation.json",
+      "sha256": "60320ce9c1abb3de458dbfc728bfa2138d72d42f8bf7aa2272233c8f10f0049a"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/source/MATH.md",
+      "sha256": "8dc56347459d30fa63ee0a27b51634d032224429e51c4e29bd79d86e77b8f0b8"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/source/src/experiments/envelopes/feature_wild.py",
+      "sha256": "c6cfaf88eb83a1d46bded13ae349799558397ce060ffe993d45fdda215cb2c19"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/source/src/experiments/envelopes/mlp_head.py",
+      "sha256": "f50cfffe346f53b88f05ece91f7dadef30865ff0200c478f21dcc93b22bc64c1"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/source/src/experiments/envelopes/polynomial.py",
+      "sha256": "e01aee7e3fa841de1964bd7d477e39acf8e51291c87a0461b3e0cb3fe2192aa3"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/source/src/experiments/envelopes/polynomial_study.py",
+      "sha256": "1c5fd9a92773027b2d0e2556261aeab1d9ee95da6fbc7fca8ef1170c0a4bd9b5"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/source/src/experiments/envelopes/quadratic.py",
+      "sha256": "9857d9f33e2e65546dd5631ed9f99da10560b8a1790fdf24ec9a3c8352abe974"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/source/src/experiments/envelopes/structured_reporting.py",
+      "sha256": "944fbe85ca409fe12b535116d9afe619f6e1a7ca84e080fe364b0287e318214e"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/source/src/experiments/envelopes/structured_residual.py",
+      "sha256": "8db72c537b42c21ca4a76a8b8e6eb9153406850922c4556b1be00983e02d3d2a"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/source/src/experiments/envelopes/wild.py",
+      "sha256": "b2f4da709de0372e9d38709258fbd794d107d3ae89c4d965a5e692d7b06dc2f6"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/source/src/experiments/offline_bootstrap_math.py",
+      "sha256": "bed975dca6cf83b7d6031d8b0feec98408eb30beb62d20ce2627e6d9fc959115"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/source/src/experiments/provenance.py",
+      "sha256": "19fd43be9abf783b91a65ad8b9a56935956602fbf2036f0d94f7578cda6663df"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/source/src/experiments/seeds/streams.py",
+      "sha256": "04ca16b7fdc11a19a72f0221bb227fcbfbc70e247cbc9b0c9a6fcf386967c52b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/source/src/objective/base.py",
+      "sha256": "b1b64ab71ed33fd70618bf5f40218a5d2c48f6650f0821178177ca0028d3bb32"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/source/src/objective/utils.py",
+      "sha256": "f56a762711031674ea97ce8cecba3235aeee3d243ed92029720cc3f47b3b8515"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/source/src/optimization/__init__.py",
+      "sha256": "7c66568c620517d21f346eac3f767c09f6ec90835387dd12654ef5183a7f1bbe"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/source/src/optimization/base.py",
+      "sha256": "e86073c63f02f0b6c79a0938cbc6300b450474e35244aef7468a9bfe3479c6ec"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/source/src/optimization/gradients/__init__.py",
+      "sha256": "f28a9b4013921c2d41f10ea08e3df419f78f59f477a376c64fe2867527f47c3e"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/source/src/optimization/gradients/methods.py",
+      "sha256": "fdb0eb572f054de06ed7ee2742902b73412af0b5b09621201433cdc55370b6b5"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/source/src/optimization/helpers.py",
+      "sha256": "3a4bdcd027de35543124c0f3f2f5cde65b7f53cc62b26e473db78d879bfc58d7"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/source/src/optimization/optax_loop.py",
+      "sha256": "5c6cc5ce1fab38dddc5e097ffe9893d8b7494204303ca389da012545477ca215"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/source/src/optimization/solvers.py",
+      "sha256": "c75f377d747c8cd8e7053d393da9ecdc2d17961957a8639247b125c6ec574153"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/source/src/optimization/steps.py",
+      "sha256": "7e687ee5a5733842c6f28417eea892fec2a1938487e3c0819c4c4504ad3998a3"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/summary.csv",
+      "sha256": "84b7683538e0299bd2dcd8ce93dfdef6a779e07df50167b520f28173c45dd9f1"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-interactions/summary.json",
+      "sha256": "86f72969c106dfcea42c5f794ae37e1dca8099209d77dd7a3846926e7c9fb9fb"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/01_residual_recovery.pdf",
+      "sha256": "6172091b0ed8ff30319f2820023f01c511cb9473c664aed5d631af3cc03dc96f"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/02_simultaneous_coverage.pdf",
+      "sha256": "34d816177fbb0f2922a554014736c5782e7b28afc01b86172950bcd4ded7d180"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/03_average_envelope_width.pdf",
+      "sha256": "817e9a06fc1ebc6cf91bf01a289834049aaa5a80aedab8e8b0c743aaec34fbc9"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/04_policy_regret.pdf",
+      "sha256": "11bc384aeaf7da63dcc27696e64ab87f1b2c48b7911e34f0340581167894d8bc"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/05_truth_surrogate_and_observations.pdf",
+      "sha256": "2e624ebcc8b999b5a6e94a45996cd0824b24e766fb94ecb555ef008e18115388"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/EXPERIMENT.md",
+      "sha256": "654a08057f0dec14af2da2fa0548a501e8d4f37b158fbf5beedb19d0d2aaa713"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/config.json",
+      "sha256": "c51b90d26bed034937bad6b20db2e6d150f9a20cd7ff866b21a46b7115e23046"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/contract.json",
+      "sha256": "581f556f82b70ea74967270d7133d2ed5ff2f59c4040f59415fe7b661eb6c6a8"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/fits/rep-000-mlp-frozen-head.json",
+      "sha256": "58028a45fa6cda3beb3d724cc2582d3770baa3b26a8151ffb7a15cf91f5a3591"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/fits/rep-000-mlp-frozen-head.npz",
+      "sha256": "92783415137893a4a556442e6bdcbad9878d75c6a596fed27d65f885d809c97b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/inputs.npz",
+      "sha256": "e708140b3a70889e18a621246e04f091b18d41809befd4901319025bd3b2f31c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/observation_data.csv",
+      "sha256": "922daa533039e17cee6a53078acc9b8b6791edda4f3e23452527877b479422d9"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/plot_data.npz",
+      "sha256": "a32b29263295dce605ea8b2e6402fbefebb9b1b6d79bd6944ae1b50784cf3014"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/policies/mlp-frozen-head-start-0.json",
+      "sha256": "659de2ae4d98d618fb8612c66f080e969a7a9301609c6289229e5fac07f5b3e3"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/policies/mlp-frozen-head-start-0.npz",
+      "sha256": "d476e90f0b29e4580dee251f825557d6afa4873a35edfaab3528a1632d5bbeaf"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/policies/mlp-frozen-head-start-1.json",
+      "sha256": "bd313c88ac775a900a5dd6576d5059763be8445bf39350972b7d8a63e28cc6eb"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/policies/mlp-frozen-head-start-1.npz",
+      "sha256": "0dc3f1b04ac640a8aa6bd532ed750da03b25257d8971e121654fe79b80658114"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/policies/mlp-frozen-head-start-2.json",
+      "sha256": "eace635c6038f358fd772e9f8240f2ff16a5b11381282603bb793c1021a13b25"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/policies/mlp-frozen-head-start-2.npz",
+      "sha256": "bb4426ed26e0e580f67e0f3b9688eb1d3e8b0768c63e461e8a5b96ab21a59b63"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/policies/mlp-frozen-head.json",
+      "sha256": "903ff0bd2a6d22eb7a858261724e3033b3dcca770ff0024c8d4ad8639d64c1e8"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/policies/mlp-frozen-head.npz",
+      "sha256": "6275d444d1337314b384a9e33d203c48df63578c56d3d2e28df20b3ef8eaffe3"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/policies/phi6-q0-start-0.json",
+      "sha256": "c6ce956bbf66bbd00bc78d1b8ee934f93746fa53f435e31fae7dc13a10a3f382"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/policies/phi6-q0-start-0.npz",
+      "sha256": "452cfcdd6364c6bf2b931df29114e786cc110ad2fb97a0d28d2ae9974f82b94c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/policies/phi6-q0-start-1.json",
+      "sha256": "d30dfe993550ef966055c0e5bb0053047b6f162a66d92fd915d47e3338fbdf84"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/policies/phi6-q0-start-1.npz",
+      "sha256": "ca00ab769abe8f328a74b25f49309ef638f5971f746073b396f936652462302c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/policies/phi6-q0-start-2.json",
+      "sha256": "c02e14289872d38b9cda6d16e498cb8c3d37da5e0f61014d653152913e8908a5"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/policies/phi6-q0-start-2.npz",
+      "sha256": "10ba200c43d882314c8a23f8898593601237ea28d1b1c926a7860a83b0908ef0"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/policies/phi6-q0.json",
+      "sha256": "0b2bbc4a313d63cd8b494f3cbecf4485da9081df67f3bac3b0f471e55c5c3a1a"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/policies/phi6-q0.npz",
+      "sha256": "c90d9a39f978ba3c2b5a8a3ff126f59457055f059853bb0ec258c86643ebd3c9"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/policies/phi6-q2-start-0.json",
+      "sha256": "e706d58bec8e0b5aa2234e645cbb172e7e69610bd5a17f1522e5d34b555d4a7f"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/policies/phi6-q2-start-0.npz",
+      "sha256": "63c26fb4a8bf550ebdde57182f8a400b1e12c33e76eac3ce7afe10e3290c8829"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/policies/phi6-q2-start-1.json",
+      "sha256": "0c142b6b2d440b47911325ff04d7bce3ae6c56c21291c724c96b1cb02cf5e4e3"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/policies/phi6-q2-start-1.npz",
+      "sha256": "308f0fdc48fa1a7921ff06c7150236c7083cb46cca9934724df8561fb9fecbfe"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/policies/phi6-q2-start-2.json",
+      "sha256": "6d71fd842f03865c259352319470f18f009b7115981788036b00c40ea3a2262b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/policies/phi6-q2-start-2.npz",
+      "sha256": "119a346efd0d05f1f59e20ffeb6c0c6ee55dca7a3b83068470fdbcda3fb54de6"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/policies/phi6-q2.json",
+      "sha256": "fde2607941837306198e87261e7aa532ee935879fa6c878cfa13dbf85628e4ef"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/policies/phi6-q2.npz",
+      "sha256": "e3ffb7ccd72490c8241e3d6eaf2af3356c818f695ef36a1ebba041b822280630"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/policies/truth.json",
+      "sha256": "734b9a39cc4e261f91affa9e13d9ce684c5e247bd101040ca2f78bbd852c8f6b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/policies/truth.npz",
+      "sha256": "598390adca2aa016cfcd8cb4b8e1c6808ea505a6900dc1984ee5c1eee29b1594"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/repetitions/rep-000.json",
+      "sha256": "479eb5afdb45d4ec717238d34b216906c4c6cc97de29dbcde1b7de52b3836c83"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/repetitions/rep-000.npz",
+      "sha256": "10d0df2d31a6e607e2888b32df082e0eb2e77a48436fa1fd3ddb02c8b6908e80"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/reporting_source_relocation.json",
+      "sha256": "399ff32bbf926e407d1bc23d185d1a3ea279d9c65f0f3c9c4efae8edae9e9fc0"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/source/MATH.md",
+      "sha256": "8dc56347459d30fa63ee0a27b51634d032224429e51c4e29bd79d86e77b8f0b8"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/source/src/experiments/envelopes/feature_wild.py",
+      "sha256": "c6cfaf88eb83a1d46bded13ae349799558397ce060ffe993d45fdda215cb2c19"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/source/src/experiments/envelopes/mlp_head.py",
+      "sha256": "f50cfffe346f53b88f05ece91f7dadef30865ff0200c478f21dcc93b22bc64c1"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/source/src/experiments/envelopes/polynomial.py",
+      "sha256": "e01aee7e3fa841de1964bd7d477e39acf8e51291c87a0461b3e0cb3fe2192aa3"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/source/src/experiments/envelopes/polynomial_study.py",
+      "sha256": "1c5fd9a92773027b2d0e2556261aeab1d9ee95da6fbc7fca8ef1170c0a4bd9b5"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/source/src/experiments/envelopes/quadratic.py",
+      "sha256": "9857d9f33e2e65546dd5631ed9f99da10560b8a1790fdf24ec9a3c8352abe974"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/source/src/experiments/envelopes/structured_reporting.py",
+      "sha256": "a241eafaa27cadbb8c1e60fd8a5b63075f5d9aa1a178393a63a5b6beaadd9e2e"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/source/src/experiments/envelopes/structured_residual.py",
+      "sha256": "8db72c537b42c21ca4a76a8b8e6eb9153406850922c4556b1be00983e02d3d2a"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/source/src/experiments/envelopes/wild.py",
+      "sha256": "b2f4da709de0372e9d38709258fbd794d107d3ae89c4d965a5e692d7b06dc2f6"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/source/src/experiments/offline_bootstrap_math.py",
+      "sha256": "bed975dca6cf83b7d6031d8b0feec98408eb30beb62d20ce2627e6d9fc959115"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/source/src/experiments/provenance.py",
+      "sha256": "19fd43be9abf783b91a65ad8b9a56935956602fbf2036f0d94f7578cda6663df"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/source/src/experiments/seeds/streams.py",
+      "sha256": "04ca16b7fdc11a19a72f0221bb227fcbfbc70e247cbc9b0c9a6fcf386967c52b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/source/src/objective/base.py",
+      "sha256": "b1b64ab71ed33fd70618bf5f40218a5d2c48f6650f0821178177ca0028d3bb32"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/source/src/objective/utils.py",
+      "sha256": "f56a762711031674ea97ce8cecba3235aeee3d243ed92029720cc3f47b3b8515"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/source/src/optimization/__init__.py",
+      "sha256": "7c66568c620517d21f346eac3f767c09f6ec90835387dd12654ef5183a7f1bbe"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/source/src/optimization/base.py",
+      "sha256": "e86073c63f02f0b6c79a0938cbc6300b450474e35244aef7468a9bfe3479c6ec"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/source/src/optimization/gradients/__init__.py",
+      "sha256": "f28a9b4013921c2d41f10ea08e3df419f78f59f477a376c64fe2867527f47c3e"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/source/src/optimization/gradients/methods.py",
+      "sha256": "fdb0eb572f054de06ed7ee2742902b73412af0b5b09621201433cdc55370b6b5"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/source/src/optimization/helpers.py",
+      "sha256": "3a4bdcd027de35543124c0f3f2f5cde65b7f53cc62b26e473db78d879bfc58d7"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/source/src/optimization/optax_loop.py",
+      "sha256": "5c6cc5ce1fab38dddc5e097ffe9893d8b7494204303ca389da012545477ca215"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/source/src/optimization/solvers.py",
+      "sha256": "c75f377d747c8cd8e7053d393da9ecdc2d17961957a8639247b125c6ec574153"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/source/src/optimization/steps.py",
+      "sha256": "7e687ee5a5733842c6f28417eea892fec2a1938487e3c0819c4c4504ad3998a3"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/summary.csv",
+      "sha256": "aef0818f02da5fe167039a97f57075488ffb0c7d8ee73323c392dfc80891224d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/synthetic-polynomial-residual-nonlinear/summary.json",
+      "sha256": "4d57551fe81b56e4c16ea8fa6f45be9a33603c8d1bc673b1637bd79aa67d86c0"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/validation-logs/generali-extensions-demo.log",
+      "sha256": "e782eea729d9637e39bd958810290fc24c8c87abd5b0a1412c3d8adaf21aaa68"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/validation-logs/generali-extensions-final-validation.log",
+      "sha256": "52f5a2b5ea3190b6ee292e9ec001a32974821fe5ff3d4c0eeff20244afd999bf"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/validation-logs/generali-extensions-integration-tests.log",
+      "sha256": "5d5264855574c6215ce7e2ba814979ff43e0567f8e56f0db4a79bf946872fbcf"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/validation-logs/generali-extensions-pdoc.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/validation-logs/generali-extensions-production.log",
+      "sha256": "6d9582a73fa1f2a333a2b8e6fd2cf40208d59eb20656fa4f19f78d3e726ff4d2"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/validation-logs/generali-extensions-tests.log",
+      "sha256": "2cb0cac27d3e470a0f534ac745af055705ba0dbcd1cafd3c6c53dfe3f3887773"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/validation-logs/generali-interactions-pilot.log",
+      "sha256": "6689e9bb810b2ff76fb74e4db6760b64821accd5cb824fac75b7710ca58873bc"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-extensions-validation/validation-logs/generali-nonlinear-pilot.log",
+      "sha256": "578e32a564facd5231440f96f6499074645d212fe9b2928c0c0c890713b0c035"
+    }
+  ],
+  "production_roots": [
+    "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-interactions",
+    "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear"
+  ],
+  "completed_tasks": 200,
+  "empty_attempt_directories_removed": []
+}

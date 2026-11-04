@@ -10,8 +10,8 @@
 - [x] Retain whole-line interaction coverage and label nonlinear finite-grid coverage.
 - [x] Use repository solvers for MLP fitting and every reported policy endpoint.
 - [x] Validate independent bootstrap refits, gradients, leakage, replay and domain labels.
-- [ ] Produce the five established PDF reports, including context slices and a single-panel figure 05.
-- [ ] Preserve historical experiments and archive useful pilot diagnostics with checksums.
+- [x] Produce the five established PDF reports, including context slices and a single-panel figure 05.
+- [x] Preserve historical experiments and archive useful pilot diagnostics with checksums.
 
 ## Resolved contract
 
@@ -103,8 +103,23 @@ and residual RMSE compare predictions against the known noiseless function over
 the full Gaussian action distribution. Calibration observations also determine
 the bands, so their fit score is not an independent final test score.
 
+Both production studies completed 100/100 repetitions. Interaction coverage
+for q=0,1,2 is 0/100, 50/100 and 100/100. Nonlinear coverage for q=0, q=2 and
+MLP is 2/100, 98/100 and 98/100, unchanged on the refined grid. The MLP reaches
+the training iteration cap in every repetition; the headline run has R²=-6.643,
+training/calibration noisy-target RMSE 0.160/1.355 and mean full width 10.539.
+These are the declared first-version settings, retained without tuning after
+observing the results. All five PDFs per study were opened, checked for vector
+content and visually inspected. Each production folder includes `validation.json`.
+
 Policy solver convergence and a polynomial global-gap certificate are distinct
 diagnostics. The interaction collector reports how many returned actions pass
 the 1e-4 gap certificate; it does not silently replace uncertified endpoints.
 Nonlinear global gaps remain unknown. High simultaneous coverage can reflect
 wide bands, even for a misspecified or poorly generalizing model.
+
+## Validation and retained diagnostics
+
+The focused mathematical, split/replay, manifest and launcher suites pass 136 distinct tests. A small `main.py` synthetic quadratic demo also passes; the default real-data GPU experiment was not launched. Public API pages were rebuilt with pdoc and their local links checked.
+
+The one-repetition pilots and demo artifacts are retained in shared `scratch-results/synthetic-residual-extensions-validation/`, indexed with SHA-256 checksums by `scratch/retired_experiments/synthetic_residual_extensions_validation_20261103.json`. The original polynomial results are protected by `scratch/synthetic_residual_extensions_inheritance.json` (1,896 artifacts). The production nonlinear folder also records exact split, original-head and paired-draw checks in `split_and_pairing_validation.json`.

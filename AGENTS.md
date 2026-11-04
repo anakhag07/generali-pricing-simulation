@@ -1,5 +1,12 @@
 # Agent Instructions
 
+Preserve `feature-synthetic-mlp-capacity` as the numerical source for its
+completed capacity comparison (runtime commit 1d65f7f). Active follow-up code
+continues in `feature-synthetic-mlp-capacity-replay`. A console-only correction
+prints unavailable coverage events safely; the original runner saved complete
+repetition artifacts before its logging error, so cached task replay completes
+without refitting. Historical contracts and saved source snapshots stay intact.
+
 The nonlinear MLP capacity continuation lives in the dedicated worktree
 `feature-synthetic-mlp-capacity`; preserve the original extensions worktree.
 Use `manifests/synthetic-polynomial-residual-nonlinear-capacity.json` with

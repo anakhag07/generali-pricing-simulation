@@ -18,7 +18,7 @@ from experiments.envelopes.structured_residual import (explicit_model, grid_cove
     evaluation_rows, restore_structured_band, fit_structured_models, numerical_residual_metrics,
     observed_pair_metrics, validate_structured)
 from experiments.envelopes.wild_study import load_manifest, build_launch_plan
-from experiments.envelopes.polynomial_study import prepare_environment
+from experiments.envelopes.polynomial_study import prepare_environment, run_repetition
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -75,6 +75,17 @@ def test_rank_deficient_band_preserves_prediction_scores_and_reports_unknown(tmp
     np.testing.assert_array_equal(state[name+'_beta'], network.beta)
     with pytest.raises(ValueError, match='No calibration band'):
         restore_structured_band(p,snapshot,state,name)
+
+
+def test_repetition_records_unavailable_band_without_console_failure(tmp_path, capsys):
+    p = load_manifest(ROOT/'manifests/synthetic-polynomial-residual-nonlinear-capacity.json').payload
+    snapshot = prepare_environment(p)
+    with patch('experiments.envelopes.structured_residual.fit_structured_models',
+               return_value=({'model':{'transferred':None}}, {})):
+        record = run_repetition(p,0,tmp_path,'test',snapshot,{})
+    assert record['events']['model']['transferred'] is None
+    assert 'unavailable' in capsys.readouterr().out
+    assert (tmp_path/'repetitions/rep-000.json').exists()
 
 
 def test_interaction_embedding_recovery_and_moments():

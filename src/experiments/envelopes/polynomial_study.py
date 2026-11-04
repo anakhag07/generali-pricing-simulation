@@ -182,7 +182,7 @@ def run_repetition(p, index, project, digest, snapshot, designs):
         record['model_diagnostics'] = diagnostics
     write_json_atomic(stem.with_suffix('.json'), record)
     print(f"Repetition {index+1}/{p['repetitions']}: transferred "
-          f"{[int(event['transferred']) for event in events.values()]}", flush=True)
+          f"{[int(event['transferred']) if event['transferred'] is not None else 'unavailable' for event in events.values()]}", flush=True)
     return record
 
 

@@ -4,7 +4,11 @@ Saved metric comparisons for quartic, interaction and nonlinear residuals live
 in shared `synthetic-polynomial-residual-degree4/metric-comparison/`. The existing
 `polynomial_reporting.write_metric_comparison` reads verified summaries and
 repository policy artifacts without fitting, integration or optimization.
-Each PDF has R2/radius, radius/regret and R2/regret panels. Mean radius is half
+Each PDF has aligned horizontal R2/radius/regret bars, with the same model rows,
+exact value labels, desired-direction arrows and coverage beside model names.
+The original scatter PDFs/source/provenance are archived via
+`scratch/retired_experiments/synthetic_residual_metric_scatter_20261103.json`.
+Mean radius is half
 the transferred asymmetric full width, not the auxiliary half-width. Keep all
 coordinates on headline repetition 0. Nonlinear selects only width 2 (the best
 mean held-out noisy R2 over 100 repetitions) beside both polynomial controls;

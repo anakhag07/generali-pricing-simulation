@@ -236,3 +236,48 @@ and visual/vector checks of all 15 new PDFs. Each result folder's `validation.js
 records these checks. Preparation-only contracts preceding a documentation
 rendering correction are archived via
 `scratch/retired_experiments/synthetic_polynomial_sweep_preflight_20261103.json`.
+
+## Metric comparison plots
+
+The shared `synthetic-polynomial-residual-degree4/metric-comparison/` folder
+contains one three-panel vector PDF each for degree 4, interactions and the
+nonlinear residual: R² versus mean radius, regret versus mean radius, and regret
+versus R². `metric_comparison.csv` contains all 12 plotted points. The same model
+colors are used across the three panels of each figure.
+
+All three coordinates use the saved first noise realization. R² is measured
+against the known noiseless residual over the full Gaussian action distribution.
+Mean radius is `(mean_lower_radius + mean_upper_radius)/2`, half the transferred
+envelope's full width; the two asymmetric radii remain separate columns in the
+CSV. Regret is the existing direct true-objective difference at saved repository
+optimizer actions. There is no refitting, resampling, integration or optimization.
+The quartic/interaction figures evaluate 300 contexts; nonlinear evaluates its
+150 held-out contexts, so comparisons are primarily within each experiment.
+
+The nonlinear figure includes both polynomial controls and only the 2×2 MLP,
+as requested. It has the best mean held-out noisy R² across the 100 capacity
+repetitions (0.2369); this model-selection score differs from its plotted
+headline full-Gaussian noiseless R² (0.6116). The calibration half was reused for
+comparison and bootstrap, not an untouched test set. All displayed policy actions
+come from converged repository solves. Prediction/radius/regret plots alone do
+not establish coverage; the selected MLP's simultaneous grid coverage is 0/100.
+
+From the `feature-synthetic-residual-tradeoffs` worktree, replay the saved request:
+
+```bash
+conda activate simulation_env
+PYTHONPATH=src python - <<'PY'
+from experiments.paths import results_root
+from experiments.provenance import read_json
+from experiments.envelopes.polynomial_reporting import write_metric_comparison
+folder = results_root() / 'synthetic-polynomial-residual-degree4/metric-comparison'
+write_metric_comparison(**read_json(folder / 'request.json'))
+PY
+```
+
+`provenance.json` records input summaries, contracts, selected policy arrays,
+source snapshots, output checksums and metric definitions. A changed model
+selection or rendering source requires archiving the previous report first.
+Validation checked all 12 plotted rows against their original summaries and 75
+input records against saved hashes; all three PDFs were visually inspected and
+contain vector graphics only. The 21 polynomial/structured-residual tests pass.

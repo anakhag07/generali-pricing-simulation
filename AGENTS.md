@@ -1,5 +1,19 @@
 # Agent Instructions
 
+Saved metric comparisons for quartic, interaction and nonlinear residuals live
+in shared `synthetic-polynomial-residual-degree4/metric-comparison/`. The existing
+`polynomial_reporting.write_metric_comparison` reads verified summaries and
+repository policy artifacts without fitting, integration or optimization.
+Each PDF has R2/radius, radius/regret and R2/regret panels. Mean radius is half
+the transferred asymmetric full width, not the auxiliary half-width. Keep all
+coordinates on headline repetition 0. Nonlinear selects only width 2 (the best
+mean held-out noisy R2 over 100 repetitions) beside both polynomial controls;
+the displayed R2 remains noiseless/full-Gaussian. Its 150 contexts differ from
+the other studies' 300. Replay from saved request.json; source snapshots,
+coordinate CSV and hashes are in the report folder. See the polynomial guide.
+Active reporting code is in `feature-synthetic-residual-tradeoffs`; earlier
+source worktrees and completed summaries remain unchanged.
+
 Preserve `feature-synthetic-mlp-capacity` as the numerical source for its
 completed capacity comparison (runtime commit 1d65f7f). Active follow-up code
 continues in `feature-synthetic-mlp-capacity-replay`. A console-only correction

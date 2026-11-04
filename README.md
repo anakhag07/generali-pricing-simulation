@@ -75,6 +75,9 @@ approximation. See [the extension contract](docs/synthetic_residual_extensions.m
 The [MLP capacity comparison](docs/synthetic_mlp_capacity.md) keeps this split
 and compares smaller networks with longer training, reporting observed-pair
 train/calibration scores separately from full-Gaussian true-residual scores.
+The [metric comparison plots](docs/synthetic_polynomial_residual.md#metric-comparison-plots)
+replay R² versus mean radius, mean radius versus regret, and R² versus regret
+for the quartic, interaction and nonlinear studies, using the best held-out MLP.
 
 For joint increases in sample size and bootstrap count, use
 `manifests/uncertainty-envelopes-residual-paired-nb.json`. It reports only the

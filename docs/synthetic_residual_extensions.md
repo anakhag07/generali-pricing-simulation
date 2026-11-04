@@ -2,14 +2,14 @@
 
 ## Implementation checklist
 
-- [ ] Extend additive polynomial queries with original-action interaction columns.
-- [ ] Preserve the existing family, launcher, frozen GP design and paired streams.
-- [ ] Keep the trained MLP and its original head fixed during calibration.
-- [ ] Fit polynomial nonlinear controls on the same first 150 rows.
-- [ ] Bootstrap head perturbations on the other 150; never fit observed calibration targets.
-- [ ] Retain whole-line interaction coverage and label nonlinear finite-grid coverage.
-- [ ] Use repository solvers for MLP fitting and every reported policy endpoint.
-- [ ] Validate independent bootstrap refits, gradients, leakage, replay and domain labels.
+- [x] Extend additive polynomial queries with original-action interaction columns.
+- [x] Preserve the existing family, launcher, frozen GP design and paired streams.
+- [x] Keep the trained MLP and its original head fixed during calibration.
+- [x] Fit polynomial nonlinear controls on the same first 150 rows.
+- [x] Bootstrap head perturbations on the other 150; never fit observed calibration targets.
+- [x] Retain whole-line interaction coverage and label nonlinear finite-grid coverage.
+- [x] Use repository solvers for MLP fitting and every reported policy endpoint.
+- [x] Validate independent bootstrap refits, gradients, leakage, replay and domain labels.
 - [ ] Produce the five established PDF reports, including context slices and a single-panel figure 05.
 - [ ] Preserve historical experiments and archive useful pilot diagnostics with checksums.
 
@@ -30,6 +30,10 @@ test set. MLP input standardization uses only training rows. Full-batch reposito
 L-BFGS-B fits all network weights once per repetition, with fixed initialization,
 L2 weight penalty 0.001, a 1,000-step cap, gradient tolerance 1e-6 and ftol=1e-12.
 These are declared first-version settings, not tuned to true residual scores.
+The dedicated initialization seed is 20261104, held fixed across repetitions.
+The entire training network is fitted anew for each independent observation-noise
+repetition. Within that repetition, the 1,999 bootstrap draws change only copies
+of the output head. Hidden weights and the original prediction remain fixed.
 
 For the frozen feature design P on calibration rows, retain the training head b0
 and errors e=r-P*b0. Bootstrap perturbations are db=(P'P)^(-1)P'(signs*e).
@@ -59,3 +63,48 @@ The existing `polynomial_study.py` continues to own manifests, immutable source
 contracts, repetitions and repository policies. `structured_reporting.py`
 replays the new models through the established five-figure reporting pattern.
 Existing manifests keep their original behavior and saved key conventions.
+
+## Running and outputs
+
+Activate `simulation_env`, then run the existing launcher from this worktree:
+
+```bash
+python scripts/run_experiment_manifest.py manifests/synthetic-polynomial-residual-interactions.json --launch local
+python scripts/run_experiment_manifest.py manifests/synthetic-polynomial-residual-nonlinear.json --launch local
+```
+
+Each manifest defaults to 100 independent noise repetitions and 1,999 bootstrap
+draws. The launcher supports the existing `--task-index`, `--sweep-id`, and
+`--collect` flags for task distribution and saved-state reporting. Prepare the
+environment once before distributing local tasks. Collection never fits or
+optimizes. Runtime sources and input hashes must match the saved contract.
+
+The shared results root contains one current folder per experiment:
+`synthetic-polynomial-residual-interactions/` and
+`synthetic-polynomial-residual-nonlinear/`. Each contains:
+
+| Artifact | Contents |
+| --- | --- |
+| `01_residual_recovery.pdf` | True and fitted residuals at three actual contexts; full-Gaussian R²/RMSE; unsuccessful point-fit status |
+| `02_simultaneous_coverage.pdf` | Coverage across repetitions with Wilson intervals; nonlinear grid size, action limits and refinement counts |
+| `03_average_envelope_width.pdf` | Mean full asymmetric width against action and its full-Gaussian weighted average |
+| `04_policy_regret.pdf` | Direct true-objective difference at repository policy endpoints, with RMS action error from 0.5 |
+| `05_truth_surrogate_and_observations.pdf` | Single-panel true function, fixed surrogate and saved context-aligned noisy observations |
+| `summary.csv`, `summary.json` | Accuracy, separate radii, residual magnitude, coverage, solver diagnostics and provenance |
+| `inputs.npz`, `repetitions/`, `fits/`, `policies/` | Frozen design/GP, paired samples, trained networks, calibration/head perturbations and repository solver endpoints |
+
+The residual recovery figure intentionally shows curves without the uncertainty
+fill: the large tail bands obscured residual shape in the pilot. Band widths are
+reported separately in figure 03 and in the numerical tables. The three context
+slices are selected by input coordinates alone, not by model accuracy.
+
+Calibration RMSE is error against noisy held-out residual observations. The R²
+and residual RMSE compare predictions against the known noiseless function over
+the full Gaussian action distribution. Calibration observations also determine
+the bands, so their fit score is not an independent final test score.
+
+Policy solver convergence and a polynomial global-gap certificate are distinct
+diagnostics. The interaction collector reports how many returned actions pass
+the 1e-4 gap certificate; it does not silently replace uncertified endpoints.
+Nonlinear global gaps remain unknown. High simultaneous coverage can reflect
+wide bands, even for a misspecified or poorly generalizing model.

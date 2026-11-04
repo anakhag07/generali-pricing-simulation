@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 from pathlib import Path
+import shutil
 
 import numpy as np
 
@@ -23,6 +24,9 @@ def _label(spec):
 def collect_structured(project):
     """Verify complete artifacts and replay metrics/plots without any fitting or optimization."""
     project = Path(project)
+    report_source = project/'reporting-source'/Path(__file__).name
+    if report_source.exists() and report_source.read_bytes() != Path(__file__).read_bytes():
+        raise ValueError('Archive the prior report before changing its reporting source.')
     contract = read_json(project/'contract.json')
     p, digest = contract['contract']['manifest'], contract['sha256']
     for record in [contract['environment'], *contract['source_snapshot'], *contract['contract']['sources']]:
@@ -117,14 +121,21 @@ def collect_structured(project):
         writer.writerows(rows)
     save_arrays_atomic(project/'plot_data.npz', **coordinates)
     paths = _render(p, rows, coordinates, project, snapshot, state, X, truth, residual)
+    report_source.parent.mkdir(exist_ok=True)
+    shutil.copyfile(__file__, report_source)
     summary = {'config': p, 'contract_sha256': digest, 'contract': file_record(project/'contract.json'),
                'metrics': rows, 'policies': policies, 'truth_reference': reference,
                'plots': [file_record(path) for path in paths], 'table': file_record(project/'summary.csv'),
                'plot_data': file_record(project/'plot_data.npz'), 'reporting_source': file_record(Path(__file__)),
+               'reporting_source_snapshot': file_record(report_source),
                'coverage_domain': p['target'], 'fit_protocol': p['fit_protocol'],
-               'coverage_claim': 'Empirical conditional coverage; finite-grid checks do not certify continuum/tails.',
+               'coverage_claim': ('Empirical conditional coverage; finite-grid checks do not certify continuum/tails.'
+                                  if p['target']['actions'] == 'finite_grid' else
+                                  'Empirical conditional coverage, with exact polynomial checks over all real actions.'),
                'metrics_domain': 'Uniform evaluation contexts and independent full-Gaussian actions, no truncation.',
-               'calibration_semantics': 'Frozen-training-head protocol never replaces the training head; calibration rows are not independent test data.',
+               'calibration_semantics': ('Frozen-training-head protocol never replaces the training head; calibration rows are not independent test data.'
+                                         if p['fit_protocol'] == 'frozen_training_head' else
+                                         'OLS and raw-residual bootstrap use all 300 observations.'),
                'regret_definition': 'Direct empirical true J at saved repository truth actions minus J at repository Stein endpoints.',
                'observations': file_record(project/'observation_data.csv')}
     write_json_atomic(project/'summary.json', summary)
@@ -145,19 +156,21 @@ def _render(p, rows, data, project, snapshot, state, X, truth, residual):
         plt.close(fig)
         paths.append(path)
     fig, axes = plt.subplots(3, len(rows), figsize=(5*len(rows), 11), sharex=True, squeeze=False, constrained_layout=True)
-    fig.suptitle('True residual recovery at fixed calibration contexts')
+    fig.suptitle('True residual recovery at fixed calibration contexts\n'
+                 'Scores: all evaluation contexts and the full Gaussian action distribution')
     for j, row in enumerate(rows):
         name = row['model']
         for i in range(3):
             ax = axes[i, j]
-            fit, width = data[name+'_slice_fit'][:, i], data[name+'_slice_width'][:, i]
+            fit = data[name+'_slice_fit'][:, i]
             ax.plot(data['action'], data['slice_true'][:, i], label='True residual')
-            line, = ax.plot(data['action'], fit, label='Fitted residual')
-            ax.fill_between(data['action'], fit-width, fit+width, color=line.get_color(), alpha=.2, label='Residual band')
+            ax.plot(data['action'], fit, label='Fitted residual')
             context = data['slice_contexts'][i]
             title = names[j]+f'\nx1={context[0]:.2f}, x2={context[1]:.2f}'
             if i == 0:
                 title += f'\nOverall R²={row["r_squared"]:.3f}, RMSE={row["rmse"]:.3f}'
+                if not row['point_fit_success']:
+                    title += '\nTraining solver did not converge'
             ax.set_title(title)
             ax.set_xlabel('Action a')
             ax.set_ylabel('Residual at selected context')

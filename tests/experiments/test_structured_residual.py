@@ -1,6 +1,7 @@
 """Independent interaction identities and frozen-network calibration checks."""
 
 import json
+import copy
 from pathlib import Path
 from unittest.mock import patch
 
@@ -131,3 +132,44 @@ def test_new_manifest_dispatch_and_unchanged_frozen_environment(suffix):
     if suffix == 'nonlinear':
         np.testing.assert_array_equal(evaluation_rows(manifest.payload), np.arange(150, 300))
         np.testing.assert_allclose(coverage_grid(manifest.payload), coverage_grid(manifest.payload, True)[::4])
+
+
+def test_split_pipeline_and_replay_preserve_training_prediction(tmp_path):
+    """Changing calibration responses cannot influence training inputs or the saved center."""
+    p = load_manifest(ROOT/'manifests/synthetic-polynomial-residual-nonlinear.json').payload
+    p = copy.deepcopy(p)
+    p['target'].update(grid_points=5, refinement_points=9)
+    snapshot = prepare_environment(p)
+    rng = np.random.default_rng(91)
+    responses = explicit_model(p['residual'])(snapshot['X'], snapshot['actions']) + rng.normal(size=300)
+    signs = rng.choice([-1, 1], size=(19, 300))
+    inputs = np.column_stack((snapshot['X'][:150], snapshot['actions'][:150]))
+    network = FrozenResidualMLP(rng.normal(0, .2, 1249), inputs.mean(0), inputs.std(0), 32)
+    seen = []
+    def training(x, a, r, settings, seed):
+        seen.append((x.copy(), a.copy(), r.copy()))
+        return network, network.state(), {'success':True, 'training_rmse':1.}
+    states = []
+    with patch('experiments.envelopes.structured_residual.fit_residual_mlp', side_effect=training):
+        for index, offset in enumerate([0., 10.]):
+            targets = responses.copy()
+            targets[150:] += offset
+            state = {}
+            fit_structured_models(p, index, tmp_path, 'test', snapshot, targets, signs, state)
+            states.append(state)
+    assert len(seen) == 2
+    for first, second in zip(seen[0], seen[1]):
+        np.testing.assert_array_equal(first, second)
+    np.testing.assert_array_equal(seen[0][2], responses[:150])
+    for spec in p['models']:
+        name = spec['name']
+        np.testing.assert_array_equal(states[0][name+'_beta'], states[1][name+'_beta'])
+        assert states[0][name+'_critical'] != states[1][name+'_critical']
+        band = restore_structured_band(p, snapshot, states[0], name)
+        assert band.evaluate(snapshot['actions'][150:])[0].shape == (150,)
+    restored = restore_structured_band(p, snapshot, states[0], 'mlp-frozen-head')
+    np.testing.assert_array_equal(restored.evaluate(snapshot['actions'][150:])[0],
+                                  network(snapshot['X'][150:], snapshot['actions'][150:]))
+    states[0]['mlp-frozen-head_beta'][0] += .01
+    with pytest.raises(ValueError, match='replaced'):
+        restore_structured_band(p, snapshot, states[0], 'mlp-frozen-head')

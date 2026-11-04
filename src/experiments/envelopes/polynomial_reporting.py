@@ -256,12 +256,13 @@ def _verify(record):
 
 
 def write_metric_comparison(studies, output_dir):
-    """Replay saved R2, mean transferred radius and regret as three aligned bar charts per study.
+    """Replay saved R2, mean transferred radius, regret and coverage as four aligned bar charts.
 
     Each study specifies project, name, title, and optionally models and selection_note.
     """
     import shutil
     import matplotlib.pyplot as plt
+    from matplotlib.ticker import PercentFormatter
 
     output_dir = Path(output_dir).resolve()
     source = Path(__file__).resolve()
@@ -342,21 +343,27 @@ def write_metric_comparison(studies, output_dir):
               ('regret', regret_label, 'Regret ↓', '.4f')]
     with plt.rc_context(style):
         for study, group in groups:
-            fig, axes = plt.subplots(1, 3, figsize=(16, 5.5), sharey=True, constrained_layout=True)
-            fig.suptitle(study['title']+' — fixed noise realization')
+            domain = 'finite action grid' if group[0]['coverage_domain'] == 'finite_grid' else 'all real actions'
+            repetitions = group[0]['coverage_repetitions']
+            study_panels = panels+[('coverage_probability', f'Simultaneous coverage\n({domain}; {repetitions} repetitions)', 'Coverage ↑', '.0%')]
+            fig, axes = plt.subplots(1, 4, figsize=(20, 5.5), sharey=True, constrained_layout=True)
+            fig.suptitle(study['title']+f' — R²/radius/regret: fixed noise; coverage: {repetitions} repetitions')
             positions = np.arange(len(group))
             colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
-            for ax, (metric, xlabel, title, fmt) in zip(axes, panels):
+            for ax, (metric, xlabel, title, fmt) in zip(axes, study_panels):
                 values = [point[metric] for point in group]
                 bars = ax.barh(positions, values, color=[colors[i % len(colors)] for i in positions])
                 ax.bar_label(bars, labels=[format(value, fmt) for value in values], padding=3, fontsize=10)
                 ax.set(xlabel=xlabel, title=title)
                 ax.margins(x=.2)
-            axes[0].set_yticks(positions, [f'{p["label"]} ({p["coverage_probability"]:.0%})' for p in group])
+                if metric == 'coverage_probability':
+                    ax.set_xlim(0, 1.15)
+                    ax.set_xticks([0, .25, .5, .75, 1])
+                    ax.xaxis.set_major_formatter(PercentFormatter(xmax=1))
+            axes[0].set_yticks(positions, [p['label'] for p in group])
             axes[0].invert_yaxis()
-            domain = 'finite-grid' if group[0]['coverage_domain'] == 'finite_grid' else 'all-real'
-            axes[0].set_ylabel(f'Representation ({domain} coverage; {group[0]["coverage_repetitions"]} repetitions)')
-            path = output_dir/f'{study["name"]}_r_squared_radius_regret_bars.pdf'
+            axes[0].set_ylabel('Representation')
+            path = output_dir/f'{study["name"]}_r_squared_radius_regret_coverage_bars.pdf'
             fig.savefig(path, format='pdf')
             plt.close(fig)
             paths.append(path)
@@ -376,8 +383,8 @@ def write_metric_comparison(studies, output_dir):
               'radius_definition': 'Mean(lower asymmetric radius + upper asymmetric radius)/2; half transferred full width.',
               'r_squared_definition': 'Known noiseless residual, uniform evaluation contexts and full Gaussian actions.',
               'regret_definition': 'Saved direct true-objective difference at repository optimizer endpoints.',
-              'coverage_definition': 'Repeated-noise simultaneous transferred coverage, shown beside each model; finite-grid for nonlinear.',
-              'comparison_semantics': 'All coordinates use repetition 0; within-study comparisons, not matched sample sizes across studies.'}
+              'coverage_definition': 'Repeated-noise simultaneous transferred coverage in a separate percentage panel; finite-grid for nonlinear.',
+              'comparison_semantics': 'R2/radius/regret use repetition 0; coverage uses all saved repetitions. Within-study comparisons, not matched sample sizes across studies.'}
     write_json_atomic(output_dir/'provenance.json', report)
     return report
 

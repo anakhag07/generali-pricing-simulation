@@ -21,6 +21,29 @@ def _label(spec):
     return spec.get('label') or (rf'$\phi_{{6,{spec["interaction_order"]}}}$' if spec['kind'] == 'polynomial' else 'MLP (frozen head)')
 
 
+def _render_policy_regret(rows, names, project):
+    import matplotlib.pyplot as plt
+    positions = np.arange(len(rows))
+    fig, ax = plt.subplots(figsize=(max(10, 2*len(rows)), 6), constrained_layout=True)
+    bars = ax.bar(positions, [r['regret'] for r in rows])
+    ax.bar_label(bars, labels=[f'{r["regret"]:.5f}' for r in rows], padding=3, fontsize=10)
+    ax.set_ylim(0, 1.2*max(r['regret'] for r in rows) or .01)
+    labels = []
+    for name, row in zip(names, rows):
+        label = name+f'\nRMS={row["rms_action_error"]:.3f}'
+        if row['solver_success_contexts'] < row['evaluation_contexts']:
+            label += f'\nActions from converged runs: {row["solver_success_contexts"]}/{row["evaluation_contexts"]}'
+        labels.append(label)
+    ax.set_xticks(positions, labels)
+    ax.set_xlabel('Residual representation (RMS action error from 0.5)')
+    ax.set_ylabel('Mean true-function regret')
+    ax.set_title(r'Regret: $J(\theta^\star)-J(\widehat{\theta})$, $\theta^\star=0.5$')
+    path = Path(project)/'04_policy_regret.pdf'
+    fig.savefig(path, format='pdf')
+    plt.close(fig)
+    return path
+
+
 def collect_structured(project):
     """Verify complete artifacts and replay metrics/plots without any fitting or optimization."""
     project = Path(project)
@@ -278,15 +301,7 @@ def _render(p, rows, data, project, snapshot, state, X, truth, residual):
     ax.set_title('Asymmetric envelope width — fixed observation realization')
     ax.legend()
     save(fig, '03_average_envelope_width.pdf')
-    fig, ax = plt.subplots(figsize=comparison_size, constrained_layout=True)
-    bars = ax.bar(positions, [r['regret'] for r in rows])
-    ax.bar_label(bars, labels=[f'{r["regret"]:.5f}' for r in rows], padding=3, fontsize=10)
-    ax.set_ylim(0, 1.2*max(r['regret'] for r in rows) or .01)
-    ax.set_xticks(positions, [name+f'\nRMS={r["rms_action_error"]:.3f}' for name, r in zip(names, rows)])
-    ax.set_xlabel('Residual representation (RMS action error from 0.5)')
-    ax.set_ylabel('Mean true-function regret')
-    ax.set_title(r'Regret: $J(\theta^\star)-J(\widehat{\theta})$, $\theta^\star=0.5$')
-    save(fig, '04_policy_regret.pdf')
+    paths.append(_render_policy_regret(rows, names, project))
     reference = X.mean(0)
     aligned = state['observations']-(snapshot['X']-reference)@np.asarray(truth.context)
     with (project/'observation_data.csv').open('w', newline='') as stream:

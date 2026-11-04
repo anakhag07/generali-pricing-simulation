@@ -2,13 +2,13 @@
 
 ## Implementation checklist
 
-- [ ] Preserve the original results/worktree and use the same manifest family.
-- [ ] Parameterize hidden width; retain the 150/150 split and original-head bootstrap.
-- [ ] Compare widths 2, 4, 8, 16 and 32 at 10000 steps, plus the original width-32 1000-step baseline and polynomial controls.
-- [ ] Save solver objective/gradient diagnostics and explicit train/calibration R² and RMSE.
-- [ ] Retain full-Gaussian true-residual scores and report all configurations without choosing a winner on calibration data.
-- [ ] Regenerate bands, coverage, policy regret and recovery PDFs; add a compact fitting diagnostic PDF and table.
-- [ ] Validate gradient/score definitions, paired data, original-head preservation, replay, PDFs and provenance.
+- [x] Preserve the original results/worktree and use the same manifest family.
+- [x] Parameterize hidden width; retain the 150/150 split and original-head bootstrap.
+- [x] Compare widths 2, 4, 8, 16 and 32 at 10000 steps, plus the original width-32 1000-step baseline and polynomial controls.
+- [x] Save solver objective/gradient diagnostics and explicit train/calibration R² and RMSE.
+- [x] Retain full-Gaussian true-residual scores and report all configurations without choosing a winner on calibration data.
+- [x] Regenerate bands, coverage, policy regret and recovery PDFs; add a compact fitting diagnostic PDF and table.
+- [x] Validate gradient/score definitions, paired data, original-head preservation, replay, PDFs and provenance.
 
 ## Fixed comparison contract
 
@@ -44,6 +44,12 @@ The new named comparison lives at shared
 The parent baseline and its pinned source worktree remain unchanged. Useful
 pilots are retained under shared `scratch-results/` with hash indexes.
 
+Outputs include the five established reports, `06_fitting_diagnostics.pdf`,
+the compact `fit_comparison.csv`, and per-repetition `fitting_diagnostics.csv`.
+The compact table explicitly separates held-out noisy R² from full-Gaussian
+noiseless R², and includes means across 100 repetitions. The recovery PDF uses
+three pages so all eight models remain readable.
+
 Long training can produce nearly redundant hidden features. A numerically
 rank-deficient head design is recorded as an unavailable bootstrap band; the
 trained prediction and all fit scores remain available. Do not add ridge or
@@ -51,3 +57,26 @@ use a pseudoinverse. Coverage is reported conditional on an available band,
 with its valid denominator, unavailable count and full-run coverage bounds.
 Prediction-score averages include every repetition. An unavailable headline
 band still prevents a band-derived policy; it cannot be silently substituted.
+
+## Completed validation
+
+All 100 repetitions completed with all eight models. The width-32 long fit had
+nine unavailable bands; its coverage is 88/91 among available bands, with a
+full-run range [88%,97%]. Widths 2/4/8/16 have coverage 0/0/0/4 out of 100.
+The original three controls reproduce exactly, including all paired draws.
+All 600 network heads remain identical to their training checkpoints, and all
+100 long width-32 trajectories have exactly the original 1000-step prefix.
+
+The focused suites pass 141 distinct tests; the synthetic main.py demo and
+pdoc link checks pass. Six vector PDFs (eight pages) were visually inspected.
+Of 24 repository policy starts, 23 converged. The width-8 policy selects 90/150
+actions from converged runs; its regret plot marks this limitation explicitly.
+No optimizer or numerical score was changed during the report annotation.
+
+Numerical provenance remains in the pinned `feature-synthetic-mlp-capacity`
+worktree (runtime commit 1d65f7f). Active development continues in
+`feature-synthetic-mlp-capacity-replay`, where a console-only fix handles unknown
+coverage events. The original runner saved complete artifacts before that
+logging error, and cached task completion was verified to leave all 1466
+numerical artifacts unchanged. The final regret-status renderer has a separate
+source snapshot in the result folder; its earlier PDF and summary are archived.

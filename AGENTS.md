@@ -6,6 +6,17 @@ continues in `feature-synthetic-mlp-capacity-replay`. A console-only correction
 prints unavailable coverage events safely; the original runner saved complete
 repetition artifacts before its logging error, so cached task replay completes
 without refitting. Historical contracts and saved source snapshots stay intact.
+The capacity study completed all 100 repetitions. Width-32/10000 has nine
+unavailable bands (coverage 88/91 available); smaller widths 2/4/8/16 cover
+0/0/0/4 of 100. Noisy held-out mean R2 for widths 2/4/8/16 is
+0.237/-0.085/-1.475/-1.882, versus -1.636/-1.906 for width-32 at 1000/10000.
+Keep headline full-Gaussian R2 distinct from these means. All 600 heads and
+100 long-run trajectory prefixes were verified. Six vector PDFs/eight pages,
+141 tests and the synthetic demo passed. One width-8 policy start was abnormal;
+90/150 selected actions come from converged starts, flagged on the regret PDF.
+Its status-only rendering preserves all other PDFs and numeric results, with
+separate reporting source provenance. See the capacity guide and the final
+`scratch/retired_experiments/synthetic_mlp_capacity_validation_20261103.json` index.
 
 The nonlinear MLP capacity continuation lives in the dedicated worktree
 `feature-synthetic-mlp-capacity`; preserve the original extensions worktree.

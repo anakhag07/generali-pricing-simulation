@@ -156,6 +156,20 @@ def collect_structured(project):
             writer = csv.DictWriter(stream, fields)
             writer.writeheader()
             writer.writerows(diagnostic_rows)
+        columns = {'model':'model', 'parameters':'trained_parameters', 'max_steps':'step_budget',
+                   'fit_steps':'actual_steps_headline', 'point_fit_success':'converged_headline',
+                   'training_noisy_r_squared':'training_noisy_r_squared_headline',
+                   'calibration_noisy_r_squared':'held_out_noisy_r_squared_headline',
+                   'r_squared':'true_residual_gaussian_r_squared_headline',
+                   'calibration_noisy_rmse':'held_out_noisy_rmse_headline',
+                   'calibration_noisy_r_squared_mean':'held_out_noisy_r_squared_mean',
+                   'calibration_noisy_rmse_mean':'held_out_noisy_rmse_mean',
+                   'point_fit_success_repetitions':'converged_repetitions',
+                   'band_available_repetitions':'bands_available_repetitions'}
+        with (project/'fit_comparison.csv').open('w', newline='') as stream:
+            writer = csv.DictWriter(stream, list(columns.values()))
+            writer.writeheader()
+            writer.writerows({label:row[key] for key,label in columns.items()} for row in rows)
     report_source.parent.mkdir(exist_ok=True)
     shutil.copyfile(__file__, report_source)
     summary = {'config': p, 'contract_sha256': digest, 'contract': file_record(project/'contract.json'),
@@ -175,6 +189,7 @@ def collect_structured(project):
                'observations': file_record(project/'observation_data.csv')}
     if p['reporting'].get('fit_diagnostics'):
         summary['fitting_diagnostics'] = file_record(project/'fitting_diagnostics.csv')
+        summary['fit_comparison'] = file_record(project/'fit_comparison.csv')
         summary['band_availability_semantics'] = ('Numerically rank-deficient calibration designs have no band. '
             'Coverage divides by available bands and is conditional on availability; unavailable counts '
             'and full-run lower/upper bounds are reported separately. Prediction scores include every fit.')

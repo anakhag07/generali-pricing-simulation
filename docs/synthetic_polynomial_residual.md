@@ -240,16 +240,17 @@ rendering correction are archived via
 ## Metric comparison plots
 
 The shared `synthetic-polynomial-residual-degree4/metric-comparison/` folder
-contains one three-panel vector PDF each for degree 4, interactions and the
-nonlinear residual, named `*_r_squared_radius_regret_bars.pdf`. The aligned
-horizontal bars show R² (higher desired), mean radius (lower desired) and regret
-(lower desired), with the same model rows/colors and numerical value labels
-across columns. Coverage percentages from 100 repetitions appear beside model
-names so narrow, unreliable bands are identifiable. Each metric retains its own
+contains one four-panel vector PDF each for degree 4, interactions and the
+nonlinear residual, named `*_r_squared_radius_regret_coverage_bars.pdf`. The aligned
+horizontal bars show R² (higher desired), mean radius (lower desired), regret
+(lower desired) and simultaneous coverage (higher desired), with the same model
+rows/colors and numerical value labels across columns. Coverage percentages from
+100 repetitions have a separate fourth bar panel, labelled all-real for polynomial
+residuals and finite action grid for nonlinear. Each metric retains its own
 units and axis; there is no normalized composite score.
 `metric_comparison.csv` contains all 12 rows and the added coverage fields.
 
-All three coordinates use the saved first noise realization. R² is measured
+R², radius and regret use the saved first noise realization. R² is measured
 against the known noiseless residual over the full Gaussian action distribution.
 Mean radius is `(mean_lower_radius + mean_upper_radius)/2`, half the transferred
 envelope's full width; the two asymmetric radii remain separate columns in the
@@ -290,3 +291,6 @@ are retained verbatim under shared
 `scratch-results/synthetic-residual-metric-comparison/scatter-summary/`.
 Its old/new paths and hashes are indexed by
 `scratch/retired_experiments/synthetic_residual_metric_scatter_20261103.json`.
+The superseded three-panel bar report is retained under the same archive parent
+in `three-metric-bars/`, with checksums and original paths recorded by
+`scratch/retired_experiments/synthetic_residual_three_metric_bars_20261103.json`.

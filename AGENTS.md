@@ -4,13 +4,17 @@ Saved metric comparisons for quartic, interaction and nonlinear residuals live
 in shared `synthetic-polynomial-residual-degree4/metric-comparison/`. The existing
 `polynomial_reporting.write_metric_comparison` reads verified summaries and
 repository policy artifacts without fitting, integration or optimization.
-Each PDF has aligned horizontal R2/radius/regret bars, with the same model rows,
-exact value labels, desired-direction arrows and coverage beside model names.
+Each PDF has four aligned horizontal R2/radius/regret/coverage panels, with the
+same model rows, exact value labels and desired-direction arrows. Coverage is a
+separate percentage axis over 100 repetitions, labelled finite-grid for nonlinear;
+the other three metrics use the fixed first noise realization.
 The original scatter PDFs/source/provenance are archived via
 `scratch/retired_experiments/synthetic_residual_metric_scatter_20261103.json`.
+The superseded three-panel bars are archived via
+`scratch/retired_experiments/synthetic_residual_three_metric_bars_20261103.json`.
 Mean radius is half
 the transferred asymmetric full width, not the auxiliary half-width. Keep all
-coordinates on headline repetition 0. Nonlinear selects only width 2 (the best
+R2/radius/regret on headline repetition 0. Nonlinear selects only width 2 (the best
 mean held-out noisy R2 over 100 repetitions) beside both polynomial controls;
 the displayed R2 remains noiseless/full-Gaussian. Its 150 contexts differ from
 the other studies' 300. Replay from saved request.json; source snapshots,

@@ -17,12 +17,16 @@ from .wild import residual_radii
 from experiments.offline_bootstrap_math import strict_conjunction_empty
 
 
-def polynomial_features(contexts, actions, degree):
+def polynomial_features(contexts, actions, degree, interaction_order=0):
     """Evaluate additive context columns and original-action powers through degree k."""
     x, a = np.asarray(contexts, float), np.asarray(actions, float)
     if x.ndim != 2 or a.shape != (len(x),) or degree < 1:
         raise ValueError("Require paired contexts/actions and positive degree.")
-    return np.column_stack((np.ones(len(x)), x, *(a**j for j in range(1, degree+1))))
+    if type(interaction_order) is not int or not 0 <= interaction_order <= degree:
+        raise ValueError('Interaction order must be an integer between zero and action degree.')
+    return np.column_stack((np.ones(len(x)), x, *(a**j for j in range(1, degree+1)),
+                            *(x[:, j]*a**power for power in range(1, interaction_order+1)
+                              for j in range(x.shape[1]))))
 
 
 @dataclass(frozen=True)
@@ -31,39 +35,61 @@ class AdditivePolynomial:
 
     context: tuple
     action: tuple
+    interactions: tuple = ()
+
+    def __post_init__(self):
+        if not self.action or not np.isfinite([*self.context, *self.action]).all():
+            raise ValueError('Require finite polynomial coefficients.')
+        for j, power, value in self.interactions:
+            if type(j) is not int or not 0 <= j < len(self.context) or type(power) is not int or not 1 <= power < len(self.action) or not np.isfinite(value):
+                raise ValueError('Invalid context/action interaction coefficient.')
 
     def __call__(self, contexts, actions):
-        return np.asarray(contexts) @ self.context + pol.polyval(actions, self.action)
+        x, a = np.asarray(contexts), np.asarray(actions)
+        result = x @ self.context + pol.polyval(a, self.action)
+        for j, power, value in self.interactions:
+            result = result + value*x[..., j]*a**power
+        return result
 
     def coefficients(self, contexts):
         """Return ascending action coefficients at each saved context."""
         result = np.tile(self.action, (len(contexts), 1)).astype(float)
         result[:, 0] += np.asarray(contexts) @ self.context
+        for j, power, value in self.interactions:
+            result[:, power] += value*np.asarray(contexts)[:, j]
         return result
 
-    def feature_coefficients(self, degree):
+    def feature_coefficients(self, degree, interaction_order=0):
         """Return the exact feature-coordinate embedding, rejecting misspecification."""
-        if degree < len(self.action)-1:
+        if degree < len(self.action)-1 or any(power > interaction_order and value != 0 for _, power, value in self.interactions):
             raise ValueError("Residual is not represented in this feature space.")
-        return np.r_[self.action[0], self.context, self.action[1:],
-                     np.zeros(degree+1-len(self.action))]
+        result = np.r_[self.action[0], self.context, self.action[1:],
+                       np.zeros(degree+1-len(self.action)+len(self.context)*interaction_order)]
+        for j, power, value in self.interactions:
+            if value:
+                result[1+len(self.context)+degree+(power-1)*len(self.context)+j] += value
+        return result
 
     def exact(self, context):
         """Return a rational polynomial from the saved function and context floats."""
         constant = sum(_r(x)*_r(c) for x, c in zip(context, self.context))
-        return _poly(self.action) + constant
+        return _poly(self.action) + constant + sum(
+            (_r(value)*_r(context[j])*VARIABLE**power for j, power, value in self.interactions), _poly([0]))
 
 
 class PolynomialFeatureBand:
     """Replay a fixed polynomial head and QR geometry with asymmetric transfer."""
 
-    def __init__(self, contexts, degree, beta, inverse, critical):
+    def __init__(self, contexts, degree, beta, inverse, critical, interaction_order=0):
         self.contexts = np.asarray(contexts, float)
         self.degree = int(degree)
+        self.interaction_order = int(interaction_order)
+        if not 0 <= self.interaction_order <= self.degree:
+            raise ValueError('Invalid interaction order.')
         self.beta, self.inverse = np.asarray(beta, float), np.asarray(inverse, float)
         self.critical = float(critical)
         n, d = self.contexts.shape
-        p = d+1+degree
+        p = d+1+degree+d*self.interaction_order
         if (self.beta.shape != (p,) or self.inverse.shape != (p, p)
                 or not all(np.isfinite(v).all() for v in (self.contexts, self.beta, self.inverse))
                 or not np.isfinite(critical) or critical < 0):
@@ -73,6 +99,9 @@ class PolynomialFeatureBand:
         mapping[:, 1:d+1, 0] = self.contexts
         for j in range(1, degree+1):
             mapping[:, d+j, j] = 1
+        for power in range(1, self.interaction_order+1):
+            for j in range(d):
+                mapping[:, d+1+degree+(power-1)*d+j, power] = self.contexts[:, j]
         self.fitted = np.einsum('npj,p->nj', mapping, self.beta)
         self.norm_basis = np.einsum('pq,npj->nqj', self.inverse, mapping)
         self.norm_squared = np.zeros((n, 2*degree+1))
@@ -96,6 +125,8 @@ class PolynomialFeatureBand:
         """Return exact rational fit and squared radius without rounding coefficient products."""
         phi = [_poly([1]), *[_poly([x]) for x in context]]
         phi += [sp.Poly(VARIABLE**j, VARIABLE, domain=sp.QQ) for j in range(1, self.degree+1)]
+        phi += [sp.Poly(_r(x)*VARIABLE**power, VARIABLE, domain=sp.QQ)
+                for power in range(1, self.interaction_order+1) for x in context]
         fitted = sum((_r(b)*v for b, v in zip(self.beta, phi)), _poly([0]))
         whitened = [sum((_r(c)*v for c, v in zip(column, phi)), _poly([0]))
                     for column in self.inverse.T]
@@ -103,15 +134,15 @@ class PolynomialFeatureBand:
         return fitted, squared
 
 
-def fit_polynomial_band(contexts, actions, responses, degree, multipliers, delta, *, design=None):
+def fit_polynomial_band(contexts, actions, responses, degree, multipliers, delta, *, design=None, interaction_order=0):
     """Calibrate the existing raw-residual feature ellipsoid from residual observations."""
-    design = design or WildFeatureDesign(polynomial_features(contexts, actions, degree))
+    design = design or WildFeatureDesign(polynomial_features(contexts, actions, degree, interaction_order))
     beta = design.fit(responses)
     errors, statistics = design.bootstrap_errors(responses-design.design @ beta, multipliers)
     order = int(np.ceil(len(statistics)*(1-delta)))-1
     critical = float(np.partition(statistics, order)[order])
     inverse = solve_triangular(design.triangular, np.eye(len(beta)))
-    band = PolynomialFeatureBand(contexts, degree, beta, inverse, critical)
+    band = PolynomialFeatureBand(contexts, degree, beta, inverse, critical, interaction_order)
     return band, {"beta": beta, "inverse": inverse, "triangular": design.triangular,
                   "critical": np.array(critical), "statistics": statistics,
                   "bootstrap_errors": errors, "leverage": design.leverage,
@@ -122,8 +153,11 @@ def coefficient_contains(band, truth):
     """Certify the sufficient coefficient event using exact rational triangular solves."""
     if band.degree < len(truth.action)-1:
         return False
-    error = [Fraction(float(b))-Fraction(float(t)) for b, t in
-             zip(band.beta, truth.feature_coefficients(band.degree))]
+    try:
+        actual = truth.feature_coefficients(band.degree, band.interaction_order)
+    except ValueError:
+        return False
+    error = [Fraction(float(b))-Fraction(float(t)) for b, t in zip(band.beta, actual)]
     t = [Fraction(0)]*len(error)
     for i in range(len(error)-1, -1, -1):
         t[i] = (error[i]-sum(Fraction(float(band.inverse[i, j]))*t[j]

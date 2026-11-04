@@ -68,6 +68,10 @@ truth/surrogate/observation view, and a six-row summary. See
 The full polynomial continuation uses matching degree-1, degree-2 and degree-6
 manifests and result folders, with the same paired inputs and all six feature
 bases. The completed degree-4 run remains the retained comparison.
+The interaction and nonlinear manifests extend the same pipeline. The nonlinear
+MLP trains on 150 rows, freezes its complete prediction, and uses the other 150
+only to bootstrap head perturbations; its coverage is labelled as a finite-grid
+approximation. See [the extension contract](docs/synthetic_residual_extensions.md).
 
 For joint increases in sample size and bootstrap count, use
 `manifests/uncertainty-envelopes-residual-paired-nb.json`. It reports only the

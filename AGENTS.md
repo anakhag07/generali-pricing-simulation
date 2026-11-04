@@ -1,5 +1,23 @@
 # Agent Instructions
 
+Interaction/nonlinear synthetic continuations remain in `polynomial_residual`
+mode, using the `models` list and `fit_protocol` in the matching manifests.
+`polynomial.py` now supports action-power interactions while preserving additive
+defaults. `mlp_head.py` owns two-layer SiLU fitting and frozen-head calibration;
+`structured_residual.py` owns explicit bumps, split/query restoration and finite
+grids; `structured_reporting.py` replays five PDFs. See MATH 7.23 and
+`docs/synthetic_residual_extensions.md` for the complete implementation contract.
+Nonlinear models train on rows 0:150, calibrate on 150:300, and evaluate the
+calibration contexts. Never fit a replacement head on the original calibration
+responses. The MLP hidden layers AND training head remain fixed; only bootstrap
+head copies change. This protocol is empirically assessed, not asserted to be
+the same-sample OLS confidence theorem. Input scaling uses training rows only.
+Whole-line interaction coverage checks exact polynomial fibers; nonlinear
+coverage is explicitly a 401-point grid with a 1601-point refinement. Keep
+nonlinear policy global gaps unknown; use repository solvers for all endpoints.
+Preserve previous polynomial worktrees and results. The extensions use a new
+dedicated worktree `feature-synthetic-residual-extensions`.
+
 The full synthetic polynomial comparison adds degree-1, degree-2 and degree-6
 manifests beside the original degree-4 manifest. Run them through the same
 polynomial-residual launcher with all six phi degrees and the unchanged paired

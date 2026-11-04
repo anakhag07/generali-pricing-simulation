@@ -42,7 +42,10 @@ def load_polynomial_manifest(path, payload):
         raise ValueError('Require n greater than every feature dimension.')
     if p['design']['context_dim'] != 3 or p['design']['action_variance'] <= 0:
         raise ValueError('Require three contexts and positive action variance.')
-    if p['target'] != {'contexts': 'calibration', 'actions': 'real_line'}:
+    if 'models' in p:
+        from .structured_residual import validate_structured
+        validate_structured(p)
+    elif p['target'] != {'contexts': 'calibration', 'actions': 'real_line'}:
         raise ValueError('Require all calibration contexts and every real action.')
     if p['bootstrap']['multipliers'] != 'rademacher' or p['bootstrap']['residuals'] != 'raw':
         raise ValueError('Require raw-residual Rademacher bootstrap.')
@@ -96,6 +99,7 @@ def prepare_environment(p):
 def _runtime_sources():
     root = Path(__file__).resolve().parents[3]
     names = ['MATH.md', 'src/experiments/envelopes/polynomial.py',
+             'src/experiments/envelopes/mlp_head.py', 'src/experiments/envelopes/structured_residual.py',
              'src/experiments/envelopes/polynomial_study.py', 'src/experiments/envelopes/feature_wild.py',
              'src/experiments/envelopes/wild.py', 'src/experiments/envelopes/quadratic.py',
              'src/experiments/offline_bootstrap_math.py', 'src/experiments/seeds/streams.py',
@@ -134,9 +138,10 @@ def prepare(manifest, runs_root):
                  'source_snapshot': copies, 'source_worktree': str(root),
                  'repository_head': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()}
         write_json_atomic(path, saved)
-        shutil.copyfile(root/'docs/synthetic_polynomial_residual.md', project/'EXPERIMENT.md')
-    designs = {k: WildFeatureDesign(polynomial_features(snapshot['X'], snapshot['actions'], k))
-               for k in p['feature_degrees']}
+        guide = 'synthetic_residual_extensions.md' if 'models' in p else 'synthetic_polynomial_residual.md'
+        shutil.copyfile(root/'docs'/guide, project/'EXPERIMENT.md')
+    designs = {} if 'models' in p else {k: WildFeatureDesign(polynomial_features(snapshot['X'], snapshot['actions'], k))
+                                       for k in p['feature_degrees']}
     return project, digest, snapshot, designs
 
 
@@ -157,8 +162,11 @@ def run_repetition(p, index, project, digest, snapshot, designs):
     responses = observations-(truth(X, actions)-residual(X, actions))
     arrays = {'innovations': innovations, 'multipliers': signs, 'observations': observations,
               'residual_observations': responses}
-    events = {}
-    for degree in p['feature_degrees']:
+    events, diagnostics = {}, {}
+    if 'models' in p:
+        from .structured_residual import fit_structured_models
+        events, diagnostics = fit_structured_models(p, index, project, digest, snapshot, responses, signs, arrays)
+    for degree in ([] if 'models' in p else p['feature_degrees']):
         band, state = fit_polynomial_band(X, actions, responses, degree, signs,
                                          p['bootstrap']['delta'], design=designs[degree])
         event = coverage_events(band, residual)
@@ -168,9 +176,11 @@ def run_repetition(p, index, project, digest, snapshot, designs):
     record = {'index': index, 'contract_sha256': digest, 'seeds': seeds,
               'multiplier_sha256': array_sha256(signs), 'events': events,
               'arrays': file_record(stem.with_suffix('.npz'))}
+    if 'models' in p:
+        record['model_diagnostics'] = diagnostics
     write_json_atomic(stem.with_suffix('.json'), record)
     print(f"Repetition {index+1}/{p['repetitions']}: transferred "
-          f"{[int(events[str(k)]['transferred']) for k in p['feature_degrees']]}", flush=True)
+          f"{[int(event['transferred']) for event in events.values()]}", flush=True)
     return record
 
 
@@ -242,7 +252,14 @@ def optimize_headline(p, project, digest, snapshot):
     output = project/'policies'
     output.mkdir(exist_ok=True)
     truth, residual = _models(p)
-    X, n, settings = snapshot['X'], p['n'], p['optimizer']
+    if 'models' in p:
+        from .structured_residual import evaluation_rows, restore_structured_band
+        X = snapshot['X'][evaluation_rows(p)]
+        entries = [(m['name'], m['name']) for m in p['models']]
+    else:
+        X = snapshot['X']
+        entries = [(k, f'degree-{k}') for k in p['feature_degrees']]
+    n, settings = len(X), p['optimizer']
     reference_path = output/'truth.json'
     if reference_path.exists():
         reference = _verified_record(reference_path, digest)
@@ -259,15 +276,16 @@ def optimize_headline(p, project, digest, snapshot):
         write_json_atomic(reference_path, reference)
     with np.load(project/'repetitions/rep-000.npz', allow_pickle=False) as saved:
         state = dict(saved)
-    for degree in p['feature_degrees']:
-        path = output/f'degree-{degree}.json'
+    for degree, label in entries:
+        path = output/f'{label}.json'
         if path.exists():
             _verified_record(path, digest)
             continue
-        band = restore_band(snapshot, state, degree)
+        band = (restore_structured_band(p, snapshot, state, degree) if 'models' in p
+                else restore_band(snapshot, state, degree))
         attempts, vectors, losses = [], [], []
         for j, start in enumerate(settings['starts']):
-            attempt_path = output/f'degree-{degree}-start-{j}.json'
+            attempt_path = output/f'{label}-start-{j}.json'
             if attempt_path.exists():
                 info = _verified_record(attempt_path, digest)
                 with np.load(info['arrays']['path'], allow_pickle=False) as saved:
@@ -302,7 +320,9 @@ def optimize_headline(p, project, digest, snapshot):
         # Only actual repository endpoints compete; no action/evaluation grid is searched.
         selected = np.argmin(np.asarray(losses), axis=0)
         actions = np.asarray(vectors)[selected, np.arange(n)]
-        certificates = certify_policy_gap(band, truth, residual, actions, settings['global_gap_tolerance'])
+        polynomial_certificate = p['target']['actions'] == 'real_line'
+        certificates = (certify_policy_gap(band, truth, residual, actions, settings['global_gap_tolerance'])
+                        if polynomial_certificate else np.full(n, -1, dtype=np.int8))
         selected_success = np.array([attempts[int(j)]['success'] for j in selected])
         save_arrays_atomic(path.with_suffix('.npz'), actions=actions, selected_start=selected,
                            all_start_actions=np.asarray(vectors), gap_certified=certificates,
@@ -311,10 +331,10 @@ def optimize_headline(p, project, digest, snapshot):
                   'solver': 'optimization.solvers.run_stein_difference_minimize', 'attempts': attempts,
                   'selected_success_count': int(selected_success.sum()),
                   'global_gap_tolerance': settings['global_gap_tolerance'],
-                  'global_gap_certified_count': int(certificates.sum()),
+                  'global_gap_certified_count': int(certificates.sum()) if polynomial_certificate else None,
                   'arrays': file_record(path.with_suffix('.npz'))}
         write_json_atomic(path, record)
-        print(f"Degree {degree}: {certificates.sum()}/{n} global gap certificates", flush=True)
+        print(f"Model {degree}: global gap certificates {record['global_gap_certified_count']}/{n}", flush=True)
 
 
 def _verified_record(path, digest):
@@ -325,7 +345,8 @@ def _verified_record(path, digest):
 
 
 def _models(p):
-    return tuple(AdditivePolynomial(tuple(p[key]['context']), tuple(p[key]['action'])) for key in ('truth', 'residual'))
+    from .structured_residual import explicit_model
+    return tuple(explicit_model(p[key]) for key in ('truth', 'residual'))
 
 
 def build_polynomial_launch_plan(manifest, *, runs_root=None, force=False):
@@ -345,6 +366,9 @@ def build_polynomial_launch_plan(manifest, *, runs_root=None, force=False):
                 optimize_headline(p, project, digest, snapshot)
         return {'repetitions': list(indices)}
     def collect(context):
+        if 'models' in p:
+            from .structured_reporting import collect_structured
+            return collect_structured(Path(context.runs_root)/manifest.name)
         from .polynomial_reporting import collect_polynomial
         return collect_polynomial(Path(context.runs_root)/manifest.name)
     def run_all(context):

@@ -2157,6 +2157,72 @@ eventually outgrows both radii, giving zero all-real coverage. For $k\geq d$,
 statistical coefficient error and finite bootstrap calibration remain; correct
 specification does not imply 100% empirical coverage.
 
+### 7.23 Interactions and frozen-MLP-head calibration
+
+The interaction continuation uses
+
+$$
+g_{\mathrm{int}}=g_4+0.35x_1a+0.20x_2a^2,\qquad
+\phi_{6,q}=(1,x_1,x_2,x_3,a,\ldots,a^6,
+\{x_ja^\ell\}_{\ell=1,\ldots,q;\ j=1,2,3}),\quad q=0,1,2.
+$$
+
+Order columns by action power then context, preserving nested prefixes.
+The dimensions are 10, 13 and 16. Representability checks all coefficients,
+including omitted interactions; action degree alone is insufficient.
+At each fixed context all queries remain univariate polynomials, so section
+7.22's Gaussian moments and exact all-real coverage/gap certificates apply.
+Misspecified interaction models need not have zero whole-line coverage.
+
+The nonlinear continuation uses
+
+$$
+g_{\mathrm{NL}}=0.2+0.1x_1+0.25a+0.35x_1a+
+0.8\tanh(x_2)\exp(-(a-0.5)^2/(2\cdot0.4^2)).
+$$
+
+Rows 0 through 149 fit each predictor; rows 150 through 299 calibrate its
+head and define evaluation contexts. Polynomial heads use OLS on the training
+rows. The MLP uses standardized four-dimensional inputs, two width-32 SiLU
+layers and an unbounded linear output. With $s(t)=t\,\mathrm{expit}(t)$,
+its derivative is $s'(t)=u+t u(1-u)$, where $u=\mathrm{expit}(t)$.
+Fit all weights with the repository first-order solver to half mean squared
+error plus $(\lambda/2)\sum W^2$, excluding biases from the penalty.
+Input scaling uses training inputs only. The initial version fixes
+$\lambda=0.001$, a 1000-step budget and deterministic initialization.
+
+Freeze the fitted hidden layers and the original head $b_0$. Let $P=QR$
+contain calibration-row features, including an intercept, and let
+$e=r-Pb_0$. The bootstrap is
+
+$$
+r_b^*=Pb_0+\xi_b\odot e,\qquad
+\Delta b_b=R^{-1}Q^T(\xi_b\odot e),\qquad b_b^*=b_0+\Delta b_b.
+$$
+
+No fit to the observed calibration targets replaces $b_0$. Let $c$ be the
+same empirical 95-percent order statistic of $\|R\Delta b_b\|_2$ as before.
+At a query z, use
+
+$$
+h_0(z)=\phi(z)^Tb_0,\quad w(z)=c\|R^{-T}\phi(z)\|_2,\quad
+r_l=[w-h_0]_+,\quad r_u=[w+h_0]_+.
+$$
+
+The nonlinear polynomial controls use the same split and frozen-center
+calibration. This is an empirical calibration procedure, not the ordinary
+OLS bootstrap theorem for a head fitted on the calibration rows. Numerical
+rank deficiency fails explicitly. All head perturbations and the original
+training head are saved, along with network fitting status.
+
+Nonlinear containment is checked jointly on the calibration contexts and
+401 action points over the original three-SD display interval. A nested
+1601-point check keeps the band fixed. Neither check certifies the continuum
+or tails. Gaussian-weighted true-residual errors and widths still integrate
+over all real actions, with numerical refinement. Policy actions still come
+from the repository Stein solver; nonlinear global gaps are unassessed.
+Regret remains the direct true-objective difference from section 7.22.
+
 ## 8. Gradients and Estimators
 
 For a differentiable action objective and policy, the population chain rule is

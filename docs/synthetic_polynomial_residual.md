@@ -136,6 +136,48 @@ the saved contexts, not extrapolation to new contexts.
 
 ## Commands
 
+### Dataset-zero context-averaged envelopes
+
+Each synthetic polynomial/interaction/nonlinear result folder (including the
+nonlinear capacity comparison) has `envelope_width_dataset_0.pdf`, titled
+"envelope width - dataset 0", with one panel per residual model. Curves show
+the true function f, the fixed surrogate f-hat=f-g, and the residual-corrected
+predictor tilde-f=f-hat+g-hat. Tilde-f is not the fitted residual g-hat itself.
+All curves and both shaded endpoints average uniformly over the original
+evaluation contexts at each fixed action. This is all 300 contexts for the
+polynomial/interaction studies and the same 150 calibration contexts for the
+nonlinear studies. Transfer is applied separately to each context before
+averaging: lower=mean(f-hat-max(w-g-hat,0)),
+upper=mean(f-hat+max(w+g-hat,0)). These are the existing asymmetric envelopes,
+not newly calibrated confidence bands for the context mean. Their difference
+matches the original `03_average_envelope_width.pdf` curve.
+
+The original width plot keeps its curves, axes, action window and design; only
+the weighted-mean text is removed from the model legends. The unchanged
+summary metrics integrate over A~N(0.5,0.45), with 0.45 the variance, rather than
+weighting all actions uniformly. Roughly 99.73% of the probability is inside
+the displayed three-standard-deviation window.
+
+From `feature-synthetic-envelope-dataset0`, replay one or more existing projects:
+
+```bash
+conda activate simulation_env
+python scratch/replay_synthetic_dataset0_envelopes.py ../../results/synthetic-polynomial-residual-degree4
+```
+
+The replay verifies frozen inputs, repetition zero, source snapshots and the
+original numerical query implementation, then evaluates saved bands without
+fitting, resampling, integration or optimization. It saves plotted CSV/NPZ
+coordinates and `envelope_width_dataset_0.json` with definitions, source hashes,
+input hashes and width-parity checks. The original action grid is retained.
+Prior width PDFs and summary JSONs are preserved byte-for-byte in
+`scratch-results/synthetic-envelope-dataset0-20261105/`; the relocation index is
+`scratch/retired_experiments/synthetic_envelope_dataset0_20261105.json`.
+Historical downstream reports retain their original summary references; use
+the relocation index to find the corresponding archived summary and checksum.
+
+### Original experiment and other report commands
+
 ```bash
 conda activate simulation_env
 python scripts/run_experiment_manifest.py manifests/synthetic-polynomial-residual-degree4.json --launch local

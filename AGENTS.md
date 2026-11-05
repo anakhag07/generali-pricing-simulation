@@ -1,5 +1,22 @@
 # Agent Instructions
 
+Dataset-zero envelope reports are replayed by
+`scratch/replay_synthetic_dataset0_envelopes.py <project> ...`, using
+`polynomial_reporting.write_context_envelope_report` with each contract's
+original numerical imports. Active rendering is in
+`feature-synthetic-envelope-dataset0`; preserve the prior source worktrees.
+Each project retains `envelope_width_dataset_0.pdf`, CSV, NPZ and JSON alongside
+its existing reports. The plotted tilde-f is the corrected predictor f-hat+g-hat;
+the band averages the separately transferred endpoints at every fixed action.
+Use all 300 saved contexts for polynomial/interaction studies and the original
+150 calibration contexts for nonlinear studies. No refitting, integration or
+optimization occurs. Width curves match the existing saved coordinates; their
+legends now contain model names only. Historical width PDFs and summaries are
+archived with checksums under shared `scratch-results/synthetic-envelope-dataset0-20261105/`,
+indexed by `scratch/retired_experiments/synthetic_envelope_dataset0_20261105.json`.
+Historical reports referencing an old summary hash resolve through this index;
+their source contracts are not rewritten. See the polynomial guide for replay.
+
 Saved metric comparisons for quartic, interaction and nonlinear residuals live
 in shared `synthetic-polynomial-residual-degree4/metric-comparison/`. The existing
 `polynomial_reporting.write_metric_comparison` reads verified summaries and

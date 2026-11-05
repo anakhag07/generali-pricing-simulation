@@ -163,21 +163,191 @@ def render_polynomial_reports(p, rows, data, project):
     fig.savefig(paths[-1], format='pdf')
     plt.close(fig)
 
-    fig, ax = plt.subplots(figsize=(10, 6), constrained_layout=True)
-    for row in rows:
-        k = row['degree']
-        ax.plot(data['action'], data[f'degree{k}_mean_full_width'],
-                label=rf'$\phi_{k}$: weighted mean = {row["mean_full_width"]:.3f}')
+    paths.append(_render_average_width(data, [f'degree{r["degree"]}' for r in rows],
+                                       [rf'$\phi_{r["degree"]}$' for r in rows], project))
+
+    paths.append(_render_policy_regret(rows, project))
+    return paths
+
+
+def _render_average_width(data, keys, labels, project, figsize=(10, 6)):
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(figsize=figsize, constrained_layout=True)
+    for key, label in zip(keys, labels):
+        ax.plot(data['action'], data[key+'_mean_full_width'], label=label)
     ax.set_xlabel('Action a')
     ax.set_ylabel('Mean full transferred-envelope width')
     ax.set_title('Asymmetric envelope width — fixed observation realization')
     ax.legend()
-    paths.append(project/'03_average_envelope_width.pdf')
-    fig.savefig(paths[-1], format='pdf')
+    path = Path(project)/'03_average_envelope_width.pdf'
+    fig.savefig(path, format='pdf')
     plt.close(fig)
+    return path
 
-    paths.append(_render_policy_regret(rows, project))
-    return paths
+
+def write_context_envelope_report(project):
+    """Replay dataset zero into context-averaged function/envelope panels and plain width legends."""
+    import shutil
+    import sys
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    from matplotlib.backends.backend_pdf import PdfPages
+
+    project = Path(project).resolve()
+    summary = read_json(project/'summary.json')
+    contract = read_json(project/'contract.json')
+    repetition = read_json(project/'repetitions/rep-000.json')
+    p = contract['contract']['manifest']
+    if (summary['contract_sha256'] != contract['sha256'] or summary['config'] != p
+            or repetition['contract_sha256'] != contract['sha256'] or repetition['index'] != 0):
+        raise ValueError('Dataset-zero report and numerical contracts differ.')
+    inputs = [summary['contract'], contract['environment'], repetition['arrays'], summary['plot_data']]
+    inputs += [d['arrays'] for d in repetition.get('model_diagnostics', {}).values() if 'arrays' in d]
+    for record in [*inputs, *contract['source_snapshot']]:
+        _verify(record)
+    # Import this renderer separately while the recorded source root owns numerical queries.
+    modules = ['polynomial', 'polynomial_study', 'wild']
+    if 'models' in p:
+        from .structured_residual import evaluation_rows, restore_structured_band
+        modules += ['structured_residual', 'mlp_head']
+    query_sources = []
+    for name in modules:
+        actual = file_record(sys.modules['experiments.envelopes.'+name].__file__)
+        expected = next(s for s in contract['contract']['sources']
+                        if s['path'].endswith('/envelopes/'+name+'.py'))
+        if actual['sha256'] != expected['sha256']:
+            raise ValueError(f'Use the saved numerical source for {name}, not a revised implementation.')
+        query_sources.append(actual)
+    with np.load(contract['environment']['path'], allow_pickle=False) as z:
+        snapshot = dict(z)
+    with np.load(repetition['arrays']['path'], allow_pickle=False) as z:
+        state = dict(z)
+    with np.load(summary['plot_data']['path'], allow_pickle=False) as z:
+        original = dict(z)
+    if 'models' in p:
+        from .structured_reporting import _label
+        indices = evaluation_rows(p)
+        keys = [s['name'] for s in p['models']]
+        labels = [_label(s) for s in p['models']]
+        bands = [restore_structured_band(p, snapshot, state, name) for name in keys]
+    else:
+        indices = np.arange(p['n'])
+        keys = [f'degree{k}' for k in p['feature_degrees']]
+        labels = [rf'$\phi_{k}$' for k in p['feature_degrees']]
+        bands = [restore_band(snapshot, state, k) for k in p['feature_degrees']]
+    X = snapshot['X'][indices]
+    truth, residual = _models(p)
+    grid = original['action']
+    true_values = truth(X, grid[:, None])
+    predictor = true_values-residual(X, grid[:, None])
+    coordinates = {'action': grid, 'context_indices': indices,
+                   'mean_f': true_values.mean(axis=1), 'mean_f_hat': predictor.mean(axis=1)}
+    parity = {}
+    for key, band in zip(keys, bands):
+        corrected, lower_endpoint, upper_endpoint = [], [], []
+        widths = []
+        for start in range(0, len(grid), 32):
+            block = slice(start, start+32)
+            fitted, _, lower, upper = band.evaluate(grid[block, None])
+            corrected.extend((predictor[block]+fitted).mean(axis=1))
+            lower_endpoint.extend((predictor[block]-lower).mean(axis=1))
+            upper_endpoint.extend((predictor[block]+upper).mean(axis=1))
+            widths.extend((lower+upper).mean(axis=1))
+        lo, hi = np.asarray(lower_endpoint), np.asarray(upper_endpoint)
+        np.testing.assert_allclose(widths, original[key+'_mean_full_width'], rtol=2e-12, atol=2e-12)
+        np.testing.assert_allclose(hi-lo, widths, rtol=2e-12, atol=2e-12)
+        coordinates.update({key+'_mean_f_tilde': np.asarray(corrected),
+                            key+'_mean_lower_endpoint': lo, key+'_mean_upper_endpoint': hi})
+        parity[key] = float(np.max(np.abs(np.asarray(widths)-original[key+'_mean_full_width'])))
+
+    stem = 'envelope_width_dataset_0'
+    report_path = project/(stem+'.json')
+    source_copy = project/'reporting-source'/'dataset0'/Path(__file__).name
+    previous = read_json(report_path) if report_path.exists() else None
+    if previous:
+        _verify(previous['reporting_source_snapshot'])
+        if previous['reporting_source']['sha256'] != file_record(__file__)['sha256']:
+            raise ValueError('Archive the prior dataset-zero report before revising its renderer.')
+        relocations = previous['relocations']
+    else:
+        # Keep completed artifact bytes and their historical absolute-path provenance.
+        archive = project.parents[0]
+        while archive.name != 'results':
+            archive = archive.parent
+            if archive == archive.parent:
+                raise ValueError('Expected a project under the shared results directory.')
+        archive = archive.parent/'scratch-results'/'synthetic-envelope-dataset0-20261105'/project.relative_to(archive)
+        archive.mkdir(parents=True, exist_ok=True)
+        relocations = []
+        for path in [project/'summary.json', project/'03_average_envelope_width.pdf']:
+            target = archive/path.name
+            if target.exists():
+                raise ValueError(f'Archive already exists: {target}')
+            before = file_record(path)
+            shutil.copy2(path, target)
+            after = file_record(target)
+            if before['sha256'] != after['sha256']:
+                raise ValueError('Archive checksum mismatch.')
+            relocations.append({'original': before, 'archive': after})
+
+    plt.rcParams.update({'axes.titlesize': 14, 'axes.labelsize': 12, 'xtick.labelsize': 10,
+                         'ytick.labelsize': 10, 'legend.fontsize': 10, 'figure.titlesize': 16,
+                         'font.weight': 'normal', 'axes.titleweight': 'normal'})
+    width_path = _render_average_width(original, keys, labels, project,
+                                      (max(10, 2*len(keys)), 6) if 'models' in p else (10, 6))
+    pdf_path = project/(stem+'.pdf')
+    with PdfPages(pdf_path) as pdf:
+        for page_indices in np.array_split(np.arange(len(keys)), int(np.ceil(len(keys)/6))):
+            columns = 2 if len(page_indices) > 1 else 1
+            rows = int(np.ceil(len(page_indices)/columns))
+            fig, axes = plt.subplots(rows, columns, figsize=(6*columns, 3.8*rows),
+                                     squeeze=False, constrained_layout=True)
+            fig.suptitle('envelope width - dataset 0')
+            for ax, index in zip(axes.flat, page_indices):
+                key = keys[index]
+                ax.plot(grid, coordinates['mean_f'], label=r'True $f$')
+                ax.plot(grid, coordinates['mean_f_hat'], label=r'Surrogate $\hat f$')
+                line, = ax.plot(grid, coordinates[key+'_mean_f_tilde'],
+                                label=r'Corrected $\tilde f=\hat f+\hat g$')
+                ax.fill_between(grid, coordinates[key+'_mean_lower_endpoint'],
+                                coordinates[key+'_mean_upper_endpoint'], color=line.get_color(),
+                                alpha=.2, label='Transferred envelope')
+                ax.set_title(labels[index])
+                ax.set_xlabel('Action a')
+                ax.set_ylabel('Mean response across contexts')
+                ax.legend()
+            for ax in list(axes.flat)[len(page_indices):]:
+                fig.delaxes(ax)
+            pdf.savefig(fig)
+            plt.close(fig)
+    arrays_path = project/(stem+'.npz')
+    save_arrays_atomic(arrays_path, **coordinates)
+    csv_path = project/(stem+'.csv')
+    columns = [k for k in coordinates if k != 'context_indices']
+    with csv_path.open('w', newline='') as stream:
+        writer = csv.writer(stream)
+        writer.writerow(columns)
+        writer.writerows(zip(*(coordinates[k] for k in columns)))
+    source_copy.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(__file__, source_copy)
+    report = {'dataset': 0, 'contract_sha256': contract['sha256'], 'inputs': inputs,
+              'query_sources': query_sources, 'evaluation_contexts': len(X),
+              'definitions': {'f': 'true function', 'f_hat': 'fixed surrogate f-g',
+                              'f_tilde': 'residual-corrected predictor f_hat+g_hat',
+                              'band': 'mean(f_hat-lower_radius), mean(f_hat+upper_radius)',
+                              'averaging': 'Uniform saved evaluation contexts at each fixed action; transfer before averaging.'},
+              'width_parity_max_abs': parity, 'relocations': relocations,
+              'reporting_source': file_record(__file__), 'reporting_source_snapshot': file_record(source_copy),
+              'pdf': file_record(pdf_path), 'coordinates': file_record(arrays_path),
+              'csv': file_record(csv_path), 'width_pdf': file_record(width_path)}
+    write_json_atomic(report_path, report)
+    summary['plots'] = [file_record(width_path) if Path(s['path']).name == width_path.name else s
+                        for s in summary['plots'] if Path(s['path']).name != pdf_path.name]
+    summary['plots'].append(file_record(pdf_path))
+    summary['context_envelope_report'] = file_record(report_path)
+    write_json_atomic(project/'summary.json', summary)
+    return report
 
 
 def _render_policy_regret(rows, project):

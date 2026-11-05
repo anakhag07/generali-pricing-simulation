@@ -11,7 +11,7 @@ import numpy as np
 from experiments.provenance import file_record, read_json, save_arrays_atomic, write_json_atomic
 from .core import wilson_interval
 from .polynomial import AdditivePolynomial, residual_metrics, integrated_width
-from .polynomial_reporting import _objective_regret, _verify
+from .polynomial_reporting import _objective_regret, _verify, _render_average_width
 from .polynomial_study import _models
 from .structured_residual import (evaluation_rows, restore_structured_band,
                                   numerical_residual_metrics, coverage_grid)
@@ -293,14 +293,7 @@ def _render(p, rows, data, project, snapshot, state, X, truth, residual):
                   else 'Simultaneous coverage probability')
     ax.legend()
     save(fig, '02_simultaneous_coverage.pdf')
-    fig, ax = plt.subplots(figsize=comparison_size, constrained_layout=True)
-    for name, row in zip(names, rows):
-        ax.plot(data['action'], data[row['model']+'_mean_full_width'], label=name+f': weighted mean={row["mean_full_width"]:.3f}')
-    ax.set_xlabel('Action a')
-    ax.set_ylabel('Mean full transferred-envelope width')
-    ax.set_title('Asymmetric envelope width — fixed observation realization')
-    ax.legend()
-    save(fig, '03_average_envelope_width.pdf')
+    paths.append(_render_average_width(data, [r['model'] for r in rows], names, project, comparison_size))
     paths.append(_render_policy_regret(rows, names, project))
     reference = X.mean(0)
     aligned = state['observations']-(snapshot['X']-reference)@np.asarray(truth.context)

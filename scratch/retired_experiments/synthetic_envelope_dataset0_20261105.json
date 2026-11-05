@@ -1,0 +1,208 @@
+{
+  "reason": "Dataset-zero function/envelope panels and width legend simplification.",
+  "reports": [
+    {
+      "report": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree1/envelope_width_dataset_0.json",
+      "relocations": [
+        {
+          "archive": {
+            "bytes": 32010,
+            "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-envelope-dataset0-20261105/synthetic-polynomial-residual-degree1/summary.json",
+            "sha256": "f965273b9ed5eb7c09ac94c835f76b4d01e12bfa6d5faecb5a80b07a1cca8a61"
+          },
+          "original": {
+            "bytes": 32010,
+            "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree1/summary.json",
+            "sha256": "f965273b9ed5eb7c09ac94c835f76b4d01e12bfa6d5faecb5a80b07a1cca8a61"
+          }
+        },
+        {
+          "archive": {
+            "bytes": 23462,
+            "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-envelope-dataset0-20261105/synthetic-polynomial-residual-degree1/03_average_envelope_width.pdf",
+            "sha256": "840aeb8bb83b5a1e39d68fde3281c484ef5bce21f94a5dc5b717885054f278c0"
+          },
+          "original": {
+            "bytes": 23462,
+            "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree1/03_average_envelope_width.pdf",
+            "sha256": "840aeb8bb83b5a1e39d68fde3281c484ef5bce21f94a5dc5b717885054f278c0"
+          }
+        }
+      ]
+    },
+    {
+      "report": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree2/envelope_width_dataset_0.json",
+      "relocations": [
+        {
+          "archive": {
+            "bytes": 31983,
+            "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-envelope-dataset0-20261105/synthetic-polynomial-residual-degree2/summary.json",
+            "sha256": "87bf4e301f4aa7ff5f8df2f530ce9c814fae83ad48335c3e71dd512a7f534e1e"
+          },
+          "original": {
+            "bytes": 31983,
+            "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree2/summary.json",
+            "sha256": "87bf4e301f4aa7ff5f8df2f530ce9c814fae83ad48335c3e71dd512a7f534e1e"
+          }
+        },
+        {
+          "archive": {
+            "bytes": 23515,
+            "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-envelope-dataset0-20261105/synthetic-polynomial-residual-degree2/03_average_envelope_width.pdf",
+            "sha256": "e63c2c126b0ec8574f54601ec4bc4692177615b471ba65f75543ed122ff5dbc4"
+          },
+          "original": {
+            "bytes": 23515,
+            "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree2/03_average_envelope_width.pdf",
+            "sha256": "e63c2c126b0ec8574f54601ec4bc4692177615b471ba65f75543ed122ff5dbc4"
+          }
+        }
+      ]
+    },
+    {
+      "report": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree4/envelope_width_dataset_0.json",
+      "relocations": [
+        {
+          "archive": {
+            "bytes": 32801,
+            "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-envelope-dataset0-20261105/synthetic-polynomial-residual-degree4/summary.json",
+            "sha256": "136ecb673bf810a0ff56fffa7c1f3c0166cbfbe2161fdcb69b5d31b90300e5ed"
+          },
+          "original": {
+            "bytes": 32801,
+            "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree4/summary.json",
+            "sha256": "136ecb673bf810a0ff56fffa7c1f3c0166cbfbe2161fdcb69b5d31b90300e5ed"
+          }
+        },
+        {
+          "archive": {
+            "bytes": 23623,
+            "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-envelope-dataset0-20261105/synthetic-polynomial-residual-degree4/03_average_envelope_width.pdf",
+            "sha256": "81ecaa434293a4e06441bbbfe68f8c3b40620cf3b30f1f6251c2844f0b770a18"
+          },
+          "original": {
+            "bytes": 23623,
+            "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree4/03_average_envelope_width.pdf",
+            "sha256": "81ecaa434293a4e06441bbbfe68f8c3b40620cf3b30f1f6251c2844f0b770a18"
+          }
+        }
+      ]
+    },
+    {
+      "report": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree6/envelope_width_dataset_0.json",
+      "relocations": [
+        {
+          "archive": {
+            "bytes": 31877,
+            "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-envelope-dataset0-20261105/synthetic-polynomial-residual-degree6/summary.json",
+            "sha256": "99089bf563f25c94b3e1417e56878b22bfd6f5cf7e883e3a75108cf50d069984"
+          },
+          "original": {
+            "bytes": 31877,
+            "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree6/summary.json",
+            "sha256": "99089bf563f25c94b3e1417e56878b22bfd6f5cf7e883e3a75108cf50d069984"
+          }
+        },
+        {
+          "archive": {
+            "bytes": 23702,
+            "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-envelope-dataset0-20261105/synthetic-polynomial-residual-degree6/03_average_envelope_width.pdf",
+            "sha256": "3e4876a12e9b30b868a0a68d18431e12110d18a95af0a127b79f65953ad7107f"
+          },
+          "original": {
+            "bytes": 23702,
+            "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree6/03_average_envelope_width.pdf",
+            "sha256": "3e4876a12e9b30b868a0a68d18431e12110d18a95af0a127b79f65953ad7107f"
+          }
+        }
+      ]
+    },
+    {
+      "report": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-interactions/envelope_width_dataset_0.json",
+      "relocations": [
+        {
+          "archive": {
+            "bytes": 20087,
+            "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-envelope-dataset0-20261105/synthetic-polynomial-residual-interactions/summary.json",
+            "sha256": "0c250e187f6e2f44fe214e2cede806eebf66d6898c3d3d7c108cdae77bc937f5"
+          },
+          "original": {
+            "bytes": 20087,
+            "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-interactions/summary.json",
+            "sha256": "0c250e187f6e2f44fe214e2cede806eebf66d6898c3d3d7c108cdae77bc937f5"
+          }
+        },
+        {
+          "archive": {
+            "bytes": 21679,
+            "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-envelope-dataset0-20261105/synthetic-polynomial-residual-interactions/03_average_envelope_width.pdf",
+            "sha256": "413787db4299e058b121288caf10aa03e35faca185e394a3f0454714c4f96611"
+          },
+          "original": {
+            "bytes": 21679,
+            "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-interactions/03_average_envelope_width.pdf",
+            "sha256": "413787db4299e058b121288caf10aa03e35faca185e394a3f0454714c4f96611"
+          }
+        }
+      ]
+    },
+    {
+      "report": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/envelope_width_dataset_0.json",
+      "relocations": [
+        {
+          "archive": {
+            "bytes": 21463,
+            "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-envelope-dataset0-20261105/synthetic-polynomial-residual-nonlinear/summary.json",
+            "sha256": "cdfdd0b331b98c665074dd3345a6dbe5c44e9ff53acfccd5e9fec45cf6ede1a8"
+          },
+          "original": {
+            "bytes": 21463,
+            "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/summary.json",
+            "sha256": "cdfdd0b331b98c665074dd3345a6dbe5c44e9ff53acfccd5e9fec45cf6ede1a8"
+          }
+        },
+        {
+          "archive": {
+            "bytes": 22483,
+            "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-envelope-dataset0-20261105/synthetic-polynomial-residual-nonlinear/03_average_envelope_width.pdf",
+            "sha256": "c6f1543831c61de95cdd763dde0153d2248f5715e6277adde947daf2d21a58a8"
+          },
+          "original": {
+            "bytes": 22483,
+            "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/03_average_envelope_width.pdf",
+            "sha256": "c6f1543831c61de95cdd763dde0153d2248f5715e6277adde947daf2d21a58a8"
+          }
+        }
+      ]
+    },
+    {
+      "report": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/capacity-comparison/envelope_width_dataset_0.json",
+      "relocations": [
+        {
+          "archive": {
+            "bytes": 67652,
+            "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-envelope-dataset0-20261105/synthetic-polynomial-residual-nonlinear/capacity-comparison/summary.json",
+            "sha256": "cc876c9c1f265430025521bd32af9e143e218917881385fc0f08c314321f6d17"
+          },
+          "original": {
+            "bytes": 67652,
+            "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/capacity-comparison/summary.json",
+            "sha256": "cc876c9c1f265430025521bd32af9e143e218917881385fc0f08c314321f6d17"
+          }
+        },
+        {
+          "archive": {
+            "bytes": 24164,
+            "path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-envelope-dataset0-20261105/synthetic-polynomial-residual-nonlinear/capacity-comparison/03_average_envelope_width.pdf",
+            "sha256": "9a994f10cc6d48ab792ad2ddd8d9db056df846496f7cdb2979fde875538f7e48"
+          },
+          "original": {
+            "bytes": 24164,
+            "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/capacity-comparison/03_average_envelope_width.pdf",
+            "sha256": "9a994f10cc6d48ab792ad2ddd8d9db056df846496f7cdb2979fde875538f7e48"
+          }
+        }
+      ]
+    }
+  ]
+}

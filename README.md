@@ -78,6 +78,9 @@ train/calibration scores separately from full-Gaussian true-residual scores.
 The [metric comparison plots](docs/synthetic_polynomial_residual.md#metric-comparison-plots)
 show aligned R², mean-radius, regret and coverage bars for the quartic,
 interaction and nonlinear studies, using the best held-out MLP.
+The [dataset-zero envelope view](docs/synthetic_polynomial_residual.md#dataset-zero-context-averaged-envelopes)
+shows the context-averaged truth, surrogate, corrected predictor and transferred
+envelope for each saved residual model. Width-plot legends contain model names only.
 
 For joint increases in sample size and bootstrap count, use
 `manifests/uncertainty-envelopes-residual-paired-nb.json`. It reports only the

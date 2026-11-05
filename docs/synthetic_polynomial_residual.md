@@ -176,6 +176,15 @@ Prior width PDFs and summary JSONs are preserved byte-for-byte in
 Historical downstream reports retain their original summary references; use
 the relocation index to find the corresponding archived summary and checksum.
 
+The seven-study replay completed on 2026-11-05: four polynomial residuals,
+interaction, nonlinear and nonlinear capacity. All 14 PDFs (15 pages) were
+opened and visually inspected using in-memory renders, with no raster files
+created. Replayed full widths match saved curves exactly for every model;
+all numerical summary fields and unrelated figures are unchanged. The 21
+polynomial/structured tests and the synthetic `main.py` demo passed. Validation
+and demo artifact checksums are recorded in
+`scratch/retired_experiments/synthetic_envelope_dataset0_validation_20261105.json`.
+
 ### Original experiment and other report commands
 
 ```bash

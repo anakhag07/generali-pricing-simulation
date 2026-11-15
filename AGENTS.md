@@ -1,5 +1,12 @@
 # Agent Instructions
 
+PR #195 review fixes continue in `worktrees/pr-synthetic-residual-review` on
+`feature/synthetic-envelope-dataset0`. The original
+`worktrees/feature-synthetic-envelope-dataset0` is detached at `ff1947e`;
+preserve its files and path for saved report provenance. Polynomial bands reject
+empty context matrices. Interaction indices accept NumPy integer scalars and
+normalize them to Python integers, while rejecting booleans and floating indices.
+
 Dataset-zero envelope reports are replayed by
 `scratch/replay_synthetic_dataset0_envelopes.py <project> ...`, using
 `polynomial_reporting.write_context_envelope_report` with each contract's

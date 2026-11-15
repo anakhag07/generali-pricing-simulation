@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from fractions import Fraction
+from numbers import Integral
 
 import numpy as np
 from numpy.polynomial import polynomial as pol
@@ -41,8 +42,13 @@ class AdditivePolynomial:
         if not self.action or not np.isfinite([*self.context, *self.action]).all():
             raise ValueError('Require finite polynomial coefficients.')
         for j, power, value in self.interactions:
-            if type(j) is not int or not 0 <= j < len(self.context) or type(power) is not int or not 1 <= power < len(self.action) or not np.isfinite(value):
+            if (not isinstance(j, Integral) or isinstance(j, (bool, np.bool_))
+                    or not isinstance(power, Integral) or isinstance(power, (bool, np.bool_))
+                    or not 0 <= j < len(self.context) or not 1 <= power < len(self.action)
+                    or not np.isfinite(value)):
                 raise ValueError('Invalid context/action interaction coefficient.')
+        object.__setattr__(self, 'interactions', tuple(
+            (int(j), int(power), value) for j, power, value in self.interactions))
 
     def __call__(self, contexts, actions):
         x, a = np.asarray(contexts), np.asarray(actions)
@@ -82,6 +88,8 @@ class PolynomialFeatureBand:
 
     def __init__(self, contexts, degree, beta, inverse, critical, interaction_order=0):
         self.contexts = np.asarray(contexts, float)
+        if self.contexts.ndim != 2 or not len(self.contexts):
+            raise ValueError('Polynomial bands require a nonempty context matrix.')
         self.degree = int(degree)
         self.interaction_order = int(interaction_order)
         if not 0 <= self.interaction_order <= self.degree:

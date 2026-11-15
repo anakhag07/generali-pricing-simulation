@@ -33,6 +33,33 @@ def sample():
     return x, a, signs
 
 
+def test_polynomial_band_rejects_empty_contexts():
+    with pytest.raises(ValueError, match='nonempty context matrix'):
+        PolynomialFeatureBand(np.empty((0, 3)), 1, np.zeros(5), np.eye(5), 1.)
+
+
+def test_interaction_indices_round_trip_numpy_integers(tmp_path):
+    path = tmp_path/'indices.npz'
+    np.savez(path, indices=np.array([[0, 1], [1, 2]], dtype=np.int64))
+    with np.load(path, allow_pickle=False) as saved:
+        interactions = tuple((j, power, value) for (j, power), value in
+                             zip(saved['indices'], [.35, .2]))
+    model = AdditivePolynomial((.1, 0., 0.), (.2, .25, .15), interactions)
+    assert all(type(j) is type(power) is int for j, power, _ in model.interactions)
+    x, a = np.array([[2., 3., 4.]]), np.array([.5])
+    expected = .1*2+.2+.25*.5+.15*.5**2+.35*2*.5+.2*3*.5**2
+    np.testing.assert_allclose(model(x, a), [expected])
+    np.testing.assert_allclose(polynomial_features(x, a, 2, 2)@model.feature_coefficients(2, 2), [expected])
+    assert float(model.exact(x[0]).eval(.5)) == pytest.approx(expected)
+
+
+@pytest.mark.parametrize('index,power', [(0., 1), (0, 1.), (True, 1),
+    (0, np.bool_(True)), (-1, 1), (3, 1), (0, 0), (0, 3), (np.nan, 1)])
+def test_interaction_indices_reject_nonintegers_and_invalid_ranges(index, power):
+    with pytest.raises(ValueError, match='Invalid context/action interaction'):
+        AdditivePolynomial((0., 0., 0.), (0., 0., 0.), ((index, power, 1.),))
+
+
 @pytest.mark.parametrize('degree', [4, 5, 6])
 def test_noiseless_recovery_and_bootstrap_refits(sample, degree):
     x, a, signs = sample

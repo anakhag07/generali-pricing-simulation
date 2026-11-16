@@ -1,0 +1,350 @@
+{
+  "reason": "Archive preparation-only contracts before correcting a Markdown math-rendering command; no repetitions or optimizer runs had started. Numerical parameters and exact frozen-input pairing unchanged.",
+  "files": [
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree1/inputs.npz",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree1/inputs.npz",
+      "sha256": "e708140b3a70889e18a621246e04f091b18d41809befd4901319025bd3b2f31c"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree1/EXPERIMENT.md",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree1/EXPERIMENT.md",
+      "sha256": "6edde89a405083baee5379f6d8ffe00df947da6dd7d68637ad0a234a19e5f01a"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree1/config.json",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree1/config.json",
+      "sha256": "b4c79ac64371b7b5498dcc8ae18e09b1f23506b112d326dab87882e96887e22c"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree1/contract.json",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree1/contract.json",
+      "sha256": "bb538b0d34a5ff81f3cf877603f014250536f7e82d1df37a52cb0f22c2ff7f78"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree1/source/MATH.md",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree1/source/MATH.md",
+      "sha256": "28bd166957f250bcc7ff6b1b4e052bf66222b62526d79a952430a4f7383a14c8"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree1/source/src/experiments/offline_bootstrap_math.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree1/source/src/experiments/offline_bootstrap_math.py",
+      "sha256": "bed975dca6cf83b7d6031d8b0feec98408eb30beb62d20ce2627e6d9fc959115"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree1/source/src/experiments/provenance.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree1/source/src/experiments/provenance.py",
+      "sha256": "19fd43be9abf783b91a65ad8b9a56935956602fbf2036f0d94f7578cda6663df"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree1/source/src/experiments/envelopes/feature_wild.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree1/source/src/experiments/envelopes/feature_wild.py",
+      "sha256": "c6cfaf88eb83a1d46bded13ae349799558397ce060ffe993d45fdda215cb2c19"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree1/source/src/experiments/envelopes/polynomial.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree1/source/src/experiments/envelopes/polynomial.py",
+      "sha256": "d5d095c45e12d8e28c8d3c5b8d65d8fd39e978690c74442920b6ef151e57102a"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree1/source/src/experiments/envelopes/polynomial_study.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree1/source/src/experiments/envelopes/polynomial_study.py",
+      "sha256": "6e1bce805b683329050b6f19d0e16cea94f8db91af56e5e1cfbb7348a02945f1"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree1/source/src/experiments/envelopes/quadratic.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree1/source/src/experiments/envelopes/quadratic.py",
+      "sha256": "9857d9f33e2e65546dd5631ed9f99da10560b8a1790fdf24ec9a3c8352abe974"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree1/source/src/experiments/envelopes/wild.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree1/source/src/experiments/envelopes/wild.py",
+      "sha256": "b2f4da709de0372e9d38709258fbd794d107d3ae89c4d965a5e692d7b06dc2f6"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree1/source/src/experiments/seeds/streams.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree1/source/src/experiments/seeds/streams.py",
+      "sha256": "04ca16b7fdc11a19a72f0221bb227fcbfbc70e247cbc9b0c9a6fcf386967c52b"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree1/source/src/objective/base.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree1/source/src/objective/base.py",
+      "sha256": "b1b64ab71ed33fd70618bf5f40218a5d2c48f6650f0821178177ca0028d3bb32"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree1/source/src/objective/utils.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree1/source/src/objective/utils.py",
+      "sha256": "f56a762711031674ea97ce8cecba3235aeee3d243ed92029720cc3f47b3b8515"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree1/source/src/optimization/__init__.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree1/source/src/optimization/__init__.py",
+      "sha256": "7c66568c620517d21f346eac3f767c09f6ec90835387dd12654ef5183a7f1bbe"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree1/source/src/optimization/base.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree1/source/src/optimization/base.py",
+      "sha256": "e86073c63f02f0b6c79a0938cbc6300b450474e35244aef7468a9bfe3479c6ec"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree1/source/src/optimization/helpers.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree1/source/src/optimization/helpers.py",
+      "sha256": "3a4bdcd027de35543124c0f3f2f5cde65b7f53cc62b26e473db78d879bfc58d7"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree1/source/src/optimization/optax_loop.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree1/source/src/optimization/optax_loop.py",
+      "sha256": "5c6cc5ce1fab38dddc5e097ffe9893d8b7494204303ca389da012545477ca215"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree1/source/src/optimization/solvers.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree1/source/src/optimization/solvers.py",
+      "sha256": "c75f377d747c8cd8e7053d393da9ecdc2d17961957a8639247b125c6ec574153"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree1/source/src/optimization/steps.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree1/source/src/optimization/steps.py",
+      "sha256": "7e687ee5a5733842c6f28417eea892fec2a1938487e3c0819c4c4504ad3998a3"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree1/source/src/optimization/gradients/__init__.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree1/source/src/optimization/gradients/__init__.py",
+      "sha256": "f28a9b4013921c2d41f10ea08e3df419f78f59f477a376c64fe2867527f47c3e"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree1/source/src/optimization/gradients/methods.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree1/source/src/optimization/gradients/methods.py",
+      "sha256": "fdb0eb572f054de06ed7ee2742902b73412af0b5b09621201433cdc55370b6b5"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree2/inputs.npz",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree2/inputs.npz",
+      "sha256": "e708140b3a70889e18a621246e04f091b18d41809befd4901319025bd3b2f31c"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree2/EXPERIMENT.md",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree2/EXPERIMENT.md",
+      "sha256": "6edde89a405083baee5379f6d8ffe00df947da6dd7d68637ad0a234a19e5f01a"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree2/config.json",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree2/config.json",
+      "sha256": "a1b57cae23f73537a151c55a76cd0f5bf9529e8c053e4ab473cfa3f7b0372e50"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree2/contract.json",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree2/contract.json",
+      "sha256": "3db33285bf4297da9ea786e30b647719f43baa14615e0987caee28ce3729e187"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree2/source/MATH.md",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree2/source/MATH.md",
+      "sha256": "28bd166957f250bcc7ff6b1b4e052bf66222b62526d79a952430a4f7383a14c8"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree2/source/src/experiments/offline_bootstrap_math.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree2/source/src/experiments/offline_bootstrap_math.py",
+      "sha256": "bed975dca6cf83b7d6031d8b0feec98408eb30beb62d20ce2627e6d9fc959115"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree2/source/src/experiments/provenance.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree2/source/src/experiments/provenance.py",
+      "sha256": "19fd43be9abf783b91a65ad8b9a56935956602fbf2036f0d94f7578cda6663df"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree2/source/src/experiments/envelopes/feature_wild.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree2/source/src/experiments/envelopes/feature_wild.py",
+      "sha256": "c6cfaf88eb83a1d46bded13ae349799558397ce060ffe993d45fdda215cb2c19"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree2/source/src/experiments/envelopes/polynomial.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree2/source/src/experiments/envelopes/polynomial.py",
+      "sha256": "d5d095c45e12d8e28c8d3c5b8d65d8fd39e978690c74442920b6ef151e57102a"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree2/source/src/experiments/envelopes/polynomial_study.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree2/source/src/experiments/envelopes/polynomial_study.py",
+      "sha256": "6e1bce805b683329050b6f19d0e16cea94f8db91af56e5e1cfbb7348a02945f1"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree2/source/src/experiments/envelopes/quadratic.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree2/source/src/experiments/envelopes/quadratic.py",
+      "sha256": "9857d9f33e2e65546dd5631ed9f99da10560b8a1790fdf24ec9a3c8352abe974"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree2/source/src/experiments/envelopes/wild.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree2/source/src/experiments/envelopes/wild.py",
+      "sha256": "b2f4da709de0372e9d38709258fbd794d107d3ae89c4d965a5e692d7b06dc2f6"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree2/source/src/experiments/seeds/streams.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree2/source/src/experiments/seeds/streams.py",
+      "sha256": "04ca16b7fdc11a19a72f0221bb227fcbfbc70e247cbc9b0c9a6fcf386967c52b"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree2/source/src/objective/base.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree2/source/src/objective/base.py",
+      "sha256": "b1b64ab71ed33fd70618bf5f40218a5d2c48f6650f0821178177ca0028d3bb32"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree2/source/src/objective/utils.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree2/source/src/objective/utils.py",
+      "sha256": "f56a762711031674ea97ce8cecba3235aeee3d243ed92029720cc3f47b3b8515"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree2/source/src/optimization/__init__.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree2/source/src/optimization/__init__.py",
+      "sha256": "7c66568c620517d21f346eac3f767c09f6ec90835387dd12654ef5183a7f1bbe"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree2/source/src/optimization/base.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree2/source/src/optimization/base.py",
+      "sha256": "e86073c63f02f0b6c79a0938cbc6300b450474e35244aef7468a9bfe3479c6ec"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree2/source/src/optimization/helpers.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree2/source/src/optimization/helpers.py",
+      "sha256": "3a4bdcd027de35543124c0f3f2f5cde65b7f53cc62b26e473db78d879bfc58d7"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree2/source/src/optimization/optax_loop.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree2/source/src/optimization/optax_loop.py",
+      "sha256": "5c6cc5ce1fab38dddc5e097ffe9893d8b7494204303ca389da012545477ca215"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree2/source/src/optimization/solvers.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree2/source/src/optimization/solvers.py",
+      "sha256": "c75f377d747c8cd8e7053d393da9ecdc2d17961957a8639247b125c6ec574153"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree2/source/src/optimization/steps.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree2/source/src/optimization/steps.py",
+      "sha256": "7e687ee5a5733842c6f28417eea892fec2a1938487e3c0819c4c4504ad3998a3"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree2/source/src/optimization/gradients/__init__.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree2/source/src/optimization/gradients/__init__.py",
+      "sha256": "f28a9b4013921c2d41f10ea08e3df419f78f59f477a376c64fe2867527f47c3e"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree2/source/src/optimization/gradients/methods.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree2/source/src/optimization/gradients/methods.py",
+      "sha256": "fdb0eb572f054de06ed7ee2742902b73412af0b5b09621201433cdc55370b6b5"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree6/inputs.npz",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree6/inputs.npz",
+      "sha256": "e708140b3a70889e18a621246e04f091b18d41809befd4901319025bd3b2f31c"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree6/EXPERIMENT.md",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree6/EXPERIMENT.md",
+      "sha256": "6edde89a405083baee5379f6d8ffe00df947da6dd7d68637ad0a234a19e5f01a"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree6/config.json",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree6/config.json",
+      "sha256": "ded9eede8c06966574a166112018f0d71adc70d43d3fda99e3e6c55a6bd6ba27"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree6/contract.json",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree6/contract.json",
+      "sha256": "59b0234f277df6be2a989f9061d0ec5c68549adedd0070973ed3a5496e199896"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree6/source/MATH.md",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree6/source/MATH.md",
+      "sha256": "28bd166957f250bcc7ff6b1b4e052bf66222b62526d79a952430a4f7383a14c8"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree6/source/src/experiments/offline_bootstrap_math.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree6/source/src/experiments/offline_bootstrap_math.py",
+      "sha256": "bed975dca6cf83b7d6031d8b0feec98408eb30beb62d20ce2627e6d9fc959115"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree6/source/src/experiments/provenance.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree6/source/src/experiments/provenance.py",
+      "sha256": "19fd43be9abf783b91a65ad8b9a56935956602fbf2036f0d94f7578cda6663df"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree6/source/src/experiments/envelopes/feature_wild.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree6/source/src/experiments/envelopes/feature_wild.py",
+      "sha256": "c6cfaf88eb83a1d46bded13ae349799558397ce060ffe993d45fdda215cb2c19"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree6/source/src/experiments/envelopes/polynomial.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree6/source/src/experiments/envelopes/polynomial.py",
+      "sha256": "d5d095c45e12d8e28c8d3c5b8d65d8fd39e978690c74442920b6ef151e57102a"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree6/source/src/experiments/envelopes/polynomial_study.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree6/source/src/experiments/envelopes/polynomial_study.py",
+      "sha256": "6e1bce805b683329050b6f19d0e16cea94f8db91af56e5e1cfbb7348a02945f1"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree6/source/src/experiments/envelopes/quadratic.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree6/source/src/experiments/envelopes/quadratic.py",
+      "sha256": "9857d9f33e2e65546dd5631ed9f99da10560b8a1790fdf24ec9a3c8352abe974"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree6/source/src/experiments/envelopes/wild.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree6/source/src/experiments/envelopes/wild.py",
+      "sha256": "b2f4da709de0372e9d38709258fbd794d107d3ae89c4d965a5e692d7b06dc2f6"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree6/source/src/experiments/seeds/streams.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree6/source/src/experiments/seeds/streams.py",
+      "sha256": "04ca16b7fdc11a19a72f0221bb227fcbfbc70e247cbc9b0c9a6fcf386967c52b"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree6/source/src/objective/base.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree6/source/src/objective/base.py",
+      "sha256": "b1b64ab71ed33fd70618bf5f40218a5d2c48f6650f0821178177ca0028d3bb32"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree6/source/src/objective/utils.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree6/source/src/objective/utils.py",
+      "sha256": "f56a762711031674ea97ce8cecba3235aeee3d243ed92029720cc3f47b3b8515"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree6/source/src/optimization/__init__.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree6/source/src/optimization/__init__.py",
+      "sha256": "7c66568c620517d21f346eac3f767c09f6ec90835387dd12654ef5183a7f1bbe"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree6/source/src/optimization/base.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree6/source/src/optimization/base.py",
+      "sha256": "e86073c63f02f0b6c79a0938cbc6300b450474e35244aef7468a9bfe3479c6ec"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree6/source/src/optimization/helpers.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree6/source/src/optimization/helpers.py",
+      "sha256": "3a4bdcd027de35543124c0f3f2f5cde65b7f53cc62b26e473db78d879bfc58d7"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree6/source/src/optimization/optax_loop.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree6/source/src/optimization/optax_loop.py",
+      "sha256": "5c6cc5ce1fab38dddc5e097ffe9893d8b7494204303ca389da012545477ca215"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree6/source/src/optimization/solvers.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree6/source/src/optimization/solvers.py",
+      "sha256": "c75f377d747c8cd8e7053d393da9ecdc2d17961957a8639247b125c6ec574153"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree6/source/src/optimization/steps.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree6/source/src/optimization/steps.py",
+      "sha256": "7e687ee5a5733842c6f28417eea892fec2a1938487e3c0819c4c4504ad3998a3"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree6/source/src/optimization/gradients/__init__.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree6/source/src/optimization/gradients/__init__.py",
+      "sha256": "f28a9b4013921c2d41f10ea08e3df419f78f59f477a376c64fe2867527f47c3e"
+    },
+    {
+      "source": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree6/source/src/optimization/gradients/methods.py",
+      "archive": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-polynomial-sweep-preflight-20261103/synthetic-polynomial-residual-degree6/source/src/optimization/gradients/methods.py",
+      "sha256": "fdb0eb572f054de06ed7ee2742902b73412af0b5b09621201433cdc55370b6b5"
+    }
+  ]
+}

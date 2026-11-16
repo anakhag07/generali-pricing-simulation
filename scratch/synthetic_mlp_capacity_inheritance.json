@@ -1,0 +1,2661 @@
+{
+  "purpose": "Retained original nonlinear study before capacity comparison; original worktree pinned at 7a5179b.",
+  "files": [
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/01_residual_recovery.pdf",
+      "sha256": "8da0b3c015e457f3ce73f698135006d68a1eb8261b6a2d83b4561cf9c64ed3a5"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/02_simultaneous_coverage.pdf",
+      "sha256": "2937f1ab0d78c1c372108afa9f23a31f54e71cc91324c852a3773690d9237add"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/03_average_envelope_width.pdf",
+      "sha256": "c6f1543831c61de95cdd763dde0153d2248f5715e6277adde947daf2d21a58a8"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/04_policy_regret.pdf",
+      "sha256": "0acc1739ead56e0f1c978e1ff845239f031fd91688c8778bcfce33e292992084"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/05_truth_surrogate_and_observations.pdf",
+      "sha256": "f21d5bc4f85d9ecffed7d31a7fc79aaf200f6f3dbf797c6d0fcca479bc64eef9"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/EXPERIMENT.md",
+      "sha256": "654a08057f0dec14af2da2fa0548a501e8d4f37b158fbf5beedb19d0d2aaa713"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/config.json",
+      "sha256": "111d41d06c192d54dfe638e3cff88ee51884ff9df657522bc40cbf42ead60cdb"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/contract.json",
+      "sha256": "1b6730c5b72f0ac9a78e58afb9ca64a85679db90d064c178a2fb193236a31ed9"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-000-mlp-frozen-head.json",
+      "sha256": "c4afef1bb8ba8f07b4fa26fd719f40315b9a63a91d9ae791b4c111571978c2a6"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-000-mlp-frozen-head.npz",
+      "sha256": "92783415137893a4a556442e6bdcbad9878d75c6a596fed27d65f885d809c97b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-001-mlp-frozen-head.json",
+      "sha256": "7cd69cad3055dfadf580de6ab85540e07144aeb9b53a584731f77007e9e1f488"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-001-mlp-frozen-head.npz",
+      "sha256": "be04cd636f4018a0a3272ef853f4f6cbd400b540ddc245f626eb68e9f2d8e6fe"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-002-mlp-frozen-head.json",
+      "sha256": "18b9bdc5ae2a79f74e3bc9689b6ab01649dbdd1a7988eae493515e2b9ae2ac2d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-002-mlp-frozen-head.npz",
+      "sha256": "60239bd3160a86d260399a6e942523d805c0cb5cbbd82d477944d35a092c110d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-003-mlp-frozen-head.json",
+      "sha256": "90dbef92eb1f827ea8f5278c4d677db74994de95f3b744d649373ca60d489eb6"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-003-mlp-frozen-head.npz",
+      "sha256": "330373d4234d8f8a3235877f591847c48d1d482cf2d47a2c006b042e3faaac2d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-004-mlp-frozen-head.json",
+      "sha256": "0d973ae0c67ca11b0106cba854993429576aa23a2730a74aa659eb4e882f9144"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-004-mlp-frozen-head.npz",
+      "sha256": "17069ff326add4a962f4ffe206305fc6e6cdfe979896419d7b8b03e589105eee"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-005-mlp-frozen-head.json",
+      "sha256": "489131758d23a84394be8254d8623211c1ec6f4e3c943e7725e0e4de4c62655f"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-005-mlp-frozen-head.npz",
+      "sha256": "48f32cade6aa7ed5c5f38f5da21fccafc64f2ea825c70a316fd1cdd8cb5493b1"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-006-mlp-frozen-head.json",
+      "sha256": "5db5ab6566bf9a0b9fb05a29c2dcff8a07f9688c1c4c0f188aa54c233bcf8753"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-006-mlp-frozen-head.npz",
+      "sha256": "b6a756d8adf427367353f1a27e4f0da2f395d2b4fd7de984bed4ff2246a8a5bb"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-007-mlp-frozen-head.json",
+      "sha256": "360f102e58fe4ed22e1d915babef463292fa5b757eab97efb51fe4c1bef7c5da"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-007-mlp-frozen-head.npz",
+      "sha256": "f77339642fcefc950a641f95677b0620167dfdc69b121c77fee5fbe395d29315"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-008-mlp-frozen-head.json",
+      "sha256": "3902bd8b33a607725cb939442687044ae844ac0cbb26c5c13d0bd8b714121544"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-008-mlp-frozen-head.npz",
+      "sha256": "b11c27a4d26bf3e05a462e4963d03e20fcbe193eaf1797478622441cb3e2ef44"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-009-mlp-frozen-head.json",
+      "sha256": "0db71f3bce7f9b81302ddc11c025c39c345d2310c1182220db9b8b38f3f669d3"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-009-mlp-frozen-head.npz",
+      "sha256": "ca59084ba948733bc33043397c96d57cb807e5d8af87806309e503e80049fdc8"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-010-mlp-frozen-head.json",
+      "sha256": "410ddec855c70683ee932f69489a36eda3af7b87cbd7660c088196fee1d956f9"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-010-mlp-frozen-head.npz",
+      "sha256": "17f4ac491af9a51a0791ec91aeabc3baf1dfbf0009740d06aa95d0827da794a1"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-011-mlp-frozen-head.json",
+      "sha256": "7638f315dfc96454aba8f1928efc1a2cb89fbbff6ae6a3c1cb25d8db42d4bd87"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-011-mlp-frozen-head.npz",
+      "sha256": "8175c37df99714277badd9c1fb2b6e45eacd595e8d36515ae0c18a587159130c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-012-mlp-frozen-head.json",
+      "sha256": "8c2e188c990aa7d8138891a9f8b4d890719311672acc4b77e1eeeff03420f79b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-012-mlp-frozen-head.npz",
+      "sha256": "c906d5224288560e52156aeae912f12f6e827b97826bced8d1edf3ab121737f0"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-013-mlp-frozen-head.json",
+      "sha256": "20148e8b34dfc6487e5d7b6550eeeaa738b9841ec1ce91893e468244b1a4e5d7"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-013-mlp-frozen-head.npz",
+      "sha256": "7ee27b7b492266116cb4ce499c6580d5484cfd06e92c0815668ae69eb644adc5"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-014-mlp-frozen-head.json",
+      "sha256": "62bbc1b0f707c9ca2dcd9763c0cb170171454222461381c79a2e04ae18321e5e"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-014-mlp-frozen-head.npz",
+      "sha256": "0e810ab92f1a4595a89f2350787aa605548c0f250f292d0b757d58824158b67e"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-015-mlp-frozen-head.json",
+      "sha256": "01fccdaf18f0b132257e0cc811e0fbf0dcda567f3e6b4bdd2ce9a51d7b4b5d45"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-015-mlp-frozen-head.npz",
+      "sha256": "931dcb3dc5aa38f8073ac5d6c2dbd9366367e33c942c31aa192edcf3a182a36c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-016-mlp-frozen-head.json",
+      "sha256": "07b54e7e0c8fbe178f772b71cb278c8feea61533cca0c4a697de17a7bb2c558a"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-016-mlp-frozen-head.npz",
+      "sha256": "e5fe051d751cfe1b013f5223f7342c13f3d69c6cf18ae1e655c2a151439132dd"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-017-mlp-frozen-head.json",
+      "sha256": "4aae0f120ebaba88fc453d2f9fec6e41fe54c676cc87536032ac1f5b21e8c7f5"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-017-mlp-frozen-head.npz",
+      "sha256": "977b8f5b100fcc75320e08be6272fa4943aba059dba4dc1ae94d41b07ff4f330"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-018-mlp-frozen-head.json",
+      "sha256": "24acdc6d6c0580387c7a807995bc0976c9572ce1cc15b24bd9f4acbdf46a913b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-018-mlp-frozen-head.npz",
+      "sha256": "29338f74c5756c7e0f8c0b10ff4f39b7e355acfdaab99f849d5f00910cff925f"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-019-mlp-frozen-head.json",
+      "sha256": "d003b22ac534f786f8125e44bb13190581460f53bb2c5c1d65a9ee5aa176f933"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-019-mlp-frozen-head.npz",
+      "sha256": "caa3b54c786a0ed299e34e8c917ef77935f18257bd1c697686abffd41b42b775"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-020-mlp-frozen-head.json",
+      "sha256": "488e7ab86589b673caf9e3eed577162eca57196108c8a96507c2332d0c9abdde"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-020-mlp-frozen-head.npz",
+      "sha256": "87ef20879a72f6a5eff2c09d240d2fd284bb5acf77f65bea5e9f01f87338e08c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-021-mlp-frozen-head.json",
+      "sha256": "cebd88b970f18ef7f712f07ff8dbad28df4750fa0bee4fee26fb1badb692c972"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-021-mlp-frozen-head.npz",
+      "sha256": "fd236bb74a7051bbf1c44e8648f99e0b0f385594eda99c2043c9219d717bc5f2"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-022-mlp-frozen-head.json",
+      "sha256": "7ded247bb4eced2a7d4881eb016c967041922ae71bc088acbab25fdf85eb2817"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-022-mlp-frozen-head.npz",
+      "sha256": "5d233bb6e06c009b11110b71e24706ecaf91859257673999065ab06125037cf5"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-023-mlp-frozen-head.json",
+      "sha256": "39ff22375dcfbc4f44eecdc42d1686a065bcc9cedf1920bae574586caa1e13a3"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-023-mlp-frozen-head.npz",
+      "sha256": "56fc23bc25e9f6c669bb76649490b68717f15af00342d5c8cf914ac019c2efad"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-024-mlp-frozen-head.json",
+      "sha256": "40c7df92a472f626b92c48e7e74a56a51413e36670170145ce52dcd91f2c153d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-024-mlp-frozen-head.npz",
+      "sha256": "182105da5a76194cb52278e1e956b118c105818fdb26d83e1cc8557028dcf1ad"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-025-mlp-frozen-head.json",
+      "sha256": "e6b622d1bda66e1a2b6eaa7f1f8a449798863b3599574beb84a2b6fe30f5dcfd"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-025-mlp-frozen-head.npz",
+      "sha256": "e9e7a5bb95bbbef16b40dd132855fce9c79ffc9c87b0dab5390f963c50c63a13"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-026-mlp-frozen-head.json",
+      "sha256": "14a60e3abf3208e408df606e532542b51b0264d1187154c0c9c2e4b7f31e1672"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-026-mlp-frozen-head.npz",
+      "sha256": "6b82b5d854432f0367c38f27d02fd8ad6d216eb2d42b6a7818c618a8b4abaae3"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-027-mlp-frozen-head.json",
+      "sha256": "10a6d4b5e8d73ab3c57c8ace83b32253c2f16c3578badb274140bf599ce5b8b1"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-027-mlp-frozen-head.npz",
+      "sha256": "4d1941951cb742b1865e1207465dc1f297f5cdb8780d05e3a488fef9a4d5a63f"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-028-mlp-frozen-head.json",
+      "sha256": "8d08baac0152b0ef4b06d8d68209965908bab31ed3b57686b90ae0b31225e9e2"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-028-mlp-frozen-head.npz",
+      "sha256": "1aff98d6a84bde11d8537e838d42c9e0d4f6ed6fe87a7743625e0910452d93a1"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-029-mlp-frozen-head.json",
+      "sha256": "7846daaceb703455842cf41e1bcbd2bc6b349dc5630a3d768aa2cebbb8157535"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-029-mlp-frozen-head.npz",
+      "sha256": "9058550ab87a08802a537be2ccc480d754b10847e35cb51b08578d08eaec36fe"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-030-mlp-frozen-head.json",
+      "sha256": "27b46348aee0a5489b58ec4878d776b908aef6a8f5246b7da70f2eae5e355daa"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-030-mlp-frozen-head.npz",
+      "sha256": "ef0e6e0bdbe9dfab8eb8ea23b7fe620b0a3e16e07a91b47628eef5e643013566"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-031-mlp-frozen-head.json",
+      "sha256": "d315ec81714ce2915ff18920815cfe85af20d6cd64457807cbbd0a3339357404"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-031-mlp-frozen-head.npz",
+      "sha256": "02cc03e076a590fbfd8ce4afdfb9180734243db5f8203cc8593a97750192f806"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-032-mlp-frozen-head.json",
+      "sha256": "81c2d50b034e18f804bf38afffa315285a42f3a50027eedf39d53b7969bea1da"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-032-mlp-frozen-head.npz",
+      "sha256": "2c90694aac3589a18224656161c170c89f145c912142d7ff7272e8e4e437ecd1"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-033-mlp-frozen-head.json",
+      "sha256": "681d6d96faeeb7fe22407033414fd89ca3ff82b236799b00797461db7b4d2cb4"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-033-mlp-frozen-head.npz",
+      "sha256": "77ea41d5e1d0274392adf331cef2abb59c2a9449eebed175d4be3c7629b5591d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-034-mlp-frozen-head.json",
+      "sha256": "43c7db4161d9058b8c41bbc5b864c19906fb7bc6ab95b4d33cfd4dafd2446be3"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-034-mlp-frozen-head.npz",
+      "sha256": "fde520094a52d5b7d7daa9b3ab3e84543ccc0ebdee75e2578252273224ce380c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-035-mlp-frozen-head.json",
+      "sha256": "b8d412dd93a085bd5af286e98999b2f687a434532671d2f2daf0b5bd95a4ac05"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-035-mlp-frozen-head.npz",
+      "sha256": "3c39cce0f4318f3c962627c186306c7e3e5ace7f7bc01f4aa4e46cbcf5206b6b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-036-mlp-frozen-head.json",
+      "sha256": "3b1a535c680454db2de4b697516ec5b26406e8158226abe03ff93ffed969af9c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-036-mlp-frozen-head.npz",
+      "sha256": "6446fb01613400cddc157c675435f02f0eacea35500ad5509ee2e9ee3892e248"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-037-mlp-frozen-head.json",
+      "sha256": "e047e2389c4978cd572a4a56085c22773009f590112553cf3bc449cb937dfc41"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-037-mlp-frozen-head.npz",
+      "sha256": "834f439b920f04aa8ee8664859fe6e1fd03de3e40fa61c6b2aca896bb40ce084"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-038-mlp-frozen-head.json",
+      "sha256": "40c396d3c88fe8165570948c2a4e7db666fadaab57b4da56dd3e14d6260464e8"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-038-mlp-frozen-head.npz",
+      "sha256": "f01b6ea48c783d6e866190606ff66ea80b74c9b47fee0fa986931660545ec944"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-039-mlp-frozen-head.json",
+      "sha256": "f9a0756c3b4b428009c46d05a34d6555b4f876f9d456c124283d3028290ab33b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-039-mlp-frozen-head.npz",
+      "sha256": "592a0247dae341cc692525b15a4bd5df52894f9cd9e25d0e24bd3b952dd340b1"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-040-mlp-frozen-head.json",
+      "sha256": "17bd891208795471f7b1e997e7c241266d967a23522f64c497040d2798041b53"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-040-mlp-frozen-head.npz",
+      "sha256": "3d7e6aeb2d6993c071ce7017b2f7e66d13b5c064b1ae154d287008f5992550cd"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-041-mlp-frozen-head.json",
+      "sha256": "8e7176ca6b5a61210381d58b85cdf7a64f78d730a45e182037a6f4e4f4074a35"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-041-mlp-frozen-head.npz",
+      "sha256": "7b4be49ef6063998bc7ae42ab35acd81ee3dbe354ead818d694a1768d2882890"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-042-mlp-frozen-head.json",
+      "sha256": "def689ca8e94e687f600ca7e65e37debd63ac3c421cb858de107b4de0f3208ac"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-042-mlp-frozen-head.npz",
+      "sha256": "c55a60a0a7616587a9f23f85b80b2ce76fcd83cf59a3c3fe9e27281225abf0bf"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-043-mlp-frozen-head.json",
+      "sha256": "44c31ad0b70dd34c8d80270df602f3b937a549af5487ca96cfd6491efb13ce1e"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-043-mlp-frozen-head.npz",
+      "sha256": "5bc01e2f4d30fa62add1dc5358c31b6e2bce2ad26535d25c07d8640bab20fe12"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-044-mlp-frozen-head.json",
+      "sha256": "f844912665bc551108bb8bc956da4e7b3cac04d9140a12496738c0f6e6b3595b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-044-mlp-frozen-head.npz",
+      "sha256": "9a2fc9dbbe74a75c5b394d1f1f06588ca1d615c1b25b67c2566f4eba49e438c4"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-045-mlp-frozen-head.json",
+      "sha256": "ac7ed40fae03144639de36df4b1a469b1bdebb771016828e1c67f0ef4b8374d2"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-045-mlp-frozen-head.npz",
+      "sha256": "375d8285cad5fb11c19b55c405a3c64029d686bbcbbfbc38e6d80f52f57e1e36"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-046-mlp-frozen-head.json",
+      "sha256": "08f2651b39d50ee6e8cb72a06485c4d9cff3d76e0bd9ff6f71fe382221b96f6e"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-046-mlp-frozen-head.npz",
+      "sha256": "d4a1a26821f1758624795cb9b150ee8e51729006d525630a3e27c263c3d862e1"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-047-mlp-frozen-head.json",
+      "sha256": "24184520af60dd11a7fc748d77fdeee94d848fdbfc38b917803387b1e415e888"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-047-mlp-frozen-head.npz",
+      "sha256": "8b149bd7e71f9f959ae59efd78ecf9adbacb8e475c5d2b3b4167fb42176361cc"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-048-mlp-frozen-head.json",
+      "sha256": "178adc104e2d4d47b3cccbfc34581d30337276e07bbc7b33e567d39ad8c9eb02"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-048-mlp-frozen-head.npz",
+      "sha256": "9ed6c0fd99cbd1f2b14fba172aad49d7699a8718cdd2775a758007567e6a0ab4"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-049-mlp-frozen-head.json",
+      "sha256": "efdf32543ed6c2dd3136ba5d5e73521039f234464c2a5337aa0d31a163ed3ae6"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-049-mlp-frozen-head.npz",
+      "sha256": "a972706ef904d03a8c6972f1f5495c02ca50ade1cc7be2ea5adee6dedc99255d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-050-mlp-frozen-head.json",
+      "sha256": "5d826d3cf8ff1703e7e0d08aba6292aaf33c18975a9c75f597294bea8955a023"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-050-mlp-frozen-head.npz",
+      "sha256": "999b473ccaa348f54348ec7dd6f553af61a9ddb16e405b233dd31d0c5f5bbafd"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-051-mlp-frozen-head.json",
+      "sha256": "eff551143c7d2e5d30295f144bf716643c91c09fd740dbca160449acbe8276de"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-051-mlp-frozen-head.npz",
+      "sha256": "3e966feec61cc8de0185f6b115f74b0703deb3ebf0e739b536ebe48352198151"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-052-mlp-frozen-head.json",
+      "sha256": "4b5af10c15889d4b66003263a3f8b2acd347f87ddc81f88e761fce2c4323bce6"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-052-mlp-frozen-head.npz",
+      "sha256": "f6273866031fa806b0caadeb9630f5f70111f8f174a93197dc2c6b7531ab0e0b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-053-mlp-frozen-head.json",
+      "sha256": "f2240360d9afc81f26ef15be23c20c2f5b5b4578c9c5ca654b98cede98941556"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-053-mlp-frozen-head.npz",
+      "sha256": "78f093bbd304b6dcaeecc2e369c0507f70235e9686364e7ed061ee941911f907"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-054-mlp-frozen-head.json",
+      "sha256": "6137a877147b4cf834ed1aa68a9cbeb4fe37922f9db9c4fc999d1b5695e2130b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-054-mlp-frozen-head.npz",
+      "sha256": "64e66673457cc447d9c15b77e62cd91f9d8db848f4819af67e97dec949586be0"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-055-mlp-frozen-head.json",
+      "sha256": "934a4d67b1a4a42fbd3d57bc6c8f91ffef9b472079ac85f8ccfc295164bcb460"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-055-mlp-frozen-head.npz",
+      "sha256": "0404911d886e44a449fe0f9e0badd930376aac5f0aea56ad7f21da24b9ee3777"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-056-mlp-frozen-head.json",
+      "sha256": "f2dfd2e588abaa93f628a278283019b5914b45be77fd7b1d5fc510831e748198"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-056-mlp-frozen-head.npz",
+      "sha256": "4b012b15ea939aa2bf857a2c91d1c03433555ddaa089f43b21072b5f5b200a57"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-057-mlp-frozen-head.json",
+      "sha256": "acf1c6dcc08038e93654019d5c1d4cb1ede7c837afb00db26d1530a4b71d1888"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-057-mlp-frozen-head.npz",
+      "sha256": "c75c907331f1f34c14a3563e6bcd782db76f9d22d5b9ddf37f2c34a80e08023d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-058-mlp-frozen-head.json",
+      "sha256": "87ce78138677bd3313602490d8cded4ca02374e536b9821fa0e0f042cc132b6d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-058-mlp-frozen-head.npz",
+      "sha256": "446b3728d9b22ca092494a898ee446c3a9e3a4523850bbbc14c83594a38d1f9d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-059-mlp-frozen-head.json",
+      "sha256": "496cbf0a61ea12ea929cc09748aadc95e362d72f4949a29c0e35171944a1716d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-059-mlp-frozen-head.npz",
+      "sha256": "b67ae8e1164842be756e9ee8b57dd9018461f0ac36604d54d5ad2e01dac95c0c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-060-mlp-frozen-head.json",
+      "sha256": "02a3ec38252151850d5c7c5ea52ddb2f21895f9a4e53efd202c4ed3a3ad16417"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-060-mlp-frozen-head.npz",
+      "sha256": "a77d626a6e7b321eb61bd27922663835683e240175ec2211185d74e6ea32ebda"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-061-mlp-frozen-head.json",
+      "sha256": "4c80b08030a6e09d22c951be91499c58ec68cc6c87a632cbd2cfdcae21e8627e"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-061-mlp-frozen-head.npz",
+      "sha256": "08cf047af6a51d253c4ed884b29ddbc1c8fc5fe37a661acb1dbaf494b768a757"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-062-mlp-frozen-head.json",
+      "sha256": "d5a986723ccdab94a24eabb637fa43362e82c062c6ff7b9d3e9eb3556e544bf3"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-062-mlp-frozen-head.npz",
+      "sha256": "5bb3254fddea57d8099629af49adca5770e60f25c35bc0ba22a2dbd5017e76e9"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-063-mlp-frozen-head.json",
+      "sha256": "2c6a170fe0d42dad686d5483758bfd6e78f7a813db84d454cbc319aa92bf97ce"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-063-mlp-frozen-head.npz",
+      "sha256": "82dd9f4425ba6f4075fca087f9e7e9e9864fdca622414a48eb4990b2addec5c9"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-064-mlp-frozen-head.json",
+      "sha256": "a3959d0a632fe779708599a552bfbdc6ef77a764a48475f9d8aff5e407a53c3d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-064-mlp-frozen-head.npz",
+      "sha256": "f7c4eaab2cded005cf5225ce5af80586562143b6214b8125a9ff0c6e2e265ea6"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-065-mlp-frozen-head.json",
+      "sha256": "3aca45341454d550396905d5e59e612275bbdd852e6d1daffc0a4306ff65e847"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-065-mlp-frozen-head.npz",
+      "sha256": "3023a5cf0f7dca04347a4e1de43f348fc0eeefccb8cbe9a53ab34e2ef6a9c5c7"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-066-mlp-frozen-head.json",
+      "sha256": "e0806abe1662d82948be9b08392e456dc67d3d53179deedeadfd76b011c98df1"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-066-mlp-frozen-head.npz",
+      "sha256": "69a688f9c581f2f81825273ee9dba8ade6636825c0226272a46102f7aa2c1ca8"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-067-mlp-frozen-head.json",
+      "sha256": "f30fd8176693c244aee2c464f30da97698c7e7a4c5dbd79dc857eb7a5786ec03"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-067-mlp-frozen-head.npz",
+      "sha256": "d99c031df0088cb8ff56bd7c42c6a99f4267212de8ad6824805baccf0d98cae0"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-068-mlp-frozen-head.json",
+      "sha256": "666dcc938e5668f04d1c18f42c5e24ead08b1cd446d4fee35ce4a39c04a28a44"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-068-mlp-frozen-head.npz",
+      "sha256": "c1aad6d694250f94eb7335958821fa5ab29a4ed46097850824aca6e0c793a309"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-069-mlp-frozen-head.json",
+      "sha256": "7f24b323f3b9d8bf158a160d2917f86622fe9c3b92c5fcc7c86d7917759e8e10"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-069-mlp-frozen-head.npz",
+      "sha256": "173f13d9bb9911e3356e1962af4eef0d09765b1ba6f740461ffb4f5544eb9c40"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-070-mlp-frozen-head.json",
+      "sha256": "b86d1cdbba2da16beddae2be280fa9138371684a0545f6bdb4079822181e7831"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-070-mlp-frozen-head.npz",
+      "sha256": "ae0588cab614462c2422945619a197693aa1baba279dc430dfb27a6ef9c632ab"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-071-mlp-frozen-head.json",
+      "sha256": "791c410c3496968bb862487716ca11a922b2c7bc450c51a23510af1c0c9133c5"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-071-mlp-frozen-head.npz",
+      "sha256": "03b336d6766f2ff5ebedac057b772b7b855eefafe10b07edbdb3c45199fd95dd"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-072-mlp-frozen-head.json",
+      "sha256": "a26b01e2dce74756c464c7bc84b12415bf190c628fee7c6bbb9ab21f35353611"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-072-mlp-frozen-head.npz",
+      "sha256": "c45e92f3b484d1319cba56658124ce6a381749a411105bda45dfe95ef0712ec0"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-073-mlp-frozen-head.json",
+      "sha256": "a3d611d22ed244b657830843034d9d33c577646f6cc86bbc096c67fc6f168797"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-073-mlp-frozen-head.npz",
+      "sha256": "69472f9898c383e67feb5b7180e062ab5c9c963c3d4e3f6010571d22e03b823f"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-074-mlp-frozen-head.json",
+      "sha256": "c52f0a55bb89936331d2e1707867eb0971822fba50ba5adb8e1ef4c73d7baa53"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-074-mlp-frozen-head.npz",
+      "sha256": "9c4fca6fd56c1b97bb26ecf0c7dffb3fe86d7b2a4e0dfe98b04f56b4bba0128a"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-075-mlp-frozen-head.json",
+      "sha256": "a33fb6b38416b5e58096bc1989ace40fd83f7b59d42fb8f290e7c0a2056dcd1f"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-075-mlp-frozen-head.npz",
+      "sha256": "8657a2aafe8e891f022fdbd3d55bc276e2ae301c1b90eebd6d31465f7e49103d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-076-mlp-frozen-head.json",
+      "sha256": "6b83e37346c70c784fb69b4649029b9723707e7f6f2efcd1c752ad78a02736d8"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-076-mlp-frozen-head.npz",
+      "sha256": "0f5c192f452592ae4686df871fb950666ed78e78eda45ef176cefdfb58a05b8b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-077-mlp-frozen-head.json",
+      "sha256": "a5a87790f8ae0df2ba9107524805896ca77758fae4eb7dede631850761d76bbd"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-077-mlp-frozen-head.npz",
+      "sha256": "f5ab80732a0018775b65d593d1237aa60789aa0341ea8784411a949e3afa1492"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-078-mlp-frozen-head.json",
+      "sha256": "c0b1eb9c77d592b42d94864e0f1955282d271dbc5bd0d247d966638ec55717ea"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-078-mlp-frozen-head.npz",
+      "sha256": "38874a1e17088f1d90aa4cf2d0506ebdb12e53c9adcd4f4c02bc543357593786"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-079-mlp-frozen-head.json",
+      "sha256": "004420e9a9afe548351c6d69df18715cd437cc4dcbcffcbfbacfa849d89e17a8"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-079-mlp-frozen-head.npz",
+      "sha256": "f18117549d70c5806079541e0cc598ef216a03b9676900124e2aa1279fe50266"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-080-mlp-frozen-head.json",
+      "sha256": "37d797fe3f39834d2cacc32f1f254bce34bf7d7e73082dc7dae1d36ca9b3a3a1"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-080-mlp-frozen-head.npz",
+      "sha256": "68ced172866dc47ccecb84ee28c0456fbff8a756c9e1f9c18d21f0b64d921618"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-081-mlp-frozen-head.json",
+      "sha256": "33ed28b086f88fb5fa2e72e9fd49d035fa955af3a70c63e01497abd505625d3c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-081-mlp-frozen-head.npz",
+      "sha256": "493aeebea994af0831cd59c7b7ad577040b27550ecb0785132e48a9e84c74be0"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-082-mlp-frozen-head.json",
+      "sha256": "30b0b7cc593e50c0756eb2953d8c08682e75d58bd558bcba5a0964deb74be3da"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-082-mlp-frozen-head.npz",
+      "sha256": "770df5b47e7e04d3a9f95595be3a975e9ed8335d776f2c553c59d55c2cfeeb1c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-083-mlp-frozen-head.json",
+      "sha256": "df11c1b2fc680bed8cbfd8d80aeac8d2a53c9051c2f6d2c58348d5043cb8adc0"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-083-mlp-frozen-head.npz",
+      "sha256": "b1fdd87e1160263d75f911895dea6f19e37d33ed772036895d1ad04566e6607f"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-084-mlp-frozen-head.json",
+      "sha256": "0ad394c4081ba90b3c864da78338b30d1ce140c52ce17af6a811a65ea9652d28"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-084-mlp-frozen-head.npz",
+      "sha256": "7d38bff12ce742115c8a2d7c94dab4d16175bdf10584608428915700d1433677"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-085-mlp-frozen-head.json",
+      "sha256": "30857bdd34dd70985f71f157ccd28b0c39e1c71d5f1805d3acece405c9fef8be"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-085-mlp-frozen-head.npz",
+      "sha256": "5fed0d2e53a3d5dd62a5f50d3a11cc9afde9931e52a7a48331cf7957c9d45c2c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-086-mlp-frozen-head.json",
+      "sha256": "9229ca79297368cd364d8b3e00b6a51f6eb7cb39864fec8e55d92f5b83d2a592"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-086-mlp-frozen-head.npz",
+      "sha256": "a3340e679a5105531fee46f5626135627912ad62ac48310de898c94e7d18eccf"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-087-mlp-frozen-head.json",
+      "sha256": "79f28b6c6365c7fa4e610027c7b6b4ecf147a4f8b4b2eb7e8ef611d7a9fe6195"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-087-mlp-frozen-head.npz",
+      "sha256": "1c299426ddf266fa24c255f1077070e331ada84f6dada56974a3d366c06adcfb"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-088-mlp-frozen-head.json",
+      "sha256": "07eed95c494e4854bb4e77f95beb0fe810da456a9caf4de38e3eba8afaf72037"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-088-mlp-frozen-head.npz",
+      "sha256": "f3166d5b719b5fdb08f9774382547f8fafe707f774075d1c5a74e34db643ba41"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-089-mlp-frozen-head.json",
+      "sha256": "faec36f57260ca1c9aa9e0b611638878c74353fbd13174263f303ba256d0ad37"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-089-mlp-frozen-head.npz",
+      "sha256": "717894604ba6129bd198dd456670f6c2577f45c5fdf5f466faf52938ea5d8941"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-090-mlp-frozen-head.json",
+      "sha256": "a2d6c1e53f514e3b652a010ab44d97469592304f679aece4c67ee3a848e0d746"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-090-mlp-frozen-head.npz",
+      "sha256": "8857f83d0f405d29fea8940ed4e10a54a59876316f623972de6752f3dc82c2b8"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-091-mlp-frozen-head.json",
+      "sha256": "9b60abcb1adb36f8643832d66f3ce840153e6a686d4fbf8d36ab9679bcbec184"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-091-mlp-frozen-head.npz",
+      "sha256": "3244845bd676e1c35224df3b049dfc6392f2de952512868c851bb8214b27f2b1"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-092-mlp-frozen-head.json",
+      "sha256": "70f93a8d43b573c6167e58e7285d035baadb5bef6317d46115ddf136c9b242a7"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-092-mlp-frozen-head.npz",
+      "sha256": "f5c8312b39fbe232e59c9a4c2f98f7f3b3c5ef20a21c82ce473aae0108bc577c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-093-mlp-frozen-head.json",
+      "sha256": "c53108396ded041d662d5d5757756650708609d0bbc6d2370f386f14fed800e6"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-093-mlp-frozen-head.npz",
+      "sha256": "4ea4cde595c367232e04f08ce81774668d302132e6c5c812972031d6827eb712"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-094-mlp-frozen-head.json",
+      "sha256": "972ea7a4eb62bbc5d7fc276536d469a2b747e0938336ed46463cd296a3318efa"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-094-mlp-frozen-head.npz",
+      "sha256": "9afc7fd64bbf701d40506bfa0cdcd3328fd7c3ff9b897c08781fe066ec911735"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-095-mlp-frozen-head.json",
+      "sha256": "780c3d861f868b09aced0996536505f49d0e1ce1151289ea5a8679782d1b2178"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-095-mlp-frozen-head.npz",
+      "sha256": "39414e654e02c9b417c60457993b5a6ff4615915cda0abc7ad09f7a80dcc8fc7"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-096-mlp-frozen-head.json",
+      "sha256": "1f56f34e54d2681754589da059110008f8e36d3ff0f272ba66a2614e83c12214"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-096-mlp-frozen-head.npz",
+      "sha256": "f27feb44c297039cb519a86667fa1326bf02c21045f478a5eddf11180e4f3992"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-097-mlp-frozen-head.json",
+      "sha256": "d0e45f35cee5a491f3f2b09365133220b13cb5649e8adf9724c343f0ddc779b7"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-097-mlp-frozen-head.npz",
+      "sha256": "eb1d728187f6ee43b3d42696e01e4538422d8d3f74806e1d43bab2415020d9fc"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-098-mlp-frozen-head.json",
+      "sha256": "e5f17ff2159de502ba049f5c0e668f7e670a38eedc263e4d36f5433222e0f392"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-098-mlp-frozen-head.npz",
+      "sha256": "b2fc62ebe197719eecf1558e861de972070857d5751b4fd4a65b654f63647183"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-099-mlp-frozen-head.json",
+      "sha256": "2b8087d86b954b022136ad29682d9376413b479232d6a79661d0d6069a2965a6"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/fits/rep-099-mlp-frozen-head.npz",
+      "sha256": "8b05ce66ec9980f8cdbb43e59b2c7fcb1fca387d11beb14d6ee395ec8a84dbca"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/inputs.npz",
+      "sha256": "e708140b3a70889e18a621246e04f091b18d41809befd4901319025bd3b2f31c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/collect.log",
+      "sha256": "7f838d7bce40bd93e6b151c5d2020a45972e757c240e649e3eab1083120f24c6"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-000.log",
+      "sha256": "e9330d4e575c58730a6188fe48565d9cb37cb228d1ed90032a803afdf9bda43f"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-001.log",
+      "sha256": "9fef2b2e20e1ba2ab5da06450f2f7abee0c812eeff4eab639874cf9395b3c655"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-002.log",
+      "sha256": "b9844980a7582ab50677688f458ac2de4f126951b6f52bd8aefc7f3758ea7450"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-003.log",
+      "sha256": "c51e4ab91dd2edb616a2a6a35ebd011cce477d57f84ff1f2eae305f79f60b5c7"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-004.log",
+      "sha256": "48269f409b57e8e713797f2e705b72f0672a5056ceb167a09b7d5dab9f073ea7"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-005.log",
+      "sha256": "0a59aecad11e15d216fa8cbdbfbfc9cdd9f663fcc55cb22751c6565cc75613df"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-006.log",
+      "sha256": "863c382f71406345e8e0b0a775b9dd0e21a63daff5762ad521cae6389bae9cb9"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-007.log",
+      "sha256": "fc3c2ef5d3633dac4fe880c972aae209878e568181355f79a92b3b9ff9c8f67f"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-008.log",
+      "sha256": "970c5060c58e16dfc64626a03b50f0228644ea44cb75397f41ed9c1b9011ae27"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-009.log",
+      "sha256": "33b9e6e5086dd0d47c0233b3d8a15564db6c955fd1673a0fd94c2d05d46d11ed"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-010.log",
+      "sha256": "d27ea494112df025edecf435882a991602a2b7a442d8202c5e7d213afea6b1c2"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-011.log",
+      "sha256": "62a29b5b109cce59c21a3201d64a290223ef8e9a7ab9eaa960e66d3f59354fe2"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-012.log",
+      "sha256": "55a6d6127593acc61e1578faee007e2cf18ff11e914ff9b28dfdf5c2cddc4019"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-013.log",
+      "sha256": "8fcc2b3a94993bc7ae9dafe94613499419a6247d5869b7dd7f6d5987f51a9807"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-014.log",
+      "sha256": "ee17ed5f32fc7bbd25439ab4d021eaa0b7581783d83ffc861680a823070f727a"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-015.log",
+      "sha256": "7083584cca2c11c153baa3afdc1ddf2020be5e69ee87cf1bc82b2269ba2725a1"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-016.log",
+      "sha256": "daa1cc206d2cc233a95dce0ce69a74e2410f5096044b18c25db0f200aa51a711"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-017.log",
+      "sha256": "5bbdac75b16f4be840cfe8bb8ef3ce9905f3bdb5622de9376be4e79b1d5e5ab9"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-018.log",
+      "sha256": "fe0c5e303542319ce88544b6291c6f6adfb1bd0424dce39f16f1dabbceead80e"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-019.log",
+      "sha256": "15f2a22897f0693fa44d50edc838b29445a95445b0501841d35a212300006c76"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-020.log",
+      "sha256": "079e32909a61b6d67702e574d2d21577b92d30c25f568927e3328bcb908a65a3"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-021.log",
+      "sha256": "ee38c371196f7c4e07912019b64be0018ad54e41ee6536841b9110c62c1cb9bb"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-022.log",
+      "sha256": "29a3e10b6b8b569d242497be5fbe5ba5c9085f488c71b6bca1a4c9312516ce13"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-023.log",
+      "sha256": "534c8f640b7185d6760160a62802dc5f005a3ffa735bf70580c4894fc781f82d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-024.log",
+      "sha256": "d74941ad026d58a12690c2abba6d1f70e5b0c34df5a86b00b289b6645c193045"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-025.log",
+      "sha256": "d614579232bfc9013479fc89c1cc7acb94b2dcb24059f8bfdbd8fb277f780c63"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-026.log",
+      "sha256": "4031462b9a10242d4ca8a7aa1bd02380b6ea758605b662f8ee67e21254d7fee5"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-027.log",
+      "sha256": "b43411032c22010042f942051e3a1399dabacc124561f2c129824b478ecd9de1"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-028.log",
+      "sha256": "2fc5dd42687d96892a813cc0471eb49e7c5ce790a65dd49bc1c12295d2533067"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-029.log",
+      "sha256": "f40a8c5639c8626837feedb7bd1d358e8a79ec96ffce2b0c909785003afd5328"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-030.log",
+      "sha256": "076d0c50c1a831549dfb7c22b0497167c8bc5823979601a6934377bf13c9dcea"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-031.log",
+      "sha256": "2fbb07768daf0fd1db6d3155e3c2cfc3b2395960f3445cb175859f2719f96eb2"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-032.log",
+      "sha256": "472314a9a78211e2b6e883d41afd9f2c184d8f5c33d7a8ceab3044093ffcdce1"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-033.log",
+      "sha256": "10251ce00d4e8ab658934f5f1d65ffe1d6ae2eb3983ca9ac30b05f916b89bb60"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-034.log",
+      "sha256": "7ee43f22b93f6f71976f1349699eca5ca2a4baebcf1e9a37303049a08f759d3b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-035.log",
+      "sha256": "a0a90087a3c6dd8a1aeeebe2f863db578f69f1eb6693c209ef2bee30083d8bdf"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-036.log",
+      "sha256": "de0aaa0fcfae74f84fb6b206fd140dfc8e652af7a696d0735f38f6b01224491d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-037.log",
+      "sha256": "581813496f02e55062f002e7e2a3b8ea0b7f627b09cf2e280d70c0b25faa6af6"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-038.log",
+      "sha256": "ea74407112efc563697efe624cee1ebf77978c931e6826176f118f9a525991a0"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-039.log",
+      "sha256": "a3adcdd128eb65645caad0f9feee06b0b783e747dd0778929fa025439a6c33ad"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-040.log",
+      "sha256": "6170306926f4d1936dba986a7851c652de28529c71daf5376d8e66e349d475c6"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-041.log",
+      "sha256": "94904e91361268dea9a6c1db129de283795cd1bb5b5013e7eb105c9f9c4e72ea"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-042.log",
+      "sha256": "adedad1401d361f9d87e989adc8e8d770204546e82ca8c54ec640dec39b1ee58"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-043.log",
+      "sha256": "b3e3b8b70be16c5f1e84d4e2096c7833bdff801005a714e51a21dd76f5e06c2d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-044.log",
+      "sha256": "c581ef6ac74b2c4ab23d730363f5ff09ffdbf33ecd1102d8f03343dea531e284"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-045.log",
+      "sha256": "3b86c86666998dd3859615ae28474ed97007a6ce8cf78beff6b018bb7f1c7369"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-046.log",
+      "sha256": "a771108c1d105a41971541cd7eac361e60e023dad8c08f5ea6734a9c1c254569"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-047.log",
+      "sha256": "eced33a5d13c0d93edb486491908a6a9937f7c26b856b90adbbd043227ab9e82"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-048.log",
+      "sha256": "d3c6999b5e4f03af8d86f31fbc9f8b9c23d9d51f1d60293570d3d0693cea6047"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-049.log",
+      "sha256": "821309027c02b417b94f73e50818b450b337521693e47db4d83de31f4dbed01d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-050.log",
+      "sha256": "26170f1a34ad3ecc9780bc6d292997fa8472903dc451f855984388ffd84df7c0"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-051.log",
+      "sha256": "5e507c34f2c59c99235c515206f3e529a3d132b065cfe4beb96af2b80fdf7c20"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-052.log",
+      "sha256": "fc6b9663a06cc827d0149568995ab7a4e58bf94e2aa6c291c0eee6faca7885e1"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-053.log",
+      "sha256": "f25605d43a0d89f41fe66d384370879ec5fca905dc48c6268128a7c3bf2330c2"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-054.log",
+      "sha256": "8059896e3819bcce3767d8b2f4fd58325b16b8cef176984deea99aaaba79ab60"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-055.log",
+      "sha256": "d59c5587400b5bf665b34774c2871ba93f6ec85f6aaec2f24b76a39fc9d89e46"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-056.log",
+      "sha256": "64ea8accbf6f8ee51d97a3e6e73e02577617079f970d19a1309b8504a6a148d2"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-057.log",
+      "sha256": "f1dd6e0dc475561ea6adffbe1cb9cf475124005eb44971f182251fe3f46e476e"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-058.log",
+      "sha256": "af52cd58091613b5b22ae79b20cea2012b2ca6b0e280d92ace9f96d1098a5cf9"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-059.log",
+      "sha256": "01cf2ea1da66380dd23e5733e38293f672e54bb49a96fecea88d59b151716ea0"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-060.log",
+      "sha256": "c0c6d82ba0561c54d144ff6197521256d74661b2d98a20d3cf16ad7f6be14e91"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-061.log",
+      "sha256": "938de110ad9af37c0d147b361e7a7251f01117b433ecfe4671967f3c2f314803"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-062.log",
+      "sha256": "cd8d615ca10c39b679e5e771479a70c7a0b2b9df2f6d7560de19d34823fda98b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-063.log",
+      "sha256": "e881a16fa5bb5af57622498bd29a02b8351f27633d77c77b738dc16a9eb0b82e"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-064.log",
+      "sha256": "5fdd090054537854ba932d8553b33064c4e96bb96e576229919f839ce5597f30"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-065.log",
+      "sha256": "3d98ba1d89fbe19f27d118a08c0dc1261449b84c946db9db4b1487b16ca9ca9a"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-066.log",
+      "sha256": "a70dfcfe30603ffa2697fd3b322352c3a2f846cd094459dc3c6df6bda3d9c239"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-067.log",
+      "sha256": "3711409ce7b159c23993bcdd7922dcc28d9bb71b0fed6ed14eaaf57c7451c18b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-068.log",
+      "sha256": "7b802d441750e0830622262ecd4d99cc4bfba311999e5c7a9ff56d6e0011d468"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-069.log",
+      "sha256": "8cb6a4b4b2083b5be3a1a78797f1a24ab2285361a4e68ef3d7a16fab40b08451"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-070.log",
+      "sha256": "830664e9f9929ce937ef236524911c44859a2b89cb1e8c78aaf2c4f45939c30f"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-071.log",
+      "sha256": "384f97cc4af0aa69249cc16e6cc690772697d38bde906920087ffe2788bc668f"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-072.log",
+      "sha256": "307de771a5eb40562b1912a967ef252aa01ccb43c817f94a8fedd0b515fe8a74"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-073.log",
+      "sha256": "9bb8c413a6cc6553e6786a29d818395167f90e5c891aca373b7cc9288a623ab8"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-074.log",
+      "sha256": "b5b55a585da721ddc3243f4968287e0b28d99f169f736c9a1dfb2632fe977c47"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-075.log",
+      "sha256": "a253c5651bc6d89bea82498fc708255680a0cd2aa32f5ef8441bc381517d00b5"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-076.log",
+      "sha256": "3bcdef2f4daaa2f874527e578ee656c621d6bbc11cb4a695c661d26018666717"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-077.log",
+      "sha256": "45c79c68f35fd0a62a270e9e761912a7f24f0c54eb7c2f7f71f36645359a3f99"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-078.log",
+      "sha256": "9ceb8a8ab19e966bf1f87d1cac7bee524c16650443f5221cbd81b4e552644d02"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-079.log",
+      "sha256": "b5969434b84a9589aa48a4cb850d57986e15f27e0541cf10cff48847221968a8"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-080.log",
+      "sha256": "a45c75ae3d6cf15c724497c11a0a6aa33a6e7574d9350f6a935a3772db91a2cb"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-081.log",
+      "sha256": "ea177bebe8695e462f72ae7c424f20722ce3954c566cc631560f97d2ea17c536"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-082.log",
+      "sha256": "05b1ccbc5d3d3ba24ef85028f4af953a00089aa2a56b7faf45aeb51154c87e3d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-083.log",
+      "sha256": "978c413daec99dfcb17e1549c6262ed3e6dce7af76da4024cf4b6ebaadc1d03c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-084.log",
+      "sha256": "8942c688a95a46e7523a790d9c2e4b8f95e5f6e352b4f5b27f191e0577c62114"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-085.log",
+      "sha256": "1c14050507630148651527f244a1506910c80c33447ce455319f9c3e41b5bca8"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-086.log",
+      "sha256": "1f6df0983ebbf91d7387407b0f0319c410ead03dee3367a303f0df2d4470f880"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-087.log",
+      "sha256": "067ab035dc59f0c6d2b2407e889062d0c6ed1585f73d231867a4147bdd0b000f"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-088.log",
+      "sha256": "501dcbb67c694227d8b761c6dba1f8687d7368605f7f1e59c8f54b0ec038d784"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-089.log",
+      "sha256": "ad136122ee0c593f274870158d10257667e6bfe001ca04e1625ee6fd9ad5ebcf"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-090.log",
+      "sha256": "a225da5c2143a578345c692d8af859601a35a66e6d64b5d75a0f1e7c0b261ce9"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-091.log",
+      "sha256": "80b8de98a0a4e3f26a954df7eb13afac8a2edb3c2b373d3be5233570d4a3ce68"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-092.log",
+      "sha256": "a373f2a880aabe4eafde673608ad9b1539e220e90693eb3d36385e1c3e80da24"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-093.log",
+      "sha256": "200ec2458193e805f9e302dfba70d5c5d7b7be29e390e05795f5ecf42cfec839"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-094.log",
+      "sha256": "d578f4b71526e564c74cebf14099d90926626b233c6eb69e2bed988f5d33502a"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-095.log",
+      "sha256": "ee587c00cbd7697ccd1f5af63b742b8e25287babd800c1a4a035c116e92e4238"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-096.log",
+      "sha256": "544166e6e316d67af3985820b44b6479a5f3180675a58c40c8522bf1bd3f0e53"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-097.log",
+      "sha256": "5d4998f5324eeb4f6505216afaca424b9d2ef1afc4c3969d76ba5fc220a96a0c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-098.log",
+      "sha256": "75380fec8f29e51b41bf682b51977f47ec8c4b7267ae0cf752160a584849f3ac"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/logs/task-099.log",
+      "sha256": "11d13b2cbc91616e24d37d2672d3a2a418a8878d5d2bdd0646e24262abbe2f9d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/observation_data.csv",
+      "sha256": "922daa533039e17cee6a53078acc9b8b6791edda4f3e23452527877b479422d9"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/plot_data.npz",
+      "sha256": "a32b29263295dce605ea8b2e6402fbefebb9b1b6d79bd6944ae1b50784cf3014"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/policies/mlp-frozen-head-start-0.json",
+      "sha256": "02cc3368b1dc4536657189dd1b130952dd4163aaeb0ffdaaaaf77029f1bea47f"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/policies/mlp-frozen-head-start-0.npz",
+      "sha256": "d476e90f0b29e4580dee251f825557d6afa4873a35edfaab3528a1632d5bbeaf"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/policies/mlp-frozen-head-start-1.json",
+      "sha256": "ad4224e25d2d737e9a19677810e82ae3b30d081f46238a8292dc1f2966287c2d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/policies/mlp-frozen-head-start-1.npz",
+      "sha256": "0dc3f1b04ac640a8aa6bd532ed750da03b25257d8971e121654fe79b80658114"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/policies/mlp-frozen-head-start-2.json",
+      "sha256": "186957b793cb189f4319f7f596d96f6a345bc5580da1110c476db631e7a5bb9c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/policies/mlp-frozen-head-start-2.npz",
+      "sha256": "bb4426ed26e0e580f67e0f3b9688eb1d3e8b0768c63e461e8a5b96ab21a59b63"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/policies/mlp-frozen-head.json",
+      "sha256": "b61b2eb079f08c20e2eb9f3e4793dca10d4c26f03e7399f7858b962482bd9771"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/policies/mlp-frozen-head.npz",
+      "sha256": "6275d444d1337314b384a9e33d203c48df63578c56d3d2e28df20b3ef8eaffe3"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/policies/phi6-q0-start-0.json",
+      "sha256": "b15e3ee12a8c80a1e9674f981d2711d265e59d622276cb4d9438d8c731b448a5"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/policies/phi6-q0-start-0.npz",
+      "sha256": "452cfcdd6364c6bf2b931df29114e786cc110ad2fb97a0d28d2ae9974f82b94c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/policies/phi6-q0-start-1.json",
+      "sha256": "c4e5fc962494706037c5667bf2f960d326209deefc2339c1f666a1314a577bab"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/policies/phi6-q0-start-1.npz",
+      "sha256": "ca00ab769abe8f328a74b25f49309ef638f5971f746073b396f936652462302c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/policies/phi6-q0-start-2.json",
+      "sha256": "e78addf46e9dce8a958b839f6bdb53fce691d787c4aeda7b4ebca1903832367d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/policies/phi6-q0-start-2.npz",
+      "sha256": "10ba200c43d882314c8a23f8898593601237ea28d1b1c926a7860a83b0908ef0"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/policies/phi6-q0.json",
+      "sha256": "400b6b85e0307a241cb1a0153dd13ae3c8657b968a8765ad0da449b38552821b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/policies/phi6-q0.npz",
+      "sha256": "c90d9a39f978ba3c2b5a8a3ff126f59457055f059853bb0ec258c86643ebd3c9"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/policies/phi6-q2-start-0.json",
+      "sha256": "9261eeba2258cf52db4536df97c1ecc0b4a3015d59b98485f9029e27fa295a06"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/policies/phi6-q2-start-0.npz",
+      "sha256": "63c26fb4a8bf550ebdde57182f8a400b1e12c33e76eac3ce7afe10e3290c8829"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/policies/phi6-q2-start-1.json",
+      "sha256": "df1888e73f536968ae7c4ba22790ffef0e724ea2e256711b2c822796c857b27e"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/policies/phi6-q2-start-1.npz",
+      "sha256": "308f0fdc48fa1a7921ff06c7150236c7083cb46cca9934724df8561fb9fecbfe"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/policies/phi6-q2-start-2.json",
+      "sha256": "df1efe727e130ae4bb38d865ac1137e6b22b42712480944948d0f5b0dc7c2095"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/policies/phi6-q2-start-2.npz",
+      "sha256": "119a346efd0d05f1f59e20ffeb6c0c6ee55dca7a3b83068470fdbcda3fb54de6"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/policies/phi6-q2.json",
+      "sha256": "7685d5ad3475719fa6071d15032a72920f786be0c15f71c7b0863729204e78cf"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/policies/phi6-q2.npz",
+      "sha256": "e3ffb7ccd72490c8241e3d6eaf2af3356c818f695ef36a1ebba041b822280630"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/policies/truth.json",
+      "sha256": "a3d109d974286ba253a71cadfa55e22b81bf6391b25116b40fdfd18ae8af5952"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/policies/truth.npz",
+      "sha256": "598390adca2aa016cfcd8cb4b8e1c6808ea505a6900dc1984ee5c1eee29b1594"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-000.json",
+      "sha256": "ea8299574f77fb2f9aae3caa4f81b744cc0b9ffdef0914704de6d67545527683"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-000.npz",
+      "sha256": "10d0df2d31a6e607e2888b32df082e0eb2e77a48436fa1fd3ddb02c8b6908e80"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-001.json",
+      "sha256": "aeaff47c1d07a27dd53a4cd9f1c79b9506d5428e9a4654795c8dd464fbabc024"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-001.npz",
+      "sha256": "6d0bdc7470f39e1ddeed039c0f58dd358d03303edf161faa2803acada71ae04e"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-002.json",
+      "sha256": "e7e9bafc0123823496a155b58c570f1b1706fb7e9c787102a699c808379c48cf"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-002.npz",
+      "sha256": "8274bd39d2f0417f7320312171ae00b00493ebdfa8d2a69ce7e8b211f510a9b4"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-003.json",
+      "sha256": "9df571b32407f29439c438234101e5c5bfcf62fbefb7cbad57fdd38a00684372"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-003.npz",
+      "sha256": "10ac942ae0ae5624a801633d9c7dfa67aa0906a1bb53717d78715a8f3cc95be4"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-004.json",
+      "sha256": "48d3650d8fd97107d2e3c86220a8b9947783a6b1d3d527b95cf6994ba64f0ad9"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-004.npz",
+      "sha256": "a51038d9812c1c8446e9fbb3f418ec631c2a8393e61d5e1f2e4457685b0c05fa"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-005.json",
+      "sha256": "8c73354493817d7db6571db47704a6f0dde5909a2a41f43ae355c3fefadc6122"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-005.npz",
+      "sha256": "e8c1f83b40663a27ccec1f1dd1161fd32b352a3fb97dd9e07bccd257542f6e79"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-006.json",
+      "sha256": "53771ae1b70171cb0cfbb637f8365a4ed4aa88e8b2c49f5076aaca4ccad3d78d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-006.npz",
+      "sha256": "1f0ded3870a97a447a1c8886d4ba7ee500573cff2ebbd89af4d9d3f9d4792a8a"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-007.json",
+      "sha256": "1002e68101f6d6148e0338488e118c079ef4cdeb46f8fe62fb60e619ab9ffc53"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-007.npz",
+      "sha256": "556b835f2f7bef58d839f81ca50251b9b417ba14ed92f2793da9aae69b7d8d8c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-008.json",
+      "sha256": "bd54a60e4d04ab734c184941ec95b1b9b38b8ab05961b099dc5f7966d5f0a146"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-008.npz",
+      "sha256": "a4fa16570f8e993b808edad6ee659e9cdf18b1e88957f96fe5a22326c1ca2efa"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-009.json",
+      "sha256": "42c5e3b479f0cad5ed22704d3b616db0bd2cd38629062094bc55c33a758ad11f"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-009.npz",
+      "sha256": "742039e1cdcd8c9882e04cb47b83386e4e487ff486f7173e15beae61651ff5b4"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-010.json",
+      "sha256": "1e7f8a1dcdf66cf4104ea1578e016ebdad2333fd95b2d53563d2a92a84fa9bd1"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-010.npz",
+      "sha256": "def0290084de5956fbe99346b43e8a67db00f808d426f49dd10fd9ef62da1c51"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-011.json",
+      "sha256": "f2f7a6d253a5c4f8782713b65dc900e02e156d5ecc7ed7192c4886449d10f97e"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-011.npz",
+      "sha256": "eebd1f3fa922923e946a9b07e9e269e9d38f7fac61c7ffc867c9669a920ff5f2"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-012.json",
+      "sha256": "534cd1f37d477c7a3daa8a924b290e62bc8d663eda328888317c591174fc0bad"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-012.npz",
+      "sha256": "f32edc1892b00cd0f19637be4be8f8e81c9ab257fc8c762bd85d22e76f9afbf4"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-013.json",
+      "sha256": "2a822f65b2358b540aca57542c0b6af1d97c73fe1e636a6b5de7f6ca6ee2e7f9"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-013.npz",
+      "sha256": "19bf773d36704e85fb5c6be50e2eecf9f8ce2948c190a1742581276e9b66c2b5"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-014.json",
+      "sha256": "3b2fdf628d8b825e6c2749213b8ef0cf11121d95ac5485c8442409c345ca3fdf"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-014.npz",
+      "sha256": "aaa3db4f8aa699d17a6af88cca6378c2e34f834debdd380d5d1780dfee13937c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-015.json",
+      "sha256": "f00a68f62ee227b3cbd0282ab8063c67bb17706f48f9aada59f38d7b1a90b3b2"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-015.npz",
+      "sha256": "1d167e4d464b729ee5250a82bd90e487e6d7840f1465ab9f3c3f7bc765cbe8aa"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-016.json",
+      "sha256": "4dfe150275297679503f19d0885518e71424fbb52aacea5a3c86a0a32220733f"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-016.npz",
+      "sha256": "ad4b75dca3b48f22bbb609b46a1e7aefc87bffaba05cb5ef6550426bd4198b1a"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-017.json",
+      "sha256": "602661256d2a2bf153c1d3ef831baf6cc945ff93512df25ed47f1836624dde34"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-017.npz",
+      "sha256": "a45892852a4b6b4f9862f8064c06e710e6c3cd5bda1da37275cc003dccf11d96"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-018.json",
+      "sha256": "9decb13dfe89512b1d8bfa193a91bcbcea2878c34fbb554dde1af48d5c8f8d03"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-018.npz",
+      "sha256": "f662311676483895191237ed79d421698e5adfd36b7adf92af4e6034d214af0c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-019.json",
+      "sha256": "f3a4a9f7523844cfc63053a7848589f212167be0dc7ba4ed9e5ae2ddc76e637c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-019.npz",
+      "sha256": "4e4241ecb8d41956ba58360d61de8a6ffe7a8b8e3dacd349c094752ad198e738"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-020.json",
+      "sha256": "e544dc46cbc1368117a272cd2f36b2db75b119765c386a48e95d186e761d7ad9"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-020.npz",
+      "sha256": "5fa60d944550165faac6381d5364351bfb1d4e5b22a249d32a6fa3191fb78b13"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-021.json",
+      "sha256": "b2ae0270239e7063d83fbee57cc79c68f455a6b3c39046e58062411919de5098"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-021.npz",
+      "sha256": "d7766e83bdf02534b2b530124cae18545c35bbdccc01029e7178963f8e76ae1d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-022.json",
+      "sha256": "d24265c1648524072dabea6e76177b052c289d1cb9a2ddb61248e9132cdda373"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-022.npz",
+      "sha256": "61e34a19ab54af69dd6772bc1c2d2342bf6a73c55499de898e109c5e7a86d77b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-023.json",
+      "sha256": "ce43fa80abf95fb6b44044e8899ddcc6755d6659a0b9e5f98f65c677cbbeb3a8"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-023.npz",
+      "sha256": "f2ff899da65a9d4739db68668f114c99a974ade7f706efc4b74338aa37630d15"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-024.json",
+      "sha256": "1ce1511f2184754672c75767f439d5adf37ab3d91fdb50a50e7be6bb6de748c8"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-024.npz",
+      "sha256": "90c7448aaef7c28f3c912c89271e1d1968aa744c4b19df2ae0b457f1d80cfc46"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-025.json",
+      "sha256": "4779df6e170ef7ec59da8fc3cbaf92bd8146251200d48c342e0459328b919823"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-025.npz",
+      "sha256": "0eab56c55858495fef11c867d0d3d747b344c225737f741a5b86af07230a6236"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-026.json",
+      "sha256": "59e6f7cb7e907990b95abb533f578fd816c11d5d56fcf70b04b6264cc74fe567"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-026.npz",
+      "sha256": "11d7dca262e83bc3ba8aa2d7078286673af8bdfd4f3331935fe755c2a79d26da"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-027.json",
+      "sha256": "ada03ca76b7b5b99873bdf342a39b10c69758dd48e893ba7fbd1a1c28c0f8bd3"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-027.npz",
+      "sha256": "7de2963a21912ee336ea47ffcb9e3d5018a95b33df9f600913156c039c3eb09b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-028.json",
+      "sha256": "66664b4630f0ec6eef2e0e4610c7e878eabf13f36e34ef58cfcd4cc221922ead"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-028.npz",
+      "sha256": "bd492ed8fb178bc2984cad645f90403b9796ab56cd6ded20c4d3bb7f792493a5"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-029.json",
+      "sha256": "25ae411a9626bb2a01dea7b011709ca903b7b35c9a7fece56e497cb775252f25"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-029.npz",
+      "sha256": "f4d361ef253f9f3e654a472ccbf6517c4fb7ec50b5755a9e5108aff883b06191"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-030.json",
+      "sha256": "2babdcf6e7ae330ab1b8e07733f9d12bb5e84fae67bf68d9bd3c9958f5899de5"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-030.npz",
+      "sha256": "ee85a5b12d3b4382c90b0f295333b07df691bc6b6cea949e7516b6d943d9c38b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-031.json",
+      "sha256": "afe49523d9faf25ee01f7454cac40216dd951ebbc8b04e5970721f6f4875ddbf"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-031.npz",
+      "sha256": "ec447f8f369b2f4ab34a1b7f6a28c83d1843f34954e3324db399db7572decd44"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-032.json",
+      "sha256": "3b533cd8754ee96676a5bfa1d2442b819681b6e9dd6ae8698d70a4b92b4bf811"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-032.npz",
+      "sha256": "0a2000ce9d1b6e50d265858badc6560b4ab673bbace34643774e433641e41cb5"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-033.json",
+      "sha256": "cee734eedc5acfbfab8392470d2aecc9d9211af1d153ff29429984f34b5608d1"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-033.npz",
+      "sha256": "7cb886a793c2798a2701e66552073f2d8c8c48b906e9448b30c13f5ff0f4b89f"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-034.json",
+      "sha256": "21c0a02d327ea86cd29e04475b2ce218bc52c2c20a82ee942d4062d1e5a20142"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-034.npz",
+      "sha256": "8df6e2536a10ac251f315ea5b2b5a4da0f64b38c5c260f1cc721673af7e845d0"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-035.json",
+      "sha256": "8b59fdbc6329fca912bfc389c8d02127d6153daa182346b2e5cd092ffff2bdee"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-035.npz",
+      "sha256": "895d3dca7c2a05bc52d0e0aa78adf004d7d1b7717c20a8172bf69e87957f9efe"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-036.json",
+      "sha256": "348f0cc8b73c3ab53a6760c8b641351d4016ec80703477775e42d47333138ace"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-036.npz",
+      "sha256": "65e966ebf69836cbffe67b0b9f9ae603947fa3beb36b782b9c9585646659fb92"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-037.json",
+      "sha256": "c21739a71f7928646b89f16f41b1f2ee035f8616222bafe70d8e6b6ea5688429"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-037.npz",
+      "sha256": "e5b0a68db77eeb8b36e02e5b08a1d5342f80a7f2b0d85f2329abc3fd28656184"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-038.json",
+      "sha256": "7fcb8de1390ca4b3363fd84682b78846774f7b088700079d39349e049de8ea26"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-038.npz",
+      "sha256": "eb45561623ad57eec91e64bf14f63e9a9326d60558d0e2e2b9ba11d014af4186"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-039.json",
+      "sha256": "1a6bb81993d90ee43dd64c117f9112564d53c39748b43b839326dadf8a682d33"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-039.npz",
+      "sha256": "c76420e628ea0a8a111bf347087e7b4ff56a11138e4fa0f2d720e9338a5a62cb"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-040.json",
+      "sha256": "3e3b43630631b4d5182697c977b553747eaa4835a1926feb5a6b1d6e8cced044"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-040.npz",
+      "sha256": "4e4dd68f952b53149906810edc12f6aa23b0b740acffe47281bea288846a20cf"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-041.json",
+      "sha256": "89806a97199cacbd5610f10f5d55d7e4a9c52490fd30f3e8711b1a96c99e8178"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-041.npz",
+      "sha256": "ade481de013601b75c58f882beae4c9e4713fcbc36b501fc515c4e5988d1eb4b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-042.json",
+      "sha256": "0e0068882bae448fa919bf6df02083ed84b105feab5c42a4b12c0e876128bdf9"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-042.npz",
+      "sha256": "f089884016d71b2609609dabc65695bc018193dbd5dd962340f00def06a11fa3"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-043.json",
+      "sha256": "2d86739db1f52a814cd25601994263420268de3fb18ce9a3e7c15e51eabf9700"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-043.npz",
+      "sha256": "b6d3321c8b0cbfbbfd8baa8b8530d05c8e907aef8feb364ecac6f9e90e7d3c38"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-044.json",
+      "sha256": "403ec8c71a86ee72b9ba377e179f71a92ef09c7d47965b868790e4e2abc35f71"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-044.npz",
+      "sha256": "ab1415bd407f0c3d7ee3bd289546aeda8a898ed6f75ea741e1c0d450685514c1"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-045.json",
+      "sha256": "31c21c34f345b53f75e62dc9b5ee39ea69141d2d62d5d6c4326833c6466c23a2"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-045.npz",
+      "sha256": "731937bb77210b6c9fc4304496508327c38b9171dd2319a3ad1a64d69071c5d0"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-046.json",
+      "sha256": "5970a5e9aa3831010394b13705d4434f6e6f3b4843487e3a5239359f51039039"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-046.npz",
+      "sha256": "db8143901e53ef9d80813705c06792bce73761dfba4d1082a7afdf0c90e1d730"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-047.json",
+      "sha256": "564fda1b55ce76331fdd6c131574eadfd1c51c53ed450a17f3274bef0a92ecb1"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-047.npz",
+      "sha256": "76a90ada3ce73b0edae112e9ac5b3afb9315c3fd1e4844e32a18edab39e3f1aa"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-048.json",
+      "sha256": "86f95905c591029bcdd8d99479c137c5f50221ad25a2ff3d316e3241fa199321"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-048.npz",
+      "sha256": "426a80fb5da43eae4199d27c7d0e40d7ed684240bee98f5872fe6904ebd2215b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-049.json",
+      "sha256": "1535ba3750a2eb8fda3fc62b7b7e7f306f596a11a347e8af0f629da5becbcc5d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-049.npz",
+      "sha256": "7d61e2c36b0d98ab95419725193fadb95f8f55f996bd717ad49ac5a24e431131"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-050.json",
+      "sha256": "dd9bbbc5440b1cc79eca04a907e29c8aa9da83a67a9ab1d19655529dd3eda9df"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-050.npz",
+      "sha256": "b03e35c38336d3159a9371f2521026db6b4774332da7455d91b3b9073cf47376"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-051.json",
+      "sha256": "93638da6697456de154def3a550b9d6a52be784acdd34b4c0f2c4a82d0acfe9e"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-051.npz",
+      "sha256": "084ca46464e2db41c8a1b42e351c1f89cd98b6d75335cc8f088cde22fad7c5f4"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-052.json",
+      "sha256": "9e923fe3d06c7abe96987f17dcea816457741874c236f298dc9b06298332278f"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-052.npz",
+      "sha256": "a6fc0cb02af98e0389b891142f452fb2320e99429798b54e5b83f04e5b57940a"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-053.json",
+      "sha256": "712aa301520b3e0378dfcf39a4312deabf70b0a17a0c16a3cb91e24ce07e46a4"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-053.npz",
+      "sha256": "197e93a0237c02a4e6b1ccb2335adfaa8329cb03dba481ade594137dc0df0f3b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-054.json",
+      "sha256": "1db461c2b8a8777fa557aee545edfdca86a233765d1390e20218989c3fbeacb2"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-054.npz",
+      "sha256": "e7f523b8df1a14ba8184c79b54111b8131197f824e24179c10c87bdbaae572cc"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-055.json",
+      "sha256": "569b8e6774e23cec0ebaffdc8f76ae5c53d0aa404a9d0601d42a5026db7df061"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-055.npz",
+      "sha256": "f3e270cf2d9179c0950bc851e724d42b7589a6adb42ed2da65677042fdeb4a42"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-056.json",
+      "sha256": "49756bb58347998c2d608b1bb467725a2e25ebbfb893d6376e144f14a9473913"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-056.npz",
+      "sha256": "35dde904967fa0dcbb30d0217d2ff77124944779a6566bd481831d155d42a3d7"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-057.json",
+      "sha256": "cbc95761faf2f076ef19b8a40858b6fb360d8f5d006d3f0fa4af00061764b9e9"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-057.npz",
+      "sha256": "4aa7aa4f4dba9b1ca9fca01607ef0fb3f09eb6de967283f80068f61194abdf8d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-058.json",
+      "sha256": "db841be1251c89acfc843d82ba003270a4c77bcd3d66751ab147ad5bc27c8f51"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-058.npz",
+      "sha256": "360c01b9d2e2e37c4093985c3c988ab41d06e0242fec4c963e56c886ad66c127"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-059.json",
+      "sha256": "b0c3fdc0ad6c4ee115111415cb18ff42a6f98d4d8fb22320ab8bdbad6c95625c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-059.npz",
+      "sha256": "fd669d34795e456ec2bb4f697c3176b8078dca2b7ce9545cb88c9ce91a0ccabc"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-060.json",
+      "sha256": "53022eac1284404e8f721e5adfbd98837e8ee9322fe144d5d0725111c84d0599"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-060.npz",
+      "sha256": "b33bf68b10fdcbdfa5d8be6e6c149db638af458ce4b411a5267bc002a6a72ff4"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-061.json",
+      "sha256": "9e3e6b4e16e291ccac30874d33cb6b9ff27d26d7bdefa60973ed4334318982ef"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-061.npz",
+      "sha256": "48006b282b7ce459e7c46e5b9f7e50981dad34e44b736136963a4342ba228b9a"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-062.json",
+      "sha256": "add502b2eee275935769cff679dabf2b07161ebe02602053ca59527ad0d596d7"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-062.npz",
+      "sha256": "318649b9dd73bf842a7ae4f69174d1bc508776d9b13748ac52de26eab1a1663c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-063.json",
+      "sha256": "eb5f1b67bbde0e956ae9899721526e2f6dabb6cdd5dc52f2c7a759891c8cc4bc"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-063.npz",
+      "sha256": "c2276e5427620398c281c13ee77649e8ee63881d4e479f4def82a6ffc6898c6c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-064.json",
+      "sha256": "852b0936b947c2e8078bdddea2fa579350b99bbc002a9d1d5755ea327a00cd7f"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-064.npz",
+      "sha256": "ec05cf9da7f70a8cb866ae34749d02e3e995ed5a388d0bf0a73009b97df91e28"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-065.json",
+      "sha256": "244592d8c9da281be4d4b83edd0ad9200a58008e41459f1aea3d41e7e0e4b262"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-065.npz",
+      "sha256": "07686ae09a8e9489c79fba19bc700a7ed4fcd0663e8e2d9a0c4c79a012b6d9e2"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-066.json",
+      "sha256": "df42f3d463653f2d8b36c2a3449c1507ba71dc184d73603e5b9d3c05f0db784b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-066.npz",
+      "sha256": "925647c64288490928314939e7752a60833ea8fb060d0217460947468700b654"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-067.json",
+      "sha256": "cfaea790286775b5f3f3e01de0ebf93fc5fb1b628d7355723c58cd8ddd80f8cb"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-067.npz",
+      "sha256": "3b9044359065762e63680935c07e3191346702aeaf73fb2335205bfeea84985f"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-068.json",
+      "sha256": "441cc1ceedd63d02581924e57b53cb38722913a517ba3aafe5dad3913acd2370"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-068.npz",
+      "sha256": "29cc9d10d8fcfd8c831ce15adf96cab068859864131693e1cb514999de61126c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-069.json",
+      "sha256": "a481bc2efdf3beb46f1da92e44ab76233268fcf01dec7ee989d3367c16f4875a"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-069.npz",
+      "sha256": "ab5b2c678a837384e54df572bc1cf3cc5987913f355589a932dc76c9e93ebc4f"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-070.json",
+      "sha256": "9836d018f5f1ac4de201d359847388aa1bf9379db486f581db7b007c83181bc9"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-070.npz",
+      "sha256": "d7e0fe7ce53caf9c37f84e3b4637f4785810157aa99812d835cbf2e58285b6e6"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-071.json",
+      "sha256": "6632752eddd6b6e976f0003ccfbaf9bfd3b041e20c16fc4e1077a012b78edb51"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-071.npz",
+      "sha256": "0937d5b26447c7a12610954230099341d3234558989650c255094cc815386790"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-072.json",
+      "sha256": "7a66adc978c945769f2f571cc35583f15f892b8e769b84de19df20589f6100ec"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-072.npz",
+      "sha256": "6d1fda21dde90b1a5bf24dbcbd7d860a302eb4fdff3f31dc7dff9d717d3b06b4"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-073.json",
+      "sha256": "65370b274e23dfb1aa03a326e0a83a226f139663e60030bc05a540fdd11d62ca"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-073.npz",
+      "sha256": "f4611bddb1ff209f37e46cfcddb349131eb049888343a47f82681418254f5ea9"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-074.json",
+      "sha256": "c6d97fb142183a1518bbad841ad2247f81e405c7d89a3539b297c9cf2821370d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-074.npz",
+      "sha256": "28abfc958be888c6b59eb9f91398e028946b7ee04c3172efacef61dc9dd890bb"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-075.json",
+      "sha256": "cc52bf853fdb8e5b25c768a45b44666eaf90ddf67651bfe65b8c89f9ad160e24"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-075.npz",
+      "sha256": "3f48f9e18d941cf3ebba2142d8982b23119aa15e5a5d6ff79da55b09bf570ff7"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-076.json",
+      "sha256": "a45a0344f0cf03731801578bfc6b9c462d347623679d80f3735c523284c3ae79"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-076.npz",
+      "sha256": "e532939396ab18ad3da69e0e202c93c38ffe303b5e4f7ac140410042e4f6517b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-077.json",
+      "sha256": "864263cf2deab472e1aa8b4619cffe56e538a0e8751bfb228c19810fa67fcb9d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-077.npz",
+      "sha256": "81dc97ba8d15f99273a8e3a37ad019343e0e087b7797ff9df740b8a02128f4c4"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-078.json",
+      "sha256": "87f740fd0872892b8c058c5f67c5d615f05f3ceb6950dcedb722a14512e0455d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-078.npz",
+      "sha256": "078f2af8062ee7609d5f57c78311a9e39da0bc139dddd706ed7bf40ac5a77caf"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-079.json",
+      "sha256": "954a288dcb9c3a38cac3c0e0baf25aeefae5c66bf2b972b4e32e1e7766afe193"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-079.npz",
+      "sha256": "49544d5dcb7ff1168ab88b99e1b222f78bc7daa6a9856e87c544cfc90edffec5"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-080.json",
+      "sha256": "68b16444a1fc5517ba135a9f8962608c652d8ee3e1f76aa7e26a5c23ee3b5969"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-080.npz",
+      "sha256": "b2a65b1a9938b2056c770bbc6b053784c3dcbfeca6344e07a694bd80dfbd762f"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-081.json",
+      "sha256": "de5399d7b6ddf2725a229a906acaa59d28318600f1b104a39c4998c478740014"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-081.npz",
+      "sha256": "30ce63cd0d4e5258d5118b6e070414963a5484c509a8028018aee4034fb5a37d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-082.json",
+      "sha256": "02e389eecc839c38966dfb8e41ee0d26ab1f54bca52d12e3f31927cf2b889421"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-082.npz",
+      "sha256": "4b279443819a6c09c1a2765b68639c3f3c8de5ea2116c3c1b96c5d33975d5520"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-083.json",
+      "sha256": "2988db71517e0b50b09e6411b9311495d2d60af2beed9d9bbdbea84df10df42f"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-083.npz",
+      "sha256": "f71e3a1d7771b674aa7a34f00105ca4f442d6e294ba7676795b4ea04d8172b0f"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-084.json",
+      "sha256": "312df63a818baa9590e518ae7a601ea46bae917bd7fc86f215a5ef9e88383fb2"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-084.npz",
+      "sha256": "289650d0c3ed9640c1c9060728ca8379bbd6c5a46134a43ce2b9b48a51d28759"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-085.json",
+      "sha256": "66afc48b7cf1627470b64e51b0b9d469638fcd1bf461930d376237241c9b49b1"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-085.npz",
+      "sha256": "1ad84471a6cc8dfbc9af4de36678c1ecebb14a9879f22c06cbfc23328ed3aacd"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-086.json",
+      "sha256": "dc5e9cc1ac48d611b117cbcde4f5e1008caa81f9fe42a4066d7afef193f8efdd"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-086.npz",
+      "sha256": "4b6f563ba4feb538396db64947e757c0cef948fe4472a08fc671439049783a29"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-087.json",
+      "sha256": "278a6024b78180a55a9bb3ebb42ae7a95f7294dc1fa588d47dfd1bffc5917a44"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-087.npz",
+      "sha256": "6fc87034485da0b02eecfe2284d02fee74cf8a52a9263c2302c0a26dcc99545d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-088.json",
+      "sha256": "65c408c0f0666fab0e6d23081135db65551beb29b1e708b60aa40ed3fcf4cd25"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-088.npz",
+      "sha256": "c3ed2ff455d4974aff593ad7baacc86180ec8598bf7b5748d8069772f20e5228"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-089.json",
+      "sha256": "e4dcf7cd7176ca5e8ccfc63f5a662afaab3097ba3fdf2f0bbaa71319c75a63c1"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-089.npz",
+      "sha256": "37686ababa2e637fe663c2707e56b4c595bed6eeed501442febd853f759cd097"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-090.json",
+      "sha256": "4c7dc641a1642b0d00bc59b50bc81bc8541fc824b589925b5417893bb020cba5"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-090.npz",
+      "sha256": "7f68ee96cb1d073d5be6993a3e8e64895feeb315a4ea6c5b0fa158326d9850d6"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-091.json",
+      "sha256": "b9c7c751bb923b27148b95847e2c9ee21634a6402d46b70767527d20d03e5b32"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-091.npz",
+      "sha256": "d7030d35314b0cd9f560e4766e9be9e22a9cf997bba3fafbf62a4aab76715587"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-092.json",
+      "sha256": "4f4714c9b8eb70474db82432e80da798ecc676fc824eea197f16aa171addfc29"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-092.npz",
+      "sha256": "5319cae151e3a95c580d42ec218d927996ddd0767975719a6a301cee1fa87b7c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-093.json",
+      "sha256": "6ae156d42eb11fb433917b81172fe80252d439c159a8e6e73352c18026b752dd"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-093.npz",
+      "sha256": "bcafca7937961a379eb3434c12b4dc3e9154f44666d6dc941541a4c0e796221a"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-094.json",
+      "sha256": "fe93c222738e5e0ec715e35fe9a9c49579424058e94a4c6ab13a0e72d28fa32d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-094.npz",
+      "sha256": "4d84908bb029fcb6d7d49121cac0207df00c2d9d9cdcad3520c7a9366d219f36"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-095.json",
+      "sha256": "3b7f19e6bbb6527a15c01480f9bb1cd5c548864ce67f4298b7ac998b1f28df78"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-095.npz",
+      "sha256": "5cf70d4c1795f1208f104fa153bf8bf36f2b7b4851ad6de7873d986b9799b3ce"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-096.json",
+      "sha256": "814426845f1ba57502ce156164cd44f0b3cd76d5c9daf5aac4c616cef0475578"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-096.npz",
+      "sha256": "98796f77d1ebcddbafb84b74fce080ea3ace00a77d73b745898e66ec0e2978d9"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-097.json",
+      "sha256": "6a8ad8e929c3208a58a93d7a229edfe9219bba3abc81c15f21742348d9b7e185"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-097.npz",
+      "sha256": "b3fb2fc52c95ed0378da30fd6ed544d1e6a7d68718d05461ca4d3dfe9eb14315"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-098.json",
+      "sha256": "7f0bf9adae01d4eaeaae25033ed21b8720213a7c8eea61c6aeebbd7869b7f9ca"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-098.npz",
+      "sha256": "578a38710e3f0a51983023d30c648bf5ec68b959b8aa2c2079b5972fc2935d0f"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-099.json",
+      "sha256": "8236407e6ce327c3c5e8d317105af5ad86f30e317df42296a0aa9051dd0b173e"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/repetitions/rep-099.npz",
+      "sha256": "0e651ac84ba707bc70f959ecfdb3ed46e870fd5bdff9a1f58340ce7912cd585b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/reporting-source/structured_reporting.py",
+      "sha256": "b78f6cccbebcc843613fb00d46fa54ba0c49f5847ea293bacefd8bbbf5dcb4ab"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/source/MATH.md",
+      "sha256": "8dc56347459d30fa63ee0a27b51634d032224429e51c4e29bd79d86e77b8f0b8"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/source/src/experiments/envelopes/feature_wild.py",
+      "sha256": "c6cfaf88eb83a1d46bded13ae349799558397ce060ffe993d45fdda215cb2c19"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/source/src/experiments/envelopes/mlp_head.py",
+      "sha256": "f50cfffe346f53b88f05ece91f7dadef30865ff0200c478f21dcc93b22bc64c1"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/source/src/experiments/envelopes/polynomial.py",
+      "sha256": "e01aee7e3fa841de1964bd7d477e39acf8e51291c87a0461b3e0cb3fe2192aa3"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/source/src/experiments/envelopes/polynomial_study.py",
+      "sha256": "1c5fd9a92773027b2d0e2556261aeab1d9ee95da6fbc7fca8ef1170c0a4bd9b5"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/source/src/experiments/envelopes/quadratic.py",
+      "sha256": "9857d9f33e2e65546dd5631ed9f99da10560b8a1790fdf24ec9a3c8352abe974"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/source/src/experiments/envelopes/structured_residual.py",
+      "sha256": "8db72c537b42c21ca4a76a8b8e6eb9153406850922c4556b1be00983e02d3d2a"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/source/src/experiments/envelopes/wild.py",
+      "sha256": "b2f4da709de0372e9d38709258fbd794d107d3ae89c4d965a5e692d7b06dc2f6"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/source/src/experiments/offline_bootstrap_math.py",
+      "sha256": "bed975dca6cf83b7d6031d8b0feec98408eb30beb62d20ce2627e6d9fc959115"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/source/src/experiments/provenance.py",
+      "sha256": "19fd43be9abf783b91a65ad8b9a56935956602fbf2036f0d94f7578cda6663df"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/source/src/experiments/seeds/streams.py",
+      "sha256": "04ca16b7fdc11a19a72f0221bb227fcbfbc70e247cbc9b0c9a6fcf386967c52b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/source/src/objective/base.py",
+      "sha256": "b1b64ab71ed33fd70618bf5f40218a5d2c48f6650f0821178177ca0028d3bb32"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/source/src/objective/utils.py",
+      "sha256": "f56a762711031674ea97ce8cecba3235aeee3d243ed92029720cc3f47b3b8515"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/source/src/optimization/__init__.py",
+      "sha256": "7c66568c620517d21f346eac3f767c09f6ec90835387dd12654ef5183a7f1bbe"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/source/src/optimization/base.py",
+      "sha256": "e86073c63f02f0b6c79a0938cbc6300b450474e35244aef7468a9bfe3479c6ec"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/source/src/optimization/gradients/__init__.py",
+      "sha256": "f28a9b4013921c2d41f10ea08e3df419f78f59f477a376c64fe2867527f47c3e"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/source/src/optimization/gradients/methods.py",
+      "sha256": "fdb0eb572f054de06ed7ee2742902b73412af0b5b09621201433cdc55370b6b5"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/source/src/optimization/helpers.py",
+      "sha256": "3a4bdcd027de35543124c0f3f2f5cde65b7f53cc62b26e473db78d879bfc58d7"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/source/src/optimization/optax_loop.py",
+      "sha256": "5c6cc5ce1fab38dddc5e097ffe9893d8b7494204303ca389da012545477ca215"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/source/src/optimization/solvers.py",
+      "sha256": "c75f377d747c8cd8e7053d393da9ecdc2d17961957a8639247b125c6ec574153"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/source/src/optimization/steps.py",
+      "sha256": "7e687ee5a5733842c6f28417eea892fec2a1938487e3c0819c4c4504ad3998a3"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/split_and_pairing_validation.json",
+      "sha256": "6341b41b3c5b6cf1a625e2dcbc0b978d623c78835c36d3e035f8aac6e0002a69"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/summary.csv",
+      "sha256": "9399fe0c2ec3b62eff12441c5b65f09cc415820bebc8a0afe2a7bc79fc3a42d5"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/summary.json",
+      "sha256": "cdfdd0b331b98c665074dd3345a6dbe5c44e9ff53acfccd5e9fec45cf6ede1a8"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_000.json",
+      "sha256": "8007dcf5a3d49179b72dcaee50d5eef6807d74e81c05a80319b8757829dc73e3"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_001.json",
+      "sha256": "f832e63dfdfb0777eb0fb300722fb2282180d1795ee8841963796b6be826b509"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_002.json",
+      "sha256": "f1344a3d8aab5daba1bc238705f87c15723048d83d2d99693e7bd325f02d44a5"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_003.json",
+      "sha256": "9b44f72178ed1c681aa9888877bfe95c03831c99da36d2f7c3a0fd28b20d3787"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_004.json",
+      "sha256": "33c384b1a87557c92874af2f3118bf2d4628c4adac74d9a5defc4556b77096a2"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_005.json",
+      "sha256": "6ffa2f3a01b90dd977444acff0366ac79384318183c662d4b36e7f7957265f85"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_006.json",
+      "sha256": "f415a1bc3311e55c7f3c087825e5b7b86e825b109a7766e08f26a6699dc9e555"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_007.json",
+      "sha256": "f1cca47b83f99c14abf0f9bc28cc6c1258a0c1e5d724d0dca3733272773e5f25"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_008.json",
+      "sha256": "5f63d5485f5a2655b0dcfac6b7879dae605104be85fbb50718238f59dc169aff"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_009.json",
+      "sha256": "e1fad0a9e03f7e94d26a4a3af24177baeac542a7ca77fc8078740b3b10088f17"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_010.json",
+      "sha256": "9ff36ea870c476abfa89ef77473141bdfc91f4966075c52d235f81631aeac4ab"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_011.json",
+      "sha256": "1a54b4bfd7a0406ab523ef26eb5221fde2cf3e5905883bd32cb18a97bc1b03f6"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_012.json",
+      "sha256": "0332ccd39ed5ed780adfa2cbac282463cff296e20dd1a11a9a912bb7e42bfcd3"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_013.json",
+      "sha256": "c43c171f3b89bc464da42223141931b4b952cb24dfe0961a169f83c2ea2ee9cc"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_014.json",
+      "sha256": "008dc086a449377f4ce7006eefe71f4825b4a0acb5f910eacdd88d497b7de4d4"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_015.json",
+      "sha256": "93841fffadd7653b9ff9347395283530097cdef8b6af773b4815a4ac2453a154"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_016.json",
+      "sha256": "37bcda8d341289d983fdd98c860ddf0ff6e91fd43103c91369246d0a71f843df"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_017.json",
+      "sha256": "08dbb93efe9bfd255b58c27c2518f847dce909cddc1f3359415713071fa6627b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_018.json",
+      "sha256": "93ffbac5f65e9e93383abbec05129494b697f20214197500444da5f72c1a24ca"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_019.json",
+      "sha256": "0ee3eb90c0d529f317d5f1ff49be65f41ba3ef8455b0c18fd480dfa4a00c33cd"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_020.json",
+      "sha256": "9897f0327b0c01efdfc294eaf43063fdd7c14146d54be9eca354990ae5149db6"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_021.json",
+      "sha256": "37ac1c9b09e48c1cb154495c24da30c695d77ba265e98bddcefb827f852b5a20"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_022.json",
+      "sha256": "e5fdfc68e6c00088e361601e7af1f715429fe4e5288081fa11b8b02699ef2af7"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_023.json",
+      "sha256": "465c0646f6ed49f380b6678035deb297b05c310f3b8e880e0e59c0d91d8e1563"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_024.json",
+      "sha256": "b21fe58b2841e9eb570895d663279f5085b506b79a5f7ca2e2b95a0d7c775acc"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_025.json",
+      "sha256": "1f657724133befedd24833337aeebd8874c8fef7a586c83b83654146924da6b7"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_026.json",
+      "sha256": "757fe6ed011d4dfa193d148727a2fb4ee55303b462b4fa0d96a2f361fd000282"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_027.json",
+      "sha256": "4fbb0279013b3b1e550c8a335ceeda1b03a903f72a18a5c09bcd1bc03c0487c8"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_028.json",
+      "sha256": "a8f21fedb7f52e16f6de076d3d44eab8a80de92f31c03de419c98a372ca3fb77"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_029.json",
+      "sha256": "9daa9fc36fd2df1411ea4dd8a2be2a29f19179427135cc3bb1cb8d551cb4c253"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_030.json",
+      "sha256": "e60474d19f75fe4f05508b4ea729a81ff0c7bd0657565cf22d4277eb70b0c0fc"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_031.json",
+      "sha256": "60187a30fec65926fc36b94792a781e5e5197af7d3dab6fd37acae865bc7b0da"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_032.json",
+      "sha256": "7b5bda05ca9a26a8cbd1a04f7b69bd3f818c4886b9f0bbb214044611fa4e24ad"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_033.json",
+      "sha256": "edbd4eb9083b0747620299ec89b9de6ff6a3030d89752a3a4da6709091a2d4c4"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_034.json",
+      "sha256": "b3844c5bea6d719a718bf749849634c72f7ebe39fcc7562ae73d94fb3ffd8a59"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_035.json",
+      "sha256": "feed70f7b12bdc4c1064187070e701958209993e9645c85c5e692173c01caad0"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_036.json",
+      "sha256": "5932c66938cf61629bb8724cdcce2dde88458a726f00e8470818f373d51bb3c7"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_037.json",
+      "sha256": "eebaf4075930b50ae82d210be04ff5dd65d477396f888c651e94dce6e9227f0b"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_038.json",
+      "sha256": "5b04ad6b57b38926aa3b7bb5da04c80596dd2ffb88863048112b09aeca0afa8e"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_039.json",
+      "sha256": "6dd1a6a45a01f46da734c13f5a90d9db2d3996e9d7300eea99a8f58a895a673d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_040.json",
+      "sha256": "afc5a8a7e354adf4567adeb605b19807ef7f6ef651385717fd77992bdc15e51a"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_041.json",
+      "sha256": "f5d39264638e575015aaae7dd28e34e92a23beac2344083867166b1cdc1dc30f"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_042.json",
+      "sha256": "90c3ae38b48636e980540a63e9a34a55566fdf9d7f9ae4eab4f6665fbaab0ab2"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_043.json",
+      "sha256": "e9990e31d6b4733fca23d1a9212c16ac93ed8e260551f5359f26e168a445daac"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_044.json",
+      "sha256": "e42100320909d3b072825a9026f11465b67fa2008cb7058d237d1db41270fdba"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_045.json",
+      "sha256": "54930509d585da3b6e58035c23b209231c39c0dd7117915018ed328cad853bf3"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_046.json",
+      "sha256": "60cec9b54aa0133cea37102067e9adfb98da79dc8dc1f755207cc443c3b033da"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_047.json",
+      "sha256": "8becc4a80636501ef2895ad9d2692d1aab7ff1f21754e9fb2cc63f16860e33b8"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_048.json",
+      "sha256": "ad0a91537f8836bc8fabffa64154c807451c6ee8d18af962ba7f4d4e8d908fa7"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_049.json",
+      "sha256": "1496aef4fe4232819345359f85a545759bf26eab94846c6703802bab17d0e988"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_050.json",
+      "sha256": "e1664e47de52ccf335747f2b37c8177e6a72f6c1c37393f6285649877b07177c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_051.json",
+      "sha256": "59489a0258caf494da8b9474d4a7b675544ee4c6454da158c28d0c80581f9d22"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_052.json",
+      "sha256": "0f6781e3d7dba7cd9a32b382ff34b0e2d080472d160f1ad95283aa62972691ac"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_053.json",
+      "sha256": "ad30a3b494cce5b6b402340dd8aa210fcc623bc13c142a98e81cbfce2ff1b712"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_054.json",
+      "sha256": "e8613305cd7aec00c5b919a972dbf26323896335db95825a3212c55fa7efc525"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_055.json",
+      "sha256": "a7a05d292ef478dcdc3a90333cfcf4f1865b5897b13103a747008f2da3b3f27c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_056.json",
+      "sha256": "4c87c5246ecd018ba384fd07983cf7fed4bb1c81efef5cd176947149587f824d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_057.json",
+      "sha256": "f3896a153b878cbc8416e73ec39eb42097fe22a9ea40afd7c27a0e3f6e76d417"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_058.json",
+      "sha256": "7b688c558eafbff10cfed36fa6d305eaf33f62d7c241289c45056c4b36c0b492"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_059.json",
+      "sha256": "3579a0845f1c1a14774381c378fcf761ffc6ea2ce01fd668760271689c9000cc"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_060.json",
+      "sha256": "ea0a8460d447e0346c5609ac8f56ad5b388b01aeb169e6944c40c9596395d92f"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_061.json",
+      "sha256": "1b44ebabce57d16279e3ac7b66ed35c421d6d7d561d1d2aacf86919b57be71f8"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_062.json",
+      "sha256": "527eba784b35770e0c4ba57e0e19bbed2916d847b1d5ae63b7bee554a6fa2099"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_063.json",
+      "sha256": "59828c0e974381a6e9e7d28f56043fdca59c7578874a441a8cb23f9fdc19f95d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_064.json",
+      "sha256": "da57a5ae706adaea0aa5b26e1dcd7c69086e499bc1d57e8153a90b107cad5b7a"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_065.json",
+      "sha256": "5f8d14b2c69892cbbf91249b13b573ecb62f693925695ac5ca2a4d45feb0fad9"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_066.json",
+      "sha256": "37566ea51783961d6ecdbabe3434e5eb816b81213f0636732c0efe9ef0addc18"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_067.json",
+      "sha256": "ec312373d9fb85506dd3b2cc504e60eb8cf1af91d2f7a1bd20132e8c1b50b3ce"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_068.json",
+      "sha256": "c805c1729bf503aa21885bfa2322cbb8c1c8c641d96b9193a0e81c6226455595"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_069.json",
+      "sha256": "6eebf4c3f49b9b6be9b0d45627ad1fc661d7f7ee1bf103968a7b1741233d888c"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_070.json",
+      "sha256": "06b2870a5184b4561cba51bd8ee899ce1a649fb52f7d0de233307fb898002d71"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_071.json",
+      "sha256": "9794369d3a3c77c3c2c75703d5be8a179e542ce0294ee68d7fca9d1788114d9d"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_072.json",
+      "sha256": "7622c9339c3292f70f0103278fa3c4d323e4c5dfe729ac0588dcd654559f2bef"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_073.json",
+      "sha256": "1ae096a44e1573aa43bdc327097e70f415470a52c8c789265a15e83b39e96750"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_074.json",
+      "sha256": "05a1645d4cc25424f7134cc3c56e551c00249a8aae82497607d551b35bc388d4"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_075.json",
+      "sha256": "bc5beba20036928d9d268a8c987563cec043e61350967ec8e9606f8730359f39"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_076.json",
+      "sha256": "ff5fc11abe47e321a4bc4cdc1ddf32cd0f3951cf946b2a12f8aed18c23741450"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_077.json",
+      "sha256": "fac4345bc041d8fbe9fef101341b8c4800627c22f9f8650aa8e49436bcb4d9b0"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_078.json",
+      "sha256": "657c077ff83c48c9a16c8548bbeb02d15932bc9ef20148df6a81ff72e2b226ea"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_079.json",
+      "sha256": "abd99bc5beb8cbeefb6ccbeff2bc6343bb4c2dfd8720cb4c59a2e580b02eefe1"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_080.json",
+      "sha256": "b5290d5ec2833171ec81f8badb411b5e01e8d2853770d251dade36622ac1e660"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_081.json",
+      "sha256": "2c6a2d49ba4ddc7266d174a0bdf9ece46d08ee4bcdcb81a408b29de91094d073"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_082.json",
+      "sha256": "46827edaf834bad49f6a0e567dbf26c0ca585f72457837279c6fad9a15d636e9"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_083.json",
+      "sha256": "0548117654d6142ac61002fdeae867a94712f0925aab33cf7ef14eb254784a67"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_084.json",
+      "sha256": "4a7ce862edd5e536744c86f0f2c9d232c263e952b204437a1a0ec332852cb7b5"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_085.json",
+      "sha256": "1a64698b1e3ac9e57e4088211340eebe542b4e44f72c8740675535feadbb49e1"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_086.json",
+      "sha256": "0e44c760e8f0cbaeef314a15409b7cb4834428496c3b2faa1664ddbcc010bd24"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_087.json",
+      "sha256": "abdb1e467b59afa4e57689b33a6adbf5109c08ae8bd93000bb68777e36430c05"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_088.json",
+      "sha256": "bb3f5a94ec92c17ac2c2dfba5704363f9793578944861a76f28e0de2ee7bfaea"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_089.json",
+      "sha256": "ab7256ad74e3421e3191bae4f4e272dba5e2997ae53b608643ea82eaf30f2dd2"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_090.json",
+      "sha256": "c0cee78045f6b1d16f5e10d008b9d86d1776433c5db854881bf1aaa15e8f4e05"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_091.json",
+      "sha256": "5a1dce60a1938c47a273f4dd461809b94bb0228ca8ad0209cd475330031ea5f0"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_092.json",
+      "sha256": "06fe1c685a6044037f7276b2359cca90763a7871a779bf630e0e84026031eec0"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_093.json",
+      "sha256": "28e73526c9a3103ab215c1b5057053909a5193bfc27de6db733c081a7218b57e"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_094.json",
+      "sha256": "4f437c19ee74c85d41745340b64f40f89cd1748145a1fddc5cfd926b0ce6a543"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_095.json",
+      "sha256": "741bfb550807c542205bc61a89b856b181f92098978221a48e372a2792f5feb5"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_096.json",
+      "sha256": "41adeb31542837e7b735276bda8761ad1418937225f84769af887a8f3bfeb1fa"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_097.json",
+      "sha256": "93504450a2ecb66d28dbbbc8e8a609db3e9342a87fa122c6d16a024287ef1b40"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_098.json",
+      "sha256": "708def70132fb1936f20af4e664db7927075f64d0793f0ca5072885ce1eed2c8"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/sweeps/extension-production/tasks/task_099.json",
+      "sha256": "337dd329c960086b1b07193b0e61a395bb26d5f9f1fa7e6179e6f9a6ab29e8b4"
+    },
+    {
+      "path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-nonlinear/validation.json",
+      "sha256": "c7a3b370ae743d7166d5ef47166ff5da81f35e72fb10a4535e83dbbb5961756a"
+    }
+  ]
+}

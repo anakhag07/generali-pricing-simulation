@@ -57,6 +57,35 @@ The dev extra includes `Markdown` for the math-document tests; it is not a runti
 
 ### Residual-heteroskedastic studies
 
+For the fixed synthetic quartic residual versus additive action degrees 1–6,
+use `manifests/synthetic-polynomial-residual-degree4.json` through
+`scripts/run_experiment_manifest.py`. It uses asymmetric coefficient-ellipsoid
+bands, an exact squared-exponential GP noise restriction, whole-line coverage,
+and personalized repository Stein policies. The new shared result folder is
+`synthetic-polynomial-residual-degree4/`, with four comparison PDFs, a supplementary
+truth/surrogate/observation view, and a six-row summary. See
+[the experiment contract](docs/synthetic_polynomial_residual.md).
+The full polynomial continuation uses matching degree-1, degree-2 and degree-6
+manifests and result folders, with the same paired inputs and all six feature
+bases. The completed degree-4 run remains the retained comparison.
+The interaction and nonlinear manifests extend the same pipeline. The nonlinear
+MLP trains on 150 rows, freezes its complete prediction, and uses the other 150
+only to bootstrap head perturbations; its coverage is labelled as a finite-grid
+approximation. See [the extension contract](docs/synthetic_residual_extensions.md).
+Numerical band-query failures are recorded as unavailable outcomes, with fitted
+state preserved and coverage denominators reported explicitly. An unavailable
+headline policy produces `report-unavailable.json`; see the
+[availability contract](docs/synthetic_polynomial_residual.md#numerical-availability-and-replay-validation).
+The [MLP capacity comparison](docs/synthetic_mlp_capacity.md) keeps this split
+and compares smaller networks with longer training, reporting observed-pair
+train/calibration scores separately from full-Gaussian true-residual scores.
+The [metric comparison plots](docs/synthetic_polynomial_residual.md#metric-comparison-plots)
+show aligned R², mean-radius, regret and coverage bars for the quartic,
+interaction and nonlinear studies, using the best held-out MLP.
+The [dataset-zero envelope view](docs/synthetic_polynomial_residual.md#dataset-zero-context-averaged-envelopes)
+shows the context-averaged truth, surrogate, corrected predictor and transferred
+envelope for each saved residual model. Width-plot legends contain model names only.
+
 For joint increases in sample size and bootstrap count, use
 `manifests/uncertainty-envelopes-residual-paired-nb.json`. It reports only the
 paired conditions, with coverage and envelope slices at shared contexts; see
@@ -177,6 +206,11 @@ Use `--mlp-norm-bands` for the four profit bands at retained smallest-, median-,
 and largest-norm customers, plus separate residual/width/penalty curves and
 logged-action holdout diagnostics. The norm uses the saved GLM-whitened numeric
 coordinates and excludes action; it is distinct from learned-feature leverage.
+
+For one held-out residual scatter, add `--mlp-heldout-residuals` to the same
+`--slide-report` command and use a fresh output directory. It compares all
+retained test residuals with the saved scalar MLP prediction, without fitting;
+see [the replay details](docs/generali_residual_basis_study.md#held-out-mlp-residual-scatter).
 
 ### Retired experiments
 

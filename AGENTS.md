@@ -1,5 +1,175 @@
 # Agent Instructions
 
+PR #195 review fixes continue in `worktrees/pr-synthetic-residual-review` on
+`feature/synthetic-envelope-dataset0`. The original
+`worktrees/feature-synthetic-envelope-dataset0` is detached at `ff1947e`;
+preserve its files and path for saved report provenance. Polynomial bands reject
+empty context matrices. Interaction indices accept NumPy integer scalars and
+normalize them to Python integers, while rejecting booleans and floating indices.
+Numerical band-query failures preserve fitted/bootstrap arrays and prediction
+diagnostics but store null coverage events with `unavailable_numerical_evaluation`.
+They do not count as coverage failures or successes. Headline query failures
+produce a policy JSON with `status: unavailable` and its input-array provenance;
+other models/repetitions continue. Collectors return `report-unavailable.json`
+instead of a complete comparison if any headline policy is unavailable or a
+report query fails. Never manufacture fallback policies, clamp invalid norms,
+or rewrite historical completed contracts to use this revision.
+Review items 1, 4 and 7 are covered by regression tests. The focused validation
+has 202 passing tests (201 in the broader run, plus the repaired math-rendering
+check); the synthetic `main.py --launch local` smoke also passed. Generated API
+docs were refreshed. Completed experiment outputs and pinned sources are unchanged.
+
+Dataset-zero envelope reports are replayed by
+`scratch/replay_synthetic_dataset0_envelopes.py <project> ...`, using
+`polynomial_reporting.write_context_envelope_report` with each contract's
+original numerical imports. Active rendering is in
+`feature-synthetic-envelope-dataset0`; preserve the prior source worktrees.
+Each project retains `envelope_width_dataset_0.pdf`, CSV, NPZ and JSON alongside
+its existing reports. The plotted tilde-f is the corrected predictor f-hat+g-hat;
+the band averages the separately transferred endpoints at every fixed action.
+Use all 300 saved contexts for polynomial/interaction studies and the original
+150 calibration contexts for nonlinear studies. No refitting, integration or
+optimization occurs. Width curves match the existing saved coordinates; their
+legends now contain model names only. Historical width PDFs and summaries are
+archived with checksums under shared `scratch-results/synthetic-envelope-dataset0-20261105/`,
+indexed by `scratch/retired_experiments/synthetic_envelope_dataset0_20261105.json`.
+Historical reports referencing an old summary hash resolve through this index;
+their source contracts are not rewritten. See the polynomial guide for replay.
+
+Saved metric comparisons for quartic, interaction and nonlinear residuals live
+in shared `synthetic-polynomial-residual-degree4/metric-comparison/`. The existing
+`polynomial_reporting.write_metric_comparison` reads verified summaries and
+repository policy artifacts without fitting, integration or optimization.
+Each PDF has four aligned horizontal R2/radius/regret/coverage panels, with the
+same model rows, exact value labels and desired-direction arrows. Coverage is a
+separate percentage axis over 100 repetitions, labelled finite-grid for nonlinear;
+the other three metrics use the fixed first noise realization.
+The original scatter PDFs/source/provenance are archived via
+`scratch/retired_experiments/synthetic_residual_metric_scatter_20261103.json`.
+The superseded three-panel bars are archived via
+`scratch/retired_experiments/synthetic_residual_three_metric_bars_20261103.json`.
+Mean radius is half
+the transferred asymmetric full width, not the auxiliary half-width. Keep all
+R2/radius/regret on headline repetition 0. Nonlinear selects only width 2 (the best
+mean held-out noisy R2 over 100 repetitions) beside both polynomial controls;
+the displayed R2 remains noiseless/full-Gaussian. Its 150 contexts differ from
+the other studies' 300. Replay from saved request.json; source snapshots,
+coordinate CSV and hashes are in the report folder. See the polynomial guide.
+Active reporting code is in `feature-synthetic-residual-tradeoffs`; earlier
+source worktrees and completed summaries remain unchanged.
+
+Preserve `feature-synthetic-mlp-capacity` as the numerical source for its
+completed capacity comparison (runtime commit 1d65f7f). Active follow-up code
+continues in `feature-synthetic-mlp-capacity-replay`. A console-only correction
+prints unavailable coverage events safely; the original runner saved complete
+repetition artifacts before its logging error, so cached task replay completes
+without refitting. Historical contracts and saved source snapshots stay intact.
+The capacity study completed all 100 repetitions. Width-32/10000 has nine
+unavailable bands (coverage 88/91 available); smaller widths 2/4/8/16 cover
+0/0/0/4 of 100. Noisy held-out mean R2 for widths 2/4/8/16 is
+0.237/-0.085/-1.475/-1.882, versus -1.636/-1.906 for width-32 at 1000/10000.
+Keep headline full-Gaussian R2 distinct from these means. All 600 heads and
+100 long-run trajectory prefixes were verified. Six vector PDFs/eight pages,
+141 tests and the synthetic demo passed. One width-8 policy start was abnormal;
+90/150 selected actions come from converged starts, flagged on the regret PDF.
+Its status-only rendering preserves all other PDFs and numeric results, with
+separate reporting source provenance. See the capacity guide and the final
+`scratch/retired_experiments/synthetic_mlp_capacity_validation_20261103.json` index.
+
+The nonlinear MLP capacity continuation lives in the dedicated worktree
+`feature-synthetic-mlp-capacity`; preserve the original extensions worktree.
+Use `manifests/synthetic-polynomial-residual-nonlinear-capacity.json` with
+the original nonlinear result folder as `--runs-root`, producing its named
+`capacity-comparison/` child. Widths 2/4/8/16/32 use 10000 steps; retain the
+width-32 1000-step control and both polynomial controls. Never choose an
+iterate or fit the original head on calibration responses. All configurations
+are reported; calibration rows are reused for comparison, not a fresh test set.
+`structured_residual.observed_pair_metrics` defines separate noisy/noiseless
+training/calibration R2/RMSE. The existing unprefixed R2 remains full-Gaussian.
+`structured_reporting` paginates recovery above three models and adds the
+optional fitting diagnostics PDF/CSV. `mlp_head` records final solver gradients
+and objective decrease. See MATH 7.23 and `docs/synthetic_mlp_capacity.md`.
+
+Interaction/nonlinear synthetic continuations remain in `polynomial_residual`
+mode, using the `models` list and `fit_protocol` in the matching manifests.
+`polynomial.py` now supports action-power interactions while preserving additive
+defaults. `mlp_head.py` owns two-layer SiLU fitting and frozen-head calibration;
+`structured_residual.py` owns explicit bumps, split/query restoration and finite
+grids; `structured_reporting.py` replays five PDFs. See MATH 7.23 and
+`docs/synthetic_residual_extensions.md` for the complete implementation contract.
+Nonlinear models train on rows 0:150, calibrate on 150:300, and evaluate the
+calibration contexts. Never fit a replacement head on the original calibration
+responses. The MLP hidden layers AND training head remain fixed; only bootstrap
+head copies change. This protocol is empirically assessed, not asserted to be
+the same-sample OLS confidence theorem. Input scaling uses training rows only.
+Whole-line interaction coverage checks exact polynomial fibers; nonlinear
+coverage is explicitly a 401-point grid with a 1601-point refinement. Keep
+nonlinear policy global gaps unknown; use repository solvers for all endpoints.
+Preserve previous polynomial worktrees and results. The extensions use a new
+dedicated worktree `feature-synthetic-residual-extensions`.
+Both extensions completed 100/100 repetitions with B=1999. Interaction coverage
+for q=0/1/2 is 0/50/100; nonlinear coverage for q=0/q=2/MLP is 2/98/98 on both
+the 401- and 1601-point grids. Every MLP training fit reached the 1000-step cap;
+the headline MLP R2 is -6.643 and mean full width is 10.539. Preserve these
+diagnostics rather than presenting high coverage as accurate residual learning.
+All 18 policy starts converged. Interaction global-gap certificates pass for
+297/267/272 of 300 selected actions; nonlinear global gaps remain unknown.
+The 136 distinct focused/neighboring tests, synthetic main.py demo, paired draws,
+unchanged original heads, ten vector PDFs and prior-artifact checks all passed.
+Runtime sources are pinned to e3db738; reports retain their own source snapshots.
+Pilot/demo provenance is indexed by
+`scratch/retired_experiments/synthetic_residual_extensions_validation_20261103.json`;
+the inherited-output index is `scratch/synthetic_residual_extensions_inheritance.json`.
+
+The full synthetic polynomial comparison adds degree-1, degree-2 and degree-6
+manifests beside the original degree-4 manifest. Run them through the same
+polynomial-residual launcher with all six phi degrees and the unchanged paired
+design, noise, multiplier and optimizer seeds. Each has its own shared
+`synthetic-polynomial-residual-degree{d}` result folder with five PDFs.
+Preserve the original quartic worktree at 615c053 and its completed outputs;
+the continuation lives in `feature-synthetic-polynomial-sweep`.
+The inheritance index is `scratch/synthetic_polynomial_sweep_inheritance.json`.
+All-real coverage is necessarily zero for k<d; k>=d is representable but still
+subject to sampling/bootstrap error. See MATH 7.22 and the study guide.
+The continuation completed 300/300 tasks, with all 54 starts converged and all
+5,400 selected actions globally certified at gap tolerance 1e-4. Coverage is
+zero below the residual degree and 97–100/100 when represented. Numerical
+contracts are pinned at d82744e; observations/multipliers exactly match g4 in
+every repetition. All 15 new PDFs retain the established design and the
+single-panel figure 05. Preparation-only contracts are archived through
+`scratch/retired_experiments/synthetic_polynomial_sweep_preflight_20261103.json`.
+
+The synthetic quartic residual comparison uses the existing wild-envelope
+manifest kind with `study_mode: polynomial_residual`, configured by
+`manifests/synthetic-polynomial-residual-degree4.json`. Its reusable mathematics,
+orchestration, and reporting are `envelopes/polynomial.py`,
+`polynomial_study.py`, and `polynomial_reporting.py`. Keep the residual fixed
+while varying phi degree 1–6, use asymmetric radii, and keep all-real coverage
+distinct from finite display windows. The GP is the exact finite restriction
+of the specified squared-exponential kernel, not the historical Fourier profile.
+All policy endpoints come from the repository optimizer. See MATH section 7.22
+and `docs/synthetic_polynomial_residual.md`. Complete contracts are immutable;
+collector replay verifies saved input/source hashes and never refits/optimizes.
+The initial quartic study completed 100/100 repetitions. Production uses the
+repository L-BFGS-B step rule with Stein smoothing 0.001; all 18 starts converged
+and all 1,800 selected actions passed global-gap certificates at 1e-4. Numerical
+sources are pinned to f5b7781 and copied into the result folder; later MATH
+formatting is documentation-only. Pilot/demo archives are indexed by the two
+`scratch/retired_experiments/synthetic_polynomial_*_20261103.json` records.
+Regret is now evaluated directly as the mean true objective at the saved truth
+reference minus its value at the selected policy; the CSV saves both J values.
+`polynomial_reporting.update_regret_report` replays only that PDF/table, retaining
+the other three figures and all fitted/optimizer artifacts. Its initial report
+is indexed by `synthetic_polynomial_regret_report_20261103.json` in the same archive directory.
+`polynomial_reporting.write_observation_report` adds the requested fifth PDF,
+aligning original observations to the mean context using the true additive
+context terms and coloring points by their saved noise SD. The requested
+single-panel view retains only truth, surrogate and observations. Preserve the
+original sigma(x_i,a_i); do not resample/interpolate the GP at the mean context.
+Its sidecar records the Gaussian-weighted phi_1 MSE split inside/outside the
+three-SD display window. The original four plots and numerical state stay
+unchanged; the full collector includes all five PDFs.
+
 The action-power continuation uses `scratch/generali_residual_wild_action_powers.json`
 through the same `--fit-wild-bases` entry point. It keeps contexts additive and
 uses original-action powers `[1,2]` and `[1,2,4]`; do not center action before
@@ -338,6 +508,16 @@ PR #194 (action powers); Design-Bench remains deferred. Preserve the dirty sourc
 worktrees. Action-power integration applies only `df19ad5` and `56b40f4` onto
 current main, retaining the newer interrupted-solver behavior and excluding
 duplicated history.
+The residual driver's `--slide-report ... --mlp-heldout-residuals` view replays
+the latest trimmed spline/XGBoost MLP into one test-residual scatter at shared
+`glm-spline-profit-dispersion/mlp-heldout-residuals/`. Its x-axis is saved
+beta-transpose-phi (17 coordinates including intercept), not one hidden feature.
+Keep all 142,997 retained original holdout rows and verify customer disjointness
+from both residual-learning pools. Preserve source/input hashes and exact
+coordinates; never refit on test responses or call this a linearity certificate.
+The ten-record post-selection and unknown base-predictor training memberships
+still qualify the holdout claim. See the residual-basis study guide.
+
 The existing residual driver's `--slide-report ... --mlp-actions` mode replays
 the trimmed spline/XGBoost MLP-band policy and the original GLM sensitivity
 tertiles. Its current report is shared `glm-spline-profit-dispersion/mlp-action-diagnostics/`.

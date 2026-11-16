@@ -1,0 +1,188 @@
+{
+  "kind": "wild_bootstrap_envelopes",
+  "study_mode": "polynomial_residual",
+  "name": "capacity-comparison",
+  "band_target": "residual",
+  "transfer": "asymmetric",
+  "truth": {
+    "context": [
+      1.0,
+      -0.5,
+      0.25
+    ],
+    "action": [
+      0.0,
+      0.5,
+      -0.5
+    ]
+  },
+  "residual": {
+    "context": [
+      0.1,
+      0,
+      0
+    ],
+    "action": [
+      0.2,
+      0.25
+    ],
+    "interactions": [
+      [
+        0,
+        1,
+        0.35
+      ]
+    ],
+    "bump": {
+      "amplitude": 0.8,
+      "context_index": 1,
+      "center": 0.5,
+      "scale": 0.4
+    }
+  },
+  "feature_degrees": [
+    6
+  ],
+  "n": 300,
+  "design": {
+    "context_dim": 3,
+    "action_mean": 0.5,
+    "action_variance": 0.45
+  },
+  "target": {
+    "contexts": "calibration",
+    "actions": "finite_grid",
+    "grid_points": 401,
+    "refinement_points": 1601,
+    "standard_deviations": 3.0
+  },
+  "noise": {
+    "type": "squared_exponential_gp_restriction",
+    "lengthscale_x": 1.0,
+    "lengthscale_a": 0.6708203932499369,
+    "sigma_min": 0.15,
+    "sigma_max": 1.0,
+    "amplitude": 2.0
+  },
+  "bootstrap": {
+    "B": 1999,
+    "delta": 0.05,
+    "multipliers": "rademacher",
+    "residuals": "raw",
+    "calibration": "coefficient_ellipsoid"
+  },
+  "repetitions": 100,
+  "repetitions_per_task": 1,
+  "seeds": {
+    "contexts": 1101,
+    "actions": 1102,
+    "profile": 1105,
+    "observations": 1103,
+    "method": 1104,
+    "optimizer": 20261103,
+    "mlp": 20261104
+  },
+  "optimizer": {
+    "method": "stein_difference",
+    "perturbation_space": "u",
+    "step_rule": "l-bfgs-b",
+    "starts": [
+      -0.5,
+      1.5,
+      4.0
+    ],
+    "step_size": 0.05,
+    "t_steps": 1000,
+    "n_grad_samples": 64,
+    "smoothing_sd": 0.001,
+    "gradient_tolerance": 1e-05,
+    "ftol": 1e-14,
+    "global_gap_tolerance": 0.0001
+  },
+  "reporting": {
+    "action_window_standard_deviations": 3.0,
+    "action_points": 401,
+    "integration_tolerance": 1e-07,
+    "fit_diagnostics": true
+  },
+  "launch": {
+    "mode": "local",
+    "array": "repetition",
+    "array_max_parallel": 8
+  },
+  "fit_protocol": "frozen_training_head",
+  "models": [
+    {
+      "name": "phi6-q0",
+      "kind": "polynomial",
+      "degree": 6,
+      "interaction_order": 0
+    },
+    {
+      "name": "phi6-q2",
+      "kind": "polynomial",
+      "degree": 6,
+      "interaction_order": 2
+    },
+    {
+      "name": "mlp-w2-steps10000",
+      "kind": "mlp",
+      "hidden_width": 2,
+      "weight_decay": 0.001,
+      "max_steps": 10000,
+      "gradient_tolerance": 1e-06,
+      "ftol": 1e-12,
+      "label": "MLP 2\u00d72\n10,000 steps"
+    },
+    {
+      "name": "mlp-w4-steps10000",
+      "kind": "mlp",
+      "hidden_width": 4,
+      "weight_decay": 0.001,
+      "max_steps": 10000,
+      "gradient_tolerance": 1e-06,
+      "ftol": 1e-12,
+      "label": "MLP 4\u00d74\n10,000 steps"
+    },
+    {
+      "name": "mlp-w8-steps10000",
+      "kind": "mlp",
+      "hidden_width": 8,
+      "weight_decay": 0.001,
+      "max_steps": 10000,
+      "gradient_tolerance": 1e-06,
+      "ftol": 1e-12,
+      "label": "MLP 8\u00d78\n10,000 steps"
+    },
+    {
+      "name": "mlp-w16-steps10000",
+      "kind": "mlp",
+      "hidden_width": 16,
+      "weight_decay": 0.001,
+      "max_steps": 10000,
+      "gradient_tolerance": 1e-06,
+      "ftol": 1e-12,
+      "label": "MLP 16\u00d716\n10,000 steps"
+    },
+    {
+      "name": "mlp-w32-steps1000",
+      "kind": "mlp",
+      "hidden_width": 32,
+      "weight_decay": 0.001,
+      "max_steps": 1000,
+      "gradient_tolerance": 1e-06,
+      "ftol": 1e-12,
+      "label": "MLP 32\u00d732\n1,000 steps"
+    },
+    {
+      "name": "mlp-w32-steps10000",
+      "kind": "mlp",
+      "hidden_width": 32,
+      "weight_decay": 0.001,
+      "max_steps": 10000,
+      "gradient_tolerance": 1e-06,
+      "ftol": 1e-12,
+      "label": "MLP 32\u00d732\n10,000 steps"
+    }
+  ]
+}

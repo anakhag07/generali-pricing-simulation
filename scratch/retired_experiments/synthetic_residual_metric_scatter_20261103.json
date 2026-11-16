@@ -1,0 +1,47 @@
+{
+  "reason": "User requested aligned bar summaries in place of the pairwise scatter presentation. Numeric inputs and original source snapshot retained verbatim.",
+  "original_folder": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree4/metric-comparison",
+  "archive_folder": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-metric-comparison/scatter-summary",
+  "files": [
+    {
+      "old_path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree4/metric-comparison/degree4_r_squared_radius_regret.pdf",
+      "archive_path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-metric-comparison/scatter-summary/degree4_r_squared_radius_regret.pdf",
+      "sha256": "bf61b242d91aa70990e6cd04b9ef8a7abe728c94b371dbb685a98fdc1c7c48b3"
+    },
+    {
+      "old_path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree4/metric-comparison/interactions_r_squared_radius_regret.pdf",
+      "archive_path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-metric-comparison/scatter-summary/interactions_r_squared_radius_regret.pdf",
+      "sha256": "4546af510e15286e6b376d7e14e869c6e42c4415b0b74d46ad55c8eca1b47257"
+    },
+    {
+      "old_path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree4/metric-comparison/metric_comparison.csv",
+      "archive_path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-metric-comparison/scatter-summary/metric_comparison.csv",
+      "sha256": "b6abf7cf5e338d97b1e05787106414e90112fb23db61bd805b6b069e57aee084"
+    },
+    {
+      "old_path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree4/metric-comparison/nonlinear_r_squared_radius_regret.pdf",
+      "archive_path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-metric-comparison/scatter-summary/nonlinear_r_squared_radius_regret.pdf",
+      "sha256": "89c00ef1b0572d8578c7d5d80230584aa4a83f2b0a7ce66ff7f3144c6f35feba"
+    },
+    {
+      "old_path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree4/metric-comparison/provenance.json",
+      "archive_path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-metric-comparison/scatter-summary/provenance.json",
+      "sha256": "03b279cf2fd0152dd8a01087fdd116c542aed1ff33430a644f92592eeab37ae7"
+    },
+    {
+      "old_path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree4/metric-comparison/reporting-source/polynomial_reporting.py",
+      "archive_path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-metric-comparison/scatter-summary/reporting-source/polynomial_reporting.py",
+      "sha256": "d1401035cdc951f6906e9f053a8ab96cd92f43e1871508d957239aaa4775c1d8"
+    },
+    {
+      "old_path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree4/metric-comparison/request.json",
+      "archive_path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-metric-comparison/scatter-summary/request.json",
+      "sha256": "565b8c16cf97cefea185d8f4d23b147ccb6d491cee5c5c46d2bc9c9baa71f1a4"
+    },
+    {
+      "old_path": "/home/anakhag/projects/generali-pricing/results/synthetic-polynomial-residual-degree4/metric-comparison/validation.json",
+      "archive_path": "/home/anakhag/projects/generali-pricing/scratch-results/synthetic-residual-metric-comparison/scatter-summary/validation.json",
+      "sha256": "fa9f480b4f8a6c08f099524b9b328694a67539b5ca2138cac9c079cc762847ab"
+    }
+  ]
+}

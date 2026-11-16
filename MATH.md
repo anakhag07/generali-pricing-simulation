@@ -2012,6 +2012,255 @@ absolute distance from those two centers, and the paired fraction of customers
 moving closer/farther versus the new affine policy. These are descriptive
 marginal support diagnostics, not conditional-overlap or coverage certificates.
 
+### 7.22 Fixed polynomial residual and feature-degree comparison
+
+Use the contextual quadratic of section 7.18 and a fixed residual
+
+$$
+g_4(x,a)=0.2+0.1x_1+0.25a+0.15a^2-0.08a^3+0.04a^4,
+$$
+
+with $\widehat f=f-g_4$. Draw $n=300$ independent contexts from $N(0,I_3)$
+and actions from $N(0.5,0.45)$ (second parameter is variance). At these saved
+inputs draw $H\sim N(0,K)$, where
+
+$$
+K_{ij}=\exp(-\|x_i-x_j\|^2/2-(a_i-a_j)^2/(2\cdot0.45)).
+$$
+
+Freeze $\sigma_i=0.15+0.85\mathrm{expit}(2H_i)$ and the design;
+each repetition has $Y_i=f(x_i,a_i)+\sigma_iZ_i$ with independent standard
+normal $Z_i$. This is an exact finite restriction of the specified GP, not a
+finite-Fourier replacement or an interpolated continuous realization.
+
+For $k=1,\ldots,6$, fit $Y-\widehat f$ on
+$\phi_k=(1,x_1,x_2,x_3,a,\ldots,a^k)$ using the section 7.20 QR procedure.
+Use $B=1999$, $\delta=0.05$, raw residuals, Rademacher multipliers, and
+the empirical order statistic $\lceil B(1-\delta)\rceil$.
+Write $h=\phi_k^T\widehat\beta$, $V=R^{-1}$ and
+$w=c\|V^T\phi_k\|_2$. Retain the asymmetric transfer
+
+$$
+r_l=[w-h]_+,\quad r_u=[w+h]_+,\quad
+L=\widehat f-r_l,\quad U=\widehat f+r_u.
+$$
+
+Stored $V$ defines the replayed norm. Exact-rational coefficient containment
+uses $t=V^{-1}(\widehat\beta-\beta_0)$ and $t^Tt\leq c^2$, avoiding an
+unjustified shortcut caused by numerical inverse/QR disagreement.
+
+For each context, let $q(a)=c^2\|V^T\phi_k(x_i,a)\|^2$ and $d=g_4-h$.
+Auxiliary coverage is polynomial nonnegativity of $q-d^2$ on R. Transferred
+coverage fails exactly if either strict polynomial system has a solution:
+
+$$
+g_4>0,\ d>0,\ d^2-q>0;\qquad -g_4>0,\ -d>0,\ d^2-q>0.
+$$
+
+Use exact real-root/sign certificates, including unbounded tails and equality
+cases. For $k<4$, quartic residual growth exceeds either radius and coverage
+fails deterministically. The coefficient event is sufficient, not necessary;
+its failure never substitutes for testing the actual coverage event.
+
+With Gaussian moments $m_0=1$, $m_1=\mu$,
+$m_j=\mu m_{j-1}+(j-1)v m_{j-2}$, compute squared polynomial errors through
+degree 12 exactly up to floating arithmetic. The R2 denominator uses the grand
+mean residual over contexts and actions, and the numerator averages squared
+errors before averaging contexts. Gaussian-weighted adaptive integration over
+R yields $Ew$, $E|h|$, $Er_l$, $Er_u$ and full width $E(r_l+r_u)$; numerical
+integration errors and a tighter replay are recorded. Display windows do not
+enter either moments or coverage.
+
+Pairwise summary plots use the mean transferred radius
+$\bar r=\frac{1}{2} E(r_l+r_u)$, the arithmetic mean of the two asymmetric
+radii. This is half the transferred full width, not the auxiliary residual
+half-width $Ew$. R2, radius and regret in each scatter point come from the
+same saved headline repetition; repeated-noise model-selection scores are
+not substituted for that point's R2.
+
+The minimized lower-band loss for personalized Stein optimization is
+
+$$
+J_{\mathrm{LCB}}(\theta)=n^{-1}\sum_i[-\widehat f(x_i,\theta_i)+r_l(x_i,\theta_i)].
+$$
+
+Its exact off-grid values are supplied to the existing u-space Stein solver;
+the policy Jacobian is the identity. The per-action step is obtained by
+multiplying the mean-gradient step size by n. Solver smoothing, starts,
+budget, termination and seeds are explicit in the manifest and saved traces.
+No grid selects an action. Regret uses the true-objective value
+
+$$
+J(\theta)=n^{-1}\sum_i f(x_i,\theta_i).
+$$
+
+For any saved endpoint, compute the two objective values directly and subtract:
+
+$$
+\mathcal{R}_k=J(\theta^{\star})-J(\widehat\theta_k)
+=(2n)^{-1}\sum_i(\widehat a_{i,k}-0.5)^2
+=\frac{1}{2}D_k^2,\qquad
+D_k=\sqrt{n^{-1}\sum_i(\widehat a_{i,k}-0.5)^2}.
+$$
+
+A repository first-order solve supplies the truth reference and is checked
+against 0.5. Save both objective values alongside their difference. The
+quadratic action-error identity is an independent numerical check, not the
+reported calculation. Global-gap certification checks the actual unsmoothed LCB against
+the returned value plus a declared tolerance, without selecting another action.
+Since $L=\min(\widehat f,\widehat f+h-w)$, an upper-level violation requires
+$\widehat f-t>0$, $\widehat f+h-t>0$, and
+$(\widehat f+h-t)^2-q>0$ simultaneously.
+
+Implementation: `src/experiments/envelopes/polynomial.py`,
+`polynomial_study.py`, and `polynomial_reporting.py`; see
+`docs/synthetic_polynomial_residual.md` for execution and provenance.
+
+The supplementary observation figure uses the original repetition-zero data.
+Write $c=(1,-0.5,0.25)^T$ and $\bar x=n^{-1}\sum_i x_i$. Align the additive
+context contribution to the empirical mean context:
+
+$$
+Y_i^{\mathrm{aligned}}=Y_i-c^T(x_i-\bar x)
+=f(\bar x,a_i)+\varepsilon_i.
+$$
+
+Plot these aligned observations beside $f(\bar x,a)$ and
+$\widehat f(\bar x,a)$. The retained noise is still the original
+$\varepsilon_i=\sigma(x_i,a_i)Z_i$, with its original context-dependent scale;
+these are not new observations sampled at $\bar x$. Point colors encode
+the saved $\sigma_i$. Conditional noise means are zero; the realized sample
+mean is not forced to zero. No GP evaluation off the saved design is needed.
+
+The reported R2 uses $I$ uniform over the saved contexts and an independent
+$A\sim N(0.5,0.45)$:
+
+$$
+R_k^2=1-\frac{E_{I,A}[(g_4(x_I,A)-\widetilde g_k(x_I,A))^2]}
+{E_{I,A}[(g_4(x_I,A)-E_{I,A}[g_4(x_I,A)])^2]}.
+$$
+
+Gaussian weighting includes all real actions but gives tails low probability.
+This measures a reduction in weighted squared error relative to a constant
+predictor; it is not the fraction of actions covered. A supplementary replay
+splits the same squared-error integral inside/outside the original three-SD
+display window and verifies its sum against the saved Gaussian-moment MSE.
+
+The full polynomial continuation retains the quartic result and adds
+
+$$
+g_1(x,a)=0.2+0.1x_1+0.25a,\qquad
+g_2(x,a)=g_1(x,a)+0.15a^2,\qquad
+g_6(x,a)=g_4(x,a)-0.012a^5+0.006a^6.
+$$
+
+For each $d\in\{1,2,4,6\}$ use $\widehat f_d=f-g_d$ and replace $g_4$
+by $g_d$ throughout the fitting, coverage and evaluation formulas above.
+The same design, GP restriction, observation innovations, bootstrap multipliers
+and optimizer perturbation seeds are paired across residual degrees.
+No polynomial runtime or optimizer changes are needed. Each residual is in
+the feature span exactly when $k\geq d$. If $k<d$, its leading action power
+eventually outgrows both radii, giving zero all-real coverage. For $k\geq d$,
+statistical coefficient error and finite bootstrap calibration remain; correct
+specification does not imply 100% empirical coverage.
+
+### 7.23 Interactions and frozen-MLP-head calibration
+
+The interaction continuation uses
+
+$$
+g_{\mathrm{int}}=g_4+0.35x_1a+0.20x_2a^2,\qquad
+\phi_{6,q}=(1,x_1,x_2,x_3,a,\ldots,a^6,
+\{x_ja^\ell\}_{\ell=1,\ldots,q;\ j=1,2,3}),\quad q=0,1,2.
+$$
+
+Order columns by action power then context, preserving nested prefixes.
+The dimensions are 10, 13 and 16. Representability checks all coefficients,
+including omitted interactions; action degree alone is insufficient.
+At each fixed context all queries remain univariate polynomials, so section
+7.22's Gaussian moments and exact all-real coverage/gap certificates apply.
+Misspecified interaction models need not have zero whole-line coverage.
+
+The nonlinear continuation uses
+
+$$
+g_{\mathrm{NL}}=0.2+0.1x_1+0.25a+0.35x_1a+
+0.8\tanh(x_2)\exp(-(a-0.5)^2/(2\cdot0.4^2)).
+$$
+
+Rows 0 through 149 fit each predictor; rows 150 through 299 calibrate its
+head and define evaluation contexts. Polynomial heads use OLS on the training
+rows. The MLP uses standardized four-dimensional inputs, two width-32 SiLU
+layers and an unbounded linear output. With $s(t)=t\,\mathrm{expit}(t)$,
+its derivative is $s'(t)=u+t u(1-u)$, where $u=\mathrm{expit}(t)$.
+Fit all weights with the repository first-order solver to half mean squared
+error plus $(\lambda/2)\sum W^2$, excluding biases from the penalty.
+Input scaling uses training inputs only. The initial version fixes
+$\lambda=0.001$, a 1000-step budget and deterministic initialization.
+
+Freeze the fitted hidden layers and the original head $b_0$. Let $P=QR$
+contain calibration-row features, including an intercept, and let
+$e=r-Pb_0$. The bootstrap is
+
+$$
+r_b^*=Pb_0+\xi_b\odot e,\qquad
+\Delta b_b=R^{-1}Q^T(\xi_b\odot e),\qquad b_b^*=b_0+\Delta b_b.
+$$
+
+No fit to the observed calibration targets replaces $b_0$. Let $c$ be the
+same empirical 95-percent order statistic of $\|R\Delta b_b\|_2$ as before.
+At a query z, use
+
+$$
+h_0(z)=\phi(z)^Tb_0,\quad w(z)=c\|R^{-T}\phi(z)\|_2,\quad
+r_l=[w-h_0]_+,\quad r_u=[w+h_0]_+.
+$$
+
+The nonlinear polynomial controls use the same split and frozen-center
+calibration. This is an empirical calibration procedure, not the ordinary
+OLS bootstrap theorem for a head fitted on the calibration rows. Numerical
+rank deficiency fails explicitly. All head perturbations and the original
+training head are saved, along with network fitting status.
+
+Nonlinear containment is checked jointly on the calibration contexts and
+401 action points over the original three-SD display interval. A nested
+1601-point check keeps the band fixed. Neither check certifies the continuum
+or tails. Gaussian-weighted true-residual errors and widths still integrate
+over all real actions, with numerical refinement. Policy actions still come
+from the repository Stein solver; nonlinear global gaps are unassessed.
+Regret remains the direct true-objective difference from section 7.22.
+
+The capacity continuation permits a positive hidden width $h$, with
+$h^2+7h+1$ trained parameters and $h+1$ frozen head features. Calibration sample
+size must exceed the head dimension, and the feature design must have full rank.
+For any fixed observed-pair set $T$ with noisy residual targets $r_i$,
+
+$$
+\mathrm{MSE}_T=\frac{1}{|T|}\sum_{i\in T}(r_i-h_0(x_i,a_i))^2,\qquad
+R_T^2=1-\frac{\sum_{i\in T}(r_i-h_0(x_i,a_i))^2}
+{\sum_{i\in T}(r_i-\bar r_T)^2}.
+$$
+
+Report this separately for training and calibration rows. Replacing $r_i$ by
+the known $g(x_i,a_i)$ gives a distinct observed-pair noiseless score. These
+finite-pair scores do not replace the full-Gaussian $R^2$ of section 7.22.
+A negative score means squared prediction error exceeds the constant-mean
+baseline under that score's evaluation measure. Calibration responses are
+diagnostics only for fitting: they never select an iterate or replace the head.
+
+In the capacity comparison, a numerically rank-deficient calibration design
+leaves the trained predictor unchanged but makes its bootstrap band unavailable.
+No pseudoinverse or ridge replaces the declared full-rank construction. Report
+prediction scores for every fit. If $V$ of $S$ repetitions have available bands
+and $C$ cover, report $C/V$ explicitly conditional on availability, together
+with the unavailable count $S-V$ and the full-run coverage range
+$[C/S,(C+S-V)/S]$ implied by treating unavailable outcomes as unknown.
+The same unknown-outcome accounting applies when numerical band evaluation
+encounters a nonpositive or nonfinite query norm. Preserve the fitted head
+and calibration state; do not clamp the norm or impute a coverage decision.
+An unavailable headline query cannot provide a policy or a complete regret
+comparison, even if its fitted prediction scores remain finite.
+
 ## 8. Gradients and Estimators
 
 For a differentiable action objective and policy, the population chain rule is

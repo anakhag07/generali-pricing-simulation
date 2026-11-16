@@ -1,0 +1,30 @@
+{
+  "kind": "wild_bootstrap_envelopes",
+  "study_mode": "polynomial_residual",
+  "name": "synthetic-polynomial-residual-degree4",
+  "band_target": "residual",
+  "transfer": "asymmetric",
+  "truth": {"context": [1.0, -0.5, 0.25], "action": [0.0, 0.5, -0.5]},
+  "residual": {"context": [0.1, 0.0, 0.0], "action": [0.2, 0.25, 0.15, -0.08, 0.04]},
+  "feature_degrees": [1, 2, 3, 4, 5, 6],
+  "n": 300,
+  "design": {"context_dim": 3, "action_mean": 0.5, "action_variance": 0.45},
+  "target": {"contexts": "calibration", "actions": "real_line"},
+  "noise": {
+    "type": "squared_exponential_gp_restriction",
+    "lengthscale_x": 1.0, "lengthscale_a": 0.6708203932499369,
+    "sigma_min": 0.15, "sigma_max": 1.0, "amplitude": 2.0
+  },
+  "bootstrap": {"B": 1999, "delta": 0.05, "multipliers": "rademacher", "residuals": "raw", "calibration": "coefficient_ellipsoid"},
+  "repetitions": 100,
+  "repetitions_per_task": 1,
+  "seeds": {"contexts": 1101, "actions": 1102, "profile": 1105, "observations": 1103, "method": 1104, "optimizer": 20261103},
+  "optimizer": {
+    "method": "stein_difference", "perturbation_space": "u", "step_rule": "l-bfgs-b",
+    "starts": [-0.5, 1.5, 4.0], "step_size": 0.05, "t_steps": 1000,
+    "n_grad_samples": 64, "smoothing_sd": 0.001, "gradient_tolerance": 0.00001, "ftol": 0.00000000000001,
+    "global_gap_tolerance": 0.0001
+  },
+  "reporting": {"action_window_standard_deviations": 3.0, "action_points": 401, "integration_tolerance": 0.0000001},
+  "launch": {"mode": "local", "array": "repetition", "array_max_parallel": 8}
+}

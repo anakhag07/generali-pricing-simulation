@@ -504,6 +504,105 @@ def run_mlp_action_report(config_path, output):
         "outputs": [file_record(p) for p in sorted(output.iterdir()) if p.is_file()]})
 
 
+def run_mlp_heldout_report(config_path, output):
+    """Replay observed test residuals versus the saved scalar MLP residual prediction."""
+    from scratch.generali_residual_wild import _metrics
+
+    config = json.loads(config_path.read_text())
+    if config["family"] != "glm-spline-profit-dispersion" or config["model"] != MODEL:
+        raise ValueError("This report uses the saved Generali spline/XGBoost study.")
+    if output.exists() and any(output.iterdir()):
+        raise FileExistsError("Preserve the completed held-out report before regenerating it.")
+    evidence = _Evidence()
+    evidence.read(config_path)
+    folder = results_root()/config["trimmed_bases"]/"mlp"/MODEL
+    contract = evidence.json(folder/"contract.json")
+    fit = evidence.json(folder/"fit.json")
+    study = evidence.json(folder/"summary.json")
+    if fit != study["fit"]:
+        raise ValueError("Saved fit metadata and completed study disagree.")
+    for record in contract["sources"]:
+        evidence.read(record["path"], record)
+    evidence.read(contract["config_file"]["path"], contract["config_file"])
+    if "cohort_filter" in contract:
+        evidence.read(contract["cohort_filter"]["path"], contract["cohort_filter"])
+    saved = evidence.npz(folder/"band.npz", fit["artifact"])
+    original = evidence.npz(results_root()/config["residuals"]/"residuals.npz", contract["residuals"])
+    state = evidence.npz(results_root()/config["affine_fit"]/"fit_state.npz", contract["baseline_fit"])
+    positions, rows = saved["original_positions"], saved["row_indices"]
+    np.testing.assert_array_equal(original["row_indices"][positions], rows)
+    np.testing.assert_array_equal(original["row_indices"], state["row_indices"])
+    np.testing.assert_array_equal(original["a"], state["actions"])
+    splits = {name: saved[name+"_positions"] for name in ("representation", "beta", "holdout")}
+    np.testing.assert_array_equal(np.sort(np.concatenate(list(splits.values()))), np.arange(len(rows)))
+    holdout = splits["holdout"]
+    test_original = positions[holdout]
+    np.testing.assert_array_equal(test_original,
+        state["test_positions"][np.isin(state["test_positions"], positions)])
+    ids = original["customer_id"]
+    overlaps = {name: int(np.intersect1d(ids[test_original], ids[positions[splits[name]]]).size)
+                for name in ("representation", "beta")}
+    if any(overlaps.values()):
+        raise ValueError("Test customers overlap residual-model training customers.")
+    inputs = np.column_stack((state["X"][test_original], original["a"][test_original]))
+    # Replay the original checksummed features and beta head, including saved
+    # normalization. The temporary MLP training head is deliberately discarded.
+    source = next(r for r in contract["sources"] if Path(r["path"]).name == "generali_residual_basis_study.py")
+    spec = importlib.util.spec_from_file_location("saved_heldout_mlp_basis", source["path"])
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    basis = module._Basis.restore(saved)
+    phi = np.concatenate([basis.evaluate(inputs[first:first+config["batch_size"]])
+                          for first in range(0, len(inputs), config["batch_size"])])
+    np.testing.assert_allclose(phi, _Basis.restore(saved).evaluate(inputs), rtol=1e-12, atol=1e-12)
+    predicted = phi@saved["beta"]
+    residual = original[f"{MODEL}_residual"][test_original]
+    np.testing.assert_allclose(residual,
+        original["observed_profit"][test_original]-original[f"{MODEL}_profit"][test_original], rtol=0, atol=0)
+    if not all(np.all(np.isfinite(v)) for v in (phi, residual, predicted)):
+        raise ValueError("Nonfinite held-out plot coordinates.")
+    metrics = _metrics(residual, predicted, original["is_churn"][test_original], model=MODEL, stage="holdout")
+    for actual in metrics:
+        expected = next(m for m in fit["fit_metrics"] if m["stage"] == "holdout" and m["group"] == actual["group"])
+        for key in ("n", "fit_rmse", "raw_rmse", "fit_mae", "residual_r2", "postfit_error_mean"):
+            np.testing.assert_allclose(actual[key], expected[key], rtol=2e-9, atol=1e-7)
+    output.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(output/"heldout_coordinates.npz", row_indices=rows[holdout],
+        original_positions=test_original, customer_id=ids[test_original],
+        action=original["a"][test_original], phi=phi, beta=saved["beta"],
+        predicted_residual=predicted, observed_residual=residual)
+    with plt.rc_context(_STYLE):
+        fig, ax = plt.subplots(figsize=(8, 6), constrained_layout=True)
+        ax.scatter(predicted, residual, s=4, alpha=.2, label="Held-out records", rasterized=False)
+        limits = np.array([predicted.min(), predicted.max()])
+        ax.plot(limits, limits, label=r"$y=x$ reference")
+        ax.set(xlabel=r"Saved MLP residual prediction, $\widehat\beta^\top\phi(x,a)$",
+               ylabel=r"Observed profit residual, $y-\widehat f(x,a)$",
+               title=f"Held-out residuals versus MLP prediction\nSpline/XGBoost; {len(holdout):,} test records")
+        ax.legend()
+        _save(fig, output/"test_residuals_vs_mlp_prediction.pdf")
+    summary = {"model": MODEL, "study_revision": contract["config"]["revision"],
+        "feature_count_including_intercept": phi.shape[1], "split_counts": {k: len(v) for k, v in splits.items()},
+        "test_training_customer_overlap": overlaps, "fit_metrics": metrics,
+        "x_axis": "Saved beta^T phi(x,a), including intercept, at each test record's logged action",
+        "y_axis": "Observed realized profit minus frozen spline/XGBoost predicted profit",
+        "selection": "All retained original holdout rows; no additional trimming or subsampling",
+        "interpretation": "Observed-versus-predicted diagnostic, not certification of linear conditional means or counterfactual coverage",
+        "limitations": ["Ten-record exclusion is a post-selection sensitivity analysis, not a new untouched test set",
+                        "Base predictor training membership is unknown; holdout is relative to MLP and beta fitting",
+                        "Saved MLP training reached its 1000-iteration cap"],
+        "new_fits": False, "new_randomness": False, "new_optimization": False}
+    write_provenance(output/"summary.json", summary)
+    write_provenance(output/"provenance.json", {"family": config["family"],
+        "inputs": list(evidence.records.values()),
+        "sources": [file_record(p) for p in (Path(__file__), ROOT/"scratch/plot_generali_profit_residuals.py",
+            ROOT/"scratch/generali_residual_basis_study.py", ROOT/"scratch/generali_residual_wild.py",
+            ROOT/"src/experiments/envelopes/plotting.py", ROOT/"src/experiments/provenance.py")],
+        "outputs": [file_record(output/name) for name in (
+            "test_residuals_vs_mlp_prediction.pdf", "heldout_coordinates.npz", "summary.json")]})
+    print(f"Held-out MLP residual plot saved to {output}", flush=True)
+
+
 def _norm_band_report(config, output, evidence, original, state, inputs,
                       bands, policies, studies, action_basis, origin):
     """Compare frozen bands on retained norm representatives and logged holdout rows."""

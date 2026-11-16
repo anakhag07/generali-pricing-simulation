@@ -10,11 +10,15 @@ import numpy as np
 from experiments.provenance import file_record, read_json, save_arrays_atomic, write_json_atomic
 from .core import wilson_interval
 from .polynomial import residual_metrics, integrated_width
-from .polynomial_study import restore_band, _models
+from .polynomial_study import restore_band, _models, _collect_with_band_status
 
 
 def collect_polynomial(project):
-    """Verify saved artifacts and report them without fitting, sampling or optimization."""
+    """Replay saved results, recording an unavailable report if a headline band/query fails."""
+    return _collect_with_band_status(project, _collect_polynomial)
+
+
+def _collect_polynomial(project):
     project = Path(project)
     contract = read_json(project/'contract.json')
     digest = contract['sha256']
@@ -75,10 +79,8 @@ def collect_polynomial(project):
                'global_gap_tolerance': policy['global_gap_tolerance'], 'contexts': p['n'],
                'coverage_repetitions': p['repetitions']}
         for event in ('coefficient', 'auxiliary', 'transferred'):
-            count = sum(int(rep['events'][str(degree)][event]) for rep in repetitions)
-            lo, hi = wilson_interval(count, p['repetitions'])
-            row.update({f'{event}_count': count, f'{event}_coverage': count/p['repetitions'],
-                        f'{event}_wilson_lower': lo, f'{event}_wilson_upper': hi})
+            values = [rep['events'][str(degree)][event] for rep in repetitions]
+            row.update({f'{event}_{key}': value for key, value in _coverage_statistics(values).items()})
         rows.append(row)
         policy_records.append(policy)
         fitted, width, lower, upper = band.evaluate(grid[:, None])
@@ -89,7 +91,7 @@ def collect_polynomial(project):
                             f'degree{degree}_mean_full_width': (lower+upper).mean(axis=1),
                             f'degree{degree}_actions': actions})
         print(f"Degree {degree}: R2={metrics['r_squared']:.5f}, RMSE={metrics['rmse']:.5f}, "
-              f"coverage={row['transferred_count']}/{p['repetitions']}, regret={regret:.6f}", flush=True)
+              f"coverage={row['transferred_count']}/{row['transferred_valid_repetitions']} available, regret={regret:.6f}", flush=True)
     with (project/'summary.csv').open('w', newline='') as stream:
         writer = csv.DictWriter(stream, list(rows[0]))
         writer.writeheader()
@@ -107,12 +109,24 @@ def collect_polynomial(project):
                'truth_reference': reference,
                'coverage_event': 'f inside asymmetric predictor envelope at all 300 saved contexts and every real action',
                'coverage_claim': 'Empirical conditional coverage; nominal 95% is not a finite-sample guarantee.',
+               'band_availability_semantics': 'Coverage is conditional on available bands; unavailable counts and full-run coverage bounds retain every requested repetition.',
                'metrics_domain': 'All saved contexts uniformly; independent A~N(0.5,0.45), no truncation.',
                'width_definition': 'Full transferred width: mean(lower radius + upper radius), after per-context transfer.',
                'regret_definition': 'J(theta_star)-J(theta_hat), where J is the empirical mean true objective over the saved contexts.',
                'numerics': 'Exact rational sign certificates for saved floating coefficients; not enclosures of fitting roundoff.'}
     write_json_atomic(project/'summary.json', summary)
     return summary
+
+
+def _coverage_statistics(values):
+    valid = [value for value in values if value is not None]
+    count = sum(valid)
+    lo, hi = wilson_interval(count, len(valid)) if valid else (None, None)
+    return {'count': count if valid else None, 'coverage': count/len(valid) if valid else None,
+            'wilson_lower': lo, 'wilson_upper': hi, 'valid_repetitions': len(valid),
+            'unavailable_repetitions': len(values)-len(valid),
+            'full_run_lower': count/len(values),
+            'full_run_upper': (count+len(values)-len(valid))/len(values)}
 
 
 def render_polynomial_reports(p, rows, data, project):
@@ -146,17 +160,24 @@ def render_polynomial_reports(p, rows, data, project):
 
     degrees = np.array([row['degree'] for row in rows])
     fig, ax = plt.subplots(figsize=(10, 6), constrained_layout=True)
-    coverage = np.array([row['transferred_coverage'] for row in rows])
-    lower = np.array([row['transferred_wilson_lower'] for row in rows])
-    upper = np.array([row['transferred_wilson_upper'] for row in rows])
+    coverage = np.array([row['transferred_coverage'] for row in rows], dtype=float)
+    lower = np.array([row['transferred_wilson_lower'] for row in rows], dtype=float)
+    upper = np.array([row['transferred_wilson_upper'] for row in rows], dtype=float)
     ax.bar(degrees, coverage)
     ax.errorbar(degrees, coverage, yerr=np.stack((coverage-lower, upper-coverage)),
                 fmt='none', color='black', capsize=4, label='95% Wilson interval')
     ax.axhline(1-p['bootstrap']['delta'], linestyle='--', label='Nominal 95%')
-    ax.set_xticks(degrees, [rf'$\phi_{r["degree"]}$'+f'\n{r["transferred_count"]}/{p["repetitions"]}' for r in rows])
+    valid_counts = [r.get('transferred_valid_repetitions', p['repetitions']) for r in rows]
+    labels = [rf'$\phi_{r["degree"]}$'+f'\n{r["transferred_count"]}/{valid}' for r, valid in zip(rows, valid_counts)]
+    has_unavailable = any(valid != p['repetitions'] for valid in valid_counts)
+    if has_unavailable:
+        labels = [label+f'\nUnavailable: {p["repetitions"]-valid}' for label, valid in zip(labels, valid_counts)]
+    ax.set_xticks(degrees, labels)
     ax.set_ylim(0, 1.08)
-    ax.set_xlabel('Residual feature basis (covered repetitions / total)')
-    ax.set_ylabel('Simultaneous coverage probability')
+    ax.set_xlabel('Residual feature basis (covered / available repetitions)' if has_unavailable
+                  else 'Residual feature basis (covered repetitions / total)')
+    ax.set_ylabel('Simultaneous coverage conditional on band availability' if has_unavailable
+                  else 'Simultaneous coverage probability')
     ax.set_title('Asymmetric envelope: all saved contexts, all real actions')
     ax.legend()
     paths.append(project/'02_simultaneous_coverage.pdf')

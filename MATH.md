@@ -2072,7 +2072,7 @@ integration errors and a tighter replay are recorded. Display windows do not
 enter either moments or coverage.
 
 Pairwise summary plots use the mean transferred radius
-$\bar r=\tfrac12 E(r_l+r_u)$, the arithmetic mean of the two asymmetric
+$\bar r=\frac{1}{2} E(r_l+r_u)$, the arithmetic mean of the two asymmetric
 radii. This is half the transferred full width, not the auxiliary residual
 half-width $Ew$. R2, radius and regret in each scatter point come from the
 same saved headline repetition; repeated-noise model-selection scores are
@@ -2255,6 +2255,11 @@ prediction scores for every fit. If $V$ of $S$ repetitions have available bands
 and $C$ cover, report $C/V$ explicitly conditional on availability, together
 with the unavailable count $S-V$ and the full-run coverage range
 $[C/S,(C+S-V)/S]$ implied by treating unavailable outcomes as unknown.
+The same unknown-outcome accounting applies when numerical band evaluation
+encounters a nonpositive or nonfinite query norm. Preserve the fitted head
+and calibration state; do not clamp the norm or impute a coverage decision.
+An unavailable headline query cannot provide a policy or a complete regret
+comparison, even if its fitted prediction scores remain finite.
 
 ## 8. Gradients and Estimators
 

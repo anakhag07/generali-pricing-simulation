@@ -89,6 +89,33 @@ certificates are reported separately. Failed/unknown certificates are retained.
 Coverage certificates refer to exact rational interpretations of the saved
 floating coefficients, not enclosures of statistical fitting roundoff.
 
+### Numerical availability and replay validation
+
+Polynomial bands require a nonempty context matrix. Interaction coordinates
+accept Python and NumPy integer indices, normalized to Python integers for
+replay; floating-point and boolean indices remain invalid.
+
+Nonpositive or nonfinite query norms still raise at the numerical query API.
+The study records these numerical failures as unavailable coverage outcomes,
+with null event values, the failure reason, and the original fitted/bootstrap
+state. Structured studies also retain all observed-pair prediction scores.
+Other models and repetitions continue. Coverage summaries use the available
+denominator and report unavailable counts and full-run lower/upper bounds;
+unavailable events are never converted to false coverage decisions.
+
+An unavailable headline band or failed headline query produces a policy JSON
+with `status: unavailable`, its failure stage/reason, and the source-array
+checksum. No policy actions or regret are fabricated. The collectors return
+an explicit `report-unavailable.json` instead of completing the comparative
+report when a headline policy is unavailable or a reporting query fails.
+Provenance errors and unrelated exceptions still fail normally. Saved numerical
+failures replay without refitting or retrying the optimizer.
+
+PR review fixes run from `worktrees/pr-synthetic-residual-review`. Preserve
+`worktrees/feature-synthetic-envelope-dataset0` at `ff1947e` for historical report
+replay. These source changes require a new result folder for numerical runs;
+completed study contracts and outputs are unchanged.
+
 ## Deliverables
 
 The pilot retained the inherited constant-step settings and reached the 1,000

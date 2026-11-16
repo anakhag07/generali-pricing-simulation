@@ -72,6 +72,10 @@ The interaction and nonlinear manifests extend the same pipeline. The nonlinear
 MLP trains on 150 rows, freezes its complete prediction, and uses the other 150
 only to bootstrap head perturbations; its coverage is labelled as a finite-grid
 approximation. See [the extension contract](docs/synthetic_residual_extensions.md).
+Numerical band-query failures are recorded as unavailable outcomes, with fitted
+state preserved and coverage denominators reported explicitly. An unavailable
+headline policy produces `report-unavailable.json`; see the
+[availability contract](docs/synthetic_polynomial_residual.md#numerical-availability-and-replay-validation).
 The [MLP capacity comparison](docs/synthetic_mlp_capacity.md) keeps this split
 and compares smaller networks with longer training, reporting observed-pair
 train/calibration scores separately from full-Gaussian true-residual scores.

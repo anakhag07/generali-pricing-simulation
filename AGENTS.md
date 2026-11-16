@@ -6,6 +6,18 @@ PR #195 review fixes continue in `worktrees/pr-synthetic-residual-review` on
 preserve its files and path for saved report provenance. Polynomial bands reject
 empty context matrices. Interaction indices accept NumPy integer scalars and
 normalize them to Python integers, while rejecting booleans and floating indices.
+Numerical band-query failures preserve fitted/bootstrap arrays and prediction
+diagnostics but store null coverage events with `unavailable_numerical_evaluation`.
+They do not count as coverage failures or successes. Headline query failures
+produce a policy JSON with `status: unavailable` and its input-array provenance;
+other models/repetitions continue. Collectors return `report-unavailable.json`
+instead of a complete comparison if any headline policy is unavailable or a
+report query fails. Never manufacture fallback policies, clamp invalid norms,
+or rewrite historical completed contracts to use this revision.
+Review items 1, 4 and 7 are covered by regression tests. The focused validation
+has 202 passing tests (201 in the broader run, plus the repaired math-rendering
+check); the synthetic `main.py --launch local` smoke also passed. Generated API
+docs were refreshed. Completed experiment outputs and pinned sources are unchanged.
 
 Dataset-zero envelope reports are replayed by
 `scratch/replay_synthetic_dataset0_envelopes.py <project> ...`, using

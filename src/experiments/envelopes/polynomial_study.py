@@ -23,7 +23,8 @@ from objective.base import Objective, Policy
 from optimization.solvers import run_first_order_minimize, run_stein_difference_minimize
 from .feature_wild import WildFeatureDesign
 from .polynomial import (AdditivePolynomial, PolynomialFeatureBand, polynomial_features,
-                         fit_polynomial_band, coverage_events, certify_policy_gap)
+                         fit_polynomial_band, coverage_events, certify_policy_gap,
+                         _unavailable_coverage)
 
 
 def load_polynomial_manifest(path, payload):
@@ -171,7 +172,12 @@ def run_repetition(p, index, project, digest, snapshot, designs):
     for degree in ([] if 'models' in p else p['feature_degrees']):
         band, state = fit_polynomial_band(X, actions, responses, degree, signs,
                                          p['bootstrap']['delta'], design=designs[degree])
-        event = coverage_events(band, residual)
+        try:
+            band.evaluate(actions)
+            event = coverage_events(band, residual)
+        except FloatingPointError as error:
+            event = _unavailable_coverage(error)
+            state['band_failure'] = np.array(str(error))
         events[str(degree)] = event
         arrays.update({f'degree{degree}_{key}': value for key, value in state.items()})
     save_arrays_atomic(stem.with_suffix('.npz'), **arrays)
@@ -188,6 +194,8 @@ def run_repetition(p, index, project, digest, snapshot, designs):
 
 def restore_band(snapshot, state, degree):
     """Restore exact numeric query state without fitting or sampling."""
+    if f'degree{degree}_band_failure' in state:
+        raise ValueError(f"No calibration band: {state[f'degree{degree}_band_failure']}")
     return PolynomialFeatureBand(snapshot['X'], degree, state[f'degree{degree}_beta'],
                                  state[f'degree{degree}_inverse'], state[f'degree{degree}_critical'])
 
@@ -250,18 +258,18 @@ class _TruthObjective(Objective):
 
 
 def optimize_headline(p, project, digest, snapshot):
-    """Run/replay repository truth and personalized Stein endpoints for repetition zero."""
+    """Run/replay repository endpoints, preserving numerical failures as unavailable policies."""
     output = project/'policies'
     output.mkdir(exist_ok=True)
     truth, residual = _models(p)
     if 'models' in p:
-        from .structured_residual import evaluation_rows, restore_structured_band
+        from .structured_residual import evaluation_rows
         X = snapshot['X'][evaluation_rows(p)]
         entries = [(m['name'], m['name']) for m in p['models']]
     else:
         X = snapshot['X']
         entries = [(k, f'degree-{k}') for k in p['feature_degrees']]
-    n, settings = len(X), p['optimizer']
+    n = len(X)
     reference_path = output/'truth.json'
     if reference_path.exists():
         reference = _verified_record(reference_path, digest)
@@ -276,6 +284,7 @@ def optimize_headline(p, project, digest, snapshot):
                      'success': bool(trace.optimizer_success), 'max_error_from_supplied_truth': float(np.max(abs(theta-.5))),
                      'arrays': file_record(output/'truth.npz')}
         write_json_atomic(reference_path, reference)
+    repetition = _verified_record(project/'repetitions/rep-000.json', digest)
     with np.load(project/'repetitions/rep-000.npz', allow_pickle=False) as saved:
         state = dict(saved)
     for degree, label in entries:
@@ -283,60 +292,84 @@ def optimize_headline(p, project, digest, snapshot):
         if path.exists():
             _verified_record(path, digest)
             continue
-        band = (restore_structured_band(p, snapshot, state, degree) if 'models' in p
-                else restore_band(snapshot, state, degree))
-        attempts, vectors, losses = [], [], []
-        for j, start in enumerate(settings['starts']):
-            attempt_path = output/f'{label}-start-{j}.json'
-            if attempt_path.exists():
-                info = _verified_record(attempt_path, digest)
-                with np.load(info['arrays']['path'], allow_pickle=False) as saved:
-                    theta, final_losses = saved['actions'], saved['final_losses']
-            else:
-                seed = derive_seed(p['seeds']['optimizer'], f'stein-difference:start:{j}')
-                batch_seed = derive_seed(p['seeds']['optimizer'], f'batch:start:{j}')
-                objective = PolynomialLCBObjective(band, truth, residual)
-                theta, trace = run_stein_difference_minimize(np.full(n, start), X, objective,
-                    np.random.default_rng(seed), t_steps=settings['t_steps'],
-                    n_grad_samples=settings['n_grad_samples'], sigma=settings['smoothing_sd'],
-                    perturbation_space='u', algorithm=settings['step_rule'],
-                    step_size=n*settings['step_size'], grad_norm_tol=settings['gradient_tolerance']/np.sqrt(n),
-                    ftol=settings.get('ftol'),
-                    gradient_rng=np.random.default_rng(seed), batch_rng=np.random.default_rng(batch_seed))
-                final_losses = objective._value_batch(X, theta)
-                if not np.isfinite(theta).all() or not np.isfinite(final_losses).all():
-                    raise FloatingPointError('Nonfinite repository endpoint; headline remains incomplete.')
-                arrays_path = attempt_path.with_suffix('.npz')
-                save_arrays_atomic(arrays_path, actions=theta, theta_values=np.asarray(trace.theta_values),
-                    losses=trace.objective_values, gradient_norms=trace.theta_grad_norms,
-                    final_losses=final_losses, query_min=objective.query_min, query_max=objective.query_max)
-                info = {'contract_sha256': digest, 'start': start, 'seed': seed, 'batch_seed': batch_seed,
-                        'success': bool(trace.optimizer_success), 'message': trace.optimizer_message,
-                        'steps': int(trace.steps[-1]), 'query_count': objective.query_count,
-                        'arrays': file_record(arrays_path)}
-                write_json_atomic(attempt_path, info)
-            attempts.append(info)
-            vectors.append(theta)
-            losses.append(final_losses)
-            print(f"Degree {degree}, start {start}: success={info['success']}, steps={info['steps']}", flush=True)
-        # Only actual repository endpoints compete; no action/evaluation grid is searched.
-        selected = np.argmin(np.asarray(losses), axis=0)
-        actions = np.asarray(vectors)[selected, np.arange(n)]
-        polynomial_certificate = p['target']['actions'] == 'real_line'
-        certificates = (certify_policy_gap(band, truth, residual, actions, settings['global_gap_tolerance'])
-                        if polynomial_certificate else np.full(n, -1, dtype=np.int8))
-        selected_success = np.array([attempts[int(j)]['success'] for j in selected])
-        save_arrays_atomic(path.with_suffix('.npz'), actions=actions, selected_start=selected,
-                           all_start_actions=np.asarray(vectors), gap_certified=certificates,
-                           selected_solver_success=selected_success)
-        record = {'contract_sha256': digest, 'degree': degree,
-                  'solver': 'optimization.solvers.run_stein_difference_minimize', 'attempts': attempts,
-                  'selected_success_count': int(selected_success.sum()),
-                  'global_gap_tolerance': settings['global_gap_tolerance'],
-                  'global_gap_certified_count': int(certificates.sum()) if polynomial_certificate else None,
-                  'arrays': file_record(path.with_suffix('.npz'))}
-        write_json_atomic(path, record)
-        print(f"Model {degree}: global gap certificates {record['global_gap_certified_count']}/{n}", flush=True)
+        event = repetition['events'][str(degree)]
+        if event['transferred'] is None:
+            _save_unavailable_policy(path, digest, repetition, 'coverage',
+                                     event.get('failure', event['certificate']))
+            continue
+        try:
+            _optimize_headline_band(p, project, digest, snapshot, state, degree, label)
+        except FloatingPointError as error:
+            _save_unavailable_policy(path, digest, repetition, 'policy_evaluation', str(error))
+
+
+def _save_unavailable_policy(path, digest, repetition, stage, reason):
+    write_json_atomic(path, {'contract_sha256': digest, 'status': 'unavailable',
+        'stage': stage, 'failure': reason, 'arrays': repetition['arrays']})
+    print(f"{path.stem}: policy unavailable ({stage}): {reason}", flush=True)
+
+
+def _optimize_headline_band(p, project, digest, snapshot, state, degree, label):
+    from .structured_residual import evaluation_rows, restore_structured_band
+    X = snapshot['X'][evaluation_rows(p)] if 'models' in p else snapshot['X']
+    n, settings = len(X), p['optimizer']
+    truth, residual = _models(p)
+    output = project/'policies'
+    path = output/f'{label}.json'
+    band = (restore_structured_band(p, snapshot, state, degree) if 'models' in p
+            else restore_band(snapshot, state, degree))
+    attempts, vectors, losses = [], [], []
+    for j, start in enumerate(settings['starts']):
+        attempt_path = output/f'{label}-start-{j}.json'
+        if attempt_path.exists():
+            info = _verified_record(attempt_path, digest)
+            with np.load(info['arrays']['path'], allow_pickle=False) as saved:
+                theta, final_losses = saved['actions'], saved['final_losses']
+        else:
+            seed = derive_seed(p['seeds']['optimizer'], f'stein-difference:start:{j}')
+            batch_seed = derive_seed(p['seeds']['optimizer'], f'batch:start:{j}')
+            objective = PolynomialLCBObjective(band, truth, residual)
+            theta, trace = run_stein_difference_minimize(np.full(n, start), X, objective,
+                np.random.default_rng(seed), t_steps=settings['t_steps'],
+                n_grad_samples=settings['n_grad_samples'], sigma=settings['smoothing_sd'],
+                perturbation_space='u', algorithm=settings['step_rule'],
+                step_size=n*settings['step_size'], grad_norm_tol=settings['gradient_tolerance']/np.sqrt(n),
+                ftol=settings.get('ftol'),
+                gradient_rng=np.random.default_rng(seed), batch_rng=np.random.default_rng(batch_seed))
+            final_losses = objective._value_batch(X, theta)
+            if not np.isfinite(theta).all() or not np.isfinite(final_losses).all():
+                raise FloatingPointError('Nonfinite repository endpoint; headline remains incomplete.')
+            arrays_path = attempt_path.with_suffix('.npz')
+            save_arrays_atomic(arrays_path, actions=theta, theta_values=np.asarray(trace.theta_values),
+                losses=trace.objective_values, gradient_norms=trace.theta_grad_norms,
+                final_losses=final_losses, query_min=objective.query_min, query_max=objective.query_max)
+            info = {'contract_sha256': digest, 'start': start, 'seed': seed, 'batch_seed': batch_seed,
+                    'success': bool(trace.optimizer_success), 'message': trace.optimizer_message,
+                    'steps': int(trace.steps[-1]), 'query_count': objective.query_count,
+                    'arrays': file_record(arrays_path)}
+            write_json_atomic(attempt_path, info)
+        attempts.append(info)
+        vectors.append(theta)
+        losses.append(final_losses)
+        print(f"Degree {degree}, start {start}: success={info['success']}, steps={info['steps']}", flush=True)
+    # Only actual repository endpoints compete; no action/evaluation grid is searched.
+    selected = np.argmin(np.asarray(losses), axis=0)
+    actions = np.asarray(vectors)[selected, np.arange(n)]
+    polynomial_certificate = p['target']['actions'] == 'real_line'
+    certificates = (certify_policy_gap(band, truth, residual, actions, settings['global_gap_tolerance'])
+                    if polynomial_certificate else np.full(n, -1, dtype=np.int8))
+    selected_success = np.array([attempts[int(j)]['success'] for j in selected])
+    save_arrays_atomic(path.with_suffix('.npz'), actions=actions, selected_start=selected,
+                       all_start_actions=np.asarray(vectors), gap_certified=certificates,
+                       selected_solver_success=selected_success)
+    record = {'contract_sha256': digest, 'degree': degree,
+              'solver': 'optimization.solvers.run_stein_difference_minimize', 'attempts': attempts,
+              'selected_success_count': int(selected_success.sum()),
+              'global_gap_tolerance': settings['global_gap_tolerance'],
+              'global_gap_certified_count': int(certificates.sum()) if polynomial_certificate else None,
+              'arrays': file_record(path.with_suffix('.npz'))}
+    write_json_atomic(path, record)
+    print(f"Model {degree}: global gap certificates {record['global_gap_certified_count']}/{n}", flush=True)
 
 
 def _verified_record(path, digest):
@@ -349,6 +382,35 @@ def _verified_record(path, digest):
 def _models(p):
     from .structured_residual import explicit_model
     return tuple(explicit_model(p[key]) for key in ('truth', 'residual'))
+
+
+def _collect_with_band_status(project, collector):
+    project = Path(project)
+    contract = read_json(project/'contract.json')
+    p, digest = contract['contract']['manifest'], contract['sha256']
+    labels = ([m['name'] for m in p['models']] if 'models' in p
+              else [f'degree-{k}' for k in p['feature_degrees']])
+    unavailable = []
+    for label in labels:
+        path = project/'policies'/f'{label}.json'
+        if path.exists():
+            policy = _verified_record(path, digest)
+            if policy.get('status') == 'unavailable':
+                unavailable.append({'model': label, 'failure': policy['failure'],
+                                    'stage': policy['stage'], 'record': file_record(path)})
+    if unavailable:
+        stage, reason = 'headline_policy', 'A complete policy comparison requires every headline band and policy.'
+    else:
+        try:
+            return collector(project)
+        except FloatingPointError as error:
+            stage, reason = 'report_evaluation', str(error)
+    record = {'status': 'unavailable', 'stage': stage, 'failure': reason,
+              'contract_sha256': digest, 'contract': file_record(project/'contract.json'),
+              'unavailable_policies': unavailable}
+    write_json_atomic(project/'report-unavailable.json', record)
+    print(f'Report unavailable ({stage}): {reason}', flush=True)
+    return record
 
 
 def build_polynomial_launch_plan(manifest, *, runs_root=None, force=False):

@@ -57,6 +57,10 @@ use a pseudoinverse. Coverage is reported conditional on an available band,
 with its valid denominator, unavailable count and full-run coverage bounds.
 Prediction-score averages include every repetition. An unavailable headline
 band still prevents a band-derived policy; it cannot be silently substituted.
+Numerical query failures use the same unknown-coverage semantics and retain
+their fitted state and failure reason. Headline policies and collectors return
+explicit unavailable statuses, as described in the
+[numerical availability contract](synthetic_polynomial_residual.md#numerical-availability-and-replay-validation).
 
 ## Completed validation
 

@@ -11,14 +11,16 @@ from scipy.special import roots_hermitenorm
 
 from experiments.envelopes.feature_wild import WildFeatureDesign
 from experiments.envelopes.polynomial import (AdditivePolynomial, polynomial_features,
-    fit_polynomial_band, coefficient_contains, residual_metrics)
+    fit_polynomial_band, coefficient_contains, residual_metrics, PolynomialFeatureBand)
 from experiments.envelopes.mlp_head import (FrozenResidualMLP, FrozenMLPBand, SiLUResidualLoss,
     fit_residual_mlp, calibrate_frozen_head)
 from experiments.envelopes.structured_residual import (explicit_model, grid_coverage, coverage_grid,
     evaluation_rows, restore_structured_band, fit_structured_models, numerical_residual_metrics,
     observed_pair_metrics, validate_structured)
 from experiments.envelopes.wild_study import load_manifest, build_launch_plan
-from experiments.envelopes.polynomial_study import prepare_environment, run_repetition
+from experiments.envelopes.polynomial_study import prepare_environment, run_repetition, optimize_headline
+from experiments.envelopes.structured_reporting import collect_structured
+from experiments.provenance import write_json_atomic, file_record
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -86,6 +88,78 @@ def test_repetition_records_unavailable_band_without_console_failure(tmp_path, c
     assert record['events']['model']['transferred'] is None
     assert 'unavailable' in capsys.readouterr().out
     assert (tmp_path/'repetitions/rep-000.json').exists()
+
+
+def _small_polynomial_comparison():
+    p = copy.deepcopy(load_manifest(ROOT/'manifests/synthetic-polynomial-residual-nonlinear.json').payload)
+    p.update(n=60, repetitions=1, models=p['models'][:2])
+    p['bootstrap']['B'] = 7
+    p['target'].update(grid_points=5, refinement_points=9)
+    p['optimizer'].update(starts=[0.], t_steps=2, n_grad_samples=2)
+    return p
+
+
+@pytest.mark.parametrize('failure_stage', ['grid', 'policy'])
+def test_query_failure_keeps_other_models_and_replays_unavailable_policy(tmp_path, failure_stage):
+    p = _small_polynomial_comparison()
+    snapshot = prepare_environment(p)
+    failed, other = [m['name'] for m in p['models']]
+    evaluate = PolynomialFeatureBand.evaluate
+    def fail_first_model(band, actions):
+        # Reach the grid/policy path after the original observed-action check.
+        if band.interaction_order == 0 and np.ndim(actions) == 2:
+            raise FloatingPointError('Nonpositive/nonfinite polynomial query norm.')
+        return evaluate(band, actions)
+    if failure_stage == 'grid':
+        with patch.object(PolynomialFeatureBand, 'evaluate', fail_first_model):
+            repetition = run_repetition(p, 0, tmp_path, 'test', snapshot, {})
+        info = repetition['model_diagnostics'][failed]
+        assert info['band_success'] is False
+        assert np.isfinite(info['calibration_noisy_rmse'])
+        assert repetition['events'][failed]['transferred'] is None
+        assert repetition['events'][other]['transferred'] is not None
+        with np.load(tmp_path/'repetitions/rep-000.npz', allow_pickle=False) as saved:
+            assert failed+'_beta' in saved and failed+'_inverse' in saved
+            with pytest.raises(ValueError, match='No calibration band'):
+                restore_structured_band(p, snapshot, dict(saved), failed)
+        optimize_headline(p, tmp_path, 'test', snapshot)
+    else:
+        repetition = run_repetition(p, 0, tmp_path, 'test', snapshot, {})
+        with patch.object(PolynomialFeatureBand, 'evaluate', fail_first_model):
+            optimize_headline(p, tmp_path, 'test', snapshot)
+    unavailable = json.loads((tmp_path/f'policies/{failed}.json').read_text())
+    assert unavailable['status'] == 'unavailable'
+    assert unavailable['stage'] == ('coverage' if failure_stage == 'grid' else 'policy_evaluation')
+    assert unavailable['arrays'] == repetition['arrays']
+    assert not (tmp_path/f'policies/{failed}.npz').exists()
+    completed = json.loads((tmp_path/f'policies/{other}.json').read_text())
+    assert completed['solver'] == 'optimization.solvers.run_stein_difference_minimize'
+    with patch('experiments.envelopes.polynomial_study.run_stein_difference_minimize', side_effect=AssertionError('rerun')):
+        optimize_headline(p, tmp_path, 'test', snapshot)
+    write_json_atomic(tmp_path/'contract.json', {'sha256': 'test', 'contract': {'manifest': p}})
+    report = collect_structured(tmp_path)
+    assert report['status'] == 'unavailable' and report['stage'] == 'headline_policy'
+    assert report['unavailable_policies'][0]['model'] == failed
+    assert (tmp_path/'report-unavailable.json').exists()
+    assert not (tmp_path/'summary.json').exists()
+    unavailable['arrays']['sha256'] = 'corrupt'
+    write_json_atomic(tmp_path/f'policies/{failed}.json', unavailable)
+    with pytest.raises(ValueError, match='checksum contract'):
+        collect_structured(tmp_path)
+
+
+def test_reporting_query_failure_records_unavailable_without_masking_other_errors(tmp_path):
+    p = _small_polynomial_comparison()
+    write_json_atomic(tmp_path/'contract.json', {'sha256': 'test', 'contract': {'manifest': p}})
+    with patch('experiments.envelopes.structured_reporting._collect_structured',
+               side_effect=FloatingPointError('Nonpositive/nonfinite polynomial query norm.')):
+        report = collect_structured(tmp_path)
+    assert report['status'] == 'unavailable' and report['stage'] == 'report_evaluation'
+    assert report['contract'] == file_record(tmp_path/'contract.json')
+    with patch('experiments.envelopes.structured_reporting._collect_structured',
+               side_effect=ValueError('Source provenance mismatch')):
+        with pytest.raises(ValueError, match='Source provenance'):
+            collect_structured(tmp_path)
 
 
 def test_interaction_embedding_recovery_and_moments():

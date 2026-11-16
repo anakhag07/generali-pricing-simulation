@@ -9,10 +9,9 @@ import shutil
 import numpy as np
 
 from experiments.provenance import file_record, read_json, save_arrays_atomic, write_json_atomic
-from .core import wilson_interval
 from .polynomial import AdditivePolynomial, residual_metrics, integrated_width
-from .polynomial_reporting import _objective_regret, _verify, _render_average_width
-from .polynomial_study import _models
+from .polynomial_reporting import _objective_regret, _verify, _render_average_width, _coverage_statistics
+from .polynomial_study import _models, _collect_with_band_status
 from .structured_residual import (evaluation_rows, restore_structured_band,
                                   numerical_residual_metrics, coverage_grid)
 
@@ -45,7 +44,11 @@ def _render_policy_regret(rows, names, project):
 
 
 def collect_structured(project):
-    """Verify complete artifacts and replay metrics/plots without any fitting or optimization."""
+    """Replay saved fits, or record unavailable headline bands/policies and numerical queries."""
+    return _collect_with_band_status(project, _collect_structured)
+
+
+def _collect_structured(project):
     project = Path(project)
     report_source = project/'reporting-source'/Path(__file__).name
     if report_source.exists() and report_source.read_bytes() != Path(__file__).read_bytes():
@@ -134,20 +137,7 @@ def collect_structured(project):
                     coordinates[name+'_training_losses'] = z['losses']
         for event in ['coefficient', 'auxiliary', 'transferred']:
             values = [r['events'][name][event] for r in repetitions]
-            valid = [v for v in values if v is not None]
-            if not valid:
-                count, probability, lo, hi = None, None, None, None
-            else:
-                count = sum(valid)
-                probability = count/len(valid)
-                lo, hi = wilson_interval(count, len(valid))
-            row.update({event+'_count': count, event+'_coverage': probability,
-                        event+'_wilson_lower': lo, event+'_wilson_upper': hi})
-            if p['reporting'].get('fit_diagnostics'):
-                row.update({event+'_valid_repetitions': len(valid),
-                            event+'_unavailable_repetitions': len(values)-len(valid),
-                            event+'_full_run_lower': sum(valid)/len(values),
-                            event+'_full_run_upper': (sum(valid)+len(values)-len(valid))/len(values)})
+            row.update({event+'_'+key: value for key, value in _coverage_statistics(values).items()})
         if p['target']['actions'] == 'finite_grid':
             row.update(coverage_action_points=p['target']['grid_points'],
                        coverage_action_min=float(coverage_grid(p)[0]), coverage_action_max=float(coverage_grid(p)[-1]),
@@ -209,13 +199,11 @@ def collect_structured(project):
                                          if p['fit_protocol'] == 'frozen_training_head' else
                                          'OLS and raw-residual bootstrap use all 300 observations.'),
                'regret_definition': 'Direct empirical true J at saved repository truth actions minus J at repository Stein endpoints.',
+               'band_availability_semantics': 'Rank-deficient calibration or failed numerical band queries are unavailable. Coverage is conditional on available bands; unavailable counts and full-run bounds retain every repetition. Prediction scores include every fit.',
                'observations': file_record(project/'observation_data.csv')}
     if p['reporting'].get('fit_diagnostics'):
         summary['fitting_diagnostics'] = file_record(project/'fitting_diagnostics.csv')
         summary['fit_comparison'] = file_record(project/'fit_comparison.csv')
-        summary['band_availability_semantics'] = ('Numerically rank-deficient calibration designs have no band. '
-            'Coverage divides by available bands and is conditional on availability; unavailable counts '
-            'and full-run lower/upper bounds are reported separately. Prediction scores include every fit.')
         summary['observed_pair_metrics'] = ('training/calibration_noisy_* use original noisy observed pairs; '
             'training/calibration_true_* use known noiseless residuals at those pairs. '
             'The unprefixed r_squared/rmse integrate over full Gaussian actions. '
@@ -270,8 +258,9 @@ def _render(p, rows, data, project, snapshot, state, X, truth, residual):
     positions = np.arange(len(rows))
     comparison_size = (max(10, 2*len(rows)), 6)
     fig, ax = plt.subplots(figsize=comparison_size, constrained_layout=True)
-    coverage = np.array([r['transferred_coverage'] for r in rows])
-    lo, hi = np.array([r['transferred_wilson_lower'] for r in rows]), np.array([r['transferred_wilson_upper'] for r in rows])
+    coverage = np.array([r['transferred_coverage'] for r in rows], dtype=float)
+    lo = np.array([r['transferred_wilson_lower'] for r in rows], dtype=float)
+    hi = np.array([r['transferred_wilson_upper'] for r in rows], dtype=float)
     ax.bar(positions, coverage)
     ax.errorbar(positions, coverage, yerr=np.stack((coverage-lo, hi-coverage)), fmt='none', color='black', capsize=4, label='95% Wilson interval')
     ax.axhline(1-p['bootstrap']['delta'], linestyle='--', label='Nominal 95%')

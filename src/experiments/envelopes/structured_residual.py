@@ -8,7 +8,7 @@ from scipy.integrate import quad_vec
 from experiments.provenance import file_record, read_json, save_arrays_atomic, write_json_atomic
 from .feature_wild import WildFeatureDesign
 from .polynomial import (AdditivePolynomial, PolynomialFeatureBand, polynomial_features,
-                         fit_polynomial_band, coverage_events)
+                         fit_polynomial_band, coverage_events, _unavailable_coverage)
 from .mlp_head import FrozenResidualMLP, FrozenMLPBand, fit_residual_mlp, calibrate_frozen_head
 
 
@@ -98,6 +98,8 @@ def restore_structured_band(p, snapshot, state, name, *, contexts=None):
     spec = next(m for m in p['models'] if m['name'] == name)
     X = snapshot['X'][evaluation_rows(p)] if contexts is None else np.asarray(contexts)
     saved = {k[len(name)+1:]: v for k, v in state.items() if k.startswith(name+'_')}
+    if 'band_failure' in saved:
+        raise ValueError(f"No calibration band: {saved['band_failure']}")
     if 'inverse' not in saved:
         raise ValueError('No calibration band: the saved feature design was numerically rank deficient.')
     if spec['kind'] == 'polynomial':
@@ -212,15 +214,21 @@ def fit_structured_models(p, index, project, digest, snapshot, responses, signs,
                             'refined_transferred': None, 'refined_auxiliary': None,
                             'certificate': 'unavailable_rank_deficient', 'contexts_checked': 0}
             continue
-        band = restore_structured_band(p, snapshot, arrays, name)
-        if p['target']['actions'] == 'real_line':
-            events[name] = coverage_events(band, residual)
-        else:
-            event = grid_coverage(band, residual, coverage_grid(p))
-            fine = grid_coverage(band, residual, coverage_grid(p, refined=True))
-            event.update(refined_transferred=fine['transferred'], refined_auxiliary=fine['auxiliary'],
-                         refinement_points=fine['action_points'], refined_minimum_transferred_margin=fine['minimum_transferred_margin'])
-            events[name] = event
+        try:
+            band = restore_structured_band(p, snapshot, arrays, name)
+            band.evaluate(a[calibration])
+            if p['target']['actions'] == 'real_line':
+                events[name] = coverage_events(band, residual)
+            else:
+                event = grid_coverage(band, residual, coverage_grid(p))
+                fine = grid_coverage(band, residual, coverage_grid(p, refined=True))
+                event.update(refined_transferred=fine['transferred'], refined_auxiliary=fine['auxiliary'],
+                             refinement_points=fine['action_points'], refined_minimum_transferred_margin=fine['minimum_transferred_margin'])
+                events[name] = event
+        except FloatingPointError as error:
+            info.update(band_success=False, band_failure=str(error))
+            arrays[name+'_band_failure'] = np.array(str(error))
+            events[name] = _unavailable_coverage(error)
     return events, diagnostics
 
 

@@ -3,6 +3,7 @@
 import json
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -14,7 +15,8 @@ from experiments.envelopes.polynomial import (
     AdditivePolynomial, PolynomialFeatureBand, polynomial_features, fit_polynomial_band,
     coverage_events, polynomial_containment, residual_metrics, integrated_width,
 )
-from experiments.envelopes.polynomial_study import prepare_environment, PolynomialLCBObjective
+from experiments.envelopes.polynomial_study import prepare_environment, PolynomialLCBObjective, run_repetition
+from experiments.envelopes.polynomial_reporting import _coverage_statistics
 from experiments.envelopes.wild_study import load_manifest, build_launch_plan
 from experiments.envelopes.quadratic import VARIABLE
 from optimization.gradients.methods import SteinDifferenceGradient
@@ -125,6 +127,45 @@ def test_width_integration_keeps_full_width_and_sides_separate(sample):
     assert widths['mean_lower_radius'] == 0
     assert widths['mean_upper_radius'] == pytest.approx(2.)
     assert widths['mean_residual_half_width'] == 0
+
+
+def test_invalid_query_norm_preserves_polynomial_repetition(tmp_path):
+    p = load_manifest(ROOT/'manifests/synthetic-polynomial-residual-degree4.json').payload
+    p = json.loads(json.dumps(p))
+    p.update(n=20, repetitions=1, feature_degrees=[1, 2])
+    p['bootstrap']['B'] = 7
+    snapshot = prepare_environment(p)
+    designs = {k: WildFeatureDesign(polynomial_features(snapshot['X'], snapshot['actions'], k))
+               for k in p['feature_degrees']}
+    def invalid_first_band(*args, **kwargs):
+        band, state = fit_polynomial_band(*args, **kwargs)
+        if band.degree == 1:
+            # Simulate a failed norm expansion without discarding the fitted QR state.
+            band.norm_squared.fill(0.)
+        return band, state
+    with patch('experiments.envelopes.polynomial_study.fit_polynomial_band', side_effect=invalid_first_band):
+        record = run_repetition(p, 0, tmp_path, 'test', snapshot, designs)
+    event = record['events']['1']
+    assert event['transferred'] is event['auxiliary'] is event['coefficient'] is None
+    assert event['certificate'] == 'unavailable_numerical_evaluation'
+    assert 'query norm' in event['failure']
+    assert record['events']['2']['transferred'] is False
+    with np.load(tmp_path/'repetitions/rep-000.npz', allow_pickle=False) as saved:
+        assert np.isfinite(saved['degree1_beta']).all()
+        assert np.isfinite(saved['degree1_inverse']).all()
+        assert str(saved['degree1_band_failure']) == event['failure']
+    with patch('experiments.envelopes.polynomial_study.fit_polynomial_band', side_effect=AssertionError('refit')):
+        assert run_repetition(p, 0, tmp_path, 'test', snapshot, designs) == record
+
+
+def test_unavailable_coverage_retains_denominators():
+    result = _coverage_statistics([True, False, None, None])
+    assert result['count'] == 1 and result['coverage'] == .5
+    assert result['valid_repetitions'] == result['unavailable_repetitions'] == 2
+    assert result['full_run_lower'] == .25 and result['full_run_upper'] == .75
+    empty = _coverage_statistics([None, None])
+    assert empty['coverage'] is empty['count'] is empty['wilson_lower'] is None
+    assert empty['full_run_lower'] == 0 and empty['full_run_upper'] == 1
 
 
 def test_gp_covariance_and_mode_dispatch_preserve_existing_family():

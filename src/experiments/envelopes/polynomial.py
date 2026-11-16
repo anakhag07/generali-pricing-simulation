@@ -205,6 +205,13 @@ def coverage_events(band, truth):
             "certificate": "exact_rational_polynomial_signs", "contexts_checked": index+1}
 
 
+def _unavailable_coverage(error):
+    return {'coefficient': None, 'auxiliary': None, 'transferred': None,
+            'refined_auxiliary': None, 'refined_transferred': None,
+            'certificate': 'unavailable_numerical_evaluation', 'contexts_checked': 0,
+            'failure': str(error)}
+
+
 def gaussian_moments(mean, variance, degree):
     """Return raw Gaussian moments through the requested degree."""
     moments = np.ones(degree+1)
